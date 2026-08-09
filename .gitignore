@@ -1,0 +1,37 @@
+# Generated recomp outputs
+RecompiledFuncs/
+RecompiledPatches/
+build-recomp/
+dump.toml
+data_dump.toml
+
+# Build
+build/
+build-cmake/
+*.o
+*.a
+*.so
+*.dylib
+
+# Input ROM/ELF (user-provided; never ship)
+*.elf
+*.z64
+*.n64
+*.v64
+
+# IDE / local
+.vscode/settings.json
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.idea/
+*.user
+*.suo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+{
+  "reloc_section_count": 830,
+  "overlay_count": 884,
+  "empty_overlays": 33,
+  "syscall_count": 4234,
+  "syms_sha256": "272a0465ab5d361395fa1104efd4fd8aa3de153204f2cbfd57e4e9ae665a0b91",
+  "datasyms_sha256": "227b7b5f2d82445fa2b44df70cff1613c2cb49086d67e8be959212dba34d4338",
+  "reloc_list_sha256": "1482f425648fa547099107a6b99aaa4aa9b3a258fd54519a17cdc735ad2f8046",
+  "overlays_table_sha256": "8cf9b902c211af7ef3eb4650e4ebf4027bab5afce51923419a47e78bdd02c66d",
+  "syscalls_table_sha256": "116bdcc740cf34f43a5407e74dadec2fbb3b6968454f0cab2d3f51dce32e0e6c"
+}

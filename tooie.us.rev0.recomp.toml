@@ -1,0 +1,37 @@
+# Auto-generated recomp config (P04)
+[input]
+entrypoint = 0x80000400
+output_func_path = "RecompiledFuncs"
+rom_file_path = "../banjo-tooie-Recomp/decompressed.us.z64"
+elf_path = "../banjo-tooie-Recomp/build/us/banjotooie_decompressed.elf"
+relocatable_sections_path = "metadata/relocatable_sections.recomp.txt"
+bss_section_suffix = "_bss"
+unpaired_lo16_warnings = true
+
+[patches]
+ignored = []
+renamed = []
+stubs = [
+    "boot___osCleanupThread",
+    "boot___osDisableInt",
+    "boot___osDispatchThread",
+    "boot___osEnqueueAndYield",
+    "boot___osEnqueueThread",
+    "boot___osException",
+    "boot___osExceptionPreamble",
+    "boot___osGetCause",
+    "boot___osGetSR",
+    "boot___osPopThread",
+    "boot___osProbeTLB",
+    "boot___osRestoreInt",
+    "boot___osSetFpcCsr",
+    "boot___osSetSR",
+    "boot_handle_CpU",
+    "boot_osInvalICache",
+    "boot_osMapTLBRdb",
+    "boot_osUnmapTLBAll",
+    "boot_osWritebackDCache",
+    "func_80013B70",
+    "func_8001DDC0",
+    "ovl_entrypoint_alternate"
+]

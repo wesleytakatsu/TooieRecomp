@@ -1,0 +1,19 @@
+{
+  "generator": "TooieRecomp/tools/generate_metadata.py",
+  "entrypoint": "0x80000400",
+  "bss_section_suffix": "_bss",
+  "expected_rom_sha1": "af479771ff5e91ce3732f3d84146614ab71d8d79",
+  "rom_sha1": "af479771ff5e91ce3732f3d84146614ab71d8d79",
+  "elf_sha1": "2b2d04c5b6484594f750b097daf670f7a8a24167",
+  "relocatable_sections": 830,
+  "overlays": 884,
+  "empty_overlays": 33,
+  "syscalls": 4234,
+  "reloc_type_counts": {
+    "R_MIPS_26": 11476,
+    "R_MIPS_HI16": 8066,
+    "R_MIPS_LO16": 8068
+  },
+  "syms_sha256": "272a0465ab5d361395fa1104efd4fd8aa3de153204f2cbfd57e4e9ae665a0b91",
+  "datasyms_sha256": "227b7b5f2d82445fa2b44df70cff1613c2cb49086d67e8be959212dba34d4338"
+}
