@@ -66,7 +66,7 @@
 
 #include "stb/stb_image.h"
 
-const std::string version_string = "0.1.0-p05";
+const std::string version_string = "0.1.0-p08";
 
 template<typename... Ts>
 void exit_error(const char* str, Ts ...args) {
@@ -171,7 +171,7 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
     flags |= SDL_WINDOW_VULKAN;
 #endif
 
-    window = SDL_CreateWindow("Banjo: Recompiled", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 900,  flags);
+    window = SDL_CreateWindow(banjo::program_name.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 900, flags);
 
     if (window == nullptr) {
         exit_error("Failed to create window: %s\n", SDL_GetError());
@@ -845,8 +845,10 @@ int main(int argc, char** argv) {
         recomp::check_all_stored_roms();
         std::u8string game_id = supported_games[0].game_id;
         if (recomp::is_rom_valid(game_id)) {
+            // Match launcher Start Game: hide UI so RT64 game frames are visible.
             std::fprintf(stderr, "[tooie] TOOIE_AUTO_START: starting game\n");
             recomp::start_game(game_id, {});
+            recompui::hide_all_contexts();
         } else {
             std::fprintf(stderr, "[tooie] TOOIE_AUTO_START: ROM not valid/stored; staying on launcher\n");
         }
