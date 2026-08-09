@@ -1,24 +1,29 @@
 # P08 — RT64, entrada e frontend
 
-## Feito
+Handoff completo: **[HANDOFF.md](./HANDOFF.md)**.
 
-- RT64/Vulkan apresenta frames de jogo (evidência: transição jiggy).
-- `TOOIE_AUTO_START` agora chama `recompui::hide_all_contexts()` após
-  `start_game` — sem isso o launcher cobria o framebuffer e só se ouvia áudio.
-- Título da janela: `Banjo-Tooie: Recompiled`.
-- Versão: `0.1.0-p08`.
+## Feito (commit `e2cdb30`)
+
+| item | detalhe |
+| --- | --- |
+| Bug | `TOOIE_AUTO_START` não chamava `hide_all_contexts()` → launcher por cima do RT64 |
+| Fix | `start_game` + `hide_all_contexts()` em `src/main/main.cpp` |
+| Janela | título `Banjo-Tooie: Recompiled` |
+| Versão | `0.1.0-p08` |
+| RT64 | evidencia transição jiggy com mundo no recorte (`../docs/plan/evidence/p08-game-view.png`) |
 
 ## Como testar
 
 ```sh
 cd build
 TOOIE_AUTO_START=1 ./TooieRecompiled
-# Esperado: sem SVG do launcher; transição jiggy / frames do jogo + música
-# Escape abre menu de config (RecompFrontend)
+# Esperado: sem SVG azul do launcher; jiggy / frames de jogo + música
+# Escape: config RecompFrontend
 ```
 
-## Residual
+## Residual (próximo agente)
 
-- Completar animação de transição (`gctransitionDll`) até menu/logo Rare.
-- `controls.json` persistente + rumble/hotplug.
-- 4:3 original, fullscreen multi-monitor, fallback de GPU.
+1. **Prioridade:** animação `gctransitionDll` (ovl 674) não completa — jiggy trava.
+2. `controls.json` + rumble/hotplug.
+3. 4:3 original, fullscreen, fallback GPU.
+4. Evidência logo Rare / menu / first playable.
