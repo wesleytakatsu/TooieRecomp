@@ -156,6 +156,21 @@ target_link_libraries(TooieRecompiled PRIVATE
     atomic
 )
 
+# Keep controller recognition identical to BanjoRecomp. Make the canonical DB
+# an explicit build dependency so updates are recopied even when the executable
+# itself does not need relinking.
+set(TOOIE_CONTROLLER_DB "${CMAKE_CURRENT_BINARY_DIR}/recompcontrollerdb.txt")
+add_custom_command(
+    OUTPUT "${TOOIE_CONTROLLER_DB}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${BK_ROOT}/recompcontrollerdb.txt"
+        "${TOOIE_CONTROLLER_DB}"
+    DEPENDS "${BK_ROOT}/recompcontrollerdb.txt"
+    VERBATIM
+)
+add_custom_target(TooieControllerDB DEPENDS "${TOOIE_CONTROLLER_DB}")
+add_dependencies(TooieRecompiled TooieControllerDB)
+
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")

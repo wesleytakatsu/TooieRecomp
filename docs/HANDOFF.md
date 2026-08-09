@@ -1,4 +1,10 @@
-# Handoff — TooieRecomp (2026-08-09)
+# Handoff — TooieRecomp (atualizado 2026-08-09 P08)
+
+**M3 visual alcançado:** o RT64 ultrapassa a jiggy e mantém uma cena 3D atribuída
+a Spiral Mountain; as capturas não mostram personagem/HUD e não comprovam
+jogabilidade. Ver `../docs/plan/evidence/p08-first-area-playable.md`.
+
+**BLOQUEADO (próximo agente):** input no **title/file select do jogo** (launcher UI OK; pad no jogo não avança save/start). Tentativa de hooks `osEepromProbe`+EEPROM em `boot_hw_stubs.cpp` **falhou** validação do utilizador. Handoff completo: `../docs/plan/evidence/p08-title-input-eeprom.md`. Residual polish: Rare/menu isolados, 4:3/fullscreen/fallback.
 
 **Repo git:** `TooieRecomp/` apenas (branch `main`).  
 **Workspace monorepo:** `/home/wesley/projetos/N64-Recomp` (sem `.git` na raiz).  
@@ -8,6 +14,7 @@
 
 | hash | mensagem |
 | --- | --- |
+| `5bf8f06` | docs: handoff for next agent (P07/P08 state and residual) |
 | `e2cdb30` | **P08:** show RT64 game view after auto-start; Tooie window title |
 | `73529d5` | **P07:** RSP n_aspMain, SI/CIC-6105, and working intro audio |
 | `d2d6426` | Initial commit P00–P06 |
@@ -15,10 +22,14 @@
 ## Estado do produto (o que o usuário já validou)
 
 1. **Música inicial** toca corretamente no sink **default** do SO (FELITRON USB).
-2. Com o fix P08, a janela deixa de ficar no SVG do launcher e mostra **framebuffer RT64**:
-   transição **jiggy** com pedaço de mundo/grama no recorte.
-3. Ainda **não** chega a logo Rare completo / file select / área jogável estável — trava na
-   animação de transição (`gctransitionDll`).
+2. O launcher mantém o visual/animação do BanjoRecomp e é a única janela visível
+   até **Start Game**.
+3. A transição `gctransitionDll` foi destravada; o RT64 chega a uma cena 3D
+   atribuída a **Spiral Mountain**. Personagem, HUD e controle não foram
+   comprovados pelas capturas.
+4. **Áudio** validado pelo utilizador no sink default (com ou sem preview do launcher).
+5. No Linux, a música do launcher vem de um processo oculto que executa a ROM; ao
+   iniciar o jogo ele encerra e o boot/música recomeçam no processo visível.
 
 ## P07 (já commitado) — resumo para não reabrir
 
@@ -47,7 +58,7 @@ Arquivos: `include/tooie_diag.h`, `src/game/tooie_diag.cpp`.
 
 Docs P07 no repo: `docs/P07-rsp-and-audio.md`, `docs/P07-boot-hang-audio-diag.md`.
 
-## P08 (esta sessão / commit `e2cdb30`) — o que foi feito
+## P08 — o que foi feito
 
 ### Bug principal
 `TOOIE_AUTO_START` em `src/main/main.cpp` fazia:
@@ -70,6 +81,12 @@ recompui::hide_all_contexts();
 Também:
 - Título SDL: `banjo::program_name` → `"Banjo-Tooie: Recompiled"`.
 - `version_string = "0.1.0-p08"`.
+- `thread_queue_insert` rejeita inserção duplicada, eliminando auto-elo da JOY.
+- Filas TIDY de uma mensagem coalescem pedidos duplicados sem bloquear a MAIN.
+- O hook Tooie de `osDpGetStatus` mascara `DPC_STATUS_FREEZE`: o RT64 processa
+  display lists mesmo durante esse estado sintético, ao contrário da RDP real.
+- Preview de música ROM-backed em processo SDL oculto; `SIGTERM` + reap no
+  Start Game e `PR_SET_PDEATHSIG/SIGKILL` se o launcher morrer.
 
 ### Evidência visual (monorepo `../docs/plan/evidence/`)
 
@@ -77,37 +94,49 @@ Também:
 | --- | --- |
 | `p08-window-capture.png` | launcher SVG (antes do hide) |
 | `p08-game-view.png` | **jiggy transition** + mundo no recorte (após hide) |
-| `p08-game-view-later.png` | mesma jiggy ~20s depois (transição não completa) |
+| `p08-runtime-frontend-smoke.md` | trace DP/VI, `>32k` syscalls e ciclo preview → boot visível |
 
 ### Já existia (não reinventar)
 - RT64 + Vulkan linkados no CMake; `create_render_context` em `main.cpp`.
 - RecompFrontend (launcher, config, input callbacks).
 - Config: `~/.config/TooieRecompiled/{general,graphics,sound}.json` + ROM stored.
-- **Não há** `controls.json` ainda até o user abrir o tab de controles.
+- `controls.json` é persistido de forma lazy pelo RecompFrontend quando um
+  binding é alterado; a ausência anterior a isso é normal e igual ao BanjoRecomp.
+- Defaults, descrições, callbacks, single-player, Rumble Pak e exports de
+  analógico direito têm implementação idêntica ao BanjoRecomp.
+- Os VRAMs Tooie de `osContInit`, polling/leitura, `osContSetCh`, motor e rumble
+  apontam para os wrappers host do N64ModernRuntime. GDB confirmou
+  `osContStartReadData_recomp` em `[Game] SCHEDULE` e
+  `osContGetReadData_recomp` em `[Game] JOY`; o SI bruto continua exclusivo do
+  CIC-6105.
+- O build copia o `recompcontrollerdb.txt` canônico de `../BanjoRecomp` para a
+  pasta do executável; o smoke não mostra mais `Invalid RWops`.
+- O desbloqueio do scheduler também depende da alteração ainda não commitada em
+  `../BanjoRecomp/lib/N64ModernRuntime/ultramodern/src/threadqueue.cpp`; este
+  commit de TooieRecomp não inclui a dependência externa.
 
 ## Residual prioritário (próximo agente)
 
-### 1. Destravar `gctransitionDll` (bloqueia menu / Rare logo) — **prioridade**
-- Após boot: `last_ovl=674` (`gctransitionDll`), syscall count congela (~17262),
-  áudio pode continuar um tempo e depois estabilizar; CPU alta possível.
-- Tela: jiggy no centro, fundo preto, animação de wipe **não termina**.
-- Decomp: `banjo-tooie-Recomp/src/overlays/gc/transitionDll.c` + asm
-  `asm/nonmatchings/overlays/gc/transitionDll/`.
-- Hipótese: timing VI / mesg / flag de frame / RDP freeze residual (ver P06
-  scheduler `func_80013D10` event 3 e hooks DP/SR).
-- Ferramenta: `TOOIE_DIAG=1`, eventualmente log em VI / gfx task submit.
+### 0. BLOQUEADO — title / file select input (assumir primeiro)
+- Launcher RecompFrontend: input OK.
+- Title/file select **do jogo**: pad não entra no save/start (utilizador 2026-08-09).
+- Tentativa: LOOKUP `osEepromProbe` + read/write EEPROM em `src/game/boot_hw_stubs.cpp`
+  (hipótese JOY `errno=8` se probe < 16K). Build OK; **validação humana FAIL**.
+- Próximo agente: GDB + dump JOY/pad na tela de title; hipóteses alternativas em
+  `../docs/plan/evidence/p08-title-input-eeprom.md`. **Não fechar sem validação do utilizador.**
+
+### 1. Captura dirigida de menu e gameplay
+- Cena 3D pós-transição: comprovada (`p08-first-area-playable.md`).
+- Residual: logo Rare/menu título e primeira sessão realmente controlável com
+  personagem + HUD.
 
 ### 2. Controles (P08-T05)
-- Gerar/validar `~/.config/TooieRecompiled/controls.json`.
-- Teclado + gamepad, rumble, hotplug.
+- Path host `osCont*` já ligado; falta fix title/save + teste físico rumble/hotplug.
+- `controls.json` lazy (igual BanjoRecomp).
 
 ### 3. Paridade visual / UI (P08-T02/T03/T07/T08)
-- 4:3 original vs `ar_option: Expand` atual.
-- Fullscreen / multi-monitor.
-- Mensagem se Vulkan falhar (já há message_box em vários caminhos; revisar).
+- 4:3, fullscreen/multi-monitor, fallback Vulkan.
 
-### 4. P07 residual (não bloqueia P08)
-- Soak underrun, SFX/fala/pause/hotplug de áudio.
 
 ## Como buildar e correr
 
@@ -123,6 +152,10 @@ TOOIE_AUTO_START=1 ./TooieRecompiled
 # Escape: menu config RecompFrontend
 # TOOIE_DIAG=1  — contadores
 # TOOIE_LOG_RSP=1 — cada M_AUDTASK
+
+TOOIE_LAUNCHER_MUSIC_SMOKE=1 TOOIE_DIAG=1 ./TooieRecompiled
+# Valida preview oculto, encerramento e segundo boot visível.
+# TOOIE_DISABLE_LAUNCHER_MUSIC=1 desativa o preview.
 ```
 
 Dependências de tree: `../BanjoRecomp` (runtime/RT64/Frontend),  

@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <cerrno>
 #include <cassert>
 #include <unordered_map>
 #include <vector>
@@ -8,6 +10,20 @@
 #include <numeric>
 #include <stdexcept>
 #include <cinttypes>
+#include <atomic>
+#include <chrono>
+#include <thread>
+
+#if defined(__linux__)
+#include <csignal>
+#include <limits.h>
+#include <spawn.h>
+#include <sys/prctl.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+extern char** environ;
+#endif
 
 #include "nfd.h"
 
@@ -67,6 +83,103 @@
 #include "stb/stb_image.h"
 
 const std::string version_string = "0.1.0-p08";
+
+namespace {
+
+bool launcher_music_child = false;
+bool launcher_music_preview_started = false;
+
+#if defined(__linux__)
+std::atomic<pid_t> launcher_music_pid{-1};
+
+void stop_launcher_music_preview() {
+    const pid_t child = launcher_music_pid.exchange(-1);
+    if (child <= 0) {
+        return;
+    }
+
+    int status = 0;
+    pid_t wait_result = 0;
+    do {
+        wait_result = waitpid(child, &status, WNOHANG);
+    } while (wait_result < 0 && errno == EINTR);
+    if (wait_result == child || (wait_result < 0 && errno == ECHILD)) {
+        return;
+    }
+    if (wait_result < 0) {
+        std::fprintf(stderr, "[tooie] launcher music: waitpid failed (%d)\n", errno);
+        return;
+    }
+
+    if (kill(child, SIGTERM) != 0 && errno != ESRCH) {
+        std::fprintf(stderr, "[tooie] launcher music: SIGTERM failed (%d)\n", errno);
+    }
+
+    // Reap the helper so a normal Start Game does not leave a zombie for the
+    // lifetime of the visible game process. Give graceful termination one
+    // second, then force only this known child to exit.
+    for (int attempt = 0; attempt < 100; attempt++) {
+        wait_result = waitpid(child, &status, WNOHANG);
+        if (wait_result == child || (wait_result < 0 && errno == ECHILD)) {
+            return;
+        }
+        if (wait_result < 0 && errno != EINTR) {
+            std::fprintf(stderr, "[tooie] launcher music: reap failed (%d)\n", errno);
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    if (kill(child, SIGKILL) == 0 || errno == ESRCH) {
+        do {
+            wait_result = waitpid(child, &status, 0);
+        } while (wait_result < 0 && errno == EINTR);
+    }
+}
+
+bool start_launcher_music_preview() {
+    std::array<char, PATH_MAX> executable{};
+    const ssize_t length = readlink("/proc/self/exe", executable.data(), executable.size() - 1);
+    if (length <= 0 || static_cast<size_t>(length) >= executable.size()) {
+        std::fprintf(stderr, "[tooie] launcher music: failed to resolve executable\n");
+        return false;
+    }
+    executable[static_cast<size_t>(length)] = '\0';
+
+    char child_flag[] = "--launcher-music-child";
+    char* child_argv[] = {executable.data(), child_flag, nullptr};
+    pid_t child = -1;
+    const int result = posix_spawn(&child, executable.data(), nullptr, nullptr, child_argv, environ);
+    if (result != 0) {
+        std::fprintf(stderr, "[tooie] launcher music: posix_spawn failed (%d)\n", result);
+        return false;
+    }
+
+    launcher_music_pid.store(child);
+    launcher_music_preview_started = true;
+    std::atexit(stop_launcher_music_preview);
+
+    // start_game is single-shot in ModernRuntime. Keep the preview in its own
+    // process, then stop it as soon as the visible instance starts from boot.
+    std::thread([child]() {
+        while (!ultramodern::is_game_started()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        if (launcher_music_pid.load() == child) {
+            std::fprintf(stderr, "[tooie] launcher music: restarting with visible game boot\n");
+            stop_launcher_music_preview();
+        }
+    }).detach();
+
+    std::fprintf(stderr, "[tooie] launcher music: hidden ROM-backed preview started\n");
+    return true;
+}
+#else
+void stop_launcher_music_preview() {}
+bool start_launcher_music_preview() { return false; }
+#endif
+
+} // namespace
 
 template<typename... Ts>
 void exit_error(const char* str, Ts ...args) {
@@ -164,6 +277,10 @@ SDL_Window* window;
 
 ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::gfx_data_t) {
     uint32_t flags = SDL_WINDOW_RESIZABLE;
+
+    if (launcher_music_child) {
+        flags |= SDL_WINDOW_HIDDEN;
+    }
 
 #if defined(__APPLE__)
     flags |= SDL_WINDOW_METAL;
@@ -697,8 +814,30 @@ void on_launcher_init(recompui::LauncherMenu *menu) {
 #define REGISTER_FUNC(name) recomp::overlays::register_base_export(#name, name)
 
 int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+    for (int i = 1; i < argc; i++) {
+        if (std::strcmp(argv[i], "--launcher-music-child") == 0) {
+            launcher_music_child = true;
+        }
+    }
+
+#if defined(__linux__)
+    if (launcher_music_child) {
+        // Never leave an invisible audio/runtime process behind if the launcher
+        // is closed or crashes before Start Game is selected.
+        const pid_t launcher_parent = getppid();
+        // A crashed/killed parent cannot perform the normal SIGTERM + reap
+        // sequence, so use SIGKILL for the kernel-owned orphan safeguard.
+        if (launcher_parent <= 1 || prctl(PR_SET_PDEATHSIG, SIGKILL) != 0) {
+            std::fprintf(stderr, "[tooie] launcher music: failed to bind child lifetime\n");
+            return EXIT_FAILURE;
+        }
+        // Close the fork-to-prctl race: the parent may have exited between
+        // posix_spawn and PR_SET_PDEATHSIG becoming active.
+        if (getppid() != launcher_parent) {
+            return EXIT_FAILURE;
+        }
+    }
+#endif
     recomp::Version project_version{};
     if (!recomp::Version::from_string(version_string, project_version)) {
         ultramodern::error_handling::message_box(("Invalid version string: " + version_string).c_str());
@@ -798,6 +937,20 @@ int main(int argc, char** argv) {
         recomp::register_game(game);
     }
 
+    const char* auto_start_env = std::getenv("TOOIE_AUTO_START");
+    const bool explicit_auto_start = auto_start_env != nullptr &&
+        auto_start_env[0] != '\0' && auto_start_env[0] != '0';
+    const char* disable_launcher_music = std::getenv("TOOIE_DISABLE_LAUNCHER_MUSIC");
+    const bool launcher_music_disabled = disable_launcher_music != nullptr &&
+        disable_launcher_music[0] != '\0' && disable_launcher_music[0] != '0';
+
+    if (!launcher_music_child && !explicit_auto_start && !launcher_music_disabled) {
+        recomp::check_all_stored_roms();
+        if (recomp::is_rom_valid(supported_games[0].game_id)) {
+            start_launcher_music_preview();
+        }
+    }
+
     recomp::mods::register_deprecated_mod("bk_recomp_mod_fov_slider", recomp::mods::DeprecationStatus::BrokenVersion, recomp::Version(1, 1, 0));
 
     REGISTER_FUNC(recomp_get_window_resolution);
@@ -828,6 +981,25 @@ int main(int argc, char** argv) {
     recompui::register_launcher_init_callback(on_launcher_init);
     recompui::register_launcher_update_callback([](recompui::LauncherMenu* menu) {
         banjo::launcher_animation_update(menu);
+
+        // If this is the first run and the ROM is selected from the launcher,
+        // begin the preview as soon as validation succeeds.
+        static int launcher_music_check_frames = 0;
+        if (!launcher_music_child && !launcher_music_preview_started &&
+            ++launcher_music_check_frames >= 60) {
+            launcher_music_check_frames = 0;
+            const char* disable_music = std::getenv("TOOIE_DISABLE_LAUNCHER_MUSIC");
+            const char* forced_start = std::getenv("TOOIE_AUTO_START");
+            const bool disabled = disable_music != nullptr && disable_music[0] != '\0' && disable_music[0] != '0';
+            const bool auto_starting = forced_start != nullptr && forced_start[0] != '\0' && forced_start[0] != '0';
+            if (!disabled && !auto_starting) {
+                recomp::check_all_stored_roms();
+                if (recomp::is_rom_valid(supported_games[0].game_id)) {
+                    start_launcher_music_preview();
+                }
+            }
+        }
+
         // Deferred + frame delay so RT64/UI finish first init before game thread starts.
         static int auto_start_frames = 0;
         static bool auto_start_done = false;
@@ -835,10 +1007,17 @@ int main(int argc, char** argv) {
             return;
         }
         const char* auto_start = std::getenv("TOOIE_AUTO_START");
-        if (auto_start == nullptr || auto_start[0] == '\0' || auto_start[0] == '0') {
+        const char* launcher_music_smoke = std::getenv("TOOIE_LAUNCHER_MUSIC_SMOKE");
+        const bool smoke_start_requested = launcher_music_smoke != nullptr &&
+            launcher_music_smoke[0] != '\0' && launcher_music_smoke[0] != '0';
+        const bool auto_start_requested = launcher_music_child ||
+            smoke_start_requested ||
+            (auto_start != nullptr && auto_start[0] != '\0' && auto_start[0] != '0');
+        if (!auto_start_requested) {
             return;
         }
-        if (++auto_start_frames < 30) {
+        const int start_delay_frames = launcher_music_child ? 1 : (smoke_start_requested ? 180 : 30);
+        if (++auto_start_frames < start_delay_frames) {
             return;
         }
         auto_start_done = true;
@@ -922,6 +1101,8 @@ int main(int argc, char** argv) {
         error_handling_callbacks,
         threads_callbacks
     );
+
+    stop_launcher_music_preview();
 
     NFD_Quit();
 

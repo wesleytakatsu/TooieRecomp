@@ -152,10 +152,31 @@ extern "C" void osYieldThread_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __osPiGetAccess_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __osPiRelAccess_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osPfsInit_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osContInit_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osContStartReadData_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osContGetReadData_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osContSetCh_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __osMotorAccess_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osMotorInit_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osEepromProbe_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osEepromRead_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osEepromWrite_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osEepromLongRead_recomp(uint8_t* rdram, recomp_context* ctx);
+extern "C" void osEepromLongWrite_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osSendMesg_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osRecvMesg_recomp(uint8_t* rdram, recomp_context* ctx);
 
 // Lightweight host stubs for SI/VI helpers without a librecomp body yet.
+// RT64 consumes display lists immediately even while librecomp's synthetic
+// DPC_STATUS_FREEZE bit is set. Tooie's scheduler assumes real RDP semantics:
+// a frozen RDP cannot complete the next list until VI clears the freeze. Mask
+// that bookkeeping-only bit for this game so task submission records the real
+// completion state instead of losing the next frame-ending DP interrupt.
+static void tooie_osDpGetStatus(uint8_t* rdram, recomp_context* ctx) {
+    osDpGetStatus_recomp(rdram, ctx);
+    ctx->r2 &= ~static_cast<gpr>(0x2u); // DPC_STATUS_FREEZE
+}
+
 static void tooie_osViGetCurrentLine(uint8_t* rdram, recomp_context* ctx) {
     (void)rdram;
     ctx->r2 = 0;
@@ -195,7 +216,8 @@ static void n64_cic_nus_6105(const uint8_t* chl, uint8_t* rsp, int len) {
     }
 }
 
-// Host-side 64-byte PIF-RAM mirror (SI DMA source/dest for CIC/controllers).
+// Host-side 64-byte PIF-RAM mirror for CIC/private PIF traffic. Normal
+// controller polling is routed through the osCont* host hooks below.
 static uint8_t g_pif_ram[64]{};
 
 // CIC6105 / gldbDll use __osSiRawStartDma then osRecvMesg(BLOCK) on the SI event
@@ -279,10 +301,27 @@ static void tooie_osYieldThread(uint8_t* rdram, recomp_context* ctx) {
 static const UltraLookupHook kUltraLookupHooks[] = {
     { static_cast<int32_t>(0x8001DCA0), tooie___osGetSR, "__osGetSR_2" },
     { static_cast<int32_t>(0x8002EF70), osDpSetStatus_recomp, "osDpSetStatus" },
-    { static_cast<int32_t>(0x8002F240), osDpGetStatus_recomp, "osDpGetStatus" },
+    { static_cast<int32_t>(0x8002F240), tooie_osDpGetStatus, "osDpGetStatus" },
     { static_cast<int32_t>(0x8002FE70), tooie_osYieldThread, "osYieldThread" },
     { static_cast<int32_t>(0x8002FF60), tooie_osViGetCurrentLine, "osViGetCurrentLine" },
+    // Keep controller polling and rumble on the same host path as BanjoRecomp.
+    // Tooie's raw SI hook below is deliberately retained only for CIC-6105 PIF
+    // traffic; ordinary input must reach RecompFrontend's profile callbacks.
+    { static_cast<int32_t>(0x8002FF90), osContStartReadData_recomp, "osContStartReadData" },
+    { static_cast<int32_t>(0x80030014), osContGetReadData_recomp, "osContGetReadData" },
+    // JOY thread (func_800166DC): if osEepromProbe < EEPROM_TYPE_16K it forces
+    // D_80079B90[0].errno = 8 and never calls osContGetReadData → title/save
+    // select ignore pads. Must return host Eep16k (GameEntry.save_type).
+    { static_cast<int32_t>(0x80030170), osEepromProbe_recomp, "osEepromProbe" },
+    { static_cast<int32_t>(0x800301E0), osContInit_recomp, "osContInit" },
+    { static_cast<int32_t>(0x80030550), osContSetCh_recomp, "osContSetCh" },
+    { static_cast<int32_t>(0x80030640), __osMotorAccess_recomp, "__osMotorAccess" },
+    { static_cast<int32_t>(0x800308B4), osMotorInit_recomp, "osMotorInit" },
     { static_cast<int32_t>(0x80030A10), osPfsInit_recomp, "osPfsInit" },
+    { static_cast<int32_t>(0x8002DE70), osEepromLongRead_recomp, "osEepromLongRead" },
+    { static_cast<int32_t>(0x8002DF00), osEepromLongWrite_recomp, "osEepromLongWrite" },
+    { static_cast<int32_t>(0x80032B10), osEepromRead_recomp, "osEepromRead" },
+    { static_cast<int32_t>(0x80032D60), osEepromWrite_recomp, "osEepromWrite" },
     { static_cast<int32_t>(0x800319F0), tooie_osSiAccessNoop, "__osSiGetAccess" },
     { static_cast<int32_t>(0x80031A34), tooie_osSiAccessNoop, "__osSiRelAccess" },
     { static_cast<int32_t>(0x80031A60), tooie___osSiRawStartDma, "__osSiRawStartDma" },
@@ -709,6 +748,69 @@ extern "C" void func_800137F4(uint8_t* rdram, recomp_context* ctx) {
     ctx->f16.u32l = ctx->r1;
     func_80013818(rdram, ctx);
     ctx->f0.fl = ctx->f2.fl;
+}
+
+// Submit one unit of background TIDY work. The original uses a blocking send
+// to a one-message queue, but host-side VI delivery can revisit MAIN before the
+// lower-priority TIDY thread drains the previous request. Blocking here stalls
+// every subsequent frame; duplicate TIDY requests are safely coalescible.
+extern "C" void func_80013488(uint8_t* rdram, recomp_context* ctx) {
+    recomp_func_t* should_submit = get_function(static_cast<int32_t>(0x80012530u));
+    if (should_submit == nullptr) {
+        ctx->r2 = 0;
+        return;
+    }
+
+    should_submit(rdram, ctx);
+    if (static_cast<int32_t>(ctx->r2) != 1) {
+        return;
+    }
+
+    ctx->r4 = kseg0_gpr(0x800769E0u);
+    ctx->r5 = 0;
+    ctx->r6 = 0; // OS_MESG_NOBLOCK: retain at most one pending TIDY request.
+    osSendMesg_recomp(rdram, ctx);
+
+    if (static_cast<int32_t>(ctx->r2) != 0 && tooie_diag::enabled()) {
+        static bool s_reported_coalesced_tidy = false;
+        if (!s_reported_coalesced_tidy) {
+            std::fprintf(stderr,
+                         "[tooie-diag] TIDY queue full; coalescing duplicate request\n");
+            std::fflush(stderr);
+            s_reported_coalesced_tidy = true;
+        }
+    }
+}
+
+// Companion TIDY handshake used after MAIN finishes its side of the frame.
+// Keep this one coalesced as well; waiting for the lower-priority worker here
+// has the same host scheduling deadlock as the request queue above.
+extern "C" void func_800134C4(uint8_t* rdram, recomp_context* ctx) {
+    recomp_func_t* should_submit = get_function(static_cast<int32_t>(0x80012530u));
+    if (should_submit == nullptr) {
+        ctx->r2 = 0;
+        return;
+    }
+
+    should_submit(rdram, ctx);
+    if (static_cast<int32_t>(ctx->r2) != 1) {
+        return;
+    }
+
+    ctx->r4 = kseg0_gpr(0x80076A00u);
+    ctx->r5 = 0;
+    ctx->r6 = 0; // OS_MESG_NOBLOCK
+    osSendMesg_recomp(rdram, ctx);
+
+    if (static_cast<int32_t>(ctx->r2) != 0 && tooie_diag::enabled()) {
+        static bool s_reported_coalesced_tidy_reply = false;
+        if (!s_reported_coalesced_tidy_reply) {
+            std::fprintf(stderr,
+                         "[tooie-diag] TIDY reply queue full; coalescing duplicate\n");
+            std::fflush(stderr);
+            s_reported_coalesced_tidy_reply = true;
+        }
+    }
 }
 
 // Scheduler handshake (func_80013D10): send event to D_800783D0 and, for event 3,
