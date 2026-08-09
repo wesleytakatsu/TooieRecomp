@@ -94,6 +94,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
     ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
 )

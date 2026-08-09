@@ -11,6 +11,13 @@
 #include "librecomp/game.hpp"
 #include "librecomp/addresses.hpp"
 #include "librecomp/overlays.hpp"
+#include "ultramodern/ultramodern.hpp"
+#include "tooie_diag.h"
+
+// MEM_* expects KSEG0 addresses sign-extended into gpr (same as recomp codegen).
+static inline gpr kseg0_gpr(uint32_t addr) {
+    return static_cast<gpr>(static_cast<int32_t>(addr));
+}
 
 // Declared in librecomp overlays.cpp
 extern "C" recomp_func_t* get_function(int32_t addr);
@@ -159,6 +166,96 @@ static void tooie_osSiAccessNoop(uint8_t* rdram, recomp_context* ctx) {
     ctx->r2 = 0;
 }
 
+// CIC-NUS-6105 C/R — X-Scale algorithm (mupen64plus n64_cic_nus_6105.c).
+// chl/rsp are 30 nybbles; call with len = 30 (CHL_LEN-2).
+static void n64_cic_nus_6105(const uint8_t* chl, uint8_t* rsp, int len) {
+    static const uint8_t lut0[16] = {
+        0x4, 0x7, 0xA, 0x7, 0xE, 0x5, 0xE, 0x1,
+        0xC, 0xF, 0x8, 0xF, 0x6, 0x3, 0x6, 0x9,
+    };
+    static const uint8_t lut1[16] = {
+        0x4, 0x1, 0xA, 0x7, 0xE, 0x5, 0xE, 0x1,
+        0xC, 0x9, 0x8, 0x5, 0x6, 0x3, 0xC, 0x9,
+    };
+    uint8_t key = 0xB;
+    const uint8_t* lut = lut0;
+    for (int i = 0; i < len; i++) {
+        rsp[i] = static_cast<uint8_t>((key + 5 * chl[i]) & 0xF);
+        key = lut[rsp[i]];
+        const int sgn = (rsp[i] >> 3) & 0x1;
+        const int mag = ((sgn == 1) ? ~rsp[i] : rsp[i]) & 0x7;
+        int mod = (mag % 3 == 1) ? sgn : 1 - sgn;
+        if (lut == lut1 && (rsp[i] == 0x1 || rsp[i] == 0x9)) {
+            mod = 1;
+        }
+        if (lut == lut1 && (rsp[i] == 0xB || rsp[i] == 0xE)) {
+            mod = 0;
+        }
+        lut = (mod == 1) ? lut1 : lut0;
+    }
+}
+
+// Host-side 64-byte PIF-RAM mirror (SI DMA source/dest for CIC/controllers).
+static uint8_t g_pif_ram[64]{};
+
+// CIC6105 / gldbDll use __osSiRawStartDma then osRecvMesg(BLOCK) on the SI event
+// queue. A pure no-op never posts SI completion → permanent hang in gldbDll
+// (stack gsworld→gsmaker→gldb). Maintain a PIF-RAM image + 6105 C/R so gldb
+// asset decrypt gets a real key (wrong key → inflate crash).
+static void tooie___osSiRawStartDma(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t direction = static_cast<uint32_t>(ctx->r4); // 0=PIF→RDRAM, 1=RDRAM→PIF
+    const uint32_t buf = static_cast<uint32_t>(ctx->r5);
+    const gpr dram = kseg0_gpr(buf);
+
+    if (buf != 0u) {
+        if (direction == 1u) {
+            // RDRAM → PIF
+            for (int i = 0; i < 64; i++) {
+                g_pif_ram[i] = MEM_B(i, dram);
+            }
+            // Tooie CIC path (cic_send_challenge) packs challenge at +0x30 and often
+            // leaves cmd as 0xFF/0xFE rather than standard bit 0x02. Detect either.
+            const bool challenge_cmd = (g_pif_ram[0x3F] & 0x02u) != 0u;
+            const bool cic_buffer = (buf == 0x8007D850u) || challenge_cmd;
+            if (cic_buffer) {
+                uint8_t chl[30];
+                uint8_t rsp[30];
+                for (int i = 0; i < 15; i++) {
+                    chl[i * 2 + 0] = static_cast<uint8_t>((g_pif_ram[0x30 + i] >> 4) & 0xF);
+                    chl[i * 2 + 1] = static_cast<uint8_t>(g_pif_ram[0x30 + i] & 0xF);
+                }
+                n64_cic_nus_6105(chl, rsp, 30); // CHL_LEN(0x20)-2
+                // Match mupen process_cic_challenge: clear 0x2e/0x2f, repack response.
+                g_pif_ram[0x2e] = 0;
+                g_pif_ram[0x2f] = 0;
+                for (int i = 0; i < 15; i++) {
+                    g_pif_ram[0x30 + i] =
+                        static_cast<uint8_t>((rsp[i * 2] << 4) | (rsp[i * 2 + 1] & 0xF));
+                }
+                g_pif_ram[0x3F] = static_cast<uint8_t>((g_pif_ram[0x3F] & ~0x02u) | 0x80u);
+                if (tooie_diag::enabled()) {
+                    static unsigned s_cic_log = 4;
+                    if (s_cic_log > 0) {
+                        --s_cic_log;
+                        std::fprintf(stderr,
+                                     "[tooie-diag] CIC6105 C/R on SI write buf=0x%08x cmd=0x%02x\n",
+                                     buf, g_pif_ram[0x3F]);
+                        std::fflush(stderr);
+                    }
+                }
+            }
+        } else {
+            // PIF → RDRAM
+            for (int i = 0; i < 64; i++) {
+                MEM_B(i, dram) = g_pif_ram[i];
+            }
+        }
+    }
+
+    ultramodern::send_si_message();
+    ctx->r2 = 0;
+}
+
 // __osGetSR_2 reads CP0 Status. N64Recomp cannot obtain the host's emulated CP0
 // value here, but the scheduler requires the RCP interrupt bit to remain enabled;
 // returning zero enters func_800149BC's intentional fatal DP-flush loop.
@@ -188,7 +285,7 @@ static const UltraLookupHook kUltraLookupHooks[] = {
     { static_cast<int32_t>(0x80030A10), osPfsInit_recomp, "osPfsInit" },
     { static_cast<int32_t>(0x800319F0), tooie_osSiAccessNoop, "__osSiGetAccess" },
     { static_cast<int32_t>(0x80031A34), tooie_osSiAccessNoop, "__osSiRelAccess" },
-    { static_cast<int32_t>(0x80031A60), tooie_osSiAccessNoop, "__osSiRawStartDma" },
+    { static_cast<int32_t>(0x80031A60), tooie___osSiRawStartDma, "__osSiRawStartDma" },
     { static_cast<int32_t>(0x80031B60), __osPiGetAccess_recomp, "__osPiGetAccess" },
     { static_cast<int32_t>(0x80031BA4), __osPiRelAccess_recomp, "__osPiRelAccess" },
 };
@@ -233,11 +330,6 @@ extern "C" void func_80000450(uint8_t* rdram, recomp_context* ctx) {
 
     ctx->r31 = MEM_W(ctx->r29, 0x14);
     ctx->r29 = ADD32(ctx->r29, 0x20);
-}
-
-// MEM_* expects KSEG0 addresses sign-extended into gpr (same as recomp codegen).
-static inline gpr kseg0_gpr(uint32_t addr) {
-    return static_cast<gpr>(static_cast<int32_t>(addr));
 }
 
 // void rom_read_word(u32 rom_offset, u32* out)
@@ -299,6 +391,16 @@ extern "C" void rom_dma_read(uint8_t* rdram, recomp_context* ctx) {
     const gpr dram_addr = kseg0_gpr(static_cast<uint32_t>(ctx->r4));
     const uint32_t rom_offset = static_cast<uint32_t>(ctx->r5) & 0x0FFFFFFFu;
     const uint32_t size = static_cast<uint32_t>(ctx->r6);
+    if (tooie_diag::enabled()) {
+        static unsigned s_romdma_log = 32;
+        if (s_romdma_log > 0) {
+            --s_romdma_log;
+            std::fprintf(stderr,
+                         "[tooie-diag] rom_dma_read vaddr=0x%08x rom=0x%08x size=0x%x\n",
+                         static_cast<uint32_t>(ctx->r4), rom_offset, size);
+            std::fflush(stderr);
+        }
+    }
     const auto rom = recomp::get_rom();
     if (size == 0 || dram_addr == 0) {
         ctx->r2 = 0;
@@ -645,6 +747,7 @@ extern "C" void func_80013D10(uint8_t* rdram, recomp_context* ctx) {
         std::fprintf(stderr, "[tooie] func_80013D10: event 3 scheduler ack\n");
         MEM_W(0, kseg0_gpr(kAddr_D_80078F0C)) = 0;
         std::fflush(stderr);
+        tooie_diag::note_sched_ack();
     } else if (send_result != 0) {
         std::fprintf(stderr,
                      "[tooie] func_80013D10: scheduler queue full for event %d\n",

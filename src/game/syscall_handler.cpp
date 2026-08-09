@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdint>
+#include <chrono>
 
 #include "recomp.h"
 #include "librecomp/overlays.hpp"
@@ -7,6 +8,7 @@
 #include "librecomp/addresses.hpp"
 
 #include "generated/overlay_dispatch.inc.h"
+#include "tooie_diag.h"
 
 // Core2 hosts the overlay_syscalls trampoline table.
 // VRAM/ROM bases match section_16_core2 in recomp_overlays.inl.
@@ -126,6 +128,7 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     static unsigned s_dispatch_log_left = 128;
     static uint32_t s_loaded_ovl = 0;
 
+    // Verbose first N dispatches always; TOOIE_DIAG keeps counters forever.
     if (s_dispatch_log_left > 0) {
         --s_dispatch_log_left;
         std::fprintf(stderr,
@@ -133,6 +136,7 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
                      overlay_index, entry_index, entry.rom_addr, entry.size, vram);
         std::fflush(stderr);
     }
+    tooie_diag::note_syscall_dispatch(overlay_index, entry_index);
 
     // Shared overlay bank at link VRAM (single slot @ 0x80800000). Nested syscalls
     // can switch the bank mid-call; remember the previous overlay and restore it
@@ -157,12 +161,32 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         load_overlay_bank(overlay_index);
     }
 
+    // Hang suspects (gsworld→gsmaker→gldb): time long overlays when diag is on.
+    const bool time_call = tooie_diag::enabled() &&
+                           (overlay_index == 708u || overlay_index == 2u || overlay_index == 726u);
+    const auto t0 = time_call ? std::chrono::steady_clock::now()
+                              : std::chrono::steady_clock::time_point{};
+    if (time_call) {
+        std::fprintf(stderr, "[tooie-diag] enter ovl=%u ep=%u\n", overlay_index, entry_index);
+        std::fflush(stderr);
+    }
+
     func(rdram, ctx);
+
+    if (time_call) {
+        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - t0)
+                            .count();
+        std::fprintf(stderr, "[tooie-diag] leave ovl=%u ep=%u after %lld ms\n",
+                     overlay_index, entry_index, static_cast<long long>(ms));
+        std::fflush(stderr);
+    }
 
     if (previous_ovl != 0u && previous_ovl != overlay_index) {
         load_overlay_bank(previous_ovl);
     }
 
+    tooie_diag::note_syscall_return(overlay_index, entry_index);
     if (s_dispatch_log_left > 0) {
         std::fprintf(stderr, "[tooie] syscall return ovl=%u ep=%u\n", overlay_index, entry_index);
         std::fflush(stderr);

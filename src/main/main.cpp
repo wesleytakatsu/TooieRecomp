@@ -42,6 +42,7 @@
 #include "banjo_support.h"
 #include "banjo_game.h"
 #include "banjo_launcher.h"
+#include "tooie_diag.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
 #include "theme.h"
@@ -203,6 +204,7 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 
 void update_gfx(void*) {
     recompinput::handle_events();
+    tooie_diag::tick();
 }
 
 static SDL_AudioCVT audio_convert;
@@ -287,6 +289,23 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
     // Queue the swapped audio data.
     // Offset the data start by only half the discarded frame count as the other half of the discarded frames are at the end of the buffer.
     SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
+    int16_t peak = 0;
+    size_t nonzero = 0;
+    for (size_t i = 0; i < sample_count; ++i) {
+        int16_t s = audio_data[i];
+        if (s != 0) {
+            ++nonzero;
+            int16_t a = s < 0 ? static_cast<int16_t>(-s) : s;
+            if (a > peak) {
+                peak = a;
+            }
+        }
+    }
+    tooie_diag::note_queue_samples(
+        sample_count,
+        static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device)),
+        peak,
+        nonzero);
 }
 
 size_t get_frames_remaining() {
@@ -355,18 +374,68 @@ bool reset_audio(uint32_t output_freq) {
     output_sample_rate = output_freq;
     update_audio_converter();
 
+    // nullptr device name = SDL default (PipeWire/Pulse default sink on Linux).
+    const char* driver = SDL_GetCurrentAudioDriver();
+    const char* dev_name = SDL_GetAudioDeviceName(-1, 0); // default output
+    tooie_diag::note_audio_device(static_cast<uint32_t>(audio_device),
+                                   driver ? driver : "?",
+                                   dev_name ? dev_name : "(default)");
+
     return true;
 }
 
 extern RspUcodeFunc n_aspMain;
 
+// P07: strict RSP dispatch. Graphics (M_GFXTASK) is HLE'd by RT64 via
+// ultramodern::submit_rsp_task and must never reach this callback. Only
+// M_AUDTASK is recompiled (Tooie n_aspMain from decompressed ROM).
+// Set TOOIE_LOG_RSP=1 to inventory every non-gfx task that hits the SP path.
 RspUcodeFunc* get_rsp_microcode(const OSTask* task) {
+    static const bool log_rsp = [] {
+        const char* e = std::getenv("TOOIE_LOG_RSP");
+        return e != nullptr && e[0] != '\0' && e[0] != '0';
+    }();
+
+    if (log_rsp) {
+        std::fprintf(stderr,
+            "[rsp] OSTask type=%" PRIu32 " flags=%" PRIu32
+            " ucode=0x%08" PRIx32 " ucode_data=0x%08" PRIx32
+            " data_ptr=0x%08" PRIx32 " data_size=%" PRIu32 "\n",
+            task->t.type,
+            task->t.flags,
+            static_cast<uint32_t>(task->t.ucode),
+            static_cast<uint32_t>(task->t.ucode_data),
+            static_cast<uint32_t>(task->t.data_ptr),
+            task->t.data_size);
+    }
+
     switch (task->t.type) {
     case M_AUDTASK:
+        tooie_diag::note_rsp_audtask();
         return n_aspMain;
 
+    case M_GFXTASK:
+        // Routing bug if we get here: gfx is handled by the RT64 action queue.
+        std::fprintf(stderr,
+            "[rsp] unexpected M_GFXTASK in get_rsp_microcode "
+            "(ucode=0x%08" PRIx32 " ucode_data=0x%08" PRIx32 ") — "
+            "expected RT64 HLE path\n",
+            static_cast<uint32_t>(task->t.ucode),
+            static_cast<uint32_t>(task->t.ucode_data));
+        return nullptr;
+
     default:
-        fprintf(stderr, "Unknown task: %" PRIu32 "\n", task->t.type);
+        std::fprintf(stderr,
+            "[rsp] unknown OSTask type=%" PRIu32 " flags=%" PRIu32
+            " ucode=0x%08" PRIx32 " ucode_data=0x%08" PRIx32
+            " data_ptr=0x%08" PRIx32 " data_size=%" PRIu32
+            " (no recompiled microcode registered)\n",
+            task->t.type,
+            task->t.flags,
+            static_cast<uint32_t>(task->t.ucode),
+            static_cast<uint32_t>(task->t.ucode_data),
+            static_cast<uint32_t>(task->t.data_ptr),
+            task->t.data_size);
         return nullptr;
     }
 }
