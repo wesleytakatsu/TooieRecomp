@@ -1,6 +1,9 @@
 #include <cstdio>
 #include <cstdint>
 #include <chrono>
+#include <algorithm>
+#include <array>
+#include <vector>
 
 #include "recomp.h"
 #include "librecomp/overlays.hpp"
@@ -14,11 +17,72 @@
 // VRAM/ROM bases match section_16_core2 in recomp_overlays.inl.
 static constexpr uint32_t kCore2Ram = 0x800815C0u;
 static constexpr uint32_t kCore2Rom = 0x01E5AEB0u;
-static constexpr uint32_t kOverlayVram = 0x80800000u;
+static constexpr int32_t kOverlayVram = static_cast<int32_t>(0x80800000u);
+static constexpr uint32_t kOverlayWindowSize = 0x00200000u;
 
-// MEM_* needs KSEG0 sign-extended into 64-bit gpr.
-static inline gpr kseg0_gpr(uint32_t addr) {
-    return static_cast<gpr>(static_cast<int32_t>(addr));
+extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx);
+extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx);
+
+struct ActiveOverlayMapping {
+    uint32_t overlay_index = 0;
+    uint32_t rom_addr = 0;
+    uint32_t code_size = 0;
+    gpr package = 0;
+    int32_t text_start = 0;
+    uint32_t text_size = 0;
+    bool dynamic_alive = false;
+};
+
+static thread_local std::vector<ActiveOverlayMapping> s_overlay_stack;
+static thread_local ActiveOverlayMapping s_canonical_mapping;
+static thread_local bool s_has_canonical_mapping = false;
+
+struct ResidentOverlay {
+    gpr package = 0;
+    ActiveOverlayMapping mapping{};
+};
+
+static thread_local std::array<ResidentOverlay, kTooieOverlayCount + 1>
+    s_resident_overlays{};
+
+static void park_canonical_mapping() {
+    if (!s_has_canonical_mapping) {
+        return;
+    }
+
+    unload_overlays(kOverlayVram, kOverlayWindowSize);
+
+    // Removing the 0x80800000 alias resets this section's relocation base.
+    // Re-register a still-live heap mapping so RELOC_* remains valid while a
+    // nested overlay owns the canonical LOOKUP address range.
+    if (s_canonical_mapping.dynamic_alive && s_canonical_mapping.text_start != 0 &&
+        s_canonical_mapping.text_size != 0) {
+        unload_overlays(s_canonical_mapping.text_start,
+                        s_canonical_mapping.code_size);
+        load_overlays(s_canonical_mapping.rom_addr,
+                      s_canonical_mapping.text_start,
+                      s_canonical_mapping.code_size);
+    }
+
+    s_has_canonical_mapping = false;
+}
+
+static void activate_canonical_mapping(const ActiveOverlayMapping& mapping,
+                                       bool restore_dynamic) {
+    load_overlays(mapping.rom_addr, kOverlayVram, mapping.code_size);
+
+    // Native LOOKUP_FUNC operands retain the overlay's link-time 0x80800000
+    // addresses, while RELOC_* must resolve against the heap copy. Register the
+    // canonical aliases first, then leave the dynamic mapping as the active base.
+    if (restore_dynamic && mapping.dynamic_alive && mapping.text_start != 0 &&
+        mapping.text_size != 0) {
+        unload_overlays(mapping.text_start, mapping.code_size);
+        load_overlays(mapping.rom_addr, mapping.text_start, mapping.code_size);
+    }
+
+    s_canonical_mapping = mapping;
+    s_has_canonical_mapping = true;
 }
 
 // MIPS: SPECIAL/SYSCALL (op=0, funct=0x0C), code in bits [25:6].
@@ -126,7 +190,6 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     }
 
     static unsigned s_dispatch_log_left = 128;
-    static uint32_t s_loaded_ovl = 0;
 
     // Verbose first N dispatches always; TOOIE_DIAG keeps counters forever.
     if (s_dispatch_log_left > 0) {
@@ -138,28 +201,89 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     }
     tooie_diag::note_syscall_dispatch(overlay_index, entry_index);
 
-    // Shared overlay bank at link VRAM (single slot @ 0x80800000). Nested syscalls
-    // can switch the bank mid-call; remember the previous overlay and restore it
-    // after the callee returns so LOOKUPs in the outer overlay keep working.
-    const uint32_t previous_ovl = s_loaded_ovl;
-    auto load_overlay_bank = [&](uint32_t ovl_index) {
-        if (ovl_index == 0 || ovl_index > kTooieOverlayCount) {
-            return;
-        }
-        const TooieOverlayDispatchEntry& e = g_tooie_overlay_dispatch[ovl_index];
-        if (e.entrypoints == nullptr || e.size == 0u) {
-            return;
-        }
-        unload_overlays(static_cast<int32_t>(kOverlayVram), 0x200000u);
-        recomp::do_rom_read(rdram, kseg0_gpr(kOverlayVram),
-                            recomp::rom_base + e.rom_addr, e.size);
-        load_overlays(e.rom_addr, static_cast<int32_t>(kOverlayVram), e.size);
-        s_loaded_ovl = ovl_index;
-    };
+    // Reproduce the original dynamic-overlay lifetime around the native call.
+    // The MIPS ovl_entrypoint trampoline cannot be used directly after recomp
+    // because its self-modified immediates are constants in generated C.  Its
+    // load/relocate/unload protocol is still required, though: RELOC_* needs a
+    // live package mapping and actors may retain package data when flag 0x04
+    // marks an overlay resident.
+    park_canonical_mapping();
 
-    if (s_loaded_ovl != overlay_index) {
-        load_overlay_bank(overlay_index);
+    ActiveOverlayMapping mapping{};
+    gpr overlay_ptr = 0;
+    bool owns_package = false;
+    ResidentOverlay& cached = s_resident_overlays[overlay_index];
+
+    const auto active = std::find_if(
+        s_overlay_stack.rbegin(), s_overlay_stack.rend(),
+        [overlay_index](const ActiveOverlayMapping& candidate) {
+            return candidate.overlay_index == overlay_index &&
+                   candidate.package != 0 && candidate.dynamic_alive;
+        });
+
+    if (active != s_overlay_stack.rend()) {
+        // The original relocation pass patches all syscall stubs belonging to
+        // this package. Calls to another entrypoint while the package is active
+        // therefore bypass ovl_load. Generated C keeps the syscall instruction,
+        // so reproduce that intra-overlay fast path here.
+        mapping = *active;
+        overlay_ptr = mapping.package;
+        activate_canonical_mapping(mapping, true);
+    } else if (cached.package != 0) {
+        // On N64, func_80082088 self-patches resident syscall stubs so later
+        // calls jump straight into the already-relocated package. Generated C
+        // cannot observe those instruction writes, therefore emulate that fast
+        // path explicitly instead of allocating and resetting overlay BSS on
+        // every call.
+        overlay_ptr = cached.package;
+        mapping = cached.mapping;
+        activate_canonical_mapping(mapping, true);
+    } else {
+        owns_package = true;
+        mapping.overlay_index = overlay_index;
+        mapping.rom_addr = entry.rom_addr;
+        mapping.code_size = entry.size;
+        activate_canonical_mapping(mapping, false);
+
+        recomp_context load_ctx = *ctx;
+        load_ctx.r4 = static_cast<gpr>(overlay_index);
+        load_ctx.r5 = 0;
+        load_ctx.r6 = 0;
+        ovl_load(rdram, &load_ctx);
+        overlay_ptr = load_ctx.r2;
+        if (overlay_ptr == 0) {
+            std::fprintf(stderr,
+                         "[tooie] recomp_syscall_handler: failed to load overlay %u ep=%u\n",
+                         overlay_index, entry_index);
+            std::fflush(stderr);
+            return;
+        }
+
+        // These fields are normally written by the generated syscall handler
+        // before func_80082088 patches the entrypoint table and text base.
+        MEM_H(0x2C, overlay_ptr) = static_cast<int16_t>(overlay_index);
+        MEM_H(0x2E, overlay_ptr) = static_cast<int16_t>(entry_index);
+
+        recomp_context relocate_ctx = *ctx;
+        relocate_ctx.r4 = overlay_ptr;
+        relocate_ctx.r5 = 0;
+        func_80082088(rdram, &relocate_ctx);
+
+        // Save only after relocation so nested syscalls restore the correct
+        // dynamic RELOC_* base.
+        mapping.text_start = MEM_W(0x34, overlay_ptr);
+        mapping.text_size = uint32_t(uint16_t(MEM_H(0x00, overlay_ptr))) * 0x10u;
+        mapping.package = overlay_ptr;
+        mapping.dynamic_alive = true;
+
+        if ((static_cast<uint8_t>(MEM_BU(0x0F, overlay_ptr)) & 0x04u) != 0) {
+            cached.package = overlay_ptr;
+            cached.mapping = mapping;
+        }
     }
+
+    s_canonical_mapping = mapping;
+    s_overlay_stack.push_back(mapping);
 
     // Hang suspects (gsworld→gsmaker→gldb): time long overlays when diag is on.
     const bool time_call = tooie_diag::enabled() &&
@@ -182,8 +306,24 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         std::fflush(stderr);
     }
 
-    if (previous_ovl != 0u && previous_ovl != overlay_index) {
-        load_overlay_bank(previous_ovl);
+    // This mirrors func_80081E30, the return trampoline installed by the game.
+    // Resident overlays (package flag 0x04) intentionally stay mapped; ovl_unload
+    // handles that rule and returns without freeing them.
+    const bool resident = (static_cast<uint8_t>(MEM_BU(0x0F, overlay_ptr)) & 0x04u) != 0;
+    if (owns_package) {
+        recomp_context unload_ctx = *ctx;
+        unload_ctx.r4 = overlay_ptr;
+        unload_ctx.r5 = 1;
+        ovl_unload(rdram, &unload_ctx);
+    }
+
+    s_overlay_stack.back().dynamic_alive = !owns_package || resident;
+    s_canonical_mapping = s_overlay_stack.back();
+    s_overlay_stack.pop_back();
+
+    if (!s_overlay_stack.empty()) {
+        park_canonical_mapping();
+        activate_canonical_mapping(s_overlay_stack.back(), true);
     }
 
     tooie_diag::note_syscall_return(overlay_index, entry_index);

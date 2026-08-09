@@ -4,6 +4,7 @@
 //
 // Also registers LOOKUP targets that N64Recomp never emitted (unnamed helpers).
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 
@@ -13,6 +14,7 @@
 #include "librecomp/overlays.hpp"
 #include "ultramodern/ultramodern.hpp"
 #include "tooie_diag.h"
+#include "generated/overlay_dispatch.inc.h"
 
 // MEM_* expects KSEG0 addresses sign-extended into gpr (same as recomp codegen).
 static inline gpr kseg0_gpr(uint32_t addr) {
@@ -120,28 +122,61 @@ extern "C" void boot___osEPiRawWriteIo(uint8_t* rdram, recomp_context* ctx) {
     ctx->r2 = 0;
 }
 
+// Core1 contains a few unnamed leaf functions that N64Recomp could not emit
+// because they have no symbols. These three are used heavily by camera, actor,
+// and animation code. Their ROM implementations normalize degrees and sample a
+// sine table; native libm is equivalent at the game-facing precision.
+static void tooie_wrap_degrees(uint8_t* rdram, recomp_context* ctx) {
+    (void)rdram;
+    float result = std::fmod(ctx->f12.fl, 360.0f);
+    if (result < 0.0f) {
+        result += 360.0f;
+    }
+    ctx->f0.fl = result;
+}
+
+static void tooie_cos_degrees(uint8_t* rdram, recomp_context* ctx) {
+    (void)rdram;
+    constexpr float kDegreesToRadians = 0.01745329251994329577f;
+    ctx->f0.fl = std::cos(ctx->f12.fl * kDegreesToRadians);
+}
+
+static void tooie_sin_degrees(uint8_t* rdram, recomp_context* ctx) {
+    (void)rdram;
+    constexpr float kDegreesToRadians = 0.01745329251994329577f;
+    ctx->f0.fl = std::sin(ctx->f12.fl * kDegreesToRadians);
+}
+
 // LOOKUP_FUNC targets with no recompiled symbol (N64Recomp gaps). No-op stubs
-// keep boot/runtime from aborting for *unknown* helpers only.
+// keep boot/runtime from aborting for still-unknown helpers only.
 // DO NOT put real libultra entry points here — that overwrites the func_map and
 // deadlocks the scheduler (e.g. osDpGetStatus/osYieldThread were wrongly stubbed).
+template <int32_t Address>
 static void lookup_gap_stub(uint8_t* rdram, recomp_context* ctx) {
     (void)rdram;
-    (void)ctx;
+    (void)Address;
     ctx->r2 = 0;
 }
 
 // Truly unknown / not yet implemented helpers (not standard libultra).
 static constexpr int32_t kLookupGapAddrs[] = {
     static_cast<int32_t>(0x80001998),
-    static_cast<int32_t>(0x800136E4),
-    static_cast<int32_t>(0x800138D0),
-    static_cast<int32_t>(0x80013970),
     static_cast<int32_t>(0x80031178),
     static_cast<int32_t>(0x80036670),
     static_cast<int32_t>(0x80036728),
     static_cast<int32_t>(0x800979D8),
     static_cast<int32_t>(0x800BCCC0),
     static_cast<int32_t>(0x800BCCD8),
+};
+
+static recomp_func_t* const kLookupGapFuncs[] = {
+    lookup_gap_stub<static_cast<int32_t>(0x80001998)>,
+    lookup_gap_stub<static_cast<int32_t>(0x80031178)>,
+    lookup_gap_stub<static_cast<int32_t>(0x80036670)>,
+    lookup_gap_stub<static_cast<int32_t>(0x80036728)>,
+    lookup_gap_stub<static_cast<int32_t>(0x800979D8)>,
+    lookup_gap_stub<static_cast<int32_t>(0x800BCCC0)>,
+    lookup_gap_stub<static_cast<int32_t>(0x800BCCD8)>,
 };
 
 // Host libultra implementations (librecomp). Declared so the linker pulls them in
@@ -597,16 +632,29 @@ extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx) {
     MEM_H(0x30, overlay_ptr) = static_cast<int16_t>(load_count);
     MEM_W(0, kseg0_gpr(kAddr_D_80117C60)) = load_count + 1;
 
-    // Pre-compute text_start for recomp registration. Caller/func_80082088 also set it.
+    // Register the heap copy for native dynamic LOOKUPs.  Keep fields.text_start
+    // package-relative here; func_80082088 relocates it exactly once below.
     const gpr text_start = overlay_ptr + static_cast<gpr>(static_cast<int32_t>(text_off));
-    MEM_W(0x34, overlay_ptr) = static_cast<int32_t>(text_start);
+
+    uint32_t mapping_rom = pkg_rom + text_off;
+    uint32_t mapping_size = text_size;
+    if (overlay_index <= static_cast<int32_t>(kTooieOverlayCount)) {
+        const TooieOverlayDispatchEntry& dispatch = g_tooie_overlay_dispatch[overlay_index];
+        if (dispatch.entrypoints != nullptr && dispatch.size != 0u) {
+            mapping_rom = dispatch.rom_addr;
+            mapping_size = dispatch.size;
+        }
+    }
 
     if (text_size > 0 && text_off + text_size <= pkg_size) {
-        load_overlays(pkg_rom + text_off, static_cast<int32_t>(text_start), text_size);
+        // N64Recomp requires the full registered section range here. Package
+        // text_size may omit trailing data (for example 0x230 vs section 0x240),
+        // which otherwise makes load_overlays select no section at all.
+        load_overlays(mapping_rom, static_cast<int32_t>(text_start), mapping_size);
         std::fprintf(stderr,
-                     "[tooie] ovl_load: idx=%d pkg=0x%x +0x%x -> ram=0x%x size=0x%x\n",
+                     "[tooie] ovl_load: idx=%d pkg=0x%x +0x%x -> ram=0x%x text=0x%x map=0x%x\n",
                      overlay_index, pkg_rom, text_off,
-                     static_cast<uint32_t>(text_start), text_size);
+                     static_cast<uint32_t>(text_start), text_size, mapping_size);
         std::fflush(stderr);
     }
 
@@ -646,9 +694,16 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx) {
     LOOKUP_FUNC(0x80082428)(rdram, &call); // ovl_reset_syscalls
 
     const int32_t text_start = MEM_W(0x34, overlay_ptr);
-    const uint32_t text_size = uint32_t(uint16_t(MEM_H(0x00, overlay_ptr))) * 0x10u;
-    if (text_start != 0 && text_size != 0) {
-        unload_overlays(text_start, text_size);
+    uint32_t mapping_size = uint32_t(uint16_t(MEM_H(0x00, overlay_ptr))) * 0x10u;
+    const uint32_t overlay_index = uint16_t(MEM_HU(0x2C, overlay_ptr));
+    if (overlay_index > 0u && overlay_index <= kTooieOverlayCount) {
+        const TooieOverlayDispatchEntry& dispatch = g_tooie_overlay_dispatch[overlay_index];
+        if (dispatch.entrypoints != nullptr && dispatch.size != 0u) {
+            mapping_size = dispatch.size;
+        }
+    }
+    if (text_start != 0 && mapping_size != 0) {
+        unload_overlays(text_start, mapping_size);
     }
 
     const int32_t new_count = load_count - 1;
@@ -693,18 +748,27 @@ extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx) {
         return;
     }
 
-    // Build a one-word view of the package header for overlay_text_offset.
+    // Build a host view of the package header and reproduce the original layout:
+    // entrypoints, byte metadata, 16-bit relocations, 32-bit relocations, text.
     uint8_t hdr[16];
     for (int i = 0; i < 16; i++) {
         hdr[i] = static_cast<uint8_t>(MEM_BU(i, overlay));
     }
     const uint32_t text_off = overlay_text_offset(hdr);
     const int32_t num_entry = static_cast<int32_t>((hdr[8] << 8) | hdr[9]);
+    const int32_t reloc16_count = static_cast<int16_t>((hdr[10] << 8) | hdr[11]);
+    const int32_t reloc32_count = static_cast<int16_t>((hdr[12] << 8) | hdr[13]);
     const int32_t text_size = int32_t((uint16_t(hdr[0]) << 8) | hdr[1]) * 0x10;
 
+    const gpr text_storage = overlay + static_cast<gpr>(static_cast<int32_t>(text_off));
     const gpr text_start =
         forced_text != 0 ? forced_text
-                         : overlay + static_cast<gpr>(static_cast<int32_t>(text_off));
+                         : text_storage;
+    // The decompressed packages retain link-time 0x80800000 addresses in their
+    // relocation targets. Relocate by the load delta, not by the absolute heap
+    // base used by the original compressed-package path.
+    const gpr relocation_delta = SUB32(
+        text_start, static_cast<gpr>(static_cast<int32_t>(0x80800000u)));
 
     // Relocate entrypoint table: package offsets → absolute VRAM.
     gpr ep = ADD32(overlay, 0x38);
@@ -715,13 +779,96 @@ extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx) {
         ep = ADD32(ep, 4);
     }
 
-    // Original does: fields.text_start += text_start (package-relative + base).
-    // ovl_load already wrote the absolute address; keep that if present.
-    const int32_t ts = MEM_W(0x34, overlay);
-    if (ts == 0 || static_cast<uint32_t>(ts) < 0x80000000u) {
-        MEM_W(0x34, overlay) = static_cast<int32_t>(text_start);
-    } else if (static_cast<uint32_t>(ts) == static_cast<uint32_t>(text_off)) {
-        MEM_W(0x34, overlay) = static_cast<int32_t>(text_start);
+    // Original does fields.text_start += text_start.
+    MEM_W(0x34, overlay) = static_cast<int32_t>(
+        ADD32(MEM_W(0x34, overlay), text_start));
+
+    // The short relocation stream is XOR-obfuscated with the low halfword of a
+    // ROM word selected by overlay index.  This remains true in the decompressed
+    // runtime image; only the package payload compression was removed.
+    const uint32_t overlay_index = uint16_t(MEM_HU(0x2C, overlay));
+    const auto rom = recomp::get_rom();
+    const uint32_t key_off = 0x40u + overlay_index * 4u;
+    uint16_t candidate_xor_key = 0;
+    if (key_off + 4u <= rom.size()) {
+        candidate_xor_key = static_cast<uint16_t>((uint32_t(rom[key_off + 2]) << 8) |
+                                                 uint32_t(rom[key_off + 3]));
+    }
+
+    const gpr entry_end = overlay + 0x38 + static_cast<gpr>(num_entry * 4);
+    const gpr reloc16 = (entry_end + static_cast<gpr>(hdr[14]) + 3) & ~gpr(3);
+    const gpr reloc32 = (reloc16 + static_cast<gpr>(reloc16_count * 2) + 3) & ~gpr(3);
+
+    auto relocation_stream_valid = [&](uint16_t key) {
+        for (int32_t i = 0; i < reloc16_count; ++i) {
+            const uint16_t encoded = uint16_t(MEM_HU(i * 2, reloc16)) ^ key;
+            if (uint32_t(encoded & ~3u) + 4u > uint32_t(text_size)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    // The decompressed ROM has already decoded these entries. Fall back to the
+    // cartridge XOR key only when the raw stream cannot describe this text.
+    const bool raw_relocations_valid = relocation_stream_valid(0);
+    const bool keyed_relocations_valid = relocation_stream_valid(candidate_xor_key);
+    const uint16_t xor_key = (!raw_relocations_valid && keyed_relocations_valid)
+                                 ? candidate_xor_key
+                                 : 0;
+
+    auto apply_relocations = [&](gpr list, int32_t count, int stride, bool decode_xor) {
+        gpr pending_hi = 0;
+        for (int32_t i = 0; i < count; ++i, list = ADD32(list, stride)) {
+            uint32_t encoded = stride == 2 ? uint16_t(MEM_HU(0, list))
+                                           : static_cast<uint32_t>(MEM_W(0, list));
+            if (decode_xor) {
+                encoded = uint16_t(encoded) ^ xor_key;
+            }
+
+            const uint32_t type = encoded & 3u;
+            const gpr target = ADD32(text_storage,
+                                     static_cast<int32_t>(encoded & ~3u));
+            switch (type) {
+                case 0: { // R_MIPS_32
+                    MEM_W(0, target) = static_cast<int32_t>(
+                        ADD32(MEM_W(0, target), relocation_delta));
+                    break;
+                }
+                case 1: { // R_MIPS_26
+                    const uint32_t instruction = static_cast<uint32_t>(MEM_W(0, target));
+                    const uint32_t relocated = instruction +
+                                               (static_cast<uint32_t>(relocation_delta) >> 2);
+                    MEM_W(0, target) = static_cast<int32_t>(
+                        (instruction & 0xFC000000u) | (relocated & 0x03FFFFFFu));
+                    break;
+                }
+                case 2: // R_MIPS_HI16; paired with the next LO16.
+                    pending_hi = target;
+                    break;
+                case 3: { // R_MIPS_LO16
+                    const int32_t old_lo = int16_t(MEM_H(2, target));
+                    const uint32_t sum = static_cast<uint32_t>(old_lo + relocation_delta);
+                    MEM_H(2, target) = static_cast<int16_t>(sum);
+                    if (pending_hi != 0) {
+                        const int32_t old_hi = int16_t(MEM_H(2, pending_hi));
+                        const uint32_t carry = (sum >> 15) & 1u;
+                        const uint32_t upper = static_cast<uint32_t>(relocation_delta) >> 16;
+                        MEM_H(2, pending_hi) = static_cast<int16_t>(
+                            old_hi + static_cast<int32_t>(carry + upper));
+                        pending_hi = 0;
+                    }
+                    break;
+                }
+            }
+        }
+    };
+
+    if (reloc16_count > 0) {
+        apply_relocations(reloc16, reloc16_count, 2, true);
+    }
+    if (reloc32_count > 0) {
+        apply_relocations(reloc32, reloc32_count, 4, false);
     }
 
     // osWritebackDCache(text, size) + companion — host-safe via existing LOOKUP.
@@ -895,11 +1042,17 @@ void register_boot_lookup_stubs() {
     for (const UltraLookupHook& hook : kUltraLookupHooks) {
         recomp::overlays::add_loaded_function(hook.vram, hook.func);
     }
-    for (int32_t addr : kLookupGapAddrs) {
-        recomp::overlays::add_loaded_function(addr, lookup_gap_stub);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800136E4),
+                                          tooie_wrap_degrees);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800138D0),
+                                          tooie_cos_degrees);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80013970),
+                                          tooie_sin_degrees);
+    for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
+        recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }
     std::fprintf(stderr,
-                 "[tooie] registered %zu ultra LOOKUP hooks + %zu gap stubs\n",
+                 "[tooie] registered %zu ultra LOOKUP hooks + 3 core math hooks + %zu gap stubs\n",
                  sizeof(kUltraLookupHooks) / sizeof(kUltraLookupHooks[0]),
                  sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]));
 }

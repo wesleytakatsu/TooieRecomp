@@ -1,10 +1,16 @@
 # Handoff — TooieRecomp (atualizado 2026-08-09 P08)
 
-**M3 visual alcançado:** o RT64 ultrapassa a jiggy e mantém uma cena 3D atribuída
-a Spiral Mountain; as capturas não mostram personagem/HUD e não comprovam
-jogabilidade. Ver `../docs/plan/evidence/p08-first-area-playable.md`.
+**Prioridade atual:** corrigir a sequência automática da abertura antes do
+input. A ROM deveria mostrar logos, câmera descendo e, após a música, demos. O
+RT64 renderiza terreno/água, mas a câmera permanece quase no chão e a tomada não
+muda. Não identificar essa cena como Spiral Mountain nem como gameplay.
 
-**BLOQUEADO (próximo agente):** input no **title/file select do jogo** (launcher UI OK; pad no jogo não avança save/start). Tentativa de hooks `osEepromProbe`+EEPROM em `boot_hw_stubs.cpp` **falhou** validação do utilizador. Handoff completo: `../docs/plan/evidence/p08-title-input-eeprom.md`. Residual polish: Rare/menu isolados, 4:3/fullscreen/fallback.
+Handoff técnico completo, com disassembly, overlays observados, smoke e próximos
+breakpoints: `../docs/plan/evidence/p08-session-handoff.md`.
+
+**Input no title/file select permanece pendente**, mas foi explicitamente
+diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na
+validação humana: `../docs/plan/evidence/p08-title-input-eeprom.md`.
 
 **Repo git:** `TooieRecomp/` apenas (branch `main`).  
 **Workspace monorepo:** `/home/wesley/projetos/N64-Recomp` (sem `.git` na raiz).  
@@ -14,19 +20,37 @@ jogabilidade. Ver `../docs/plan/evidence/p08-first-area-playable.md`.
 
 | hash | mensagem |
 | --- | --- |
+| `69e12fc` | feat(p08): stabilize frontend and runtime |
 | `5bf8f06` | docs: handoff for next agent (P07/P08 state and residual) |
 | `e2cdb30` | **P08:** show RT64 game view after auto-start; Tooie window title |
 | `73529d5` | **P07:** RSP n_aspMain, SI/CIC-6105, and working intro audio |
 | `d2d6426` | Initial commit P00–P06 |
+
+## Working tree não commitada neste handoff
+
+Revisar antes de commitar:
+
+- `src/game/syscall_handler.cpp`: lifecycle completo do pacote dinâmico, alias
+  canônico `0x80800000`, restore aninhado, reuse ativo/residente e ownership.
+- `src/game/boot_hw_stubs.cpp`: tamanho correto de seção em `ovl_load`,
+  relocations curtas/longas com decisão XOR validada e hooks core1 para
+  normalização/seno/cosseno em graus nos VRAMs `0x800136E4`, `0x800138D0` e
+  `0x80013970`.
+- Instrumentação descartável de câmera/intro e input sintético foi removida.
+- Build `ninja TooieRecompiled`: PASS. Smoke 28 s: `39075/39075` syscalls,
+  áudio não-zero, nenhum crash/deadlock, mas a tomada visual continua presa.
+
+As capturas novas estão em
+`../docs/plan/evidence/p08-opening-math-hooks-{8s,23s}.png`.
 
 ## Estado do produto (o que o usuário já validou)
 
 1. **Música inicial** toca corretamente no sink **default** do SO (FELITRON USB).
 2. O launcher mantém o visual/animação do BanjoRecomp e é a única janela visível
    até **Start Game**.
-3. A transição `gctransitionDll` foi destravada; o RT64 chega a uma cena 3D
-   atribuída a **Spiral Mountain**. Personagem, HUD e controle não foram
-   comprovados pelas capturas.
+3. A transição `gctransitionDll` foi destravada; o RT64 chega a uma tomada 3D
+   de terreno/água da abertura. A câmera fica quase no chão e não avança.
+   Personagem, HUD, menu e gameplay não foram comprovados.
 4. **Áudio** validado pelo utilizador no sink default (com ou sem preview do launcher).
 5. No Linux, a música do launcher vem de um processo oculto que executa a ROM; ao
    iniciar o jogo ele encerra e o boot/música recomeçam no processo visível.
@@ -117,24 +141,35 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. BLOQUEADO — title / file select input (assumir primeiro)
+### 0. PRIORIDADE — máquina de estados da abertura
+
+- O timing global avança: `glintrosyncDll` retorna deltas válidos (~`1/60` e
+  `0,05`). Não investigar primeiro como freeze de VI/relógio.
+- `gsattract` (overlay 731) apareceu somente uma vez no entrypoint 4;
+  `chintrocam` (441) não carregou. Mapear a transição de estados no decomp.
+- `plcamera:1` (639) e `ncstart:0` (778) apareceram só na inicialização.
+- Os gaps trigonométricos core1 eram bugs reais e foram implementados, mas não
+  destravaram a tomada. Não repetir essa hipótese sem comparar estado/retorno.
+- Próxima ação detalhada em `../docs/plan/evidence/p08-session-handoff.md`.
+
+### 1. Diferido — title / file select input
+
 - Launcher RecompFrontend: input OK.
-- Title/file select **do jogo**: pad não entra no save/start (utilizador 2026-08-09).
-- Tentativa: LOOKUP `osEepromProbe` + read/write EEPROM em `src/game/boot_hw_stubs.cpp`
-  (hipótese JOY `errno=8` se probe < 16K). Build OK; **validação humana FAIL**.
-- Próximo agente: GDB + dump JOY/pad na tela de title; hipóteses alternativas em
-  `../docs/plan/evidence/p08-title-input-eeprom.md`. **Não fechar sem validação do utilizador.**
+- Title/file select do jogo: pad não entra no save/start (utilizador 2026-08-09).
+- Tentativa EEPROM falhou. Retomar somente depois da abertura automática;
+  hipóteses em `../docs/plan/evidence/p08-title-input-eeprom.md`.
 
-### 1. Captura dirigida de menu e gameplay
-- Cena 3D pós-transição: comprovada (`p08-first-area-playable.md`).
-- Residual: logo Rare/menu título e primeira sessão realmente controlável com
-  personagem + HUD.
+### 2. Captura dirigida de menu e gameplay
 
-### 2. Controles (P08-T05)
+- Depois do fix, capturar logos, descida de câmera, menu e demos.
+- Só considerar gameplay com personagem/HUD e controle comprovados.
+
+### 3. Controles (P08-T05)
+
 - Path host `osCont*` já ligado; falta fix title/save + teste físico rumble/hotplug.
 - `controls.json` lazy (igual BanjoRecomp).
 
-### 3. Paridade visual / UI (P08-T02/T03/T07/T08)
+### 4. Paridade visual / UI (P08-T02/T03/T07/T08)
 - 4:3, fullscreen/multi-monitor, fallback Vulkan.
 
 
