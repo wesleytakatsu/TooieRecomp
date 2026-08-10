@@ -3,6 +3,7 @@
 #include <chrono>
 #include <algorithm>
 #include <array>
+#include <string>
 #include <vector>
 
 #include "recomp.h"
@@ -47,6 +48,22 @@ struct ResidentOverlay {
 
 static thread_local std::array<ResidentOverlay, kTooieOverlayCount + 1>
     s_resident_overlays{};
+
+// Invalidates any resident-overlay cache entry whose package points at the
+// given (now freed) heap block. The game unloads non-resident overlays after
+// use; without this, a later syscall dispatch would reuse the stale cached
+// mapping whose heap region may have been reallocated to another overlay.
+extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr) {
+    if (overlay_ptr == 0) {
+        return;
+    }
+    for (auto& entry : s_resident_overlays) {
+        if (entry.package == overlay_ptr) {
+            entry.package = 0;
+            entry.mapping = ActiveOverlayMapping{};
+        }
+    }
+}
 
 static void park_canonical_mapping() {
     // Keep mappings registered so intra-overlay LOOKUP_FUNC calls remain resolvable
@@ -353,14 +370,26 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         std::fflush(stderr);
     }
 
-    // Auto-spawn diagnostic on MAP_18B_CS_STARTUP_INTRO if not already active.
+    // Diagnostic spawn on MAP_18B_CS_STARTUP_INTRO, OPT-IN via
+    // TOOIE_DIAG_SPAWN_MARKER419=1. Default OFF: it alters the natural flow
+    // (proved to be an artifact earlier — the actor vector crash). The
+    // regression case is preserved behind the env var.
     // NOTE: func_80108C90 receives a MARKER ID, not an overlay index.
     // Marker 419 == chcollballcontrol (overlay 467) — NOT chintroticker
     // (chintroticker overlay index is 419, but its marker id is 569).
     // 419 is kept deliberately as the relocation regression case for P08;
     // do NOT change to 569 in this stage.
+    static const bool s_intro_spawn_enabled = [] {
+        const char* raw = std::getenv("TOOIE_DIAG_SPAWN_MARKER419");
+        if (raw == nullptr || raw[0] == '\0') return false;
+        try {
+            return std::stol(raw) != 0;
+        } catch (...) {
+            return true; // any non-numeric value is treated as ON
+        }
+    }();
     static bool s_intro_ticker_spawned = false;
-    if (overlay_index == 677u && entry_index == 4u && !s_intro_ticker_spawned) {
+    if (s_intro_spawn_enabled && overlay_index == 677u && entry_index == 4u && !s_intro_ticker_spawned) {
         const gpr mode = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
         const int map_val = int(MEM_H(0x10, mode));
         if (map_val == 0x18B || ctx->r4 == 0x18B) {

@@ -126,6 +126,7 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 | [[../../plan/evidence/p08-actor-null-callback-diagnosis]] | callback nulo em `func_80108C90` provado INVALID; causa = data de overlay não mapeado em link-time; marker 419 ≠ chintroticker (569) |
 | [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]] | **FIX aplicado:** relocation de data de overlay perdida — causa raiz = metadata (nomes de seção truncados por `readelf -S` sem `-W`); corrigido no gerador; `ActorInfo[0x38] == 0x80107C2C`; `LOOKUP_FUNC(0)` FIXED |
 | [[../../plan/evidence/p08-actor-init-segv-diagnosis]] | **SIGSEGV de actor diagnosticado como artefato do spawn:** `D_80136EE0` NULL (initializer `chbaddieDll ep1 → func_800FF390 → func_801065E0` nunca executou); args do hook VALID; crash some com AUTO-SPAWN OFF; fluxo natural diverge antes em `gcsectionDll:4` (via glintrosync) |
+| [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]] | **FIX aplicado:** SIGSEGV natural `glintrosync:6 → gcsection:4` — `func_808000F0` retornava NULL porque o cache de overlay resident ficava stale (`ovl_unload` não invalidava `s_resident_overlays`) e a região de heap liberada era reutilizada por outra overlay (709), corrompendo a tabela de seções; ROOT CAUSE E, HIGH. Hook marker-419 agora opt-in `TOOIE_DIAG_SPAWN_MARKER419=1` |
 
 ### Residual
 
@@ -148,6 +149,17 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
   SIGSEGV em `gcsectionDll:4` via `glintrosync:6`, sem diagnóstico). ROOT CAUSE
   A primário / C candidata, CONFIDENCE MEDIUM. Detalhe:
   [[../../plan/evidence/p08-actor-init-segv-diagnosis]].
+- **PRIORIDADE — SIGSEGV natural `glintrosync:6 → gcsection:4`:**
+  **RESOLVIDO.** O spawn diagnóstico (marker 419) agora é opt-in default OFF
+  (`TOOIE_DIAG_SPAWN_MARKER419=1`). `func_808000F0` retornava NULL porque o
+  cache de overlay resident ficava stale: o jogo descarregava 677 via
+  `ovl_unload` e o host não invalidava `s_resident_overlays[677]`; a região de
+  heap liberada era reutilizada pela overlay 709, corrompendo a tabela de
+  seções. Fix estreito: `tooie_invalidate_resident_overlay()` em `ovl_unload`.
+  ROOT CAUSE E, CONFIDENCE HIGH. Detalhe:
+  [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
+  Novo bloqueio natural pós-fix: `std::runtime_error: No threads left to run!`
+  (esgotamento de threads) — sem diagnóstico.
 - Capturar isoladamente logo Rare e menu de título depois de corrigir o fluxo.
 - **Diferido — title/file-select input:** launcher UI OK; tentativa EEPROM
   falhou validação humana. Retomar após a abertura automática; ver
@@ -166,12 +178,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Próxima etapa
 
-1. **Agente seguinte:** localizar a divergência que impede
-   `chbaddieDll_entrypoint_1` (ovl 181 ep1) / actor-manager init
-   (`func_800FF390`/`func_801065E0`) de executar — e/ou diagnosticar o segundo
-   SIGSEGV em `gcsectionDll:4` (via `glintrosync:6`), anterior à init de actors
-   no fluxo natural. Ver
-   [[../../plan/evidence/p08-actor-init-segv-diagnosis]].
+1. **Agente seguinte:** diagnosticar o novo bloqueio do fluxo natural pós-fix:
+   `std::runtime_error: No threads left to run!` (esgotamento de threads do
+   runtime/jogo), que agora ocorre depois de `glintrosync:6 → gcsection:4`
+   passar. Continuar a busca da divergência que impede a init do actor manager
+   (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) sem forçá-la. Ver
+   [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
 2. Com actors vivos: validar logos, descida de câmera e demos.
 3. Depois input title/file-select, rumble/hotplug e polish 4:3/fullscreen.
 4. Só então [[09-gameplay-parity-and-enhancements]].

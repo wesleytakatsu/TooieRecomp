@@ -27,6 +27,9 @@ extern "C" void load_overlays(uint32_t rom, int32_t ram_addr, uint32_t size);
 extern "C" void unload_overlays(int32_t ram_addr, uint32_t size);
 extern "C" void func_80013818(uint8_t* rdram, recomp_context* ctx);
 
+// Declared in syscall_handler.cpp
+extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr);
+
 namespace {
 
 constexpr uint32_t k1_to_phys(uint32_t addr) {
@@ -676,7 +679,6 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx) {
         ctx->r2 = 0;
         return;
     }
-
     const int32_t load_count = MEM_W(0, kseg0_gpr(kAddr_D_80117C60));
     const int32_t load_index = int16_t(MEM_H(0x30, overlay_ptr));
     if (load_count <= 0 || load_index < 0 || load_index >= load_count) {
@@ -718,6 +720,12 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx) {
     call = *ctx;
     call.r4 = overlay_ptr;
     LOOKUP_FUNC(0x8001B084)(rdram, &call); // heap_free
+
+    // The package heap block is freed; drop any cached fast-path entry so a
+    // later syscall dispatch reloads the overlay instead of reusing the freed
+    // region (which the heap may have reallocated to another overlay).
+    tooie_invalidate_resident_overlay(overlay_ptr);
+
     ctx->r2 = 1;
 }
 

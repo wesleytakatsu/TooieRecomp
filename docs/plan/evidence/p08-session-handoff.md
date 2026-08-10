@@ -1,9 +1,9 @@
 ---
 title: "P08 — handoff da sessão de diagnóstico e spawn dos actors da intro"
-description: "Estado atual do spawn de chintroticker (419), chintrochar (440) e renderização da logo da Rare na abertura."
+description: "Estado atual do spawn diagnóstico de chcollballcontrol (marker 419), chintrochar (440) e renderização da logo da Rare na abertura. REVISADO: marker 419 = chcollballcontrol; marker 569 = chintroticker; hook agora opt-in."
 status: evidence
 phase: P08
-updated: 2026-08-09
+updated: 2026-08-10
 tags: [banjo-tooie-recomp, p08, intro, chintroticker, chintrochar, gemarkers, rare-logo]
 ---
 
@@ -51,3 +51,30 @@ generator/metadata). O auto-spawn agora alcança `func_80107C2C` com
 `ActorInfo[0x38] == 0x80107C2C`; crash residual em `vector_push_back`
 (`func_80106668`) é problema posterior. Reavaliar o auto-spawn com o marker id
 correto de chintroticker (569) permanece para etapa posterior.
+
+---
+
+## 3. REVISÃO POSTERIOR (2026-08-10) — correção de fatos desatualizados
+
+O texto histórico acima usava "chintroticker (419)" de forma ambígua. Fatos
+corrigidos (a evidência histórica acima NÃO foi reescrita):
+
+- **overlay index 419 = chintroticker**;
+- **marker id 419 = chcollballcontrol** (overlay 467);
+- **marker id 569 = chintroticker**;
+- o hook em `syscall_handler.cpp` que chamava `func_80108C90(419, ...)`
+  (marker **419** = chcollballcontrol) era **diagnóstico/regressão de
+  relocation** e agora é **opt-in**, default **OFF**, via
+  `TOOIE_DIAG_SPAWN_MARKER419=1`;
+- o SIGSEGV em `vector_push_back` (`func_80106668`) foi **diagnosticado como
+  artefato desse hook** (ver [[p08-actor-init-segv-diagnosis]]): o hook
+  disparava o spawn antes de o actor manager (`chbaddieDll ep1 →
+  func_800FF390 → func_801065E0`) inicializar `D_80136EE0`;
+- a **prioridade atual** é o crash natural do fluxo (com marker 419 OFF):
+  `glintrosync:6 → gcsection:4 → SIGSEGV`, diagnosticado e **corrigido** em
+  [[p08-gcsection-glintrosync-segv-diagnosis]] (causa: `ovl_unload` não
+  invalidava `s_resident_overlays`, deixando mapping stale cuja região de heap
+  foi reutilizada por outra overlay; fix estreito em `ovl_unload`).
+
+Referências: [[p08-actor-init-segv-diagnosis]],
+[[p08-gcsection-glintrosync-segv-diagnosis]].

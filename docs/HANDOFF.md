@@ -159,15 +159,20 @@ Também:
   diagnóstico.** `D_80136EE0` (vetor global de Actors) == NULL; initializer
   (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) **nunca executou**;
   args do hook `func_80108C90(419, scratch, 0, 0)` são **VALID** per o
-  contrato real. Com AUTO-SPAWN OFF o crash some, mas o fluxo natural também
-  nunca inits o vetor e diverge antes num **segundo SIGSEGV** em
-  `gcsectionDll:4` (via `glintrosync:6`), sem diagnóstico.
-- ROOT CAUSE: A primário (spawn dispara antes da init) / C candidata
-  (init deveria ter ocorrido — não provado com HIGH). CONFIDENCE: MEDIUM.
-- O spawn diagnóstico ainda usa marker id **419** (chcollballcontrol),
-  deliberadamente mantido como caso de regressão; marker de chintroticker é
-  **569** (não trocar nesta etapa).
-- Detalhes: `plan/evidence/p08-actor-init-segv-diagnosis.md`,
+  contrato real. ROOT CAUSE: A primário / C candidata. CONFIDENCE: MEDIUM.
+- SIGSEGV natural `glintrosync:6 → gcsection:4`: **DIAGNOSTICADO E CORRIGIDO**
+  (marker 419 OFF). Causa: `ovl_unload` não invalidava `s_resident_overlays` —
+  o mapping cached de 677 ficava stale e a região de heap liberada era
+  reutilizada por outra overlay (709); `func_808000F0` lia tabela corrompida,
+  não achava 0x18B e retornava NULL. Fix estreito: `tooie_invalidate_resident_overlay`
+  em `ovl_unload`. ROOT CAUSE: E. CONFIDENCE: HIGH.
+- O spawn diagnóstico (marker **419** = chcollballcontrol; overlay 419 =
+  chintroticker, marker **569** = chintroticker) agora é **opt-in, default OFF**
+  via `TOOIE_DIAG_SPAWN_MARKER419=1`.
+- Próximo bloqueio do fluxo natural (pós-fix): `std::runtime_error:
+  No threads left to run!` (esgotamento de threads) — novo site, sem diagnóstico.
+- Detalhes: `plan/evidence/p08-gcsection-glintrosync-segv-diagnosis.md`,
+  `plan/evidence/p08-actor-init-segv-diagnosis.md`,
   `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
   `plan/evidence/p08-session-handoff.md`.
 
