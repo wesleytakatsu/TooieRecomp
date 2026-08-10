@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Invariant and snapshot tests for TooieRecomp metadata (P03)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -65,7 +66,9 @@ def main() -> None:
     # Relocatable list non-empty, sorted unique
     reloc_lines = [
         ln.strip()
-        for ln in (META / "relocatable_sections.txt").read_text(encoding="utf-8").splitlines()
+        for ln in (META / "relocatable_sections.txt")
+        .read_text(encoding="utf-8")
+        .splitlines()
         if ln.strip()
     ]
     if not reloc_lines:
@@ -75,6 +78,67 @@ def main() -> None:
     if len(reloc_lines) != len(set(reloc_lines)):
         fail("relocatable_sections has duplicates")
     ok(f"relocatable_sections ordered unique ({len(reloc_lines)})")
+
+    # Every listed section must be a real ELF section, and the list must be
+    # EXACTLY the generator's relocatable-overlay policy set. This is a
+    # semantic equality check (not just existence): a missing section silently
+    # drops relocations (P08 readelf-truncation regression), so the set must
+    # match the ELF-derived expectation one-for-one.
+    elf = ROOT / "banjo-tooie-Recomp" / "build" / "us" / "banjotooie_decompressed.elf"
+    if elf.is_file():
+        import subprocess
+
+        out = subprocess.check_output(
+            ["mips-linux-gnu-readelf", "-W", "-S", str(elf)],
+            text=True,
+            errors="replace",
+        )
+        elf_sections = set(re.findall(r"\[\s*\d+\]\s+(\S+)\s+\S+\s+[0-9a-fA-F]+", out))
+        expected = set()
+        for line in out.splitlines():
+            m = re.match(
+                r"\s*\[\s*\d+\]\s+(\S+)\s+(\S+)\s+([0-9a-fA-F]+)\s+"
+                r"[0-9a-fA-F]+\s+[0-9a-fA-F]+\s+\S+\s+(\S+)",
+                line,
+            )
+            if not m:
+                continue
+            name, typ, addr, fl = m.groups()
+            if "X" in fl and int(addr, 16) == 0x80800000 and name.startswith("."):
+                expected.add(name)
+        actual = set(reloc_lines)
+        truncated = [n for n in reloc_lines if "[...]" in n]
+        if truncated:
+            fail(f"relocatable_sections contains truncated names: {truncated[:3]}")
+        missing = sorted(actual - elf_sections)
+        if missing:
+            fail(f"relocatable_sections has names not present in ELF: {missing[:3]}")
+        if actual != expected:
+            only = sorted(actual - expected)[:3]
+            absent = sorted(expected - actual)[:3]
+            fail(
+                f"relocatable_sections != ELF policy set "
+                f"(actual={len(actual)} expected={len(expected)}): "
+                f"only_in_list={only} missing_from_list={absent}"
+            )
+        ok(
+            f"relocatable_sections == ELF policy set "
+            f"({len(reloc_lines)} executable overlay sections @0x80800000)"
+        )
+        recomp_lines = [
+            ln.strip()
+            for ln in (META / "relocatable_sections.recomp.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if ln.strip()
+        ]
+        if recomp_lines != reloc_lines:
+            fail(
+                "relocatable_sections.recomp.txt diverges from relocatable_sections.txt"
+            )
+        ok("relocatable_sections.recomp.txt in sync")
+    else:
+        print("NOTE: ELF missing; skipped name cross-check")
 
     # Overlays preserve empty slots and monotonic index
     ov = (META / "overlays.table.toml").read_text(encoding="utf-8")
@@ -104,7 +168,9 @@ def main() -> None:
         "overlay_count": len(indices),
         "empty_overlays": empty_n,
         "syscall_count": sc_count,
-        "syms_sha256": hashlib.sha256((META / "tooie.us.syms.toml").read_bytes()).hexdigest(),
+        "syms_sha256": hashlib.sha256(
+            (META / "tooie.us.syms.toml").read_bytes()
+        ).hexdigest(),
         "datasyms_sha256": hashlib.sha256(
             (META / "tooie.us.datasyms.toml").read_bytes()
         ).hexdigest(),
@@ -135,7 +201,9 @@ def main() -> None:
                 fail(f"snapshot drift on {key}: {prev.get(key)} -> {snapshot[key]}")
         ok("snapshot counts match previous")
         if prev.get("syms_sha256") != snapshot["syms_sha256"]:
-            print("NOTE: syms sha256 changed vs snapshot (tool/dump churn); counts still match")
+            print(
+                "NOTE: syms sha256 changed vs snapshot (tool/dump churn); counts still match"
+            )
 
     print("PASS: metadata invariants")
 

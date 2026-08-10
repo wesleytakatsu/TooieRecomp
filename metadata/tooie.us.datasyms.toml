@@ -4712,20 +4712,12 @@ symbols = [
     { name = "jtbl_80800170_bsdronewaitbabykaz", vram = 0x80800170 },
     { name = "jtbl_808001E8_bsdronewaitbabykaz", vram = 0x808001E8 },
     { name = "bsdronewaitbabykaz_RODATA_END", vram = 0x80800260 },
-    { name = "overlays_bs_drone_waitbabykaz_data__s", vram = 0x80800260 },
-    { name = "bsdronewaitbabykaz_DATA_START", vram = 0x80800260 },
-    { name = "bsdronewaitbabykaz_DATA_END", vram = 0x80800260 },
-]
-
-[[section]]
-name = ".bsdronewaitbabykaz_bss"
-vram = 0x80800260
-size = 0x0
-
-symbols = [
     { name = "bsdronewaitbabykaz_bss_VRAM", vram = 0x80800260 },
     { name = "bsdronewaitbabykaz_BSS_END", vram = 0x80800260 },
     { name = "bsdronewaitbabykaz_BSS_START", vram = 0x80800260 },
+    { name = "overlays_bs_drone_waitbabykaz_data__s", vram = 0x80800260 },
+    { name = "bsdronewaitbabykaz_DATA_START", vram = 0x80800260 },
+    { name = "bsdronewaitbabykaz_DATA_END", vram = 0x80800260 },
     { name = "bsdronewaitbabykaz_VRAM_END", vram = 0x80800260 },
 ]
 
@@ -5004,19 +4996,11 @@ symbols = [
     { name = "bskazflamethrower_DATA_START", vram = 0x808003B0 },
     { name = "overlays_bs_kaz_flamethrower_data__s", vram = 0x808003B0 },
     { name = "D_808003B0_bskazflamethrower", vram = 0x808003B0 },
-    { name = "bskazflamethrower_DATA_END", vram = 0x808003C0 },
-]
-
-[[section]]
-name = ".bskazflamethrower_bss"
-vram = 0x808003C0
-size = 0x0
-
-symbols = [
     { name = "bskazflamethrower_bss_VRAM", vram = 0x808003C0 },
     { name = "bskazflamethrower_VRAM_END", vram = 0x808003C0 },
     { name = "bskazflamethrower_BSS_END", vram = 0x808003C0 },
     { name = "bskazflamethrower_BSS_START", vram = 0x808003C0 },
+    { name = "bskazflamethrower_DATA_END", vram = 0x808003C0 },
 ]
 
 [[section]]
@@ -5436,14 +5420,6 @@ symbols = [
     { name = "overlays_bs_kaz_shoesspringjump_data__s", vram = 0x80800270 },
     { name = "bskazshoesspringjump_DATA_START", vram = 0x80800270 },
     { name = "bskazshoesspringjump_DATA_END", vram = 0x80800280 },
-]
-
-[[section]]
-name = ".bskazshoesspringjump_bss"
-vram = 0x80800280
-size = 0x0
-
-symbols = [
     { name = "bskazshoesspringjump_bss_VRAM", vram = 0x80800280 },
     { name = "bskazshoesspringjump_BSS_END", vram = 0x80800280 },
     { name = "bskazshoesspringjump_BSS_START", vram = 0x80800280 },
@@ -5480,19 +5456,11 @@ symbols = [
     { name = "D_80800470_bskazshoessuckspline", vram = 0x80800470 },
     { name = "overlays_bs_kaz_shoessuckspline_data__s", vram = 0x80800470 },
     { name = "D_80800480_bskazshoessuckspline", vram = 0x80800480 },
-    { name = "bskazshoessuckspline_DATA_END", vram = 0x80800490 },
-]
-
-[[section]]
-name = ".bskazshoessuckspline_bss"
-vram = 0x80800490
-size = 0x0
-
-symbols = [
     { name = "bskazshoessuckspline_VRAM_END", vram = 0x80800490 },
     { name = "bskazshoessuckspline_BSS_END", vram = 0x80800490 },
     { name = "bskazshoessuckspline_bss_VRAM", vram = 0x80800490 },
     { name = "bskazshoessuckspline_BSS_START", vram = 0x80800490 },
+    { name = "bskazshoessuckspline_DATA_END", vram = 0x80800490 },
 ]
 
 [[section]]
@@ -11496,10 +11464,10 @@ symbols = [
     { name = "R_80800CC8_chcactusofstrength", vram = 0x80800CC8 },
     { name = "R_80800CCC_chcactusofstrength", vram = 0x80800CCC },
     { name = "R_80800CD0_chcactusofstrength", vram = 0x80800CD0 },
-    { name = "chcactusofstrength_RODATA_END", vram = 0x80800CE0 },
-    { name = "chcactusofstrength_DATA_START", vram = 0x80800CE0 },
     { name = "overlays_ch_cactusofstrength_data__s", vram = 0x80800CE0 },
+    { name = "chcactusofstrength_DATA_START", vram = 0x80800CE0 },
     { name = "D_80800CE0_chcactusofstrength", vram = 0x80800CE0 },
+    { name = "chcactusofstrength_RODATA_END", vram = 0x80800CE0 },
     { name = "D_80800D00_chcactusofstrength", vram = 0x80800D00 },
     { name = "D_80800D48_chcactusofstrength", vram = 0x80800D48 },
     { name = "D_80800D90_chcactusofstrength", vram = 0x80800D90 },
@@ -11508,19 +11476,11 @@ symbols = [
     { name = "D_80800E18_chcactusofstrength", vram = 0x80800E18 },
     { name = "D_80800E24_chcactusofstrength", vram = 0x80800E24 },
     { name = "D_80800E64_chcactusofstrength", vram = 0x80800E64 },
-    { name = "chcactusofstrength_DATA_END", vram = 0x80800E70 },
-]
-
-[[section]]
-name = ".chcactusofstrength_bss"
-vram = 0x80800E70
-size = 0x0
-
-symbols = [
-    { name = "chcactusofstrength_bss_VRAM", vram = 0x80800E70 },
-    { name = "chcactusofstrength_VRAM_END", vram = 0x80800E70 },
     { name = "chcactusofstrength_BSS_START", vram = 0x80800E70 },
     { name = "chcactusofstrength_BSS_END", vram = 0x80800E70 },
+    { name = "chcactusofstrength_DATA_END", vram = 0x80800E70 },
+    { name = "chcactusofstrength_VRAM_END", vram = 0x80800E70 },
+    { name = "chcactusofstrength_bss_VRAM", vram = 0x80800E70 },
 ]
 
 [[section]]
@@ -11553,18 +11513,10 @@ symbols = [
     { name = "chcaveofhorrorsdoors_RODATA_END", vram = 0x808001C0 },
     { name = "overlays_ch_caveofhorrorsdoors_data__s", vram = 0x808001C0 },
     { name = "D_80800208_chcaveofhorrorsdoors", vram = 0x80800208 },
-    { name = "chcaveofhorrorsdoors_DATA_END", vram = 0x80800220 },
-]
-
-[[section]]
-name = ".chcaveofhorrorsdoors_bss"
-vram = 0x80800220
-size = 0x0
-
-symbols = [
     { name = "chcaveofhorrorsdoors_VRAM_END", vram = 0x80800220 },
     { name = "chcaveofhorrorsdoors_BSS_START", vram = 0x80800220 },
     { name = "chcaveofhorrorsdoors_bss_VRAM", vram = 0x80800220 },
+    { name = "chcaveofhorrorsdoors_DATA_END", vram = 0x80800220 },
     { name = "chcaveofhorrorsdoors_BSS_END", vram = 0x80800220 },
 ]
 
@@ -11708,13 +11660,13 @@ symbols = [
     { name = "chfairgroundworker_VRAM", vram = 0x80800000 },
     { name = "chfairgroundworker_TEXT_START", vram = 0x80800000 },
     { name = "chfairgroundworker_RODATA_START", vram = 0x80800260 },
-    { name = "R_80800260_chfairgroundworker", vram = 0x80800260 },
     { name = "chfairgroundworker_TEXT_END", vram = 0x80800260 },
+    { name = "R_80800260_chfairgroundworker", vram = 0x80800260 },
     { name = "R_80800264_chfairgroundworker", vram = 0x80800264 },
     { name = "D_80800270_chfairgroundworker", vram = 0x80800270 },
     { name = "overlays_ch_fair_groundworker_data__s", vram = 0x80800270 },
-    { name = "chfairgroundworker_RODATA_END", vram = 0x80800270 },
     { name = "chfairgroundworker_DATA_START", vram = 0x80800270 },
+    { name = "chfairgroundworker_RODATA_END", vram = 0x80800270 },
     { name = "D_80800308_chfairgroundworker", vram = 0x80800308 },
     { name = "D_80800350_chfairgroundworker", vram = 0x80800350 },
     { name = "D_80800398_chfairgroundworker", vram = 0x80800398 },
@@ -11722,18 +11674,10 @@ symbols = [
     { name = "D_80800428_chfairgroundworker", vram = 0x80800428 },
     { name = "D_80800430_chfairgroundworker", vram = 0x80800430 },
     { name = "chfairgroundworker_DATA_END", vram = 0x80800470 },
-]
-
-[[section]]
-name = ".chfairgroundworker_bss"
-vram = 0x80800470
-size = 0x0
-
-symbols = [
-    { name = "chfairgroundworker_VRAM_END", vram = 0x80800470 },
-    { name = "chfairgroundworker_BSS_END", vram = 0x80800470 },
     { name = "chfairgroundworker_BSS_START", vram = 0x80800470 },
     { name = "chfairgroundworker_bss_VRAM", vram = 0x80800470 },
+    { name = "chfairgroundworker_BSS_END", vram = 0x80800470 },
+    { name = "chfairgroundworker_VRAM_END", vram = 0x80800470 },
 ]
 
 [[section]]
@@ -11926,8 +11870,8 @@ size = 0x560
 symbols = [
     { name = "chdiggergroundgen_VRAM", vram = 0x80800000 },
     { name = "chdiggergroundgen_TEXT_START", vram = 0x80800000 },
-    { name = "chdiggergroundgen_TEXT_END", vram = 0x808004E0 },
     { name = "R_808004E0_chdiggergroundgen", vram = 0x808004E0 },
+    { name = "chdiggergroundgen_TEXT_END", vram = 0x808004E0 },
     { name = "chdiggergroundgen_RODATA_START", vram = 0x808004E0 },
     { name = "R_808004E4_chdiggergroundgen", vram = 0x808004E4 },
     { name = "R_808004E8_chdiggergroundgen", vram = 0x808004E8 },
@@ -11935,25 +11879,17 @@ symbols = [
     { name = "R_808004F0_chdiggergroundgen", vram = 0x808004F0 },
     { name = "R_808004F4_chdiggergroundgen", vram = 0x808004F4 },
     { name = "R_808004F8_chdiggergroundgen", vram = 0x808004F8 },
-    { name = "D_80800500_chdiggergroundgen", vram = 0x80800500 },
     { name = "chdiggergroundgen_RODATA_END", vram = 0x80800500 },
-    { name = "overlays_ch_digger_groundgen_data__s", vram = 0x80800500 },
+    { name = "D_80800500_chdiggergroundgen", vram = 0x80800500 },
     { name = "chdiggergroundgen_DATA_START", vram = 0x80800500 },
+    { name = "overlays_ch_digger_groundgen_data__s", vram = 0x80800500 },
     { name = "D_80800548_chdiggergroundgen", vram = 0x80800548 },
     { name = "D_80800554_chdiggergroundgen", vram = 0x80800554 },
-    { name = "chdiggergroundgen_DATA_END", vram = 0x80800560 },
-]
-
-[[section]]
-name = ".chdiggergroundgen_bss"
-vram = 0x80800560
-size = 0x0
-
-symbols = [
-    { name = "chdiggergroundgen_bss_VRAM", vram = 0x80800560 },
-    { name = "chdiggergroundgen_BSS_START", vram = 0x80800560 },
-    { name = "chdiggergroundgen_VRAM_END", vram = 0x80800560 },
     { name = "chdiggergroundgen_BSS_END", vram = 0x80800560 },
+    { name = "chdiggergroundgen_VRAM_END", vram = 0x80800560 },
+    { name = "chdiggergroundgen_DATA_END", vram = 0x80800560 },
+    { name = "chdiggergroundgen_BSS_START", vram = 0x80800560 },
+    { name = "chdiggergroundgen_bss_VRAM", vram = 0x80800560 },
 ]
 
 [[section]]
@@ -12513,17 +12449,9 @@ symbols = [
     { name = "chtntminecelldoor_DATA_START", vram = 0x80800140 },
     { name = "D_80800140_chtntminecelldoor", vram = 0x80800140 },
     { name = "chtntminecelldoor_RODATA_START", vram = 0x80800140 },
-    { name = "chtntminecelldoor_DATA_END", vram = 0x808001D0 },
-]
-
-[[section]]
-name = ".chtntminecelldoor_bss"
-vram = 0x808001D0
-size = 0x0
-
-symbols = [
     { name = "chtntminecelldoor_BSS_END", vram = 0x808001D0 },
     { name = "chtntminecelldoor_bss_VRAM", vram = 0x808001D0 },
+    { name = "chtntminecelldoor_DATA_END", vram = 0x808001D0 },
     { name = "chtntminecelldoor_BSS_START", vram = 0x808001D0 },
     { name = "chtntminecelldoor_VRAM_END", vram = 0x808001D0 },
 ]
@@ -13025,16 +12953,8 @@ symbols = [
     { name = "chstarspinnerplanet_TEXT_END", vram = 0x80800260 },
     { name = "D_808002A8_chstarspinnerplanet", vram = 0x808002A8 },
     { name = "D_808002F0_chstarspinnerplanet", vram = 0x808002F0 },
-    { name = "chstarspinnerplanet_DATA_END", vram = 0x80800310 },
-]
-
-[[section]]
-name = ".chstarspinnerplanet_bss"
-vram = 0x80800310
-size = 0x0
-
-symbols = [
     { name = "chstarspinnerplanet_BSS_END", vram = 0x80800310 },
+    { name = "chstarspinnerplanet_DATA_END", vram = 0x80800310 },
     { name = "chstarspinnerplanet_BSS_START", vram = 0x80800310 },
     { name = "chstarspinnerplanet_bss_VRAM", vram = 0x80800310 },
     { name = "chstarspinnerplanet_VRAM_END", vram = 0x80800310 },
@@ -13064,28 +12984,20 @@ symbols = [
     { name = "chstarspinnerstar_TEXT_START", vram = 0x80800000 },
     { name = "chstarspinnerstar_VRAM", vram = 0x80800000 },
     { name = "R_808006A0_chstarspinnerstar", vram = 0x808006A0 },
-    { name = "chstarspinnerstar_RODATA_START", vram = 0x808006A0 },
     { name = "chstarspinnerstar_TEXT_END", vram = 0x808006A0 },
+    { name = "chstarspinnerstar_RODATA_START", vram = 0x808006A0 },
     { name = "R_808006A4_chstarspinnerstar", vram = 0x808006A4 },
     { name = "R_808006A8_chstarspinnerstar", vram = 0x808006A8 },
     { name = "R_808006AC_chstarspinnerstar", vram = 0x808006AC },
     { name = "chstarspinnerstar_DATA_START", vram = 0x808006B0 },
-    { name = "D_808006B0_chstarspinnerstar", vram = 0x808006B0 },
-    { name = "overlays_ch_starspinner_star_data__s", vram = 0x808006B0 },
     { name = "chstarspinnerstar_RODATA_END", vram = 0x808006B0 },
+    { name = "overlays_ch_starspinner_star_data__s", vram = 0x808006B0 },
+    { name = "D_808006B0_chstarspinnerstar", vram = 0x808006B0 },
     { name = "D_808006F8_chstarspinnerstar", vram = 0x808006F8 },
-    { name = "chstarspinnerstar_DATA_END", vram = 0x80800710 },
-]
-
-[[section]]
-name = ".chstarspinnerstar_bss"
-vram = 0x80800710
-size = 0x10
-
-symbols = [
-    { name = "chstarspinnerstar_BSS_START", vram = 0x80800710 },
     { name = "chstarspinnerstar_bss_VRAM", vram = 0x80800710 },
     { name = "B_80800710_chstarspinnerstar", vram = 0x80800710 },
+    { name = "chstarspinnerstar_DATA_END", vram = 0x80800710 },
+    { name = "chstarspinnerstar_BSS_START", vram = 0x80800710 },
     { name = "chstarspinnerstar_BSS_END", vram = 0x80800720 },
     { name = "chstarspinnerstar_VRAM_END", vram = 0x80800720 },
 ]
@@ -13118,9 +13030,9 @@ symbols = [
     { name = "jtbl_808008B0_chstarspinnerctrl", vram = 0x808008B0 },
     { name = "jtbl_808008C4_chstarspinnerctrl", vram = 0x808008C4 },
     { name = "chstarspinnerctrl_DATA_START", vram = 0x808008E0 },
+    { name = "overlays_ch_starspinner_ctrl_data__s", vram = 0x808008E0 },
     { name = "D_808008E0_chstarspinnerctrl", vram = 0x808008E0 },
     { name = "chstarspinnerctrl_RODATA_END", vram = 0x808008E0 },
-    { name = "overlays_ch_starspinner_ctrl_data__s", vram = 0x808008E0 },
     { name = "D_808008E8_chstarspinnerctrl", vram = 0x808008E8 },
     { name = "D_808008F4_chstarspinnerctrl", vram = 0x808008F4 },
     { name = "D_80800900_chstarspinnerctrl", vram = 0x80800900 },
@@ -13133,16 +13045,8 @@ symbols = [
     { name = "D_80800A50_chstarspinnerctrl", vram = 0x80800A50 },
     { name = "D_80800A98_chstarspinnerctrl", vram = 0x80800A98 },
     { name = "D_80800AA8_chstarspinnerctrl", vram = 0x80800AA8 },
-    { name = "chstarspinnerctrl_DATA_END", vram = 0x80800AC0 },
-]
-
-[[section]]
-name = ".chstarspinnerctrl_bss"
-vram = 0x80800AC0
-size = 0x0
-
-symbols = [
     { name = "chstarspinnerctrl_VRAM_END", vram = 0x80800AC0 },
+    { name = "chstarspinnerctrl_DATA_END", vram = 0x80800AC0 },
     { name = "chstarspinnerctrl_BSS_END", vram = 0x80800AC0 },
     { name = "chstarspinnerctrl_bss_VRAM", vram = 0x80800AC0 },
     { name = "chstarspinnerctrl_BSS_START", vram = 0x80800AC0 },
@@ -13315,31 +13219,23 @@ vram = 0x80800000
 size = 0x3A0
 
 symbols = [
-    { name = "chhellterskeltermouth_VRAM", vram = 0x80800000 },
     { name = "chhellterskeltermouth_TEXT_START", vram = 0x80800000 },
+    { name = "chhellterskeltermouth_VRAM", vram = 0x80800000 },
+    { name = "chhellterskeltermouth_RODATA_START", vram = 0x80800310 },
     { name = "chhellterskeltermouth_TEXT_END", vram = 0x80800310 },
     { name = "jtbl_80800310_chhellterskeltermouth", vram = 0x80800310 },
-    { name = "chhellterskeltermouth_RODATA_START", vram = 0x80800310 },
     { name = "R_80800324_chhellterskeltermouth", vram = 0x80800324 },
     { name = "R_80800328_chhellterskeltermouth", vram = 0x80800328 },
     { name = "chhellterskeltermouth_DATA_START", vram = 0x80800330 },
-    { name = "chhellterskeltermouth_RODATA_END", vram = 0x80800330 },
-    { name = "D_80800330_chhellterskeltermouth", vram = 0x80800330 },
     { name = "overlays_ch_hellterskeltermouth_data__s", vram = 0x80800330 },
+    { name = "D_80800330_chhellterskeltermouth", vram = 0x80800330 },
+    { name = "chhellterskeltermouth_RODATA_END", vram = 0x80800330 },
     { name = "D_80800378_chhellterskeltermouth", vram = 0x80800378 },
     { name = "D_80800384_chhellterskeltermouth", vram = 0x80800384 },
-    { name = "chhellterskeltermouth_DATA_END", vram = 0x808003A0 },
-]
-
-[[section]]
-name = ".chhellterskeltermouth_bss"
-vram = 0x808003A0
-size = 0x0
-
-symbols = [
-    { name = "chhellterskeltermouth_BSS_END", vram = 0x808003A0 },
-    { name = "chhellterskeltermouth_BSS_START", vram = 0x808003A0 },
     { name = "chhellterskeltermouth_VRAM_END", vram = 0x808003A0 },
+    { name = "chhellterskeltermouth_DATA_END", vram = 0x808003A0 },
+    { name = "chhellterskeltermouth_BSS_START", vram = 0x808003A0 },
+    { name = "chhellterskeltermouth_BSS_END", vram = 0x808003A0 },
     { name = "chhellterskeltermouth_bss_VRAM", vram = 0x808003A0 },
 ]
 
@@ -14988,18 +14884,18 @@ vram = 0x80800000
 size = 0xC30
 
 symbols = [
-    { name = "charmouredcaveman_VRAM", vram = 0x80800000 },
     { name = "charmouredcaveman_TEXT_START", vram = 0x80800000 },
+    { name = "charmouredcaveman_VRAM", vram = 0x80800000 },
     { name = "jtbl_80800A20_charmouredcaveman", vram = 0x80800A20 },
-    { name = "charmouredcaveman_TEXT_END", vram = 0x80800A20 },
     { name = "charmouredcaveman_RODATA_START", vram = 0x80800A20 },
+    { name = "charmouredcaveman_TEXT_END", vram = 0x80800A20 },
     { name = "jtbl_80800A3C_charmouredcaveman", vram = 0x80800A3C },
     { name = "R_80800AD0_charmouredcaveman", vram = 0x80800AD0 },
     { name = "R_80800AD4_charmouredcaveman", vram = 0x80800AD4 },
     { name = "overlays_ch_armouredcaveman_data__s", vram = 0x80800AE0 },
     { name = "D_80800AE0_charmouredcaveman", vram = 0x80800AE0 },
-    { name = "charmouredcaveman_RODATA_END", vram = 0x80800AE0 },
     { name = "charmouredcaveman_DATA_START", vram = 0x80800AE0 },
+    { name = "charmouredcaveman_RODATA_END", vram = 0x80800AE0 },
     { name = "D_80800B20_charmouredcaveman", vram = 0x80800B20 },
     { name = "D_80800B68_charmouredcaveman", vram = 0x80800B68 },
     { name = "D_80800B78_charmouredcaveman", vram = 0x80800B78 },
@@ -15015,18 +14911,10 @@ symbols = [
     { name = "D_80800C14_charmouredcaveman", vram = 0x80800C14 },
     { name = "D_80800C20_charmouredcaveman", vram = 0x80800C20 },
     { name = "charmouredcaveman_DATA_END", vram = 0x80800C30 },
-]
-
-[[section]]
-name = ".charmouredcaveman_bss"
-vram = 0x80800C30
-size = 0x0
-
-symbols = [
-    { name = "charmouredcaveman_VRAM_END", vram = 0x80800C30 },
-    { name = "charmouredcaveman_BSS_END", vram = 0x80800C30 },
     { name = "charmouredcaveman_bss_VRAM", vram = 0x80800C30 },
     { name = "charmouredcaveman_BSS_START", vram = 0x80800C30 },
+    { name = "charmouredcaveman_BSS_END", vram = 0x80800C30 },
+    { name = "charmouredcaveman_VRAM_END", vram = 0x80800C30 },
 ]
 
 [[section]]
@@ -15201,16 +15089,8 @@ symbols = [
     { name = "chfactoryliftdoor_RODATA_END", vram = 0x80800140 },
     { name = "chfactoryliftdoor_DATA_START", vram = 0x80800140 },
     { name = "D_80800188_chfactoryliftdoor", vram = 0x80800188 },
-    { name = "chfactoryliftdoor_DATA_END", vram = 0x808001D0 },
-]
-
-[[section]]
-name = ".chfactoryliftdoor_bss"
-vram = 0x808001D0
-size = 0x0
-
-symbols = [
     { name = "chfactoryliftdoor_BSS_START", vram = 0x808001D0 },
+    { name = "chfactoryliftdoor_DATA_END", vram = 0x808001D0 },
     { name = "chfactoryliftdoor_bss_VRAM", vram = 0x808001D0 },
     { name = "chfactoryliftdoor_BSS_END", vram = 0x808001D0 },
     { name = "chfactoryliftdoor_VRAM_END", vram = 0x808001D0 },
@@ -15478,14 +15358,14 @@ symbols = [
     { name = "chfactorytoxicpools_VRAM", vram = 0x80800000 },
     { name = "chfactorytoxicpools_TEXT_START", vram = 0x80800000 },
     { name = "chfactorytoxicpools_RODATA_START", vram = 0x80800930 },
-    { name = "R_80800930_chfactorytoxicpools", vram = 0x80800930 },
     { name = "chfactorytoxicpools_TEXT_END", vram = 0x80800930 },
+    { name = "R_80800930_chfactorytoxicpools", vram = 0x80800930 },
     { name = "R_80800934_chfactorytoxicpools", vram = 0x80800934 },
     { name = "R_80800938_chfactorytoxicpools", vram = 0x80800938 },
     { name = "R_8080093C_chfactorytoxicpools", vram = 0x8080093C },
     { name = "chfactorytoxicpools_DATA_START", vram = 0x80800940 },
-    { name = "overlays_ch_factory_toxicpools_data__s", vram = 0x80800940 },
     { name = "chfactorytoxicpools_RODATA_END", vram = 0x80800940 },
+    { name = "overlays_ch_factory_toxicpools_data__s", vram = 0x80800940 },
     { name = "D_80800940_chfactorytoxicpools", vram = 0x80800940 },
     { name = "D_80800988_chfactorytoxicpools", vram = 0x80800988 },
     { name = "D_808009D0_chfactorytoxicpools", vram = 0x808009D0 },
@@ -15494,19 +15374,11 @@ symbols = [
     { name = "D_80800A74_chfactorytoxicpools", vram = 0x80800A74 },
     { name = "D_80800AB0_chfactorytoxicpools", vram = 0x80800AB0 },
     { name = "D_80800AC8_chfactorytoxicpools", vram = 0x80800AC8 },
-    { name = "chfactorytoxicpools_DATA_END", vram = 0x80800AE0 },
-]
-
-[[section]]
-name = ".chfactorytoxicpools_bss"
-vram = 0x80800AE0
-size = 0x0
-
-symbols = [
     { name = "chfactorytoxicpools_VRAM_END", vram = 0x80800AE0 },
-    { name = "chfactorytoxicpools_bss_VRAM", vram = 0x80800AE0 },
     { name = "chfactorytoxicpools_BSS_START", vram = 0x80800AE0 },
     { name = "chfactorytoxicpools_BSS_END", vram = 0x80800AE0 },
+    { name = "chfactorytoxicpools_DATA_END", vram = 0x80800AE0 },
+    { name = "chfactorytoxicpools_bss_VRAM", vram = 0x80800AE0 },
 ]
 
 [[section]]
@@ -16618,31 +16490,23 @@ vram = 0x80800000
 size = 0x480
 
 symbols = [
-    { name = "chklungoforcefield_VRAM", vram = 0x80800000 },
     { name = "chklungoforcefield_TEXT_START", vram = 0x80800000 },
+    { name = "chklungoforcefield_VRAM", vram = 0x80800000 },
+    { name = "chklungoforcefield_RODATA_START", vram = 0x808003F0 },
     { name = "R_808003F0_chklungoforcefield", vram = 0x808003F0 },
     { name = "chklungoforcefield_TEXT_END", vram = 0x808003F0 },
-    { name = "chklungoforcefield_RODATA_START", vram = 0x808003F0 },
     { name = "chklungoforcefield_DATA_START", vram = 0x80800400 },
-    { name = "D_80800400_chklungoforcefield", vram = 0x80800400 },
-    { name = "chklungoforcefield_RODATA_END", vram = 0x80800400 },
     { name = "overlays_ch_klungo_forcefield_data__s", vram = 0x80800400 },
+    { name = "chklungoforcefield_RODATA_END", vram = 0x80800400 },
+    { name = "D_80800400_chklungoforcefield", vram = 0x80800400 },
     { name = "D_80800448_chklungoforcefield", vram = 0x80800448 },
     { name = "D_80800460_chklungoforcefield", vram = 0x80800460 },
     { name = "D_8080046C_chklungoforcefield", vram = 0x8080046C },
-    { name = "chklungoforcefield_DATA_END", vram = 0x80800480 },
-]
-
-[[section]]
-name = ".chklungoforcefield_bss"
-vram = 0x80800480
-size = 0x0
-
-symbols = [
-    { name = "chklungoforcefield_bss_VRAM", vram = 0x80800480 },
-    { name = "chklungoforcefield_VRAM_END", vram = 0x80800480 },
     { name = "chklungoforcefield_BSS_START", vram = 0x80800480 },
     { name = "chklungoforcefield_BSS_END", vram = 0x80800480 },
+    { name = "chklungoforcefield_VRAM_END", vram = 0x80800480 },
+    { name = "chklungoforcefield_DATA_END", vram = 0x80800480 },
+    { name = "chklungoforcefield_bss_VRAM", vram = 0x80800480 },
 ]
 
 [[section]]
@@ -16848,13 +16712,13 @@ symbols = [
     { name = "chhotwaterpoolbits_VRAM", vram = 0x80800000 },
     { name = "chhotwaterpoolbits_TEXT_START", vram = 0x80800000 },
     { name = "R_80800920_chhotwaterpoolbits", vram = 0x80800920 },
-    { name = "chhotwaterpoolbits_RODATA_START", vram = 0x80800920 },
     { name = "chhotwaterpoolbits_TEXT_END", vram = 0x80800920 },
+    { name = "chhotwaterpoolbits_RODATA_START", vram = 0x80800920 },
     { name = "R_80800924_chhotwaterpoolbits", vram = 0x80800924 },
     { name = "chhotwaterpoolbits_RODATA_END", vram = 0x80800930 },
     { name = "D_80800930_chhotwaterpoolbits", vram = 0x80800930 },
-    { name = "chhotwaterpoolbits_DATA_START", vram = 0x80800930 },
     { name = "overlays_ch_hot_waterpoolbits_data__s", vram = 0x80800930 },
+    { name = "chhotwaterpoolbits_DATA_START", vram = 0x80800930 },
     { name = "D_80800978_chhotwaterpoolbits", vram = 0x80800978 },
     { name = "D_808009C0_chhotwaterpoolbits", vram = 0x808009C0 },
     { name = "D_80800A08_chhotwaterpoolbits", vram = 0x80800A08 },
@@ -16864,19 +16728,11 @@ symbols = [
     { name = "D_80800A88_chhotwaterpoolbits", vram = 0x80800A88 },
     { name = "D_80800AC0_chhotwaterpoolbits", vram = 0x80800AC0 },
     { name = "D_80800AD8_chhotwaterpoolbits", vram = 0x80800AD8 },
-    { name = "chhotwaterpoolbits_DATA_END", vram = 0x80800AF0 },
-]
-
-[[section]]
-name = ".chhotwaterpoolbits_bss"
-vram = 0x80800AF0
-size = 0x0
-
-symbols = [
-    { name = "chhotwaterpoolbits_BSS_START", vram = 0x80800AF0 },
-    { name = "chhotwaterpoolbits_VRAM_END", vram = 0x80800AF0 },
-    { name = "chhotwaterpoolbits_BSS_END", vram = 0x80800AF0 },
     { name = "chhotwaterpoolbits_bss_VRAM", vram = 0x80800AF0 },
+    { name = "chhotwaterpoolbits_BSS_END", vram = 0x80800AF0 },
+    { name = "chhotwaterpoolbits_VRAM_END", vram = 0x80800AF0 },
+    { name = "chhotwaterpoolbits_BSS_START", vram = 0x80800AF0 },
+    { name = "chhotwaterpoolbits_DATA_END", vram = 0x80800AF0 },
 ]
 
 [[section]]
@@ -16910,9 +16766,9 @@ symbols = [
     { name = "R_808008AC_chnicecavemenguard", vram = 0x808008AC },
     { name = "R_808008B0_chnicecavemenguard", vram = 0x808008B0 },
     { name = "chnicecavemenguard_DATA_START", vram = 0x808008C0 },
+    { name = "D_808008C0_chnicecavemenguard", vram = 0x808008C0 },
     { name = "chnicecavemenguard_RODATA_END", vram = 0x808008C0 },
     { name = "overlays_ch_nicecavemenguard_data__s", vram = 0x808008C0 },
-    { name = "D_808008C0_chnicecavemenguard", vram = 0x808008C0 },
     { name = "D_808008E8_chnicecavemenguard", vram = 0x808008E8 },
     { name = "D_80800920_chnicecavemenguard", vram = 0x80800920 },
     { name = "D_80800968_chnicecavemenguard", vram = 0x80800968 },
@@ -16928,18 +16784,10 @@ symbols = [
     { name = "D_808009E8_chnicecavemenguard", vram = 0x808009E8 },
     { name = "D_808009F0_chnicecavemenguard", vram = 0x808009F0 },
     { name = "D_808009FC_chnicecavemenguard", vram = 0x808009FC },
-    { name = "chnicecavemenguard_DATA_END", vram = 0x80800A10 },
-]
-
-[[section]]
-name = ".chnicecavemenguard_bss"
-vram = 0x80800A10
-size = 0x0
-
-symbols = [
-    { name = "chnicecavemenguard_bss_VRAM", vram = 0x80800A10 },
-    { name = "chnicecavemenguard_VRAM_END", vram = 0x80800A10 },
     { name = "chnicecavemenguard_BSS_START", vram = 0x80800A10 },
+    { name = "chnicecavemenguard_bss_VRAM", vram = 0x80800A10 },
+    { name = "chnicecavemenguard_DATA_END", vram = 0x80800A10 },
+    { name = "chnicecavemenguard_VRAM_END", vram = 0x80800A10 },
     { name = "chnicecavemenguard_BSS_END", vram = 0x80800A10 },
 ]
 
@@ -17409,19 +17257,11 @@ symbols = [
     { name = "D_8080243C_chfactorytwinklies", vram = 0x8080243C },
     { name = "D_80802468_chfactorytwinklies", vram = 0x80802468 },
     { name = "D_80802478_chfactorytwinklies", vram = 0x80802478 },
-    { name = "chfactorytwinklies_DATA_END", vram = 0x80802480 },
-]
-
-[[section]]
-name = ".chfactorytwinklies_bss"
-vram = 0x80802480
-size = 0x0
-
-symbols = [
-    { name = "chfactorytwinklies_BSS_END", vram = 0x80802480 },
     { name = "chfactorytwinklies_VRAM_END", vram = 0x80802480 },
     { name = "chfactorytwinklies_BSS_START", vram = 0x80802480 },
+    { name = "chfactorytwinklies_BSS_END", vram = 0x80802480 },
     { name = "chfactorytwinklies_bss_VRAM", vram = 0x80802480 },
+    { name = "chfactorytwinklies_DATA_END", vram = 0x80802480 },
 ]
 
 [[section]]
@@ -17570,10 +17410,10 @@ symbols = [
     { name = "R_80801E40_chmonsterinterior", vram = 0x80801E40 },
     { name = "R_80801E44_chmonsterinterior", vram = 0x80801E44 },
     { name = "R_80801E48_chmonsterinterior", vram = 0x80801E48 },
-    { name = "chmonsterinterior_RODATA_END", vram = 0x80801E50 },
-    { name = "chmonsterinterior_DATA_START", vram = 0x80801E50 },
     { name = "overlays_ch_monsterinterior_data__s", vram = 0x80801E50 },
+    { name = "chmonsterinterior_DATA_START", vram = 0x80801E50 },
     { name = "D_80801E50_chmonsterinterior", vram = 0x80801E50 },
+    { name = "chmonsterinterior_RODATA_END", vram = 0x80801E50 },
     { name = "D_80801E58_chmonsterinterior", vram = 0x80801E58 },
     { name = "D_80801E80_chmonsterinterior", vram = 0x80801E80 },
     { name = "D_80801EC8_chmonsterinterior", vram = 0x80801EC8 },
@@ -17587,19 +17427,11 @@ symbols = [
     { name = "D_80802044_chmonsterinterior", vram = 0x80802044 },
     { name = "D_8080207C_chmonsterinterior", vram = 0x8080207C },
     { name = "D_8080208C_chmonsterinterior", vram = 0x8080208C },
-    { name = "chmonsterinterior_DATA_END", vram = 0x808020A0 },
-]
-
-[[section]]
-name = ".chmonsterinterior_bss"
-vram = 0x808020A0
-size = 0x0
-
-symbols = [
-    { name = "chmonsterinterior_BSS_START", vram = 0x808020A0 },
     { name = "chmonsterinterior_BSS_END", vram = 0x808020A0 },
     { name = "chmonsterinterior_VRAM_END", vram = 0x808020A0 },
+    { name = "chmonsterinterior_DATA_END", vram = 0x808020A0 },
     { name = "chmonsterinterior_bss_VRAM", vram = 0x808020A0 },
+    { name = "chmonsterinterior_BSS_START", vram = 0x808020A0 },
 ]
 
 [[section]]
@@ -17803,8 +17635,8 @@ size = 0x580
 symbols = [
     { name = "changlerbossflare_TEXT_START", vram = 0x80800000 },
     { name = "changlerbossflare_VRAM", vram = 0x80800000 },
-    { name = "R_80800470_changlerbossflare", vram = 0x80800470 },
     { name = "changlerbossflare_TEXT_END", vram = 0x80800470 },
+    { name = "R_80800470_changlerbossflare", vram = 0x80800470 },
     { name = "changlerbossflare_RODATA_START", vram = 0x80800470 },
     { name = "R_80800474_changlerbossflare", vram = 0x80800474 },
     { name = "changlerbossflare_RODATA_END", vram = 0x80800480 },
@@ -17817,19 +17649,11 @@ symbols = [
     { name = "D_80800500_changlerbossflare", vram = 0x80800500 },
     { name = "D_8080053C_changlerbossflare", vram = 0x8080053C },
     { name = "D_80800550_changlerbossflare", vram = 0x80800550 },
-    { name = "changlerbossflare_DATA_END", vram = 0x80800580 },
-]
-
-[[section]]
-name = ".changlerbossflare_bss"
-vram = 0x80800580
-size = 0x0
-
-symbols = [
-    { name = "changlerbossflare_bss_VRAM", vram = 0x80800580 },
-    { name = "changlerbossflare_BSS_START", vram = 0x80800580 },
     { name = "changlerbossflare_VRAM_END", vram = 0x80800580 },
+    { name = "changlerbossflare_DATA_END", vram = 0x80800580 },
     { name = "changlerbossflare_BSS_END", vram = 0x80800580 },
+    { name = "changlerbossflare_BSS_START", vram = 0x80800580 },
+    { name = "changlerbossflare_bss_VRAM", vram = 0x80800580 },
 ]
 
 [[section]]
@@ -17853,8 +17677,8 @@ vram = 0x80800000
 size = 0x680
 
 symbols = [
-    { name = "changlerbossbubble_TEXT_START", vram = 0x80800000 },
     { name = "changlerbossbubble_VRAM", vram = 0x80800000 },
+    { name = "changlerbossbubble_TEXT_START", vram = 0x80800000 },
     { name = "changlerbossbubble_TEXT_END", vram = 0x808005B0 },
     { name = "changlerbossbubble_RODATA_START", vram = 0x808005B0 },
     { name = "R_808005B0_changlerbossbubble", vram = 0x808005B0 },
@@ -17864,24 +17688,16 @@ symbols = [
     { name = "R_808005C0_changlerbossbubble", vram = 0x808005C0 },
     { name = "R_808005C4_changlerbossbubble", vram = 0x808005C4 },
     { name = "overlays_ch_anglerboss_bubble_data__s", vram = 0x808005D0 },
-    { name = "changlerbossbubble_RODATA_END", vram = 0x808005D0 },
     { name = "changlerbossbubble_DATA_START", vram = 0x808005D0 },
     { name = "D_808005D0_changlerbossbubble", vram = 0x808005D0 },
+    { name = "changlerbossbubble_RODATA_END", vram = 0x808005D0 },
     { name = "D_80800618_changlerbossbubble", vram = 0x80800618 },
     { name = "D_80800668_changlerbossbubble", vram = 0x80800668 },
-    { name = "changlerbossbubble_DATA_END", vram = 0x80800680 },
-]
-
-[[section]]
-name = ".changlerbossbubble_bss"
-vram = 0x80800680
-size = 0x0
-
-symbols = [
-    { name = "changlerbossbubble_bss_VRAM", vram = 0x80800680 },
-    { name = "changlerbossbubble_BSS_START", vram = 0x80800680 },
-    { name = "changlerbossbubble_BSS_END", vram = 0x80800680 },
     { name = "changlerbossbubble_VRAM_END", vram = 0x80800680 },
+    { name = "changlerbossbubble_BSS_END", vram = 0x80800680 },
+    { name = "changlerbossbubble_BSS_START", vram = 0x80800680 },
+    { name = "changlerbossbubble_bss_VRAM", vram = 0x80800680 },
+    { name = "changlerbossbubble_DATA_END", vram = 0x80800680 },
 ]
 
 [[section]]
@@ -18293,19 +18109,11 @@ symbols = [
     { name = "chweldarbossdoors_TEXT_END", vram = 0x80800270 },
     { name = "D_80800270_chweldarbossdoors", vram = 0x80800270 },
     { name = "D_808002B8_chweldarbossdoors", vram = 0x808002B8 },
-    { name = "chweldarbossdoors_DATA_END", vram = 0x80800300 },
-]
-
-[[section]]
-name = ".chweldarbossdoors_bss"
-vram = 0x80800300
-size = 0x0
-
-symbols = [
     { name = "chweldarbossdoors_BSS_START", vram = 0x80800300 },
     { name = "chweldarbossdoors_bss_VRAM", vram = 0x80800300 },
     { name = "chweldarbossdoors_BSS_END", vram = 0x80800300 },
     { name = "chweldarbossdoors_VRAM_END", vram = 0x80800300 },
+    { name = "chweldarbossdoors_DATA_END", vram = 0x80800300 },
 ]
 
 [[section]]
@@ -18331,31 +18139,23 @@ size = 0x4E0
 symbols = [
     { name = "chweldarbossfireball_TEXT_START", vram = 0x80800000 },
     { name = "chweldarbossfireball_VRAM", vram = 0x80800000 },
-    { name = "chweldarbossfireball_TEXT_END", vram = 0x80800410 },
+    { name = "chweldarbossfireball_RODATA_END", vram = 0x80800410 },
     { name = "chweldarbossfireball_DATA_START", vram = 0x80800410 },
     { name = "D_80800410_chweldarbossfireball", vram = 0x80800410 },
     { name = "overlays_ch_weldarboss_fireball_data__s", vram = 0x80800410 },
     { name = "chweldarbossfireball_RODATA_START", vram = 0x80800410 },
-    { name = "chweldarbossfireball_RODATA_END", vram = 0x80800410 },
+    { name = "chweldarbossfireball_TEXT_END", vram = 0x80800410 },
     { name = "D_80800458_chweldarbossfireball", vram = 0x80800458 },
     { name = "D_80800468_chweldarbossfireball", vram = 0x80800468 },
     { name = "D_80800474_chweldarbossfireball", vram = 0x80800474 },
     { name = "D_80800480_chweldarbossfireball", vram = 0x80800480 },
     { name = "D_808004C4_chweldarbossfireball", vram = 0x808004C4 },
-    { name = "chweldarbossfireball_DATA_END", vram = 0x808004E0 },
-]
-
-[[section]]
-name = ".chweldarbossfireball_bss"
-vram = 0x808004E0
-size = 0x10
-
-symbols = [
     { name = "chweldarbossfireball_BSS_START", vram = 0x808004E0 },
+    { name = "chweldarbossfireball_DATA_END", vram = 0x808004E0 },
     { name = "chweldarbossfireball_bss_VRAM", vram = 0x808004E0 },
     { name = "B_808004E0_chweldarbossfireball", vram = 0x808004E0 },
-    { name = "chweldarbossfireball_VRAM_END", vram = 0x808004F0 },
     { name = "chweldarbossfireball_BSS_END", vram = 0x808004F0 },
+    { name = "chweldarbossfireball_VRAM_END", vram = 0x808004F0 },
 ]
 
 [[section]]
@@ -18381,13 +18181,13 @@ size = 0x7F0
 symbols = [
     { name = "chweldarbossfusebox_TEXT_START", vram = 0x80800000 },
     { name = "chweldarbossfusebox_VRAM", vram = 0x80800000 },
-    { name = "R_80800650_chweldarbossfusebox", vram = 0x80800650 },
-    { name = "chweldarbossfusebox_TEXT_END", vram = 0x80800650 },
     { name = "chweldarbossfusebox_RODATA_START", vram = 0x80800650 },
-    { name = "overlays_ch_weldarboss_fusebox_data__s", vram = 0x80800660 },
-    { name = "D_80800660_chweldarbossfusebox", vram = 0x80800660 },
-    { name = "chweldarbossfusebox_RODATA_END", vram = 0x80800660 },
+    { name = "chweldarbossfusebox_TEXT_END", vram = 0x80800650 },
+    { name = "R_80800650_chweldarbossfusebox", vram = 0x80800650 },
     { name = "chweldarbossfusebox_DATA_START", vram = 0x80800660 },
+    { name = "overlays_ch_weldarboss_fusebox_data__s", vram = 0x80800660 },
+    { name = "chweldarbossfusebox_RODATA_END", vram = 0x80800660 },
+    { name = "D_80800660_chweldarbossfusebox", vram = 0x80800660 },
     { name = "D_80800670_chweldarbossfusebox", vram = 0x80800670 },
     { name = "D_808006B8_chweldarbossfusebox", vram = 0x808006B8 },
     { name = "D_80800700_chweldarbossfusebox", vram = 0x80800700 },
@@ -18396,19 +18196,11 @@ symbols = [
     { name = "D_80800798_chweldarbossfusebox", vram = 0x80800798 },
     { name = "D_808007B0_chweldarbossfusebox", vram = 0x808007B0 },
     { name = "D_808007BC_chweldarbossfusebox", vram = 0x808007BC },
-    { name = "chweldarbossfusebox_DATA_END", vram = 0x808007F0 },
-]
-
-[[section]]
-name = ".chweldarbossfusebox_bss"
-vram = 0x808007F0
-size = 0x0
-
-symbols = [
-    { name = "chweldarbossfusebox_bss_VRAM", vram = 0x808007F0 },
-    { name = "chweldarbossfusebox_BSS_START", vram = 0x808007F0 },
-    { name = "chweldarbossfusebox_VRAM_END", vram = 0x808007F0 },
     { name = "chweldarbossfusebox_BSS_END", vram = 0x808007F0 },
+    { name = "chweldarbossfusebox_VRAM_END", vram = 0x808007F0 },
+    { name = "chweldarbossfusebox_BSS_START", vram = 0x808007F0 },
+    { name = "chweldarbossfusebox_DATA_END", vram = 0x808007F0 },
+    { name = "chweldarbossfusebox_bss_VRAM", vram = 0x808007F0 },
 ]
 
 [[section]]
@@ -18828,16 +18620,8 @@ symbols = [
     { name = "chinflatablebossdoor_RODATA_END", vram = 0x80800140 },
     { name = "D_80800140_chinflatablebossdoor", vram = 0x80800140 },
     { name = "overlays_ch_inflatablebossdoor_data__s", vram = 0x80800140 },
-    { name = "chinflatablebossdoor_DATA_END", vram = 0x80800190 },
-]
-
-[[section]]
-name = ".chinflatablebossdoor_bss"
-vram = 0x80800190
-size = 0x0
-
-symbols = [
     { name = "chinflatablebossdoor_BSS_START", vram = 0x80800190 },
+    { name = "chinflatablebossdoor_DATA_END", vram = 0x80800190 },
     { name = "chinflatablebossdoor_BSS_END", vram = 0x80800190 },
     { name = "chinflatablebossdoor_bss_VRAM", vram = 0x80800190 },
     { name = "chinflatablebossdoor_VRAM_END", vram = 0x80800190 },
@@ -18955,18 +18739,10 @@ symbols = [
     { name = "chcastleshockpadswitch_TEXT_END", vram = 0x80800170 },
     { name = "chcastleshockpadswitch_DATA_START", vram = 0x80800170 },
     { name = "chcastleshockpadswitch_RODATA_START", vram = 0x80800170 },
-    { name = "chcastleshockpadswitch_DATA_END", vram = 0x808001C0 },
-]
-
-[[section]]
-name = ".chcastleshockpadswitch_bss"
-vram = 0x808001C0
-size = 0x0
-
-symbols = [
     { name = "chcastleshockpadswitch_BSS_START", vram = 0x808001C0 },
     { name = "chcastleshockpadswitch_VRAM_END", vram = 0x808001C0 },
     { name = "chcastleshockpadswitch_BSS_END", vram = 0x808001C0 },
+    { name = "chcastleshockpadswitch_DATA_END", vram = 0x808001C0 },
     { name = "chcastleshockpadswitch_bss_VRAM", vram = 0x808001C0 },
 ]
 
@@ -18993,29 +18769,21 @@ size = 0x320
 symbols = [
     { name = "chtalontorpedoboulder_VRAM", vram = 0x80800000 },
     { name = "chtalontorpedoboulder_TEXT_START", vram = 0x80800000 },
-    { name = "chtalontorpedoboulder_TEXT_END", vram = 0x80800240 },
-    { name = "chtalontorpedoboulder_RODATA_START", vram = 0x80800240 },
-    { name = "overlays_ch_talontorpedoboulder_data__s", vram = 0x80800240 },
-    { name = "D_80800240_chtalontorpedoboulder", vram = 0x80800240 },
-    { name = "chtalontorpedoboulder_DATA_START", vram = 0x80800240 },
     { name = "chtalontorpedoboulder_RODATA_END", vram = 0x80800240 },
+    { name = "chtalontorpedoboulder_TEXT_END", vram = 0x80800240 },
+    { name = "chtalontorpedoboulder_DATA_START", vram = 0x80800240 },
+    { name = "D_80800240_chtalontorpedoboulder", vram = 0x80800240 },
+    { name = "overlays_ch_talontorpedoboulder_data__s", vram = 0x80800240 },
+    { name = "chtalontorpedoboulder_RODATA_START", vram = 0x80800240 },
     { name = "D_808002B4_chtalontorpedoboulder", vram = 0x808002B4 },
     { name = "D_808002FC_chtalontorpedoboulder", vram = 0x808002FC },
     { name = "D_80800314_chtalontorpedoboulder", vram = 0x80800314 },
     { name = "D_80800318_chtalontorpedoboulder", vram = 0x80800318 },
-    { name = "chtalontorpedoboulder_DATA_END", vram = 0x80800320 },
-]
-
-[[section]]
-name = ".chtalontorpedoboulder_bss"
-vram = 0x80800320
-size = 0x0
-
-symbols = [
-    { name = "chtalontorpedoboulder_BSS_END", vram = 0x80800320 },
     { name = "chtalontorpedoboulder_BSS_START", vram = 0x80800320 },
     { name = "chtalontorpedoboulder_bss_VRAM", vram = 0x80800320 },
+    { name = "chtalontorpedoboulder_DATA_END", vram = 0x80800320 },
     { name = "chtalontorpedoboulder_VRAM_END", vram = 0x80800320 },
+    { name = "chtalontorpedoboulder_BSS_END", vram = 0x80800320 },
 ]
 
 [[section]]
@@ -19048,18 +18816,10 @@ symbols = [
     { name = "chexplodingchainlinks_RODATA_END", vram = 0x80800170 },
     { name = "D_80800170_chexplodingchainlinks", vram = 0x80800170 },
     { name = "D_808001B8_chexplodingchainlinks", vram = 0x808001B8 },
-    { name = "chexplodingchainlinks_DATA_END", vram = 0x808001F0 },
-]
-
-[[section]]
-name = ".chexplodingchainlinks_bss"
-vram = 0x808001F0
-size = 0x0
-
-symbols = [
     { name = "chexplodingchainlinks_BSS_START", vram = 0x808001F0 },
     { name = "chexplodingchainlinks_VRAM_END", vram = 0x808001F0 },
     { name = "chexplodingchainlinks_bss_VRAM", vram = 0x808001F0 },
+    { name = "chexplodingchainlinks_DATA_END", vram = 0x808001F0 },
     { name = "chexplodingchainlinks_BSS_END", vram = 0x808001F0 },
 ]
 
@@ -19096,14 +18856,6 @@ symbols = [
     { name = "D_80800378_chlagoonbilldrillcover", vram = 0x80800378 },
     { name = "D_808003B0_chlagoonbilldrillcover", vram = 0x808003B0 },
     { name = "chlagoonbilldrillcover_DATA_END", vram = 0x808003D0 },
-]
-
-[[section]]
-name = ".chlagoonbilldrillcover_bss"
-vram = 0x808003D0
-size = 0x0
-
-symbols = [
     { name = "chlagoonbilldrillcover_BSS_START", vram = 0x808003D0 },
     { name = "chlagoonbilldrillcover_BSS_END", vram = 0x808003D0 },
     { name = "chlagoonbilldrillcover_VRAM_END", vram = 0x808003D0 },
@@ -19183,19 +18935,11 @@ symbols = [
     { name = "chwitchyshockpadswitch_DATA_START", vram = 0x80800170 },
     { name = "chwitchyshockpadswitch_TEXT_END", vram = 0x80800170 },
     { name = "chwitchyshockpadswitch_RODATA_START", vram = 0x80800170 },
-    { name = "chwitchyshockpadswitch_DATA_END", vram = 0x808001C0 },
-]
-
-[[section]]
-name = ".chwitchyshockpadswitch_bss"
-vram = 0x808001C0
-size = 0x0
-
-symbols = [
     { name = "chwitchyshockpadswitch_BSS_START", vram = 0x808001C0 },
     { name = "chwitchyshockpadswitch_bss_VRAM", vram = 0x808001C0 },
     { name = "chwitchyshockpadswitch_BSS_END", vram = 0x808001C0 },
     { name = "chwitchyshockpadswitch_VRAM_END", vram = 0x808001C0 },
+    { name = "chwitchyshockpadswitch_DATA_END", vram = 0x808001C0 },
 ]
 
 [[section]]
@@ -19277,14 +19021,6 @@ symbols = [
     { name = "overlays_ch_bottles_plantgrill_data__s", vram = 0x808000F0 },
     { name = "chbottlesplantgrill_RODATA_END", vram = 0x808000F0 },
     { name = "chbottlesplantgrill_DATA_END", vram = 0x80800140 },
-]
-
-[[section]]
-name = ".chbottlesplantgrill_bss"
-vram = 0x80800140
-size = 0x0
-
-symbols = [
     { name = "chbottlesplantgrill_VRAM_END", vram = 0x80800140 },
     { name = "chbottlesplantgrill_bss_VRAM", vram = 0x80800140 },
     { name = "chbottlesplantgrill_BSS_START", vram = 0x80800140 },
@@ -19725,32 +19461,24 @@ size = 0x640
 symbols = [
     { name = "chdiggerbossshell_TEXT_START", vram = 0x80800000 },
     { name = "chdiggerbossshell_VRAM", vram = 0x80800000 },
+    { name = "R_80800550_chdiggerbossshell", vram = 0x80800550 },
     { name = "chdiggerbossshell_TEXT_END", vram = 0x80800550 },
     { name = "chdiggerbossshell_RODATA_START", vram = 0x80800550 },
-    { name = "R_80800550_chdiggerbossshell", vram = 0x80800550 },
     { name = "R_80800554_chdiggerbossshell", vram = 0x80800554 },
     { name = "R_80800558_chdiggerbossshell", vram = 0x80800558 },
     { name = "overlays_ch_digger_bossshell_data__s", vram = 0x80800560 },
-    { name = "D_80800560_chdiggerbossshell", vram = 0x80800560 },
-    { name = "chdiggerbossshell_DATA_START", vram = 0x80800560 },
     { name = "chdiggerbossshell_RODATA_END", vram = 0x80800560 },
+    { name = "chdiggerbossshell_DATA_START", vram = 0x80800560 },
+    { name = "D_80800560_chdiggerbossshell", vram = 0x80800560 },
     { name = "D_808005A8_chdiggerbossshell", vram = 0x808005A8 },
     { name = "D_808005F0_chdiggerbossshell", vram = 0x808005F0 },
     { name = "D_80800600_chdiggerbossshell", vram = 0x80800600 },
     { name = "D_8080060C_chdiggerbossshell", vram = 0x8080060C },
     { name = "chdiggerbossshell_DATA_END", vram = 0x80800640 },
-]
-
-[[section]]
-name = ".chdiggerbossshell_bss"
-vram = 0x80800640
-size = 0x0
-
-symbols = [
-    { name = "chdiggerbossshell_bss_VRAM", vram = 0x80800640 },
-    { name = "chdiggerbossshell_VRAM_END", vram = 0x80800640 },
-    { name = "chdiggerbossshell_BSS_START", vram = 0x80800640 },
     { name = "chdiggerbossshell_BSS_END", vram = 0x80800640 },
+    { name = "chdiggerbossshell_BSS_START", vram = 0x80800640 },
+    { name = "chdiggerbossshell_VRAM_END", vram = 0x80800640 },
+    { name = "chdiggerbossshell_bss_VRAM", vram = 0x80800640 },
 ]
 
 [[section]]
@@ -19784,17 +19512,9 @@ symbols = [
     { name = "chdiggerbossbattery_DATA_START", vram = 0x808002F0 },
     { name = "overlays_ch_digger_bossbattery_data__s", vram = 0x808002F0 },
     { name = "D_80800338_chdiggerbossbattery", vram = 0x80800338 },
-    { name = "chdiggerbossbattery_DATA_END", vram = 0x80800350 },
-]
-
-[[section]]
-name = ".chdiggerbossbattery_bss"
-vram = 0x80800350
-size = 0x0
-
-symbols = [
     { name = "chdiggerbossbattery_bss_VRAM", vram = 0x80800350 },
     { name = "chdiggerbossbattery_VRAM_END", vram = 0x80800350 },
+    { name = "chdiggerbossbattery_DATA_END", vram = 0x80800350 },
     { name = "chdiggerbossbattery_BSS_END", vram = 0x80800350 },
     { name = "chdiggerbossbattery_BSS_START", vram = 0x80800350 },
 ]
@@ -19822,9 +19542,9 @@ size = 0x7E0
 symbols = [
     { name = "chgruntyfireballbig_VRAM", vram = 0x80800000 },
     { name = "chgruntyfireballbig_TEXT_START", vram = 0x80800000 },
-    { name = "chgruntyfireballbig_RODATA_START", vram = 0x80800670 },
     { name = "chgruntyfireballbig_TEXT_END", vram = 0x80800670 },
     { name = "R_80800670_chgruntyfireballbig", vram = 0x80800670 },
+    { name = "chgruntyfireballbig_RODATA_START", vram = 0x80800670 },
     { name = "R_80800674_chgruntyfireballbig", vram = 0x80800674 },
     { name = "chgruntyfireballbig_DATA_START", vram = 0x80800680 },
     { name = "D_80800680_chgruntyfireballbig", vram = 0x80800680 },
@@ -19838,19 +19558,11 @@ symbols = [
     { name = "D_80800724_chgruntyfireballbig", vram = 0x80800724 },
     { name = "D_80800754_chgruntyfireballbig", vram = 0x80800754 },
     { name = "D_80800788_chgruntyfireballbig", vram = 0x80800788 },
-    { name = "chgruntyfireballbig_DATA_END", vram = 0x808007E0 },
-]
-
-[[section]]
-name = ".chgruntyfireballbig_bss"
-vram = 0x808007E0
-size = 0x0
-
-symbols = [
-    { name = "chgruntyfireballbig_bss_VRAM", vram = 0x808007E0 },
-    { name = "chgruntyfireballbig_BSS_START", vram = 0x808007E0 },
     { name = "chgruntyfireballbig_BSS_END", vram = 0x808007E0 },
     { name = "chgruntyfireballbig_VRAM_END", vram = 0x808007E0 },
+    { name = "chgruntyfireballbig_BSS_START", vram = 0x808007E0 },
+    { name = "chgruntyfireballbig_DATA_END", vram = 0x808007E0 },
+    { name = "chgruntyfireballbig_bss_VRAM", vram = 0x808007E0 },
 ]
 
 [[section]]
@@ -19883,17 +19595,9 @@ symbols = [
     { name = "chdiggerbossinterior_DATA_START", vram = 0x80800230 },
     { name = "chdiggerbossinterior_RODATA_START", vram = 0x80800230 },
     { name = "D_80800278_chdiggerbossinterior", vram = 0x80800278 },
-    { name = "chdiggerbossinterior_DATA_END", vram = 0x80800290 },
-]
-
-[[section]]
-name = ".chdiggerbossinterior_bss"
-vram = 0x80800290
-size = 0x0
-
-symbols = [
     { name = "chdiggerbossinterior_BSS_START", vram = 0x80800290 },
     { name = "chdiggerbossinterior_VRAM_END", vram = 0x80800290 },
+    { name = "chdiggerbossinterior_DATA_END", vram = 0x80800290 },
     { name = "chdiggerbossinterior_BSS_END", vram = 0x80800290 },
     { name = "chdiggerbossinterior_bss_VRAM", vram = 0x80800290 },
 ]
@@ -20431,19 +20135,11 @@ symbols = [
     { name = "chdiggerbossdeflect_RODATA_START", vram = 0x80800040 },
     { name = "chdiggerbossdeflect_RODATA_END", vram = 0x80800040 },
     { name = "overlays_ch_digger_bossdeflect_data__s", vram = 0x80800040 },
-    { name = "chdiggerbossdeflect_DATA_END", vram = 0x80800090 },
-]
-
-[[section]]
-name = ".chdiggerbossdeflect_bss"
-vram = 0x80800090
-size = 0x0
-
-symbols = [
     { name = "chdiggerbossdeflect_BSS_START", vram = 0x80800090 },
     { name = "chdiggerbossdeflect_bss_VRAM", vram = 0x80800090 },
     { name = "chdiggerbossdeflect_VRAM_END", vram = 0x80800090 },
     { name = "chdiggerbossdeflect_BSS_END", vram = 0x80800090 },
+    { name = "chdiggerbossdeflect_DATA_END", vram = 0x80800090 },
 ]
 
 [[section]]
@@ -21144,9 +20840,9 @@ size = 0x5480
 symbols = [
     { name = "chstoneballcontrol_TEXT_START", vram = 0x80800000 },
     { name = "chstoneballcontrol_VRAM", vram = 0x80800000 },
-    { name = "chstoneballcontrol_TEXT_END", vram = 0x80804E00 },
-    { name = "chstoneballcontrol_RODATA_START", vram = 0x80804E00 },
     { name = "R_80804E00_chstoneballcontrol", vram = 0x80804E00 },
+    { name = "chstoneballcontrol_RODATA_START", vram = 0x80804E00 },
+    { name = "chstoneballcontrol_TEXT_END", vram = 0x80804E00 },
     { name = "R_80804E04_chstoneballcontrol", vram = 0x80804E04 },
     { name = "R_80804E08_chstoneballcontrol", vram = 0x80804E08 },
     { name = "R_80804E0C_chstoneballcontrol", vram = 0x80804E0C },
@@ -21201,10 +20897,10 @@ symbols = [
     { name = "R_80804FB0_chstoneballcontrol", vram = 0x80804FB0 },
     { name = "R_80804FB4_chstoneballcontrol", vram = 0x80804FB4 },
     { name = "R_80804FB8_chstoneballcontrol", vram = 0x80804FB8 },
-    { name = "chstoneballcontrol_DATA_START", vram = 0x80804FC0 },
-    { name = "D_80804FC0_chstoneballcontrol", vram = 0x80804FC0 },
-    { name = "chstoneballcontrol_RODATA_END", vram = 0x80804FC0 },
     { name = "overlays_ch_stoneballcontrol_data__s", vram = 0x80804FC0 },
+    { name = "chstoneballcontrol_RODATA_END", vram = 0x80804FC0 },
+    { name = "D_80804FC0_chstoneballcontrol", vram = 0x80804FC0 },
+    { name = "chstoneballcontrol_DATA_START", vram = 0x80804FC0 },
     { name = "D_80804FD4_chstoneballcontrol", vram = 0x80804FD4 },
     { name = "D_80804FE8_chstoneballcontrol", vram = 0x80804FE8 },
     { name = "D_80804FFC_chstoneballcontrol", vram = 0x80804FFC },
@@ -21236,18 +20932,10 @@ symbols = [
     { name = "D_80805428_chstoneballcontrol", vram = 0x80805428 },
     { name = "D_80805434_chstoneballcontrol", vram = 0x80805434 },
     { name = "chstoneballcontrol_DATA_END", vram = 0x80805480 },
-]
-
-[[section]]
-name = ".chstoneballcontrol_bss"
-vram = 0x80805480
-size = 0x0
-
-symbols = [
-    { name = "chstoneballcontrol_BSS_START", vram = 0x80805480 },
-    { name = "chstoneballcontrol_VRAM_END", vram = 0x80805480 },
     { name = "chstoneballcontrol_BSS_END", vram = 0x80805480 },
     { name = "chstoneballcontrol_bss_VRAM", vram = 0x80805480 },
+    { name = "chstoneballcontrol_VRAM_END", vram = 0x80805480 },
+    { name = "chstoneballcontrol_BSS_START", vram = 0x80805480 },
 ]
 
 [[section]]
@@ -23061,14 +22749,6 @@ symbols = [
     { name = "chminelightswitch_RODATA_END", vram = 0x808000C0 },
     { name = "chminelightswitch_DATA_START", vram = 0x808000C0 },
     { name = "chminelightswitch_DATA_END", vram = 0x80800110 },
-]
-
-[[section]]
-name = ".chminelightswitch_bss"
-vram = 0x80800110
-size = 0x0
-
-symbols = [
     { name = "chminelightswitch_BSS_START", vram = 0x80800110 },
     { name = "chminelightswitch_BSS_END", vram = 0x80800110 },
     { name = "chminelightswitch_VRAM_END", vram = 0x80800110 },
@@ -23963,16 +23643,16 @@ size = 0x1180
 symbols = [
     { name = "chskeletonexplode_TEXT_START", vram = 0x80800000 },
     { name = "chskeletonexplode_VRAM", vram = 0x80800000 },
-    { name = "chskeletonexplode_TEXT_END", vram = 0x80801060 },
     { name = "jtbl_80801060_chskeletonexplode", vram = 0x80801060 },
+    { name = "chskeletonexplode_TEXT_END", vram = 0x80801060 },
     { name = "chskeletonexplode_RODATA_START", vram = 0x80801060 },
     { name = "R_80801080_chskeletonexplode", vram = 0x80801080 },
     { name = "R_80801084_chskeletonexplode", vram = 0x80801084 },
     { name = "R_80801088_chskeletonexplode", vram = 0x80801088 },
+    { name = "D_80801090_chskeletonexplode", vram = 0x80801090 },
+    { name = "chskeletonexplode_DATA_START", vram = 0x80801090 },
     { name = "overlays_ch_skeletonexplode_data__s", vram = 0x80801090 },
     { name = "chskeletonexplode_RODATA_END", vram = 0x80801090 },
-    { name = "chskeletonexplode_DATA_START", vram = 0x80801090 },
-    { name = "D_80801090_chskeletonexplode", vram = 0x80801090 },
     { name = "D_808010A8_chskeletonexplode", vram = 0x808010A8 },
     { name = "D_808010C0_chskeletonexplode", vram = 0x808010C0 },
     { name = "D_808010D8_chskeletonexplode", vram = 0x808010D8 },
@@ -23980,19 +23660,11 @@ symbols = [
     { name = "D_80801108_chskeletonexplode", vram = 0x80801108 },
     { name = "D_80801120_chskeletonexplode", vram = 0x80801120 },
     { name = "D_80801138_chskeletonexplode", vram = 0x80801138 },
-    { name = "chskeletonexplode_DATA_END", vram = 0x80801180 },
-]
-
-[[section]]
-name = ".chskeletonexplode_bss"
-vram = 0x80801180
-size = 0x0
-
-symbols = [
-    { name = "chskeletonexplode_BSS_END", vram = 0x80801180 },
-    { name = "chskeletonexplode_VRAM_END", vram = 0x80801180 },
-    { name = "chskeletonexplode_BSS_START", vram = 0x80801180 },
     { name = "chskeletonexplode_bss_VRAM", vram = 0x80801180 },
+    { name = "chskeletonexplode_VRAM_END", vram = 0x80801180 },
+    { name = "chskeletonexplode_BSS_END", vram = 0x80801180 },
+    { name = "chskeletonexplode_BSS_START", vram = 0x80801180 },
+    { name = "chskeletonexplode_DATA_END", vram = 0x80801180 },
 ]
 
 [[section]]
@@ -24372,8 +24044,8 @@ symbols = [
     { name = "R_80804C4C_chcollballcontrol", vram = 0x80804C4C },
     { name = "D_80804C50_chcollballcontrol", vram = 0x80804C50 },
     { name = "overlays_ch_collballcontrol_data__s", vram = 0x80804C50 },
-    { name = "chcollballcontrol_DATA_START", vram = 0x80804C50 },
     { name = "chcollballcontrol_RODATA_END", vram = 0x80804C50 },
+    { name = "chcollballcontrol_DATA_START", vram = 0x80804C50 },
     { name = "D_80804C64_chcollballcontrol", vram = 0x80804C64 },
     { name = "D_80804C74_chcollballcontrol", vram = 0x80804C74 },
     { name = "D_80804C84_chcollballcontrol", vram = 0x80804C84 },
@@ -24404,18 +24076,10 @@ symbols = [
     { name = "D_808050B4_chcollballcontrol", vram = 0x808050B4 },
     { name = "D_808050C0_chcollballcontrol", vram = 0x808050C0 },
     { name = "D_808050CC_chcollballcontrol", vram = 0x808050CC },
-    { name = "chcollballcontrol_DATA_END", vram = 0x80805120 },
-]
-
-[[section]]
-name = ".chcollballcontrol_bss"
-vram = 0x80805120
-size = 0x0
-
-symbols = [
-    { name = "chcollballcontrol_BSS_START", vram = 0x80805120 },
-    { name = "chcollballcontrol_BSS_END", vram = 0x80805120 },
     { name = "chcollballcontrol_VRAM_END", vram = 0x80805120 },
+    { name = "chcollballcontrol_BSS_END", vram = 0x80805120 },
+    { name = "chcollballcontrol_DATA_END", vram = 0x80805120 },
+    { name = "chcollballcontrol_BSS_START", vram = 0x80805120 },
     { name = "chcollballcontrol_bss_VRAM", vram = 0x80805120 },
 ]
 
@@ -24702,16 +24366,16 @@ size = 0x1390
 symbols = [
     { name = "chamazongoldhordeofficial_TEXT_START", vram = 0x80800000 },
     { name = "chamazongoldhordeofficial_VRAM", vram = 0x80800000 },
-    { name = "jtbl_808010E0_chamazongoldhordeofficial", vram = 0x808010E0 },
     { name = "chamazongoldhordeofficial_TEXT_END", vram = 0x808010E0 },
     { name = "chamazongoldhordeofficial_RODATA_START", vram = 0x808010E0 },
+    { name = "jtbl_808010E0_chamazongoldhordeofficial", vram = 0x808010E0 },
     { name = "R_8080110C_chamazongoldhordeofficial", vram = 0x8080110C },
     { name = "jtbl_80801110_chamazongoldhordeofficial", vram = 0x80801110 },
     { name = "R_808011B8_chamazongoldhordeofficial", vram = 0x808011B8 },
     { name = "chamazongoldhordeofficial_RODATA_END", vram = 0x808011C0 },
-    { name = "chamazongoldhordeofficial_DATA_START", vram = 0x808011C0 },
-    { name = "overlays_ch_amazongoldhordeofficial_data__s", vram = 0x808011C0 },
     { name = "D_808011C0_chamazongoldhordeofficial", vram = 0x808011C0 },
+    { name = "overlays_ch_amazongoldhordeofficial_data__s", vram = 0x808011C0 },
+    { name = "chamazongoldhordeofficial_DATA_START", vram = 0x808011C0 },
     { name = "D_808011D0_chamazongoldhordeofficial", vram = 0x808011D0 },
     { name = "D_808011E0_chamazongoldhordeofficial", vram = 0x808011E0 },
     { name = "D_80801240_chamazongoldhordeofficial", vram = 0x80801240 },
@@ -24728,19 +24392,11 @@ symbols = [
     { name = "D_8080135C_chamazongoldhordeofficial", vram = 0x8080135C },
     { name = "D_80801368_chamazongoldhordeofficial", vram = 0x80801368 },
     { name = "D_80801380_chamazongoldhordeofficial", vram = 0x80801380 },
-    { name = "chamazongoldhordeofficial_DATA_END", vram = 0x80801390 },
-]
-
-[[section]]
-name = ".chamazongoldhordeofficial_bss"
-vram = 0x80801390
-size = 0x0
-
-symbols = [
-    { name = "chamazongoldhordeofficial_BSS_START", vram = 0x80801390 },
     { name = "chamazongoldhordeofficial_bss_VRAM", vram = 0x80801390 },
     { name = "chamazongoldhordeofficial_VRAM_END", vram = 0x80801390 },
     { name = "chamazongoldhordeofficial_BSS_END", vram = 0x80801390 },
+    { name = "chamazongoldhordeofficial_DATA_END", vram = 0x80801390 },
+    { name = "chamazongoldhordeofficial_BSS_START", vram = 0x80801390 },
 ]
 
 [[section]]
@@ -24869,10 +24525,10 @@ symbols = [
     { name = "R_80800E08_chstonedartgunhead", vram = 0x80800E08 },
     { name = "R_80800E0C_chstonedartgunhead", vram = 0x80800E0C },
     { name = "R_80800E10_chstonedartgunhead", vram = 0x80800E10 },
+    { name = "chstonedartgunhead_DATA_START", vram = 0x80800E20 },
     { name = "D_80800E20_chstonedartgunhead", vram = 0x80800E20 },
     { name = "overlays_ch_stonedartgunhead_data__s", vram = 0x80800E20 },
     { name = "chstonedartgunhead_RODATA_END", vram = 0x80800E20 },
-    { name = "chstonedartgunhead_DATA_START", vram = 0x80800E20 },
     { name = "D_80800E78_chstonedartgunhead", vram = 0x80800E78 },
     { name = "D_80800E80_chstonedartgunhead", vram = 0x80800E80 },
     { name = "D_80800E8C_chstonedartgunhead", vram = 0x80800E8C },
@@ -24885,18 +24541,10 @@ symbols = [
     { name = "D_80800FA0_chstonedartgunhead", vram = 0x80800FA0 },
     { name = "D_80800FB0_chstonedartgunhead", vram = 0x80800FB0 },
     { name = "chstonedartgunhead_DATA_END", vram = 0x80801000 },
-]
-
-[[section]]
-name = ".chstonedartgunhead_bss"
-vram = 0x80801000
-size = 0x0
-
-symbols = [
-    { name = "chstonedartgunhead_bss_VRAM", vram = 0x80801000 },
-    { name = "chstonedartgunhead_VRAM_END", vram = 0x80801000 },
-    { name = "chstonedartgunhead_BSS_START", vram = 0x80801000 },
     { name = "chstonedartgunhead_BSS_END", vram = 0x80801000 },
+    { name = "chstonedartgunhead_BSS_START", vram = 0x80801000 },
+    { name = "chstonedartgunhead_VRAM_END", vram = 0x80801000 },
+    { name = "chstonedartgunhead_bss_VRAM", vram = 0x80801000 },
 ]
 
 [[section]]
@@ -24927,8 +24575,8 @@ symbols = [
     { name = "chfriendlystonehead_TEXT_END", vram = 0x808008A0 },
     { name = "chfriendlystonehead_RODATA_END", vram = 0x808008C0 },
     { name = "chfriendlystonehead_DATA_START", vram = 0x808008C0 },
-    { name = "overlays_ch_friendlystonehead_data__s", vram = 0x808008C0 },
     { name = "D_808008C0_chfriendlystonehead", vram = 0x808008C0 },
+    { name = "overlays_ch_friendlystonehead_data__s", vram = 0x808008C0 },
     { name = "D_808008E0_chfriendlystonehead", vram = 0x808008E0 },
     { name = "D_80800908_chfriendlystonehead", vram = 0x80800908 },
     { name = "D_80800918_chfriendlystonehead", vram = 0x80800918 },
@@ -24943,17 +24591,9 @@ symbols = [
     { name = "D_808009A4_chfriendlystonehead", vram = 0x808009A4 },
     { name = "D_808009B4_chfriendlystonehead", vram = 0x808009B4 },
     { name = "chfriendlystonehead_DATA_END", vram = 0x80800A00 },
-]
-
-[[section]]
-name = ".chfriendlystonehead_bss"
-vram = 0x80800A00
-size = 0x0
-
-symbols = [
     { name = "chfriendlystonehead_BSS_START", vram = 0x80800A00 },
-    { name = "chfriendlystonehead_bss_VRAM", vram = 0x80800A00 },
     { name = "chfriendlystonehead_BSS_END", vram = 0x80800A00 },
+    { name = "chfriendlystonehead_bss_VRAM", vram = 0x80800A00 },
     { name = "chfriendlystonehead_VRAM_END", vram = 0x80800A00 },
 ]
 
@@ -24987,14 +24627,6 @@ symbols = [
     { name = "chlavacolumnswitch_RODATA_START", vram = 0x80800080 },
     { name = "overlays_ch_lava_columnswitch_data__s", vram = 0x80800080 },
     { name = "chlavacolumnswitch_DATA_END", vram = 0x808000D0 },
-]
-
-[[section]]
-name = ".chlavacolumnswitch_bss"
-vram = 0x808000D0
-size = 0x0
-
-symbols = [
     { name = "chlavacolumnswitch_BSS_START", vram = 0x808000D0 },
     { name = "chlavacolumnswitch_bss_VRAM", vram = 0x808000D0 },
     { name = "chlavacolumnswitch_BSS_END", vram = 0x808000D0 },
@@ -25226,18 +24858,10 @@ symbols = [
     { name = "D_808007A8_chamazonstadiumguard", vram = 0x808007A8 },
     { name = "D_808007C4_chamazonstadiumguard", vram = 0x808007C4 },
     { name = "D_808007D0_chamazonstadiumguard", vram = 0x808007D0 },
-    { name = "chamazonstadiumguard_DATA_END", vram = 0x808007E0 },
-]
-
-[[section]]
-name = ".chamazonstadiumguard_bss"
-vram = 0x808007E0
-size = 0x0
-
-symbols = [
-    { name = "chamazonstadiumguard_VRAM_END", vram = 0x808007E0 },
     { name = "chamazonstadiumguard_BSS_START", vram = 0x808007E0 },
+    { name = "chamazonstadiumguard_VRAM_END", vram = 0x808007E0 },
     { name = "chamazonstadiumguard_bss_VRAM", vram = 0x808007E0 },
+    { name = "chamazonstadiumguard_DATA_END", vram = 0x808007E0 },
     { name = "chamazonstadiumguard_BSS_END", vram = 0x808007E0 },
 ]
 
@@ -25270,17 +24894,9 @@ symbols = [
     { name = "chlavatraindoorswitch_TEXT_END", vram = 0x80800080 },
     { name = "chlavatraindoorswitch_DATA_START", vram = 0x80800080 },
     { name = "chlavatraindoorswitch_RODATA_END", vram = 0x80800080 },
-    { name = "chlavatraindoorswitch_DATA_END", vram = 0x808000D0 },
-]
-
-[[section]]
-name = ".chlavatraindoorswitch_bss"
-vram = 0x808000D0
-size = 0x0
-
-symbols = [
     { name = "chlavatraindoorswitch_bss_VRAM", vram = 0x808000D0 },
     { name = "chlavatraindoorswitch_VRAM_END", vram = 0x808000D0 },
+    { name = "chlavatraindoorswitch_DATA_END", vram = 0x808000D0 },
     { name = "chlavatraindoorswitch_BSS_START", vram = 0x808000D0 },
     { name = "chlavatraindoorswitch_BSS_END", vram = 0x808000D0 },
 ]
@@ -25320,19 +24936,11 @@ symbols = [
     { name = "D_80800618_chbilldrillboulder", vram = 0x80800618 },
     { name = "D_80800684_chbilldrillboulder", vram = 0x80800684 },
     { name = "D_808006F0_chbilldrillboulder", vram = 0x808006F0 },
-    { name = "chbilldrillboulder_DATA_END", vram = 0x80800710 },
-]
-
-[[section]]
-name = ".chbilldrillboulder_bss"
-vram = 0x80800710
-size = 0x0
-
-symbols = [
-    { name = "chbilldrillboulder_bss_VRAM", vram = 0x80800710 },
-    { name = "chbilldrillboulder_BSS_START", vram = 0x80800710 },
-    { name = "chbilldrillboulder_BSS_END", vram = 0x80800710 },
     { name = "chbilldrillboulder_VRAM_END", vram = 0x80800710 },
+    { name = "chbilldrillboulder_DATA_END", vram = 0x80800710 },
+    { name = "chbilldrillboulder_BSS_END", vram = 0x80800710 },
+    { name = "chbilldrillboulder_BSS_START", vram = 0x80800710 },
+    { name = "chbilldrillboulder_bss_VRAM", vram = 0x80800710 },
 ]
 
 [[section]]
@@ -25489,18 +25097,10 @@ symbols = [
     { name = "D_80800100_chtemplebrokendoorpiece", vram = 0x80800100 },
     { name = "D_80800114_chtemplebrokendoorpiece", vram = 0x80800114 },
     { name = "D_8080015C_chtemplebrokendoorpiece", vram = 0x8080015C },
-    { name = "chtemplebrokendoorpiece_DATA_END", vram = 0x808001B0 },
-]
-
-[[section]]
-name = ".chtemplebrokendoorpiece_bss"
-vram = 0x808001B0
-size = 0x0
-
-symbols = [
     { name = "chtemplebrokendoorpiece_bss_VRAM", vram = 0x808001B0 },
     { name = "chtemplebrokendoorpiece_BSS_END", vram = 0x808001B0 },
     { name = "chtemplebrokendoorpiece_VRAM_END", vram = 0x808001B0 },
+    { name = "chtemplebrokendoorpiece_DATA_END", vram = 0x808001B0 },
     { name = "chtemplebrokendoorpiece_BSS_START", vram = 0x808001B0 },
 ]
 
@@ -25533,18 +25133,10 @@ symbols = [
     { name = "overlays_ch_lava_archgrillswitch_data__s", vram = 0x80800030 },
     { name = "chlavaarchgrillswitch_RODATA_END", vram = 0x80800030 },
     { name = "chlavaarchgrillswitch_TEXT_END", vram = 0x80800030 },
-    { name = "chlavaarchgrillswitch_DATA_END", vram = 0x80800080 },
-]
-
-[[section]]
-name = ".chlavaarchgrillswitch_bss"
-vram = 0x80800080
-size = 0x0
-
-symbols = [
     { name = "chlavaarchgrillswitch_BSS_END", vram = 0x80800080 },
     { name = "chlavaarchgrillswitch_bss_VRAM", vram = 0x80800080 },
     { name = "chlavaarchgrillswitch_BSS_START", vram = 0x80800080 },
+    { name = "chlavaarchgrillswitch_DATA_END", vram = 0x80800080 },
     { name = "chlavaarchgrillswitch_VRAM_END", vram = 0x80800080 },
 ]
 
@@ -25628,14 +25220,6 @@ symbols = [
     { name = "D_80800090_chwaterfallgrillswitch", vram = 0x80800090 },
     { name = "chwaterfallgrillswitch_TEXT_END", vram = 0x80800090 },
     { name = "chwaterfallgrillswitch_DATA_END", vram = 0x808000E0 },
-]
-
-[[section]]
-name = ".chwaterfallgrillswitch_bss"
-vram = 0x808000E0
-size = 0x0
-
-symbols = [
     { name = "chwaterfallgrillswitch_BSS_START", vram = 0x808000E0 },
     { name = "chwaterfallgrillswitch_bss_VRAM", vram = 0x808000E0 },
     { name = "chwaterfallgrillswitch_BSS_END", vram = 0x808000E0 },
@@ -25863,19 +25447,11 @@ symbols = [
     { name = "D_808001CC_chmumboskullfakearchpanellava", vram = 0x808001CC },
     { name = "D_808001E0_chmumboskullfakearchpanellava", vram = 0x808001E0 },
     { name = "D_80800228_chmumboskullfakearchpanellava", vram = 0x80800228 },
-    { name = "chmumboskullfakearchpanellava_DATA_END", vram = 0x80800270 },
-]
-
-[[section]]
-name = ".chmumboskullfakearchpanellava_bss"
-vram = 0x80800270
-size = 0x0
-
-symbols = [
     { name = "chmumboskullfakearchpanellava_bss_VRAM", vram = 0x80800270 },
     { name = "chmumboskullfakearchpanellava_BSS_END", vram = 0x80800270 },
     { name = "chmumboskullfakearchpanellava_BSS_START", vram = 0x80800270 },
     { name = "chmumboskullfakearchpanellava_VRAM_END", vram = 0x80800270 },
+    { name = "chmumboskullfakearchpanellava_DATA_END", vram = 0x80800270 },
 ]
 
 [[section]]
@@ -25910,14 +25486,6 @@ symbols = [
     { name = "D_8080013C_chgruntylairexttowerwindow", vram = 0x8080013C },
     { name = "D_80800150_chgruntylairexttowerwindow", vram = 0x80800150 },
     { name = "chgruntylairexttowerwindow_DATA_END", vram = 0x808001A0 },
-]
-
-[[section]]
-name = ".chgruntylairexttowerwindow_bss"
-vram = 0x808001A0
-size = 0x0
-
-symbols = [
     { name = "chgruntylairexttowerwindow_bss_VRAM", vram = 0x808001A0 },
     { name = "chgruntylairexttowerwindow_VRAM_END", vram = 0x808001A0 },
     { name = "chgruntylairexttowerwindow_BSS_START", vram = 0x808001A0 },
@@ -25954,14 +25522,6 @@ symbols = [
     { name = "D_80800150_chlagoonentrygate", vram = 0x80800150 },
     { name = "overlays_ch_lagoon_entrygate_data__s", vram = 0x80800150 },
     { name = "chlagoonentrygate_DATA_END", vram = 0x808001A0 },
-]
-
-[[section]]
-name = ".chlagoonentrygate_bss"
-vram = 0x808001A0
-size = 0x0
-
-symbols = [
     { name = "chlagoonentrygate_BSS_END", vram = 0x808001A0 },
     { name = "chlagoonentrygate_BSS_START", vram = 0x808001A0 },
     { name = "chlagoonentrygate_bss_VRAM", vram = 0x808001A0 },
@@ -26033,18 +25593,10 @@ symbols = [
     { name = "overlays_ch_hagstraindoorswit_data__s", vram = 0x80800080 },
     { name = "chhagstraindoorswitch_RODATA_END", vram = 0x80800080 },
     { name = "chhagstraindoorswitch_DATA_START", vram = 0x80800080 },
-    { name = "chhagstraindoorswitch_DATA_END", vram = 0x808000D0 },
-]
-
-[[section]]
-name = ".chhagstraindoorswitch_bss"
-vram = 0x808000D0
-size = 0x0
-
-symbols = [
     { name = "chhagstraindoorswitch_bss_VRAM", vram = 0x808000D0 },
     { name = "chhagstraindoorswitch_BSS_START", vram = 0x808000D0 },
     { name = "chhagstraindoorswitch_BSS_END", vram = 0x808000D0 },
+    { name = "chhagstraindoorswitch_DATA_END", vram = 0x808000D0 },
     { name = "chhagstraindoorswitch_VRAM_END", vram = 0x808000D0 },
 ]
 
@@ -26071,30 +25623,22 @@ size = 0x280
 symbols = [
     { name = "chlavaentrancebridge_TEXT_START", vram = 0x80800000 },
     { name = "chlavaentrancebridge_VRAM", vram = 0x80800000 },
-    { name = "R_80800210_chlavaentrancebridge", vram = 0x80800210 },
     { name = "chlavaentrancebridge_TEXT_END", vram = 0x80800210 },
     { name = "chlavaentrancebridge_RODATA_START", vram = 0x80800210 },
+    { name = "R_80800210_chlavaentrancebridge", vram = 0x80800210 },
     { name = "R_80800214_chlavaentrancebridge", vram = 0x80800214 },
     { name = "R_80800218_chlavaentrancebridge", vram = 0x80800218 },
-    { name = "overlays_ch_lava_entrancebridge_data__s", vram = 0x80800220 },
     { name = "D_80800220_chlavaentrancebridge", vram = 0x80800220 },
+    { name = "overlays_ch_lava_entrancebridge_data__s", vram = 0x80800220 },
     { name = "chlavaentrancebridge_RODATA_END", vram = 0x80800220 },
     { name = "chlavaentrancebridge_DATA_START", vram = 0x80800220 },
     { name = "D_80800228_chlavaentrancebridge", vram = 0x80800228 },
     { name = "D_80800230_chlavaentrancebridge", vram = 0x80800230 },
-    { name = "chlavaentrancebridge_DATA_END", vram = 0x80800280 },
-]
-
-[[section]]
-name = ".chlavaentrancebridge_bss"
-vram = 0x80800280
-size = 0x0
-
-symbols = [
-    { name = "chlavaentrancebridge_BSS_END", vram = 0x80800280 },
     { name = "chlavaentrancebridge_BSS_START", vram = 0x80800280 },
     { name = "chlavaentrancebridge_bss_VRAM", vram = 0x80800280 },
+    { name = "chlavaentrancebridge_BSS_END", vram = 0x80800280 },
     { name = "chlavaentrancebridge_VRAM_END", vram = 0x80800280 },
+    { name = "chlavaentrancebridge_DATA_END", vram = 0x80800280 },
 ]
 
 [[section]]
@@ -26126,19 +25670,11 @@ symbols = [
     { name = "chlavaentrancebridgeswitch_RODATA_START", vram = 0x808000A0 },
     { name = "chlavaentrancebridgeswitch_DATA_START", vram = 0x808000A0 },
     { name = "D_808000A0_chlavaentrancebridgeswitch", vram = 0x808000A0 },
-    { name = "chlavaentrancebridgeswitch_DATA_END", vram = 0x808000F0 },
-]
-
-[[section]]
-name = ".chlavaentrancebridgeswitch_bss"
-vram = 0x808000F0
-size = 0x0
-
-symbols = [
     { name = "chlavaentrancebridgeswitch_bss_VRAM", vram = 0x808000F0 },
     { name = "chlavaentrancebridgeswitch_VRAM_END", vram = 0x808000F0 },
     { name = "chlavaentrancebridgeswitch_BSS_END", vram = 0x808000F0 },
     { name = "chlavaentrancebridgeswitch_BSS_START", vram = 0x808000F0 },
+    { name = "chlavaentrancebridgeswitch_DATA_END", vram = 0x808000F0 },
 ]
 
 [[section]]
@@ -26246,17 +25782,9 @@ symbols = [
     { name = "D_80800140_chmineentrygrille", vram = 0x80800140 },
     { name = "D_80800180_chmineentrygrille", vram = 0x80800180 },
     { name = "D_80800194_chmineentrygrille", vram = 0x80800194 },
-    { name = "chmineentrygrille_DATA_END", vram = 0x808001E0 },
-]
-
-[[section]]
-name = ".chmineentrygrille_bss"
-vram = 0x808001E0
-size = 0x0
-
-symbols = [
     { name = "chmineentrygrille_BSS_START", vram = 0x808001E0 },
     { name = "chmineentrygrille_bss_VRAM", vram = 0x808001E0 },
+    { name = "chmineentrygrille_DATA_END", vram = 0x808001E0 },
     { name = "chmineentrygrille_BSS_END", vram = 0x808001E0 },
     { name = "chmineentrygrille_VRAM_END", vram = 0x808001E0 },
 ]
@@ -26336,19 +25864,11 @@ symbols = [
     { name = "D_80800540_chcauldronentrydoor", vram = 0x80800540 },
     { name = "D_80800550_chcauldronentrydoor", vram = 0x80800550 },
     { name = "D_80800598_chcauldronentrydoor", vram = 0x80800598 },
-    { name = "chcauldronentrydoor_DATA_END", vram = 0x808005E0 },
-]
-
-[[section]]
-name = ".chcauldronentrydoor_bss"
-vram = 0x808005E0
-size = 0x0
-
-symbols = [
-    { name = "chcauldronentrydoor_BSS_START", vram = 0x808005E0 },
     { name = "chcauldronentrydoor_bss_VRAM", vram = 0x808005E0 },
+    { name = "chcauldronentrydoor_DATA_END", vram = 0x808005E0 },
     { name = "chcauldronentrydoor_BSS_END", vram = 0x808005E0 },
     { name = "chcauldronentrydoor_VRAM_END", vram = 0x808005E0 },
+    { name = "chcauldronentrydoor_BSS_START", vram = 0x808005E0 },
 ]
 
 [[section]]
@@ -26418,16 +25938,8 @@ symbols = [
     { name = "chwitchyentrygates_TEXT_END", vram = 0x808001F0 },
     { name = "chwitchyentrygates_RODATA_END", vram = 0x808001F0 },
     { name = "chwitchyentrygates_RODATA_START", vram = 0x808001F0 },
-    { name = "chwitchyentrygates_DATA_END", vram = 0x80800240 },
-]
-
-[[section]]
-name = ".chwitchyentrygates_bss"
-vram = 0x80800240
-size = 0x0
-
-symbols = [
     { name = "chwitchyentrygates_BSS_END", vram = 0x80800240 },
+    { name = "chwitchyentrygates_DATA_END", vram = 0x80800240 },
     { name = "chwitchyentrygates_VRAM_END", vram = 0x80800240 },
     { name = "chwitchyentrygates_bss_VRAM", vram = 0x80800240 },
     { name = "chwitchyentrygates_BSS_START", vram = 0x80800240 },
@@ -26465,19 +25977,11 @@ symbols = [
     { name = "D_808002F8_chfactoryentrydoors", vram = 0x808002F8 },
     { name = "D_80800390_chfactoryentrydoors", vram = 0x80800390 },
     { name = "D_808003A0_chfactoryentrydoors", vram = 0x808003A0 },
-    { name = "chfactoryentrydoors_DATA_END", vram = 0x808003F0 },
-]
-
-[[section]]
-name = ".chfactoryentrydoors_bss"
-vram = 0x808003F0
-size = 0x0
-
-symbols = [
     { name = "chfactoryentrydoors_VRAM_END", vram = 0x808003F0 },
     { name = "chfactoryentrydoors_BSS_START", vram = 0x808003F0 },
     { name = "chfactoryentrydoors_bss_VRAM", vram = 0x808003F0 },
     { name = "chfactoryentrydoors_BSS_END", vram = 0x808003F0 },
+    { name = "chfactoryentrydoors_DATA_END", vram = 0x808003F0 },
 ]
 
 [[section]]
@@ -26521,19 +26025,11 @@ symbols = [
     { name = "D_80800528_chLagoonInnBlockedWall", vram = 0x80800528 },
     { name = "D_8080054C_chLagoonInnBlockedWall", vram = 0x8080054C },
     { name = "D_80800570_chLagoonInnBlockedWall", vram = 0x80800570 },
-    { name = "chLagoonInnBlockedWall_DATA_END", vram = 0x808005C0 },
-]
-
-[[section]]
-name = ".chLagoonInnBlockedWall_bss"
-vram = 0x808005C0
-size = 0x0
-
-symbols = [
-    { name = "chLagoonInnBlockedWall_VRAM_END", vram = 0x808005C0 },
+    { name = "chLagoonInnBlockedWall_BSS_END", vram = 0x808005C0 },
     { name = "chLagoonInnBlockedWall_bss_VRAM", vram = 0x808005C0 },
     { name = "chLagoonInnBlockedWall_BSS_START", vram = 0x808005C0 },
-    { name = "chLagoonInnBlockedWall_BSS_END", vram = 0x808005C0 },
+    { name = "chLagoonInnBlockedWall_VRAM_END", vram = 0x808005C0 },
+    { name = "chLagoonInnBlockedWall_DATA_END", vram = 0x808005C0 },
 ]
 
 [[section]]
@@ -26567,14 +26063,6 @@ symbols = [
     { name = "overlays_ch_cauldronenergybars_data__s", vram = 0x808002C0 },
     { name = "D_808002D4_chcauldronenergybars", vram = 0x808002D4 },
     { name = "chcauldronenergybars_DATA_END", vram = 0x80800320 },
-]
-
-[[section]]
-name = ".chcauldronenergybars_bss"
-vram = 0x80800320
-size = 0x0
-
-symbols = [
     { name = "chcauldronenergybars_bss_VRAM", vram = 0x80800320 },
     { name = "chcauldronenergybars_BSS_END", vram = 0x80800320 },
     { name = "chcauldronenergybars_VRAM_END", vram = 0x80800320 },
@@ -26614,14 +26102,6 @@ symbols = [
     { name = "D_80800488_chjinjovillagecamera1", vram = 0x80800488 },
     { name = "D_80800494_chjinjovillagecamera1", vram = 0x80800494 },
     { name = "chjinjovillagecamera1_DATA_END", vram = 0x808004E0 },
-]
-
-[[section]]
-name = ".chjinjovillagecamera1_bss"
-vram = 0x808004E0
-size = 0x0
-
-symbols = [
     { name = "chjinjovillagecamera1_BSS_END", vram = 0x808004E0 },
     { name = "chjinjovillagecamera1_VRAM_END", vram = 0x808004E0 },
     { name = "chjinjovillagecamera1_BSS_START", vram = 0x808004E0 },
@@ -26649,34 +26129,26 @@ vram = 0x80800000
 size = 0x4B0
 
 symbols = [
-    { name = "chlagoonlockerdoorhits_TEXT_START", vram = 0x80800000 },
     { name = "chlagoonlockerdoorhits_VRAM", vram = 0x80800000 },
-    { name = "R_80800390_chlagoonlockerdoorhits", vram = 0x80800390 },
-    { name = "chlagoonlockerdoorhits_TEXT_END", vram = 0x80800390 },
+    { name = "chlagoonlockerdoorhits_TEXT_START", vram = 0x80800000 },
     { name = "chlagoonlockerdoorhits_RODATA_START", vram = 0x80800390 },
+    { name = "chlagoonlockerdoorhits_TEXT_END", vram = 0x80800390 },
+    { name = "R_80800390_chlagoonlockerdoorhits", vram = 0x80800390 },
     { name = "R_80800394_chlagoonlockerdoorhits", vram = 0x80800394 },
-    { name = "overlays_ch_lagoon_lockerdoorhits_data__s", vram = 0x808003A0 },
-    { name = "D_808003A0_chlagoonlockerdoorhits", vram = 0x808003A0 },
-    { name = "chlagoonlockerdoorhits_RODATA_END", vram = 0x808003A0 },
     { name = "chlagoonlockerdoorhits_DATA_START", vram = 0x808003A0 },
+    { name = "chlagoonlockerdoorhits_RODATA_END", vram = 0x808003A0 },
+    { name = "D_808003A0_chlagoonlockerdoorhits", vram = 0x808003A0 },
+    { name = "overlays_ch_lagoon_lockerdoorhits_data__s", vram = 0x808003A0 },
     { name = "D_808003CC_chlagoonlockerdoorhits", vram = 0x808003CC },
     { name = "D_808003E4_chlagoonlockerdoorhits", vram = 0x808003E4 },
     { name = "D_808003F8_chlagoonlockerdoorhits", vram = 0x808003F8 },
     { name = "D_80800430_chlagoonlockerdoorhits", vram = 0x80800430 },
     { name = "D_8080045C_chlagoonlockerdoorhits", vram = 0x8080045C },
-    { name = "chlagoonlockerdoorhits_DATA_END", vram = 0x808004B0 },
-]
-
-[[section]]
-name = ".chlagoonlockerdoorhits_bss"
-vram = 0x808004B0
-size = 0x0
-
-symbols = [
-    { name = "chlagoonlockerdoorhits_BSS_START", vram = 0x808004B0 },
     { name = "chlagoonlockerdoorhits_VRAM_END", vram = 0x808004B0 },
     { name = "chlagoonlockerdoorhits_BSS_END", vram = 0x808004B0 },
+    { name = "chlagoonlockerdoorhits_DATA_END", vram = 0x808004B0 },
     { name = "chlagoonlockerdoorhits_bss_VRAM", vram = 0x808004B0 },
+    { name = "chlagoonlockerdoorhits_BSS_START", vram = 0x808004B0 },
 ]
 
 [[section]]
@@ -26710,17 +26182,9 @@ symbols = [
     { name = "chlavaarchgrill3switches_TEXT_END", vram = 0x808001F0 },
     { name = "D_80800238_chlavaarchgrill3switches", vram = 0x80800238 },
     { name = "D_80800280_chlavaarchgrill3switches", vram = 0x80800280 },
-    { name = "chlavaarchgrill3switches_DATA_END", vram = 0x808002D0 },
-]
-
-[[section]]
-name = ".chlavaarchgrill3switches_bss"
-vram = 0x808002D0
-size = 0x0
-
-symbols = [
     { name = "chlavaarchgrill3switches_bss_VRAM", vram = 0x808002D0 },
     { name = "chlavaarchgrill3switches_BSS_END", vram = 0x808002D0 },
+    { name = "chlavaarchgrill3switches_DATA_END", vram = 0x808002D0 },
     { name = "chlavaarchgrill3switches_VRAM_END", vram = 0x808002D0 },
     { name = "chlavaarchgrill3switches_BSS_START", vram = 0x808002D0 },
 ]
@@ -26865,18 +26329,10 @@ symbols = [
     { name = "chdinotraindoorswitch_RODATA_END", vram = 0x80800080 },
     { name = "chdinotraindoorswitch_DATA_START", vram = 0x80800080 },
     { name = "chdinotraindoorswitch_RODATA_START", vram = 0x80800080 },
-    { name = "chdinotraindoorswitch_DATA_END", vram = 0x808000D0 },
-]
-
-[[section]]
-name = ".chdinotraindoorswitch_bss"
-vram = 0x808000D0
-size = 0x0
-
-symbols = [
     { name = "chdinotraindoorswitch_VRAM_END", vram = 0x808000D0 },
     { name = "chdinotraindoorswitch_bss_VRAM", vram = 0x808000D0 },
     { name = "chdinotraindoorswitch_BSS_START", vram = 0x808000D0 },
+    { name = "chdinotraindoorswitch_DATA_END", vram = 0x808000D0 },
     { name = "chdinotraindoorswitch_BSS_END", vram = 0x808000D0 },
 ]
 
@@ -26911,14 +26367,6 @@ symbols = [
     { name = "overlays_ch_mine_grill2switches_data__s", vram = 0x80800150 },
     { name = "D_80800198_chminegrill2switches", vram = 0x80800198 },
     { name = "chminegrill2switches_DATA_END", vram = 0x808001E0 },
-]
-
-[[section]]
-name = ".chminegrill2switches_bss"
-vram = 0x808001E0
-size = 0x0
-
-symbols = [
     { name = "chminegrill2switches_bss_VRAM", vram = 0x808001E0 },
     { name = "chminegrill2switches_BSS_END", vram = 0x808001E0 },
     { name = "chminegrill2switches_BSS_START", vram = 0x808001E0 },
@@ -26957,14 +26405,6 @@ symbols = [
     { name = "D_80800258_chdrawbridgeswitches", vram = 0x80800258 },
     { name = "D_808002A0_chdrawbridgeswitches", vram = 0x808002A0 },
     { name = "chdrawbridgeswitches_DATA_END", vram = 0x808002F0 },
-]
-
-[[section]]
-name = ".chdrawbridgeswitches_bss"
-vram = 0x808002F0
-size = 0x0
-
-symbols = [
     { name = "chdrawbridgeswitches_BSS_START", vram = 0x808002F0 },
     { name = "chdrawbridgeswitches_BSS_END", vram = 0x808002F0 },
     { name = "chdrawbridgeswitches_bss_VRAM", vram = 0x808002F0 },
@@ -27040,17 +26480,9 @@ symbols = [
     { name = "chlavaexplodbuild_TEXT_END", vram = 0x80800290 },
     { name = "D_808002A4_chlavaexplodbuild", vram = 0x808002A4 },
     { name = "D_808002E0_chlavaexplodbuild", vram = 0x808002E0 },
-    { name = "chlavaexplodbuild_DATA_END", vram = 0x80800330 },
-]
-
-[[section]]
-name = ".chlavaexplodbuild_bss"
-vram = 0x80800330
-size = 0x0
-
-symbols = [
     { name = "chlavaexplodbuild_VRAM_END", vram = 0x80800330 },
     { name = "chlavaexplodbuild_BSS_END", vram = 0x80800330 },
+    { name = "chlavaexplodbuild_DATA_END", vram = 0x80800330 },
     { name = "chlavaexplodbuild_BSS_START", vram = 0x80800330 },
     { name = "chlavaexplodbuild_bss_VRAM", vram = 0x80800330 },
 ]
@@ -27292,17 +26724,9 @@ symbols = [
     { name = "overlays_ch_perspexboxswit_data__s", vram = 0x808000D0 },
     { name = "chperspexboxswitch_DATA_START", vram = 0x808000D0 },
     { name = "chperspexboxswitch_RODATA_START", vram = 0x808000D0 },
-    { name = "chperspexboxswitch_DATA_END", vram = 0x80800120 },
-]
-
-[[section]]
-name = ".chperspexboxswitch_bss"
-vram = 0x80800120
-size = 0x0
-
-symbols = [
     { name = "chperspexboxswitch_VRAM_END", vram = 0x80800120 },
     { name = "chperspexboxswitch_BSS_END", vram = 0x80800120 },
+    { name = "chperspexboxswitch_DATA_END", vram = 0x80800120 },
     { name = "chperspexboxswitch_bss_VRAM", vram = 0x80800120 },
     { name = "chperspexboxswitch_BSS_START", vram = 0x80800120 },
 ]
@@ -28047,17 +27471,17 @@ vram = 0x80800000
 size = 0x1050
 
 symbols = [
-    { name = "chfactoryworkerdirty_TEXT_START", vram = 0x80800000 },
     { name = "chfactoryworkerdirty_VRAM", vram = 0x80800000 },
-    { name = "jtbl_80800DF0_chfactoryworkerdirty", vram = 0x80800DF0 },
+    { name = "chfactoryworkerdirty_TEXT_START", vram = 0x80800000 },
     { name = "chfactoryworkerdirty_RODATA_START", vram = 0x80800DF0 },
     { name = "chfactoryworkerdirty_TEXT_END", vram = 0x80800DF0 },
+    { name = "jtbl_80800DF0_chfactoryworkerdirty", vram = 0x80800DF0 },
     { name = "jtbl_80800E08_chfactoryworkerdirty", vram = 0x80800E08 },
     { name = "jtbl_80800E28_chfactoryworkerdirty", vram = 0x80800E28 },
     { name = "D_80800ED0_chfactoryworkerdirty", vram = 0x80800ED0 },
-    { name = "chfactoryworkerdirty_RODATA_END", vram = 0x80800ED0 },
-    { name = "overlays_ch_factory_workerdirty_data__s", vram = 0x80800ED0 },
     { name = "chfactoryworkerdirty_DATA_START", vram = 0x80800ED0 },
+    { name = "overlays_ch_factory_workerdirty_data__s", vram = 0x80800ED0 },
+    { name = "chfactoryworkerdirty_RODATA_END", vram = 0x80800ED0 },
     { name = "D_80800EF8_chfactoryworkerdirty", vram = 0x80800EF8 },
     { name = "D_80800F40_chfactoryworkerdirty", vram = 0x80800F40 },
     { name = "D_80800F80_chfactoryworkerdirty", vram = 0x80800F80 },
@@ -28073,19 +27497,11 @@ symbols = [
     { name = "D_8080100C_chfactoryworkerdirty", vram = 0x8080100C },
     { name = "D_80801024_chfactoryworkerdirty", vram = 0x80801024 },
     { name = "D_80801034_chfactoryworkerdirty", vram = 0x80801034 },
-    { name = "chfactoryworkerdirty_DATA_END", vram = 0x80801050 },
-]
-
-[[section]]
-name = ".chfactoryworkerdirty_bss"
-vram = 0x80801050
-size = 0x0
-
-symbols = [
-    { name = "chfactoryworkerdirty_bss_VRAM", vram = 0x80801050 },
-    { name = "chfactoryworkerdirty_VRAM_END", vram = 0x80801050 },
     { name = "chfactoryworkerdirty_BSS_START", vram = 0x80801050 },
+    { name = "chfactoryworkerdirty_bss_VRAM", vram = 0x80801050 },
     { name = "chfactoryworkerdirty_BSS_END", vram = 0x80801050 },
+    { name = "chfactoryworkerdirty_DATA_END", vram = 0x80801050 },
+    { name = "chfactoryworkerdirty_VRAM_END", vram = 0x80801050 },
 ]
 
 [[section]]
@@ -28120,16 +27536,8 @@ symbols = [
     { name = "overlays_ch_factory_workerwear_data__s", vram = 0x80800410 },
     { name = "D_80800438_chfactoryworkerwear", vram = 0x80800438 },
     { name = "D_80800480_chfactoryworkerwear", vram = 0x80800480 },
-    { name = "chfactoryworkerwear_DATA_END", vram = 0x808004B0 },
-]
-
-[[section]]
-name = ".chfactoryworkerwear_bss"
-vram = 0x808004B0
-size = 0x0
-
-symbols = [
     { name = "chfactoryworkerwear_bss_VRAM", vram = 0x808004B0 },
+    { name = "chfactoryworkerwear_DATA_END", vram = 0x808004B0 },
     { name = "chfactoryworkerwear_BSS_END", vram = 0x808004B0 },
     { name = "chfactoryworkerwear_VRAM_END", vram = 0x808004B0 },
     { name = "chfactoryworkerwear_BSS_START", vram = 0x808004B0 },
@@ -28285,14 +27693,6 @@ symbols = [
     { name = "D_80800208_chtempleinternaldoor", vram = 0x80800208 },
     { name = "D_8080020C_chtempleinternaldoor", vram = 0x8080020C },
     { name = "chtempleinternaldoor_DATA_END", vram = 0x80800270 },
-]
-
-[[section]]
-name = ".chtempleinternaldoor_bss"
-vram = 0x80800270
-size = 0x0
-
-symbols = [
     { name = "chtempleinternaldoor_bss_VRAM", vram = 0x80800270 },
     { name = "chtempleinternaldoor_VRAM_END", vram = 0x80800270 },
     { name = "chtempleinternaldoor_BSS_START", vram = 0x80800270 },
@@ -28322,28 +27722,20 @@ size = 0x410
 symbols = [
     { name = "chtemplelobbydoor_VRAM", vram = 0x80800000 },
     { name = "chtemplelobbydoor_TEXT_START", vram = 0x80800000 },
+    { name = "chtemplelobbydoor_RODATA_START", vram = 0x80800390 },
     { name = "R_80800390_chtemplelobbydoor", vram = 0x80800390 },
     { name = "chtemplelobbydoor_TEXT_END", vram = 0x80800390 },
-    { name = "chtemplelobbydoor_RODATA_START", vram = 0x80800390 },
     { name = "overlays_ch_temple_lobbydoor_data__s", vram = 0x808003A0 },
-    { name = "chtemplelobbydoor_RODATA_END", vram = 0x808003A0 },
-    { name = "D_808003A0_chtemplelobbydoor", vram = 0x808003A0 },
     { name = "chtemplelobbydoor_DATA_START", vram = 0x808003A0 },
+    { name = "D_808003A0_chtemplelobbydoor", vram = 0x808003A0 },
+    { name = "chtemplelobbydoor_RODATA_END", vram = 0x808003A0 },
     { name = "D_808003E8_chtemplelobbydoor", vram = 0x808003E8 },
     { name = "D_808003EC_chtemplelobbydoor", vram = 0x808003EC },
     { name = "D_808003EE_chtemplelobbydoor", vram = 0x808003EE },
     { name = "chtemplelobbydoor_DATA_END", vram = 0x80800410 },
-]
-
-[[section]]
-name = ".chtemplelobbydoor_bss"
-vram = 0x80800410
-size = 0x0
-
-symbols = [
-    { name = "chtemplelobbydoor_VRAM_END", vram = 0x80800410 },
-    { name = "chtemplelobbydoor_bss_VRAM", vram = 0x80800410 },
     { name = "chtemplelobbydoor_BSS_START", vram = 0x80800410 },
+    { name = "chtemplelobbydoor_bss_VRAM", vram = 0x80800410 },
+    { name = "chtemplelobbydoor_VRAM_END", vram = 0x80800410 },
     { name = "chtemplelobbydoor_BSS_END", vram = 0x80800410 },
 ]
 
@@ -28416,19 +27808,11 @@ symbols = [
     { name = "overlays_ch_transparencypot_data__s", vram = 0x808001B0 },
     { name = "chtransparencypot_DATA_START", vram = 0x808001B0 },
     { name = "D_808001F8_chtransparencypot", vram = 0x808001F8 },
-    { name = "chtransparencypot_DATA_END", vram = 0x80800210 },
-]
-
-[[section]]
-name = ".chtransparencypot_bss"
-vram = 0x80800210
-size = 0x0
-
-symbols = [
     { name = "chtransparencypot_bss_VRAM", vram = 0x80800210 },
     { name = "chtransparencypot_VRAM_END", vram = 0x80800210 },
     { name = "chtransparencypot_BSS_START", vram = 0x80800210 },
     { name = "chtransparencypot_BSS_END", vram = 0x80800210 },
+    { name = "chtransparencypot_DATA_END", vram = 0x80800210 },
 ]
 
 [[section]]
@@ -28583,14 +27967,6 @@ symbols = [
     { name = "chfactorylobbydoor_RODATA_START", vram = 0x80800160 },
     { name = "D_808001A8_chfactorylobbydoor", vram = 0x808001A8 },
     { name = "chfactorylobbydoor_DATA_END", vram = 0x808001D0 },
-]
-
-[[section]]
-name = ".chfactorylobbydoor_bss"
-vram = 0x808001D0
-size = 0x0
-
-symbols = [
     { name = "chfactorylobbydoor_BSS_START", vram = 0x808001D0 },
     { name = "chfactorylobbydoor_bss_VRAM", vram = 0x808001D0 },
     { name = "chfactorylobbydoor_BSS_END", vram = 0x808001D0 },
@@ -28841,20 +28217,12 @@ symbols = [
     { name = "D_80800FBC_chtransparentfish", vram = 0x80800FBC },
     { name = "D_80801050_chtransparentfish", vram = 0x80801050 },
     { name = "D_80801098_chtransparentfish", vram = 0x80801098 },
-    { name = "chtransparentfish_DATA_END", vram = 0x808010E0 },
-]
-
-[[section]]
-name = ".chtransparentfish_bss"
-vram = 0x808010E0
-size = 0xF0
-
-symbols = [
-    { name = "chtransparentfish_BSS_START", vram = 0x808010E0 },
-    { name = "B_808010E0_chtransparentfish", vram = 0x808010E0 },
     { name = "chtransparentfish_bss_VRAM", vram = 0x808010E0 },
-    { name = "chtransparentfish_VRAM_END", vram = 0x808011D0 },
+    { name = "chtransparentfish_DATA_END", vram = 0x808010E0 },
+    { name = "B_808010E0_chtransparentfish", vram = 0x808010E0 },
+    { name = "chtransparentfish_BSS_START", vram = 0x808010E0 },
     { name = "chtransparentfish_BSS_END", vram = 0x808011D0 },
+    { name = "chtransparentfish_VRAM_END", vram = 0x808011D0 },
 ]
 
 [[section]]
@@ -29165,31 +28533,23 @@ vram = 0x80800000
 size = 0x730
 
 symbols = [
-    { name = "chdinofamilymissing_TEXT_START", vram = 0x80800000 },
     { name = "chdinofamilymissing_VRAM", vram = 0x80800000 },
+    { name = "chdinofamilymissing_TEXT_START", vram = 0x80800000 },
+    { name = "chdinofamilymissing_TEXT_END", vram = 0x80800640 },
     { name = "jtbl_80800640_chdinofamilymissing", vram = 0x80800640 },
     { name = "chdinofamilymissing_RODATA_START", vram = 0x80800640 },
-    { name = "chdinofamilymissing_TEXT_END", vram = 0x80800640 },
     { name = "chdinofamilymissing_RODATA_END", vram = 0x80800660 },
-    { name = "D_80800660_chdinofamilymissing", vram = 0x80800660 },
-    { name = "chdinofamilymissing_DATA_START", vram = 0x80800660 },
     { name = "overlays_ch_dino_familymissing_data__s", vram = 0x80800660 },
+    { name = "chdinofamilymissing_DATA_START", vram = 0x80800660 },
+    { name = "D_80800660_chdinofamilymissing", vram = 0x80800660 },
     { name = "D_80800664_chdinofamilymissing", vram = 0x80800664 },
     { name = "D_808006A0_chdinofamilymissing", vram = 0x808006A0 },
     { name = "D_808006AC_chdinofamilymissing", vram = 0x808006AC },
     { name = "D_808006CC_chdinofamilymissing", vram = 0x808006CC },
     { name = "D_808006DC_chdinofamilymissing", vram = 0x808006DC },
-    { name = "chdinofamilymissing_DATA_END", vram = 0x80800730 },
-]
-
-[[section]]
-name = ".chdinofamilymissing_bss"
-vram = 0x80800730
-size = 0x0
-
-symbols = [
-    { name = "chdinofamilymissing_BSS_END", vram = 0x80800730 },
     { name = "chdinofamilymissing_BSS_START", vram = 0x80800730 },
+    { name = "chdinofamilymissing_BSS_END", vram = 0x80800730 },
+    { name = "chdinofamilymissing_DATA_END", vram = 0x80800730 },
     { name = "chdinofamilymissing_bss_VRAM", vram = 0x80800730 },
     { name = "chdinofamilymissing_VRAM_END", vram = 0x80800730 },
 ]
@@ -29400,15 +28760,15 @@ size = 0xB80
 symbols = [
     { name = "chfactoryroofbits_TEXT_START", vram = 0x80800000 },
     { name = "chfactoryroofbits_VRAM", vram = 0x80800000 },
-    { name = "chfactoryroofbits_TEXT_END", vram = 0x80800910 },
     { name = "chfactoryroofbits_RODATA_START", vram = 0x80800910 },
     { name = "R_80800910_chfactoryroofbits", vram = 0x80800910 },
+    { name = "chfactoryroofbits_TEXT_END", vram = 0x80800910 },
     { name = "R_80800914_chfactoryroofbits", vram = 0x80800914 },
     { name = "R_80800918_chfactoryroofbits", vram = 0x80800918 },
-    { name = "overlays_ch_factory_roofbits_data__s", vram = 0x80800920 },
-    { name = "chfactoryroofbits_RODATA_END", vram = 0x80800920 },
     { name = "D_80800920_chfactoryroofbits", vram = 0x80800920 },
     { name = "chfactoryroofbits_DATA_START", vram = 0x80800920 },
+    { name = "chfactoryroofbits_RODATA_END", vram = 0x80800920 },
+    { name = "overlays_ch_factory_roofbits_data__s", vram = 0x80800920 },
     { name = "D_80800968_chfactoryroofbits", vram = 0x80800968 },
     { name = "D_80800974_chfactoryroofbits", vram = 0x80800974 },
     { name = "D_808009BC_chfactoryroofbits", vram = 0x808009BC },
@@ -29419,18 +28779,10 @@ symbols = [
     { name = "D_80800AA4_chfactoryroofbits", vram = 0x80800AA4 },
     { name = "D_80800AEC_chfactoryroofbits", vram = 0x80800AEC },
     { name = "D_80800B34_chfactoryroofbits", vram = 0x80800B34 },
-    { name = "chfactoryroofbits_DATA_END", vram = 0x80800B80 },
-]
-
-[[section]]
-name = ".chfactoryroofbits_bss"
-vram = 0x80800B80
-size = 0x0
-
-symbols = [
     { name = "chfactoryroofbits_VRAM_END", vram = 0x80800B80 },
-    { name = "chfactoryroofbits_BSS_END", vram = 0x80800B80 },
+    { name = "chfactoryroofbits_DATA_END", vram = 0x80800B80 },
     { name = "chfactoryroofbits_BSS_START", vram = 0x80800B80 },
+    { name = "chfactoryroofbits_BSS_END", vram = 0x80800B80 },
     { name = "chfactoryroofbits_bss_VRAM", vram = 0x80800B80 },
 ]
 
@@ -29533,18 +28885,10 @@ symbols = [
     { name = "D_8080032C_chfactorybtwmdoor", vram = 0x8080032C },
     { name = "D_80800338_chfactorybtwmdoor", vram = 0x80800338 },
     { name = "D_80800344_chfactorybtwmdoor", vram = 0x80800344 },
-    { name = "chfactorybtwmdoor_DATA_END", vram = 0x80800390 },
-]
-
-[[section]]
-name = ".chfactorybtwmdoor_bss"
-vram = 0x80800390
-size = 0x0
-
-symbols = [
     { name = "chfactorybtwmdoor_BSS_START", vram = 0x80800390 },
     { name = "chfactorybtwmdoor_VRAM_END", vram = 0x80800390 },
     { name = "chfactorybtwmdoor_bss_VRAM", vram = 0x80800390 },
+    { name = "chfactorybtwmdoor_DATA_END", vram = 0x80800390 },
     { name = "chfactorybtwmdoor_BSS_END", vram = 0x80800390 },
 ]
 
@@ -29671,8 +29015,8 @@ size = 0x15B0
 symbols = [
     { name = "chfactorytoxiccloud_VRAM", vram = 0x80800000 },
     { name = "chfactorytoxiccloud_TEXT_START", vram = 0x80800000 },
-    { name = "chfactorytoxiccloud_TEXT_END", vram = 0x808013E0 },
     { name = "chfactorytoxiccloud_RODATA_START", vram = 0x808013E0 },
+    { name = "chfactorytoxiccloud_TEXT_END", vram = 0x808013E0 },
     { name = "jtbl_808013E0_chfactorytoxiccloud", vram = 0x808013E0 },
     { name = "R_808013F4_chfactorytoxiccloud", vram = 0x808013F4 },
     { name = "R_808013F8_chfactorytoxiccloud", vram = 0x808013F8 },
@@ -29684,10 +29028,10 @@ symbols = [
     { name = "R_80801410_chfactorytoxiccloud", vram = 0x80801410 },
     { name = "R_80801414_chfactorytoxiccloud", vram = 0x80801414 },
     { name = "R_80801418_chfactorytoxiccloud", vram = 0x80801418 },
-    { name = "chfactorytoxiccloud_RODATA_END", vram = 0x80801420 },
-    { name = "D_80801420_chfactorytoxiccloud", vram = 0x80801420 },
     { name = "overlays_ch_factory_toxiccloud_data__s", vram = 0x80801420 },
+    { name = "D_80801420_chfactorytoxiccloud", vram = 0x80801420 },
     { name = "chfactorytoxiccloud_DATA_START", vram = 0x80801420 },
+    { name = "chfactorytoxiccloud_RODATA_END", vram = 0x80801420 },
     { name = "D_80801434_chfactorytoxiccloud", vram = 0x80801434 },
     { name = "D_8080144C_chfactorytoxiccloud", vram = 0x8080144C },
     { name = "D_8080148C_chfactorytoxiccloud", vram = 0x8080148C },
@@ -29696,17 +29040,9 @@ symbols = [
     { name = "D_8080155C_chfactorytoxiccloud", vram = 0x8080155C },
     { name = "D_80801568_chfactorytoxiccloud", vram = 0x80801568 },
     { name = "chfactorytoxiccloud_DATA_END", vram = 0x808015B0 },
-]
-
-[[section]]
-name = ".chfactorytoxiccloud_bss"
-vram = 0x808015B0
-size = 0x0
-
-symbols = [
-    { name = "chfactorytoxiccloud_BSS_END", vram = 0x808015B0 },
     { name = "chfactorytoxiccloud_BSS_START", vram = 0x808015B0 },
     { name = "chfactorytoxiccloud_bss_VRAM", vram = 0x808015B0 },
+    { name = "chfactorytoxiccloud_BSS_END", vram = 0x808015B0 },
     { name = "chfactorytoxiccloud_VRAM_END", vram = 0x808015B0 },
 ]
 
@@ -29733,9 +29069,9 @@ size = 0x2460
 symbols = [
     { name = "chfactoryempspell_VRAM", vram = 0x80800000 },
     { name = "chfactoryempspell_TEXT_START", vram = 0x80800000 },
+    { name = "jtbl_80802040_chfactoryempspell", vram = 0x80802040 },
     { name = "chfactoryempspell_TEXT_END", vram = 0x80802040 },
     { name = "chfactoryempspell_RODATA_START", vram = 0x80802040 },
-    { name = "jtbl_80802040_chfactoryempspell", vram = 0x80802040 },
     { name = "R_8080206C_chfactoryempspell", vram = 0x8080206C },
     { name = "R_80802070_chfactoryempspell", vram = 0x80802070 },
     { name = "R_80802074_chfactoryempspell", vram = 0x80802074 },
@@ -29755,10 +29091,10 @@ symbols = [
     { name = "R_80802140_chfactoryempspell", vram = 0x80802140 },
     { name = "jtbl_80802144_chfactoryempspell", vram = 0x80802144 },
     { name = "R_80802168_chfactoryempspell", vram = 0x80802168 },
-    { name = "overlays_ch_factory_empspell_data__s", vram = 0x80802170 },
-    { name = "chfactoryempspell_DATA_START", vram = 0x80802170 },
-    { name = "chfactoryempspell_RODATA_END", vram = 0x80802170 },
     { name = "D_80802170_chfactoryempspell", vram = 0x80802170 },
+    { name = "chfactoryempspell_DATA_START", vram = 0x80802170 },
+    { name = "overlays_ch_factory_empspell_data__s", vram = 0x80802170 },
+    { name = "chfactoryempspell_RODATA_END", vram = 0x80802170 },
     { name = "D_80802180_chfactoryempspell", vram = 0x80802180 },
     { name = "D_8080218C_chfactoryempspell", vram = 0x8080218C },
     { name = "D_80802198_chfactoryempspell", vram = 0x80802198 },
@@ -29792,19 +29128,11 @@ symbols = [
     { name = "D_808023FC_chfactoryempspell", vram = 0x808023FC },
     { name = "D_80802408_chfactoryempspell", vram = 0x80802408 },
     { name = "D_80802414_chfactoryempspell", vram = 0x80802414 },
-    { name = "chfactoryempspell_DATA_END", vram = 0x80802460 },
-]
-
-[[section]]
-name = ".chfactoryempspell_bss"
-vram = 0x80802460
-size = 0x0
-
-symbols = [
     { name = "chfactoryempspell_bss_VRAM", vram = 0x80802460 },
     { name = "chfactoryempspell_BSS_START", vram = 0x80802460 },
     { name = "chfactoryempspell_VRAM_END", vram = 0x80802460 },
     { name = "chfactoryempspell_BSS_END", vram = 0x80802460 },
+    { name = "chfactoryempspell_DATA_END", vram = 0x80802460 },
 ]
 
 [[section]]
@@ -29925,31 +29253,23 @@ vram = 0x80800000
 size = 0x330
 
 symbols = [
-    { name = "chfactorylinkgrill_TEXT_START", vram = 0x80800000 },
     { name = "chfactorylinkgrill_VRAM", vram = 0x80800000 },
-    { name = "chfactorylinkgrill_RODATA_START", vram = 0x80800200 },
+    { name = "chfactorylinkgrill_TEXT_START", vram = 0x80800000 },
     { name = "chfactorylinkgrill_TEXT_END", vram = 0x80800200 },
-    { name = "D_80800200_chfactorylinkgrill", vram = 0x80800200 },
-    { name = "chfactorylinkgrill_RODATA_END", vram = 0x80800200 },
-    { name = "chfactorylinkgrill_DATA_START", vram = 0x80800200 },
     { name = "overlays_ch_factory_linkgrill_data__s", vram = 0x80800200 },
+    { name = "chfactorylinkgrill_DATA_START", vram = 0x80800200 },
+    { name = "chfactorylinkgrill_RODATA_END", vram = 0x80800200 },
+    { name = "D_80800200_chfactorylinkgrill", vram = 0x80800200 },
+    { name = "chfactorylinkgrill_RODATA_START", vram = 0x80800200 },
     { name = "D_80800244_chfactorylinkgrill", vram = 0x80800244 },
     { name = "D_80800250_chfactorylinkgrill", vram = 0x80800250 },
     { name = "D_80800298_chfactorylinkgrill", vram = 0x80800298 },
     { name = "D_808002E0_chfactorylinkgrill", vram = 0x808002E0 },
-    { name = "chfactorylinkgrill_DATA_END", vram = 0x80800330 },
-]
-
-[[section]]
-name = ".chfactorylinkgrill_bss"
-vram = 0x80800330
-size = 0x0
-
-symbols = [
     { name = "chfactorylinkgrill_VRAM_END", vram = 0x80800330 },
     { name = "chfactorylinkgrill_BSS_END", vram = 0x80800330 },
     { name = "chfactorylinkgrill_bss_VRAM", vram = 0x80800330 },
     { name = "chfactorylinkgrill_BSS_START", vram = 0x80800330 },
+    { name = "chfactorylinkgrill_DATA_END", vram = 0x80800330 },
 ]
 
 [[section]]
@@ -29982,27 +29302,19 @@ symbols = [
     { name = "R_808004A8_chfactorymaindoor", vram = 0x808004A8 },
     { name = "R_808004AC_chfactorymaindoor", vram = 0x808004AC },
     { name = "R_808004B0_chfactorymaindoor", vram = 0x808004B0 },
-    { name = "D_808004C0_chfactorymaindoor", vram = 0x808004C0 },
     { name = "chfactorymaindoor_DATA_START", vram = 0x808004C0 },
-    { name = "overlays_ch_factory_maindoor_data__s", vram = 0x808004C0 },
     { name = "chfactorymaindoor_RODATA_END", vram = 0x808004C0 },
+    { name = "D_808004C0_chfactorymaindoor", vram = 0x808004C0 },
+    { name = "overlays_ch_factory_maindoor_data__s", vram = 0x808004C0 },
     { name = "D_808004CC_chfactorymaindoor", vram = 0x808004CC },
     { name = "D_808004D4_chfactorymaindoor", vram = 0x808004D4 },
     { name = "D_8080051C_chfactorymaindoor", vram = 0x8080051C },
     { name = "D_80800564_chfactorymaindoor", vram = 0x80800564 },
-    { name = "chfactorymaindoor_DATA_END", vram = 0x808005B0 },
-]
-
-[[section]]
-name = ".chfactorymaindoor_bss"
-vram = 0x808005B0
-size = 0x0
-
-symbols = [
     { name = "chfactorymaindoor_bss_VRAM", vram = 0x808005B0 },
-    { name = "chfactorymaindoor_BSS_START", vram = 0x808005B0 },
-    { name = "chfactorymaindoor_VRAM_END", vram = 0x808005B0 },
     { name = "chfactorymaindoor_BSS_END", vram = 0x808005B0 },
+    { name = "chfactorymaindoor_VRAM_END", vram = 0x808005B0 },
+    { name = "chfactorymaindoor_DATA_END", vram = 0x808005B0 },
+    { name = "chfactorymaindoor_BSS_START", vram = 0x808005B0 },
 ]
 
 [[section]]
@@ -30095,16 +29407,8 @@ symbols = [
     { name = "D_808005D4_chfactorytrashbelt", vram = 0x808005D4 },
     { name = "D_808005E0_chfactorytrashbelt", vram = 0x808005E0 },
     { name = "D_808005EC_chfactorytrashbelt", vram = 0x808005EC },
-    { name = "chfactorytrashbelt_DATA_END", vram = 0x80800640 },
-]
-
-[[section]]
-name = ".chfactorytrashbelt_bss"
-vram = 0x80800640
-size = 0x0
-
-symbols = [
     { name = "chfactorytrashbelt_BSS_START", vram = 0x80800640 },
+    { name = "chfactorytrashbelt_DATA_END", vram = 0x80800640 },
     { name = "chfactorytrashbelt_bss_VRAM", vram = 0x80800640 },
     { name = "chfactorytrashbelt_VRAM_END", vram = 0x80800640 },
     { name = "chfactorytrashbelt_BSS_END", vram = 0x80800640 },
@@ -30248,9 +29552,9 @@ size = 0x2B0
 symbols = [
     { name = "chfactorystationdoors_VRAM", vram = 0x80800000 },
     { name = "chfactorystationdoors_TEXT_START", vram = 0x80800000 },
+    { name = "R_80800240_chfactorystationdoors", vram = 0x80800240 },
     { name = "chfactorystationdoors_TEXT_END", vram = 0x80800240 },
     { name = "chfactorystationdoors_RODATA_START", vram = 0x80800240 },
-    { name = "R_80800240_chfactorystationdoors", vram = 0x80800240 },
     { name = "R_80800244_chfactorystationdoors", vram = 0x80800244 },
     { name = "R_80800248_chfactorystationdoors", vram = 0x80800248 },
     { name = "chfactorystationdoors_DATA_START", vram = 0x80800250 },
@@ -30259,19 +29563,11 @@ symbols = [
     { name = "chfactorystationdoors_RODATA_END", vram = 0x80800250 },
     { name = "D_8080025C_chfactorystationdoors", vram = 0x8080025C },
     { name = "D_80800268_chfactorystationdoors", vram = 0x80800268 },
-    { name = "chfactorystationdoors_DATA_END", vram = 0x808002B0 },
-]
-
-[[section]]
-name = ".chfactorystationdoors_bss"
-vram = 0x808002B0
-size = 0x0
-
-symbols = [
-    { name = "chfactorystationdoors_BSS_END", vram = 0x808002B0 },
-    { name = "chfactorystationdoors_VRAM_END", vram = 0x808002B0 },
-    { name = "chfactorystationdoors_BSS_START", vram = 0x808002B0 },
     { name = "chfactorystationdoors_bss_VRAM", vram = 0x808002B0 },
+    { name = "chfactorystationdoors_BSS_START", vram = 0x808002B0 },
+    { name = "chfactorystationdoors_DATA_END", vram = 0x808002B0 },
+    { name = "chfactorystationdoors_VRAM_END", vram = 0x808002B0 },
+    { name = "chfactorystationdoors_BSS_END", vram = 0x808002B0 },
 ]
 
 [[section]]
@@ -30340,33 +29636,25 @@ vram = 0x80800000
 size = 0xA10
 
 symbols = [
-    { name = "chfantasydrillfield_VRAM", vram = 0x80800000 },
     { name = "chfantasydrillfield_TEXT_START", vram = 0x80800000 },
+    { name = "chfantasydrillfield_VRAM", vram = 0x80800000 },
     { name = "chfantasydrillfield_DATA_START", vram = 0x808008B0 },
     { name = "chfantasydrillfield_TEXT_END", vram = 0x808008B0 },
+    { name = "overlays_ch_fantasy_drillfield_data__s", vram = 0x808008B0 },
     { name = "D_808008B0_chfantasydrillfield", vram = 0x808008B0 },
     { name = "chfantasydrillfield_RODATA_END", vram = 0x808008B0 },
     { name = "chfantasydrillfield_RODATA_START", vram = 0x808008B0 },
-    { name = "overlays_ch_fantasy_drillfield_data__s", vram = 0x808008B0 },
     { name = "D_808008D0_chfantasydrillfield", vram = 0x808008D0 },
     { name = "D_80800950_chfantasydrillfield", vram = 0x80800950 },
     { name = "D_80800988_chfantasydrillfield", vram = 0x80800988 },
     { name = "D_808009C4_chfantasydrillfield", vram = 0x808009C4 },
-    { name = "chfantasydrillfield_DATA_END", vram = 0x80800A10 },
-]
-
-[[section]]
-name = ".chfantasydrillfield_bss"
-vram = 0x80800A10
-size = 0x40
-
-symbols = [
-    { name = "B_80800A10_chfantasydrillfield", vram = 0x80800A10 },
-    { name = "chfantasydrillfield_bss_VRAM", vram = 0x80800A10 },
     { name = "chfantasydrillfield_BSS_START", vram = 0x80800A10 },
+    { name = "chfantasydrillfield_DATA_END", vram = 0x80800A10 },
+    { name = "chfantasydrillfield_bss_VRAM", vram = 0x80800A10 },
+    { name = "B_80800A10_chfantasydrillfield", vram = 0x80800A10 },
     { name = "B_80800A18_chfantasydrillfield", vram = 0x80800A18 },
-    { name = "chfantasydrillfield_BSS_END", vram = 0x80800A50 },
     { name = "chfantasydrillfield_VRAM_END", vram = 0x80800A50 },
+    { name = "chfantasydrillfield_BSS_END", vram = 0x80800A50 },
 ]
 
 [[section]]
@@ -30401,17 +29689,9 @@ symbols = [
     { name = "overlays_ch_fantasy_trashcanbits_data__s", vram = 0x80800240 },
     { name = "chfantasytrashcanbits_DATA_START", vram = 0x80800240 },
     { name = "D_80800288_chfantasytrashcanbits", vram = 0x80800288 },
-    { name = "chfantasytrashcanbits_DATA_END", vram = 0x808002D0 },
-]
-
-[[section]]
-name = ".chfantasytrashcanbits_bss"
-vram = 0x808002D0
-size = 0x0
-
-symbols = [
     { name = "chfantasytrashcanbits_VRAM_END", vram = 0x808002D0 },
     { name = "chfantasytrashcanbits_BSS_END", vram = 0x808002D0 },
+    { name = "chfantasytrashcanbits_DATA_END", vram = 0x808002D0 },
     { name = "chfantasytrashcanbits_BSS_START", vram = 0x808002D0 },
     { name = "chfantasytrashcanbits_bss_VRAM", vram = 0x808002D0 },
 ]
@@ -30614,8 +29894,8 @@ size = 0x11B0
 symbols = [
     { name = "chfactorysparkroom_TEXT_START", vram = 0x80800000 },
     { name = "chfactorysparkroom_VRAM", vram = 0x80800000 },
-    { name = "R_80801030_chfactorysparkroom", vram = 0x80801030 },
     { name = "chfactorysparkroom_TEXT_END", vram = 0x80801030 },
+    { name = "R_80801030_chfactorysparkroom", vram = 0x80801030 },
     { name = "chfactorysparkroom_RODATA_START", vram = 0x80801030 },
     { name = "R_80801034_chfactorysparkroom", vram = 0x80801034 },
     { name = "R_80801038_chfactorysparkroom", vram = 0x80801038 },
@@ -30626,9 +29906,9 @@ symbols = [
     { name = "R_8080104C_chfactorysparkroom", vram = 0x8080104C },
     { name = "R_80801050_chfactorysparkroom", vram = 0x80801050 },
     { name = "R_80801054_chfactorysparkroom", vram = 0x80801054 },
-    { name = "overlays_ch_factory_sparkroom_data__s", vram = 0x80801060 },
-    { name = "chfactorysparkroom_RODATA_END", vram = 0x80801060 },
     { name = "chfactorysparkroom_DATA_START", vram = 0x80801060 },
+    { name = "chfactorysparkroom_RODATA_END", vram = 0x80801060 },
+    { name = "overlays_ch_factory_sparkroom_data__s", vram = 0x80801060 },
     { name = "D_80801060_chfactorysparkroom", vram = 0x80801060 },
     { name = "D_80801070_chfactorysparkroom", vram = 0x80801070 },
     { name = "D_8080107C_chfactorysparkroom", vram = 0x8080107C },
@@ -30643,19 +29923,11 @@ symbols = [
     { name = "D_80801108_chfactorysparkroom", vram = 0x80801108 },
     { name = "D_80801150_chfactorysparkroom", vram = 0x80801150 },
     { name = "D_8080115C_chfactorysparkroom", vram = 0x8080115C },
-    { name = "chfactorysparkroom_DATA_END", vram = 0x808011B0 },
-]
-
-[[section]]
-name = ".chfactorysparkroom_bss"
-vram = 0x808011B0
-size = 0x0
-
-symbols = [
-    { name = "chfactorysparkroom_BSS_START", vram = 0x808011B0 },
     { name = "chfactorysparkroom_bss_VRAM", vram = 0x808011B0 },
     { name = "chfactorysparkroom_VRAM_END", vram = 0x808011B0 },
     { name = "chfactorysparkroom_BSS_END", vram = 0x808011B0 },
+    { name = "chfactorysparkroom_DATA_END", vram = 0x808011B0 },
+    { name = "chfactorysparkroom_BSS_START", vram = 0x808011B0 },
 ]
 
 [[section]]
@@ -30679,14 +29951,14 @@ vram = 0x80800000
 size = 0xB40
 
 symbols = [
-    { name = "chfantasylakebits_TEXT_START", vram = 0x80800000 },
     { name = "chfantasylakebits_VRAM", vram = 0x80800000 },
+    { name = "chfantasylakebits_TEXT_START", vram = 0x80800000 },
+    { name = "chfantasylakebits_RODATA_START", vram = 0x80800900 },
     { name = "jtbl_80800900_chfantasylakebits", vram = 0x80800900 },
     { name = "chfantasylakebits_TEXT_END", vram = 0x80800900 },
-    { name = "chfantasylakebits_RODATA_START", vram = 0x80800900 },
     { name = "overlays_ch_fantasy_lakebits_data__s", vram = 0x80800920 },
-    { name = "chfantasylakebits_DATA_START", vram = 0x80800920 },
     { name = "chfantasylakebits_RODATA_END", vram = 0x80800920 },
+    { name = "chfantasylakebits_DATA_START", vram = 0x80800920 },
     { name = "D_80800920_chfantasylakebits", vram = 0x80800920 },
     { name = "D_80800928_chfantasylakebits", vram = 0x80800928 },
     { name = "D_80800934_chfantasylakebits", vram = 0x80800934 },
@@ -30701,17 +29973,9 @@ symbols = [
     { name = "D_80800AB4_chfantasylakebits", vram = 0x80800AB4 },
     { name = "D_80800ADC_chfantasylakebits", vram = 0x80800ADC },
     { name = "D_80800AF0_chfantasylakebits", vram = 0x80800AF0 },
-    { name = "chfantasylakebits_DATA_END", vram = 0x80800B40 },
-]
-
-[[section]]
-name = ".chfantasylakebits_bss"
-vram = 0x80800B40
-size = 0x0
-
-symbols = [
     { name = "chfantasylakebits_BSS_START", vram = 0x80800B40 },
     { name = "chfantasylakebits_VRAM_END", vram = 0x80800B40 },
+    { name = "chfantasylakebits_DATA_END", vram = 0x80800B40 },
     { name = "chfantasylakebits_bss_VRAM", vram = 0x80800B40 },
     { name = "chfantasylakebits_BSS_END", vram = 0x80800B40 },
 ]
@@ -31135,25 +30399,17 @@ symbols = [
     { name = "R_80800E64_chdinofamilysmall", vram = 0x80800E64 },
     { name = "jtbl_80800E68_chdinofamilysmall", vram = 0x80800E68 },
     { name = "chdinofamilysmall_DATA_START", vram = 0x80800E90 },
-    { name = "D_80800E90_chdinofamilysmall", vram = 0x80800E90 },
     { name = "overlays_ch_dino_familysmall_data__s", vram = 0x80800E90 },
+    { name = "D_80800E90_chdinofamilysmall", vram = 0x80800E90 },
     { name = "chdinofamilysmall_RODATA_END", vram = 0x80800E90 },
     { name = "D_80800E94_chdinofamilysmall", vram = 0x80800E94 },
     { name = "D_80800EE8_chdinofamilysmall", vram = 0x80800EE8 },
     { name = "D_80800EFC_chdinofamilysmall", vram = 0x80800EFC },
     { name = "D_80800F10_chdinofamilysmall", vram = 0x80800F10 },
     { name = "D_80800F20_chdinofamilysmall", vram = 0x80800F20 },
-    { name = "chdinofamilysmall_DATA_END", vram = 0x80800F70 },
-]
-
-[[section]]
-name = ".chdinofamilysmall_bss"
-vram = 0x80800F70
-size = 0x40
-
-symbols = [
-    { name = "chdinofamilysmall_bss_VRAM", vram = 0x80800F70 },
     { name = "B_80800F70_chdinofamilysmall", vram = 0x80800F70 },
+    { name = "chdinofamilysmall_bss_VRAM", vram = 0x80800F70 },
+    { name = "chdinofamilysmall_DATA_END", vram = 0x80800F70 },
     { name = "chdinofamilysmall_BSS_START", vram = 0x80800F70 },
     { name = "B_80800F94_chdinofamilysmall", vram = 0x80800F94 },
     { name = "B_80800FA0_chdinofamilysmall", vram = 0x80800FA0 },
@@ -31330,8 +30586,8 @@ vram = 0x80800000
 size = 0x14C0
 
 symbols = [
-    { name = "chdinofamilymother_VRAM", vram = 0x80800000 },
     { name = "chdinofamilymother_TEXT_START", vram = 0x80800000 },
+    { name = "chdinofamilymother_VRAM", vram = 0x80800000 },
     { name = "chdinofamilymother_RODATA_START", vram = 0x80801270 },
     { name = "jtbl_80801270_chdinofamilymother", vram = 0x80801270 },
     { name = "chdinofamilymother_TEXT_END", vram = 0x80801270 },
@@ -31343,10 +30599,10 @@ symbols = [
     { name = "R_80801330_chdinofamilymother", vram = 0x80801330 },
     { name = "R_80801334_chdinofamilymother", vram = 0x80801334 },
     { name = "R_80801338_chdinofamilymother", vram = 0x80801338 },
-    { name = "overlays_ch_dino_familymother_data__s", vram = 0x80801340 },
     { name = "chdinofamilymother_DATA_START", vram = 0x80801340 },
-    { name = "chdinofamilymother_RODATA_END", vram = 0x80801340 },
+    { name = "overlays_ch_dino_familymother_data__s", vram = 0x80801340 },
     { name = "D_80801340_chdinofamilymother", vram = 0x80801340 },
+    { name = "chdinofamilymother_RODATA_END", vram = 0x80801340 },
     { name = "D_80801344_chdinofamilymother", vram = 0x80801344 },
     { name = "D_80801398_chdinofamilymother", vram = 0x80801398 },
     { name = "D_8080139C_chdinofamilymother", vram = 0x8080139C },
@@ -31359,19 +30615,11 @@ symbols = [
     { name = "D_80801404_chdinofamilymother", vram = 0x80801404 },
     { name = "D_80801440_chdinofamilymother", vram = 0x80801440 },
     { name = "D_80801474_chdinofamilymother", vram = 0x80801474 },
-    { name = "chdinofamilymother_DATA_END", vram = 0x808014C0 },
-]
-
-[[section]]
-name = ".chdinofamilymother_bss"
-vram = 0x808014C0
-size = 0x0
-
-symbols = [
-    { name = "chdinofamilymother_BSS_START", vram = 0x808014C0 },
-    { name = "chdinofamilymother_bss_VRAM", vram = 0x808014C0 },
-    { name = "chdinofamilymother_VRAM_END", vram = 0x808014C0 },
     { name = "chdinofamilymother_BSS_END", vram = 0x808014C0 },
+    { name = "chdinofamilymother_BSS_START", vram = 0x808014C0 },
+    { name = "chdinofamilymother_DATA_END", vram = 0x808014C0 },
+    { name = "chdinofamilymother_VRAM_END", vram = 0x808014C0 },
+    { name = "chdinofamilymother_bss_VRAM", vram = 0x808014C0 },
 ]
 
 [[section]]
@@ -31989,19 +31237,11 @@ symbols = [
     { name = "chfantasysafeswitch_RODATA_END", vram = 0x80800260 },
     { name = "D_80800260_chfantasysafeswitch", vram = 0x80800260 },
     { name = "D_80800288_chfantasysafeswitch", vram = 0x80800288 },
-    { name = "chfantasysafeswitch_DATA_END", vram = 0x808002D0 },
-]
-
-[[section]]
-name = ".chfantasysafeswitch_bss"
-vram = 0x808002D0
-size = 0x0
-
-symbols = [
     { name = "chfantasysafeswitch_VRAM_END", vram = 0x808002D0 },
     { name = "chfantasysafeswitch_BSS_END", vram = 0x808002D0 },
     { name = "chfantasysafeswitch_bss_VRAM", vram = 0x808002D0 },
     { name = "chfantasysafeswitch_BSS_START", vram = 0x808002D0 },
+    { name = "chfantasysafeswitch_DATA_END", vram = 0x808002D0 },
 ]
 
 [[section]]
@@ -33385,11 +32625,11 @@ vram = 0x80800000
 size = 0x750
 
 symbols = [
-    { name = "gcmapsects_lagoontop_TEXT_START", vram = 0x80800000 },
     { name = "gcmapsects_lagoontop_VRAM", vram = 0x80800000 },
+    { name = "gcmapsects_lagoontop_TEXT_START", vram = 0x80800000 },
     { name = "gcmapsects_lagoontop_RODATA_START", vram = 0x80800600 },
-    { name = "gcmapsects_lagoontop_TEXT_END", vram = 0x80800600 },
     { name = "R_80800600_gcmapsects_lagoontop", vram = 0x80800600 },
+    { name = "gcmapsects_lagoontop_TEXT_END", vram = 0x80800600 },
     { name = "R_80800604_gcmapsects_lagoontop", vram = 0x80800604 },
     { name = "R_80800608_gcmapsects_lagoontop", vram = 0x80800608 },
     { name = "R_8080060C_gcmapsects_lagoontop", vram = 0x8080060C },
@@ -33398,10 +32638,10 @@ symbols = [
     { name = "R_80800618_gcmapsects_lagoontop", vram = 0x80800618 },
     { name = "R_8080061C_gcmapsects_lagoontop", vram = 0x8080061C },
     { name = "R_80800620_gcmapsects_lagoontop", vram = 0x80800620 },
-    { name = "gcmapsects_lagoontop_DATA_START", vram = 0x80800630 },
-    { name = "D_80800630_gcmapsects_lagoontop", vram = 0x80800630 },
-    { name = "gcmapsects_lagoontop_RODATA_END", vram = 0x80800630 },
     { name = "overlays_gc_mapsects__lagoontop_data__s", vram = 0x80800630 },
+    { name = "D_80800630_gcmapsects_lagoontop", vram = 0x80800630 },
+    { name = "gcmapsects_lagoontop_DATA_START", vram = 0x80800630 },
+    { name = "gcmapsects_lagoontop_RODATA_END", vram = 0x80800630 },
     { name = "D_8080063C_gcmapsects_lagoontop", vram = 0x8080063C },
     { name = "D_80800648_gcmapsects_lagoontop", vram = 0x80800648 },
     { name = "D_8080070C_gcmapsects_lagoontop", vram = 0x8080070C },
@@ -33411,19 +32651,11 @@ symbols = [
     { name = "D_8080072C_gcmapsects_lagoontop", vram = 0x8080072C },
     { name = "D_80800738_gcmapsects_lagoontop", vram = 0x80800738 },
     { name = "D_80800744_gcmapsects_lagoontop", vram = 0x80800744 },
-    { name = "gcmapsects_lagoontop_DATA_END", vram = 0x80800750 },
-]
-
-[[section]]
-name = ".gcmapsects_lagoontop_bss"
-vram = 0x80800750
-size = 0x0
-
-symbols = [
-    { name = "gcmapsects_lagoontop_VRAM_END", vram = 0x80800750 },
-    { name = "gcmapsects_lagoontop_bss_VRAM", vram = 0x80800750 },
     { name = "gcmapsects_lagoontop_BSS_END", vram = 0x80800750 },
     { name = "gcmapsects_lagoontop_BSS_START", vram = 0x80800750 },
+    { name = "gcmapsects_lagoontop_VRAM_END", vram = 0x80800750 },
+    { name = "gcmapsects_lagoontop_DATA_END", vram = 0x80800750 },
+    { name = "gcmapsects_lagoontop_bss_VRAM", vram = 0x80800750 },
 ]
 
 [[section]]
@@ -33449,30 +32681,22 @@ size = 0x300
 symbols = [
     { name = "gcmapsects_lagoonmid_VRAM", vram = 0x80800000 },
     { name = "gcmapsects_lagoonmid_TEXT_START", vram = 0x80800000 },
+    { name = "gcmapsects_lagoonmid_TEXT_END", vram = 0x80800220 },
     { name = "gcmapsects_lagoonmid_RODATA_START", vram = 0x80800220 },
     { name = "R_80800220_gcmapsects_lagoonmid", vram = 0x80800220 },
-    { name = "gcmapsects_lagoonmid_TEXT_END", vram = 0x80800220 },
     { name = "gcmapsects_lagoonmid_RODATA_END", vram = 0x80800230 },
+    { name = "D_80800230_gcmapsects_lagoonmid", vram = 0x80800230 },
     { name = "overlays_gc_mapsects__lagoonmid_data__s", vram = 0x80800230 },
     { name = "gcmapsects_lagoonmid_DATA_START", vram = 0x80800230 },
-    { name = "D_80800230_gcmapsects_lagoonmid", vram = 0x80800230 },
     { name = "D_8080023C_gcmapsects_lagoonmid", vram = 0x8080023C },
     { name = "D_80800248_gcmapsects_lagoonmid", vram = 0x80800248 },
     { name = "D_808002E0_gcmapsects_lagoonmid", vram = 0x808002E0 },
     { name = "D_808002EC_gcmapsects_lagoonmid", vram = 0x808002EC },
     { name = "D_808002F4_gcmapsects_lagoonmid", vram = 0x808002F4 },
     { name = "D_808002F8_gcmapsects_lagoonmid", vram = 0x808002F8 },
-    { name = "gcmapsects_lagoonmid_DATA_END", vram = 0x80800300 },
-]
-
-[[section]]
-name = ".gcmapsects_lagoonmid_bss"
-vram = 0x80800300
-size = 0x0
-
-symbols = [
     { name = "gcmapsects_lagoonmid_VRAM_END", vram = 0x80800300 },
     { name = "gcmapsects_lagoonmid_BSS_START", vram = 0x80800300 },
+    { name = "gcmapsects_lagoonmid_DATA_END", vram = 0x80800300 },
     { name = "gcmapsects_lagoonmid_bss_VRAM", vram = 0x80800300 },
     { name = "gcmapsects_lagoonmid_BSS_END", vram = 0x80800300 },
 ]
@@ -33498,11 +32722,11 @@ vram = 0x80800000
 size = 0x300
 
 symbols = [
-    { name = "gcmapsects_lagoonbot_TEXT_START", vram = 0x80800000 },
     { name = "gcmapsects_lagoonbot_VRAM", vram = 0x80800000 },
+    { name = "gcmapsects_lagoonbot_TEXT_START", vram = 0x80800000 },
     { name = "R_80800220_gcmapsects_lagoonbot", vram = 0x80800220 },
-    { name = "gcmapsects_lagoonbot_RODATA_START", vram = 0x80800220 },
     { name = "gcmapsects_lagoonbot_TEXT_END", vram = 0x80800220 },
+    { name = "gcmapsects_lagoonbot_RODATA_START", vram = 0x80800220 },
     { name = "gcmapsects_lagoonbot_RODATA_END", vram = 0x80800230 },
     { name = "overlays_gc_mapsects__lagoonbot_data__s", vram = 0x80800230 },
     { name = "D_80800230_gcmapsects_lagoonbot", vram = 0x80800230 },
@@ -33514,14 +32738,6 @@ symbols = [
     { name = "D_808002F4_gcmapsects_lagoonbot", vram = 0x808002F4 },
     { name = "D_808002F8_gcmapsects_lagoonbot", vram = 0x808002F8 },
     { name = "gcmapsects_lagoonbot_DATA_END", vram = 0x80800300 },
-]
-
-[[section]]
-name = ".gcmapsects_lagoonbot_bss"
-vram = 0x80800300
-size = 0x0
-
-symbols = [
     { name = "gcmapsects_lagoonbot_BSS_END", vram = 0x80800300 },
     { name = "gcmapsects_lagoonbot_BSS_START", vram = 0x80800300 },
     { name = "gcmapsects_lagoonbot_bss_VRAM", vram = 0x80800300 },
@@ -39517,17 +38733,9 @@ symbols = [
     { name = "subaddieaudioquick_DATA_START", vram = 0x808001D0 },
     { name = "overlays_su_baddie_audioquick_data__s", vram = 0x808001D0 },
     { name = "subaddieaudioquick_RODATA_END", vram = 0x808001D0 },
-    { name = "subaddieaudioquick_DATA_END", vram = 0x808001E0 },
-]
-
-[[section]]
-name = ".subaddieaudioquick_bss"
-vram = 0x808001E0
-size = 0x0
-
-symbols = [
     { name = "subaddieaudioquick_BSS_START", vram = 0x808001E0 },
     { name = "subaddieaudioquick_VRAM_END", vram = 0x808001E0 },
+    { name = "subaddieaudioquick_DATA_END", vram = 0x808001E0 },
     { name = "subaddieaudioquick_bss_VRAM", vram = 0x808001E0 },
     { name = "subaddieaudioquick_BSS_END", vram = 0x808001E0 },
 ]
@@ -39564,14 +38772,6 @@ symbols = [
     { name = "subaddieaudioloop_RODATA_END", vram = 0x808003C0 },
     { name = "D_808003CC_subaddieaudioloop", vram = 0x808003CC },
     { name = "subaddieaudioloop_DATA_END", vram = 0x808003F0 },
-]
-
-[[section]]
-name = ".subaddieaudioloop_bss"
-vram = 0x808003F0
-size = 0x0
-
-symbols = [
     { name = "subaddieaudioloop_BSS_END", vram = 0x808003F0 },
     { name = "subaddieaudioloop_BSS_START", vram = 0x808003F0 },
     { name = "subaddieaudioloop_bss_VRAM", vram = 0x808003F0 },
@@ -40039,18 +39239,10 @@ symbols = [
     { name = "subaddiecustomhits_RODATA_END", vram = 0x80800350 },
     { name = "overlays_su_baddie_customhits_data__s", vram = 0x80800350 },
     { name = "D_80800350_subaddiecustomhits", vram = 0x80800350 },
-    { name = "subaddiecustomhits_DATA_END", vram = 0x80800360 },
-]
-
-[[section]]
-name = ".subaddiecustomhits_bss"
-vram = 0x80800360
-size = 0x0
-
-symbols = [
     { name = "subaddiecustomhits_BSS_END", vram = 0x80800360 },
     { name = "subaddiecustomhits_BSS_START", vram = 0x80800360 },
     { name = "subaddiecustomhits_VRAM_END", vram = 0x80800360 },
+    { name = "subaddiecustomhits_DATA_END", vram = 0x80800360 },
     { name = "subaddiecustomhits_bss_VRAM", vram = 0x80800360 },
 ]
 

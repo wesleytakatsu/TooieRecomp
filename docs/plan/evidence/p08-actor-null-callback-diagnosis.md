@@ -167,7 +167,9 @@ Nenhuma (sem alteração funcional).
 
 ## Próxima ação
 
-Investigar o mapeamento de **data de overlays**: confirmar se o `ovl_load` host
-deveria copiar o data section do overlay para a região link-time (base
-`0x80800000`) e, se sim, corrigir nessa camada; depois reavaliar o auto-spawn
-usando o marker id correto de chintroticker (569, não 419).
+**RESOLVIDO** por [[p08-overlay-data-relocation-diagnosis]]: o data de overlay
+estava acessível, mas o construtor recompilado hardcodava o endereço link-time
+porque a relocation foi descartada pelo pipeline de metadados (`readelf -S` sem
+`-W`). Corrigido no gerador; o construtor agora retorna o endereço heap e
+`ActorInfo[0x38] == 0x80107C2C`. Reavaliar o auto-spawn com o marker id correto
+de chintroticker (569, não 419) fica para etapa posterior.

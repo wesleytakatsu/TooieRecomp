@@ -353,14 +353,19 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         std::fflush(stderr);
     }
 
-    // Auto-spawn intro cutscene ticker on MAP_18B_CS_STARTUP_INTRO if not already active
+    // Auto-spawn diagnostic on MAP_18B_CS_STARTUP_INTRO if not already active.
+    // NOTE: func_80108C90 receives a MARKER ID, not an overlay index.
+    // Marker 419 == chcollballcontrol (overlay 467) — NOT chintroticker
+    // (chintroticker overlay index is 419, but its marker id is 569).
+    // 419 is kept deliberately as the relocation regression case for P08;
+    // do NOT change to 569 in this stage.
     static bool s_intro_ticker_spawned = false;
     if (overlay_index == 677u && entry_index == 4u && !s_intro_ticker_spawned) {
         const gpr mode = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
         const int map_val = int(MEM_H(0x10, mode));
         if (map_val == 0x18B || ctx->r4 == 0x18B) {
             s_intro_ticker_spawned = true;
-            std::fprintf(stderr, "[tooie-intro] spawning chintroticker (419) on MAP_18B...\n");
+            std::fprintf(stderr, "[tooie-intro] spawning marker 419 (chcollballcontrol, NOT chintroticker) on MAP_18B...\n");
             std::fflush(stderr);
 
             // Write 0.0f pos into scratch area 0x8007D800
@@ -370,12 +375,12 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
             MEM_W(0x8, scratch) = 0;
 
             recomp_context spawn_ctx = *ctx;
-            spawn_ctx.r4 = 419; // chintroticker
+            spawn_ctx.r4 = 419; // marker id (chcollballcontrol); NOT chintroticker (569)
             spawn_ctx.r5 = scratch;
             spawn_ctx.r6 = 0;
             spawn_ctx.r7 = 0;
             func_80108C90(rdram, &spawn_ctx);
-            std::fprintf(stderr, "[tooie-intro] chintroticker spawn returned v0=0x%llx\n",
+            std::fprintf(stderr, "[tooie-intro] marker 419 (chcollballcontrol) spawn returned v0=0x%llx\n",
                          static_cast<unsigned long long>(spawn_ctx.r2));
             std::fflush(stderr);
         }

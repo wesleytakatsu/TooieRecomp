@@ -44,6 +44,10 @@ Diagnóstico completo: [[p08-actor-null-callback-diagnosis]].
 chintroticker. O marker id correto de chintroticker é **569** (0x239).
 
 **Decisão (CASO B):** nenhum fallback global para `LOOKUP_FUNC(0)` foi
-implementado; diagnóstico apenas. Próximo passo: investigar o mapeamento de
-data de overlays no `ovl_load` host (base link-time `0x80800000`) e reavaliar
-o auto-spawn com o marker id correto (569).
+implementado; diagnóstico apenas. **Resolvido por
+[[p08-overlay-data-relocation-diagnosis]]** (causa: relocation de data de
+overlay descartada pelo gerador de metadados; corrigida na camada
+generator/metadata). O auto-spawn agora alcança `func_80107C2C` com
+`ActorInfo[0x38] == 0x80107C2C`; crash residual em `vector_push_back`
+(`func_80106668`) é problema posterior. Reavaliar o auto-spawn com o marker id
+correto de chintroticker (569) permanece para etapa posterior.

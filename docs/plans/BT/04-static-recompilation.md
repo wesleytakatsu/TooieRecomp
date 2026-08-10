@@ -51,6 +51,13 @@ sem discussão.
 | --- | --- |
 | `TooieRecomp/tooie.us.rev0.recomp.toml` | ELF + reloc list + stubs |
 | `TooieRecomp/metadata/relocatable_sections.recomp.txt` | 750 seções no dump |
+
+> **Follow-up P08 (2026-08-10):** os **750** registrados eram o subconjunto de
+> nomes de seção que o `readelf -S` (sem `-W`) exibia completos; as seções com
+> nomes longos eram truncadas/dropadas. O conjunto correto é **851**. O
+> generator agora emite `.txt` e `.recomp.txt` idênticos por construção e o
+> teste invariante exige `recomp.txt == txt` + paridade com o policy set do ELF.
+> Detalhe: [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]].
 | `TooieRecomp/metadata/recomp_stubs.txt` | 22 stubs rastreados |
 | `TooieRecomp/tools/run_recomp.sh` | regeneração limpa |
 | `TooieRecomp/tools/check_generated_fresh.py` | detecta saída obsoleta |

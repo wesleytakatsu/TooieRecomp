@@ -25,10 +25,10 @@ updated: 2026-08-08
 
 ## plan/evidence (P08)
 
-- [[plan/evidence/p08-actor-null-callback-diagnosis]] — P08 — Diagnóstico: callback nulo em `func_80108C90` (ActorInfo[0x38]) — o 0 é inválido (ROM tem `func_80107C2C`); causa: data de overlay não mapeado em endereço link-time.
+- [[plan/evidence/p08-actor-null-callback-diagnosis]] — P08 — Diagnóstico: callback nulo em `func_80108C90` (ActorInfo[0x38]) — o 0 é inválido (ROM tem `func_80107C2C`); causa: relocation de data de overlay descartada pelo gerador de metadados (resolvida por `p08-overlay-data-relocation-diagnosis`).
 - [[plan/evidence/p08-intro-actor-spawn-diagnosis]] — P08 — Divergência no spawn de actors da intro (chintroticker/chintrocam/chintrochar não instanciados).
-- [[plan/evidence/p08-session-handoff]] — P08 — Handoff da sessão: spawn de chintroticker (419), gemarkersDll e logo da Rare.
-
+- [[plan/evidence/p08-session-handoff]] — P08 — Handoff da sessão: spawn de chintroticker (419), gemarkersDll e logo da Rare; relocation de data de overlay resolvida (ver `p08-overlay-data-relocation-diagnosis`).
+- [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — Relocation de data de overlay perdida (chcollballcontrol) — ROOT CAUSE A: `readelf -S` sem `-W` truncava nomes de seção; relocs existiam no ELF. Fix no gerador de metadados; `ActorInfo[0x38] == 0x80107C2C`; `LOOKUP_FUNC(0)` FIXED.
 ## plans/BT
 
 - [[plans/BT/index]] — Etapas de implementação — TooieRecomp — Índice ordenado das fases.

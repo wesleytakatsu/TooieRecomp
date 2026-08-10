@@ -82,6 +82,15 @@ python3 TooieRecomp/tools/test_metadata_invariants.py
 | Invariant tests | **PASS** |
 | Logs | `docs/plan/evidence/p03-generate-metadata.log`, `p03-metadata-tests.log` |
 
+> **Follow-up P08 (2026-08-10):** os **830** registrados na evidência original
+> eram subestimados por truncamento de nome no `readelf -S` (sem `-W`). Nomes de
+> seção com ≥ 18 caracteres eram truncados para 12 caracteres + `[...]`, e o
+> subconjunto `relocatable_sections.recomp.txt` (750) descartava as seções
+> longas — incluindo `.chcollballcontrol` — o que fez o N64Recomp descartar as
+> relocations dessas seções. Após o diagnóstico P08, o parser foi corrigido com
+> `-W` e o conjunto correto é **851**. Detalhe:
+> [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]].
+
 ## Critérios de qualidade
 
 - [x] Saída ordenada e estável entre execuções (lista relocável sorted; overlays por índice).

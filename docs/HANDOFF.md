@@ -12,8 +12,17 @@ está em `func_80108C90` (não `func_80107C2C`), lendo `ActorInfo[0x38]` em
 endereço link-time `0x80804FA0`, onde o data do overlay 467 não está mapeado no
 runtime (ROM tem `func_80107C2C` nesse campo). Adicionalmente, o auto-spawn usa
 marker id **419** que resolve para `chcollballcontrol`, não chintroticker
-(marker correto **569**). Nenhuma correção funcional — diagnóstico apenas.
-Detalhe: `plan/evidence/p08-actor-null-callback-diagnosis.md`.
+(marker correto **569**). Detalhe: `plan/evidence/p08-actor-null-callback-diagnosis.md`.
+
+**FIX aplicado (2026-08-10, P08):** a causa raiz do 0 era a relocation de data
+de overlay **descartada pelo gerador de metadados** — `readelf -S` sem `-W`
+truncava nomes de seção longos (`.chcollballcontrol` → `.chcollballc[...]`), a
+seção não entrava na lista relocatable e o N64Recomp descartava o `.rel`. A
+correção é na camada generator/metadata (`-W` + listas `.txt`/`.recomp.txt`
+idênticas, 851 seções). **Confirmado:** `ActorInfo[0x38] == 0x80107C2C` e
+`func_80108C90` ultrapassa o `LOOKUP_FUNC(0)`. **Novo ponto de parada (não
+diagnosticado):** SIGSEGV em `vector_push_back` (`func_80106668` em
+`func_80107C2C`). Detalhe: `plan/evidence/p08-overlay-data-relocation-diagnosis.md`.
 
 **Input no title/file select permanece pendente**, mas foi explicitamente
 diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na
@@ -141,13 +150,17 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. PRIORIDADE — spawn actors intro (MAP_18B)
+### 0. PRIORIDADE — novo SIGSEGV na inicialização de actor
 
-- Boot: `gsattract:4` → mode=3, map `0x18B` (`MAP_18B_CS_STARTUP_INTRO`).
-- Mode 3 **não** chama `gsattract:1`; attract mode 5 nunca entra.
-- Falta spawn: `chintroticker` (419), `chintrocam` (441), `chintrochar` (440).
-- Próximo: instrumentar `gsmaker` setup/lookup de actor IDs do map 0x18B.
-- Detalhe: `plan/evidence/p08-session-handoff.md`.
+- Relocation de data de overlay: **RESOLVIDO** (P08, camada generator/metadata).
+  `LOOKUP_FUNC(0)` não ocorre mais; `ActorInfo[0x38] == 0x80107C2C`.
+- Novo ponto de parada: `func_80108C90 → func_80107C2C → func_80106668 →
+  vector_push_back → SIGSEGV`. **Causa não diagnosticada.**
+- O spawn diagnóstico ainda usa marker id **419** (chcollballcontrol),
+  deliberadamente mantido como caso de regressão; marker de chintroticker é
+  **569** (não trocar nesta etapa).
+- Detalhes: `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
+  `plan/evidence/p08-session-handoff.md`.
 
 ### 1. Diferido — title / file select input
 
