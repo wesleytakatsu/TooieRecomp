@@ -150,16 +150,25 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. PRIORIDADE — novo SIGSEGV na inicialização de actor
+### 0. PRIORIDADE — divergência que impede a init do actor manager
 
 - Relocation de data de overlay: **RESOLVIDO** (P08, camada generator/metadata).
   `LOOKUP_FUNC(0)` não ocorre mais; `ActorInfo[0x38] == 0x80107C2C`.
-- Novo ponto de parada: `func_80108C90 → func_80107C2C → func_80106668 →
-  vector_push_back → SIGSEGV`. **Causa não diagnosticada.**
+- SIGSEGV em `vector_push_back` (`func_80108C90 → func_80107C2C →
+  func_80106668 → vector_push_back`): **DIAGNOSTICADO como artefato do spawn
+  diagnóstico.** `D_80136EE0` (vetor global de Actors) == NULL; initializer
+  (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) **nunca executou**;
+  args do hook `func_80108C90(419, scratch, 0, 0)` são **VALID** per o
+  contrato real. Com AUTO-SPAWN OFF o crash some, mas o fluxo natural também
+  nunca inits o vetor e diverge antes num **segundo SIGSEGV** em
+  `gcsectionDll:4` (via `glintrosync:6`), sem diagnóstico.
+- ROOT CAUSE: A primário (spawn dispara antes da init) / C candidata
+  (init deveria ter ocorrido — não provado com HIGH). CONFIDENCE: MEDIUM.
 - O spawn diagnóstico ainda usa marker id **419** (chcollballcontrol),
   deliberadamente mantido como caso de regressão; marker de chintroticker é
   **569** (não trocar nesta etapa).
-- Detalhes: `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
+- Detalhes: `plan/evidence/p08-actor-init-segv-diagnosis.md`,
+  `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
   `plan/evidence/p08-session-handoff.md`.
 
 ### 1. Diferido — title / file select input

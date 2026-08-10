@@ -124,7 +124,8 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 | [[../../plan/evidence/p08-title-input-eeprom]] | **blocked** title/save input handoff |
 | [[../../plan/evidence/p08-session-handoff]] | estado técnico atual e próximos breakpoints |
 | [[../../plan/evidence/p08-actor-null-callback-diagnosis]] | callback nulo em `func_80108C90` provado INVALID; causa = data de overlay não mapeado em link-time; marker 419 ≠ chintroticker (569) |
-| [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]] | **FIX aplicado:** relocation de data de overlay perdida — causa raiz = metadata (nomes de seção truncados por `readelf -S` sem `-W`); corrigido no gerador; `ActorInfo[0x38] == 0x80107C2C`; `LOOKUP_FUNC(0)` FIXED; novo SIGSEGV em `vector_push_back` **não diagnosticado** |
+| [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]] | **FIX aplicado:** relocation de data de overlay perdida — causa raiz = metadata (nomes de seção truncados por `readelf -S` sem `-W`); corrigido no gerador; `ActorInfo[0x38] == 0x80107C2C`; `LOOKUP_FUNC(0)` FIXED |
+| [[../../plan/evidence/p08-actor-init-segv-diagnosis]] | **SIGSEGV de actor diagnosticado como artefato do spawn:** `D_80136EE0` NULL (initializer `chbaddieDll ep1 → func_800FF390 → func_801065E0` nunca executou); args do hook VALID; crash some com AUTO-SPAWN OFF; fluxo natural diverge antes em `gcsectionDll:4` (via glintrosync) |
 
 ### Residual
 
@@ -136,9 +137,17 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
   relocation de data descartada pelo gerador de metadados (nomes de seção
   truncados por `readelf -S` sem `-W`); corrigido na camada generator/metadata.
   `ActorInfo[0x38]` agora lê `0x80107C2C` e `func_80108C90` ultrapassa o
-  `LOOKUP_FUNC(0)`. Novo ponto de parada: SIGSEGV em `vector_push_back`
-  (`func_80106668` em `func_80107C2C`), **não diagnosticado**. Detalhe:
+  `LOOKUP_FUNC(0)`. Detalhe:
   [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]].
+- **PRIORIDADE — novo SIGSEGV de inicialização de actor:** **DIAGNOSTICADO como
+  artefato do spawn diagnóstico.** Em `vector_push_back` (via
+  `func_80106668`/`func_80107C2C`), `D_80136EE0` (vetor global de Actors) está
+  NULL porque o initializer (`chbaddieDll ep1 → func_800FF390 →
+  func_801065E0`) nunca executou; args do hook `func_80108C90` são VALID; o
+  crash some com AUTO-SPAWN OFF (o fluxo natural diverge antes, num segundo
+  SIGSEGV em `gcsectionDll:4` via `glintrosync:6`, sem diagnóstico). ROOT CAUSE
+  A primário / C candidata, CONFIDENCE MEDIUM. Detalhe:
+  [[../../plan/evidence/p08-actor-init-segv-diagnosis]].
 - Capturar isoladamente logo Rare e menu de título depois de corrigir o fluxo.
 - **Diferido — title/file-select input:** launcher UI OK; tentativa EEPROM
   falhou validação humana. Retomar após a abertura automática; ver
@@ -157,11 +166,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Próxima etapa
 
-1. **Agente seguinte:** novo SIGSEGV de inicialização de actor
-   (`vector_push_back` via `func_80106668`/`func_80107C2C`) no caminho do
-   spawn diagnóstico (marker 419 = chcollballcontrol). Mode já fica em 3; mapa
-   carrega; `LOOKUP_FUNC(0)` já não ocorre. Ver
-   [[../../plan/evidence/p08-overlay-data-relocation-diagnosis]].
+1. **Agente seguinte:** localizar a divergência que impede
+   `chbaddieDll_entrypoint_1` (ovl 181 ep1) / actor-manager init
+   (`func_800FF390`/`func_801065E0`) de executar — e/ou diagnosticar o segundo
+   SIGSEGV em `gcsectionDll:4` (via `glintrosync:6`), anterior à init de actors
+   no fluxo natural. Ver
+   [[../../plan/evidence/p08-actor-init-segv-diagnosis]].
 2. Com actors vivos: validar logos, descida de câmera e demos.
 3. Depois input title/file-select, rumble/hotplug e polish 4:3/fullscreen.
 4. Só então [[09-gameplay-parity-and-enhancements]].

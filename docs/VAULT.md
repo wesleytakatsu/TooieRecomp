@@ -29,6 +29,7 @@ updated: 2026-08-08
 - [[plan/evidence/p08-intro-actor-spawn-diagnosis]] — P08 — Divergência no spawn de actors da intro (chintroticker/chintrocam/chintrochar não instanciados).
 - [[plan/evidence/p08-session-handoff]] — P08 — Handoff da sessão: spawn de chintroticker (419), gemarkersDll e logo da Rare; relocation de data de overlay resolvida (ver `p08-overlay-data-relocation-diagnosis`).
 - [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — Relocation de data de overlay perdida (chcollballcontrol) — ROOT CAUSE A: `readelf -S` sem `-W` truncava nomes de seção; relocs existiam no ELF. Fix no gerador de metadados; `ActorInfo[0x38] == 0x80107C2C`; `LOOKUP_FUNC(0)` FIXED.
+- [[plan/evidence/p08-actor-init-segv-diagnosis]] — P08 — SIGSEGV na inicialização de actor (`vector_push_back` via `func_80106668`/`func_80107C2C`) é **artefato do spawn diagnóstico**: `D_80136EE0` (vetor global de Actors) NULL porque o initializer (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) nunca executou; args do hook `func_80108C90` VALID; fluxo natural diverge antes (`gcsectionDll:4` via glintrosync). ROOT CAUSE A primário / C candidata, MEDIUM.
 ## plans/BT
 
 - [[plans/BT/index]] — Etapas de implementação — TooieRecomp — Índice ordenado das fases.
