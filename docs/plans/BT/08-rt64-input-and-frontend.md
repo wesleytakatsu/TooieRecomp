@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-09
+updated: 2026-08-10
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -110,6 +110,21 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
     mas a abertura continua na mesma tomada. Handoff completo:
     [[../../plan/evidence/p08-session-handoff]].
 
+12. **Scheduler do runtime estabilizado (decisão C, 2026-08-10)**  
+    O N64ModernRuntime (externo, base `ca568b6`, não commitado) recebeu o patch
+    de scheduler da decisão C: `thread_queue_remove` com traversal real da fila
+    (pred/next) e `false` para `queue_ == NULLPTR` sem zerar `t->queue`;
+    `thread_queue_insert` mantém o scan REAL de links contra duplicata/self-loop;
+    `osSetThreadPri` só remove+reinsert com `t_ != this_thread() && state !=
+    STOPPED && t->queue != NULLPTR`, sempre muda `priority` e sempre chama
+    `check_running_queue`. Harness nativo 13/13 PASS; 14 runs (12 smokes + 2
+    GDB) com `No threads left`=0, SIGSEGV=0, self-loop=0, `last_ovl=677:3`
+    alcançado. Repro versionado:
+    `patches/runtime/n64modernruntime-scheduler.patch` +
+    `tools/apply_runtime_patches.sh` (idempotente). Evidência:
+    [[../../plan/evidence/p08-no-threads-left-diagnosis]] (seção
+    `## Final scheduler fix validation`).
+
 ### Evidência RT64
 
 | captura | conteúdo |
@@ -183,14 +198,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Próxima etapa
 
-1. **Agente seguinte:** (decisão/implementação sob autorização) aplicar o fix
-   estreito do diagnóstico `No threads left to run!` (ROOT CAUSE E): limpar
-   `t->queue = NULLPTR` em `thread_queue_remove` do runtime, OU corrigir o guard
-   do patch local para scan real de links. Rebuild + smoke natural. Depois
-   continuar a busca da divergência que impede a init do actor manager
-   (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) sem forçá-la. Ver
-   [[../../plan/evidence/p08-no-threads-left-diagnosis]] e
-   [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
+1. **Agente seguinte:** continuar a busca da divergência que impede a init do
+   actor manager (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) sem forçá-la,
+   agora que o scheduler do runtime está estabilizado (decisão C —
+   `No threads left to run!`, insert(NULLPTR) SIGSEGV e self-loop eliminados;
+   ver fix 12 e [[../../plan/evidence/p08-no-threads-left-diagnosis]]).
+   Refs: [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
 2. Com actors vivos: validar logos, descida de câmera e demos.
 3. Depois input title/file-select, rumble/hotplug e polish 4:3/fullscreen.
 4. Só então [[09-gameplay-parity-and-enhancements]].

@@ -314,6 +314,112 @@ para usar scan real de links) — sob autorização, pois o arquivo é dependên
 externa N64ModernRuntime não commitada. Rebuild runtime + smoke natural.
 Não executar agora.
 
+## Fix validation
+
+Fix B aplicado e validado em `threadqueue.cpp` (external dirty). Evidência de
+contrato em [[p08-threadqueue-b-fix-validation]].
+
+GROK CONTRACT REVIEW:
+B confirmed
+
+FIELD-EQUALITY GUARD:
+REMOVED (bloco `if (toadd->queue == queue_) return;`)
+
+REAL LINK SCAN:
+PRESERVED (scan do head real; hop cap 255; antes do loop de prioridade)
+
+HEAD REMOVE TEST:
+PASS (harness nativo: A->B->C, remove(A) -> B->C)
+
+NON-HEAD REMOVE TEST:
+FAIL (harness nativo: remove(B) -> infinite loop, timeout 124)
+
+TAIL REMOVE TEST:
+FAIL (harness nativo: remove(C) -> infinite loop, timeout 124)
+
+REAL osSetThreadPri NON-HEAD CASE:
+YES (5 removes com alvo non-head no trace GDB; todas retornaram false rápido
+porque a fila tinha head único `next==NULL`; sem hang no run real, mas o
+infinite loop é provado pelo harness)
+
+SECOND SCHEDULER BUG:
+YES (CONFIRMED — `thread_queue_remove` só checa o HEAD: `cur` avança mas
+`queue_to_ptr` sempre recebe `queue_`; presente no upstream; ver
+[[p08-threadqueue-b-fix-validation]])
+
+NO_THREADS_LEFT AFTER FIX:
+FIXED (0 ocorrências em 2 runs smoke)
+
+NEW BLOCKER:
+SIGSEGV em `thread_queue_insert` chamado por `osSetThreadPri` com
+`t->queue == 0x0` (JOY) — `remove(NULLPTR)` retorna false imediato e
+`insert(NULLPTR)` faz `queue_to_ptr(0)` apontar fora do rdram. Antes de B o
+field-guard `toadd->queue == queue_` (0==0) mascarava esse caso. É thread
+RUNNING/popped: `pop()` limpa `queue` mas o guard de `osSetThreadPri`
+(`state != STOPPED`) não exclui RUNNING. Não alterado nesta etapa.
+
+## Final scheduler fix validation
+
+FIX:
+C — patch versionado em `patches/runtime/n64modernruntime-scheduler.patch`
+(SHA256 `1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309`,
+base `ca568b6ad79b9029d14077f0c3ffa757727c5559`). Reconstrução exata validada:
+`git apply --check` + `git apply` contra base em clone limpo, arquivos
+byte-idênticos ao working tree testado. Aplicação idempotente via
+`tools/apply_runtime_patches.sh` (valida base, SHA256 do patch, `--check`,
+reconhece já-aplicado via reverse-check; NÃO reseta outras mudanças locais).
+
+INSERT MEMBERSHIP:
+PASS (harness modos 5/6/8/9: CASE A duplicata rejeitada sem self-loop,
+CASE B stale field inserido exatamente 1x, INSERT DUPLICATE A->B->C+insert(B)
+B==1x, STALE FIELD inserido 1x). Scan REAL de links preservado; field guard
+removido.
+
+REMOVE HEAD:
+PASS (harness modo 1: A->B->C remove(A) -> B->C, ret=true)
+
+REMOVE NON-HEAD:
+PASS (harness modo 2: A->B->C remove(B) -> A->C; antes do fix: infinite loop)
+
+REMOVE TAIL:
+PASS (harness modo 3: A->B->C remove(C) -> A->B)
+
+REMOVE MISSING:
+PASS (harness modo 4: remove(D) -> false, fila intacta)
+
+QUEUE NULL:
+PASS (harness modo 7: remove(NULLPTR, X) -> false, sem crash/hang)
+
+REAL QUEUE_NULL CASES:
+0 observados em 14 runs naturais (12 smokes + 2 GDB, ~60s cada). A
+instrumentação temporária de classificação (id/state/pri/current/ctx/next)
+não registrou nenhum caso `t_ != this_thread() && state != STOPPED &&
+queue == NULLPTR` — o cenário do crash original (JOY queue==NULL) não é
+alcançável nas runs naturais pós-fix C. O guard `queue != NULLPTR` é
+defensivo: com `thread_queue_remove` corrigido, o estado corrompido que
+gerava o crash não é mais produzido. Instrumentação removida do binário
+final (confirmado via `strings`: 0).
+
+NO_THREADS_LEFT:
+FIXED (0 ocorrências em 14 runs)
+
+INSERT_NULL SIGSEGV:
+FIXED (0 ocorrências em 14 runs)
+
+RUNNING QUEUE:
+sem corrupção observada (self-loop=0, duplicata=0 em 14 runs; diag
+`stack=(idle)`/`last_ovl=677:3` alcançado em todos)
+
+PRIORITY ORDER:
+PASS (harness pri modos 1-4: SET_PRI RUNQUEUE reordena válido, BLOCKED
+remove+reinsert na MESMA fila, QUEUE_NULL muda pri sem remove/insert e
+roda check_running_queue, CURRENT muda pri sem remove/reinsert; ordenação
+non-increasing verificada no harness)
+
+NEW FIRST BLOCKER:
+nenhum (critérios da microetapa todos atendidos; build PASS; 14 runs sem
+SIGSEGV/hang/throw)
+
 ## Referências
 
 Docs relacionados: [[p08-gcsection-glintrosync-segv-diagnosis]],

@@ -1,8 +1,17 @@
-# Handoff — TooieRecomp (atualizado 2026-08-09 P08)
+# Handoff — TooieRecomp (atualizado 2026-08-10 P08)
 
 **Prioridade atual:** spawn dos actors da abertura em `MAP_18B_CS_STARTUP_INTRO`.
 Mapa e mode=3 carregam; `chintroticker`/`chintrocam`/`chintrochar` **nunca**
 disparam → câmera default no chão, sem logos/demos. Não chamar Spiral Mountain.
+
+**Scheduler runtime estabilizado (2026-08-10):** decisão **C** implementada e
+validada no scheduler do N64ModernRuntime — `thread_queue_remove` com traversal
+real, scan de duplicata no insert, e guard `t->queue != NULLPTR` em
+`osSetThreadPri`. `No threads left to run!`, SIGSEGV de insert(NULLPTR) e
+self-loop = 0 em 14 runs. Patch versionado:
+`patches/runtime/n64modernruntime-scheduler.patch` + `tools/apply_runtime_patches.sh`
+idempotente. Detalhe: `plan/evidence/p08-no-threads-left-diagnosis.md`
+(seção `## Final scheduler fix validation`).
 
 Handoff técnico: `plan/evidence/p08-session-handoff.md`.
 
@@ -23,6 +32,25 @@ idênticas, 851 seções). **Confirmado:** `ActorInfo[0x38] == 0x80107C2C` e
 `func_80108C90` ultrapassa o `LOOKUP_FUNC(0)`. **Novo ponto de parada (não
 diagnosticado):** SIGSEGV em `vector_push_back` (`func_80106668` em
 `func_80107C2C`). Detalhe: `plan/evidence/p08-overlay-data-relocation-diagnosis.md`.
+
+**SCHEDULER FIX C (2026-08-10):** estabilizado o contrato do scheduler do
+N64ModernRuntime (runtime externo, base `ca568b6`, NÃO commitado no
+BanjoRecomp). Alterações confirmadas: (1) `thread_queue_insert` preserva scan
+REAL de links contra duplicata/self-loop (field guard removido); (2)
+`thread_queue_remove` percorre a fila real (`pred`/`next`) e retorna false para
+`queue_ == NULLPTR`, sem zerar `t->queue`; (3) `osSetThreadPri` só faz
+remove+reinsert quando `t_ != this_thread() && state != STOPPED && t->queue !=
+NULLPTR`, sempre muda `priority` e sempre roda `check_running_queue`.
+Validação: harness 13/13 PASS (insert duplicate, stale field, remove
+head/non-head/tail/missing/null, pri runqueue/blocked/queue_null/current);
+14 runs (12 smokes + 2 GDB) com `No threads left`=0, SIGSEGV=0, self-loop=0,
+duplicata=0, LOOKUP_FUNC(0)=0; `last_ovl=677:3` alcançado; caso
+queue==NULL do crash original não é mais alcançável (0 ocorrências com
+instrumentação temporária, removida no binário final). Repro: patch versionado
+`patches/runtime/n64modernruntime-scheduler.patch` (SHA256
+`1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309`) +
+`tools/apply_runtime_patches.sh` (idempotente). Detalhe:
+`plan/evidence/p08-no-threads-left-diagnosis.md`.
 
 **Input no title/file select permanece pendente**, mas foi explicitamente
 diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na

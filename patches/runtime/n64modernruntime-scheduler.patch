@@ -1,0 +1,70 @@
+diff --git a/ultramodern/src/threadqueue.cpp b/ultramodern/src/threadqueue.cpp
+index f9c0fa1..3fa9c83 100644
+--- a/ultramodern/src/threadqueue.cpp
++++ b/ultramodern/src/threadqueue.cpp
+@@ -15,6 +15,26 @@ void ultramodern::thread_queue_insert(RDRAM_ARG PTR(PTR(OSThread)) queue_, PTR(O
+     PTR(OSThread)* cur = queue_to_ptr(PASS_RDRAM queue_);
+     OSThread* toadd = TO_PTR(OSThread, toadd_); 
+     debug_printf("[Thread Queue] Inserting thread %d into queue 0x%08X\n", toadd->id, (uintptr_t)queue_);
++    // A thread can be woken by two host-side event sources before the first
++    // wakeup has run. Inserting it into the same queue twice makes next point
++    // back to itself and permanently wedges the cooperative scheduler.
++    // Membership is decided by the REAL links in the queue, not by the queue
++    // field: the field is a reinsert handle and stays stale after remove, so
++    // checking it would wrongly reject a legitimate osSetThreadPri reinsert.
++    // Scan the links as well before mutating them.
++    PTR(OSThread)* scan = cur;
++    for (uint32_t hops = 0; *scan != NULLPTR; hops++) {
++        if (*scan == toadd_) {
++            debug_printf("  Thread %d is already linked in queue 0x%08X\n", toadd->id, (uintptr_t)queue_);
++            return;
++        }
++        if (hops == 255) {
++            debug_printf("  Refusing to insert into malformed queue 0x%08X\n", (uintptr_t)queue_);
++            return;
++        }
++        scan = &TO_PTR(OSThread, *scan)->next;
++    }
++
+     while (*cur && TO_PTR(OSThread, *cur)->priority > toadd->priority) {
+         cur = &TO_PTR(OSThread, *cur)->next;
+     }
+@@ -43,14 +63,19 @@ PTR(OSThread) ultramodern::thread_queue_pop(RDRAM_ARG PTR(PTR(OSThread)) queue_)
+ bool ultramodern::thread_queue_remove(RDRAM_ARG PTR(PTR(OSThread)) queue_, PTR(OSThread) t_) {
+     debug_printf("[Thread Queue] Removing thread %d from queue 0x%08X\n", TO_PTR(OSThread, t_)->id, (uintptr_t)queue_);
+ 
+-    PTR(PTR(OSThread)) cur = queue_;
+-    while (cur != NULLPTR) {
+-        PTR(OSThread)* cur_ptr = queue_to_ptr(PASS_RDRAM queue_);
+-        if (*cur_ptr == t_) {
+-            *cur_ptr = TO_PTR(OSThread, *cur_ptr)->next;
++    if (queue_ == NULLPTR) {
++        return false;
++    }
++
++    PTR(OSThread)* pred = queue_to_ptr(PASS_RDRAM queue_);
++
++    while (*pred != NULLPTR) {
++        if (*pred == t_) {
++            *pred = TO_PTR(OSThread, *pred)->next;
+             return true;
+         }
+-        cur = TO_PTR(OSThread, *cur_ptr)->next;
++
++        pred = &TO_PTR(OSThread, *pred)->next;
+     }
+ 
+     return false;
+diff --git a/ultramodern/src/threads.cpp b/ultramodern/src/threads.cpp
+index 812c556..fe46935 100644
+--- a/ultramodern/src/threads.cpp
++++ b/ultramodern/src/threads.cpp
+@@ -310,7 +310,7 @@ extern "C" void osSetThreadPri(RDRAM_ARG PTR(OSThread) t_, OSPri pri) {
+     if (t->priority != pri) {
+         t->priority = pri;
+ 
+-        if (t_ != ultramodern::this_thread() && t->state != OSThreadState::STOPPED) {
++        if (t_ != ultramodern::this_thread() && t->state != OSThreadState::STOPPED && t->queue != NULLPTR) {
+             ultramodern::thread_queue_remove(PASS_RDRAM t->queue, t_);
+             ultramodern::thread_queue_insert(PASS_RDRAM t->queue, t_);
+         }
