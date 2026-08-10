@@ -6,6 +6,15 @@ disparam → câmera default no chão, sem logos/demos. Não chamar Spiral Mount
 
 Handoff técnico: `plan/evidence/p08-session-handoff.md`.
 
+**Diagnóstico fechado (2026-08-09):** o abort `Failed to find function at
+0x00000000` no spawn forçado é **INVALID** (não é callback opcional). O crash
+está em `func_80108C90` (não `func_80107C2C`), lendo `ActorInfo[0x38]` em
+endereço link-time `0x80804FA0`, onde o data do overlay 467 não está mapeado no
+runtime (ROM tem `func_80107C2C` nesse campo). Adicionalmente, o auto-spawn usa
+marker id **419** que resolve para `chcollballcontrol`, não chintroticker
+(marker correto **569**). Nenhuma correção funcional — diagnóstico apenas.
+Detalhe: `plan/evidence/p08-actor-null-callback-diagnosis.md`.
+
 **Input no title/file select permanece pendente**, mas foi explicitamente
 diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na
 validação humana: `plan/evidence/p08-title-input-eeprom.md`.

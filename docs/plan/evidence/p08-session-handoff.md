@@ -21,8 +21,29 @@ tags: [banjo-tooie-recomp, p08, intro, chintroticker, chintrochar, gemarkers, ra
   - Em `TooieRecomp/src/game/syscall_handler.cpp`, adicionamos o hook de inicialização automática de `chintroticker` (419) no retorno de `gcsectionDll:4` para o mapa `0x18B`.
   - Corrigimos o gerenciamento de overlays em `syscall_handler.cpp` para reter o pacote do actor em `s_resident_overlays`.
 
-## 2. Próximo Ponto a Ajustar
+## 2. Callback nulo no spawn (diagnóstico provado)
 
-Durante a execução da rotina de alocação de actor `func_80107C2C` (`TooieRecomp/RecompiledFuncs/funcs_292.c`), ocorre uma chamada `LOOKUP_FUNC(ctx->r2)` com `ctx->r2 == 0x00000000` (callback nulo opcional do actor ou proteção de ponteiro de função).
+**Hipótese anterior (revisada):** acreditava-se que o abort ocorria em
+`func_80107C2C` (`RecompiledFuncs/funcs_292.c`) com `LOOKUP_FUNC(ctx->r2)` e
+`ctx->r2 == 0`. **Isso foi provado incorreto.**
 
-Tratando essa proteção de ponteiro nulo em `LOOKUP_FUNC` ou nos stubs em `TooieRecomp/src/game/boot_hw_stubs.cpp`, `chintroticker` completará a inicialização e instanciará `chintrochar` (440), permitindo a exibição visual da logo da Rareware.
+**Achado real (gdb + instrumentação + ROM):** o abort está em
+**`func_80108C90`** (`RecompiledFuncs/funcs_126.c:2388`), na segunda chamada
+indireta `LOOKUP_FUNC(ctx->r25)` em `0x80108CDC`, onde `ctx->r25 =
+MEM_W(0x38, retorno_do_construtor)`. O construtor (resolvido por
+`gemarkersDll`) retorna o endereço link-time do ActorInfo
+(`D_80804FA0_chcollballcontrol`), mas o data section do overlay 467 não está
+mapeado em `0x80804FA0` no runtime (overlay carregado no heap), então o campo
+`+0x38` é lido como **0**. O ROM em `D_80804FD8` contém **`func_80107C2C`**
+(não-nulo) — o callback não é opcional.
+
+Diagnóstico completo: [[p08-actor-null-callback-diagnosis]].
+
+**Descoberta adicional:** o auto-spawn usa marker id **419**, que o
+`gemarkersDll` resolve para `chcollballcontrol_entrypoint_3` — **não**
+chintroticker. O marker id correto de chintroticker é **569** (0x239).
+
+**Decisão (CASO B):** nenhum fallback global para `LOOKUP_FUNC(0)` foi
+implementado; diagnóstico apenas. Próximo passo: investigar o mapeamento de
+data de overlays no `ovl_load` host (base link-time `0x80800000`) e reavaliar
+o auto-spawn com o marker id correto (569).

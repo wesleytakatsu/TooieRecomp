@@ -123,6 +123,7 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 | [[../../plan/evidence/p08-runtime-frontend-smoke]] | smoke frontend/preview |
 | [[../../plan/evidence/p08-title-input-eeprom]] | **blocked** title/save input handoff |
 | [[../../plan/evidence/p08-session-handoff]] | estado técnico atual e próximos breakpoints |
+| [[../../plan/evidence/p08-actor-null-callback-diagnosis]] | callback nulo em `func_80108C90` provado INVALID; causa = data de overlay não mapeado em link-time; marker 419 ≠ chintroticker (569) |
 
 ### Residual
 
@@ -130,6 +131,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
   mudança de tomadas e demos. O timing e o áudio avançam, mas `gsattract`
   aparece apenas uma vez e `chintrocam` não carrega no smoke instrumentado.
   Detalhe: [[../../plan/evidence/p08-session-handoff]].
+- **PRIORIDADE — mapeamento de data de overlays:** `func_80108C90` lê o
+  callback do ActorInfo em endereço link-time (`0x80804FA0`), mas o `ovl_load`
+  host carrega o overlay no heap; o campo `+0x38` lê 0 e o abort ocorre em
+  `LOOKUP_FUNC(0)`. Verificar se o data section deve ser copiado para a base
+  `0x80800000`. Detalhe:
+  [[../../plan/evidence/p08-actor-null-callback-diagnosis]].
 - Capturar isoladamente logo Rare e menu de título depois de corrigir o fluxo.
 - **Diferido — title/file-select input:** launcher UI OK; tentativa EEPROM
   falhou validação humana. Retomar após a abertura automática; ver

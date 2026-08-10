@@ -23,6 +23,12 @@ updated: 2026-08-08
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Gates funcionais, audiovisuais, técnicos e de distribuição.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, ROM, decisões e licenças.
 
+## plan/evidence (P08)
+
+- [[plan/evidence/p08-actor-null-callback-diagnosis]] — P08 — Diagnóstico: callback nulo em `func_80108C90` (ActorInfo[0x38]) — o 0 é inválido (ROM tem `func_80107C2C`); causa: data de overlay não mapeado em endereço link-time.
+- [[plan/evidence/p08-intro-actor-spawn-diagnosis]] — P08 — Divergência no spawn de actors da intro (chintroticker/chintrocam/chintrochar não instanciados).
+- [[plan/evidence/p08-session-handoff]] — P08 — Handoff da sessão: spawn de chintroticker (419), gemarkersDll e logo da Rare.
+
 ## plans/BT
 
 - [[plans/BT/index]] — Etapas de implementação — TooieRecomp — Índice ordenado das fases.
