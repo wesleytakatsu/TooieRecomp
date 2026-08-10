@@ -35,3 +35,10 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docs vault: versionar só markdown; evidências (logs/png/txt/binários) ficam no disco
+docs/**/*.log
+docs/**/*.png
+docs/**/*.txt
+docs/**/*.bin
+docs/**/*.sample.log

@@ -52,6 +52,6 @@ Unknown non-audio types: `get_rsp_microcode` logs full OSTask fields and returns
 
 - Audio host uses **SDL default device** (not a hard-coded sink).
 - Boot requires host **SI completion + CIC-NUS-6105** for `gldbDll` asset decrypt
-  (see `docs/P07-boot-hang-audio-diag.md`). Without it, world load spins in
+  (see `docs/plan/evidence/p07-boot-hang-audio-diag.md`). Without it, world load spins in
   `gsmaker_entrypoint_16` and PCM is silence.
 - User validation: **title/intro music plays correctly** on system default output.

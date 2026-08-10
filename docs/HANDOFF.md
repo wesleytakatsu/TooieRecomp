@@ -4,15 +4,15 @@
 Mapa e mode=3 carregam; `chintroticker`/`chintrocam`/`chintrochar` **nunca**
 disparam → câmera default no chão, sem logos/demos. Não chamar Spiral Mountain.
 
-Handoff técnico: `../docs/plan/evidence/p08-session-handoff.md`.
+Handoff técnico: `plan/evidence/p08-session-handoff.md`.
 
 **Input no title/file select permanece pendente**, mas foi explicitamente
 diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na
-validação humana: `../docs/plan/evidence/p08-title-input-eeprom.md`.
+validação humana: `plan/evidence/p08-title-input-eeprom.md`.
 
 **Repo git:** `TooieRecomp/` apenas (branch `main`).  
 **Workspace monorepo:** `/home/wesley/projetos/N64-Recomp` (sem `.git` na raiz).  
-**Docs de plano/specs/evidência:** `../docs/` (fora do git Tooie; manter sincronizados no disco).
+**Docs de plano/specs/evidência:** `./` (vault local neste repo).
 
 ## Commits recentes
 
@@ -71,7 +71,7 @@ TOOIE_AUTO_START=1 TOOIE_DIAG=1 ./TooieRecompiled
 ```
 Arquivos: `include/tooie_diag.h`, `src/game/tooie_diag.cpp`.
 
-Docs P07 no repo: `docs/P07-rsp-and-audio.md`, `docs/P07-boot-hang-audio-diag.md`.
+Docs P07: `plan/evidence/p07-boot-hang-audio-diag.md`, `plans/BT/07-rsp-and-audio.md`.
 
 ## P08 — o que foi feito
 
@@ -103,7 +103,7 @@ Também:
 - Preview de música ROM-backed em processo SDL oculto; `SIGTERM` + reap no
   Start Game e `PR_SET_PDEATHSIG/SIGKILL` se o launcher morrer.
 
-### Evidência visual (monorepo `../docs/plan/evidence/`)
+### Evidência visual (`plan/evidence/`)
 
 | ficheiro | conteúdo |
 | --- | --- |
@@ -138,14 +138,14 @@ Também:
 - Mode 3 **não** chama `gsattract:1`; attract mode 5 nunca entra.
 - Falta spawn: `chintroticker` (419), `chintrocam` (441), `chintrochar` (440).
 - Próximo: instrumentar `gsmaker` setup/lookup de actor IDs do map 0x18B.
-- Detalhe: `../docs/plan/evidence/p08-session-handoff.md`.
+- Detalhe: `plan/evidence/p08-session-handoff.md`.
 
 ### 1. Diferido — title / file select input
 
 - Launcher RecompFrontend: input OK.
 - Title/file select do jogo: pad não entra no save/start (utilizador 2026-08-09).
 - Tentativa EEPROM falhou. Retomar somente depois da abertura automática;
-  hipóteses em `../docs/plan/evidence/p08-title-input-eeprom.md`.
+  hipóteses em `plan/evidence/p08-title-input-eeprom.md`.
 
 ### 2. Captura dirigida de menu e gameplay
 
@@ -194,8 +194,8 @@ Dependências de tree: `../BanjoRecomp` (runtime/RT64/Frontend),
 | `src/game/tooie_diag.cpp` | diagnóstico |
 | `rsp/n_aspMain.cpp` | microcódigo áudio |
 | `n_aspMain.us.rev0.toml` | config RSPRecomp |
-| `docs/P07-*.md`, `docs/P08-*.md` | notas no repo |
-| `../docs/plans/BT/0{6,7,8}-*.md` | planos detalhados monorepo |
+| `plan/evidence/p07-*.md`, `plans/BT/07-*.md` | evidências/plano P07 |
+| `plans/BT/0{6,7,8}-*.md` | planos detalhados (vault local) |
 
 ## Não fazer
 
