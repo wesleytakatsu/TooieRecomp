@@ -159,7 +159,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
   ROOT CAUSE E, CONFIDENCE HIGH. Detalhe:
   [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
   Novo bloqueio natural pós-fix: `std::runtime_error: No threads left to run!`
-  (esgotamento de threads) — sem diagnóstico.
+  = `run_next_thread` com a running queue vazia. DIAGNÓSTICO COMPLETO: ROOT
+  CAUSE E (patch local `threadqueue.cpp` rejeita re-inserção após
+  `osSetThreadPri`; `thread_queue_remove` não limpa `t->queue` → fila drena),
+  CONFIDENCE HIGH. Detalhe:
+  [[../../plan/evidence/p08-no-threads-left-diagnosis]]. Fix estreito pendente
+  de autorização (arquivo é dependência externa N64ModernRuntime).
 - Capturar isoladamente logo Rare e menu de título depois de corrigir o fluxo.
 - **Diferido — title/file-select input:** launcher UI OK; tentativa EEPROM
   falhou validação humana. Retomar após a abertura automática; ver
@@ -178,11 +183,13 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Próxima etapa
 
-1. **Agente seguinte:** diagnosticar o novo bloqueio do fluxo natural pós-fix:
-   `std::runtime_error: No threads left to run!` (esgotamento de threads do
-   runtime/jogo), que agora ocorre depois de `glintrosync:6 → gcsection:4`
-   passar. Continuar a busca da divergência que impede a init do actor manager
+1. **Agente seguinte:** (decisão/implementação sob autorização) aplicar o fix
+   estreito do diagnóstico `No threads left to run!` (ROOT CAUSE E): limpar
+   `t->queue = NULLPTR` em `thread_queue_remove` do runtime, OU corrigir o guard
+   do patch local para scan real de links. Rebuild + smoke natural. Depois
+   continuar a busca da divergência que impede a init do actor manager
    (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) sem forçá-la. Ver
+   [[../../plan/evidence/p08-no-threads-left-diagnosis]] e
    [[../../plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
 2. Com actors vivos: validar logos, descida de câmera e demos.
 3. Depois input title/file-select, rumble/hotplug e polish 4:3/fullscreen.

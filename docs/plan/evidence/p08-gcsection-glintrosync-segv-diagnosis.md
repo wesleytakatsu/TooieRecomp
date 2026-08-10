@@ -261,6 +261,8 @@ Diagnóstico do trace:
 ## Próxima única etapa
 
 Diagnosticar o novo bloqueio pós-fix: `std::runtime_error: No threads left to
-run!` (esgotamento de threads do runtime/threads do jogo bloqueadas) — segundo
-SIGSEGV/divergência de thread no fluxo natural, após o ponto glintrosync:6 →
-gcsection:4 agora passar. Não avançar para actor manager init nem marker 569.
+run!` = `run_next_thread` com a running queue vazia (NÃO é "esgotamento de
+threads") — segundo SIGSEGV/divergência de thread no fluxo natural, após o ponto
+glintrosync:6 → gcsection:4 agora passar. DIAGNÓSTICO CONCLUÍDO em
+[[p08-no-threads-left-diagnosis]] (ROOT CAUSE E, HIGH). Não avançar para actor
+manager init nem marker 569.

@@ -78,3 +78,5 @@ corrigidos (a evidência histórica acima NÃO foi reescrita):
 
 Referências: [[p08-actor-init-segv-diagnosis]],
 [[p08-gcsection-glintrosync-segv-diagnosis]].
+Novo bloqueio pós-fix (`No threads left to run!`) diagnosticado em
+[[p08-no-threads-left-diagnosis]] (ROOT CAUSE E, HIGH).

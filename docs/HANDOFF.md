@@ -170,7 +170,11 @@ Também:
   chintroticker, marker **569** = chintroticker) agora é **opt-in, default OFF**
   via `TOOIE_DIAG_SPAWN_MARKER419=1`.
 - Próximo bloqueio do fluxo natural (pós-fix): `std::runtime_error:
-  No threads left to run!` (esgotamento de threads) — novo site, sem diagnóstico.
+  No threads left to run!` = `run_next_thread` encontrou a running queue vazia
+  (NÃO é "esgotamento de threads"). DIAGNÓSTICO COMPLETO (ROOT CAUSE E, HIGH):
+  patch local em `threadqueue.cpp` rejeita re-inserção após `osSetThreadPri`
+  porque `thread_queue_remove` não limpa `t->queue` → fila drena até vazia.
+  Detalhes: `plan/evidence/p08-no-threads-left-diagnosis.md`.
 - Detalhes: `plan/evidence/p08-gcsection-glintrosync-segv-diagnosis.md`,
   `plan/evidence/p08-actor-init-segv-diagnosis.md`,
   `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
