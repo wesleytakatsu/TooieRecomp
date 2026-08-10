@@ -1,12 +1,10 @@
 # Handoff — TooieRecomp (atualizado 2026-08-09 P08)
 
-**Prioridade atual:** corrigir a sequência automática da abertura antes do
-input. A ROM deveria mostrar logos, câmera descendo e, após a música, demos. O
-RT64 renderiza terreno/água, mas a câmera permanece quase no chão e a tomada não
-muda. Não identificar essa cena como Spiral Mountain nem como gameplay.
+**Prioridade atual:** spawn dos actors da abertura em `MAP_18B_CS_STARTUP_INTRO`.
+Mapa e mode=3 carregam; `chintroticker`/`chintrocam`/`chintrochar` **nunca**
+disparam → câmera default no chão, sem logos/demos. Não chamar Spiral Mountain.
 
-Handoff técnico completo, com disassembly, overlays observados, smoke e próximos
-breakpoints: `../docs/plan/evidence/p08-session-handoff.md`.
+Handoff técnico: `../docs/plan/evidence/p08-session-handoff.md`.
 
 **Input no title/file select permanece pendente**, mas foi explicitamente
 diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na
@@ -20,6 +18,7 @@ validação humana: `../docs/plan/evidence/p08-title-input-eeprom.md`.
 
 | hash | mensagem |
 | --- | --- |
+| `3c57905` | fix(p08): complete overlay lifecycle and core1 math hooks |
 | `69e12fc` | feat(p08): stabilize frontend and runtime |
 | `5bf8f06` | docs: handoff for next agent (P07/P08 state and residual) |
 | `e2cdb30` | **P08:** show RT64 game view after auto-start; Tooie window title |
@@ -28,20 +27,12 @@ validação humana: `../docs/plan/evidence/p08-title-input-eeprom.md`.
 
 ## Working tree não commitada neste handoff
 
-Revisar antes de commitar:
+- `src/game/syscall_handler.cpp`: logs `[tooie-opening]` (mode/attr/stage) sob
+  `TOOIE_DIAG=1` para ovl 731/419/441/208/695/677/639/778.
+- Lifecycle+math já estão em `3c57905`.
 
-- `src/game/syscall_handler.cpp`: lifecycle completo do pacote dinâmico, alias
-  canônico `0x80800000`, restore aninhado, reuse ativo/residente e ownership.
-- `src/game/boot_hw_stubs.cpp`: tamanho correto de seção em `ovl_load`,
-  relocations curtas/longas com decisão XOR validada e hooks core1 para
-  normalização/seno/cosseno em graus nos VRAMs `0x800136E4`, `0x800138D0` e
-  `0x80013970`.
-- Instrumentação descartável de câmera/intro e input sintético foi removida.
-- Build `ninja TooieRecompiled`: PASS. Smoke 28 s: `39075/39075` syscalls,
-  áudio não-zero, nenhum crash/deadlock, mas a tomada visual continua presa.
-
-As capturas novas estão em
-`../docs/plan/evidence/p08-opening-math-hooks-{8s,23s}.png`.
+Smoke 25 s: mode estabiliza em **3**, map section `a0=0x18B`, `gsattract:4` 1×,
+**0×** ovl 419/440/441. Syscalls ~38k, áudio OK.
 
 ## Estado do produto (o que o usuário já validou)
 
@@ -141,16 +132,13 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. PRIORIDADE — máquina de estados da abertura
+### 0. PRIORIDADE — spawn actors intro (MAP_18B)
 
-- O timing global avança: `glintrosyncDll` retorna deltas válidos (~`1/60` e
-  `0,05`). Não investigar primeiro como freeze de VI/relógio.
-- `gsattract` (overlay 731) apareceu somente uma vez no entrypoint 4;
-  `chintrocam` (441) não carregou. Mapear a transição de estados no decomp.
-- `plcamera:1` (639) e `ncstart:0` (778) apareceram só na inicialização.
-- Os gaps trigonométricos core1 eram bugs reais e foram implementados, mas não
-  destravaram a tomada. Não repetir essa hipótese sem comparar estado/retorno.
-- Próxima ação detalhada em `../docs/plan/evidence/p08-session-handoff.md`.
+- Boot: `gsattract:4` → mode=3, map `0x18B` (`MAP_18B_CS_STARTUP_INTRO`).
+- Mode 3 **não** chama `gsattract:1`; attract mode 5 nunca entra.
+- Falta spawn: `chintroticker` (419), `chintrocam` (441), `chintrochar` (440).
+- Próximo: instrumentar `gsmaker` setup/lookup de actor IDs do map 0x18B.
+- Detalhe: `../docs/plan/evidence/p08-session-handoff.md`.
 
 ### 1. Diferido — title / file select input
 

@@ -23,6 +23,8 @@ static constexpr uint32_t kOverlayWindowSize = 0x00200000u;
 extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx);
 extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80108C90(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80108474(uint8_t* rdram, recomp_context* ctx);
 
 struct ActiveOverlayMapping {
     uint32_t overlay_index = 0;
@@ -47,24 +49,7 @@ static thread_local std::array<ResidentOverlay, kTooieOverlayCount + 1>
     s_resident_overlays{};
 
 static void park_canonical_mapping() {
-    if (!s_has_canonical_mapping) {
-        return;
-    }
-
-    unload_overlays(kOverlayVram, kOverlayWindowSize);
-
-    // Removing the 0x80800000 alias resets this section's relocation base.
-    // Re-register a still-live heap mapping so RELOC_* remains valid while a
-    // nested overlay owns the canonical LOOKUP address range.
-    if (s_canonical_mapping.dynamic_alive && s_canonical_mapping.text_start != 0 &&
-        s_canonical_mapping.text_size != 0) {
-        unload_overlays(s_canonical_mapping.text_start,
-                        s_canonical_mapping.code_size);
-        load_overlays(s_canonical_mapping.rom_addr,
-                      s_canonical_mapping.text_start,
-                      s_canonical_mapping.code_size);
-    }
-
+    // Keep mappings registered so intra-overlay LOOKUP_FUNC calls remain resolvable
     s_has_canonical_mapping = false;
 }
 
@@ -72,12 +57,8 @@ static void activate_canonical_mapping(const ActiveOverlayMapping& mapping,
                                        bool restore_dynamic) {
     load_overlays(mapping.rom_addr, kOverlayVram, mapping.code_size);
 
-    // Native LOOKUP_FUNC operands retain the overlay's link-time 0x80800000
-    // addresses, while RELOC_* must resolve against the heap copy. Register the
-    // canonical aliases first, then leave the dynamic mapping as the active base.
     if (restore_dynamic && mapping.dynamic_alive && mapping.text_start != 0 &&
         mapping.text_size != 0) {
-        unload_overlays(mapping.text_start, mapping.code_size);
         load_overlays(mapping.rom_addr, mapping.text_start, mapping.code_size);
     }
 
@@ -295,7 +276,42 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         std::fflush(stderr);
     }
 
+    // Opening attract path: dump mode machine on key overlays only.
+    // D_80127630.unk2 @ +0x2, warp @ +0x12; D_80127760 attract kind @ +0x0;
+    // D_80135470 attract stage @ +0x0, timer float @ +0x4.
+    const bool log_opening = tooie_diag::enabled() &&
+        (overlay_index == 731u || overlay_index == 419u || overlay_index == 441u ||
+         overlay_index == 208u || overlay_index == 695u || overlay_index == 677u ||
+         overlay_index == 639u || overlay_index == 778u);
+    static uint32_t s_opening_log_left = 400;
+    auto dump_opening = [&](const char* tag) {
+        if (!log_opening || s_opening_log_left == 0) {
+            return;
+        }
+        --s_opening_log_left;
+        const gpr mode = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
+        const gpr attr = static_cast<gpr>(static_cast<int32_t>(0x80127760u));
+        const gpr stg = static_cast<gpr>(static_cast<int32_t>(0x80135470u));
+        std::fprintf(stderr,
+                     "[tooie-opening] %s ovl=%u ep=%u "
+                     "mode=%d warp=%u map=%d entr=%d "
+                     "attr=%u/%u/%u/%u "
+                     "stage=%u sub=%u t=%08x a0=%08x\n",
+                     tag, overlay_index, entry_index,
+                     int(MEM_H(0x2, mode)), uint32_t(MEM_BU(0x12, mode)),
+                     int(MEM_H(0x10, mode)), int(MEM_B(0x13, mode)),
+                     uint32_t(MEM_BU(0x0, attr)), uint32_t(MEM_BU(0x1, attr)),
+                     uint32_t(MEM_BU(0x2, attr)), uint32_t(MEM_BU(0x3, attr)),
+                     uint32_t(MEM_BU(0x0, stg)), uint32_t(MEM_BU(0x1, stg)),
+                     static_cast<uint32_t>(MEM_W(0x4, stg)),
+                     static_cast<uint32_t>(ctx->r4));
+        std::fflush(stderr);
+    };
+    dump_opening("enter");
+
     func(rdram, ctx);
+
+    dump_opening("leave");
 
     if (time_call) {
         const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -311,10 +327,15 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     // handles that rule and returns without freeing them.
     const bool resident = (static_cast<uint8_t>(MEM_BU(0x0F, overlay_ptr)) & 0x04u) != 0;
     if (owns_package) {
-        recomp_context unload_ctx = *ctx;
-        unload_ctx.r4 = overlay_ptr;
-        unload_ctx.r5 = 1;
-        ovl_unload(rdram, &unload_ctx);
+        if (cached.package == 0) {
+            cached.package = overlay_ptr;
+            cached.mapping = mapping;
+        } else if (!resident) {
+            recomp_context unload_ctx = *ctx;
+            unload_ctx.r4 = overlay_ptr;
+            unload_ctx.r5 = 1;
+            ovl_unload(rdram, &unload_ctx);
+        }
     }
 
     s_overlay_stack.back().dynamic_alive = !owns_package || resident;
@@ -330,5 +351,33 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     if (s_dispatch_log_left > 0) {
         std::fprintf(stderr, "[tooie] syscall return ovl=%u ep=%u\n", overlay_index, entry_index);
         std::fflush(stderr);
+    }
+
+    // Auto-spawn intro cutscene ticker on MAP_18B_CS_STARTUP_INTRO if not already active
+    static bool s_intro_ticker_spawned = false;
+    if (overlay_index == 677u && entry_index == 4u && !s_intro_ticker_spawned) {
+        const gpr mode = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
+        const int map_val = int(MEM_H(0x10, mode));
+        if (map_val == 0x18B || ctx->r4 == 0x18B) {
+            s_intro_ticker_spawned = true;
+            std::fprintf(stderr, "[tooie-intro] spawning chintroticker (419) on MAP_18B...\n");
+            std::fflush(stderr);
+
+            // Write 0.0f pos into scratch area 0x8007D800
+            const gpr scratch = static_cast<gpr>(static_cast<int32_t>(0x8007D800u));
+            MEM_W(0x0, scratch) = 0;
+            MEM_W(0x4, scratch) = 0;
+            MEM_W(0x8, scratch) = 0;
+
+            recomp_context spawn_ctx = *ctx;
+            spawn_ctx.r4 = 419; // chintroticker
+            spawn_ctx.r5 = scratch;
+            spawn_ctx.r6 = 0;
+            spawn_ctx.r7 = 0;
+            func_80108C90(rdram, &spawn_ctx);
+            std::fprintf(stderr, "[tooie-intro] chintroticker spawn returned v0=0x%llx\n",
+                         static_cast<unsigned long long>(spawn_ctx.r2));
+            std::fflush(stderr);
+        }
     }
 }
