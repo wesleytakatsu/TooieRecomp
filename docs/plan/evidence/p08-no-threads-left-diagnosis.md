@@ -317,7 +317,8 @@ Não executar agora.
 ## Referências
 
 Docs relacionados: [[p08-gcsection-glintrosync-segv-diagnosis]],
-[[p08-actor-init-segv-diagnosis]], [[p08-runtime-frontend-smoke]].
+[[p08-actor-init-segv-diagnosis]], [[p08-runtime-frontend-smoke]],
+[[p08-active-banjo-reuse-audit]] (classificação: LOCAL TOOIE PATCH IN SHARED RUNTIME).
 
 - `ntl_throw_cap.txt`, `ntl_abort.txt`, `ntl_setpri.txt`, `ntl_setpri2.txt`,
   `ntl_freeze_cap.txt` (GDB captures, /tmp/opencode).

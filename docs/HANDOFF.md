@@ -175,6 +175,10 @@ Também:
   patch local em `threadqueue.cpp` rejeita re-inserção após `osSetThreadPri`
   porque `thread_queue_remove` não limpa `t->queue` → fila drena até vazia.
   Detalhes: `plan/evidence/p08-no-threads-left-diagnosis.md`.
+- Auditoria de reuso do BanjoRecomp (diagnosis-only): NENHUM behavior BK ativo;
+  N64MR DIRTY (threadqueue.cpp + N64Recomp `use_lookup_for_all_function_calls`);
+  RecompiledPatches vazio; build não reproduzível. Detalhes:
+  `plan/evidence/p08-active-banjo-reuse-audit.md`.
 - Detalhes: `plan/evidence/p08-gcsection-glintrosync-segv-diagnosis.md`,
   `plan/evidence/p08-actor-init-segv-diagnosis.md`,
   `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
