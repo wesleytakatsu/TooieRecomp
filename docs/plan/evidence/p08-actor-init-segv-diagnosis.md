@@ -7,6 +7,27 @@ updated: 2026-08-10
 tags: [banjo-tooie-recomp, p08, actors, vector_push_back, func_80106668, func_80107C2C, D_80136EE0, chbaddieDll, actor-manager]
 ---
 
+> ## SUPERSEDED / HISTORICAL CONTEXT
+>
+> As observações de "actor manager init = 0 hits" deste documento foram
+> obtidas no estado antigo do projeto (`a6053a0` / janela correspondente).
+> No HEAD `c43e89b`, após fixes posteriores de overlay-cache (`5ac74c0`) e
+> scheduler (`f9d1c24`), o fluxo natural foi
+> revalidado:
+>
+> ```
+> chbaddieDll_entrypoint_1
+>   -> func_800FF390
+>   -> func_801065E0
+>   -> vector_new
+>   -> D_80136EE0 válido (0x801df080)
+> ```
+>
+> Portanto "actor manager nunca inicializa" **NÃO é blocker atual**. Este
+> documento permanece válido como registro histórico do crash causado pelo
+> spawn diagnóstico naquele estado. Ver
+> `p08-actor-manager-init-divergence.md`.
+
 # P08 — diagnóstico do SIGSEGV na inicialização de actor
 
 ## Objetivo

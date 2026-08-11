@@ -186,10 +186,16 @@ Também:
   `LOOKUP_FUNC(0)` não ocorre mais; `ActorInfo[0x38] == 0x80107C2C`.
 - SIGSEGV em `vector_push_back` (`func_80108C90 → func_80107C2C →
   func_80106668 → vector_push_back`): **DIAGNOSTICADO como artefato do spawn
-  diagnóstico.** `D_80136EE0` (vetor global de Actors) == NULL; initializer
-  (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) **nunca executou**;
-  args do hook `func_80108C90(419, scratch, 0, 0)` são **VALID** per o
-  contrato real. ROOT CAUSE: A primário / C candidata. CONFIDENCE: MEDIUM.
+  diagnóstico** (registro histórico, estado `a6053a0`): `D_80136EE0` == NULL;
+  initializer (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) **nunca
+  executou**; args do hook `func_80108C90(419, scratch, 0, 0)` são **VALID** per
+  o contrato real. ROOT CAUSE: A primário / C candidata. CONFIDENCE: MEDIUM.
+- **REVALIDADO no HEAD `c43e89b`:** em fluxo natural (marker419 OFF), a cadeia
+  `chbaddieDll ep1 → func_800FF390 → func_801065E0 → vector_new` executa e
+  `D_80136EE0 = 0x801df080` (válido e persistente; teardown `func_80106608` não
+  visto). **A init do actor manager NÃO é mais blocker.** Próxima fronteira:
+  pipeline de population/spawn de actors pós-init (desconhecido).
+  `plan/evidence/p08-actor-manager-init-divergence.md`.
 - SIGSEGV natural `glintrosync:6 → gcsection:4`: **DIAGNOSTICADO E CORRIGIDO**
   (marker 419 OFF). Causa: `ovl_unload` não invalidava `s_resident_overlays` —
   o mapping cached de 677 ficava stale e a região de heap liberada era
