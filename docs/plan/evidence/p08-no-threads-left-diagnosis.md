@@ -394,11 +394,12 @@ REAL QUEUE_NULL CASES:
 0 observados em 14 runs naturais (12 smokes + 2 GDB, ~60s cada). A
 instrumentação temporária de classificação (id/state/pri/current/ctx/next)
 não registrou nenhum caso `t_ != this_thread() && state != STOPPED &&
-queue == NULLPTR` — o cenário do crash original (JOY queue==NULL) não é
-alcançável nas runs naturais pós-fix C. O guard `queue != NULLPTR` é
-defensivo: com `thread_queue_remove` corrigido, o estado corrompido que
-gerava o crash não é mais produzido. Instrumentação removida do binário
-final (confirmado via `strings`: 0).
+queue == NULLPTR` nas runs naturais pós-fix C. A evidência é consistente com
+a hipótese de que a correção do traversal de `thread_queue_remove` eliminou o
+path de corrupção que produzia o caso anterior, mas isso NÃO constitui prova
+formal de que o estado seja inalcançável. O guard `queue != NULLPTR`
+permanece como proteção defensiva. Instrumentação removida do binário final
+(confirmado via `strings`: 0).
 
 NO_THREADS_LEFT:
 FIXED (0 ocorrências em 14 runs)

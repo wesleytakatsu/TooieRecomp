@@ -45,8 +45,10 @@ Validação: harness 13/13 PASS (insert duplicate, stale field, remove
 head/non-head/tail/missing/null, pri runqueue/blocked/queue_null/current);
 14 runs (12 smokes + 2 GDB) com `No threads left`=0, SIGSEGV=0, self-loop=0,
 duplicata=0, LOOKUP_FUNC(0)=0; `last_ovl=677:3` alcançado; caso
-queue==NULL do crash original não é mais alcançável (0 ocorrências com
-instrumentação temporária, removida no binário final). Repro: patch versionado
+queue==NULL do crash original não observado (0 ocorrências com
+instrumentação temporária, removida no binário final; consistente com a
+hipótese de que o fix do traversal de `thread_queue_remove` eliminou o path,
+sem prova formal de inalcançabilidade). Repro: patch versionado
 `patches/runtime/n64modernruntime-scheduler.patch` (SHA256
 `1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309`) +
 `tools/apply_runtime_patches.sh` (idempotente). Detalhe:
