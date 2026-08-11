@@ -1,7 +1,7 @@
 ---
 title: "P08 — divergência no spawn natural de actors (IPL3 integrity gate)"
 description: "Diagnóstico fechado: gate anti-tamper func_8001DE64 / D_8007DB79 bloqueia pipeline func_800A5C28 → func_800BDCDC → gccubeDll:5 → gccollectDll:8 → actor creation. Stub address +0x10000 + missing guest words. Discriminator matrix. Fix A decidido, NÃO implementado."
-status: evidence
+status: fixed-partial
 phase: P08
 updated: 2026-08-11
 tags: [banjo-tooie-recomp, p08, actors, anti-tamper, ipl3, integrity-gate, gccollect, gccube, prop-spawn]
@@ -9,25 +9,27 @@ tags: [banjo-tooie-recomp, p08, actors, anti-tamper, ipl3, integrity-gate, gccol
 
 # P08 — divergência no spawn natural de actors (IPL3 integrity gate)
 
-**HEAD base:** `7c444e46c1b431bb70311cdbb851b1c2dcf3afc7`  
-**Status:** diagnóstico FECHADO e versionado. **Código funcional NÃO alterado.**  
-**Fix preferido A:** decidido em review; **implementação em commit separado.**
+**HEAD base (docs diagnosis):** `a527e13b07542e17e3e3f8f1132b5b14544eca6c`  
+**Status:** Fix A **IMPLEMENTADO e validado** (3/3). Intro **não** declarado “funcionando”.  
+**New first blocker:** SIGSEGV `do_dma` (pós-gate; capture only).
 
 ## 0. Resumo executivo
 
 | item | status |
 |---|---|
 | Actor manager (`D_80136EE0` / `func_801065E0`) | **CONFIRMED HEALTHY** |
-| Natural actors baseline (intro flow) | **0** |
-| Root gate | `func_8001DE64` → `D_8007DB79` |
-| Baseline flag | `D_8007DB79 = 0x14` → `func_800BDCDC` skipped |
-| ADDRESS_TRANSLATION_BUG | **YES** (stub +0x10000) |
-| MISSING_EXPECTED_GUEST_WORDS | **YES** (correct addrs also zero) |
-| GATE → prop pipeline | **YES** |
-| GATE → actor creation | **YES** |
-| `func_800D6E54` as population pass | **FALSE LEAD** (resource/reclaim queue) |
+| IPL3 integrity gate | **FIXED** (fix A, 2026-08-11) |
+| Natural actor creation | **RESTORED** (não = "intro funcionando") |
+| Natural actors (pré-crash) | **>0** (`c90=11` `c2c=10` `alloc=10`) |
+| Root gate (pré-fix) | `func_8001DE64` → `D_8007DB79` |
+| Post-fix flag | `D_8007DB79 = 0` (3/3 runs) |
+| ADDRESS_TRANSLATION_BUG | **FIXED** (sign-extend imm16) |
+| MISSING_EXPECTED_GUEST_WORDS | **FIXED** (one-shot seed em `func_80000450`) |
+| GATE → prop pipeline | **YES** (agora executa) |
+| GATE → actor creation | **YES** (agora executa) |
+| `func_800D6E54` as population pass | **FALSE LEAD** |
 | Exact N64 writer of the two guest words | **UNKNOWN** (não overclaim) |
-| Post-gate SIGSEGV `do_dma` | **POST_FIX_BLOCKER** (fora de escopo deste doc) |
+| New first blocker | **SIGSEGV `do_dma`** (capture only; not fixed) |
 
 ---
 
@@ -233,7 +235,14 @@ Causa: gate `D_8007DB79=0x14` bloqueia `func_800BDCDC` → `gccubeDll:5` → `gc
 
 Constantes do seed podem ser literais iguais ao probe **ou** lidas de ROM `0x73C`/`0x750` (mesmos bytes no retail USA) — opcional.
 
-**Este commit:** zero código. Só documentação.
+**Implementação (2026-08-11):** `src/game/boot_hw_stubs.cpp`
+
+- `kseg1_base_imm16_to_kseg0(base, imm16)` — sign-extend + KSEG1→phys→KSEG0
+- `tooie_seed_ipl3_boot_residue(rdram)` — one-shot seed dos 2 words
+- `func_80000450`: seed **após** `boot_osInitialize`, **antes** core1
+- `func_8001DE64`: lê addrs corretos; algoritmo lw/xor/or/sb **inalterado**
+
+**Não feito:** force flag, force BDCDC, spawn markers, fix DMA.
 
 ---
 
@@ -255,8 +264,53 @@ Constantes do seed podem ser literais iguais ao probe **ou** lidas de ROM `0x73C
 
 ---
 
-## 12. NEXT
+## 12. VALIDATION (fix A) — 3/3 PASS
 
-1. Implementar **fix A** em commit de código separado.  
-2. Só então retomar SIGSEGV `do_dma` (post-gate blocker).  
-3. Não reabrir `func_800D6E54` como population pass.
+Ambiente: `TOOIE_AUTO_START=1` `TOOIE_DIAG=1` `TOOIE_DISABLE_LAUNCHER_MUSIC=1`, marker419 OFF.
+
+| metric | run1 | run2 | run3 |
+|---|---|---|---|
+| PROBE_READ_ADDR | `0x802FB1F4` / `0x802FE1C0` | same | same |
+| PROBE_WORD | `0xAD090010` / `0xAD170014` | same | same |
+| `D_8007DB79` (pós-probe) | `0x00` | `0x00` | `0x00` |
+| BDCDC | 1 | 1 | 1 |
+| cube5 | 1 | 1 | 1 |
+| collect8 | 1274 | 1274 | 1274 |
+| c90 / c2c / alloc | 11 / 10 / 10 | 11 / 10 / 10 | 11 / 10 / 10 |
+| `D_80136EE0` (early) | `0x801df080` | `0x801df080` | `0x801df080` |
+| No threads left | 0 | 0 | 0 |
+| LOOKUP_FUNC(0) | 0 | 0 | 0 |
+| old gcsection SEGV | 0 | 0 | 0 |
+| exit | SIGSEGV `do_dma` | same | same |
+
+### New first blocker (capture only — NOT diagnosed/fixed)
+
+```
+FAULT: do_dma (+592)  movzbl (%rax,%rdx,1),%edi
+BT: do_dma ← osPiStartDma_recomp ← func_80013224 ← func_80013324
+    ← func_80117248 ← func_800E6950 ← func_800D5B34 ← func_800D674C
+    ← gsmaker_entrypoint_1/2 ← gsworldDll_entrypoint_0
+    ← chintrochar ← … ← gsworldDll_entrypoint_2
+```
+
+Last `osPiStartDma` guest args (run DMA capture):
+
+| field | value |
+|---|---|
+| direction | `0` (cart→RDRAM / OS_READ) |
+| cart/devAddr (`r7`) | `0x00F13B24` |
+| dram/vAddr (sp+0x10) | `0x80011000` |
+| size (sp+0x14) | `0xFF3FF03E` (**suspect/corrupt**) |
+| mq (sp+0x18) | `0x8007695C` |
+| pri (`r5`) | `0` |
+| mb (`r4`) | `0x80076940` |
+| DMA count pós-BDCDC | 24 |
+| syscalls approx @ crash | ~19923 |
+
+Logs: `/tmp/opencode/p08_fix_a_run{1,2,3}.log`, `p08_fix_a_dma.log`.
+
+## 13. NEXT
+
+1. Diagnosticar SIGSEGV `do_dma` (size/devAddr path gsmaker/chintrochar).  
+2. Não reabrir integrity gate / D6E54.  
+3. Não declarar intro “funcionando” até blocker seguinte.

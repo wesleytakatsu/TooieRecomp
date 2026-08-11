@@ -21,6 +21,27 @@ static inline gpr kseg0_gpr(uint32_t addr) {
     return static_cast<gpr>(static_cast<int32_t>(addr));
 }
 
+// KSEG1 RDRAM base + signed 16-bit MIPS immediate → guest KSEG0 for MEM_*.
+// Mirrors: lui $t, 0xA030 ; lw $t, imm16($t)
+static constexpr uint32_t kseg1_base_imm16_to_kseg0(uint32_t kseg1_base, uint16_t imm16) {
+    const uint32_t kseg1 = kseg1_base + static_cast<uint32_t>(static_cast<int32_t>(static_cast<int16_t>(imm16)));
+    return 0x80000000u | (kseg1 & 0x1FFFFFFFu);
+}
+
+// Sparse boot/IPL3 residue expected by func_8001DE64 (retail probe compares these
+// words). Static recomp does not inherit that residual guest state automatically.
+// Values match the opcodes the probe XORs against; exact N64 writer unknown.
+// Restores guest RDRAM state — does not bypass the probe.
+static void tooie_seed_ipl3_boot_residue(uint8_t* rdram) {
+    constexpr uint32_t kBaseA030 = 0xA0300000u;
+    constexpr uint32_t kAddr0 = kseg1_base_imm16_to_kseg0(kBaseA030, 0xB1F4u); // 0x802FB1F4
+    constexpr uint32_t kAddr1 = kseg1_base_imm16_to_kseg0(kBaseA030, 0xE1C0u); // 0x802FE1C0
+    static_assert(kAddr0 == 0x802FB1F4u);
+    static_assert(kAddr1 == 0x802FE1C0u);
+    MEM_W(0, kseg0_gpr(kAddr0)) = static_cast<int32_t>(0xAD090010);
+    MEM_W(0, kseg0_gpr(kAddr1)) = static_cast<int32_t>(0xAD170014);
+}
+
 // Declared in librecomp overlays.cpp
 extern "C" recomp_func_t* get_function(int32_t addr);
 extern "C" void load_overlays(uint32_t rom, int32_t ram_addr, uint32_t size);
@@ -381,6 +402,9 @@ extern "C" void func_80000450(uint8_t* rdram, recomp_context* ctx) {
     MEM_W(0x14, ctx->r29) = ctx->r31;
 
     boot_osInitialize(rdram, ctx);
+
+    // One-shot sparse IPL3/boot residue for func_8001DE64 (before core1).
+    tooie_seed_ipl3_boot_residue(rdram);
 
     // Copy core1 image into RDRAM for data/rodata; register native funcs.
     recomp::do_rom_read(rdram, kCore1Vram, recomp::rom_base + kCore1Rom, kCore1Size);
@@ -1020,8 +1044,12 @@ extern "C" void func_8001DE64(uint8_t* rdram, recomp_context* ctx) {
     MEM_W(0x14, ctx->r29) = ctx->r31;
     MEM_W(0x28, ctx->r29) = ctx->r4;
 
-    const int32_t word0 = MEM_W(0, kseg0_gpr(0x8030B1F4u)); // was A030:-0x4E0C
-    const int32_t word1 = MEM_W(0, kseg0_gpr(0x8030E1C0u)); // was A030:-0x1E40
+    // Original: lui 0xA030; lw imm16 (signed). KSEG1 -> phys -> KSEG0 for MEM_*.
+    constexpr uint32_t kProbeBase = 0xA0300000u;
+    constexpr uint32_t kProbeAddr0 = kseg1_base_imm16_to_kseg0(kProbeBase, 0xB1F4u); // 0x802FB1F4
+    constexpr uint32_t kProbeAddr1 = kseg1_base_imm16_to_kseg0(kProbeBase, 0xE1C0u); // 0x802FE1C0
+    const int32_t word0 = MEM_W(0, kseg0_gpr(kProbeAddr0));
+    const int32_t word1 = MEM_W(0, kseg0_gpr(kProbeAddr1));
     MEM_W(0x1C, ctx->r29) = word0;
     MEM_W(0x18, ctx->r29) = word1;
 

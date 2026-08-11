@@ -1,10 +1,9 @@
 # Handoff — TooieRecomp (atualizado 2026-08-11 P08)
 
-**Prioridade atual:** implementar **fix A** do IPL3 integrity gate (commit de
-código separado) para destravar spawn natural de actors na abertura
-`MAP_18B_CS_STARTUP_INTRO`. Diagnóstico versionado; **código ainda não
-alterado**. Mapa e mode=3 carregam; actors naturais = 0 sob gate fechado.
-Não chamar Spiral Mountain.
+**Prioridade atual:** diagnosticar **SIGSEGV `do_dma`** (primeiro blocker
+pós-integrity-fix). Fix A do IPL3 gate **implementado e validado 3/3** —
+natural actor creation **RESTORED**; intro **não** “funcionando”. Mapa/mode=3
+OK. Não chamar Spiral Mountain.
 
 **Scheduler runtime estabilizado (2026-08-10):** decisão **C** implementada e
 validada no scheduler do N64ModernRuntime — `thread_queue_remove` com traversal
@@ -75,12 +74,11 @@ validação humana: `plan/evidence/p08-title-input-eeprom.md`.
 | `73529d5` | **P07:** RSP n_aspMain, SI/CIC-6105, and working intro audio |
 | `d2d6426` | Initial commit P00–P06 |
 
-## Working tree / commits docs P08 integrity
+## Working tree / fix A
 
-- Diagnóstico IPL3 integrity gate versionado em docs (este handoff + evidence).
-- **Sem** mudança de código funcional no commit de diagnóstico.
-- Smoke natural: mode **3**, map `0x18B`, actors naturais **0**, flag
-  `D_8007DB79=0x14` até fix A.
+- `src/game/boot_hw_stubs.cpp`: Fix A (address sign-extend + IPL3 residue seed).
+- Docs: natural-spawn evidence + este handoff atualizados pós-validação 3/3.
+- Smoke: flag=0, pipeline BDCDC→actors roda; crash em `do_dma` (próximo).
 
 ## Estado do produto (o que o usuário já validou)
 
@@ -180,51 +178,33 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. PRIORIDADE — IPL3 integrity gate bloqueia spawn natural
+### 0. PRIORIDADE — SIGSEGV `do_dma` pós integrity fix
 
-**Diagnóstico FECHADO (2026-08-11, HEAD base `7c444e4`).** Código funcional
-**não** alterado neste passo — só docs.
+**IPL3 integrity gate: FIXED (fix A).** Natural actor creation: **RESTORED**.
 
 | fato | status |
 | --- | --- |
-| Actor manager init (`D_80136EE0`) | **CONFIRMED HEALTHY** (não é blocker) |
-| Natural actors baseline | **0** |
-| Root gate | `func_8001DE64` → `D_8007DB79=0x14` → skip `func_800BDCDC` |
-| ADDRESS_TRANSLATION_BUG (stub +0x10000) | **YES** |
-| MISSING_EXPECTED_GUEST_WORDS | **YES** (addrs corretos também zero) |
-| GATE → prop + actor creation | **YES** (matrix) |
-| `func_800D6E54` population pass | **FALSE LEAD** (resource/reclaim queue) |
-| Exact N64 writer dos 2 words | **UNKNOWN** (não overclaim) |
-| Fix preferido | **A** — sign-extend + seed one-shot em `func_80000450`; DE64 mantém algoritmo |
-| Fix implementado? | **NÃO** |
-| Pós-gate SIGSEGV `do_dma` | POST_FIX_BLOCKER — **não** investigar antes do fix A |
+| Fix A (`boot_hw_stubs.cpp`) | **DONE** — sign-extend addrs + one-shot seed |
+| Probe algorithm DE64 | **PRESERVED** (lw/xor/or/sb) |
+| Validation | **3/3** flag=0, BDCDC=1, cube5=1, col8=1274, c90=11, c2c=10, alloc=10 |
+| `D_80136EE0` early | `0x801DF080` válido |
+| Old regressions (threads/LOOKUP0/gcsection) | **0** |
+| New first blocker | **SIGSEGV `do_dma`** ← `osPiStartDma` ← gsmaker ← gsworld ← chintrochar |
+| DMA capture (last) | dir=0 cart=`0xF13B24` dram=`0x80011000` size=`0xFF3FF03E` (suspect) |
+| Intro “funcionando”? | **NÃO** declarar |
 
-Pipeline esperado (bloqueado):
+**Não** reabrir: integrity gate, D6E54, scheduler, overlay relocate, gcsection.
 
-```
-func_800A5C28 → func_800BDCDC → gccubeDll:5 → gccollectDll:8
-  → func_80108C90 → func_80107C2C → func_80106668
-```
+**Doc:** `plan/evidence/p08-natural-actor-spawn-divergence.md` §12–13
 
-Addrs corretos: `0x802FB1F4` / `0x802FE1C0` (`0xA0300000 + sign_extend`).  
-Stub lê: `0x8030B1F4` / `0x8030E1C0`. Expected words: `0xAD090010` /
-`0xAD170014` (= ROM BE `0x73C`/`0x750`).
+Histórico resolvido (não reabrir):
 
-**Doc canônico:** `plan/evidence/p08-natural-actor-spawn-divergence.md`  
-**False lead D6E54:** `plan/evidence/p08-intro-actor-spawn-diagnosis.md` §3.5–3.6
-
-Histórico já resolvido (não reabrir como blocker atual):
-
-- Relocation data overlay / `LOOKUP_FUNC(0)` — fix generator (`-W`).
-- SIGSEGV `vector_push_back` do hook marker419 — artefato diagnóstico; hook opt-in OFF.
-- Actor manager init — healthy no fluxo natural.
-- `glintrosync:6 → gcsection:4` stale resident — fix `ovl_unload`.
-- Scheduler `No threads left` — fix C N64ModernRuntime (patch versionado).
-
-Refs históricas: `p08-actor-manager-init-divergence.md`,
-`p08-gcsection-glintrosync-segv-diagnosis.md`,
-`p08-actor-init-segv-diagnosis.md`, `p08-overlay-data-relocation-diagnosis.md`,
-`p08-no-threads-left-diagnosis.md`, `p08-session-handoff.md`.
+- IPL3 integrity gate / missing boot residue — **fix A**
+- Relocation data overlay / `LOOKUP_FUNC(0)`
+- marker419 hook SEGV (opt-in OFF)
+- Actor manager init healthy
+- `glintrosync/gcsection` stale resident
+- Scheduler `No threads left`
 
 ### 1. Diferido — title / file select input
 
