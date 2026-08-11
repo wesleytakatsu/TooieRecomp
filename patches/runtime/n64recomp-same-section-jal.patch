@@ -1,0 +1,88 @@
+diff --git a/src/main.cpp b/src/main.cpp
+index b2816c0..57b527f 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -463,6 +463,10 @@ int main(int argc, char** argv) {
+         exit_failure("Config file must provide either an elf or a symbols file\n");
+     }
+ 
++    // TooieRecomp local policy: Banjo-Tooie decomp still has many zero-sized function
++    // symbols, so strict JAL resolution fails. Force runtime LOOKUP_FUNC for all calls.
++    // Documented in docs/plans/BT/04-static-recompilation.md — do not upstream blindly.
++    context.use_lookup_for_all_function_calls = true;
+ 
+     fmt::print("Function count: {}\n", context.functions.size());
+ 
+diff --git a/src/recompilation.cpp b/src/recompilation.cpp
+index c228433..fd58de6 100644
+--- a/src/recompilation.cpp
++++ b/src/recompilation.cpp
+@@ -22,11 +22,6 @@ enum class JalResolutionResult {
+ };
+ 
+ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_section_index, uint32_t target_func_vram, size_t& matched_function_index) {
+-    // Skip resolution if all function calls should use lookup and just return Ambiguous.
+-    if (context.use_lookup_for_all_function_calls) {
+-        return JalResolutionResult::Ambiguous;
+-    }
+-
+     // Look for symbols with the target vram address
+     const N64Recomp::Section& cur_section = context.sections[cur_section_index];
+     const auto matching_funcs_find = context.functions_by_vram.find(target_func_vram);
+@@ -39,8 +34,16 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
+     thread_local std::vector<size_t> matched_funcs{};
+     matched_funcs.clear();
+ 
+-    // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
+-    if (matching_funcs_find != context.functions_by_vram.end()) {
++    // A target in the same section as the current function must be loaded together with it, so it
++    // is statically unambiguous. Bind it directly to a C call even when lookups are otherwise
++    // forced for all function calls: multiple relocatable overlays can share a canonical vram
++    // (e.g. 0x80800000), so a cross-overlay LOOKUP_FUNC would resolve to whichever overlay was
++    // most recently mapped. Same-section targets avoid that collision by construction.
++    //
++    // Restrict to relocatable sections: non-relocatable sections (boot/core) can have host
++    // runtime hooks installed over generated functions at runtime (e.g. libultra stubs at
++    // 0x8001xxxx), so a direct C call would bypass the hook that a LOOKUP_FUNC would reach.
++    if (context.sections[cur_section_index].relocatable && matching_funcs_find != context.functions_by_vram.end()) {
+         for (size_t target_func_index : matching_funcs_find->second) {
+             const auto& target_func = context.functions[target_func_index];
+ 
+@@ -53,10 +56,33 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
+ 
+             // Immediately accept a function in the same section as this one, since it must also be loaded if the current function is.
+             if (target_func.section_index == cur_section_index) {
+-                exact_match_found = true;
+-                matched_funcs.clear();
+-                matched_funcs.push_back(target_func_index);
+-                break;
++                // Only bind functions that are actually generated as C. Reimplemented/ignored/stubbed
++                // functions have no C definition (the runtime registers them by vram), so they must
++                // keep using LOOKUP_FUNC to dispatch through the runtime's function table.
++                if (target_func.reimplemented || target_func.ignored || target_func.stubbed) {
++                    continue;
++                }
++                matched_function_index = target_func_index;
++                return JalResolutionResult::Match;
++            }
++        }
++    }
++
++    // Skip resolution if all function calls should use lookup and just return Ambiguous.
++    if (context.use_lookup_for_all_function_calls) {
++        return JalResolutionResult::Ambiguous;
++    }
++
++    // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
++    if (matching_funcs_find != context.functions_by_vram.end()) {
++        for (size_t target_func_index : matching_funcs_find->second) {
++            const auto& target_func = context.functions[target_func_index];
++
++            // Zero-sized symbol handling. unless there's only one matching target.
++            if (target_func.words.empty()) {
++                if (!N64Recomp::is_manual_patch_symbol(target_func.vram)) {
++                    continue;
++                }
+             }
+ 
+             // If the function's section isn't relocatable, add the function as a candidate.

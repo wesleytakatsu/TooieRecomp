@@ -1,9 +1,19 @@
 # Handoff — TooieRecomp (atualizado 2026-08-11 P08)
 
-**Prioridade atual:** diagnosticar **SIGSEGV `do_dma`** (primeiro blocker
-pós-integrity-fix). Fix A do IPL3 gate **implementado e validado 3/3** —
-natural actor creation **RESTORED**; intro **não** “funcionando”. Mapa/mode=3
-OK. Não chamar Spiral Mountain.
+**Prioridade atual:** **NENHUM blocker ativo no boot/opening.** O SIGSEGV
+`do_dma` foi **FIXED** estruturalmente no **generator** (binding de jal
+same-section relocatable). Game roda a abertura/intro (ovl 635/695, gsmaker)
+~140s+ / 179k syscalls sem crash. Próximo passo: validar captura visual de menu
+/gameplay e controles (seções 1–4 abaixo). Não chamar Spiral Mountain.
+
+**Fix P08 (generator, 2026-08-11):** `resolve_jal` no N64Recomp agora resolve
+`jal` intra-overlay **same-section em seções relocatable** para chamada direta a
+C (mesmo com `use_lookup_for_all_function_calls=true`), eliminando a colisão de
+base vram `0x80800000` (chintrochar→gsworldDll espúrio → idx -0x3AB → do_dma).
+Restrição a relocatable preserva host hooks em `.core1`/`.boot` (scheduler OK).
+Patch versionado `patches/runtime/n64recomp-same-section-jal.patch` +
+`tools/apply_runtime_patches.sh` (2 patches). Detalhe:
+`plan/evidence/p08-overlay-rmips26-binding-diagnosis.md`.
 
 **Scheduler runtime estabilizado (2026-08-10):** decisão **C** implementada e
 validada no scheduler do N64ModernRuntime — `thread_queue_remove` com traversal
@@ -77,8 +87,12 @@ validação humana: `plan/evidence/p08-title-input-eeprom.md`.
 ## Working tree / fix A
 
 - `src/game/boot_hw_stubs.cpp`: Fix A (address sign-extend + IPL3 residue seed).
-- Docs: natural-spawn evidence + este handoff atualizados pós-validação 3/3.
-- Smoke: flag=0, pipeline BDCDC→actors roda; crash em `do_dma` (próximo).
+- **Generator fix (P08):** `resolve_jal` same-section relocatable → direct call.
+  Patch `patches/runtime/n64recomp-same-section-jal.patch` + `tools/apply_runtime_patches.sh`.
+- Docs: p08-overlay-rmips26-binding-diagnosis.md + este handoff atualizados
+  pós-validação 3/3.
+- Smoke: flag=0, pipeline BDCDC→actors roda; **do_dma SIGSEGV FIXED** (game
+  roda abertura ~140s+, 179k syscalls, sem crash).
 
 ## Estado do produto (o que o usuário já validou)
 
@@ -178,28 +192,35 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. PRIORIDADE — SIGSEGV `do_dma` pós integrity fix
+### 0. SIGSEGV `do_dma` — FIXED (generator)
 
 **IPL3 integrity gate: FIXED (fix A).** Natural actor creation: **RESTORED**.
+**do_dma SIGSEGV: FIXED (binding de jal same-section no generator).**
 
 | fato | status |
 | --- | --- |
 | Fix A (`boot_hw_stubs.cpp`) | **DONE** — sign-extend addrs + one-shot seed |
-| Probe algorithm DE64 | **PRESERVED** (lw/xor/or/sb) |
+| Generator fix (`resolve_jal` same-section relocatable) | **DONE** — patch versionado |
 | Validation | **3/3** flag=0, BDCDC=1, cube5=1, col8=1274, c90=11, c2c=10, alloc=10 |
 | `D_80136EE0` early | `0x801DF080` válido |
 | Old regressions (threads/LOOKUP0/gcsection) | **0** |
-| New first blocker | **SIGSEGV `do_dma`** ← `osPiStartDma` ← gsmaker ← gsworld ← chintrochar |
-| DMA capture (last) | dir=0 cart=`0xF13B24` dram=`0x80011000` size=`0xFF3FF03E` (suspect) |
-| Intro “funcionando”? | **NÃO** declarar |
+| Old crash (`do_dma`, idx -0x3AB, dev/size bad) | **0/0/0/0** |
+| chintrochar callsite → `func_80800000_chintrochar` | **SIM** (gdb backtrace confirmado) |
+| spurious `gsworldDll_entrypoint_0` from chintrochar | **0** (2 hits legítimos de gsworld ep2) |
+| Run longo | **~140s+, 179k syscalls, abertura/intro, sem crash** |
+| Intro “funcionando”? | **NÃO** declarar (sem validação visual de gameplay) |
 
-**Não** reabrir: integrity gate, D6E54, scheduler, overlay relocate, gcsection.
+**Não** reabrir: integrity gate, D6E54, scheduler, overlay relocate, gcsection,
+do_dma.
 
-**Doc:** `plan/evidence/p08-natural-actor-spawn-divergence.md` §12–13
+**Docs:** `plan/evidence/p08-overlay-rmips26-binding-diagnosis.md`,
+`plan/evidence/p08-natural-actor-spawn-divergence.md` §12–13,
+`plan/evidence/p08-do-dma-segv-diagnosis.md`
 
 Histórico resolvido (não reabrir):
 
 - IPL3 integrity gate / missing boot residue — **fix A**
+- **do_dma SIGSEGV / R_MIPS_26 intra-overlay binding — fix generator (P08)**
 - Relocation data overlay / `LOOKUP_FUNC(0)`
 - marker419 hook SEGV (opt-in OFF)
 - Actor manager init healthy

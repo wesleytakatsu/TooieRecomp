@@ -8,44 +8,61 @@ TOOL_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$TOOL_DIR/.." && pwd)"
 WS="$(cd "$ROOT/.." && pwd)"
 RUNTIME="$WS/BanjoRecomp/lib/N64ModernRuntime"
+N64RECOMP="$RUNTIME/N64Recomp"
 
 PATCH_DIR="$ROOT/patches/runtime"
-PATCH="$PATCH_DIR/n64modernruntime-scheduler.patch"
-
-# Expected base commit of the external runtime.
-EXPECTED_BASE="ca568b6ad79b9029d14077f0c3ffa757727c5559"
-# SHA256 of the patch file itself.
-EXPECTED_PATCH_SHA256="1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309"
-# Files touched by the patch.
-PATCHED_FILES=(ultramodern/src/threadqueue.cpp ultramodern/src/threads.cpp)
 
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
-[[ -f "$PATCH" ]] || fail "patch not found: $PATCH"
+# apply_one_patch <repo> <patchfile> <expected_base_commit> <expected_patch_sha256> <label>
+apply_one_patch() {
+    local repo="$1" patch="$2" expected_base="$3" expected_sha="$4" label="$5"
 
-actual_patch_sha="$(sha256sum "$PATCH" | awk '{print $1}')"
-[[ "$actual_patch_sha" == "$EXPECTED_PATCH_SHA256" ]] || fail "patch SHA256 mismatch: $actual_patch_sha (expected $EXPECTED_PATCH_SHA256)"
+    [[ -f "$patch" ]] || fail "[$label] patch not found: $patch"
 
-cd "$RUNTIME"
+    local actual_sha
+    actual_sha="$(sha256sum "$patch" | awk '{print $1}')"
+    [[ "$actual_sha" == "$expected_sha" ]] \
+        || fail "[$label] patch SHA256 mismatch: $actual_sha (expected $expected_sha)"
 
-git rev-parse --git-dir >/dev/null 2>&1 || fail "runtime not a git checkout: $RUNTIME"
+    cd "$repo"
+    git rev-parse --git-dir >/dev/null 2>&1 || fail "[$label] not a git checkout: $repo"
 
-actual_base="$(git rev-parse HEAD)"
-[[ "$actual_base" == "$EXPECTED_BASE" ]] || fail "runtime HEAD $actual_base != expected base $EXPECTED_BASE"
+    local actual_base
+    actual_base="$(git rev-parse HEAD)"
+    [[ "$actual_base" == "$expected_base" ]] \
+        || fail "[$label] repo HEAD $actual_base != expected base $expected_base"
 
-# Detect whether the patch is already applied (reverse check succeeds).
-if git apply --reverse --check "$PATCH" >/dev/null 2>&1; then
-    echo "scheduler patch already applied (base $actual_base). Nothing to do."
-    exit 0
-fi
+    # Already applied? reverse check succeeds.
+    if git apply --reverse --check "$patch" >/dev/null 2>&1; then
+        echo "[$label] already applied (base $actual_base). Nothing to do."
+        return 0
+    fi
 
-# Dry-run against the real tree.
-if ! git apply --check "$PATCH"; then
-    echo "scheduler patch does not apply cleanly (possibly conflicting local edits):"
-    git apply --check "$PATCH" 2>&1 || true
-    exit 2
-fi
+    # Dry-run against the real tree.
+    if ! git apply --check "$patch" >/dev/null 2>&1; then
+        echo "[$label] patch does not apply cleanly (possibly conflicting local edits):"
+        git apply --check "$patch" 2>&1 || true
+        return 2
+    fi
 
-git apply "$PATCH"
-echo "applied scheduler patch (base $actual_base):"
-git diff --stat -- "${PATCHED_FILES[@]}"
+    git apply "$patch"
+    echo "[$label] applied (base $actual_base):"
+    git diff --stat
+}
+
+# Scheduler patch — N64ModernRuntime root.
+apply_one_patch \
+    "$RUNTIME" \
+    "$PATCH_DIR/n64modernruntime-scheduler.patch" \
+    "ca568b6ad79b9029d14077f0c3ffa757727c5559" \
+    "1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309" \
+    "scheduler"
+
+# N64Recomp generator policy patch — N64Recomp submodule.
+apply_one_patch \
+    "$N64RECOMP" \
+    "$PATCH_DIR/n64recomp-same-section-jal.patch" \
+    "2b6f05688de2abc7d86da5b4a89b84c2c6acbabe" \
+    "0afeb0e57bfdd18be7a125bebe4f7bd48273622c5f5f626ae3279fd1ded0efa8" \
+    "generator same-section jal"
