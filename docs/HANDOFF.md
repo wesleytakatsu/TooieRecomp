@@ -1,8 +1,10 @@
-# Handoff — TooieRecomp (atualizado 2026-08-10 P08)
+# Handoff — TooieRecomp (atualizado 2026-08-11 P08)
 
-**Prioridade atual:** spawn dos actors da abertura em `MAP_18B_CS_STARTUP_INTRO`.
-Mapa e mode=3 carregam; `chintroticker`/`chintrocam`/`chintrochar` **nunca**
-disparam → câmera default no chão, sem logos/demos. Não chamar Spiral Mountain.
+**Prioridade atual:** implementar **fix A** do IPL3 integrity gate (commit de
+código separado) para destravar spawn natural de actors na abertura
+`MAP_18B_CS_STARTUP_INTRO`. Diagnóstico versionado; **código ainda não
+alterado**. Mapa e mode=3 carregam; actors naturais = 0 sob gate fechado.
+Não chamar Spiral Mountain.
 
 **Scheduler runtime estabilizado (2026-08-10):** decisão **C** implementada e
 validada no scheduler do N64ModernRuntime — `thread_queue_remove` com traversal
@@ -73,14 +75,12 @@ validação humana: `plan/evidence/p08-title-input-eeprom.md`.
 | `73529d5` | **P07:** RSP n_aspMain, SI/CIC-6105, and working intro audio |
 | `d2d6426` | Initial commit P00–P06 |
 
-## Working tree não commitada neste handoff
+## Working tree / commits docs P08 integrity
 
-- `src/game/syscall_handler.cpp`: logs `[tooie-opening]` (mode/attr/stage) sob
-  `TOOIE_DIAG=1` para ovl 731/419/441/208/695/677/639/778.
-- Lifecycle+math já estão em `3c57905`.
-
-Smoke 25 s: mode estabiliza em **3**, map section `a0=0x18B`, `gsattract:4` 1×,
-**0×** ovl 419/440/441. Syscalls ~38k, áudio OK.
+- Diagnóstico IPL3 integrity gate versionado em docs (este handoff + evidence).
+- **Sem** mudança de código funcional no commit de diagnóstico.
+- Smoke natural: mode **3**, map `0x18B`, actors naturais **0**, flag
+  `D_8007DB79=0x14` até fix A.
 
 ## Estado do produto (o que o usuário já validou)
 
@@ -180,45 +180,51 @@ Também:
 
 ## Residual prioritário (próximo agente)
 
-### 0. PRIORIDADE — divergência que impede a init do actor manager
+### 0. PRIORIDADE — IPL3 integrity gate bloqueia spawn natural
 
-- Relocation de data de overlay: **RESOLVIDO** (P08, camada generator/metadata).
-  `LOOKUP_FUNC(0)` não ocorre mais; `ActorInfo[0x38] == 0x80107C2C`.
-- SIGSEGV em `vector_push_back` (`func_80108C90 → func_80107C2C →
-  func_80106668 → vector_push_back`): **DIAGNOSTICADO como artefato do spawn
-  diagnóstico** (registro histórico, estado `a6053a0`): `D_80136EE0` == NULL;
-  initializer (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) **nunca
-  executou**; args do hook `func_80108C90(419, scratch, 0, 0)` são **VALID** per
-  o contrato real. ROOT CAUSE: A primário / C candidata. CONFIDENCE: MEDIUM.
-- **REVALIDADO no HEAD `c43e89b`:** em fluxo natural (marker419 OFF), a cadeia
-  `chbaddieDll ep1 → func_800FF390 → func_801065E0 → vector_new` executa e
-  `D_80136EE0 = 0x801df080` (válido e persistente; teardown `func_80106608` não
-  visto). **A init do actor manager NÃO é mais blocker.** Próxima fronteira:
-  pipeline de population/spawn de actors pós-init (desconhecido).
-  `plan/evidence/p08-actor-manager-init-divergence.md`.
-- SIGSEGV natural `glintrosync:6 → gcsection:4`: **DIAGNOSTICADO E CORRIGIDO**
-  (marker 419 OFF). Causa: `ovl_unload` não invalidava `s_resident_overlays` —
-  o mapping cached de 677 ficava stale e a região de heap liberada era
-  reutilizada por outra overlay (709); `func_808000F0` lia tabela corrompida,
-  não achava 0x18B e retornava NULL. Fix estreito: `tooie_invalidate_resident_overlay`
-  em `ovl_unload`. ROOT CAUSE: E. CONFIDENCE: HIGH.
-- O spawn diagnóstico (marker **419** = chcollballcontrol; overlay 419 =
-  chintroticker, marker **569** = chintroticker) agora é **opt-in, default OFF**
-  via `TOOIE_DIAG_SPAWN_MARKER419=1`.
-- Próximo bloqueio do fluxo natural (pós-fix): `std::runtime_error:
-  No threads left to run!` = `run_next_thread` encontrou a running queue vazia
-  (NÃO é "esgotamento de threads"). DIAGNÓSTICO COMPLETO (ROOT CAUSE E, HIGH):
-  patch local em `threadqueue.cpp` rejeita re-inserção após `osSetThreadPri`
-  porque `thread_queue_remove` não limpa `t->queue` → fila drena até vazia.
-  Detalhes: `plan/evidence/p08-no-threads-left-diagnosis.md`.
-- Auditoria de reuso do BanjoRecomp (diagnosis-only): NENHUM behavior BK ativo;
-  N64MR DIRTY (threadqueue.cpp + N64Recomp `use_lookup_for_all_function_calls`);
-  RecompiledPatches vazio; build não reproduzível. Detalhes:
-  `plan/evidence/p08-active-banjo-reuse-audit.md`.
-- Detalhes: `plan/evidence/p08-gcsection-glintrosync-segv-diagnosis.md`,
-  `plan/evidence/p08-actor-init-segv-diagnosis.md`,
-  `plan/evidence/p08-overlay-data-relocation-diagnosis.md`,
-  `plan/evidence/p08-session-handoff.md`.
+**Diagnóstico FECHADO (2026-08-11, HEAD base `7c444e4`).** Código funcional
+**não** alterado neste passo — só docs.
+
+| fato | status |
+| --- | --- |
+| Actor manager init (`D_80136EE0`) | **CONFIRMED HEALTHY** (não é blocker) |
+| Natural actors baseline | **0** |
+| Root gate | `func_8001DE64` → `D_8007DB79=0x14` → skip `func_800BDCDC` |
+| ADDRESS_TRANSLATION_BUG (stub +0x10000) | **YES** |
+| MISSING_EXPECTED_GUEST_WORDS | **YES** (addrs corretos também zero) |
+| GATE → prop + actor creation | **YES** (matrix) |
+| `func_800D6E54` population pass | **FALSE LEAD** (resource/reclaim queue) |
+| Exact N64 writer dos 2 words | **UNKNOWN** (não overclaim) |
+| Fix preferido | **A** — sign-extend + seed one-shot em `func_80000450`; DE64 mantém algoritmo |
+| Fix implementado? | **NÃO** |
+| Pós-gate SIGSEGV `do_dma` | POST_FIX_BLOCKER — **não** investigar antes do fix A |
+
+Pipeline esperado (bloqueado):
+
+```
+func_800A5C28 → func_800BDCDC → gccubeDll:5 → gccollectDll:8
+  → func_80108C90 → func_80107C2C → func_80106668
+```
+
+Addrs corretos: `0x802FB1F4` / `0x802FE1C0` (`0xA0300000 + sign_extend`).  
+Stub lê: `0x8030B1F4` / `0x8030E1C0`. Expected words: `0xAD090010` /
+`0xAD170014` (= ROM BE `0x73C`/`0x750`).
+
+**Doc canônico:** `plan/evidence/p08-natural-actor-spawn-divergence.md`  
+**False lead D6E54:** `plan/evidence/p08-intro-actor-spawn-diagnosis.md` §3.5–3.6
+
+Histórico já resolvido (não reabrir como blocker atual):
+
+- Relocation data overlay / `LOOKUP_FUNC(0)` — fix generator (`-W`).
+- SIGSEGV `vector_push_back` do hook marker419 — artefato diagnóstico; hook opt-in OFF.
+- Actor manager init — healthy no fluxo natural.
+- `glintrosync:6 → gcsection:4` stale resident — fix `ovl_unload`.
+- Scheduler `No threads left` — fix C N64ModernRuntime (patch versionado).
+
+Refs históricas: `p08-actor-manager-init-divergence.md`,
+`p08-gcsection-glintrosync-segv-diagnosis.md`,
+`p08-actor-init-segv-diagnosis.md`, `p08-overlay-data-relocation-diagnosis.md`,
+`p08-no-threads-left-diagnosis.md`, `p08-session-handoff.md`.
 
 ### 1. Diferido — title / file select input
 

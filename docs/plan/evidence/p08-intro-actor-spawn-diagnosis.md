@@ -3,7 +3,7 @@ title: "P08 — diagnóstico de divergência no spawn de actors da intro"
 description: "Identificação do primeiro ponto de divergência na cadeia de inicialização e spawn dos actors da abertura (chintroticker 419, chintrochar 440, chintrocam 441)."
 status: evidence
 phase: P08
-updated: 2026-08-09
+updated: 2026-08-11
 tags: [banjo-tooie-recomp, p08, intro, actors, gsmaker, chintroticker, chintrochar, chintrocam, freelist]
 ---
 
@@ -60,8 +60,39 @@ O ponto de divergência identificado está na **avaliação e ativação dos reg
 
 ---
 
+## 3.5 False lead — func_800D6E54
+
+> Revisão semântica (Grok, P08) descartou `func_800D6E54` como actor population pass:
+
+- `func_800D6E54(a0)` é um **processador de fila de setup/resource/reclaim deferido** (reclam de heap), não um enumerador de actors.
+  - `a0=1` → pass leve/throttled (caller: `func_800EA170` no tick do gsworld).
+  - `a0=2` → pass forçado/completo sob condições de heap (callers: `func_800A9D90` via `heap_alloc_sided`, `func_800C0FD8` via `func_800C0984`).
+- O loop `L_800D6F30` processa records de resource/refcount/recycle (`func_800D6378` → `func_800D56C4`/`func_800DBB9C`/`func_800D61B4`).
+- **NÃO há edge causal provado** do loop para `func_80108C90`, `func_80107C2C` ou `func_80106668`.
+- `0 actors` + `0 loop hits` era **correlação, não causalidade**.
+- Revisão Grok: DeepSeek CLASS B sobre D6E54 **REJECTED**; interpretação correta → C.
+
+---
+
+## 3.6 Status 2026-08-11 — root gate real (IPL3 integrity)
+
+O caminho de population natural **não** passa por `func_800D6E54` como enumerator
+de actors (false lead §3.5). Diagnóstico fechado do gate que bloqueia o pipeline:
+
+**`func_8001DE64` → `D_8007DB79=0x14` → `func_800A5C28` skip `func_800BDCDC`**
+→ zero `gccubeDll:5` / `gccollectDll:8` / `func_80108C90` / actors.
+
+Detalhe completo (matrix, address +0x10000, missing guest words, fix A não
+implementado): [[p08-natural-actor-spawn-divergence]].
+
+§4 abaixo permanece como evidência **histórica** do setup path (gsmaker/AE0);
+o item "Isolamento de Causa" que aponta D6E54 como mecanismo de spawn está
+**superseded** por §3.5 + §3.6.
+
+---
+
 ## 4. Evidências de Validação
 
 - **Rastreamento GDB**: Breakpoints em `func_800D674C`, `func_800D71F4` e `_gsmaker_entrypoint_1` comprovaram que `func_800D674C(0xAE0)` é atingida durante a chamada `gsmaker:2(0x18B)`.
 - **Rastreamento Syscall**: O log `[tooie-opening]` confirmou o estado estável em `mode=3`, `map=0x18B`, `stage=2`, `t=00000000` durante toda a execução.
-- **Isolamento de Causa**: O problema não está no renderizador RT64 nem na inicialização matemática básica do core1, mas estritamente no mecanismo de dispatch/spawn dos actors pelo setup manager (`func_800D6E54` / `D_8012B800`).
+- **Isolamento de Causa (histórico; superseded §3.5/§3.6)**: Na época desta nota, a hipótese apontava o setup manager (`func_800D6E54` / `D_8012B800`). Revisão posterior: D6E54 = false lead; root gate = integrity/IPL3 `func_8001DE64` — ver [[p08-natural-actor-spawn-divergence]]. RT64/math core1 continuam fora da causa.
