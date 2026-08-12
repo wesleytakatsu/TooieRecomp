@@ -3,11 +3,18 @@ title: "P08 — session handoff: intro para attract demo"
 description: "Estado autossuficiente do blocker pós-Jiggy e ponto exato para a próxima investigação."
 status: evidence
 phase: P08
-updated: 2026-08-11
+updated: 2026-08-12
 tags: [tooie-recomp, p08, handoff, intro, attract, type-4, clean-freeze]
 ---
 
 # P08 — session handoff: INTRO → ATTRACT DEMO
+
+> **CORRECTION (2026-08-12):** o clean-freeze type-4 snapshot (8/8 runs) provou
+> que a type-4 **completa** e o warp **é consumido** no run natural. A narrativa
+> anterior de “type-4 incompleta (`0.9 / 3.5`) com warp gated” está
+> **SUPERSEDED**. O blocker corrente é downstream, no caminho de inicialização do
+> mode-5/attract (`func_800A76F4 → func_800A7380 → func_800C2AB8`). Fonte:
+> [[p08-type4-transition-semantics-audit#clean-freeze-exact-type-4-snapshot]].
 
 ## CURRENT HEAD
 
@@ -27,34 +34,50 @@ title/file-select input continua deliberadamente diferido.
 - Música inicial e renderização da intro estão validadas.
 - A abertura completa visualmente céu/cena 3D, Dolby, logo BANJO-TOOIE,
   progressão de câmera e o fechamento pela Jiggy transition.
-- Depois da Jiggy, a primeira gameplay demo/attract deveria aparecer, mas a tela
-  permanece preta.
+- O attract request é correto (`map=335`, `entrance=8`, `kind=2`).
+- A transition type-4 **completa** e o `warp=3` **é consumido** no clean freeze.
+- A transição para o mode 5 é alcançada.
+- A gameplay demo ainda não renderiza: black freeze downstream durante a
+  inicialização do attract.
 - `RecompiledFuncs` é gerado e não deve ser editado manualmente.
 
 Descrição canônica:
 
-> The opening/intro sequence completes visually through the Jiggy transition,
-> but the subsequent gameplay demo/attract scene does not start.
+> The opening/intro sequence completes visually through the Jiggy transition and
+> the attract map request, the type-4 transition completes and warp 3 is
+> consumed, but the subsequent gameplay demo/attract scene still does not start
+> — a black freeze occurs downstream during mode-5 / attract initialization.
 
 ## CURRENT BLOCKER
 
-A first attract/demo não começa. O fluxo solicitou `map=335 / 0x14F /
-MAP_14F_IOH_WOODED_HOLLOW`, `entrance=8`, `warp=3`, mas uma transition type-4
-permanece ativa e incompleta no freeze natural.
+**mode-5 / attract actor-update initialization path.** A primeira attract/demo
+não começa; o freeze natural é downstream da type-4/warp consumption. MAIN é
+capturada no caminho `func_800A76F4 → func_800A7380 → func_800C2AB8` (actor
+update/dispatch loop), mas o callback/slot/PC exato que não progride ainda não
+foi identificado.
 
 ## CURRENT FIRST DIVERGENCE
 
-MAIN continua executando o game tick, mas a type-4 não alcança
-completion/progresso suficiente no run clean. No snapshot, progress/elapsed era
-aproximadamente `0.9`, contra duration/target aproximadamente `3.5`.
+MAIN é capturada downstream da transition/warp, no caminho:
+
+```text
+func_800A76F4
+ -> func_800A7380
+ -> func_800C2AB8
+ -> dynamic callback / get_function
+```
+
+A type-4 não é mais o primeiro ponto de divergência: ela completou
+(`current_state=2`, `render_frame_count=2`, gate do warp ABERTO). O callback,
+slot ou PC exato dentro de `func_800C2AB8` que não retorna/progride ainda não
+foi identificado.
 
 ## CURRENT NEXT SINGLE ACTION
 
-Investigar por que a type-4 ativa no clean freeze permanece incompleta enquanto
-MAIN executa o tick. Prioridade: validar a semântica dos campos, o delta/timing
-que alimenta `gctransitionDll ep9`, gates de state/subactor e a discrepância do
-raw field `≈2883`. Preferir comparação estática/original/emulador antes de criar
-instrumentação timing-sensitive. Não investigar BaKey ainda.
+Confirmar o PC/callback/slot de actor exato da MAIN dentro de `func_800C2AB8`
+no clean freeze, usando inspeção **somente pós-freeze**, e então determinar se
+um callback falha em retornar ou se o próprio loop de actors falha em avançar.
+Não investigar BaKey ainda.
 
 ## RESOLVED — DO NOT REOPEN
 
@@ -75,9 +98,15 @@ instrumentação timing-sensitive. Não investigar BaKey ainda.
 7. **R_MIPS_26 / flat func_map / do_dma:** same-section JAL em relocatable agora
    é direct C call. O path `chintrochar -> gsworld ep0 -> idx -0x3AB -> bad DMA`
    está fechado; 3/3 smokes sem regressões.
+8. **Type-4 como blocker (REFUTADO pelo clean snapshot):** a type-4 completa no
+   run natural; `current_state=2`, `render_frame_count=2`, gate do warp ABERTO.
+9. **Warp consumption (REFUTADO):** `warp=3` é consumido no clean freeze
+   (`+0x12=0`), `func_800A9924(map, entr)` e `func_800A76F4(5)` executam
+   (`D_80127760` retém `map=335`/`entrance=8`; mode machine `+0x1C=5`).
 
 Não chamar o blocker atual de scheduler bug, frame-sync starvation, event-3
-barrier, cothemedll hang, actor manager ou do_dma sem nova prova específica.
+barrier, cothemedll hang, actor manager, do_dma, **nem type-4/warp** sem nova
+prova específica.
 
 ## CURRENT EXPECTED FLOW
 
@@ -98,23 +127,22 @@ intro mode 3
  -> gameplay demo
 ```
 
-## CURRENT OBSERVED FLOW
+## CURRENT OBSERVED FLOW (clean snapshot)
 
 ```text
 intro visually completes through Jiggy
- -> gsattract selects first demo
- -> map=335, entrance=8, warp=3 requested
- -> transition count=1, type=4 active
- -> clean run freezes black
- -> MAIN remains inside game tick
- -> type-4 incomplete (~0.9 / ~3.5)
- -> warp remains gated
- -> mode 5 / gameplay demo not reached
+ -> gsattract selects first demo (D_80127760: map=335, entrance=8, kind=2)
+ -> type-4 created, runs and COMPLETES (state 6 -> 2, render=2, gate open)
+ -> warp=3 consumed (+0x12=0)
+ -> func_800A9924 + func_800A76F4(5) executed (mode machine +0x1C=5)
+ -> MAIN captured downstream: func_800A76F4 -> func_800A7380 -> func_800C2AB8
+ -> black freeze during mode-5/attract init; gameplay demo not reached
 ```
 
 Em runs perturbados, `func_800C9510` retornou nonzero 18 vezes e zero na 19ª;
-`func_800A9924=1` e `func_800A76F4(5)=1`. Isso prova que warp consumption
-funciona quando a transition termina, não que o clean freeze progride.
+isso é coerente com `effective_dt=0.05` e `target=0.9`: 18 updates × 0.05 =
+0.9. `func_800A9924=1` e `func_800A76F4(5)=1` confirmam que warp consumption
+funciona quando a type-4 termina.
 
 ## CLEAN-FREEZE SNAPSHOT
 
@@ -124,17 +152,17 @@ funciona quando a transition termina, não que o clean freeze progride.
 TOOIE_AUTO_START=1 \
 TOOIE_DIAG=1 \
 TOOIE_DISABLE_LAUNCHER_MUSIC=1 \
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json \
 ./build/TooieRecompiled
 ```
 
 - Binário original.
 - Sem debugger, breakpoints, hooks ou counters durante a execução.
-- Black screen pós-intro; syscall `d≈179275` estável por `>=5s`;
-  `last_ovl=635:2`.
-- Estado típico na fronteira: mode 3, map 335, entrance 8, warp 3,
-  transition count 1.
-- GDB attach/gcore somente depois do freeze.
-- Core: aproximadamente 6.4 GB, 48 LWPs; não versionar.
+- Freeze confirmado por `d` estável `>=6s` (`178958`..`179320`), black screen
+  pós-intro, `last_ovl=635:2`. **8/8 runs idênticos e determinísticos.**
+- Supervisor pai (`ptrace_scope=1`): `PTRACE_ATTACH`/dump `/proc/pid/mem`
+  somente depois do freeze; decoder Python independente valida os campos.
+- GDB/gcore somente depois do freeze; não versionar core de ~6.4 GB.
 
 ### MAIN
 
@@ -145,7 +173,7 @@ priority = 20
 queue    = 0
 ```
 
-Backtrace capturado:
+Backtrace capturado (sessão anterior; consistente com o estado do snapshot):
 
 ```text
 func_800124EC
@@ -158,7 +186,10 @@ func_800124EC
  -> get_function(0x800C269C)
 ```
 
-MAIN está viva/current e executando guest code no tick, não bloqueada em MQ.
+MAIN está viva/current e executando guest code, não bloqueada em MQ. `d`
+congelado sem dispatch de overlay é consistente com MAIN girando no actor loop
+(`func_800C2AB8`), não com idle. O PC/callback exato do hang ainda não foi
+confirmado neste checkpoint.
 
 ### Threads/runqueue/host VI
 
@@ -170,20 +201,24 @@ MAIN está viva/current e executando guest code no tick, não bloqueada em MQ.
   primária provada.
 - `SCHEDULER_BUG_PROVEN=NO`.
 
-### Transition type-4
+### Transition type-4 (corrigido pelo clean snapshot)
 
 - Count: `1`.
-- Objeto naquele run: aproximadamente `0x8027AAC0`; endereço heap-specific.
-- Progress/elapsed: `≈0.9`.
-- Duration/target: `≈3.5`.
-- Raw field: `≈2883`.
-- `FIELD_SEMANTICS_NOT_FULLY_VALIDATED=YES`.
+- Objeto: `0x8027AAC0` naquele run; endereço heap-specific (idêntico nos 8 runs).
+- `+0x0C target_duration = 0.9` (NÃO é progress/elapsed).
+- `+0x18 cfg_param3 = 3.5` (NÃO é duration/target).
+- `+0x10 cfg_sfx_id = 2883` (NÃO é tick counter nem `+0x20`/`+0x30`).
+- `+0x20 active_sfx_id = 2885`.
+- `+0x28 elapsed_time = 0.0` (reset após completion/state transition).
+- `+0x30 state_frame_counter = 1`.
+- `current_state = 2`, `render_frame_count = 2` → gate do warp **ABERTO**.
+- `subactor = NULL` → não bloqueia completion.
 
 CORRECTED: `TRN_CNT=0` veio do endereço errado. O byte efetivo é o físico
 correspondente a aproximadamente `0x8012AB57` e vale `1`.
 
-Não chamar `2883` de “ticks reais”: isso conflita com os ~18 updates do run
-perturbado e ainda precisa de validação semântica.
+Não chamar `2883` de “ticks reais”: `2883` é o `cfg_sfx_id` em `+0x10`; o
+contador real em `+0x30` vale `1`.
 
 ## EXONERATED HYPOTHESES
 
@@ -223,6 +258,20 @@ executa o update da transition via `func_800C92A8`.
 `cothemedll_entrypoint_2` retorna sincronicamente e não possui MQ/DMA wait.
 `LAST_OVL_IS_BLOCKING_PC=NO`.
 
+### Type-4 timing/progress stall
+
+REFUTED pelo clean snapshot: a type-4 completou no run natural
+(`current_state=2`, `render_frame_count=2`, gate aberto). `elapsed=0` é o reset
+pós-completion. `effective_dt = 0.05` (`0x8012C760 = 0x3D4CCCCE`,
+`0x801275DC = 1.0`, `timing_flag=1`) é coerente; 18 updates × 0.05 = 0.9 explica
+os runs perturbados. `FRAME_TIME_DIVERGENCE` não provada.
+
+### Warp consumption
+
+REFUTED: `warp=3` é consumido no clean freeze; `D_80127760` retém
+`map=335`/`entrance=8`/`kind=2`; mode machine `+0x1C=5` (gravado por
+`func_800A76F4(5)`).
+
 ## TIMING / OBSERVATION WARNING
 
 GDB, breakpoints e instrumentação em hot paths mudam o timing. Nesses runs, a
@@ -235,28 +284,32 @@ run clean -> wait freeze -> attach only after freeze -> capture snapshot/core
 
 ## OPEN QUESTIONS
 
-- Por que progress/elapsed fica em aproximadamente 0.9?
-- Qual delta/timing source alimenta `gctransitionDll ep9`?
-- A state machine interna ou um subactor visual bloqueia completion?
-- Alguma timing-source flag está errada?
-- `func_800C2AB8 / get_function(0x800C269C)` é causal ou apenas o PC amostrado?
-- Algum callback esperado é despachado incorretamente?
-- Qual é a semântica real do raw field `≈2883`?
+- Qual callback/slot/PC exato dentro de `func_800C2AB8` não retorna/progride
+  durante a inicialização do mode-5/attract?
+- O hang é um callback específico que falha em retornar ou o próprio loop de
+  actors falha em avançar?
+- Por que este ambiente roda a ~20 Hz (`delta=0.05`)? (provável overhead de
+  render, não investigado)
+- O freeze “documentado” em `state 6` com `elapsed 0.9` foi outro run ou a mesma
+  type-4 com offsets trocados? (não reproduzível; 8/8 runs determinísticos)
 
 BaKey (`func_800BCF28`) é POSSIBLE DOWNSTREAM BLOCKER visto só depois que runs
 perturbados avançam. Não é root cause provada do clean freeze.
 
 ## FILES TO READ NEXT
 
-1. [[p08-intro-to-demo-transition-diagnosis]] — evidência principal e timeline.
-2. [[p08-visual-validation/README]] — interpretação humana dos frames.
-3. [[p08-overlay-rmips26-binding-diagnosis]] — último fix antes do blocker.
-4. [[p08-do-dma-segv-diagnosis]] — cadeia histórica fechada.
-5. [[p08-natural-actor-spawn-divergence]] — IPL3/actors.
-6. [[p08-no-threads-left-diagnosis]] — scheduler fechado.
-7. [[p08-active-banjo-reuse-audit]] — limites de reuso/camadas.
-8. [[p08-title-input-eeprom]] — input diferido.
-9. `docs/HANDOFF.md` e `docs/plans/BT/08-rt64-input-and-frontend.md`.
+1. [[p08-type4-transition-semantics-audit]] — auditoria estática + clean
+   snapshot (correção de campos 0.9/3.5/2883).
+2. [[p08-intro-to-demo-transition-diagnosis]] — timeline e post-mortem
+   (narrativa antiga marcada como SUPERSEDED).
+3. [[p08-visual-validation/README]] — interpretação humana dos frames.
+4. [[p08-overlay-rmips26-binding-diagnosis]] — último fix antes do blocker.
+5. [[p08-do-dma-segv-diagnosis]] — cadeia histórica fechada.
+6. [[p08-natural-actor-spawn-divergence]] — IPL3/actors.
+7. [[p08-no-threads-left-diagnosis]] — scheduler fechado.
+8. [[p08-active-banjo-reuse-audit]] — limites de reuso/camadas.
+9. [[p08-title-input-eeprom]] — input diferido.
+10. `docs/HANDOFF.md` e `docs/plans/BT/08-rt64-input-and-frontend.md`.
 
 ## CHECKPOINT SCOPE
 

@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/logo/Jiggy validadas; first gameplay demo ausente; type-4 incompleta no clean freeze |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/logo/Jiggy validadas; attract request, type-4 completa e warp consumido; first gameplay demo ausente; freeze downstream no mode-5/attract init |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -160,11 +160,14 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-intro-to-demo-transition-diagnosis]] — intro/Jiggy completam
-  visualmente; first gameplay demo ausente; clean post-mortem captura MAIN viva
-  no game tick e uma type-4 incompleta (`≈0.9 / ≈3.5`).
+- [[evidence/p08-type4-transition-semantics-audit]] — auditoria estática +
+  clean-freeze type-4 snapshot (8/8 runs): type-4 completa, campos
+  `0.9/3.5/2883` corrigidos para `+0x0C/+0x18/+0x10`, warp consumido; blocker
+  downstream no mode-5/attract init.
 - [[evidence/p08-session-handoff]] — estado autossuficiente e próximo single
   action para um novo chat.
+- [[evidence/p08-intro-to-demo-transition-diagnosis]] — timeline histórica;
+  narrativa antiga de type-4 incompleta marcada como SUPERSEDED.
 - [[evidence/p08-visual-validation/README]] — inventário/interpretação humana
   dos frames da intro ao preto pós-Jiggy.
 

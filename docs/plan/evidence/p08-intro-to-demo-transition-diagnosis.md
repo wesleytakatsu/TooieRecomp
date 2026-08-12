@@ -3,11 +3,23 @@ title: "P08 — diagnóstico consolidado da transição intro para attract demo"
 description: "Checkpoint da validação visual, warp/type-4 e post-mortem do freeze natural depois da Jiggy transition."
 status: evidence
 phase: P08
-updated: 2026-08-11
+updated: 2026-08-12
 tags: [tooie-recomp, p08, intro, attract, transition, clean-freeze, post-mortem]
 ---
 
 # P08 — INTRO → ATTRACT DEMO transition diagnosis
+
+> **CORRECTED / SUPERSEDED (2026-08-12):** a narrativa deste checkpoint de que a
+> type-4 permanece “incompleta (`0.9 / 3.5`)” e o warp “gated” foi REFUTADA pelo
+> clean-freeze type-4 snapshot (8/8 runs, binário original, attach só
+> pós-freeze). No snapshot limpo a type-4 **completa** (`state 2`, `render 2`,
+> gate do warp ABERTO), o `warp=3` **é consumido** e a transição mode-5 é
+> alcançada. Os valores `0.9 / 3.5 / 2883` são `+0x0C target` / `+0x18
+> cfg_param3` / `+0x10 cfg_sfx_id`. O blocker corrente é downstream
+> (mode-5/attract init, `func_800C2AB8`). Este documento permanece como registro
+> histórico da investigação; ver
+> [[p08-type4-transition-semantics-audit#clean-freeze-exact-type-4-snapshot]] e
+> [[p08-session-handoff]].
 
 BASE HEAD: `cf3116696e290069372a85764929c69284135d0e`
 MODO DESTE CHECKPOINT: documentação e consolidação; nenhum diagnóstico novo,
@@ -19,15 +31,17 @@ fix, instrumentação ou alteração de código.
 > but the subsequent gameplay demo/attract scene does not start.
 
 O fluxo solicita corretamente a primeira demo (`map=335`, `entrance=8`,
-`warp=3`) e mantém uma transition type-4 ativa. No freeze natural, sem debugger
-ou instrumentação durante a execução, o post-mortem prova que a MAIN guest ainda
-executa o game tick; ela não está bloqueada em frame-sync nem na reply queue do
-scheduler. A type-4 permanece incompleta (`progress/elapsed ≈ 0.9` contra
-`duration/target ≈ 3.5`), portanto o warp continua gated e a gameplay demo não
-começa.
+`warp=3`). No freeze natural, sem debugger ou instrumentação durante a execução,
+o post-mortem prova que a MAIN guest ainda executa guest code; ela não está
+bloqueada em frame-sync nem na reply queue do scheduler. No clean snapshot a
+type-4 completou e o warp foi consumido; o freeze é downstream, na
+inicialização do mode-5/attract. **(CORRIGIDO: o parágrafo anterior deste
+checkpoint descrevia a type-4 como incompleta `0.9/3.5` com warp gated — essa
+leitura era de offsets trocados; ver banner acima.)**
 
-FIRST PROVEN CURRENT DIVERGENCE: a MAIN continua executando o tick, mas a
-transition type-4 não alcança completion/progresso suficiente no run limpo.
+FIRST PROVEN CURRENT DIVERGENCE (corrigida): a MAIN é capturada downstream da
+transition/warp, no caminho `func_800A76F4 -> func_800A7380 -> func_800C2AB8`,
+com o callback/slot/PC exato ainda não identificado.
 
 ## Contexto do projeto e camada de correção
 
@@ -323,40 +337,52 @@ não causa primária provada. Frame-sync já foi exonerado independentemente.
 
 #### Raw state da transition type-4
 
+> **CORRECTED (2026-08-12):** esta subseção descrevia leituras sem offsets
+> validados. O clean snapshot provou: `0.9` = `+0x0C target_duration`,
+> `3.5` = `+0x18 cfg_param3` (NÃO target), `2883` = `+0x10 cfg_sfx_id`,
+> `+0x20 active_sfx=2885`, `+0x30 state_frame_counter=1`, `+0x28 elapsed=0.0`
+> (reset pós-completion). A type-4 **completou** (`state 2`, `render 2`, gate
+> aberto). Ver [[p08-type4-transition-semantics-audit#clean-freeze-exact-type-4-snapshot]].
+
 O array apontava para uma type-4 ativa, naquele run aproximadamente em
 `0x8027AAC0`. Esse endereço é heap-specific e não é constante global.
 
 ```text
 transition count      = 1
 type                  = 4
-progress/elapsed      ≈ 0.9
-duration/target       ≈ 3.5
-RAW_FIELD_VALUE       ≈ 2883
-FIELD_SEMANTICS_NOT_FULLY_VALIDATED = YES
+progress/elapsed      ≈ 0.9   (CORRECTED: +0x0C target_duration)
+duration/target       ≈ 3.5   (CORRECTED: +0x18 cfg_param3)
+RAW_FIELD_VALUE       ≈ 2883  (CORRECTED: +0x10 cfg_sfx_id)
+FIELD_SEMANTICS_NOT_FULLY_VALIDATED = YES  (CORRECTED: agora VALIDATED)
 ```
 
-CONFIRMED: a type-4 ainda não atingiu a condição temporal simples de completion.
-Não documentar “2883 ticks reais da transition”: a interpretação estática
-anterior do campo como tick counter conflita com a expectativa de cerca de 18
-updates observada no run perturbado. A discrepância é evidência aberta, não algo
-a esconder ou fechar por inferência.
+CONFIRMED (corrigido): a type-4 atingiu a condição de completion no clean
+freeze (`current_state=2`, `render_frame_count=2`). A leitura antiga de
+“incompleta” usava offsets trocados. `2883` é o `cfg_sfx_id` em `+0x10`; o
+contador real em `+0x30` vale `1`. Os ~18 updates do run perturbado são
+coerentes com `effective_dt=0.05` (18 × 0.05 = 0.9 = target).
 
 ### 13. CURRENT — blocker, limites e próximo passo
 
-CURRENT BLOCKER: depois da intro/Jiggy visualmente correta, a primeira attract
-demo não inicia porque a type-4 permanece incompleta no clean freeze enquanto a
-MAIN executa o game tick; warp 3 continua gated.
+> **CORRECTED (2026-08-12):** a conclusão deste checkpoint (type-4 incompleta
+> com warp gated) foi REFUTADA pelo clean snapshot. Blocker corrente:
+> mode-5/attract actor-update init path.
+
+CURRENT BLOCKER (corrigido): depois da intro/Jiggy/attract request, a type-4
+completa, o warp=3 é consumido e a transição mode-5 é alcançada; a primeira
+attract demo não inicia porque MAIN é capturada downstream, no caminho
+`func_800A76F4 -> func_800A7380 -> func_800C2AB8` (actor update/dispatch loop),
+com o callback/slot/PC exato ainda não identificado.
 
 Ainda não está provado:
 
-- por que o progress permanece em aproximadamente `0.9`;
-- se o delta-time usado pela transition está errado;
-- se a state machine interna está presa;
-- se um subactor visual impede completion;
-- se uma timing-source flag está errada;
-- se `func_800C2AB8 / get_function(0x800C269C)` é causalmente relevante;
-- se algum callback esperado é despachado incorretamente;
-- se o raw field `2883` foi semanticamente interpretado errado.
+- qual callback/slot/PC exato dentro de `func_800C2AB8` não retorna/progride na
+  inicialização do mode-5/attract;
+- se um callback falha em retornar ou se o próprio loop de actors falha em
+  avançar;
+- por que este ambiente roda a ~20 Hz (`delta=0.05`);
+- se o freeze “documentado” em `state 6`/`elapsed 0.9` foi outro run ou a mesma
+  type-4 com offsets trocados (não reproduzível; 8/8 runs determinísticos).
 
 Esses itens pertencem à próxima investigação e não são conclusões deste
 checkpoint.
@@ -434,8 +460,11 @@ freeze e não deve ser diagnosticado neste checkpoint.
 
 ## Próximo single action — documentado, não executado
 
-Investigar por que a transition type-4 ativa no freeze natural permanece
-incompleta enquanto MAIN executa o game tick:
+> **CORRECTED (2026-08-12):** o item 1–7 abaixo (investigar type-4 incompleta)
+> foi executado e REFUTADO pelo clean snapshot; a type-4 completa. O próximo
+> single action corrente está em [[p08-session-handoff]].
+
+Histórico (objetivo original deste checkpoint, já supersedido):
 
 1. determinar o estado interno e a semântica exata dos campos da type-4;
 2. validar `progress/elapsed≈0.9` contra `duration/target≈3.5`;
@@ -445,10 +474,16 @@ incompleta enquanto MAIN executa o game tick:
 6. comparar com original/emulador no mesmo handoff, se possível;
 7. só então desenhar discriminator de baixíssima perturbação.
 
+NEXT SINGLE ACTION corrente: confirmar o PC/callback/slot de actor exato da
+MAIN dentro de `func_800C2AB8` no clean freeze (inspeção somente pós-freeze) e
+determinar se um callback falha em retornar ou se o actor loop falha em avançar.
+
 Não executar essa investigação como parte deste checkpoint.
 
 ## Referências
 
+- [[p08-type4-transition-semantics-audit]] — auditoria estática + clean
+  snapshot (correção de campos 0.9/3.5/2883).
 - [[p08-session-handoff]] — handoff autossuficiente para novo chat.
 - [[p08-visual-validation/README]] — inventário e leitura dos frames.
 - [[p08-overlay-rmips26-binding-diagnosis]] — último blocker resolvido antes deste.

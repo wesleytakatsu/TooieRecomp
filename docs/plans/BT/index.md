@@ -68,17 +68,20 @@ adicionais durante P08. Detalhe: [[06-overlays-and-syscalls]].
 por ouvido** no sink default. Residual: SFX/pause/hotplug/soak (T06 resto +
 T07). Detalhe: [[07-rsp-and-audio]].
 
-### Nota P08 (2026-08-11)
+### Nota P08 (2026-08-11, CORRIGIDA 2026-08-12)
 
 RT64/Vulkan: intro humana validada por céu/cena 3D, Dolby, logo BANJO-TOOIE,
-progressão de câmera e completion da Jiggy transition. A first gameplay
-demo/attract não começa e a tela fica preta. O request `map=335`, `entrance=8`,
-`warp=3` ocorre; no clean freeze, MAIN continua executando o game tick e uma
-transition type-4 permanece incompleta (`≈0.9 / ≈3.5`, count 1). Frame-sync e
-event-3 estão exonerados; scheduler bug não foi provado; cothemedll não é o
-blocking PC. **Prioridade:** entender progress/completion da type-4 em estado
-clean. Input title/file-select permanece diferido. Evidência:
-[[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]],
+progressão de câmera e completion da Jiggy transition. O request `map=335`,
+`entrance=8`, `warp=3` ocorre; no clean freeze (8/8 runs), MAIN continua
+executando guest code, a transition type-4 **completa** (`state 2`, `render 2`,
+gate do warp aberto) e o `warp=3` **é consumido**; o freeze é downstream, na
+inicialização do mode-5/attract (`func_800A76F4 -> func_800A7380 ->
+func_800C2AB8`). Frame-sync, event-3, scheduler, cothemedll, type-4
+timing/progress stall e warp consumption estão exonerados/refutados.
+**Prioridade:** confirmar o PC/callback/slot de actor dentro de `func_800C2AB8`
+no clean freeze. Input title/file-select permanece diferido. Evidência:
+[[../../plan/evidence/p08-type4-transition-semantics-audit]],
 [[../../plan/evidence/p08-session-handoff]],
+[[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]],
 [[../../plan/evidence/p08-visual-validation/README]]. Detalhe:
 [[08-rt64-input-and-frontend]].
