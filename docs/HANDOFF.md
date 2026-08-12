@@ -1,292 +1,231 @@
-# Handoff — TooieRecomp (atualizado 2026-08-11 P08)
+---
+title: "Handoff — TooieRecomp"
+description: "Estado global corrente do port, com prioridade P08 no handoff intro para attract demo."
+status: current
+type: handoff
+project: TooieRecomp
+updated: 2026-08-11
+tags: [tooie-recomp, handoff, p08, intro, attract, type-4]
+---
 
-**Prioridade atual:** **NENHUM blocker ativo no boot/opening.** O SIGSEGV
-`do_dma` foi **FIXED** estruturalmente no **generator** (binding de jal
-same-section relocatable). Game roda a abertura/intro (ovl 635/695, gsmaker)
-~140s+ / 179k syscalls sem crash. Próximo passo: validar captura visual de menu
-/gameplay e controles (seções 1–4 abaixo). Não chamar Spiral Mountain.
+# Handoff — TooieRecomp
 
-**Fix P08 (generator, 2026-08-11):** `resolve_jal` no N64Recomp agora resolve
-`jal` intra-overlay **same-section em seções relocatable** para chamada direta a
-C (mesmo com `use_lookup_for_all_function_calls=true`), eliminando a colisão de
-base vram `0x80800000` (chintrochar→gsworldDll espúrio → idx -0x3AB → do_dma).
-Restrição a relocatable preserva host hooks em `.core1`/`.boot` (scheduler OK).
-Patch versionado `patches/runtime/n64recomp-same-section-jal.patch` +
-`tools/apply_runtime_patches.sh` (2 patches). Detalhe:
-`plan/evidence/p08-overlay-rmips26-binding-diagnosis.md`.
+## Prioridade atual
 
-**Scheduler runtime estabilizado (2026-08-10):** decisão **C** implementada e
-validada no scheduler do N64ModernRuntime — `thread_queue_remove` com traversal
-real, scan de duplicata no insert, e guard `t->queue != NULLPTR` em
-`osSetThreadPri`. `No threads left to run!`, SIGSEGV de insert(NULLPTR) e
-self-loop = 0 em 14 runs. Patch versionado:
-`patches/runtime/n64modernruntime-scheduler.patch` + `tools/apply_runtime_patches.sh`
-idempotente. Detalhe: `plan/evidence/p08-no-threads-left-diagnosis.md`
-(seção `## Final scheduler fix validation`).
+**P08 ACTIVE BLOCKER:** a primeira attract/gameplay demo não começa depois da
+intro e Jiggy transition visualmente corretas.
 
-Handoff técnico: `plan/evidence/p08-session-handoff.md`.
+Estado clean-freeze corrente:
 
-**Diagnóstico fechado (2026-08-09):** o abort `Failed to find function at
-0x00000000` no spawn forçado é **INVALID** (não é callback opcional). O crash
-está em `func_80108C90` (não `func_80107C2C`), lendo `ActorInfo[0x38]` em
-endereço link-time `0x80804FA0`, onde o data do overlay 467 não está mapeado no
-runtime (ROM tem `func_80107C2C` nesse campo). Adicionalmente, o auto-spawn usa
-marker id **419** que resolve para `chcollballcontrol`, não chintroticker
-(marker correto **569**). Detalhe: `plan/evidence/p08-actor-null-callback-diagnosis.md`.
+- request `map=335 / entrance=8 / warp=3` confirmado;
+- transition type-4 ativa, count `1`;
+- MAIN guest viva e executando dentro do game tick;
+- type-4 incompleta: progress/elapsed `≈0.9`, duration/target `≈3.5`;
+- frame-sync/VI exonerado;
+- event-3 graphics barrier exonerado;
+- scheduler bug não provado;
+- `cothemedll:2` não é blocker.
 
-**FIX aplicado (2026-08-10, P08):** a causa raiz do 0 era a relocation de data
-de overlay **descartada pelo gerador de metadados** — `readelf -S` sem `-W`
-truncava nomes de seção longos (`.chcollballcontrol` → `.chcollballc[...]`), a
-seção não entrava na lista relocatable e o N64Recomp descartava o `.rel`. A
-correção é na camada generator/metadata (`-W` + listas `.txt`/`.recomp.txt`
-idênticas, 851 seções). **Confirmado:** `ActorInfo[0x38] == 0x80107C2C` e
-`func_80108C90` ultrapassa o `LOOKUP_FUNC(0)`. **Novo ponto de parada (não
-diagnosticado):** SIGSEGV em `vector_push_back` (`func_80106668` em
-`func_80107C2C`). Detalhe: `plan/evidence/p08-overlay-data-relocation-diagnosis.md`.
+Descrição canônica:
 
-**SCHEDULER FIX C (2026-08-10):** estabilizado o contrato do scheduler do
-N64ModernRuntime (runtime externo, base `ca568b6`, NÃO commitado no
-BanjoRecomp). Alterações confirmadas: (1) `thread_queue_insert` preserva scan
-REAL de links contra duplicata/self-loop (field guard removido); (2)
-`thread_queue_remove` percorre a fila real (`pred`/`next`) e retorna false para
-`queue_ == NULLPTR`, sem zerar `t->queue`; (3) `osSetThreadPri` só faz
-remove+reinsert quando `t_ != this_thread() && state != STOPPED && t->queue !=
-NULLPTR`, sempre muda `priority` e sempre roda `check_running_queue`.
-Validação: harness 13/13 PASS (insert duplicate, stale field, remove
-head/non-head/tail/missing/null, pri runqueue/blocked/queue_null/current);
-14 runs (12 smokes + 2 GDB) com `No threads left`=0, SIGSEGV=0, self-loop=0,
-duplicata=0, LOOKUP_FUNC(0)=0; `last_ovl=677:3` alcançado; caso
-queue==NULL do crash original não observado (0 ocorrências com
-instrumentação temporária, removida no binário final; consistente com a
-hipótese de que o fix do traversal de `thread_queue_remove` eliminou o path,
-sem prova formal de inalcançabilidade). Repro: patch versionado
-`patches/runtime/n64modernruntime-scheduler.patch` (SHA256
-`1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309`) +
-`tools/apply_runtime_patches.sh` (idempotente). Detalhe:
-`plan/evidence/p08-no-threads-left-diagnosis.md`.
+> The opening/intro sequence completes visually through the Jiggy transition,
+> but the subsequent gameplay demo/attract scene does not start.
 
-**Input no title/file select permanece pendente**, mas foi explicitamente
-diferido pelo usuário. A tentativa de hooks `osEepromProbe`+EEPROM falhou na
-validação humana: `plan/evidence/p08-title-input-eeprom.md`.
+Handoff técnico autossuficiente:
+[[plan/evidence/p08-session-handoff]]. Evidência consolidada:
+[[plan/evidence/p08-intro-to-demo-transition-diagnosis]].
 
-**Repo git:** `TooieRecomp/` apenas (branch `main`).  
-**Workspace monorepo:** `/home/wesley/projetos/N64-Recomp` (sem `.git` na raiz).  
-**Docs de plano/specs/evidência:** `./` (vault local neste repo).
+## NEXT
 
-## Commits recentes
+Investigar a semântica interna de progress/completion da transition type-4 no
+estado clean. Começar por `≈0.9 / ≈3.5`, pela discrepância do raw field `≈2883`
+e pelo delta/timing source de `gctransitionDll ep9`. Preferir análise
+estática/comparação com original ou emulador antes de instrumentação que altere
+timing.
 
-| hash | mensagem |
-| --- | --- |
-| `3c57905` | fix(p08): complete overlay lifecycle and core1 math hooks |
-| `69e12fc` | feat(p08): stabilize frontend and runtime |
-| `5bf8f06` | docs: handoff for next agent (P07/P08 state and residual) |
-| `e2cdb30` | **P08:** show RT64 game view after auto-start; Tooie window title |
-| `73529d5` | **P07:** RSP n_aspMain, SI/CIC-6105, and working intro audio |
-| `d2d6426` | Initial commit P00–P06 |
+Não diagnosticar BaKey ainda; ele é apenas possible downstream blocker visto em
+runs perturbados.
 
-## Working tree / fix A
+## Estado do produto validado
 
-- `src/game/boot_hw_stubs.cpp`: Fix A (address sign-extend + IPL3 residue seed).
-- **Generator fix (P08):** `resolve_jal` same-section relocatable → direct call.
-  Patch `patches/runtime/n64recomp-same-section-jal.patch` + `tools/apply_runtime_patches.sh`.
-- Docs: p08-overlay-rmips26-binding-diagnosis.md + este handoff atualizados
-  pós-validação 3/3.
-- Smoke: flag=0, pipeline BDCDC→actors roda; **do_dma SIGSEGV FIXED** (game
-  roda abertura ~140s+, 179k syscalls, sem crash).
+1. O launcher/RecompFrontend, auto-start e RT64/Vulkan apresentam a janela do
+   jogo; input do launcher funciona.
+2. A música inicial toca corretamente no sink default do SO.
+3. A intro renderiza céu/brilho, cena 3D, Dolby Surround e logo BANJO-TOOIE;
+   cenário/câmera continuam avançando.
+4. A Jiggy transition fecha a intro corretamente.
+5. Depois da Jiggy, a tela fica preta e a primeira gameplay demo não aparece.
+6. Title/file-select input continua diferido; a tentativa EEPROM anterior
+   falhou validação humana.
 
-## Estado do produto (o que o usuário já validou)
+A captura isolada `0060` não prova o instante exato do fim da Jiggy; a conclusão
+vem da validação humana do fluxo mais os estados observados. Ver
+[[plan/evidence/p08-visual-validation/README]].
 
-1. **Música inicial** toca corretamente no sink **default** do SO (FELITRON USB).
-2. O launcher mantém o visual/animação do BanjoRecomp e é a única janela visível
-   até **Start Game**.
-3. A transição `gctransitionDll` foi destravada; o RT64 chega a uma tomada 3D
-   de terreno/água da abertura. A câmera fica quase no chão e não avança.
-   Personagem, HUD, menu e gameplay não foram comprovados.
-4. **Áudio** validado pelo utilizador no sink default (com ou sem preview do launcher).
-5. No Linux, a música do launcher vem de um processo oculto que executa a ROM; ao
-   iniciar o jogo ele encerra e o boot/música recomeçam no processo visível.
+## Arquitetura e regras
 
-## P07 (já commitado) — resumo para não reabrir
+TooieRecomp recompila estaticamente Banjo-Tooie com:
 
-### Áudio / RSP
-- `n_aspMain` Tooie gerado com RSPRecomp (`n_aspMain.us.rev0.toml`):
-  - ROM **decompressed**: text `0x1E4F3B0`, size **`0x17D0`** (≠ BK `0xC60`).
-  - `tools/run_rsprecomp.sh` + `tools/fix_rsprecomp_labels.py` (ramos `>0x1FFF`).
-- Dispatch: `M_AUDTASK` → `n_aspMain`; gfx via RT64.
-- SDL: `OpenAudioDevice(nullptr)` = default do sistema.
+- `N64Recomp` / `RSPRecomp`;
+- `N64ModernRuntime`;
+- `RT64`;
+- `RecompFrontend`.
 
-### Boot blockers resolvidos (host)
-| bug | sintoma | fix em `src/game/boot_hw_stubs.cpp` |
-| --- | --- | --- |
-| `__osSiRawStartDma` no-op | hang em `gldbDll` (`osRecvMesg` BLOCK) | espelho PIF 64 B + `ultramodern::send_si_message()` |
-| CIC 6105 LUT errada | stream `gsmaker` infinito, PCM zero | algoritmo **X-Scale/mupen** `n64_cic_nus_6105` (len 30), zera `pif[0x2e/0x2f]` |
+`RecompiledFuncs` é código gerado e não deve ser editado. Fixes devem estar na
+camada proprietária da causa — generator, metadata, runtime ou integração
+source/host — e precisam ser versionados/reproduzíveis.
 
-Stack de hang antigo: `gsworldDll:2 → gsmaker:2 → gldbDll:0`.  
-Depois do fix: `leave ovl=726`, stack `(idle)`.
+Repo Git: `TooieRecomp/`, branch `main`. A raiz do workspace
+`/home/wesley/projetos/N64-Recomp` não é um repositório Git.
 
-### Diagnóstico
-```sh
-TOOIE_AUTO_START=1 TOOIE_DIAG=1 ./TooieRecompiled
-# peak/nonzero > 0 com boot saudável; hang stack em [tooie-diag]
-```
-Arquivos: `include/tooie_diag.h`, `src/game/tooie_diag.cpp`.
+## Resolved blockers / do not reopen
 
-Docs P07: `plan/evidence/p07-boot-hang-audio-diag.md`, `plans/BT/07-rsp-and-audio.md`.
+### Overlay data relocation / `LOOKUP_FUNC(0)`
 
-## P08 — o que foi feito
+Generator de metadata chamava `readelf` sem `-W`, truncava nomes longos de
+seções relocatable e descartava data relocations. Corrigido; `ActorInfo[0x38]`
+agora contém callback correto. Ver
+[[plan/evidence/p08-overlay-data-relocation-diagnosis]].
 
-### Bug principal
-`TOOIE_AUTO_START` em `src/main/main.cpp` fazia:
+### Actor manager e D6E54
 
-```cpp
-recomp::start_game(game_id, {});
-// FALTAVA: recompui::hide_all_contexts();
+O manager inicializa naturalmente por `chbaddieDll ep1 -> func800FF390 ->
+func801065E0 -> vector_new`; `D80136EE0≈0x801DF080`. O nulo veio de spawn
+artificial. `func800D6E54` é resource/reclaim diferido, não actor population.
+Ver [[plan/evidence/p08-natural-actor-spawn-divergence]].
+
+### Resident overlay cache / gcsection
+
+`ovl_unload` deixava mapping stale em `s_resident_overlays` depois de liberar
+heap. A invalidação pós-unload resolveu gcsection/glintrosync. Ver
+[[plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]].
+
+### Scheduler antigo
+
+N64ModernRuntime recebeu scan real de duplicata em insert, traversal correto em
+remove e guard de reinserção em `osSetThreadPri`. Harness 13/13 PASS e múltiplos
+runs sem `No threads left`, self-loop ou corrupção. Ver
+[[plan/evidence/p08-no-threads-left-diagnosis]].
+
+### IPL3 integrity gate
+
+Corrigidos sign extension/endereço e seed one-shot dos resíduos esperados
+`0xAD090010`/`0xAD170014`; natural actor creation restaurada em 3/3 runs. Ver
+[[plan/evidence/p08-natural-actor-spawn-divergence]].
+
+### R_MIPS_26 / flat func_map / do_dma
+
+Same-section JAL conhecido em section relocatable agora vira direct C call no
+generator. Fechado o path `chintrochar -> gsworld ep0 espúrio -> idx -0x3AB ->
+bad DMA -> do_dma SIGSEGV`. Patch versionado:
+`patches/runtime/n64recomp-same-section-jal.patch`. Ver
+[[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] e
+[[plan/evidence/p08-do-dma-segv-diagnosis]].
+
+## Current expected flow
+
+```text
+intro mode 3
+ -> Jiggy transition
+ -> gsattract ep5
+ -> map 335, entrance 8
+ -> create/retain type-4
+ -> warp 3 pending
+ -> func_800A7D84 tick
+ -> type-4 completes / func_800C9510 returns 0
+ -> func_800A9924 -> func_800A76F4(5)
+ -> mode 5 -> func_800A9A14 -> gsattract ep1
+ -> gameplay demo
 ```
 
-O botão Start do launcher (RecompFrontend) chama **os dois**. Sem hide, o RmlUi do
-launcher (SVG Banjo/Kazooie fundo azul, `v0.1.0-p0x`) cobria o RT64 → usuário via
-“tela parada” mas ouvia música.
+## Current clean-freeze evidence
 
-### Fix aplicado
-```cpp
-recomp::start_game(game_id, {});
-recompui::hide_all_contexts();
-```
-
-Também:
-- Título SDL: `banjo::program_name` → `"Banjo-Tooie: Recompiled"`.
-- `version_string = "0.1.0-p08"`.
-- `thread_queue_insert` rejeita inserção duplicada, eliminando auto-elo da JOY.
-- Filas TIDY de uma mensagem coalescem pedidos duplicados sem bloquear a MAIN.
-- O hook Tooie de `osDpGetStatus` mascara `DPC_STATUS_FREEZE`: o RT64 processa
-  display lists mesmo durante esse estado sintético, ao contrário da RDP real.
-- Preview de música ROM-backed em processo SDL oculto; `SIGTERM` + reap no
-  Start Game e `PR_SET_PDEATHSIG/SIGKILL` se o launcher morrer.
-
-### Evidência visual (`plan/evidence/`)
-
-| ficheiro | conteúdo |
-| --- | --- |
-| `p08-window-capture.png` | launcher SVG (antes do hide) |
-| `p08-game-view.png` | **jiggy transition** + mundo no recorte (após hide) |
-| `p08-runtime-frontend-smoke.md` | trace DP/VI, `>32k` syscalls e ciclo preview → boot visível |
-
-### Já existia (não reinventar)
-- RT64 + Vulkan linkados no CMake; `create_render_context` em `main.cpp`.
-- RecompFrontend (launcher, config, input callbacks).
-- Config: `~/.config/TooieRecompiled/{general,graphics,sound}.json` + ROM stored.
-- `controls.json` é persistido de forma lazy pelo RecompFrontend quando um
-  binding é alterado; a ausência anterior a isso é normal e igual ao BanjoRecomp.
-- Defaults, descrições, callbacks, single-player, Rumble Pak e exports de
-  analógico direito têm implementação idêntica ao BanjoRecomp.
-- Os VRAMs Tooie de `osContInit`, polling/leitura, `osContSetCh`, motor e rumble
-  apontam para os wrappers host do N64ModernRuntime. GDB confirmou
-  `osContStartReadData_recomp` em `[Game] SCHEDULE` e
-  `osContGetReadData_recomp` em `[Game] JOY`; o SI bruto continua exclusivo do
-  CIC-6105.
-- O build copia o `recompcontrollerdb.txt` canônico de `../BanjoRecomp` para a
-  pasta do executável; o smoke não mostra mais `Invalid RWops`.
-- O desbloqueio do scheduler também depende da alteração ainda não commitada em
-  `../BanjoRecomp/lib/N64ModernRuntime/ultramodern/src/threadqueue.cpp`; este
-  commit de TooieRecomp não inclui a dependência externa.
-
-## Residual prioritário (próximo agente)
-
-### 0. SIGSEGV `do_dma` — FIXED (generator)
-
-**IPL3 integrity gate: FIXED (fix A).** Natural actor creation: **RESTORED**.
-**do_dma SIGSEGV: FIXED (binding de jal same-section no generator).**
-
-| fato | status |
-| --- | --- |
-| Fix A (`boot_hw_stubs.cpp`) | **DONE** — sign-extend addrs + one-shot seed |
-| Generator fix (`resolve_jal` same-section relocatable) | **DONE** — patch versionado |
-| Validation | **3/3** flag=0, BDCDC=1, cube5=1, col8=1274, c90=11, c2c=10, alloc=10 |
-| `D_80136EE0` early | `0x801DF080` válido |
-| Old regressions (threads/LOOKUP0/gcsection) | **0** |
-| Old crash (`do_dma`, idx -0x3AB, dev/size bad) | **0/0/0/0** |
-| chintrochar callsite → `func_80800000_chintrochar` | **SIM** (gdb backtrace confirmado) |
-| spurious `gsworldDll_entrypoint_0` from chintrochar | **0** (2 hits legítimos de gsworld ep2) |
-| Run longo | **~140s+, 179k syscalls, abertura/intro, sem crash** |
-| Intro “funcionando”? | **NÃO** declarar (sem validação visual de gameplay) |
-
-**Não** reabrir: integrity gate, D6E54, scheduler, overlay relocate, gcsection,
-do_dma.
-
-**Docs:** `plan/evidence/p08-overlay-rmips26-binding-diagnosis.md`,
-`plan/evidence/p08-natural-actor-spawn-divergence.md` §12–13,
-`plan/evidence/p08-do-dma-segv-diagnosis.md`
-
-Histórico resolvido (não reabrir):
-
-- IPL3 integrity gate / missing boot residue — **fix A**
-- **do_dma SIGSEGV / R_MIPS_26 intra-overlay binding — fix generator (P08)**
-- Relocation data overlay / `LOOKUP_FUNC(0)`
-- marker419 hook SEGV (opt-in OFF)
-- Actor manager init healthy
-- `glintrosync/gcsection` stale resident
-- Scheduler `No threads left`
-
-### 1. Diferido — title / file select input
-
-- Launcher RecompFrontend: input OK.
-- Title/file select do jogo: pad não entra no save/start (utilizador 2026-08-09).
-- Tentativa EEPROM falhou. Retomar somente depois da abertura automática;
-  hipóteses em `plan/evidence/p08-title-input-eeprom.md`.
-
-### 2. Captura dirigida de menu e gameplay
-
-- Depois do fix, capturar logos, descida de câmera, menu e demos.
-- Só considerar gameplay com personagem/HUD e controle comprovados.
-
-### 3. Controles (P08-T05)
-
-- Path host `osCont*` já ligado; falta fix title/save + teste físico rumble/hotplug.
-- `controls.json` lazy (igual BanjoRecomp).
-
-### 4. Paridade visual / UI (P08-T02/T03/T07/T08)
-- 4:3, fullscreen/multi-monitor, fallback Vulkan.
-
-
-## Como buildar e correr
+Ground truth usa binário original, sem debugger ou instrumentação durante a
+execução:
 
 ```sh
-cd TooieRecomp/build   # ou reconfigure se necessário
-cmake --build . --target TooieRecompiled -j$(nproc)
-
-# ROM: já em ~/.config/TooieRecompiled/bt.n64.us.1.0.z64 (layout decompressed)
-# Hash esperado no GameEntry: 0x9F843AD3455EA395ULL
-
-TOOIE_AUTO_START=1 ./TooieRecompiled
-# Janela: "Banjo-Tooie: Recompiled"
-# Escape: menu config RecompFrontend
-# TOOIE_DIAG=1  — contadores
-# TOOIE_LOG_RSP=1 — cada M_AUDTASK
-
-TOOIE_LAUNCHER_MUSIC_SMOKE=1 TOOIE_DIAG=1 ./TooieRecompiled
-# Valida preview oculto, encerramento e segundo boot visível.
-# TOOIE_DISABLE_LAUNCHER_MUSIC=1 desativa o preview.
+TOOIE_AUTO_START=1 \
+TOOIE_DIAG=1 \
+TOOIE_DISABLE_LAUNCHER_MUSIC=1 \
+./build/TooieRecompiled
 ```
 
-Dependências de tree: `../BanjoRecomp` (runtime/RT64/Frontend),  
-`../banjo-tooie-Recomp/decompressed.us.z64` (regen ASP).
+Freeze típico: black screen pós-intro, syscall `d≈179275` estável por `>=5s`,
+`last_ovl=635:2`, mode 3, map 335, entrance 8, warp 3, transition count 1.
+Somente então anexar GDB/capturar snapshot. Não versionar o core de ~6.4 GB.
 
-## Arquivos-chave
+MAIN snapshot:
 
-| path | papel |
-| --- | --- |
-| `src/main/main.cpp` | janela, auto-start, RSP dispatch, SDL audio |
-| `src/game/boot_hw_stubs.cpp` | SI, CIC 6105, scheduler, ovl_load host |
-| `src/game/syscall_handler.cpp` | overlay syscalls + nested bank |
-| `src/game/tooie_diag.cpp` | diagnóstico |
-| `rsp/n_aspMain.cpp` | microcódigo áudio |
-| `n_aspMain.us.rev0.toml` | config RSPRecomp |
-| `plan/evidence/p07-*.md`, `plans/BT/07-*.md` | evidências/plano P07 |
-| `plans/BT/0{6,7,8}-*.md` | planos detalhados (vault local) |
+```text
+OSThread 0x80045788, id 6, priority 20, queue 0
 
-## Não fazer
+func_800124EC
+ -> func_800123F4
+ -> func_800123BC
+ -> func_800A7D84
+ -> func_800A76F4
+ -> func_800A7380
+ -> func_800C2AB8
+ -> get_function(0x800C269C)
+```
 
-- Commits na raiz `N64-Recomp` (sem git).
-- Reutilizar `n_aspMain` de Banjo-Kazooie.
-- Instrumentar `RecompiledFuncs` gerados com fprintf permanente.
-- Assumir que silêncio = device errado sem checar `TOOIE_DIAG` peak e PipeWire sink.
+MAIN não estava bloqueada em MQ. A running queue continha IDLE porque MAIN era
+current/running. Self-loop, duplicata e invalid pointer: NO. Scheduler bug:
+NOT PROVEN.
+
+Type-4 naquele run: objeto heap específico aproximadamente `0x8027AAC0`, count
+1, progress `≈0.9`, duration `≈3.5`, raw field `≈2883`. Não chamar 2883 de tick
+counter real: `FIELD_SEMANTICS_NOT_FULLY_VALIDATED`.
+
+## Exonerated current hypotheses
+
+- **Frame-sync:** recv 57/57, send 57/57, host VI/producer 361/361,
+  outstanding 0.
+- **Event-3:** call/handler 3/3, ACK send/recv 3/3, outstanding 0, msg5
+  dispatch 57.
+- **cothemedll:** callback síncrono sem MQ/DMA wait;
+  `LAST_OVL_IS_BLOCKING_PC=NO`.
+- **Circular type-4 gate:** update continua no restante de `func_800A7D84`
+  mesmo quando warp permanece gated.
+- **Warp logic:** em run perturbado, C9510 fica nonzero 18 vezes e zera na 19ª;
+  `func_800A9924` e `func_800A76F4(5)` executam uma vez.
+
+## Timing warning
+
+GDB, breakpoints e instrumentação em hot paths alteraram timing e permitiram que
+a type-4 terminasse. Dados perturbados servem para provar contratos locais, não
+para representar o freeze natural.
+
+```text
+run clean -> confirm freeze -> attach after freeze -> capture snapshot/core
+```
+
+## Não provado / não concluir
+
+- motivo de progress ficar em `≈0.9`;
+- delta-time/timing source incorreto;
+- state machine interna ou subactor preso;
+- timing-source flag errada;
+- relevância causal de `func_800C2AB8 / get_function(0x800C269C)`;
+- callback incorreto;
+- semântica do raw field `≈2883`;
+- BaKey como root cause do clean freeze.
+
+## Files to read
+
+1. [[plan/evidence/p08-session-handoff]]
+2. [[plan/evidence/p08-intro-to-demo-transition-diagnosis]]
+3. [[plan/evidence/p08-visual-validation/README]]
+4. [[plans/BT/08-rt64-input-and-frontend]]
+5. Evidências resolvidas ligadas na seção “do not reopen”.
+
+## Scope do checkpoint documental
+
+```text
+SOURCE_CODE_CHANGED    = NO
+RUNTIME_CODE_CHANGED   = NO
+GENERATOR_CODE_CHANGED = NO
+PATCH_CODE_CHANGED     = NO
+CORE_INCLUDED          = NO
+BUILD_ARTIFACT_INCLUDED= NO
+```

@@ -4,7 +4,7 @@ description: "Índice ordenado das etapas necessárias para entregar Banjo-Tooie
 status: active
 type: implementation-index
 project: TooieRecomp
-updated: 2026-08-09
+updated: 2026-08-11
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -68,13 +68,17 @@ adicionais durante P08. Detalhe: [[06-overlays-and-syscalls]].
 por ouvido** no sink default. Residual: SFX/pause/hotplug/soak (T06 resto +
 T07). Detalhe: [[07-rsp-and-audio]].
 
-### Nota P08 (2026-08-09)
+### Nota P08 (2026-08-11)
 
-RT64/Vulkan: jiggy → tomada 3D de terreno/água, com câmera quase no chão e sem
-troca de cena. Não há personagem/HUD, menu ou gameplay comprovado.
-`TOOIE_AUTO_START` + `hide_all_contexts`; áudio validado; controles host = BK.
-**Prioridade:** restaurar logos, descida de câmera e demos. Input no title/file
-select foi diferido; a tentativa EEPROM anterior falhou validação humana.
-Evidência: [[../../plan/evidence/p08-session-handoff]],
-[[../../plan/evidence/p08-first-area-playable]]. Detalhe:
+RT64/Vulkan: intro humana validada por céu/cena 3D, Dolby, logo BANJO-TOOIE,
+progressão de câmera e completion da Jiggy transition. A first gameplay
+demo/attract não começa e a tela fica preta. O request `map=335`, `entrance=8`,
+`warp=3` ocorre; no clean freeze, MAIN continua executando o game tick e uma
+transition type-4 permanece incompleta (`≈0.9 / ≈3.5`, count 1). Frame-sync e
+event-3 estão exonerados; scheduler bug não foi provado; cothemedll não é o
+blocking PC. **Prioridade:** entender progress/completion da type-4 em estado
+clean. Input title/file-select permanece diferido. Evidência:
+[[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]],
+[[../../plan/evidence/p08-session-handoff]],
+[[../../plan/evidence/p08-visual-validation/README]]. Detalhe:
 [[08-rt64-input-and-frontend]].

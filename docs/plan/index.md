@@ -5,7 +5,7 @@ status: active
 type: plan
 project: TooieRecomp
 platform: linux-x86_64
-updated: 2026-08-09
+updated: 2026-08-11
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (pré-M3)** | áudio e geometria 3D; abertura presa em terreno/água, sem logos/menu/demos |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/logo/Jiggy validadas; first gameplay demo ausente; type-4 incompleta no clean freeze |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (abertura/câmera bloqueia M3) |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (first attract demo bloqueada por type-4 incompleta) |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 
@@ -157,6 +157,16 @@ O trabalho só está concluído quando todos os critérios de
 - Critérios finais: [[definition-of-done]]
 - Baseline P00: [[baseline-manifest]]
 - Registro anterior, agora supersedido: [[../roadmap/tooie-recomp]]
+
+## Evidência P08 corrente
+
+- [[evidence/p08-intro-to-demo-transition-diagnosis]] — intro/Jiggy completam
+  visualmente; first gameplay demo ausente; clean post-mortem captura MAIN viva
+  no game tick e uma type-4 incompleta (`≈0.9 / ≈3.5`).
+- [[evidence/p08-session-handoff]] — estado autossuficiente e próximo single
+  action para um novo chat.
+- [[evidence/p08-visual-validation/README]] — inventário/interpretação humana
+  dos frames da intro ao preto pós-Jiggy.
 
 ## Atualização de estado
 

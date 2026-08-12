@@ -1,83 +1,87 @@
----
-title: "Índice da documentação"
-status: current
-area: "root"
-updated: 2026-08-08
----
-
 # Índice da documentação
 
 ## Notas
 
-- [[AGENTS]] — Regras para agentes — Ordem de leitura, execução e evidências do TooieRecomp.
+- [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
+- [[HANDOFF]] — Handoff — TooieRecomp — Estado global corrente do port, com prioridade P08 no handoff intro para attract demo.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
-- `patches/runtime/n64modernruntime-scheduler.patch` + `tools/apply_runtime_patches.sh` — Patch versionado do scheduler do N64ModernRuntime (base `ca568b6`, decisão C) e aplicador idempotente.
-
-## roadmap
-
-- [[roadmap/tooie-recomp]] — TooieRecomp Roadmap — Goal: build a static recomp of **Banjo-Tooie** for PC by adapting the infrastructure used by **Banjo: Recompiled**, feeding it the reverse engineering data from the **banjo-tooie-Recomp** decomp.
 
 ## plan
 
-- [[plan/index]] — Plano mestre — Banjo-Tooie nativo no Linux — Caminho crítico, marcos, riscos e definição de sucesso.
-- [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Gates funcionais, audiovisuais, técnicos e de distribuição.
-- [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, ROM, decisões e licenças.
+- [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
+- [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
+- [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
+- [[plan/evidence/p08-active-banjo-reuse-audit]] — P08 — Active BanjoRecomp reuse audit — Auditoria diagnóstico-only: risco de código/estado Banjo-Kazooie ativo no executável TooieRecompiled. Verdict: nenhum behavior BK alcançável (code recompilado Tooie só chama recomp_syscall_handler/func_*; exports recomp_get_* BK não registrados/chamados → DORMANT). N64ModernRuntime DIRTY (threadqueue.cpp + N64Recomp use_lookup_for_all_function_calls). RecompiledPatches = scaffold vazio. Build não reproduzível (5 itens). Scheduler bug = LOCAL TOOIE PATCH IN SHARED RUNTIME. Recomendação: CONTINUE P08.
+- [[plan/evidence/p08-actor-init-segv-diagnosis]] — P08 — diagnóstico do SIGSEGV na inicialização de actor — Prova com GDB que o SIGSEGV em vector_push_back (via func_80106668/func_80107C2C) é artefato do spawn diagnóstico: D_80136EE0 (vetor global de Actors) está NULL porque o initializer (chbaddieDll ep1 → func_800FF390 → func_801065E0) nunca executou. Natural flow diverge antes. Não é bug de vector/runtime.
+- [[plan/evidence/p08-actor-manager-init-divergence]] — P08 — actor manager init: premissa desatualizada (cadeia executa no HEAD) — Diagnóstico: a cadeia legítima chbaddieDll ep1 → func_800FF390 → func_801065E0 → D_80136EE0 executa NATURALMENTE no HEAD c43e89b. A evidência anterior de 0 hits (a6053a0) foi coletada antes dos fixes de relocations/overlay-cache/scheduler. Não existe primeira divergência neste caminho no HEAD.
+- [[plan/evidence/p08-actor-null-callback-diagnosis]] — P08 — diagnóstico: callback nulo em func_80108C90 (ActorInfo[0x38]) — Prova com runtime + ROM que o valor 0 lido como callback de actor no spawn forçado não é um callback opcional legítimo; a origem é o mapeamento de data de overlay.
+- [[plan/evidence/p08-controller-host-path]] — P08 — caminho host dos controles — Data: 2026-08-09
+- [[plan/evidence/p08-do-dma-segv-diagnosis]] — P08 — SIGSEGV do_dma: dinamic diagnosis — **HEAD:** `f865c038455da1e5fafb5257ece974e1e15c9399` **Modo:** diagnóstico somente. Zero código alterado. **Status:** ROOT HIGH — overlay base-vram collision no func_map.
+- [[plan/evidence/p08-first-area-playable]] — P08 — cena 3D após a transição — Smoke dirigido: boot → jiggy → terreno/água da abertura; câmera e sequência não progridem.
+- [[plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]] — P08 — SIGSEGV natural glintrosync:6 → gcsection:4 (diagnóstico) — SIGSEGV natural glintrosyncDll:6 → gcsectionDll:4 — func_808000F0 retornava NULL porque ovl_unload não invalidava s_resident_overlays (cache stale; heap reutilizado por overlay 709). FIX aplicado. ROOT CAUSE E, HIGH.
+- [[plan/evidence/p08-intro-actor-spawn-diagnosis]] — P08 — diagnóstico de divergência no spawn de actors da intro — Identificação do primeiro ponto de divergência na cadeia de inicialização e spawn dos actors da abertura (chintroticker 419, chintrochar 440, chintrocam 441).
+- [[plan/evidence/p08-intro-to-demo-transition-diagnosis]] — P08 — INTRO → ATTRACT DEMO transition diagnosis — Checkpoint da validação visual, warp/type-4 e post-mortem do freeze natural depois da Jiggy transition.
+- [[plan/evidence/p08-natural-actor-spawn-divergence]] — P08 — divergência no spawn natural de actors (IPL3 integrity gate) — Diagnóstico fechado: gate anti-tamper func_8001DE64 / D_8007DB79 bloqueia pipeline func_800A5C28 → func_800BDCDC → gccubeDll:5 → gccollectDll:8 → actor creation. Stub address +0x10000 + missing guest words. Discriminator matrix. Fix A decidido, NÃO implementado.
+- [[plan/evidence/p08-no-threads-left-diagnosis]] — P08 — Diagnóstico: "No threads left to run!" — std::runtime_error No threads left to run! = run_next_thread com a running queue vazia (NÃO é esgotamento de threads). ROOT CAUSE E, HIGH: patch local de threadqueue.cpp rejeita re-inserção após osSetThreadPri porque thread_queue_remove não limpa t->queue; fila drena até vazia e a thread SCHEDULE bloqueia em osRecvMesg. Diagnosis-only; fix estreito externo pendente de autorização.
+- [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — diagnóstico: relocation de data de overlay perdida (chcollballcontrol) — Prova que o construtor recompilado devolvia 0x80804FA0 (link-time) porque o pipeline de metadados truncava nomes de seção; relocs existiam no ELF. Fix na camada generator/metadata; ActorInfo[0x38] == 0x80107C2C.
+- [[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] — P08 — corrigir binding de R_MIPS_26 intra-overlay no GENERATOR — Fix estrutural no N64Recomp: jal same-section em seções relocatable agora resolve para chamada direta a C, mesmo com use_lookup_for_all_function_calls=true. Elimina a colisão de base vram 0x80800000 (chintrochar→gsworldDll). Scheduler preservado via restrição a relocatable. Validado 3/3 smokes + 140s run.
+- [[plan/evidence/p08-runtime-frontend-smoke]] — BT P08 — runtime, launcher e música — Evidência do desbloqueio DP/VI e do ciclo de música do launcher.
+- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: INTRO → ATTRACT DEMO — Estado autossuficiente do blocker pós-Jiggy e ponto exato para a próxima investigação.
+- [[plan/evidence/p08-threadqueue-b-fix-validation]] — P08 — Fix B threadqueue: validação — Validação do fix B em threadqueue.cpp (scan real de links, sem field-equality guard). Contrato de thread_queue_remove provado: HEAD PASS, NON-HEAD/TAIL FAIL (infinite loop). SECOND SCHEDULER BUG CONFIRMED: remove só checa o HEAD. NO_THREADS_LEFT FIXED (0/2 smoke). Novo blocker: SIGSEGV em thread_queue_insert com queue==NULLPTR via osSetThreadPri sobre thread RUNNING (JOY).
+- [[plan/evidence/p08-title-input-eeprom]] — P08 — input title/file select — **NÃO RESOLVIDO** — **Status:** `blocked` / falhou validação do utilizador (2026-08-09). **Ação:** **outro agente assume** este ajuste. Não reabrir como “done”.
+- [[plan/evidence/p08-visual-validation/README]] — P08 — visual validation: intro → attract handoff — Inventário das capturas e interpretação humana validada da abertura até a tela preta pós-Jiggy.
+- [[plan/index]] — Plano mestre — Banjo-Tooie nativo no Linux — Plano executável para transformar os insumos BanjoRecomp e banjo-tooie-Recomp em um port nativo completo de Banjo-Tooie para Linux.
 
-## plan/evidence (P08)
+## plans
 
-- [[plan/evidence/p08-actor-null-callback-diagnosis]] — P08 — Diagnóstico: callback nulo em `func_80108C90` (ActorInfo[0x38]) — o 0 é inválido (ROM tem `func_80107C2C`); causa: relocation de data de overlay descartada pelo gerador de metadados (resolvida por `p08-overlay-data-relocation-diagnosis`).
-- [[plan/evidence/p08-intro-actor-spawn-diagnosis]] — P08 — Divergência no spawn de actors da intro (chintroticker/chintrocam/chintrochar não instanciados).
-- [[plan/evidence/p08-session-handoff]] — P08 — Handoff da sessão: spawn de chintroticker (419), gemarkersDll e logo da Rare; relocation de data de overlay resolvida (ver `p08-overlay-data-relocation-diagnosis`).
-- [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — Relocation de data de overlay perdida (chcollballcontrol) — ROOT CAUSE A: `readelf -S` sem `-W` truncava nomes de seção; relocs existiam no ELF. Fix no gerador de metadados; `ActorInfo[0x38] == 0x80107C2C`; `LOOKUP_FUNC(0)` FIXED.
-- [[plan/evidence/p08-actor-init-segv-diagnosis]] — P08 — SIGSEGV na inicialização de actor (`vector_push_back` via `func_80106668`/`func_80107C2C`) é **artefato do spawn diagnóstico**: `D_80136EE0` (vetor global de Actors) NULL porque o initializer (`chbaddieDll ep1 → func_800FF390 → func_801065E0`) nunca executou; args do hook `func_80108C90` VALID; fluxo natural diverge antes (`gcsectionDll:4` via glintrosync). ROOT CAUSE A primário / C candidata, MEDIUM.
-- [[plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]] — P08 — SIGSEGV natural `glintrosync:6 → gcsection:4` **FIXED**: `func_808000F0` retornava NULL porque o cache de overlay resident ficava stale (`ovl_unload` não invalidava `s_resident_overlays[677]`) e a região de heap liberada era reutilizada por outra overlay (709), corrompendo a tabela de seções. ROOT CAUSE E, HIGH. Hook marker-419 agora opt-in `TOOIE_DIAG_SPAWN_MARKER419=1`. Novo bloqueio: `No threads left to run!`.
-- [[plan/evidence/p08-no-threads-left-diagnosis]] — P08 — `No threads left to run!` = `run_next_thread` com a running queue vazia (NÃO é esgotamento de threads). ROOT CAUSE E, HIGH: patch local `threadqueue.cpp` rejeita re-inserção após `osSetThreadPri` (`toadd->queue == queue_` → return) porque `thread_queue_remove` não limpa `t->queue` → fila drena até vazia; SCHEDULE bloqueia em `osRecvMesg` → throw. **FIXED 2026-08-10 (decisão C)**: `thread_queue_remove` com traversal real + guard `t->queue != NULLPTR` em `osSetThreadPri`; harness 13/13 PASS; 14 runs limpos; patch versionado `patches/runtime/n64modernruntime-scheduler.patch` + `tools/apply_runtime_patches.sh`. Ver seção `## Final scheduler fix validation`.
-- [[plan/evidence/p08-threadqueue-b-fix-validation]] — P08 — Fix B validado em `threadqueue.cpp` (field-guard removido, scan real de links preservado). Contrato remove provado: HEAD PASS, NON-HEAD/TAIL FAIL (infinite loop) → SECOND SCHEDULER BUG CONFIRMED (`queue_to_ptr` sempre recebe `queue_`). `NO_THREADS_LEFT` FIXED (0/2 smoke). Novo blocker: SIGSEGV em `thread_queue_insert` com `queue==NULLPTR` via `osSetThreadPri` sobre JOY RUNNING (guard `state != STOPPED` não exclui RUNNING).
-- [[plan/evidence/p08-active-banjo-reuse-audit]] — P08 — Auditoria de reuso do BanjoRecomp (diagnosis-only): **nenhum behavior BK ativo** no executável (code recompilado Tooie só chama `recomp_syscall_handler`/`func_*`; exports BK `recomp_get_note/jinjo_saving` etc. DORMANT). N64ModernRuntime **DIRTY** (`threadqueue.cpp` + submodule N64Recomp `use_lookup_for_all_function_calls`). RecompiledPatches = scaffold vazio. Build **não reproduzível** (5 itens). Scheduler bug = LOCAL TOOIE PATCH IN SHARED RUNTIME. Recomendação: CONTINUE P08.
-- [[plan/evidence/p08-do-dma-segv-diagnosis]] — P08 — Diagnóstico dinâmico do SIGSEGV `do_dma`: origem do `size=0xFF3FF03E` rastreada até binding errado de `LOOKUP_FUNC(0x80800000)` (colisão de base vram entre overlays). ROOT CLASS H (other), HIGH, CODE_CHANGED=NO, NEEDS_GROK=YES. Cadeia chintrochar→gsworldDll ep0→gsmaker→idx -0x3AB→asset table OOB. DMA#293 bad (last good #292).
-- [[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] — P08 — **FIX generator (N64Recomp)**: `resolve_jal` agora faz direct-bind de `jal` same-section em seções **relocatable** (mesmo com `use_lookup_for_all_function_calls=true`), eliminando colisão de base vram `0x80800000`. Restrição a relocatable preserva host hooks de `.core1`/`.boot` (scheduler OK — A/B provou). `func_80800484_chintrochar` → `func_80800000_chintrochar` direto. 3/3 smokes limpos; do_dma SIGSEGV/idx/dev/size bad = 0; run longo ~140s/179k syscalls sem crash. Patch versionado `patches/runtime/n64recomp-same-section-jal.patch`.
-## plans/BT
+- [[plans/BT/00-baseline-and-decisions]] — BT P00 — Baseline e decisões — Congela ambiente, fontes, ROM e decisões antes da implementação do TooieRecomp.
+- [[plans/BT/01-linux-toolchain]] — BT P01 — Toolchain Linux — Instala e valida compiladores, bibliotecas, Python e submódulos usados pelos dois projetos.
+- [[plans/BT/02-rom-decompression-and-elf]] — BT P02 — ROM, decomposição e ELF — Produz e valida os artefatos binários que serão a entrada da recompilação estática.
+- [[plans/BT/03-recompiler-metadata]] — BT P03 — Metadados do recompilador — Converte ELF, símbolos, relocations, overlays e syscalls do Tooie em entradas determinísticas para N64Recomp.
+- [[plans/BT/04-static-recompilation]] — BT P04 — Recompilação estática — Gera C/C++ nativo a partir do MIPS de Banjo-Tooie e fecha o primeiro build compile-only.
+- [[plans/BT/05-native-runtime-and-boot]] — BT P05 — Runtime nativo e boot — Cria o executável TooieRecomp e integra ROM, memória, callbacks e entrada do jogo.
+- [[plans/BT/06-overlays-and-syscalls]] — BT P06 — Overlays e syscalls — Implementa o ciclo completo dos módulos dinâmicos de Banjo-Tooie no runtime nativo.
+- [[plans/BT/07-rsp-and-audio]] — BT P07 — RSP e áudio — Inventaria e integra os microcódigos RSP e o pipeline de áudio necessários por Banjo-Tooie.
+- [[plans/BT/08-rt64-input-and-frontend]] — BT P08 — RT64, entrada e frontend — Completa renderização, janela, controles e experiência de inicialização no Linux.
+- [[plans/BT/09-gameplay-parity-and-enhancements]] — BT P09 — Paridade de gameplay e melhorias — Fecha campanha, saves e timing antes de habilitar widescreen, FPS alto e extensões.
+- [[plans/BT/10-linux-packaging-and-release]] — BT P10 — Empacotamento e release Linux — Produz, testa e publica um artefato Linux reproduzível sem conteúdo proprietário do jogo.
+- [[plans/BT/index]] — Etapas de implementação — TooieRecomp — Índice ordenado das etapas necessárias para entregar Banjo-Tooie nativo no Linux.
 
-- [[plans/BT/index]] — Etapas de implementação — TooieRecomp — Índice ordenado das fases.
-- [[plans/BT/00-baseline-and-decisions]] — BT P00 — Baseline e decisões.
-- [[plans/BT/01-linux-toolchain]] — BT P01 — Toolchain Linux.
-- [[plans/BT/02-rom-decompression-and-elf]] — BT P02 — ROM, decomposição e ELF.
-- [[plans/BT/03-recompiler-metadata]] — BT P03 — Metadados do recompilador (done).
-- [[plans/BT/04-static-recompilation]] — BT P04 — Recompilação estática.
-- [[plans/BT/05-native-runtime-and-boot]] — BT P05 — Runtime nativo e boot.
-- [[plans/BT/06-overlays-and-syscalls]] — BT P06 — Overlays e syscalls.
-- [[plans/BT/07-rsp-and-audio]] — BT P07 — RSP e áudio.
-- [[plans/BT/08-rt64-input-and-frontend]] — BT P08 — RT64, entrada e frontend.
-- [[plans/BT/09-gameplay-parity-and-enhancements]] — BT P09 — Paridade de gameplay e melhorias.
-- [[plans/BT/10-linux-packaging-and-release]] — BT P10 — Empacotamento e release Linux.
+## roadmap
+
+- [[roadmap/tooie-recomp]] — TooieRecomp Roadmap — > [!NOTE] > Este roadmap histórico foi substituído pelo [[../plan/index|Plano mestre]] e > pelas [[../plans/BT/index|etapas de implementação]]. Ele permanece como > registro do raciocínio inicial.
 
 ## specs
 
 - [[specs/BK/build]] — BK — Build — Full pipeline to go from the Banjo-Kazooie US ROM to a native executable, based on `BUILDING.md`.
+- [[specs/BK/ci]] — BK — CI/CD & Release — The four GitHub Actions workflows under `BanjoRecomp/.github/workflows/`. The repo's builds are fully automated, so a portable release of the recomp can be regenerated from CI alone.
 - [[specs/BK/config]] — BK — Recompiler Config — `banjo.us.rev0.toml` configures `N64Recomp` for the Banjo-Kazooie NTSC 1.0 ROM. All paths are relative to the TOML location.
 - [[specs/BK/features]] — BK — Features — Feature set of the port, mostly provided by the `RT64` rendering engine, `N64ModernRuntime` runtime, `RecompFrontend` UI, and the native patch layer.
 - [[specs/BK/index]] — Banjo: Recompiled — Specifications for the `BanjoRecomp` folder — the reference port of Banjo-Kazooie built via static recompilation.
+- [[specs/BK/input]] — BK — Input & Controllers — `create_gfx()` / `main()` configure SDL2 for the whole session:
+- [[specs/BK/mods]] — BK — Mods & Extension APIs — How `BanjoRecomp` lets third-party code attach to the recompiled game: per-object extension data, container APIs, and modI/O. This is the layer between the native [Patches](patches.md) runtime and full community mods.
 - [[specs/BK/overview]] — BK — Static Recompilation Overview — The game's own assets are **not** shipped. The executable grabs them from a user-provided ROM at runtime. The repository and releases contain no game assets.
 - [[specs/BK/patches]] — BK — Native Patches — BanjoRecomp changes game behavior by compiling **native C patches** into a MIPS ELF, then recompiling that ELF with `N64Recomp` and registering the result as overlays. This is the mechanism that powers features like widescreen, note saving, and camera changes.
+- [[specs/BK/reuse-contract]] — BK — Contrato de reutilização para TooieRecomp — Separa componentes reutilizáveis do BanjoRecomp de dados e comportamento exclusivos de Banjo-Kazooie.
 - [[specs/BK/rsp]] — BK — RSP ASP Microcode — Banjo uses the Nintendo *Audio Sample Processor* DSP microcode (`n_aspMain`) on the N64 RSP. The `RSPRecomp` tool converts that RSP binary code into C just like `N64Recomp` does for MIPS CPU code.
 - [[specs/BK/runtime]] — BK — Runtime — How `BanjoRecomp` boots, registers recompiled code, and wires overlays, patches and game features through `N64ModernRuntime` / `RecompFrontend`.
-- [[specs/BK/ui]] — BK — UI Layer — RecompUI launcher menu, keyframed SVG intro animation, in-game config tabs, theming, fonts.
-- [[specs/BK/input]] — BK — Input & Controllers — SDL gamepad support, `recompinput` framework, default control bindings, camera/axis exports.
-- [[specs/BK/mods]] — BK — Mods & Extension APIs — How `BanjoRecomp` lets third-party code attach to the recompiled game: per-object extension data, container APIs, and mod packages.
-- [[specs/BK/ci]] — BK — CI/CD & Release — Automate building and publishing the port via GitHub Actions workflows.
 - [[specs/BK/symbols]] — BK — BanjoRecompSyms — The `BanjoRecompSyms` submodule provides the symbol maps that let `N64Recomp` know which bytes map to which function. It is the BK analog of what `banjo-tooie-Recomp` produces via `symbol_addrs.us.txt` + ELF.
+- [[specs/BK/ui]] — BK — UI Layer — A scene graph of animated SVGs driven by keyframe curves — no video asset, pure transform animation:
 - [[specs/BT/build]] — BT — Build — The `Makefile` produces an ELF that matches the original ROM layout, then a recompressed runnable ROM. The invariant is byte-exact matching.
-- [[specs/BT/index]] — Banjo Tooie Decomp Fork — Especificações do fork local `wesleytakatsu/banjo-tooie-Recomp` e de sua relação com o upstream `Mr-Wiseguy/banjo-tooie`.
+- [[specs/BT/ci]] — BT — CI/CD — The decomp repo's single workflow `.github/workflows/ci.yml`.
+- [[specs/BT/compression]] — BT — ROM Compression & Recompression — Banjo-Tooie ships a **compressed cartridge**: boot is flat, but `core1`, `core2` and every overlay are deflated. The decomp repo must read the compressed baserom (decompress) and later rebuild the compressed ROM from the built ELF byte-for-byte (recompress).
+- [[specs/BT/index]] — Banjo Tooie Decomp Fork — Especificações do fork local wesleytakatsu/banjo-tooie-Recomp e de sua relação com o upstream Mr-Wiseguy/banjo-tooie.
+- [[specs/BT/input]] — BT — Input e controles nativos — Contrato de controles do TooieRecomp, deliberadamente alinhado ao BanjoRecomp.
+- [[specs/BT/matching]] — BT — Matching & Decomp Workflow — How a `#pragma GLOBAL_ASM` stub becomes matched C code in `banjo-tooie-Recomp`, and the tools + CI that verify byte-exact output.
 - [[specs/BT/overlays]] — BT — Overlay System — Banjo-Tooie makes heavy use of **dynamically loaded code overlays** — the largest complicating factor for a static recomp. Overlays are code banks loaded into a fixed 0x80800000 VRAM region at runtime.
 - [[specs/BT/overview]] — BT — Decompilation Overview — WIP decompilation of Banjo-Tooie (NTSC-U) by **Mr-Wiseguy** (author of `N64Recomp` / `N64ModernRuntime` / `rarezip`). Uses **Splat** to split the ROM and rebase the game to an ELF.
-- [[specs/BT/setup]] — BT — Setup — Place a Banjo-Tooie NTSC-U ROM in the repo root as `baserom.us.z64`.
+- [[specs/BT/recomp-readiness]] — BT — Prontidão para recompilação estática — Inventário dos artefatos existentes no banjo-tooie-Recomp, contratos para N64Recomp e lacunas do futuro TooieRecomp.
+- [[specs/BT/rsp-and-audio]] — BT — RSP e áudio — Config: `TooieRecomp/n_aspMain.us.rev0.toml`
+- [[specs/BT/setup]] — BT — Setup — O checkout antigo `banjo-tooie/` foi excluído. Ele não deve aparecer em caminhos locais, scripts nem instruções. O nome sem `-Recomp` continua válido somente para identificar o repositório upstream.
 - [[specs/BT/sources]] — BT — Source Tree — Layout of `banjo-tooie-Recomp/src/` (generated by Splat), organized by memory segment.
 - [[specs/BT/splat]] — BT — Splat configuration — `baserom.us.yaml` drives **Splat**, which splits the decompressed ROM into `src/`, `asm/`, and `assets/`.
 - [[specs/BT/symbols]] — BT — Symbols and Relocations — The repo ships plain-text symbol and relocation maps used by Splat at build time. These are the raw material for a static-recomp symbol table.
-- [[specs/BT/syscalls]] — BT — Overlay Syscall Dispatch — Overlay functions are called through a syscall table (`overlay_syscalls.s`): each entry is `syscall <overlay>` + an immediate with the entrypoint index; core2 intercepts and routes to the overlay.
-- [[specs/BT/compression]] — BT — ROM Compression & Recompression — The cartridge ships deflated core1/core2 + overlays; the repo decompresses the baserom and rebuilds the compressed ROM byte-for-byte (CRC / xor scaffold).
+- [[specs/BT/syscalls]] — BT — Overlay Syscall Dispatch — Generates `overlay_syscalls.s` from `overlays.us.toml` (banjo-tooie-Recomp):
 - [[specs/BT/tools]] — BT — Tooling — C++ and Python tools under `banjo-tooie-Recomp/tools/`, built by `tools/Makefile` and used by the main Makefile.
-- [[specs/BT/matching]] — BT — Matching & Decomp Workflow — How a `#pragma GLOBAL_ASM` stub becomes matched C code, and the tools + CI that verify byte-exact output.
-- [[specs/BT/ci]] — BT — CI/CD — The single `ci.yml` workflow that builds the decomp, prints progress, and uploads it to the progress page.
 - [[specs/index]] — Specifications Index — Technical specifications for the two reference projects used to build a Banjo-Tooie static recompilation.
