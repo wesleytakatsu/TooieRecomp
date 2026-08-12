@@ -51,33 +51,38 @@ Descrição canônica:
 ## CURRENT BLOCKER
 
 **mode-5 / attract actor-update initialization path.** A primeira attract/demo
-não começa; o freeze natural é downstream da type-4/warp consumption. MAIN é
-capturada no caminho `func_800A76F4 → func_800A7380 → func_800C2AB8` (actor
-update/dispatch loop), mas o callback/slot/PC exato que não progride ainda não
-foi identificado.
+não começa; o freeze natural é downstream da type-4/warp consumption. O clean
+post-mortem (6 freezes, 3 runs A/B/C) captura a MAIN guest presa **dentro de
+`func_80026500`** (inserção em lista encadeada ordenada): o walk de ponteiros
+nunca termina (60/60 amostras no loop `0x5bbf40..0x5bc000`), consistente com
+chain circular. O slot de kinematics `7` está preso (enabled, mode 3,
+substate 2, `table[2].word0 != 0`). Caller na stack inclui overlay funcs
+(`0x80801484` — colisão de símbolo bskaztorpedo/bsstonehead). Detalhe:
+[[p08-attract-actor-loop-diagnosis]].
 
 ## CURRENT FIRST DIVERGENCE
 
-MAIN é capturada downstream da transition/warp, no caminho:
+MAIN é capturada **não no dispatcher `func_800C2AB8`, mas no walk de
+`func_80026500`** (chamado pelo init de actor do attract/mode-5):
 
 ```text
-func_800A76F4
- -> func_800A7380
- -> func_800C2AB8
- -> dynamic callback / get_function
+mode-5 / attract actor init
+ -> overlay func 0x80801484 (bskaztorpedo/bsstonehead)
+ -> func_8002xxxx (list op) -> func_80026500 (sorted insert)
+ -> walk de ponteiros nunca termina  (MAIN 60/60 no loop)
 ```
 
-A type-4 não é mais o primeiro ponto de divergência: ela completou
-(`current_state=2`, `render_frame_count=2`, gate do warp ABERTO). O callback,
-slot ou PC exato dentro de `func_800C2AB8` que não retorna/progride ainda não
-foi identificado.
+O slot de kinematics `7` preso (substate 2, `table[2].word0 != 0`) manteria o
+dispatcher `func_800C2AB8` girando se alcançado. O callback/slot/PC exato da
+lista ainda não foi nomeado (ctx guest não capturado com confiança).
 
 ## CURRENT NEXT SINGLE ACTION
 
-Confirmar o PC/callback/slot de actor exato da MAIN dentro de `func_800C2AB8`
-no clean freeze, usando inspeção **somente pós-freeze**, e então determinar se
-um callback falha em retornar ou se o próprio loop de actors falha em avançar.
-Não investigar BaKey ainda.
+Capturar o `recomp_context` vivo da MAIN (via `rbx` de `PTRACE_GETREGS`, com
+validação sign-extended de r29/r31), ler os args do frame de `func_80026500`
+no guest stack (arg0 = head da lista, a3 = key, curr/next) e caminhar a chain
+para achar o ciclo (self-reference/back-edge) e o dono da lista. Inspeção
+somente pós-freeze. Não investigar BaKey ainda.
 
 ## RESOLVED — DO NOT REOPEN
 
@@ -284,32 +289,36 @@ run clean -> wait freeze -> attach only after freeze -> capture snapshot/core
 
 ## OPEN QUESTIONS
 
-- Qual callback/slot/PC exato dentro de `func_800C2AB8` não retorna/progride
-  durante a inicialização do mode-5/attract?
-- O hang é um callback específico que falha em retornar ou o próprio loop de
-  actors falha em avançar?
-- Por que este ambiente roda a ~20 Hz (`delta=0.05`)? (provável overhead de
-  render, não investigado)
-- O freeze “documentado” em `state 6` com `elapsed 0.9` foi outro run ou a mesma
-  type-4 com offsets trocados? (não reproduzível; 8/8 runs determinísticos)
+- Qual lista/chain circular `func_80026500` está caminhando no freeze (head,
+  node, key)?
+- O ciclo é corrupção de lista, binding errado ou estado legítimo do jogo?
+- Qual overlay/actor exato em `0x80801484` (bskaztorpedo vs bsstonehead — mesma
+  vram) chamou o insert?
+- Por que o slot de kinematics `7` ficou com substate 2 e `table[2].word0 != 0`
+  sem ser processado?
+- Por que este ambiente roda a ~20 Hz (`delta=0.05`)?
+- Um run em 7 mostrou a thread spinning em `recompui::create_empty_document`
+  em vez de `func_80026500` — variança não reprodutível como padrão.
 
 BaKey (`func_800BCF28`) é POSSIBLE DOWNSTREAM BLOCKER visto só depois que runs
 perturbados avançam. Não é root cause provada do clean freeze.
 
 ## FILES TO READ NEXT
 
-1. [[p08-type4-transition-semantics-audit]] — auditoria estática + clean
+1. [[p08-attract-actor-loop-diagnosis]] — diagnóstico do freeze em
+   `func_80026500` (MAIN 60/60 no walk) + slot 7 preso.
+2. [[p08-type4-transition-semantics-audit]] — auditoria estática + clean
    snapshot (correção de campos 0.9/3.5/2883).
-2. [[p08-intro-to-demo-transition-diagnosis]] — timeline e post-mortem
+3. [[p08-intro-to-demo-transition-diagnosis]] — timeline e post-mortem
    (narrativa antiga marcada como SUPERSEDED).
-3. [[p08-visual-validation/README]] — interpretação humana dos frames.
-4. [[p08-overlay-rmips26-binding-diagnosis]] — último fix antes do blocker.
-5. [[p08-do-dma-segv-diagnosis]] — cadeia histórica fechada.
-6. [[p08-natural-actor-spawn-divergence]] — IPL3/actors.
-7. [[p08-no-threads-left-diagnosis]] — scheduler fechado.
-8. [[p08-active-banjo-reuse-audit]] — limites de reuso/camadas.
-9. [[p08-title-input-eeprom]] — input diferido.
-10. `docs/HANDOFF.md` e `docs/plans/BT/08-rt64-input-and-frontend.md`.
+4. [[p08-visual-validation/README]] — interpretação humana dos frames.
+5. [[p08-overlay-rmips26-binding-diagnosis]] — último fix antes do blocker.
+6. [[p08-do-dma-segv-diagnosis]] — cadeia histórica fechada.
+7. [[p08-natural-actor-spawn-divergence]] — IPL3/actors.
+8. [[p08-no-threads-left-diagnosis]] — scheduler fechado.
+9. [[p08-active-banjo-reuse-audit]] — limites de reuso/camadas.
+10. [[p08-title-input-eeprom]] — input diferido.
+11. `docs/HANDOFF.md` e `docs/plans/BT/08-rt64-input-and-frontend.md`.
 
 ## CHECKPOINT SCOPE
 
