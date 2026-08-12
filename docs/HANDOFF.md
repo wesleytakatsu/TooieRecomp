@@ -21,14 +21,13 @@ Estado clean-freeze (determinístico):
 - único pending: kinematics **slot 7** (`substate=2`, `table[2].word0` = live
   pool object, p.ex. `0x8005C168`) → `func_800C269C(7)==0` para sempre.
 
-> **ARBITRAGEM LIFECYCLE (Grok 4.5 HIGH, 2026-08-12):** criador
-> `func_80020790`, clearer `func_800205D0` via `func_800200B8` ←
-> `func_8001EE34`; backref `object+0x30` limpa `table[2]`; `+0x34` é countdown
-> (init 2, **não** prova origem). C2AB8 **não** avança o objeto (progresso A
-> pré-clear e/ou C assíncrono). Origem INTRO vs ATTRACT: **UNKNOWN**. Gemini
-> `ROOT_CAUSE YES` / DeepSeek `A907C→1EE34`: **REJECT**.
-> `ROOT_CAUSE_PROVEN=NO`. Evidência:
-> [[plan/evidence/p08-slot7-object-lifecycle-arbitration]].
+> **RECONSTRUÇÃO SCHEDULER/DRIVER (2026-08-12):** O ciclo causal de limpeza de `table[2].word0` foi integralmente provado estaticamente:
+> - O cliente `SoundManager` (`D_800411DC`) é registrado por `func_8001EB10` com handler `func_8001ED68` em `+0x8`.
+> - A síntese de áudio por frame (`func_800128C0 → func_800129FC → func_80021574`) executa `jalr client->handler` (`func_8001ED68`).
+> - `func_8001ED68` desempilha eventos expirados da delta-queue e chama `func_8001EE34(event)`.
+> - Para opcode `0x200`, `func_8001EE34` chama `func_800200B8 → func_800205D0`, que zera `*obj->0x30` (`table[2].word0 = 0`).
+> - No N64 original, a thread de áudio (OSThread 4) preempta MAIN e avança a síntese. No TooieRecomp, o spin síncrono de MAIN em `func_800C2AB8` impede a execução do dispatcher de áudio, causando inanição do clearer. Evidência: [[plan/evidence/p08-slot7-scheduled-event-driver]].
+
 
 Descrição canônica:
 

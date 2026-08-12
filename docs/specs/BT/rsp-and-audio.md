@@ -75,6 +75,15 @@ TOOIE_AUTO_START=1 TOOIE_DIAG=1 ./TooieRecompiled
 # peak/nonzero > 0 e stack=(idle) após boot saudável
 ```
 
+## Sound Manager e Client Event Scheduler
+
+O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos temporizados por delta-queue associado ao driver sintetizador (`D_800411F4`):
+
+1. **Inicialização (`func_8001EB10`):** Aloca o pool de instâncias de voz (stride `0x48`, freelist `D_800411D8`) e inicializa o cliente global `SoundManager` (`D_800411DC`). Registra o handler de eventos `func_8001ED68` em `client->0x8`.
+2. **Síntese por Frame (`func_800128C0 → func_800129FC → func_80021574`):** O driver avança o relógio de amostras (`driver->0x1C`) e despacha via chamada indireta (`0x80021624: jalr $t9`) o handler do cliente registrado (`func_8001ED68`).
+3. **Despacho de Eventos (`func_8001ED68`):** Desempilha eventos expirados da fila de delta-tempo (`D_800411DC + 0x14`, inseridos via `func_80026500`) e invoca a máquina de estados `func_8001EE34(event)`.
+4. **Finalização de Vozes e Clearer (`func_8001EE34 → func_800200B8 → func_800205D0`):** Para eventos de opcode `0x200` expirados, `func_800205D0` zera o ponteiro de retro-referência (`*obj->0x30 = 0`), liberando eventuais dependências de tabelas externas (como `table[substate].word0` na cinemática).
+
 ## Validação
 
 - Smoke técnico: milhares de `M_AUDTASK` sem tipo desconhecido.
@@ -85,3 +94,4 @@ TOOIE_AUTO_START=1 TOOIE_DIAG=1 ./TooieRecompiled
 - Plano: [[../../plans/BT/07-rsp-and-audio]]
 - Inventário: `TooieRecomp/metadata/rsp_tasks.inventory.md`
 - Evidência hang/CIC: `docs/plan/evidence/p07-boot-hang-audio-diag.md`
+- Evidência scheduler/slot7: `docs/plan/evidence/p08-slot7-scheduled-event-driver.md`

@@ -46,3 +46,36 @@ Depois, marque o checkbox, atualize o `status` da fase quando aplicável e rode
 - Reutilização BK: [[specs/BK/reuse-contract]]
 - Prontidão BT: [[specs/BT/recomp-readiness]]
 - ROM de entrada: SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`
+
+## Contrato de continuidade entre agentes
+
+Cada tarefa técnica deve terminar revisando:
+
+- evidence específica;
+- `docs/plan/evidence/p08-session-handoff.md` quando o estado operacional mudou;
+- `docs/HANDOFF.md` quando o estado global mudou;
+- phase plan ativo;
+- specs relacionadas;
+- indexes/vault quando necessário.
+
+Specs = contratos estáveis.
+Evidence = investigação e hipóteses.
+Handoff = estado corrente para novo chat.
+
+Toda conclusão deve ser classificada:
+- `PROVEN`
+- `REFUTED`
+- `CORRECTED/SUPERSEDED`
+- `INFERENCE`
+- `DISPUTED`
+- `UNKNOWN`
+
+Não promover hipótese para spec.
+
+Quando modelos discordarem:
+registrar a divergência explicitamente.
+
+Antes de encerrar:
+- `markdown_vault_audit`
+- `git diff --check`
+- status do worktree

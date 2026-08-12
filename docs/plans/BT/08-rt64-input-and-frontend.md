@@ -25,12 +25,15 @@ demo ausente. MAIN busy-wait em `func_800C2AB8` no slot 7 porque
 `table[2].word0` aponta para um pool object vivo nunca limpo por
 `func_800205D0`.
 
-Arbitragem lifecycle (Grok): criador/clearer/driver e contrato de C2AB8
-reconstruídos; origem intro/attract e root cause final **ainda abertos**.
+Reconstrução do Scheduler/Driver: Cadeia completa de despacho indireto provada
+(`func_8001EB10 → func_800128C0 → func_80021574 → func_8001ED68 → func_8001EE34 → func_800200B8 → func_800205D0`).
+O clearer roda no contexto da thread de áudio / síntese, a qual é inibida de
+progredir pelo spin síncrono da thread MAIN no host.
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]] (**CURRENT**)
+- [[../../plan/evidence/p08-slot7-scheduled-event-driver]] (**CURRENT**)
+- [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]]
 - [[../../plan/evidence/p08-session-handoff]]
 - [[../../plan/evidence/p08-attract-actor-loop-diagnosis]]
 - [[../../plan/evidence/p08-type4-transition-semantics-audit]]
@@ -48,7 +51,8 @@ Evidência corrente:
 - [~] `P08-T09` Evidência visual: intro/Jiggy OK; first demo ausente.
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **blocker =
-  slot7 / table[2] lifecycle vs C2AB8 busy-wait** (root cause aberta).
+  slot7 / table[2] audio scheduler preemption vs C2AB8 busy-wait**.
+
 
 ## Implementado / validado
 

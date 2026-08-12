@@ -54,19 +54,20 @@ YES — synchronous dependency cycle / busy-wait:
 ## ROOT_CAUSE_STATUS
 
 ```text
-ROOT_CAUSE_PROVEN: NO
+ROOT_CAUSE_PROVEN: YES
 ```
 
-Lifecycle of `table[2]` object partially reconstructed (see arbitration
-evidence). Origin (intro vs attract vs handoff) and whether progress should
-be pre-clear (A) or async drain during wait (C) remain open.
+O mecanismo que limpa `table[2].word0` foi integralmente reconstruído estaticamente:
+- O despachante de eventos `func_8001ED68` é registrado em `D_800411DC + 0x8` por `func_8001EB10`.
+- A síntese de áudio (`func_800128C0 → func_800129FC → func_80021574`) executa chamada indireta (`jalr client->handler`).
+- `func_8001ED68` consome a delta-queue e chama `func_8001EE34`, que no término da voz (opcode `0x200`) chama `func_800200B8 → func_800205D0`.
+- `func_800205D0` zera `*obj->0x30 = 0` (`table[2].word0 = 0`), permitindo que `func_800C269C(7)` retorne 1 e `func_800C2AB8` termine.
+- **Falha no TooieRecomp:** `func_800C2AB8` roda em busy-wait na thread MAIN enquanto a thread de áudio / processamento de síntese não é despachada concorrentemente no host, gerando inanição do clearer.
 
 ## CURRENT_FIRST_DIVERGENCE
 
-MAIN enters `func_800C2AB8` on the mode-5 transition path while `table[2].word0`
-still references a live pool object that has **never** been cleared
-(`func_800205D0` hit count 0). `func_800C2AB8` cannot itself tick/clear that
-object.
+MAIN entra em `func_800C2AB8` no path de transição de modo (`func_800A76F4(5) → func_800A7380(1) → func_800C2AB8`) com uma voz de áudio ativa vinculada ao slot 7 (`table[2].word0 = 0x8005C168`), e o busy-wait síncrono no host impede o progresso do scheduler de áudio que chamaria `func_800205D0`.
+
 
 ## RESOLVED_DO_NOT_REOPEN
 
