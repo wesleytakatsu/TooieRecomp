@@ -32,17 +32,32 @@ Estado clean-freeze corrente (8/8 runs determinísticos):
   `+0x18 cfg_param3=3.5`, `+0x28 elapsed=0` (reset pós-completion);
 - `warp=3` consumido; `func_800A9924` e `func_800A76F4(5)` alcançados
   (mode machine `+0x1C=5`);
-- MAIN capturada downstream: `func_800A76F4 -> func_800A7380 -> func_800C2AB8`;
 - black freeze durante a inicialização do mode-5/attract;
 - frame-sync/VI, event-3, cothemedll, scheduler, type-4 timing/progress stall e
   warp consumption: exonerados/refutados.
+
+> **REVISÃO NATIVA + VALIDAÇÃO INDEPENDENTE (P08):** forense ptrace pós-freeze
+> (DeepSeek: 6+ runs, freeze `d≈178999..179315`; Gemini 3.6 Flash HIGH: análise
+> estática + 2 clean runs) — **DEEPSEEK_GEMINI_AGREE=YES**. MAIN fica presa no
+> **loop de convergência mode-3 do dispatcher de kinematics `func_800C2AB8`**
+> — NÃO no walk de `func_80026500`. O slot de kinematics **7** (`0x80128F10`,
+> NÃO `0x80128BD8`) é o único slot enabled mode-3 e permanece `PENDING`
+> (`func_800C269C(7)==0`: `substate=2`, `table[2].word0=0x8005C168≠0`) → o
+> pending count nunca chega a zero → MAIN **busy-waits indefinidamente** dentro
+> de `func_800C2AB8`. `func_80026500` nunca é executado no freeze (refutado).
+> **Blocker corrente: KINEMATICS SLOT-7 READINESS BUSY-WAIT** (SYNCHRONOUS
+> DEPENDENCY CYCLE / BUSY-WAIT — NÃO é scheduler/thread deadlock). Ver
+> [[plan/evidence/p08-attract-actor-loop-diagnosis#native-forensics-p08-func80026500-refuted]].
 
 Descrição canônica:
 
 > The opening/intro sequence completes visually through the Jiggy transition
 > and the attract map request; the type-4 transition completes and warp 3 is
 > consumed, but the subsequent gameplay demo/attract scene does not start — a
-> black freeze occurs downstream during mode-5 / attract initialization.
+> black freeze occurs downstream during mode-5 / attract initialization, with
+> MAIN spinning in the kinematics slot dispatcher `func_800C2AB8` whose mode-3
+> convergence loop never terminates because slot 7 (0x80128F10) never becomes
+> ready (`func_800C269C(7)==0`, `table[2].word0=0x8005C168` never cleared).
 
 Handoff técnico autossuficiente:
 [[plan/evidence/p08-session-handoff]]. Evidência de correção:
@@ -50,10 +65,21 @@ Handoff técnico autossuficiente:
 
 ## NEXT
 
-Confirmar o PC/callback/slot de actor exato da MAIN dentro de `func_800C2AB8`
-no clean freeze, com inspeção somente pós-freeze, e determinar se um callback
-falha em retornar ou se o actor loop falha em avançar. Não investigar BaKey
-ainda (possible downstream blocker de runs perturbados).
+Rastrear o **ciclo de vida completo de `table[2].word0` / objeto `0x8005C168`**:
+
+```text
+creation (func_80020790?)
+ -> ownership
+ -> update
+ -> completion condition
+ -> func_800205D0 clear (via func_800200B8, lifecycle manager)
+```
+
+e identificar o ponto mais antigo onde o clean recomp diverge do ciclo de vida
+original esperado — em especial por que `func_800205D0` não limpou
+`table[2].word0` ANTES de MAIN entrar no busy-wait de `func_800C2AB8`
+(ordering/lifecycle, callback/binding que impediu completion, ou estado stale
+que sobreviveu à troca intro → attract). Não investigar BaKey ainda.
 
 ## Estado do produto validado
 
@@ -224,12 +250,25 @@ run clean -> confirm freeze -> attach after freeze -> capture snapshot/core
 
 ## Não provado / não concluir
 
-- callback/slot/PC exato dentro de `func_800C2AB8` que não retorna/progride na
-  inicialização do mode-5/attract;
-- se o hang é um callback específico que falha em retornar ou o próprio actor
-  loop que falha em avançar;
+**PROVEN ROOT MECHANISM (freeze):**
+- `func_800C2AB8` não retorna porque o slot 7 permanece pending
+  (`substate=2`, `table[2].word0=0x8005C168≠0`); `func_800C269C(7)==0`;
+  pending nunca chega a zero; `func_800C16A4(7)` não dispara.
+- `func_80026500` NÃO é o current hang (0 hits em 3000+ steps DeepSeek;
+  histogram Gemini: `func_800C2AB8 ~45%`, `func_800C269C ~35%`,
+  `get_function ~20%`, `func_80026500 0%`).
+
+**AINDA NÃO PROVADO ROOT CAUSE:**
+- por que `table[2].word0` ainda contém o objeto `0x8005C168` na
+  entrada/execução deste `func_800C2AB8` (qual objeto, quem criou, quando
+  deveria terminar, qual condição leva `func_800205D0` a limpá-lo, por que o
+  cleanup não ocorreu antes do busy-wait; ordering/lifecycle, callback/binding
+  que impediu completion, ou estado stale da troca intro → attract);
+- se esse estado do slot/table é corrupção, binding errado ou estado legítimo;
 - por que este ambiente roda a ~20 Hz (`delta=0.05`);
 - BaKey como root cause do clean freeze (possible downstream blocker apenas).
+- `func_80026500` list walk: **REFUTADO como PC do hang** (forense nativa); não
+  reabrir como se fosse o freeze sem nova evidência.
 
 ## Files to read
 

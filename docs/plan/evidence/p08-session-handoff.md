@@ -19,7 +19,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, clean-freeze]
 ## CURRENT HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent obrigatório: `cf3116696e290069372a85764929c69284135d0e`.
+- Checkpoint base/parent obrigatório: `670d994e74f939e1df881e58ecb4689b661bc575`.
 - O checkpoint documental é o commit que contém este arquivo; confirme o hash
   publicado com `git rev-parse HEAD` em vez de copiar um hash autorreferente.
 
@@ -50,39 +50,60 @@ Descrição canônica:
 
 ## CURRENT BLOCKER
 
-**mode-5 / attract actor-update initialization path.** A primeira attract/demo
-não começa; o freeze natural é downstream da type-4/warp consumption. O clean
-post-mortem (6 freezes, 3 runs A/B/C) captura a MAIN guest presa **dentro de
-`func_80026500`** (inserção em lista encadeada ordenada): o walk de ponteiros
-nunca termina (60/60 amostras no loop `0x5bbf40..0x5bc000`), consistente com
-chain circular. O slot de kinematics `7` está preso (enabled, mode 3,
-substate 2, `table[2].word0 != 0`). Caller na stack inclui overlay funcs
-(`0x80801484` — colisão de símbolo bskaztorpedo/bsstonehead). Detalhe:
-[[p08-attract-actor-loop-diagnosis]].
+**Kinematics slot-7 readiness busy-wait** (mode-5 / attract initialization
+path). A primeira attract/demo não começa; o freeze natural é downstream da
+type-4/warp consumption.
+
+> **REVISÃO NATIVA + VALIDAÇÃO INDEPENDENTE (P08) — DEEPSEEK_GEMINI_AGREE=YES:**
+> o clean freeze da MAIN guest NÃO está no walk de `func_80026500`. A forense
+> nativa (DeepSeek: 6+ runs, freeze `d≈178999..179315`, `last_ovl=635:2`) e a
+> re-análise estática + 2 clean runs (Gemini 3.6 Flash HIGH) capturam MAIN presa
+> no **loop de convergência mode-3 do dispatcher de kinematics
+> `func_800C2AB8`**, na chamada
+> `func_800C269C(7) → func_800C1414/func_800C1448 → get_function`. O slot de
+> kinematics **7** (`0x80128F10`, NÃO `0x80128BD8`) é o único slot enabled
+> mode-3 e permanece `PENDING` (`substate=2`, `table[2].word0=0x8005C168≠0`) →
+> `func_800C269C(7)` retorna 0 para sempre → o pending count nunca chega a zero
+> → MAIN **busy-waits indefinidamente** dentro de `func_800C2AB8`.
+> `func_80026500` nunca é executado (0 hits em 3000+ single-steps DeepSeek;
+> histogram Gemini: `func_800C2AB8 ~45%`, `func_800C269C ~35%`,
+> `get_function ~20%`, `func_80026500 0%`). É um **SYNCHRONOUS DEPENDENCY
+> CYCLE / BUSY-WAIT**, NÃO scheduler/thread deadlock. Detalhe:
+> [[p08-attract-actor-loop-diagnosis]].
 
 ## CURRENT FIRST DIVERGENCE
 
-MAIN é capturada **não no dispatcher `func_800C2AB8`, mas no walk de
-`func_80026500`** (chamado pelo init de actor do attract/mode-5):
+MAIN é capturada **dentro do ciclo dispatcher `func_800C2AB8` →
+`func_800C269C` → get_function**, no caminho de chamada do update do mundo:
 
 ```text
-mode-5 / attract actor init
- -> overlay func 0x80801484 (bskaztorpedo/bsstonehead)
- -> func_8002xxxx (list op) -> func_80026500 (sorted insert)
- -> walk de ponteiros nunca termina  (MAIN 60/60 no loop)
+_thread_func -> run_thread_function -> func_800A7D84
+  -> func_800C2AB8  (dispatcher de slots de kinematics, host +0x130..+0x1bd)
+     -> func_800C269C(7) (query de prontidão do slot 7)
+        -> func_800C1414 / func_800C1448 / get_function
 ```
 
-O slot de kinematics `7` preso (substate 2, `table[2].word0 != 0`) manteria o
-dispatcher `func_800C2AB8` girando se alcançado. O callback/slot/PC exato da
-lista ainda não foi nomeado (ctx guest não capturado com confiança).
+- Live guest state (ctx recuperado por host-stack scan): `s1=0x80128F10`
+  (slot 7), `s2=7`, `s4=3`, `s5=0x3C`, `s6=0x80128C10`; guest `sp=0x80045670/688`.
+- Slot 7: `raw=0x01026C00` (enabled=1, mode=3, substate=2),
+  `table[2].word0=0x8005C168` → `func_800C269C(7)=0` → PENDING.
+  `table[2]` (base `0x80128B08`, entry 8): raw BE `68 C1 05 80 01 00 00 00` →
+  `word0=0x8005C168`, `word1=1`.
+- `rbp=0x800a76f4` estável em todos os runs (valor guest; coincide com o vaddr
+  de `func_800A76F4`, mas é um dado do frame do dispatcher, não o caller).
+- `rcx` no loop do dispatcher = ponteiro do slot corrente (`s1`); congelado no
+  slot 7, `rcx=0xffffffff80128f10` — **relação DIRETA** com o hang.
 
 ## CURRENT NEXT SINGLE ACTION
 
-Capturar o `recomp_context` vivo da MAIN (via `rbx` de `PTRACE_GETREGS`, com
-validação sign-extended de r29/r31), ler os args do frame de `func_80026500`
-no guest stack (arg0 = head da lista, a3 = key, curr/next) e caminhar a chain
-para achar o ciclo (self-reference/back-edge) e o dono da lista. Inspeção
-somente pós-freeze. Não investigar BaKey ainda.
+Rastrear o **ciclo de vida completo de `table[2].word0` / objeto `0x8005C168`**
+(creation → ownership → update → completion condition → `func_800205D0` clear,
+via lifecycle manager `func_800200B8`; substate set por `func_800C16F8` após
+entrada via `func_800C15BC`) e identificar o ponto mais antigo onde o clean
+recomp diverge do ciclo de vida original esperado. Enquanto MAIN permanece no
+busy-wait de `func_800C2AB8`, `func_800200B8`/`func_800205D0` não recebem
+oportunidade normal de executar (dependência síncrona). Inspeção somente
+pós-freeze. Não investigar BaKey ainda.
 
 ## RESOLVED — DO NOT REOPEN
 
@@ -111,7 +132,9 @@ somente pós-freeze. Não investigar BaKey ainda.
 
 Não chamar o blocker atual de scheduler bug, frame-sync starvation, event-3
 barrier, cothemedll hang, actor manager, do_dma, **nem type-4/warp** sem nova
-prova específica.
+prova específica. **Nem de walk de lista em `func_80026500`** (refutado como PC
+do hang pela forense nativa; o mecanismo é o gate de readiness do dispatcher
+`func_800C2AB8` no slot 7).
 
 ## CURRENT EXPECTED FLOW
 
@@ -140,7 +163,8 @@ intro visually completes through Jiggy
  -> type-4 created, runs and COMPLETES (state 6 -> 2, render=2, gate open)
  -> warp=3 consumed (+0x12=0)
  -> func_800A9924 + func_800A76F4(5) executed (mode machine +0x1C=5)
- -> MAIN captured downstream: func_800A76F4 -> func_800A7380 -> func_800C2AB8
+ -> MAIN spins in func_800C2AB8 dispatcher (slot 7 PENDING: substate=2,
+    table[2].word0=0x8005C168 -> func_800C269C(7)==0 -> pass externo infinito)
  -> black freeze during mode-5/attract init; gameplay demo not reached
 ```
 
@@ -178,17 +202,16 @@ priority = 20
 queue    = 0
 ```
 
-Backtrace capturado (sessão anterior; consistente com o estado do snapshot):
+Backtrace host capturado (forense nativa ptrace, P08 — consistente com o
+snapshot guest):
 
 ```text
-func_800124EC
- -> func_800123F4
- -> func_800123BC
- -> func_800A7D84
- -> func_800A76F4
- -> func_800A7380
- -> func_800C2AB8
- -> get_function(0x800C269C)
+_thread_func (0xb48701, wrapper de OSThread)
+ -> run_thread_function (0xb3888f)
+ -> func_800A7D84 (0x799fbc)            ; world/main tick
+ -> func_800C2AB8 (0x69fff7)            ; dispatcher de kinematics
+ -> func_800C269C (0xa3237b)            ; query de prontidão do slot
+ -> get_function (0xb314xx)            ; lookups 0x800C1414 / 0x800C1448
 ```
 
 MAIN está viva/current e executando guest code, não bloqueada em MQ. `d`
@@ -289,24 +312,25 @@ run clean -> wait freeze -> attach only after freeze -> capture snapshot/core
 
 ## OPEN QUESTIONS
 
-- Qual lista/chain circular `func_80026500` está caminhando no freeze (head,
-  node, key)?
-- O ciclo é corrupção de lista, binding errado ou estado legítimo do jogo?
-- Qual overlay/actor exato em `0x80801484` (bskaztorpedo vs bsstonehead — mesma
-  vram) chamou o insert?
-- Por que o slot de kinematics `7` ficou com substate 2 e `table[2].word0 != 0`
-  sem ser processado?
+- **Writer do estado do slot 7:** quem popula slot 7 (`substate=2`) e grava
+  `table[2].word0=0x8005C168` (pointer na região de GAP 0x8005Cxxx) sem nunca
+  limpar? Por que `func_800C16A4(7)` (dispatch/clear) nunca dispara (só ocorre
+  se `func_800C269C(7)!=0`)?
+- `func_80026500` (list insert) NÃO é o PC do hang (refutado nativamente); se o
+  jogo avançar após o dispatcher, `func_80026500` ainda pode ser alcançado?
+- Qual overlay/actor em `0x80801484` (bskaztorpedo vs bsstonehead — mesma vram)
+  interagiu com o slot 7?
 - Por que este ambiente roda a ~20 Hz (`delta=0.05`)?
 - Um run em 7 mostrou a thread spinning em `recompui::create_empty_document`
-  em vez de `func_80026500` — variança não reprodutível como padrão.
+  em vez do dispatcher — variança não reprodutível como padrão.
 
 BaKey (`func_800BCF28`) é POSSIBLE DOWNSTREAM BLOCKER visto só depois que runs
 perturbados avançam. Não é root cause provada do clean freeze.
 
 ## FILES TO READ NEXT
 
-1. [[p08-attract-actor-loop-diagnosis]] — diagnóstico do freeze em
-   `func_80026500` (MAIN 60/60 no walk) + slot 7 preso.
+1. [[p08-attract-actor-loop-diagnosis]] — diagnóstico do freeze + slot 7 preso
+   (atualizado com a forense nativa: dispatcher, não `func_80026500`).
 2. [[p08-type4-transition-semantics-audit]] — auditoria estática + clean
    snapshot (correção de campos 0.9/3.5/2883).
 3. [[p08-intro-to-demo-transition-diagnosis]] — timeline e post-mortem
@@ -329,5 +353,5 @@ GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-NEXT_INVESTIGATION_RUN   = NO
+NEXT_INVESTIGATION_RUN   = YES (forense nativa post-freeze; sem instrumentação pré-freeze)
 ```
