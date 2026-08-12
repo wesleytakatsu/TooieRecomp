@@ -5,7 +5,7 @@ status: active
 type: plan
 project: TooieRecomp
 platform: linux-x86_64
-updated: 2026-08-11
+updated: 2026-08-12
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/logo/Jiggy validadas; attract request, type-4 completa e warp consumido; first gameplay demo ausente; freeze downstream no mode-5/attract init |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; freeze em C2AB8 slot7 (`table[2]` pool object never cleared); lifecycle arbitration aberta (origem/root cause) |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e

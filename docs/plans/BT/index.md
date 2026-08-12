@@ -68,20 +68,16 @@ adicionais durante P08. Detalhe: [[06-overlays-and-syscalls]].
 por ouvido** no sink default. Residual: SFX/pause/hotplug/soak (T06 resto +
 T07). Detalhe: [[07-rsp-and-audio]].
 
-### Nota P08 (2026-08-11, CORRIGIDA 2026-08-12)
+### Nota P08 (2026-08-12)
 
-RT64/Vulkan: intro humana validada por céu/cena 3D, Dolby, logo BANJO-TOOIE,
-progressão de câmera e completion da Jiggy transition. O request `map=335`,
-`entrance=8`, `warp=3` ocorre; no clean freeze (8/8 runs), MAIN continua
-executando guest code, a transition type-4 **completa** (`state 2`, `render 2`,
-gate do warp aberto) e o `warp=3` **é consumido**; o freeze é downstream, na
-inicialização do mode-5/attract (`func_800A76F4 -> func_800A7380 ->
-func_800C2AB8`). Frame-sync, event-3, scheduler, cothemedll, type-4
-timing/progress stall e warp consumption estão exonerados/refutados.
-**Prioridade:** confirmar o PC/callback/slot de actor dentro de `func_800C2AB8`
-no clean freeze. Input title/file-select permanece diferido. Evidência:
-[[../../plan/evidence/p08-type4-transition-semantics-audit]],
+RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido no clean freeze;
+mode-5 alcançado. Freeze: MAIN em `func_800C2AB8` (slot 7 pending,
+`table[2].word0` = pool object vivo). Arbitragem lifecycle (Grok): creator
+`func_80020790`, clearer `func_800205D0`, driver `func_8001EE34`; origem
+intro/attract UNKNOWN; `ROOT_CAUSE_PROVEN=NO`. **Prioridade:** discriminador
+do objeto `table[2]` (sem fix). Input title/file-select diferido. Evidência:
+[[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]],
 [[../../plan/evidence/p08-session-handoff]],
-[[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]],
-[[../../plan/evidence/p08-visual-validation/README]]. Detalhe:
+[[../../plan/evidence/p08-attract-actor-loop-diagnosis]],
+[[../../plan/evidence/p08-type4-transition-semantics-audit]]. Detalhe:
 [[08-rt64-input-and-frontend]].
