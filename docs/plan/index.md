@@ -160,9 +160,11 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-patch4-independent-review]] — **CURRENT:** verdict
-  C; behavior CLASS A, but clean tracked build fails without ignored
-  `RecompiledPatches` scaffolds. Correct distribution before downstream work.
+- [[evidence/p08-preemption-patch4-clean-build-correction]] — **CURRENT:**
+  implementer tracks empty `RecompiledPatches` scaffolds; clean clone
+  regen 4,298 + Clang build PASS. Pending independent review.
+- [[evidence/p08-preemption-patch4-independent-review]] — verdict C
+  preserved; behavior CLASS A. Original distribution blocker recorded.
 - [[evidence/p08-preemption-patch4-validation]] — implementer evidence;
   preserved, with direct table[2] zero treated as inference.
 - [[evidence/p08-preemption-patch35-rcp-independent-review]] —

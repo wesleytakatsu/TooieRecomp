@@ -14,6 +14,16 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Generated RECOMP_FUNC symbols are weak only under Clang. GCC emits strong
+# definitions, so boot_hw_stubs cannot interpose. The protected Tooie build
+# is Clang; a clean GCC configure reaches link and fails.
+if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR
+        "TooieRecompiled requires Clang (this compiler is '${CMAKE_C_COMPILER_ID}'). "
+        "GCC RECOMP_FUNC is not weak, so boot_hw_stubs cannot override generated "
+        "functions. Configure with -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++")
+endif()
+
 # Must be CMake variables (not only compile defs) before add_subdirectory(rt64).
 set(RT64_SDL_WINDOW_VULKAN TRUE)
 set(RT64_STATIC TRUE CACHE BOOL "Build RT64 as a static library" FORCE)
@@ -68,6 +78,21 @@ target_include_directories(RecompiledFuncs PRIVATE
 )
 
 # --- Empty patches lib (P05) ---
+# These three files are tracked empty scaffolds, not generated ROM output.
+# A clean checkout must already contain them; do not synthesize them here.
+set(_TOOIE_PATCH_SCAFFOLDS
+    patches.c
+    patches_bin.c
+    recomp_overlays.inl
+)
+foreach(_scaffold IN LISTS _TOOIE_PATCH_SCAFFOLDS)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/RecompiledPatches/${_scaffold}")
+        message(FATAL_ERROR
+            "Missing tracked RecompiledPatches scaffold: ${_scaffold}. "
+            "These empty files are versioned source inputs, not generated output.")
+    endif()
+endforeach()
+
 add_library(PatchesLib STATIC
     ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches.c
     ${CMAKE_SOURCE_DIR}/RecompiledPatches/patches_bin.c

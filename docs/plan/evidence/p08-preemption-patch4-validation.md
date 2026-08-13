@@ -25,6 +25,10 @@ This is the first production integration of the already-reviewed Hybrid F'
 implementation. Architecture was not reopened. PATCH 1/2/3/3.5 were not
 modified. `func_800BCF28` was identified only, not diagnosed.
 
+Tracked-state delivery correction (scaffolds + clean rebuild) is recorded
+in [[p08-preemption-patch4-clean-build-correction]]. The original local
+behavioral evidence below is **preserved**.
+
 ## 0. Canonical state before writes
 
 ```text

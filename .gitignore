@@ -1,9 +1,15 @@
 # Generated recomp outputs
 RecompiledFuncs/
-RecompiledPatches/
 build-recomp/
 dump.toml
 data_dump.toml
+
+# Generated RecompiledPatches stay ignored. The three empty P05 scaffolds
+# are tracked source inputs required by CMake / the BK-style patch contract.
+RecompiledPatches/*
+!RecompiledPatches/patches.c
+!RecompiledPatches/patches_bin.c
+!RecompiledPatches/recomp_overlays.inl
 
 # Build
 build/

@@ -21,11 +21,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 ## Estado corrente
 
 **P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
-first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A in the
-local regenerated binary, but independent verdict **C** found that the stated
-tracked checkout cannot build without ignored `RecompiledPatches` scaffolds.
-Correct distributability before investigating the downstream SIGSEGV in
-`func_800BCF28`.
+first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
+Independent verdict **C** is preserved. Implementer correction now tracks
+the empty `RecompiledPatches` scaffolds and a disposable clone builds; see
+[[../../plan/evidence/p08-preemption-patch4-clean-build-correction]].
+Independent review of that correction is required before investigating
+the downstream SIGSEGV in `func_800BCF28`.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -39,7 +40,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch4-independent-review]] (**CURRENT** — verdict C; behavioral CLASS A; clean tracked build FAIL)
+- [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]] (**CURRENT** — implementer clean-build correction; pending review)
+- [[../../plan/evidence/p08-preemption-patch4-independent-review]] (verdict C preserved; behavioral CLASS A)
 - [[../../plan/evidence/p08-preemption-patch4-validation]] (implementer evidence; preserved)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]] (verdict B; PATCH35 accepted)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (implementer TLS RCP correction evidence)
@@ -163,11 +165,11 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **PATCH 4 tracked-state build/distribution:** track or reproducibly
-   generate the required `RecompiledPatches` scaffolds; clean clone regen
-   already produces 4,298 deterministic safepoints, but Tooie build FAILS.
+1. **Independent review of the PATCH 4 clean-build correction.** Implementer
+   now tracks the empty scaffolds; clean clone regen 4,298 + Clang build
+   PASS. Acceptance pending review.
 2. **SIGSEGV `func_800BCF28`** — next product divergence only after item 1 is
-   corrected and independently accepted. No diagnosis performed here.
+   independently accepted. No diagnosis performed here.
 3. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 4. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
@@ -175,8 +177,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Gate de saída
 
-- [~] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A, but PATCH 4
-  distribution not accepted (clean tracked build FAIL).
+- [~] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A. Implementer
+  clean tracked build PASS; PATCH 4 distribution pending independent
+  review of the correction.
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -185,8 +188,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** correct only PATCH 4 tracked clean-build reproducibility, then obtain
-independent acceptance. Do not investigate `func_800BCF28` first. Hybrid F'
+**NEXT:** independently review the PATCH 4 clean-build correction. Do not
+investigate `func_800BCF28` first. Hybrid F'
 does not need reopening: same-binary ON/OFF behavior is CLASS A. After PATCH 4
 acceptance: investigate only `func_800BCF28`; after demo: input and
 [[09-gameplay-parity-and-enhancements]].

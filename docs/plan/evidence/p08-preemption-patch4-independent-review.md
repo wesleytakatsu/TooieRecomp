@@ -21,6 +21,11 @@ function; its cause was not investigated.
 VERDICT: C — PATCH 4 correction required
 ```
 
+The original verdict C is **preserved**. Implementer correction of the
+distribution blocker is in
+[[p08-preemption-patch4-clean-build-correction]]. That correction is
+**not** independently accepted yet.
+
 The behavioral mechanism passes independent review. The same executable,
 SHA-256 `384c8261cd3327ef9441e7b547649d6ddd16c71627b06b5da39bc82af9fe5801`,
 crossed the former C2AB8 blocker with the default ON and reproduced the old

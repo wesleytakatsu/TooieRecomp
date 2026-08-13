@@ -538,10 +538,12 @@ and the hint short-circuits without requiring rebuild or hot mutation.
 ## 8. Specs
 
 `recomp-readiness.md` items 1–4 stay the N64 **requirement**. PATCH 4 behavior
-is independently CLASS A, but delivery remains unaccepted until a clean
-tracked Tooie clone builds without hidden `RecompiledPatches` scaffolds.
-`build.md` / `matching.md` remain decomp-build specifications.
-`rsp-and-audio.md` records the same evidence-quality split.
+is independently CLASS A. Implementer correction now tracks the empty
+`RecompiledPatches` scaffolds and reproduces a clean Clang build; see
+[[p08-preemption-patch4-clean-build-correction]]. Delivery remains
+**pending independent review** of that correction. `build.md` /
+`matching.md` remain decomp-build specifications. `rsp-and-audio.md`
+records the same evidence-quality split.
 
 ---
 
@@ -607,14 +609,14 @@ T03: 20 isolated child runs PASS; historical flake class E, nonblocking
 
 ```text
 NEXT_SINGLE_ACTION:
-  Correct PATCH 4 tracked clean-build reproducibility, then independently
-  re-review the correction. Do not investigate func_800BCF28 first.
+  Independently review the PATCH 4 clean-build correction before
+  investigating func_800BCF28.
 ```
 
-Independent review: [[p08-preemption-patch4-independent-review]] (verdict C).
-Behavior is CLASS A and does not reopen Hybrid F'. The blocker is that a clean
-tracked clone regenerates 4,298 deterministic safepoints but cannot build
-without ignored `RecompiledPatches` scaffold files absent from the stated
-reconstruction contract.
+Independent review: [[p08-preemption-patch4-independent-review]] (verdict C,
+preserved). Behavior is CLASS A and does not reopen Hybrid F'. Implementer
+correction: [[p08-preemption-patch4-clean-build-correction]] (tracked empty
+scaffolds; clean clone regen 4,298 + clean Clang build PASS). Acceptance of
+that correction is still pending independent review.
 
 === END IMPLEMENTATION PLAN ===

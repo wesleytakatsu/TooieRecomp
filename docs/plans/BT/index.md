@@ -71,10 +71,13 @@ T07). Detalhe: [[07-rsp-and-audio]].
 ### Nota P08 (2026-08-13)
 
 RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido; mode-5
-alcançado. PATCH 4 behavior is independently **CLASS A**, but verdict C found
-that clean tracked Tooie cannot build without ignored `RecompiledPatches`
-scaffolds. **Próximo:** correct tracked clean-build reproducibility before
-investigating `func_800BCF28`. Input title/file-select diferido. Evidência:
+alcançado. PATCH 4 behavior is independently **CLASS A**. Verdict C
+preserved; implementer now tracks empty `RecompiledPatches` scaffolds and
+a clean clone builds. **Próximo:** independent review of
+[[../../plan/evidence/p08-preemption-patch4-clean-build-correction]]
+before investigating `func_800BCF28`. Input title/file-select diferido.
+Evidência:
+[[../../plan/evidence/p08-preemption-patch4-clean-build-correction]],
 [[../../plan/evidence/p08-preemption-patch4-independent-review]],
 [[../../plan/evidence/p08-preemption-patch4-validation]],
 [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]],

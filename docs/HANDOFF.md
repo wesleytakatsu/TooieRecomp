@@ -12,14 +12,16 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle]
 
 ## Prioridade atual
 
-**P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is behaviorally CLASS A, but is
-not distributable from the stated tracked state.
+**P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is behaviorally CLASS A. Independent
+review verdict **C** is preserved. Implementer correction now tracks the empty
+`RecompiledPatches` scaffolds and reproduces a clean Clang build; see
+[[plan/evidence/p08-preemption-patch4-clean-build-correction]]. That
+correction is **not independently accepted yet**.
 
 Independent reconstruction regenerated 4,298 safepoints deterministically.
 The same binary crossed `func_800C2AB8` with default ON and reproduced the old
-freeze with OFF. However, a strict clean clone cannot build because required
-ignored `RecompiledPatches` scaffolds have no tracked regeneration step.
-Verdict: **C — correction required**. See
+freeze with OFF. The original distribution blocker (ignored untracked
+scaffolds) has an implementer fix pending review. See
 [[plan/evidence/p08-preemption-patch4-independent-review]].
 
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -41,10 +43,9 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**Correct PATCH 4 tracked clean-build reproducibility.** The clean checkout
-must recreate every required `RecompiledPatches` input and build without
-hidden local files. Re-review that correction before investigating
-`func_800BCF28`.
+**Independently review the PATCH 4 clean-build correction** before
+investigating `func_800BCF28`. Evidence:
+[[plan/evidence/p08-preemption-patch4-clean-build-correction]].
 
 Não forçar clear; não BaKey; não reabrir Scheduler C / Hybrid F'; não editar
 `RecompiledFuncs`; não resetar o dirty do runtime.
@@ -55,8 +56,9 @@ Não forçar clear; não BaKey; não reabrir Scheduler C / Hybrid F'; não edita
 2. Música inicial OK.
 3. Intro 3D + logo + Jiggy OK.
 4. Attract request + type-4 complete + warp consumido OK.
-5. C2AB8 behavior resolved locally (same-binary CLASS A); PATCH 4 delivery
-   not accepted until clean tracked build is reproducible.
+5. C2AB8 behavior resolved locally (same-binary CLASS A). Implementer
+   clean tracked build now PASS; PATCH 4 delivery not accepted until the
+   correction is independently reviewed.
 6. First gameplay demo **ausente**: attract/world init reaches **SIGSEGV** in
    `func_800BCF28`; cause not investigated in this review.
 7. Title/file-select input diferido.
@@ -89,8 +91,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 ```
 
 Observed: C2AB8 crossed; crash in `func_800BCF28` (gsworld/basetup/BaKey).
-This downstream point is not the next action until PATCH 4 distribution is
-corrected.
+This downstream point is not the next action until the PATCH 4 clean-build
+correction is independently reviewed.
 
 ## Exonerated (current)
 
@@ -99,9 +101,10 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch4-independent-review]] (**CURRENT** — verdict C)
-2. [[plan/evidence/p08-preemption-patch4-validation]] (implementer evidence)
-3. [[plan/evidence/p08-preemption-patch35-rcp-independent-review]] (PATCH 3.5 RCP accepted)
-4. [[plan/evidence/p08-preemption-implementation-plan]]
-5. [[plan/evidence/p08-session-handoff]]
-6. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (**CURRENT** — implementer correction; pending review)
+2. [[plan/evidence/p08-preemption-patch4-independent-review]] (verdict C preserved)
+3. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
+4. [[plan/evidence/p08-preemption-patch35-rcp-independent-review]] (PATCH 3.5 RCP accepted)
+5. [[plan/evidence/p08-preemption-implementation-plan]]
+6. [[plan/evidence/p08-session-handoff]]
+7. [[plans/BT/08-rt64-input-and-frontend]]

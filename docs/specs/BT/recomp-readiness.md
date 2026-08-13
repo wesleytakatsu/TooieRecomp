@@ -81,13 +81,16 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > activates Hybrid F' (default ON; `ULTRAMODERN_GUEST_PREEMPTION=0`
 > rollback), and 4,298 deterministic static safepoints regenerate from the
 > tracked patches. Same-binary ON/OFF is independently CLASS A, so the C2AB8
-> mechanism is behaviorally resolved. **Delivery is not yet accepted:** a
-> clean tracked Tooie checkout cannot build because required ignored
-> `RecompiledPatches` scaffolds have no tracked regeneration step. See
-> `docs/plan/evidence/p08-preemption-patch4-independent-review.md` (verdict C)
-> and preserve `p08-preemption-patch4-validation.md` as implementer evidence.
-> `func_800BCF28` remains the next product divergence, but is gated on the
-> PATCH 4 distribution correction.
+> mechanism is behaviorally resolved. **Implementer delivery correction
+> (2026-08-13):** the empty `RecompiledPatches` scaffolds are tracked and a
+> disposable clone regenerates 4,298 safepoints and builds TooieRecompiled
+> with Clang. See
+> `docs/plan/evidence/p08-preemption-patch4-clean-build-correction.md`.
+> Independent review verdict C is preserved; **PATCH 4 is not accepted
+> until that correction is independently reviewed.** See
+> `docs/plan/evidence/p08-preemption-patch4-independent-review.md`.
+> Preserve `p08-preemption-patch4-validation.md` as implementer behavioral
+> evidence. `func_800BCF28` remains the next product divergence.
 
 ## Próximos passos práticos
 

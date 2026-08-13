@@ -105,9 +105,11 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   Tooie regenerates 4,298 safepoints and starts Hybrid F' ON. Same-binary
   ON/OFF independently proves CLASS A; AUDIO advances through the former
   freeze window. The exact PATCH 4 `table[2].word0 == 0` value is inferred,
-  while resolution of C2AB8's pending condition is proven. PATCH 4 delivery
-  is not accepted until ignored `RecompiledPatches` build inputs are
-  reproducible from tracked state. Ver
+  while resolution of C2AB8's pending condition is proven. Implementer
+  clean-build correction tracks the empty `RecompiledPatches` scaffolds
+  (`docs/plan/evidence/p08-preemption-patch4-clean-build-correction.md`).
+  PATCH 4 delivery is not accepted until that correction is independently
+  reviewed. Ver
   `docs/plan/evidence/p08-preemption-patch4-independent-review.md`.
   Downstream `func_800BCF28` remains the next product divergence and was not
   diagnosed in this review.
