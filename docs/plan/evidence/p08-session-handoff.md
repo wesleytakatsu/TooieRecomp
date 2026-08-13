@@ -152,8 +152,14 @@ ARBITRATION (Grok 4.5 HIGH):
 Feature remains OFF for games. C ABI is `void*` = `uint32_t* status_reg`.
 
 MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
-pending service. MUST_TEST: X1-A..F, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
+pending service + thread-dispatch resume hook (trigger B, design 4.8).
+MUST_TEST: X1-A..F, X1-G, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
 DEFER: generic JR, function cycles, status-init change, TLS epoch.
+
+Thread-switch eligibility reviewed
+([[p08-preemption-patch35-thread-switch-review]]): verdict B; held causes
+become eligible on thread change; add resume hook in
+`threads.cpp::wait_for_resumed` + `service_pending_interrupts_for_current_guest`.
 Cumulative artifacts still:
 `patches/runtime/n64modernruntime-preemption.patch`,
 `patches/runtime/n64recomp-tooie.patch`.
@@ -165,14 +171,15 @@ habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 4.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch35-design]] — **CURRENT: implement this**
-2. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
-3. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
-4. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
-5. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
-6. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-7. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-8. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+1. [[p08-preemption-patch35-design]] — **CURRENT: implement this** (incl. 4.8 resume hook)
+2. [[p08-preemption-patch35-thread-switch-review]] — **CURRENT: thread-switch eligibility (verdict B)**
+3. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
+4. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
+5. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
+6. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
+7. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+8. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
+9. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
 

@@ -51,8 +51,9 @@ Próximos passos:
 
 1. **Implement PATCH 3.5** segundo
    [[plan/evidence/p08-preemption-patch35-design]].
-   MUST: X1 annotated-hold + MTC0/mask-change service.
-   TEST: X1-A..F, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
+   MUST: X1 annotated-hold + MTC0/mask-change service + thread-dispatch
+   resume hook (design 4.8).
+   TEST: X1-A..F, X1-G, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
    DEFER: generic JR, function-entry safepoints, status-init, TLS epoch.
    Não habilitar a flag. Não regenerar Tooie. Não implementar Hybrid F
    DeepSeek ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
@@ -110,12 +111,13 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 ## Files to read
 
 1. [[plan/evidence/p08-preemption-patch35-design]] (**CURRENT**)
-2. [[plan/evidence/p08-preemption-patch3-independent-review]]
-3. [[plan/evidence/p08-preemption-patch3-validation]]
-4. [[plan/evidence/p08-preemption-patch2-independent-review]]
-5. [[plan/evidence/p08-preemption-implementation-plan]]
-6. [[plan/evidence/p08-preemption-design-adversarial-review]]
-7. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
-8. [[plan/evidence/p08-guest-preemption-causal-validation]]
-9. [[plan/evidence/p08-session-handoff]]
-10. [[plans/BT/08-rt64-input-and-frontend]]
+2. [[plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B)
+3. [[plan/evidence/p08-preemption-patch3-independent-review]]
+4. [[plan/evidence/p08-preemption-patch3-validation]]
+5. [[plan/evidence/p08-preemption-patch2-independent-review]]
+6. [[plan/evidence/p08-preemption-implementation-plan]]
+7. [[plan/evidence/p08-preemption-design-adversarial-review]]
+8. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
+9. [[plan/evidence/p08-guest-preemption-causal-validation]]
+10. [[plan/evidence/p08-session-handoff]]
+11. [[plans/BT/08-rt64-input-and-frontend]]

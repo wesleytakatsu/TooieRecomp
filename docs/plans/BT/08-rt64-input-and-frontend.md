@@ -39,6 +39,7 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 Evidência corrente:
 
 - [[../../plan/evidence/p08-preemption-patch35-design]] (**CURRENT** — PATCH 3.5 design complete; implement next)
+- [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B; thread-dispatch resume hook)
 - [[../../plan/evidence/p08-preemption-patch3-independent-review]] (PATCH 3 review B)
 - [[../../plan/evidence/p08-preemption-patch3-validation]] (PATCH 3 generator; T11 PASS; flag OFF)
 - [[../../plan/evidence/p08-preemption-patch2-independent-review]] (PATCH 2 review B; inherited pre-PATCH4 blockers)
@@ -82,7 +83,8 @@ Evidência corrente:
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
   = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1–3
   landed (flag OFF; T11 generator PASS). PATCH 3 independent review B.
-  PATCH 3.5 design complete ([[../../plan/evidence/p08-preemption-patch35-design]]).
+  PATCH 3.5 design complete ([[../../plan/evidence/p08-preemption-patch35-design]]);
+  thread-switch review verdict B → resume hook (design 4.8).
   PATCH4_READY NO. Attract ainda bloqueado até implement 3.5 + enable +
   `func_800BCF28`.
 
@@ -112,6 +114,7 @@ Evidência corrente:
 | evidência | estado/finalidade |
 | --- | --- |
 | [[../../plan/evidence/p08-preemption-patch35-design]] | **CURRENT:** PATCH 3.5 semantic-closure design; implement next |
+| [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] | **CURRENT:** thread-switch eligibility; verdict B; resume hook |
 | [[../../plan/evidence/p08-preemption-patch3-independent-review]] | PATCH 3 independent review B |
 | [[../../plan/evidence/p08-preemption-patch3-validation]] | PATCH 3 generator; T11 PASS; flag OFF |
 | [[../../plan/evidence/p08-preemption-patch2-independent-review]] | PATCH 2 independent review B; pre-PATCH4 blockers |
@@ -171,7 +174,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** design PATCH 3.5 semantic closure before implementation.
-Review: [[../../plan/evidence/p08-preemption-patch3-independent-review]].
+**NEXT:** implement PATCH 3.5 (semantic closure + thread-dispatch resume hook,
+design 4.8). Review:
+[[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (verdict B).
 Não PATCH 4. Depois: SIGSEGV `func_800BCF28`. Após demo: input e
 [[09-gameplay-parity-and-enhancements]].

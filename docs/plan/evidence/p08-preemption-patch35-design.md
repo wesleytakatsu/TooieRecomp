@@ -19,6 +19,7 @@ N64RECOMP_BASE:       2b6f05688de2abc7d86da5b4a89b84c2c6acbabe
 ARCHITECTURE:         Hybrid F' (not reopened)
 PATCH35_DESIGN_COMPLETE: YES
 READY_TO_IMPLEMENT_PATCH35: YES
+THREAD_SWITCH_DELTA:   YES (4.8 resume hook; see thread-switch review)
 PATCH4_READY:         NO
 SOURCE_CODE_CHANGED:  NO
 ```
@@ -443,6 +444,62 @@ hook; do not crash.
 | INTERRUPT REMAINS MASKED | stay in `held_ineligible`; no publish; no guest visibility |
 | MASK LATER ENABLED | `after_interrupt_state_change` retries hold list |
 
+### 4.8 Thread-dispatch resume hook (CORRECTED by thread-switch review)
+
+> `CORRECTED/SUPERSEDED`: this design originally treated eligibility-change
+> triggers as "mask API/MTC0 only". The thread-switch review
+> ([[p08-preemption-patch35-thread-switch-review]]) proves a held cause can
+> become eligible **solely** because the current guest OSThread changed
+> (`status_reg` is per-thread; libultra restores SR.IM and MI_INTR_MASK
+> per-thread at `__osDispatchThreadSave`). Add one trigger class.
+
+There are now **two** eligibility-change trigger classes:
+
+```text
+TRIGGER A - interrupt state change within the same guest:
+  osSetIntMask / __osRestoreInt / MTC0 Status  -> after_interrupt_state_change
+
+TRIGGER B - current guest thread changes (new per-thread SR becomes current):
+  native-thread resume -> service_pending_interrupts_for_current_guest
+```
+
+One primitive, two call sites (do not duplicate the held-retry algorithm):
+
+```text
+NEW_PRIMITIVE:
+  service_pending_interrupts_for_current_guest(RDRAM_ARG1)
+    if !guest_preemption_safepoints_enabled(): return;
+    if tls_status_reg == nullptr: return;   // initial thread start
+    service_preemption(rdram, tls_status_reg);   // retries held + drain + check_running_queue
+
+NEW_CALL_SITE (runtime, REQUIRED):
+  ultramodern/src/threads.cpp :: wait_for_resumed
+    after `thread_context->running.wait();` returns AND after the
+    context-replacement check (threads.cpp:152-155)
+```
+
+`wait_for_resumed` is the single funnel for every cooperative resume
+(`run_next_thread_and_wait`, `resume_thread_and_wait`, initial `_thread_func`
+start), so one hook covers `osRecvMesg`/`osSendMesg`/`osJamMesg` blocking,
+`osYieldThread`, `pause_self`, `osStartThread`, `osSetThreadPri`, thread exit,
+and preemption swaps.
+
+```text
+RESUME_HOOK_CAN_RESCHEDULE: YES (nested LightweightSemaphore re-block; no lock
+                            held; token owned; skip when tls_status_reg null)
+STATUS_POINTER_AVAILABLE_AT_HOOK: YES (tls_status_reg / tls_rdram; no
+                            recomp_context* crosses the scheduler API)
+```
+
+This also closes a residual on the idle path: `wait_for_external_message`
+blocks on `external_messages.wait_dequeue` and does not retry `held_ineligible`
+after wake; the resume hook re-evaluates held under the current SR on resume.
+
+```text
+CORRECTION_SCOPE: one trigger + one primitive + one call site + test X1-G.
+                  A+ hold/drain/cause-model otherwise unchanged.
+```
+
 ---
 
 ## 5. Event cause map
@@ -543,6 +600,20 @@ re-service an already-drained epoch. Under the single-token model that
 is an empty drain plus `check_running_queue` peek. No reordering, no
 lost wakeup, no ping-pong. A global delivered-epoch is an optimization,
 not a correctness fix. Do not change it without a failing test.
+
+> `CORRECTED` by [[p08-preemption-patch35-thread-switch-review]]: TLS-epoch
+> DOES guarantee held-retry on thread change, but only under two invariants
+> that were previously implied, not stated:
+>
+> - **I1**: every entry into `held_ineligible` is preceded (happens-before) by
+>   a publish (arrival or full-queue requeue) whose epoch the newly-current
+>   thread has not yet seen;
+> - **I2**: every drain path (service AND cooperative AND idle/wait) retries
+>   the GLOBAL `held_ineligible` under the CURRENT SR.
+>
+> The thread-dispatch resume hook (4.8) makes these robust and explicit. The
+> review's literal counterexample ("B may have `tls_last_seen == current
+> epoch`") is refuted under the single-token + arrival-publish model.
 
 ---
 
@@ -659,6 +730,7 @@ Harness tests enable the flag locally. Production stays OFF.
 | REQUEUE_CAUSE | AI held, guest mq full with `requeue_if_blocked=true` after unmask, then space+service | cause stays AI through hold and full-requeue; never becomes None |
 | NONINTERRUPT | `None` message while AI masked | delivered; may wake a waiter; not dropped as if it were AI |
 | TLS | MAIN services epoch N, swap to AUDIO with `last_seen=0` | AUDIO may re-drain; empty; no reorder; no livelock |
+| X1-G | A SR masks AI; AI arrives and is held; A blocks cooperatively; B (SR allows AI) is dispatched | held AI leaves `held_ineligible`, guest AI message becomes visible, waiter wakes, highest pri runs, no new external epoch required. Added by [[p08-preemption-patch35-thread-switch-review]] |
 
 Existing T02 must be updated to enqueue with `InterruptCause::AI` (or
 the test stays `None` and would still preempt — document which). Prefer
@@ -708,6 +780,8 @@ No source in this session. Later implementation only.
 | same | `wait_for_external_message*` | deliver first pop | skip/hold ineligible; wait again | X1-A + pause_self |
 | same | `preemption.cpp` | `cpu_preemptible` | any-class | IE && !EXL && !ERL (see §4.3) | T03, X1-D |
 | same | `preemption.cpp` | `after_interrupt_state_change` | n/a | retry hold via service | X1-B/E, M1 |
+| same | `preemption.cpp` | `service_pending_interrupts_for_current_guest` | n/a | shared primitive for trigger A and B (4.8) | X1-G |
+| same | `threads.cpp` | `wait_for_resumed` | resume only | add resume hook (4.8) after running.wait() + context check | X1-G |
 | same | `preemption.cpp` | TLS rdram / status | epoch only | set/get for MTC0 | M1 |
 | same | `intmask.cpp` | `apply_os_set_int_mask`, `restore_int` | became-preemptible check | call `after_interrupt_state_change` | X1-B, T04+ |
 | same | `events.cpp` | VI/AI/SP/DP/SI enqueues | no cause | annotate | X1-A/C |
@@ -724,6 +798,12 @@ No source in this session. Later implementation only.
 `check_running_queue` / `swap_to_thread` stay pure.
 
 `extensions.cpp` keeps default `None`.
+
+> `CORRECTED` by [[p08-preemption-patch35-thread-switch-review]]: the "do not
+> touch `threads.cpp`" rule is amended to "do not touch the dirty NULLPTR guard
+> (`osSetThreadPri`, `threads.cpp:305-320`); a minimal resume hook in
+> `wait_for_resumed` (4.8) IS required". Do not fold the existing dirty
+> NULLPTR guard into the patch; add the resume hook as a separate hunk on top.
 
 ### 11.3 N64Recomp — tests only
 
@@ -750,9 +830,10 @@ PATCH 3.5A — cause metadata + hold + producer annotations + X1-A..D
              + NONINTERRUPT + REQUEUE_CAUSE
              Update cumulative n64modernruntime-preemption.patch
 
-PATCH 3.5B — after_interrupt_state_change
-             wire osSetIntMask / Restore / MTC0
-             X1-E/F, M1, M2, T04+
+PATCH 3.5B — after_interrupt_state_change + thread-dispatch resume hook
+             wire osSetIntMask / Restore / MTC0 (trigger A)
+             wait_for_resumed resume hook (trigger B, 4.8)
+             X1-E/F/G, M1, M2, T04+
              Same cumulative runtime patch
 
 PATCH 3.5C — T07+, TLS test, T11 P3-X1/X2/X4/X6

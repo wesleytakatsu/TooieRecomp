@@ -267,7 +267,8 @@ PATCH 3 — generator safepoints     [flag still OFF for games]  LANDED
 PATCH 3.5 — semantic closure       [flag still OFF]            DESIGN COMPLETE
   See [[p08-preemption-patch35-design]]. Implement next.
   MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
-  pending service. MUST_TEST: X1-A..F, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
+  pending service + thread-dispatch resume hook (trigger B).
+  MUST_TEST: X1-A..F, X1-G, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
   DEFER: generic JR, function-entry safepoints, status-init change,
   TLS epoch replacement, cheaper hint. Do not enable. Do not regen.
 
