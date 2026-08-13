@@ -45,15 +45,16 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 2 LANDED** (runtime service, flag OFF, T01–T10/T12 PASS).
+**PATCH 2 REVIEWED (B)** (runtime service, flag OFF, T01–T10/T12 PASS;
+review independente Grok 4.6 HIGH).
 Próximos passos:
 
-1. **Review independente de PATCH 2**, depois PATCH 3 (generator
-   safepoints) conforme
+1. **PATCH 3** (generator safepoints only) conforme
    [[plan/evidence/p08-preemption-implementation-plan]] e
-   [[plan/evidence/p08-preemption-patch2-validation]].
-   Não implementar Hybrid F DeepSeek
-   ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
+   [[plan/evidence/p08-preemption-patch2-independent-review]].
+   C ABI `void*`; wrap `status_reg`; flag OFF; sem regen Tooie.
+   Fechar X1 (cause/class) antes do PATCH 4. Não implementar Hybrid F
+   DeepSeek ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
 2. **Investigar `func_800BCF28`** só depois do fix permanente aterrar.
 3. Então: gsattract ep1 / demo, depois input title/file-select.
 
@@ -107,11 +108,12 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch2-validation]]
-2. [[plan/evidence/p08-preemption-implementation-plan]]
-3. [[plan/evidence/p08-preemption-patch1-independent-review]]
-4. [[plan/evidence/p08-preemption-design-adversarial-review]]
-5. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
-6. [[plan/evidence/p08-guest-preemption-causal-validation]]
-7. [[plan/evidence/p08-session-handoff]]
-8. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-preemption-patch2-independent-review]]
+2. [[plan/evidence/p08-preemption-patch2-validation]]
+3. [[plan/evidence/p08-preemption-implementation-plan]]
+4. [[plan/evidence/p08-preemption-patch1-independent-review]]
+5. [[plan/evidence/p08-preemption-design-adversarial-review]]
+6. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
+7. [[plan/evidence/p08-guest-preemption-causal-validation]]
+8. [[plan/evidence/p08-session-handoff]]
+9. [[plans/BT/08-rt64-input-and-frontend]]

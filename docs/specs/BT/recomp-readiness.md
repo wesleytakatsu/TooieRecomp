@@ -67,8 +67,9 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > acima (itens 1–4) permanece o requisito N64 PROVEN.
 > PATCH 2 landed o *runtime service* (epoch/intmask/translations) com
 > flag OFF; jogos gerados ainda não chamam safepoints. **Não tratar
-> como comportamento entregue no jogo.** Ver
-> `docs/plan/evidence/p08-preemption-patch2-validation.md`.
+> como comportamento entregue no jogo.** Review independente B:
+> `docs/plan/evidence/p08-preemption-patch2-independent-review.md`.
+> Ver também `docs/plan/evidence/p08-preemption-patch2-validation.md`.
 
 ## Próximos passos práticos
 

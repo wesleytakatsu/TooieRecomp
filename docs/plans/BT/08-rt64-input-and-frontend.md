@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch2-validation]] (**CURRENT** — PATCH 2 landed; T01–T10/T12 PASS; flag OFF)
+- [[../../plan/evidence/p08-preemption-patch2-independent-review]] (**CURRENT** — PATCH 2 review B; PATCH 3 ready)
+- [[../../plan/evidence/p08-preemption-patch2-validation]] (PATCH 2 landed; T01–T10/T12 PASS; flag OFF)
 - [[../../plan/evidence/p08-preemption-patch1-independent-review]] (PATCH 1 review B)
 - [[../../plan/evidence/p08-preemption-patch1-validation]] (PATCH 1 implementer evidence)
 - [[../../plan/evidence/p08-preemption-implementation-plan]] (spec F'; PATCH 2 landed, PATCH 3+ pending)
@@ -77,8 +78,8 @@ Evidência corrente:
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
   = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1
-  PATCH 2 landed (runtime service, flag OFF). PATCH 3+ pending. Attract
-  ainda bloqueado até safepoints + `func_800BCF28`.
+  PATCH 2 landed + independent review B. PATCH 3 ready (generator,
+  flag OFF). Attract ainda bloqueado até safepoints + `func_800BCF28`.
 
 
 ## Implementado / validado
@@ -105,7 +106,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch2-validation]] | **CURRENT:** PATCH 2 runtime service |
+| [[../../plan/evidence/p08-preemption-patch2-independent-review]] | **CURRENT:** PATCH 2 independent review B |
+| [[../../plan/evidence/p08-preemption-patch2-validation]] | PATCH 2 runtime service |
 | [[../../plan/evidence/p08-preemption-patch1-independent-review]] | PATCH 1 independent review B |
 | [[../../plan/evidence/p08-preemption-patch1-validation]] | PATCH 1 scaffold + T01 PASS |
 | [[../../plan/evidence/p08-preemption-implementation-plan]] | spec file/function + T01–T15; PATCH 2 landed |

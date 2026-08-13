@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 2 landed (runtime service); PATCH 3+ not started."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 2 reviewed B; PATCH 3 ready under inherited constraints."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES (PATCH 2 landed; PATCH 3 not started)
+IMPLEMENTATION_READY: YES (PATCH 2 reviewed B; PATCH 3 ready)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -527,6 +527,18 @@ at the design review.
 
 ---
 
+## 8b. PATCH 2 independent review (do not erase)
+
+See [[p08-preemption-patch2-independent-review]] (verdict B).
+
+```text
+GENERIC_ANY_UNMASKED_AS_CAUSE_EQUIVALENT: REFUTED
+  Approved F' swap gate remains the all-masked predicate.
+  Not hardware-equivalent when a masked-class event is delivered
+  while another class is open (X1). Close before PATCH 4 enable.
+  Not a PATCH 2 blocker; not an F' architecture reopen.
+```
+
 ## 9. PATCH 2 constraints from independent review
 
 See [[p08-preemption-patch1-independent-review]].
@@ -552,8 +564,9 @@ T01-E:
 
 ```text
 NEXT_SINGLE_ACTION:
-  Independent review of PATCH 2, then PATCH 3 generator
-  safepoints. Do not enable the flag. Do not regenerate Tooie.
+  Implement PATCH 3 generator safepoints only. Do not enable the
+  flag. Do not regenerate Tooie. See inherited constraints in
+  [[p08-preemption-patch2-independent-review]] §17.
 ```
 
 === END IMPLEMENTATION PLAN ===

@@ -101,7 +101,9 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
 - **Design (2026-08-13):** Hybrid F' + spec de implementação em
   `docs/plan/evidence/p08-preemption-implementation-plan.md`.
   PATCH 2 landed o runtime service (flag OFF); áudio do jogo ainda não
-  é preemptado. Ver `docs/plan/evidence/p08-preemption-patch2-validation.md`.
+  é preemptado. Review B:
+  `docs/plan/evidence/p08-preemption-patch2-independent-review.md`.
+  Ver também `docs/plan/evidence/p08-preemption-patch2-validation.md`.
 
 ## Referências
 
