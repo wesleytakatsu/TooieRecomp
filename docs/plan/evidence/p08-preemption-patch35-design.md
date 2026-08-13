@@ -20,13 +20,18 @@ ARCHITECTURE:         Hybrid F' (not reopened)
 PATCH35_DESIGN_COMPLETE: YES
 PATCH35_IMPLEMENTED:  YES
 THREAD_SWITCH_DELTA:   YES (4.8 resume hook; see thread-switch review)
-PATCH4_READY:         YES (implementation gates; independent review next)
+PATCH4_READY:         YES (historical implementer gate; CORRECTED/SUPERSEDED)
 SOURCE_CODE_CHANGED:  YES
 VALIDATION:           [[p08-preemption-patch35-validation]]
+INDEPENDENT_REVIEW:   [[p08-preemption-patch35-independent-review]] verdict C
 ```
 
 This document remains the implementation contract. PATCH 3.5 is landed and
 validated; do not re-derive X1. Flag remains OFF. Do not regenerate Tooie.
+
+> **Correction (2026-08-13):** independent review found current RCP/MI mask
+> storage process-global instead of per OSThread. `PATCH4_READY: NO` until the
+> narrow PATCH 3.5 correction and RCP isolation tests pass.
 
 Do not enable the flag. Do not regenerate Tooie. Do not implement PATCH 4.
 Do not investigate `func_800BCF28`. DeepSeek Hybrid F remains

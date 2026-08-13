@@ -71,8 +71,10 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > `docs/plan/evidence/p08-preemption-patch35-validation.md`). A flag de
 > produção permanece OFF e o Tooie **não** foi regenerado — o C gerado
 > existente ainda não contém chamadas. **Não tratar como preempção
-> guest entregue no jogo.** `PATCH4_READY: YES` for implementation
-> gates; independent review is required before enable/regen.
+> guest entregue no jogo.** Independent review
+> `p08-preemption-patch35-independent-review.md` found the current RCP/MI
+> mask process-global instead of per OSThread. `PATCH4_READY: NO` until the
+> narrow PATCH 3.5 correction and RCP isolation tests pass.
 
 ## Próximos passos práticos
 

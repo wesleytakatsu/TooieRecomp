@@ -12,8 +12,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `976481e33ab0ea2e6d9ea9470a00ca7652e63b6c`
-  (PATCH 3.5 thread-switch design). This session **implemented** PATCH 3.5.
+- Independent-review base/parent: `baeae496d0836e522bf9bf91589d124a1db1feee`.
+  PATCH 3.5 review verdict is C; source remains unchanged.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -137,19 +137,22 @@ ARBITRATION (Grok 4.5 HIGH):
    [[p08-preemption-patch2-independent-review]] verdict B. PATCH 3
    landed — [[p08-preemption-patch3-validation]]. Independent review
    [[p08-preemption-patch3-independent-review]] verdict B. PATCH 3.5
-   landed — [[p08-preemption-patch35-validation]]. PATCH4_READY YES
-   (implementation gates). Independent review of 3.5 is next, then
-   PATCH 4 enable/regen. Do not implement DeepSeek Hybrid F.
+   landed — [[p08-preemption-patch35-validation]]. Independent review
+   [[p08-preemption-patch35-independent-review]] verdict C: current RCP/MI
+   mask is process-global, RCP-only dispatch and old-return tests fail.
+   PATCH4_READY NO. Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PATCH 3.5 IMPLEMENTED.** Independent high-risk review of PATCH 3.5
-before PATCH 4 activation. See [[p08-preemption-patch35-validation]].
-Do not enable `ULTRAMODERN_GUEST_PREEMPTION`. Do not regen Tooie.
-Do not investigate `func_800BCF28` yet.
+**PATCH 3.5 CORRECTION REQUIRED.** Replace only the current process-global
+RCP/MI mask with per-native-guest-thread state (recommended TLS, initial
+`0x3F`), add RCP-X1..X4, and strengthen P3-X6. See
+[[p08-preemption-patch35-independent-review]]. Do not enable
+`ULTRAMODERN_GUEST_PREEMPTION`, implement PATCH 4, regenerate Tooie, or
+investigate `func_800BCF28` yet.
 
 Thread-switch eligibility reviewed
 ([[p08-preemption-patch35-thread-switch-review]]): verdict B; held causes
@@ -167,14 +170,15 @@ habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 4.
 ## FILES_TO_READ_NEXT
 
 1. [[p08-preemption-patch35-design]] — **CURRENT: implement this** (incl. 4.8 resume hook)
-2. [[p08-preemption-patch35-thread-switch-review]] — **CURRENT: thread-switch eligibility (verdict B)**
-3. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
-4. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
-5. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
-6. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
-7. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-8. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-9. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+2. [[p08-preemption-patch35-independent-review]] — **CURRENT: verdict C; RCP correction required**
+3. [[p08-preemption-patch35-thread-switch-review]] — thread-switch eligibility (verdict B)
+4. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
+5. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
+6. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
+7. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
+8. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+9. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
+10. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
 
@@ -197,5 +201,5 @@ GENERATOR_CODE_CHANGED   = NO this session (external dirty preserved)
 PATCH_CODE_CHANGED       = NO this session
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (PATCH 3.5 design)
+EVIDENCE_CHANGED         = YES (PATCH 3.5 independent review C)
 ```

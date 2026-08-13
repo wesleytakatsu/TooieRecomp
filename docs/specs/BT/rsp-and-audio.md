@@ -101,9 +101,10 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
 - **Design (2026-08-13):** Hybrid F' + spec de implementação em
   `docs/plan/evidence/p08-preemption-implementation-plan.md`.
   PATCH 3.5 landed cause-aware hold-until-eligible (flag OFF; Tooie não
-  regenerado). Áudio do jogo ainda não é preemptado. `PATCH4_READY: YES`
-  pending independent review before enable. Ver
-  `docs/plan/evidence/p08-preemption-patch35-validation.md`.
+  regenerado). Áudio do jogo ainda não é preemptado. Independent review
+  found the current RCP/MI mask process-global instead of per OSThread;
+  `PATCH4_READY: NO` until the narrow correction passes RCP isolation tests.
+  Ver `docs/plan/evidence/p08-preemption-patch35-independent-review.md`.
 
 ## Referências
 

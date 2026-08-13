@@ -160,8 +160,10 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-patch35-validation]] — **CURRENT:**
-  PATCH 3.5 implemented/validated; flag OFF; PATCH4_READY YES pending review.
+- [[evidence/p08-preemption-patch35-independent-review]] — **CURRENT:**
+  verdict C; current RCP/MI mask is process-global; PATCH4_READY NO.
+- [[evidence/p08-preemption-patch35-validation]] — implementer evidence;
+  PATCH4 gate corrected/superseded by independent review.
 - [[evidence/p08-preemption-patch35-thread-switch-review]] —
   thread-switch eligibility; verdict B; resume hook (design 4.8).
 - [[evidence/p08-preemption-patch3-independent-review]] —

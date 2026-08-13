@@ -45,14 +45,15 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 3.5 IMPLEMENTED / VALIDATED.** Flag OFF. Sem regen Tooie.
-PATCH4_READY YES (implementation gates). Next: independent high-risk
-review of PATCH 3.5 before PATCH 4 activation.
+**PATCH 3.5 INDEPENDENT REVIEW: VERDICT C.** Flag OFF. Sem regen Tooie.
+O RCP/MI mask corrente é process-global, mas libultra o salva/restaura por
+OSThread. RCP-only dispatch e `osSetIntMask` old-return falham.
+`PATCH4_READY: NO`.
 
-1. **Independent review of PATCH 3.5** —
-   [[plan/evidence/p08-preemption-patch35-validation]].
+1. **Corrigir PATCH 3.5 somente** — per-thread RCP state + RCP-X1..X4 +
+   P3-X6 fortalecido. Review: [[plan/evidence/p08-preemption-patch35-independent-review]].
    Não habilitar a flag. Não regenerar Tooie. Não PATCH 4 nesta etapa.
-2. **PATCH 4** só após review: env/default ON + Tooie regen + T15.
+2. **PATCH 4** só após correção/re-review: env/default ON + Tooie regen + T15.
 3. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
 
 Não forçar clear; não BaKey; não reabrir Scheduler C; não editar
@@ -105,11 +106,11 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch35-design]] (**CURRENT**)
-2. [[plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B)
-3. [[plan/evidence/p08-preemption-patch3-independent-review]]
-4. [[plan/evidence/p08-preemption-patch3-validation]]
-5. [[plan/evidence/p08-preemption-patch2-independent-review]]
+1. [[plan/evidence/p08-preemption-patch35-independent-review]] (**CURRENT** — verdict C)
+2. [[plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; gate superseded)
+3. [[plan/evidence/p08-preemption-patch35-design]]
+4. [[plan/evidence/p08-preemption-patch35-thread-switch-review]] (verdict B)
+5. [[plan/evidence/p08-preemption-patch3-independent-review]]
 6. [[plan/evidence/p08-preemption-implementation-plan]]
 7. [[plan/evidence/p08-preemption-design-adversarial-review]]
 8. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)

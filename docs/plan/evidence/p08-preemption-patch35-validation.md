@@ -228,11 +228,17 @@ PRODUCTION_FLAG:       OFF
 TOOIE_REGEN:           NO
 PERFORMANCE_CHANGE_REQUIRED_IN_PATCH35: NO
 
-PATCH4_READY:          YES
+PATCH4_READY:          YES (IMPLEMENTER CLAIM; CORRECTED/SUPERSEDED)
 PATCH4_GATE_MISSING:   independent high-risk review of PATCH 3.5
                        before flag enable / Tooie regen
 DOWNSTREAM_BLOCKER:    func_800BCF28
 ```
+
+> **CORRECTED/SUPERSEDED by independent review (2026-08-13):**
+> [[p08-preemption-patch35-independent-review]] proves that current RCP/MI
+> mask state is process-global although libultra saves/restores it per
+> OSThread. Disposable RCP-only dispatch and `osSetIntMask` old-return tests
+> both fail. `PATCH4_READY: NO`; correct PATCH 3.5 only before PATCH 4.
 
 ## Classification
 
@@ -245,5 +251,6 @@ DOWNSTREAM_BLOCKER:    func_800BCF28
 | Feature OFF is legacy drain-all / no async preemption | PROVEN |
 | Guest preemption active in Tooie | REFUTED |
 | Production generated C contains safepoints | REFUTED |
+| PATCH4 ready after implementer validation | CORRECTED/SUPERSEDED |
 
 === END PATCH 3.5 VALIDATION ===

@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3.5 landed (flag OFF); PATCH4_READY YES pending independent review."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3.5 requires per-OSThread RCP correction before PATCH 4."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES (PATCH 3.5 landed; PATCH4_READY YES pending independent review)
+IMPLEMENTATION_READY: NO (PATCH 3.5 per-OSThread RCP correction required)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -265,12 +265,16 @@ PATCH 3 — generator safepoints     [flag still OFF for games]  LANDED
   Isolate hunks from dirty resolve_jal. T11 PASS. No Tooie regen.
 
 PATCH 3.5 — semantic closure       [flag still OFF]            LANDED
-  See [[p08-preemption-patch35-design]]. Implement next.
+  See [[p08-preemption-patch35-design]].
   MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
   pending service + thread-dispatch resume hook (trigger B).
   MUST_TEST: X1-A..F, X1-G, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
   DEFER: generic JR, function-entry safepoints, status-init change,
   TLS epoch replacement, cheaper hint. Do not enable. Do not regen.
+  INDEPENDENT REVIEW C: [[p08-preemption-patch35-independent-review]].
+  BLOCKER: current RCP/MI mask is process-global, but libultra restores
+  THREAD_RCP per OSThread. RCP-only X1-G and cross-thread old-return fail.
+  CORRECT PATCH 3.5 before PATCH 4; keep flag OFF and do not regen.
 
 PATCH 4 — integration              [flag ON]
   Tooie: rebuild N64Recomp, run_recomp.sh, cmake build TooieRecompiled.
@@ -568,13 +572,25 @@ T01-E:
   settle, then coop osSendMesg. Current T01-E is WEAK.
 ```
 
+## 9b. PATCH 3.5 independent review
+
+See [[p08-preemption-patch35-independent-review]] (verdict C).
+
+```text
+PATCH4_READY: NO
+ROOT_DEFECT: process-global current RCP/MI mask; libultra is per OSThread
+MINIMUM: thread_local RCP mask, initial 0x3F; keep global mask global
+TESTS: RCP-X1..X4 plus a P3-X6 proof that cannot pass without the
+       safepoint swap
+```
+
 ## 10. Next
 
 ```text
 NEXT_SINGLE_ACTION:
-  Independent high-risk review of PATCH 3.5 before PATCH 4
-  activation (X1 cause/class, MTC0 re-enable, recorded PATCH 3
-  coverage gaps). Do not enable the flag. Do not regenerate Tooie.
+  Correct PATCH 3.5 RCP/per-thread state only and add RCP-X1..X4;
+  strengthen P3-X6 so it cannot pass without the safepoint swap.
+  Do not enable the flag, implement PATCH 4, or regenerate Tooie.
 ```
 
 === END IMPLEMENTATION PLAN ===

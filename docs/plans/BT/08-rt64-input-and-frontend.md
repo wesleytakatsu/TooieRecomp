@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch35-validation]] (**CURRENT** — PATCH 3.5 implemented; review next)
+- [[../../plan/evidence/p08-preemption-patch35-independent-review]] (**CURRENT** — verdict C; RCP correction required)
+- [[../../plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; PATCH4 gate superseded)
 - [[../../plan/evidence/p08-preemption-patch35-design]] (PATCH 3.5 design contract; implemented)
 - [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B; thread-dispatch resume hook)
 - [[../../plan/evidence/p08-preemption-patch3-independent-review]] (PATCH 3 review B)
@@ -86,8 +87,10 @@ Evidência corrente:
   landed (flag OFF; T11 generator PASS). PATCH 3 independent review B.
   PATCH 3.5 landed ([[../../plan/evidence/p08-preemption-patch35-validation]]);
   thread-switch resume hook (design 4.8). Flag OFF. Sem regen.
-  PATCH4_READY YES pending independent review. Attract ainda bloqueado
-  até PATCH 4 enable + `func_800BCF28`.
+  Independent review C
+  ([[../../plan/evidence/p08-preemption-patch35-independent-review]]): RCP/MI
+  mask process-global; `PATCH4_READY: NO`. Attract ainda bloqueado até a
+  correção, PATCH 4 enable e então `func_800BCF28`.
 
 
 ## Implementado / validado
@@ -114,7 +117,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch35-validation]] | **CURRENT:** PATCH 3.5 implemented/validated; review next |
+| [[../../plan/evidence/p08-preemption-patch35-independent-review]] | **CURRENT:** verdict C; per-OSThread RCP correction required |
+| [[../../plan/evidence/p08-preemption-patch35-validation]] | implementer evidence; PATCH4 gate superseded |
 | [[../../plan/evidence/p08-preemption-patch35-design]] | PATCH 3.5 design contract (implemented) |
 | [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] | **CURRENT:** thread-switch eligibility; verdict B; resume hook |
 | [[../../plan/evidence/p08-preemption-patch3-independent-review]] | PATCH 3 independent review B |
@@ -156,9 +160,10 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Independent review of PATCH 3.5** —
-   [[../../plan/evidence/p08-preemption-patch35-validation]].
-   Não PATCH 4 nesta etapa. Arquitetura:
+1. **Correção de PATCH 3.5** — current RCP/MI mask deve ser per-thread;
+   adicionar RCP-X1..X4 e fortalecer P3-X6. Review:
+   [[../../plan/evidence/p08-preemption-patch35-independent-review]].
+   `PATCH4_READY: NO`. Não PATCH 4 nesta etapa. Arquitetura:
    [[../../plan/evidence/p08-preemption-design-adversarial-review]].
 2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
    (chain gsworldDll/basetup/input/bakey). Fora do escopo até o fix permanente.
@@ -176,9 +181,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** independent high-risk review of PATCH 3.5 before PATCH 4
-activation. Evidence:
-[[../../plan/evidence/p08-preemption-patch35-validation]].
-Não habilitar a flag. Não regenerar Tooie. Depois: PATCH 4, então
+**NEXT:** corrigir somente o estado RCP/MI per-OSThread em PATCH 3.5,
+adicionar RCP-X1..X4 e fortalecer P3-X6. Evidence:
+[[../../plan/evidence/p08-preemption-patch35-independent-review]].
+Não habilitar a flag. Não regenerar Tooie. Depois de re-review: PATCH 4, então
 SIGSEGV `func_800BCF28`. Após demo: input e
 [[09-gameplay-parity-and-enhancements]].
