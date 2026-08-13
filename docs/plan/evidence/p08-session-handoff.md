@@ -12,9 +12,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `7106cedead5988cfa809067a106afa95cf43031b`
-  (`docs(p08): independently review preemption patch 3`). This session
-  designed PATCH 3.5 (semantic closure). Docs only; no source.
+- Checkpoint base/parent: `976481e33ab0ea2e6d9ea9470a00ca7652e63b6c`
+  (PATCH 3.5 thread-switch design). This session **implemented** PATCH 3.5.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -137,24 +136,20 @@ ARBITRATION (Grok 4.5 HIGH):
    landed — [[p08-preemption-patch2-validation]]. Independent review
    [[p08-preemption-patch2-independent-review]] verdict B. PATCH 3
    landed — [[p08-preemption-patch3-validation]]. Independent review
-   [[p08-preemption-patch3-independent-review]] verdict B. PATCH4_READY
-   NO (implement PATCH 3.5 first: X1 annotated-hold + MTC0).
-   Design: [[p08-preemption-patch35-design]].
-   Do not implement DeepSeek Hybrid F.
+   [[p08-preemption-patch3-independent-review]] verdict B. PATCH 3.5
+   landed — [[p08-preemption-patch35-validation]]. PATCH4_READY YES
+   (implementation gates). Independent review of 3.5 is next, then
+   PATCH 4 enable/regen. Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PATCH 3.5 DESIGN COMPLETE.** Implement PATCH 3.5 according to
-[[p08-preemption-patch35-design]]. Do not start PATCH 4.
-Feature remains OFF for games. C ABI is `void*` = `uint32_t* status_reg`.
-
-MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
-pending service + thread-dispatch resume hook (trigger B, design 4.8).
-MUST_TEST: X1-A..F, X1-G, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
-DEFER: generic JR, function cycles, status-init change, TLS epoch.
+**PATCH 3.5 IMPLEMENTED.** Independent high-risk review of PATCH 3.5
+before PATCH 4 activation. See [[p08-preemption-patch35-validation]].
+Do not enable `ULTRAMODERN_GUEST_PREEMPTION`. Do not regen Tooie.
+Do not investigate `func_800BCF28` yet.
 
 Thread-switch eligibility reviewed
 ([[p08-preemption-patch35-thread-switch-review]]): verdict B; held causes

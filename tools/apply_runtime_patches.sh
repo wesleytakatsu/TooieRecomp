@@ -59,13 +59,13 @@ apply_one_patch \
     "1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309" \
     "scheduler"
 
-# Hybrid F' PATCH 1+2+3 cumulative — runtime service + C ABI status_reg
-# pointer (feature OFF for games).
+# Hybrid F' PATCH 1+2+3+3.5 cumulative — runtime service + C ABI +
+# cause-aware hold-until-eligible (feature OFF for games).
 apply_one_patch \
     "$RUNTIME" \
     "$PATCH_DIR/n64modernruntime-preemption.patch" \
     "ca568b6ad79b9029d14077f0c3ffa757727c5559" \
-    "93e34a43bbc55f9da563ed0cd195719e055375764fcc52fecf80a66f19d779b9" \
+    "469537d6def22d267ee72bc6b52c204a3592c0abb024ad140c7e274fac0e5ad7" \
     "preemption runtime service"
 
 # N64Recomp Tooie generator patch — same-section JAL + PATCH 3 safepoints.
@@ -74,5 +74,5 @@ apply_one_patch \
     "$N64RECOMP" \
     "$PATCH_DIR/n64recomp-tooie.patch" \
     "2b6f05688de2abc7d86da5b4a89b84c2c6acbabe" \
-    "da84f056b371f1bf229cae3cabdcead528288a2739aa066653b24803cb0ab712" \
+    "2045cd90cfae70c881a9504146bac5174ca7a53ba1f5e6200a6a3e4adb5a044c" \
     "generator jal+safepoints"

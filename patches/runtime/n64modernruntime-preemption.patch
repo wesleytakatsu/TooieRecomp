@@ -1,3 +1,25 @@
+diff --git a/librecomp/src/flash.cpp b/librecomp/src/flash.cpp
+index 47f860a..2953eff 100644
+--- a/librecomp/src/flash.cpp
++++ b/librecomp/src/flash.cpp
+@@ -154,7 +154,7 @@ extern "C" void osFlashWriteBuffer_recomp(uint8_t * rdram, recomp_context * ctx)
+     }
+ 
+     // Send the message indicating write completion
+-    ultramodern::enqueue_external_message(mq, 0, false, true);
++    ultramodern::enqueue_external_message(mq, 0, false, true, ultramodern::InterruptCause::PI);
+ 
+     ctx->r2 = 0;
+ }
+@@ -193,7 +193,7 @@ extern "C" void osFlashReadArray_recomp(uint8_t * rdram, recomp_context * ctx) {
+     save_read(PASS_RDRAM dramAddr, offset, count);
+ 
+     // Send the message indicating read completion
+-    ultramodern::enqueue_external_message(mq, 0, false, true);
++    ultramodern::enqueue_external_message(mq, 0, false, true, ultramodern::InterruptCause::PI);
+ 
+     ctx->r2 = 0;
+ }
 diff --git a/librecomp/src/mods.cpp b/librecomp/src/mods.cpp
 index 0f7de83..d24a152 100644
 --- a/librecomp/src/mods.cpp
@@ -11,8 +33,39 @@ index 0f7de83..d24a152 100644
          .trigger_event = inputs.recomp_trigger_event,
          .reference_section_addresses = inputs.reference_section_addresses,
          // Use the reference section addresses as the local section addresses if this is regenerated code so that jump tables work correctly.
+diff --git a/librecomp/src/pi.cpp b/librecomp/src/pi.cpp
+index 62656ad..9691487 100644
+--- a/librecomp/src/pi.cpp
++++ b/librecomp/src/pi.cpp
+@@ -275,7 +275,7 @@ void do_dma(RDRAM_ARG PTR(OSMesgQueue) mq, gpr rdram_address, uint32_t physical_
+             recomp::do_rom_read(rdram, rdram_address, physical_addr, size);
+ 
+             // Send a message to the mq to indicate that the transfer completed
+-            ultramodern::enqueue_external_message(mq, 0, false, true);
++            ultramodern::enqueue_external_message(mq, 0, false, true, ultramodern::InterruptCause::PI);
+         } else if (physical_addr >= recomp::sram_base) {
+             if (!recomp::sram_allowed()) {
+                 ultramodern::error_handling::message_box("Attempted to use SRAM saving with other save type");
+@@ -285,7 +285,7 @@ void do_dma(RDRAM_ARG PTR(OSMesgQueue) mq, gpr rdram_address, uint32_t physical_
+             save_read(rdram, rdram_address, physical_addr - recomp::sram_base, size);
+ 
+             // Send a message to the mq to indicate that the transfer completed
+-            ultramodern::enqueue_external_message(mq, 0, false, true);
++            ultramodern::enqueue_external_message(mq, 0, false, true, ultramodern::InterruptCause::PI);
+         } else {
+             fprintf(stderr, "[WARN] PI DMA read from unknown region, phys address 0x%08X\n", physical_addr);
+         }
+@@ -302,7 +302,7 @@ void do_dma(RDRAM_ARG PTR(OSMesgQueue) mq, gpr rdram_address, uint32_t physical_
+             save_write(rdram, rdram_address, physical_addr - recomp::sram_base, size);
+ 
+             // Send a message to the mq to indicate that the transfer completed
+-            ultramodern::enqueue_external_message(mq, 0, false, true);
++            ultramodern::enqueue_external_message(mq, 0, false, true, ultramodern::InterruptCause::PI);
+         } else {
+             fprintf(stderr, "[WARN] PI DMA write to unknown region, phys address 0x%08X\n", physical_addr);
+         }
 diff --git a/librecomp/src/recomp.cpp b/librecomp/src/recomp.cpp
-index 1200f77..3a97149 100644
+index 1200f77..ccfbf5a 100644
 --- a/librecomp/src/recomp.cpp
 +++ b/librecomp/src/recomp.cpp
 @@ -415,6 +415,10 @@ extern "C" void osGetMemSize_recomp(uint8_t * rdram, recomp_context * ctx) {
@@ -37,7 +90,21 @@ index 1200f77..3a97149 100644
      // If any other bits were changed, assert false as they're not handled currently
      if (changed) {
          printf("Unhandled status register bits changed: 0x%08X\n", changed);
-@@ -482,6 +490,9 @@ void run_thread_function(uint8_t* rdram, uint64_t addr, uint64_t sp, uint64_t ar
+@@ -449,8 +457,12 @@ extern "C" void cop0_status_write(recomp_context* ctx, gpr value) {
+         exit(EXIT_FAILURE);
+     }
+     
+-    // Update the status register in the context
++    // Update the status register in the context, then service pending
++    // causes under the committed Status. Do not schedule on stale SR.
+     ctx->status_reg = new_sr;
++    if (uint8_t* rdram = ultramodern::current_guest_rdram()) {
++        ultramodern::after_interrupt_state_change(rdram, &ctx->status_reg);
++    }
+ }
+ 
+ extern "C" gpr cop0_status_read(recomp_context* ctx) {
+@@ -482,11 +494,19 @@ void run_thread_function(uint8_t* rdram, uint64_t addr, uint64_t sp, uint64_t ar
      ctx.r4 = arg;
      ctx.mips3_float_mode = 0;
      ctx.f_odd = &ctx.f0.u32h;
@@ -47,16 +114,29 @@ index 1200f77..3a97149 100644
  
      if (game_entry.thread_create_callback != nullptr) {
          game_entry.thread_create_callback(rdram, &ctx);
+     }
+ 
++    ultramodern::set_current_guest_interrupt_tls(rdram, &ctx.status_reg);
++    // First-start complement to wait_for_resumed: TLS was not available
++    // when the thread first acquired the token.
++    ultramodern::service_pending_interrupts_for_current_guest(rdram);
++
+     recomp_func_t* func = get_function(addr);
+     func(rdram, &ctx);
+ }
 diff --git a/librecomp/src/ultra_translation.cpp b/librecomp/src/ultra_translation.cpp
-index e0d367e..5ed6c67 100644
+index e0d367e..f7d507a 100644
 --- a/librecomp/src/ultra_translation.cpp
 +++ b/librecomp/src/ultra_translation.cpp
-@@ -119,15 +119,16 @@ extern "C" void osWritebackDCacheAll_recomp(uint8_t * rdram, recomp_context * ct
+@@ -119,15 +119,19 @@ extern "C" void osWritebackDCacheAll_recomp(uint8_t * rdram, recomp_context * ct
  }
  
  extern "C" void osSetIntMask_recomp(uint8_t * rdram, recomp_context * ctx) {
 -    ;
++    // Commit MI/IM first, write the previous combined mask to r2, THEN
++    // service pending causes. Scheduling must not observe a stale v0.
 +    ctx->r2 = ultramodern::intmask::apply_os_set_int_mask(rdram, &ctx->status_reg, (uint32_t)ctx->r4);
++    ultramodern::after_interrupt_state_change(rdram, &ctx->status_reg);
  }
  
  extern "C" void __osDisableInt_recomp(uint8_t * rdram, recomp_context * ctx) {
@@ -108,17 +188,48 @@ index 5593172..390403c 100644
 +    set_target_properties(preemption_harness PROPERTIES EXCLUDE_FROM_ALL TRUE)
 +endif()
 diff --git a/ultramodern/include/ultramodern/ultramodern.hpp b/ultramodern/include/ultramodern/ultramodern.hpp
-index 3b28af3..9beaa24 100644
+index 3b28af3..aa4827e 100644
 --- a/ultramodern/include/ultramodern/ultramodern.hpp
 +++ b/ultramodern/include/ultramodern/ultramodern.hpp
-@@ -56,6 +56,37 @@ void enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool re
+@@ -3,6 +3,8 @@
+ 
+ #include <thread>
+ #include <cassert>
++#include <cstddef>
++#include <cstdint>
+ #include <stdexcept>
+ #include <span>
+ #include <chrono>
+@@ -51,11 +53,83 @@ bool thread_queue_remove(RDRAM_ARG PTR(PTR(OSThread)) queue_, PTR(OSThread) t_);
+ bool thread_queue_empty(RDRAM_ARG PTR(PTR(OSThread)) queue);
+ PTR(OSThread) thread_queue_peek(RDRAM_ARG PTR(PTR(OSThread)) queue);
+ 
++// Hardware-like external events carry a cause. Multiplicity is preserved;
++// do not collapse pending events into a bitmap. Default None keeps the
++// existing 4-argument enqueue source-compatible (software IPC).
++enum class InterruptCause : uint8_t {
++    None = 0,
++    SP,
++    SI,
++    AI,
++    VI,
++    PI,
++    DP,
++    Timer,
++};
++
+ // Message queues.
+-void enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool requeue_if_blocked);
++void enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool requeue_if_blocked,
++                             InterruptCause cause = InterruptCause::None);
  void wait_for_external_message(RDRAM_ARG1);
  void wait_for_external_message_timed(RDRAM_ARG1, u32 millis);
  
 +// Guest preemption (Hybrid F').
-+// PATCH 2: real epoch/service/intmask. Feature remains OFF for games
-+// (hint false; service is a no-op unless the harness enables the flag).
-+// Generator safepoints are PATCH 3. Env override is PATCH 4.
++// PATCH 2: real epoch/service/intmask. PATCH 3.5: cause-aware hold-until-eligible.
++// Feature remains OFF for games (hint false; service is a no-op unless the
++// harness enables the flag). Generator safepoints are PATCH 3. Env override
++// is PATCH 4.
 +//
 +// C ABI ctx stays void* so this header does not depend on N64Recomp/recomp.h
 +// (anonymous struct typedef). Do not add a recomp_context* declaration.
@@ -129,27 +240,52 @@ index 3b28af3..9beaa24 100644
 +bool dequeue_external_messages(RDRAM_ARG1);
 +bool cpu_preemptible(uint32_t status_reg);
 +void service_preemption(RDRAM_ARG uint32_t* status_reg);
++void after_interrupt_state_change(RDRAM_ARG uint32_t* status_reg);
++void service_pending_interrupts_for_current_guest(RDRAM_ARG1);
++void set_current_guest_interrupt_tls(uint8_t* rdram, uint32_t* status_reg);
++uint8_t* current_guest_rdram();
++uint32_t* current_guest_status_reg();
++void flush_held_ineligible_to_external();
++size_t held_ineligible_count();
++InterruptCause held_ineligible_cause_at(size_t index);
 +
 +namespace intmask {
 +constexpr uint32_t SR_IE = 0x00000001u;
 +constexpr uint32_t SR_EXL = 0x00000002u;
 +constexpr uint32_t SR_ERL = 0x00000004u;
++constexpr uint32_t SR_IM2 = 0x00000400u;
++constexpr uint32_t SR_IM7 = 0x00008000u;
 +constexpr uint32_t SR_IMASK = 0x0000FF00u;
 +constexpr uint32_t OS_IM_NONE = 0x00000001u;
 +constexpr uint32_t OS_IM_ALL = 0x003FFF01u;
++constexpr uint32_t OS_IM_SP = 0x00010401u;
++constexpr uint32_t OS_IM_SI = 0x00020401u;
++constexpr uint32_t OS_IM_AI = 0x00040401u;
++constexpr uint32_t OS_IM_VI = 0x00080401u;
++constexpr uint32_t OS_IM_PI = 0x00100401u;
++constexpr uint32_t OS_IM_DP = 0x00200401u;
++constexpr uint32_t OS_IM_COUNTER = 0x00008401u;
 +constexpr uint32_t RCP_IMASK = 0x003F0000u;
++constexpr uint32_t MI_INTR_SP = 0x01u;
++constexpr uint32_t MI_INTR_SI = 0x02u;
++constexpr uint32_t MI_INTR_AI = 0x04u;
++constexpr uint32_t MI_INTR_VI = 0x08u;
++constexpr uint32_t MI_INTR_PI = 0x10u;
++constexpr uint32_t MI_INTR_DP = 0x20u;
 +
 +uint32_t status_reg_init();
 +uint32_t current_combined_mask(uint32_t status_reg);
 +uint32_t apply_os_set_int_mask(RDRAM_ARG uint32_t* status_reg, uint32_t a0);
 +uint32_t disable_int(uint32_t* status_reg);
 +void restore_int(RDRAM_ARG uint32_t* status_reg, uint32_t a0);
++bool cause_eligible(uint32_t status_reg, InterruptCause cause);
++bool cause_eligible(const uint32_t* status_reg, InterruptCause cause);
 +}
 +
  // Thread scheduling.
  void check_running_queue(RDRAM_ARG1);
  void run_next_thread_and_wait(RDRAM_ARG1);
-@@ -150,6 +181,15 @@ void set_callbacks(
+@@ -150,6 +224,15 @@ void set_callbacks(
  );
  } // namespace ultramodern
  
@@ -165,12 +301,57 @@ index 3b28af3..9beaa24 100644
  #define MIN(a, b) ((a) < (b) ? (a) : (b))
  
  #define debug_printf(...)
+diff --git a/ultramodern/src/events.cpp b/ultramodern/src/events.cpp
+index 090cc42..4ca2117 100644
+--- a/ultramodern/src/events.cpp
++++ b/ultramodern/src/events.cpp
+@@ -239,13 +239,13 @@ void vi_thread_func() {
+                 if (cur_state->mq != NULLPTR) {
+                     // Send a message to the VI queue, and do not set it to be requeued if the queue was full.
+                     // The worst case scenario is that the game misses a VI message and has to wait a little longer for the next. 
+-                    ultramodern::enqueue_external_message(cur_state->mq, cur_state->msg, false, false);
++                    ultramodern::enqueue_external_message(cur_state->mq, cur_state->msg, false, false, ultramodern::InterruptCause::VI);
+                 }
+                 remaining_retraces = cur_state->retrace_count;
+             }
+             if (events_context.ai.mq != NULLPTR) {
+                 // Send a message to the VI queue, and do not set it to be requeued if the queue was full for the same reason as the VI message above.
+-                ultramodern::enqueue_external_message(events_context.ai.mq, events_context.ai.msg, false, false);
++                ultramodern::enqueue_external_message(events_context.ai.mq, events_context.ai.msg, false, false, ultramodern::InterruptCause::AI);
+             }
+         }
+ 
+@@ -258,13 +258,13 @@ void vi_thread_func() {
+ void sp_complete() {
+     uint8_t* rdram = events_context.rdram;
+     std::lock_guard lock{ events_context.message_mutex };
+-    ultramodern::enqueue_external_message(events_context.sp.mq, events_context.sp.msg, false, true);
++    ultramodern::enqueue_external_message(events_context.sp.mq, events_context.sp.msg, false, true, ultramodern::InterruptCause::SP);
+ }
+ 
+ void dp_complete() {
+     uint8_t* rdram = events_context.rdram;
+     std::lock_guard lock{ events_context.message_mutex };
+-    ultramodern::enqueue_external_message(events_context.dp.mq, events_context.dp.msg, false, true);
++    ultramodern::enqueue_external_message(events_context.dp.mq, events_context.dp.msg, false, true, ultramodern::InterruptCause::DP);
+ }
+ 
+ void task_thread_func(uint8_t* rdram, moodycamel::LightweightSemaphore* thread_ready) {
+@@ -571,7 +571,7 @@ void ultramodern::submit_rsp_task(RDRAM_ARG PTR(OSTask) task_) {
+ }
+ 
+ void ultramodern::send_si_message() {
+-    ultramodern::enqueue_external_message(events_context.si.mq, events_context.si.msg, false, true);
++    ultramodern::enqueue_external_message(events_context.si.mq, events_context.si.msg, false, true, ultramodern::InterruptCause::SI);
+ }
+ 
+ void ultramodern::init_events(RDRAM_ARG ultramodern::renderer::WindowHandle window_handle) {
 diff --git a/ultramodern/src/intmask.cpp b/ultramodern/src/intmask.cpp
 new file mode 100644
-index 0000000..804cec7
+index 0000000..450f67e
 --- /dev/null
 +++ b/ultramodern/src/intmask.cpp
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,111 @@
 +#include "ultramodern/ultramodern.hpp"
 +
 +#include <cstdint>
@@ -203,13 +384,9 @@ index 0000000..804cec7
 +    if (status_reg != nullptr) {
 +        const uint32_t global_im = g_global_int_mask & SR_IMASK;
 +        const uint32_t new_im = (a0 & SR_IMASK) & global_im;
-+        const bool was = ultramodern::cpu_preemptible(*status_reg);
++        // osSetIntMask does not touch IE. Commit IM/MI only; the caller
++        // writes architectural r2, then after_interrupt_state_change.
 +        *status_reg = (*status_reg & ~SR_IMASK) | new_im;
-+        // osSetIntMask does not touch IE. If unmasking makes the CPU
-+        // preemptible, pending higher-priority work becomes schedulable.
-+        if (!was && ultramodern::cpu_preemptible(*status_reg)) {
-+            ultramodern::check_running_queue(PASS_RDRAM1);
-+        }
 +    }
 +
 +    return prev;
@@ -228,16 +405,66 @@ index 0000000..804cec7
 +    if (status_reg == nullptr) {
 +        return;
 +    }
-+    const bool was = ultramodern::cpu_preemptible(*status_reg);
 +    *status_reg |= (a0 & SR_IE);
-+    if (!was && ultramodern::cpu_preemptible(*status_reg)) {
-+        ultramodern::check_running_queue(PASS_RDRAM1);
++    // No r2 to preserve. Service pending causes after IE is committed.
++    ultramodern::after_interrupt_state_change(PASS_RDRAM status_reg);
++}
++
++static uint32_t mi_bit_for_cause(ultramodern::InterruptCause cause) {
++    switch (cause) {
++        case ultramodern::InterruptCause::SP: return MI_INTR_SP;
++        case ultramodern::InterruptCause::SI: return MI_INTR_SI;
++        case ultramodern::InterruptCause::AI: return MI_INTR_AI;
++        case ultramodern::InterruptCause::VI: return MI_INTR_VI;
++        case ultramodern::InterruptCause::PI: return MI_INTR_PI;
++        case ultramodern::InterruptCause::DP: return MI_INTR_DP;
++        default: return 0;
 +    }
++}
++
++bool cause_eligible(uint32_t status_reg, ultramodern::InterruptCause cause) {
++    if (cause == ultramodern::InterruptCause::None) {
++        return true;
++    }
++    if ((status_reg & SR_IE) == 0) {
++        return false;
++    }
++    if ((status_reg & (SR_EXL | SR_ERL)) != 0) {
++        return false;
++    }
++    if (cause == ultramodern::InterruptCause::Timer) {
++        // IM7 analog. Runtime does not model C0_COMPARE.
++        return ((status_reg & SR_IM7) != 0) && ((g_global_int_mask & SR_IM7) != 0);
++    }
++    const uint32_t mi_bit = mi_bit_for_cause(cause);
++    if (mi_bit == 0) {
++        return true;
++    }
++    if ((status_reg & SR_IM2) == 0) {
++        return false;
++    }
++    if ((g_mi_mask & mi_bit) == 0) {
++        return false;
++    }
++    if (((g_global_int_mask >> 16) & mi_bit) == 0) {
++        return false;
++    }
++    return true;
++}
++
++bool cause_eligible(const uint32_t* status_reg, ultramodern::InterruptCause cause) {
++    if (cause == ultramodern::InterruptCause::None) {
++        return true;
++    }
++    if (status_reg == nullptr) {
++        return false;
++    }
++    return cause_eligible(*status_reg, cause);
 +}
 +
 +} // namespace ultramodern::intmask
 diff --git a/ultramodern/src/mesgqueue.cpp b/ultramodern/src/mesgqueue.cpp
-index 961de3d..2d29b27 100644
+index 961de3d..ed5289c 100644
 --- a/ultramodern/src/mesgqueue.cpp
 +++ b/ultramodern/src/mesgqueue.cpp
 @@ -1,4 +1,5 @@
@@ -246,45 +473,207 @@ index 961de3d..2d29b27 100644
  
  #include "blockingconcurrentqueue.h"
  
-@@ -16,11 +17,12 @@ static moodycamel::BlockingConcurrentQueue<QueuedMessage> external_messages {};
+@@ -10,42 +11,181 @@ struct QueuedMessage {
+     OSMesg mesg;
+     bool jam;
+     bool requeue_if_blocked;
++    ultramodern::InterruptCause cause = ultramodern::InterruptCause::None;
+ };
  
- void ultramodern::enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool requeue_if_blocked) {
-     external_messages.enqueue({mq, msg, jam, requeue_if_blocked});
-+    ultramodern::publish_external_work();
- }
+ static moodycamel::BlockingConcurrentQueue<QueuedMessage> external_messages {};
+ 
+-void ultramodern::enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool requeue_if_blocked) {
+-    external_messages.enqueue({mq, msg, jam, requeue_if_blocked});
+-}
++// Process-global: a pending hardware interrupt is device state, not
++// per-native-thread state. Only the current guest token owner mutates it.
++// Host producers never touch this vector; they only enqueue into the MPMC.
++static std::vector<QueuedMessage> held_ineligible {};
++
++struct DrainResult {
++    bool delivered = false;
++    bool full_requeue = false;
++};
  
  bool do_send(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, bool jam, bool block);
  
 -void dequeue_external_messages(RDRAM_ARG1) {
+-    QueuedMessage to_send;
+-    std::vector<QueuedMessage> requeued_messages{};
+-    while (external_messages.try_dequeue(to_send)) {
+-        if (!do_send(PASS_RDRAM to_send.mq, to_send.mesg, to_send.jam, false) && to_send.requeue_if_blocked) {
+-            requeued_messages.push_back(to_send);
++static DrainResult drain_pending_external(RDRAM_ARG std::vector<QueuedMessage> incoming) {
++    const bool gate = ultramodern::guest_preemption_safepoints_enabled();
++    const uint32_t* status_reg = ultramodern::current_guest_status_reg();
++
++    std::vector<QueuedMessage> work;
++    work.swap(held_ineligible);
++    work.insert(work.end(), incoming.begin(), incoming.end());
++
++    std::vector<QueuedMessage> still_held;
++    std::vector<QueuedMessage> full_requeue;
++    DrainResult result;
++
++    for (QueuedMessage& cur : work) {
++        const bool eligible = !gate || ultramodern::intmask::cause_eligible(status_reg, cur.cause);
++        if (eligible) {
++            if (do_send(PASS_RDRAM cur.mq, cur.mesg, cur.jam, false)) {
++                result.delivered = true;
++            } else if (cur.requeue_if_blocked) {
++                // Full guest mq is NOT an interrupt hold. Preserve cause.
++                full_requeue.push_back(cur);
++            }
++        } else {
++            still_held.push_back(cur);
+         }
+     }
+-    for (QueuedMessage& cur_mesg : requeued_messages) {
+-        external_messages.enqueue(cur_mesg);
++
++    held_ineligible = std::move(still_held);
++    for (QueuedMessage& cur : full_requeue) {
++        external_messages.enqueue(cur);
+     }
++    result.full_requeue = !full_requeue.empty();
++    return result;
+ }
+ 
+-void ultramodern::wait_for_external_message(RDRAM_ARG1) {
++void ultramodern::enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool requeue_if_blocked,
++                                          InterruptCause cause) {
++    external_messages.enqueue({mq, msg, jam, requeue_if_blocked, cause});
++    ultramodern::publish_external_work();
++}
++
 +bool ultramodern::dequeue_external_messages(RDRAM_ARG1) {
++    std::vector<QueuedMessage> incoming;
      QueuedMessage to_send;
-     std::vector<QueuedMessage> requeued_messages{};
-     while (external_messages.try_dequeue(to_send)) {
-@@ -31,6 +33,7 @@ void dequeue_external_messages(RDRAM_ARG1) {
-     for (QueuedMessage& cur_mesg : requeued_messages) {
-         external_messages.enqueue(cur_mesg);
+-    external_messages.wait_dequeue(to_send);
+-    if (!do_send(PASS_RDRAM to_send.mq, to_send.mesg, to_send.jam, false) && to_send.requeue_if_blocked) {
+-        external_messages.enqueue(to_send);
++    while (external_messages.try_dequeue(to_send)) {
++        incoming.push_back(to_send);
      }
-+    return !requeued_messages.empty();
++    return drain_pending_external(PASS_RDRAM std::move(incoming)).full_requeue;
  }
  
- void ultramodern::wait_for_external_message(RDRAM_ARG1) {
-@@ -38,6 +41,7 @@ void ultramodern::wait_for_external_message(RDRAM_ARG1) {
-     external_messages.wait_dequeue(to_send);
-     if (!do_send(PASS_RDRAM to_send.mq, to_send.mesg, to_send.jam, false) && to_send.requeue_if_blocked) {
-         external_messages.enqueue(to_send);
-+        ultramodern::publish_external_work();
-     }
- }
- 
-@@ -46,6 +50,7 @@ void ultramodern::wait_for_external_message_timed(RDRAM_ARG u32 millis) {
-     if (external_messages.wait_dequeue_timed(to_send, std::chrono::milliseconds{millis})) {
+-void ultramodern::wait_for_external_message_timed(RDRAM_ARG u32 millis) {
+-    QueuedMessage to_send;
+-    if (external_messages.wait_dequeue_timed(to_send, std::chrono::milliseconds{millis})) {
++void ultramodern::flush_held_ineligible_to_external() {
++    if (held_ineligible.empty()) {
++        return;
++    }
++    for (QueuedMessage& cur : held_ineligible) {
++        external_messages.enqueue(cur);
++    }
++    held_ineligible.clear();
++    ultramodern::publish_external_work();
++}
++
++size_t ultramodern::held_ineligible_count() {
++    return held_ineligible.size();
++}
++
++ultramodern::InterruptCause ultramodern::held_ineligible_cause_at(size_t index) {
++    return held_ineligible.at(index).cause;
++}
++
++void ultramodern::wait_for_external_message(RDRAM_ARG1) {
++    if (!ultramodern::guest_preemption_safepoints_enabled()) {
++        QueuedMessage to_send;
++        external_messages.wait_dequeue(to_send);
          if (!do_send(PASS_RDRAM to_send.mq, to_send.mesg, to_send.jam, false) && to_send.requeue_if_blocked) {
              external_messages.enqueue(to_send);
 +            ultramodern::publish_external_work();
++        }
++        return;
++    }
++
++    for (;;) {
++        std::vector<QueuedMessage> incoming;
++        QueuedMessage to_send;
++        while (external_messages.try_dequeue(to_send)) {
++            incoming.push_back(to_send);
++        }
++        DrainResult result = drain_pending_external(PASS_RDRAM std::move(incoming));
++        if (result.full_requeue) {
++            ultramodern::publish_external_work();
++        }
++        if (result.delivered || result.full_requeue) {
++            return;
++        }
++        // Nothing eligible (held-only or idle). Block for a new host event;
++        // do not treat a held masked cause as wake work and do not spin.
++        incoming.clear();
++        external_messages.wait_dequeue(to_send);
++        incoming.push_back(to_send);
++        while (external_messages.try_dequeue(to_send)) {
++            incoming.push_back(to_send);
++        }
++        result = drain_pending_external(PASS_RDRAM std::move(incoming));
++        if (result.full_requeue) {
++            ultramodern::publish_external_work();
++        }
++        if (result.delivered || result.full_requeue) {
++            return;
++        }
++    }
++}
++
++void ultramodern::wait_for_external_message_timed(RDRAM_ARG u32 millis) {
++    if (!ultramodern::guest_preemption_safepoints_enabled()) {
++        QueuedMessage to_send;
++        if (external_messages.wait_dequeue_timed(to_send, std::chrono::milliseconds{millis})) {
++            if (!do_send(PASS_RDRAM to_send.mq, to_send.mesg, to_send.jam, false) && to_send.requeue_if_blocked) {
++                external_messages.enqueue(to_send);
++                ultramodern::publish_external_work();
++            }
++        }
++        return;
++    }
++
++    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds{millis};
++    for (;;) {
++        std::vector<QueuedMessage> incoming;
++        QueuedMessage to_send;
++        while (external_messages.try_dequeue(to_send)) {
++            incoming.push_back(to_send);
++        }
++        if (!incoming.empty() || !held_ineligible.empty()) {
++            const DrainResult result = drain_pending_external(PASS_RDRAM std::move(incoming));
++            if (result.full_requeue) {
++                ultramodern::publish_external_work();
++            }
++            if (result.delivered || result.full_requeue) {
++                return;
++            }
++        }
++
++        const auto now = std::chrono::steady_clock::now();
++        if (now >= deadline) {
++            return;
++        }
++        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
++        if (!external_messages.wait_dequeue_timed(to_send, remaining)) {
++            return;
++        }
++        incoming.clear();
++        incoming.push_back(to_send);
++        while (external_messages.try_dequeue(to_send)) {
++            incoming.push_back(to_send);
++        }
++        const DrainResult result = drain_pending_external(PASS_RDRAM std::move(incoming));
++        if (result.full_requeue) {
++            ultramodern::publish_external_work();
++        }
++        if (result.delivered || result.full_requeue) {
++            return;
          }
      }
  }
-@@ -154,7 +159,9 @@ extern "C" s32 osSendMesg(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, s32 flags)
+@@ -154,7 +294,9 @@ extern "C" s32 osSendMesg(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, s32 flags)
      }
      
      // Handle any messages that have been received from an external thread.
@@ -295,7 +684,7 @@ index 961de3d..2d29b27 100644
  
      // Try to send the message.
      bool sent = do_send(PASS_RDRAM mq_, msg, jam, flags == OS_MESG_BLOCK);
-@@ -176,7 +183,9 @@ extern "C" s32 osJamMesg(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, s32 flags)
+@@ -176,7 +318,9 @@ extern "C" s32 osJamMesg(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, s32 flags)
      }
      
      // Handle any messages that have been received from an external thread.
@@ -306,7 +695,7 @@ index 961de3d..2d29b27 100644
  
      // Try to send the message.
      bool sent = do_send(PASS_RDRAM mq_, msg, jam, flags == OS_MESG_BLOCK);
-@@ -193,7 +202,9 @@ extern "C" s32 osRecvMesg(RDRAM_ARG PTR(OSMesgQueue) mq_, PTR(OSMesg) msg_, s32
+@@ -193,7 +337,9 @@ extern "C" s32 osRecvMesg(RDRAM_ARG PTR(OSMesgQueue) mq_, PTR(OSMesg) msg_, s32
      assert(ultramodern::is_game_thread() && "RecvMesg not allowed outside of game threads.");
      
      // Handle any messages that have been received from an external thread.
@@ -319,29 +708,39 @@ index 961de3d..2d29b27 100644
      bool received = do_recv(PASS_RDRAM mq_, msg_, flags == OS_MESG_BLOCK);
 diff --git a/ultramodern/src/preemption.cpp b/ultramodern/src/preemption.cpp
 new file mode 100644
-index 0000000..b0ab76a
+index 0000000..871bc4a
 --- /dev/null
 +++ b/ultramodern/src/preemption.cpp
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,135 @@
 +#include "ultramodern/ultramodern.hpp"
 +
 +#include <atomic>
 +#include <cassert>
 +
-+// PATCH 2: epoch + hint + service protocol. Env ULTRAMODERN_GUEST_PREEMPTION
-+// remains PATCH 4. Feature defaults OFF: hint is false and service returns
-+// without draining or swapping.
++// PATCH 2: epoch + hint + service protocol. PATCH 3.5: cause-aware drain
++// lives in mesgqueue; this file owns the flag, epoch, TLS, and the two
++// eligibility-change triggers. Env ULTRAMODERN_GUEST_PREEMPTION remains
++// PATCH 4. Feature defaults OFF: hint is false and service returns without
++// draining or swapping.
 +
 +namespace {
 +
 +std::atomic<bool> g_guest_preemption_enabled{false};
 +std::atomic<uint64_t> g_work_epoch{0};
 +thread_local uint64_t tls_last_seen = 0;
++thread_local uint8_t* tls_rdram = nullptr;
++thread_local uint32_t* tls_status_reg = nullptr;
 +
 +} // namespace
 +
 +void ultramodern::set_guest_preemption_safepoints(bool enabled) {
-+    g_guest_preemption_enabled.store(enabled, std::memory_order_relaxed);
++    const bool was = g_guest_preemption_enabled.exchange(enabled, std::memory_order_relaxed);
++    // Production treats the flag as startup-immutable. Tests may toggle.
++    // If we turn OFF with held hardware events, flush them back onto the
++    // MPMC so the legacy drain-all path can see them. Do not strand.
++    if (was && !enabled) {
++        ultramodern::flush_held_ineligible_to_external();
++    }
 +}
 +
 +bool ultramodern::guest_preemption_safepoints_enabled() {
@@ -352,7 +751,24 @@ index 0000000..b0ab76a
 +    g_work_epoch.fetch_add(1, std::memory_order_release);
 +}
 +
++void ultramodern::set_current_guest_interrupt_tls(uint8_t* rdram, uint32_t* status_reg) {
++    tls_rdram = rdram;
++    tls_status_reg = status_reg;
++}
++
++uint8_t* ultramodern::current_guest_rdram() {
++    return tls_rdram;
++}
++
++uint32_t* ultramodern::current_guest_status_reg() {
++    return tls_status_reg;
++}
++
 +bool ultramodern::cpu_preemptible(uint32_t status_reg) {
++    // PATCH 3.5: hardware causes are class-filtered before they can wake a
++    // thread. The swap gate is therefore only CPU execution state.
++    // InterruptCause::None (software IPC) may legally schedule while RCP
++    // classes are masked, provided IE && !EXL && !ERL.
 +    if ((status_reg & ultramodern::intmask::SR_IE) == 0) {
 +        return false;
 +    }
@@ -362,8 +778,7 @@ index 0000000..b0ab76a
 +    if ((status_reg & ultramodern::intmask::SR_ERL) != 0) {
 +        return false;
 +    }
-+    const uint32_t combined = ultramodern::intmask::current_combined_mask(status_reg);
-+    return (combined & ~ultramodern::intmask::OS_IM_NONE) != 0;
++    return true;
 +}
 +
 +void ultramodern::service_preemption(RDRAM_ARG uint32_t* status_reg) {
@@ -372,13 +787,20 @@ index 0000000..b0ab76a
 +    }
 +    assert(ultramodern::is_game_thread() && "service_preemption is game-thread only");
 +
++    if (rdram != nullptr) {
++        tls_rdram = rdram;
++    }
++    if (status_reg != nullptr) {
++        tls_status_reg = status_reg;
++    }
++
 +    for (;;) {
 +        const uint64_t seen = g_work_epoch.load(std::memory_order_acquire);
 +        const bool had_requeue = ultramodern::dequeue_external_messages(PASS_RDRAM1);
 +        if (had_requeue) {
 +            // Pending work remains. Publish so hint stays true, but do not
 +            // treat our own requeue as "new work" that requires another spin
-+            // (a full guest mq would livelock).
++            // (a full guest mq would livelock). Do not publish for hold.
 +            ultramodern::publish_external_work();
 +        }
 +        if (status_reg != nullptr && ultramodern::cpu_preemptible(*status_reg)) {
@@ -395,6 +817,23 @@ index 0000000..b0ab76a
 +    }
 +}
 +
++void ultramodern::after_interrupt_state_change(RDRAM_ARG uint32_t* status_reg) {
++    if (!g_guest_preemption_enabled.load(std::memory_order_relaxed)) {
++        return;
++    }
++    ultramodern::service_preemption(PASS_RDRAM status_reg);
++}
++
++void ultramodern::service_pending_interrupts_for_current_guest(RDRAM_ARG1) {
++    if (!g_guest_preemption_enabled.load(std::memory_order_relaxed)) {
++        return;
++    }
++    if (tls_status_reg == nullptr) {
++        return;
++    }
++    ultramodern::service_preemption(PASS_RDRAM tls_status_reg);
++}
++
 +extern "C" bool ultramodern_preemption_hint(void) {
 +    if (!g_guest_preemption_enabled.load(std::memory_order_relaxed)) {
 +        return false;
@@ -408,12 +847,42 @@ index 0000000..b0ab76a
 +    auto* status_reg = static_cast<uint32_t*>(status_reg_opaque);
 +    ultramodern::service_preemption(rdram, status_reg);
 +}
+diff --git a/ultramodern/src/threads.cpp b/ultramodern/src/threads.cpp
+index fe46935..5c2ed68 100644
+--- a/ultramodern/src/threads.cpp
++++ b/ultramodern/src/threads.cpp
+@@ -153,6 +153,12 @@ void wait_for_resumed(RDRAM_ARG UltraThreadContext* thread_context) {
+     if (TO_PTR(OSThread, ultramodern::this_thread())->context != thread_context) {
+         osDestroyThread(PASS_RDRAM NULLPTR);
+     }
++    // PATCH 3.5 trigger B: the current guest OSThread (and therefore its
++    // per-thread SR.IM / RCP mask) just became current. Do not run this
++    // before semaphore acquisition or on a context about to be destroyed.
++    // May immediately schedule again (nested wait_for_resumed) if a held
++    // cause wakes a higher-priority waiter.
++    ultramodern::service_pending_interrupts_for_current_guest(PASS_RDRAM1);
+ }
+ 
+ void resume_thread(OSThread* t) {
+diff --git a/ultramodern/src/timer.cpp b/ultramodern/src/timer.cpp
+index 276301b..25b2c60 100644
+--- a/ultramodern/src/timer.cpp
++++ b/ultramodern/src/timer.cpp
+@@ -130,7 +130,7 @@ void timer_thread(RDRAM_ARG1) {
+         }
+         else {
+             // Waiting for the timer completed, so send the timer's message to its message queue
+-            ultramodern::enqueue_external_message(cur_timer->mq, cur_timer->msg, false, true);
++            ultramodern::enqueue_external_message(cur_timer->mq, cur_timer->msg, false, true, ultramodern::InterruptCause::Timer);
+             // If the timer has a specified interval then reload it with that value
+             if (cur_timer->interval != 0) {
+                 cur_timer->timestamp = cur_timer->interval + time_now();
 diff --git a/ultramodern/test/preemption_harness.cpp b/ultramodern/test/preemption_harness.cpp
 new file mode 100644
-index 0000000..4df4d00
+index 0000000..ddac2b3
 --- /dev/null
 +++ b/ultramodern/test/preemption_harness.cpp
-@@ -0,0 +1,768 @@
+@@ -0,0 +1,1320 @@
 +// PATCH 2+3 standalone harness for Hybrid F' guest preemption.
 +// T01 repaired (service after enqueue). T02–T10 and T12 implemented.
 +// T11-F proves the C ABI consumes a status_reg pointer (not whole ctx).
@@ -491,6 +960,17 @@ index 0000000..4df4d00
 +constexpr int32_t kEntryAudioFifo = 14;
 +constexpr int32_t kEntryMainCAbiMasked = 15;
 +constexpr int32_t kEntryMainCAbiUnmasked = 16;
++constexpr int32_t kEntryMainX1A = 17;
++constexpr int32_t kEntryMainX1G = 18;
++constexpr int32_t kEntryThreadBX1G = 19;
++constexpr int32_t kEntryMainX1E = 20;
++constexpr int32_t kEntryMainRequeueCause = 21;
++constexpr int32_t kEntryMainTls = 22;
++constexpr int32_t kEntryAudioTls = 23;
++constexpr int32_t kEntryMainP3X6 = 24;
++constexpr int32_t kEntryAudioP3X6 = 25;
++constexpr int32_t kEntryMainX1F = 26;
++constexpr int32_t kEntryMainNonint = 27;
 +
 +constexpr OSPri kPriMain = 20;
 +constexpr OSPri kPriAudio = 50;
@@ -533,8 +1013,18 @@ index 0000000..4df4d00
 +    std::atomic<bool> hint_after_requeue{false};
 +    std::atomic<bool> started_waiter{false};
 +    uint32_t status = ultramodern::intmask::status_reg_init();
++    uint32_t audio_status = ultramodern::intmask::status_reg_init();
++    uint32_t waiter_status = ultramodern::intmask::status_reg_init();
 +    uint32_t saved_ie = 0;
 +    uint32_t saved_mask = 0;
++    std::atomic<bool> masked_ready{false};
++    std::atomic<bool> unmask_now{false};
++    std::atomic<bool> b_started{false};
++    std::atomic<bool> b_resumed{false};
++    std::atomic<bool> toy_survived{false};
++    uint32_t toy_gpr2 = 0;
++    uint32_t toy_local = 0;
++    uint32_t toy_status_after = 0;
 +};
 +
 +CoopState* g_coop = nullptr;
@@ -636,6 +1126,7 @@ index 0000000..4df4d00
 +    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
 +                                       std::memory_order_release);
 +    (void)ultramodern::intmask::apply_os_set_int_mask(rdram, &g_coop->status, g_coop->saved_mask);
++    ultramodern::after_interrupt_state_change(rdram, &g_coop->status);
 +    g_coop->main_resumed.store(true, std::memory_order_release);
 +    park_forever(rdram);
 +}
@@ -767,9 +1258,239 @@ index 0000000..4df4d00
 +    park_forever(rdram);
 +}
 +
++void main_x1a(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    g_coop->saved_mask = ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
++                                       std::memory_order_release);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    while (!g_coop->unmask_now.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_AI);
++    ultramodern::after_interrupt_state_change(rdram, &g_coop->status);
++    park_forever(rdram);
++}
++
++void main_x1g(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    // Mask AI via this thread's SR.IM2 only so process-global MI stays open.
++    // B's own status (IM2 set) can then make the held AI eligible on resume.
++    g_coop->status &= ~ultramodern::intmask::SR_IM2;
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    // Hold the masked AI on A. Do not publish. B's resume hook must retry.
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    osRecvMesg(rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), OS_MESG_BLOCK);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void thread_b_x1g(uint8_t* rdram) {
++    g_coop->b_started.store(true, std::memory_order_release);
++    // A is higher priority: this queues B and swaps to A. Resume is a true
++    // wait_for_resumed (TLS already set), not a first start.
++    osStartThread(rdram, gptr(kOffMainThread));
++    g_coop->b_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void main_x1f(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_AI);
++    g_coop->status |= ultramodern::intmask::SR_EXL;
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
++                                       std::memory_order_release);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    while (!g_coop->unmask_now.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    // M1/X1-F: commit EXL clear, then the same after-commit hook MTC0 uses.
++    g_coop->status &= ~ultramodern::intmask::SR_EXL;
++    ultramodern::after_interrupt_state_change(rdram, &g_coop->status);
++    park_forever(rdram);
++}
++
++void main_nonint(uint8_t* rdram) {
++    g_coop->saved_mask = ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void main_x1e(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    // AI class open, IE cleared.
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_AI);
++    g_coop->saved_ie = ultramodern::intmask::disable_int(&g_coop->status);
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
++                                       std::memory_order_release);
++    ultramodern::intmask::restore_int(rdram, &g_coop->status, g_coop->saved_ie);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void main_requeue_cause(uint8_t* rdram) {
++    CHECK(osSendMesg(rdram, gptr(kOffAudioMq), 1, OS_MESG_NOBLOCK) == 0);
++    g_coop->audio_blocked.store(true, std::memory_order_release);
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    CHECK(ultramodern::held_ineligible_count() == 1);
++    CHECK(ultramodern::held_ineligible_cause_at(0) == ultramodern::InterruptCause::AI);
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_AI);
++    ultramodern::after_interrupt_state_change(rdram, &g_coop->status);
++    // Full mq requeue must preserve AI. Remask and retry: held again as AI.
++    CHECK(ultramodern::held_ineligible_count() == 0);
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    CHECK(ultramodern::held_ineligible_count() == 1);
++    CHECK(ultramodern::held_ineligible_cause_at(0) == ultramodern::InterruptCause::AI);
++    CHECK(osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_NOBLOCK) == 0);
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_AI);
++    ultramodern::after_interrupt_state_change(rdram, &g_coop->status);
++    const s32 rc = osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_NOBLOCK);
++    g_coop->audio_ran.store(rc == 0, std::memory_order_release);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void main_tls(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void audio_tls(uint8_t* rdram) {
++    g_coop->audio_blocked.store(true, std::memory_order_release);
++    const s32 rc = osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_BLOCK);
++    if (rc == 0) {
++        g_coop->audio_ran.store(true, std::memory_order_release);
++        // Redundant empty service with this thread's older tls_last_seen.
++        ultramodern::service_preemption(rdram, &g_coop->audio_status);
++        ultramodern::service_preemption(rdram, &g_coop->audio_status);
++        g_coop->fifo_ok.store(true, std::memory_order_release);
++    }
++    osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_BLOCK);
++}
++
++struct ToyCtx {
++    uint64_t gpr[32]{};
++    uint32_t status_reg = 0;
++    uint64_t hi = 0;
++    uint64_t lo = 0;
++    uint32_t fpu[32]{};
++};
++
++void toy_generated(uint8_t* rdram, ToyCtx* ctx) {
++    const uint32_t local_addend = 0xA5A5u;
++    ctx->gpr[2] = 0x11111111u;
++    ctx->hi = 0x22222222u;
++    ctx->lo = 0x33333333u;
++    ctx->fpu[0] = 0x4048F5C3u;
++    if (ultramodern_preemption_hint()) {
++        ultramodern_service_preemption(rdram, &ctx->status_reg);
++    }
++    g_coop->toy_gpr2 = static_cast<uint32_t>(ctx->gpr[2]);
++    g_coop->toy_local = local_addend;
++    g_coop->toy_status_after = ctx->status_reg;
++    g_coop->toy_survived.store(
++        ctx->gpr[2] == 0x11111111u && ctx->hi == 0x22222222u && ctx->lo == 0x33333333u &&
++            ctx->fpu[0] == 0x4048F5C3u && local_addend == 0xA5A5u,
++        std::memory_order_release);
++}
++
++void main_p3x6(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ToyCtx ctx{};
++    ctx.status_reg = g_coop->status;
++    toy_generated(rdram, &ctx);
++    g_coop->status = ctx.status_reg;
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
 +} // namespace
 +
 +void run_thread_function(uint8_t* rdram, uint64_t addr, uint64_t /*sp*/, uint64_t arg) {
++    uint32_t* sr = &g_coop->status;
++    switch (static_cast<int32_t>(addr)) {
++        case kEntryAudioOnce:
++        case kEntryAudioRepeat:
++        case kEntryAudioFifo:
++        case kEntryAudioTls:
++        case kEntryAudioP3X6:
++            sr = &g_coop->audio_status;
++            break;
++        case kEntryWaiterOnce:
++        case kEntryWaiterVi:
++        case kEntryThreadBX1G:
++            sr = &g_coop->waiter_status;
++            break;
++        default:
++            break;
++    }
++    ultramodern::set_current_guest_interrupt_tls(rdram, sr);
++    ultramodern::service_pending_interrupts_for_current_guest(rdram);
++
 +    switch (static_cast<int32_t>(addr)) {
 +        case kEntryMainT01:
 +            main_t01(rdram);
@@ -818,6 +1539,39 @@ index 0000000..4df4d00
 +            break;
 +        case kEntryMainCAbiUnmasked:
 +            main_cabi_unmasked(rdram);
++            break;
++        case kEntryMainX1A:
++            main_x1a(rdram);
++            break;
++        case kEntryMainX1G:
++            main_x1g(rdram);
++            break;
++        case kEntryThreadBX1G:
++            thread_b_x1g(rdram);
++            break;
++        case kEntryMainX1E:
++            main_x1e(rdram);
++            break;
++        case kEntryMainX1F:
++            main_x1f(rdram);
++            break;
++        case kEntryMainNonint:
++            main_nonint(rdram);
++            break;
++        case kEntryMainRequeueCause:
++            main_requeue_cause(rdram);
++            break;
++        case kEntryMainTls:
++            main_tls(rdram);
++            break;
++        case kEntryAudioTls:
++            audio_tls(rdram);
++            break;
++        case kEntryMainP3X6:
++            main_p3x6(rdram);
++            break;
++        case kEntryAudioP3X6:
++            audio_once(rdram);
 +            break;
 +        default:
 +            std::fprintf(stderr, "unknown harness entry %d arg=%llu\n",
@@ -924,7 +1678,7 @@ index 0000000..4df4d00
 +    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
 +    osStartThread(g_rdram, gptr(kOffMainThread));
 +    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
-+    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false);
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
 +    coop.host_enqueued.store(true, std::memory_order_release);
 +    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
 +    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
@@ -1053,7 +1807,6 @@ index 0000000..4df4d00
 +    coop.host_enqueued.store(true, std::memory_order_release);
 +    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
 +    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
-+    CHECK(coop.audio_ran.load(std::memory_order_acquire) == false);
 +}
 +
 +void t11_abi_unmasked() {
@@ -1121,6 +1874,261 @@ index 0000000..4df4d00
 +    delete[] rdram;
 +}
 +
++s32 mq_count(uint32_t mq_off) {
++    uint8_t* rdram = g_rdram;
++    return TO_PTR(OSMesgQueue, gptr(mq_off))->validCount;
++}
++
++void t04_plus_masks() {
++    std::printf("T04+ exact combined masks / nested disable-restore\n");
++    uint8_t dummy = 0;
++    uint32_t sr = ultramodern::intmask::status_reg_init();
++    CHECK(ultramodern::cpu_preemptible(sr) == true);
++    CHECK(ultramodern::intmask::current_combined_mask(sr) == ultramodern::intmask::OS_IM_ALL);
++    CHECK((sr & ultramodern::intmask::SR_IE) != 0);
++
++    uint32_t prev = ultramodern::intmask::apply_os_set_int_mask(&dummy, &sr, ultramodern::intmask::OS_IM_NONE);
++    CHECK(prev == ultramodern::intmask::OS_IM_ALL);
++    CHECK((sr & ultramodern::intmask::SR_IE) != 0);
++    CHECK((sr & ultramodern::intmask::SR_IMASK) == 0);
++    CHECK(ultramodern::intmask::current_combined_mask(sr) == ultramodern::intmask::OS_IM_NONE);
++    CHECK(ultramodern::cpu_preemptible(sr) == true); // IE still on
++
++    prev = ultramodern::intmask::apply_os_set_int_mask(&dummy, &sr, ultramodern::intmask::OS_IM_AI);
++    CHECK(prev == ultramodern::intmask::OS_IM_NONE);
++    CHECK((sr & ultramodern::intmask::SR_IE) != 0);
++    CHECK((sr & ultramodern::intmask::SR_IM2) != 0);
++    CHECK(ultramodern::intmask::current_combined_mask(sr) == ultramodern::intmask::OS_IM_AI);
++
++    prev = ultramodern::intmask::apply_os_set_int_mask(&dummy, &sr, ultramodern::intmask::OS_IM_VI);
++    CHECK(prev == ultramodern::intmask::OS_IM_AI);
++    CHECK(ultramodern::intmask::current_combined_mask(sr) == ultramodern::intmask::OS_IM_VI);
++
++    prev = ultramodern::intmask::apply_os_set_int_mask(&dummy, &sr, 0x00000C01u); // IE|IM2|IM3 partial CPU
++    CHECK((sr & ultramodern::intmask::SR_IE) != 0);
++    CHECK((sr & 0x00000C00u) == 0x00000C00u);
++
++    prev = ultramodern::intmask::apply_os_set_int_mask(&dummy, &sr, ultramodern::intmask::OS_IM_ALL);
++    CHECK(ultramodern::intmask::current_combined_mask(sr) == ultramodern::intmask::OS_IM_ALL);
++
++    const uint32_t ie1 = ultramodern::intmask::disable_int(&sr);
++    CHECK(ie1 == ultramodern::intmask::SR_IE);
++    CHECK((sr & ultramodern::intmask::SR_IE) == 0);
++    const uint32_t ie2 = ultramodern::intmask::disable_int(&sr);
++    CHECK(ie2 == 0);
++    ultramodern::intmask::restore_int(&dummy, &sr, ie2);
++    CHECK((sr & ultramodern::intmask::SR_IE) == 0);
++    ultramodern::intmask::restore_int(&dummy, &sr, ie1);
++    CHECK((sr & ultramodern::intmask::SR_IE) != 0);
++}
++
++void t07_plus_causes() {
++    std::printf("T07+ cause metadata + per-producer FIFO\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainBurst, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osCreateThread(g_rdram, gptr(kOffWaiterThread), 5, kEntryWaiterVi, 0, gptr(kOffWaiterSp), kPriMid);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] {
++        return coop.audio_blocked.load(std::memory_order_acquire) &&
++               coop.waiter_blocked.load(std::memory_order_acquire);
++    }, 2000));
++    std::thread ai([&] {
++        ultramodern::enqueue_external_message(gptr(kOffAudioMq), 1, false, false, ultramodern::InterruptCause::AI);
++    });
++    std::thread vi([&] {
++        ultramodern::enqueue_external_message(gptr(kOffExtraMq), 2, false, false, ultramodern::InterruptCause::VI);
++    });
++    ai.join();
++    vi.join();
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.waiter_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++}
++
++void t_x1a_b() {
++    std::printf("X1-A/B AI held while VI open, then unmask\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainX1A, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(coop.audio_ran.load(std::memory_order_acquire) == false);
++    CHECK(mq_count(kOffAudioMq) == 0);
++    CHECK(ultramodern::held_ineligible_count() == 1);
++    CHECK(ultramodern::held_ineligible_cause_at(0) == ultramodern::InterruptCause::AI);
++    coop.unmask_now.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(ultramodern::held_ineligible_count() == 0);
++}
++
++void t_x1c() {
++    std::printf("X1-C VI cause preemption\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainService, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::VI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++}
++
++void t_x1d() {
++    std::printf("X1-D OS_IM_NONE holds hardware cause\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainNone, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++}
++
++void t_x1e() {
++    std::printf("X1-E IE=0 holds AI, restore delivers\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainX1E, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++}
++
++void t_x1f_m1_m2() {
++    std::printf("X1-F / M1 / M2 MTC0-analog Status commit then service\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainX1F, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(ultramodern::held_ineligible_count() == 1);
++    coop.unmask_now.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(ultramodern::held_ineligible_count() == 0);
++}
++
++void t_x1g() {
++    std::printf("X1-G thread-dispatch resume hook\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainX1G, 0, gptr(kOffMainSp), kPriMid);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osCreateThread(g_rdram, gptr(kOffWaiterThread), 5, kEntryThreadBX1G, 0, gptr(kOffWaiterSp), kPriLow);
++    osStartThread(g_rdram, gptr(kOffWaiterThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    CHECK(ultramodern::held_ineligible_count() == 0); // not yet drained
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.b_resumed.load(std::memory_order_acquire); }, 2000));
++}
++
++void t_requeue_cause() {
++    std::printf("REQUEUE_CAUSE preserves AI through full-mq requeue\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateMesgQueue(g_rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), 1);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainRequeueCause, 0, gptr(kOffMainSp), kPriMain);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 99, false, true, ultramodern::InterruptCause::AI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.audio_ran.load(std::memory_order_acquire));
++}
++
++void t_noninterrupt() {
++    std::printf("NONINTERRUPT None delivered while AI masked\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainNonint, 0, gptr(kOffMainSp), kPriMain);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::None);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(mq_count(kOffAudioMq) == 1);
++    CHECK(ultramodern::held_ineligible_count() == 0);
++    coop.unmask_now.store(true, std::memory_order_release);
++}
++
++void t_tls() {
++    std::printf("TLS per-thread epoch no reorder/livelock\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainTls, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioTls, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 1, false, false, ultramodern::InterruptCause::None);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.fifo_ok.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(mq_count(kOffAudioMq) == 0);
++}
++
++void t_p3x6() {
++    std::printf("P3-X6 real context swap through toy generated function\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainP3X6, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioP3X6, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::None);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.toy_survived.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.toy_gpr2 == 0x11111111u);
++    CHECK(coop.toy_local == 0xA5A5u);
++}
++
++void t_mtc0_flag_off() {
++    std::printf("MTC0 feature-OFF is a no-op for async service\n");
++    CHECK(ultramodern::guest_preemption_safepoints_enabled() == false);
++    uint32_t sr = ultramodern::intmask::status_reg_init();
++    ultramodern::after_interrupt_state_change(nullptr, &sr);
++    CHECK(ultramodern_preemption_hint() == false);
++    CHECK(ultramodern::held_ineligible_count() == 0);
++}
++
 +using test_fn = void (*)();
 +
 +int run_isolated(const char* id, test_fn fn) {
@@ -1175,8 +2183,21 @@ index 0000000..4df4d00
 +    run_isolated("T11-F-unmasked", t11_abi_unmasked);
 +    t11_abi_flag_off();
 +    run_isolated("T12", t12_threadqueue);
++    run_isolated("T04+", t04_plus_masks);
++    run_isolated("T07+", t07_plus_causes);
++    run_isolated("X1-A/B", t_x1a_b);
++    run_isolated("X1-C", t_x1c);
++    run_isolated("X1-D", t_x1d);
++    run_isolated("X1-E", t_x1e);
++    run_isolated("X1-F/M1/M2", t_x1f_m1_m2);
++    run_isolated("X1-G", t_x1g);
++    run_isolated("REQUEUE_CAUSE", t_requeue_cause);
++    run_isolated("NONINTERRUPT", t_noninterrupt);
++    run_isolated("TLS", t_tls);
++    run_isolated("P3-X6", t_p3x6);
++    t_mtc0_flag_off();
 +
-+    std::printf("PATCH2 %s  (pass=%d fail=%d skipped=%d)\n",
++    std::printf("PATCH35 %s  (pass=%d fail=%d skipped=%d)\n",
 +                g_fail == 0 ? "PASS" : "FAIL", g_pass, g_fail, g_skip);
 +    std::fflush(stdout);
 +    std::fflush(stderr);

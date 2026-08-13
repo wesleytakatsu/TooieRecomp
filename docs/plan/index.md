@@ -160,10 +160,12 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-patch35-thread-switch-review]] — **CURRENT:**
-  thread-switch eligibility; verdict B; add resume hook (design 4.8).
-- [[evidence/p08-preemption-patch3-independent-review]] — **CURRENT:**
-  PATCH 3 independent review B; PATCH 3.5 design next; PATCH4_READY NO.
+- [[evidence/p08-preemption-patch35-validation]] — **CURRENT:**
+  PATCH 3.5 implemented/validated; flag OFF; PATCH4_READY YES pending review.
+- [[evidence/p08-preemption-patch35-thread-switch-review]] —
+  thread-switch eligibility; verdict B; resume hook (design 4.8).
+- [[evidence/p08-preemption-patch3-independent-review]] —
+  PATCH 3 independent review B.
 - [[evidence/p08-preemption-patch3-validation]] — PATCH 3 generator
   landed; feature OFF; T11 PASS; sem regen Tooie.
 - [[evidence/p08-preemption-patch2-validation]] — PATCH 2 runtime

@@ -45,20 +45,15 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 3.5 DESIGN COMPLETE.** PATCH 3 accepted (review B).
-PATCH4_READY NO. Flag OFF. Sem regen Tooie.
-Próximos passos:
+**PATCH 3.5 IMPLEMENTED / VALIDATED.** Flag OFF. Sem regen Tooie.
+PATCH4_READY YES (implementation gates). Next: independent high-risk
+review of PATCH 3.5 before PATCH 4 activation.
 
-1. **Implement PATCH 3.5** segundo
-   [[plan/evidence/p08-preemption-patch35-design]].
-   MUST: X1 annotated-hold + MTC0/mask-change service + thread-dispatch
-   resume hook (design 4.8).
-   TEST: X1-A..F, X1-G, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
-   DEFER: generic JR, function-entry safepoints, status-init, TLS epoch.
-   Não habilitar a flag. Não regenerar Tooie. Não implementar Hybrid F
-   DeepSeek ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
-2. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
-3. Então: gsattract ep1 / demo, depois input title/file-select.
+1. **Independent review of PATCH 3.5** —
+   [[plan/evidence/p08-preemption-patch35-validation]].
+   Não habilitar a flag. Não regenerar Tooie. Não PATCH 4 nesta etapa.
+2. **PATCH 4** só após review: env/default ON + Tooie regen + T15.
+3. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
 
 Não forçar clear; não BaKey; não reabrir Scheduler C; não editar
 `RecompiledFuncs`; não resetar o dirty do runtime.

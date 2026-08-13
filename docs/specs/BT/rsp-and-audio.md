@@ -100,11 +100,10 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
 - **Design (2026-08-13):** Hybrid F' + spec de implementação em
   `docs/plan/evidence/p08-preemption-implementation-plan.md`.
-  PATCH 3 landed generator safepoints (flag OFF; Tooie não regenerado).
-  Áudio do jogo ainda não é preemptado. `PATCH4_READY: NO`.
-  Ver `docs/plan/evidence/p08-preemption-patch3-independent-review.md`
-  (review B), `docs/plan/evidence/p08-preemption-patch3-validation.md` e
-  `docs/plan/evidence/p08-preemption-patch2-independent-review.md`.
+  PATCH 3.5 landed cause-aware hold-until-eligible (flag OFF; Tooie não
+  regenerado). Áudio do jogo ainda não é preemptado. `PATCH4_READY: YES`
+  pending independent review before enable. Ver
+  `docs/plan/evidence/p08-preemption-patch35-validation.md`.
 
 ## Referências
 

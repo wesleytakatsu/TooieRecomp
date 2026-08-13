@@ -66,17 +66,13 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > `docs/plan/evidence/p08-preemption-implementation-plan.md`. O contrato
 > acima (itens 1–4) permanece o requisito N64 PROVEN.
 > PATCH 3 landed a *capacidade do gerador* (safepoints após delay slot
-> em transferências para trás e antes de `emit_switch`). A flag de
+> em transferências para trás e antes de `emit_switch`). PATCH 3.5 landed
+> the cause-aware hold-until-eligible runtime contract (see
+> `docs/plan/evidence/p08-preemption-patch35-validation.md`). A flag de
 > produção permanece OFF e o Tooie **não** foi regenerado — o C gerado
 > existente ainda não contém chamadas. **Não tratar como preempção
-> guest entregue no jogo.** `PATCH4_READY: NO`. O design de fechamento
-> semântico (X1 annotated-hold + MTC0) está em
-> `docs/plan/evidence/p08-preemption-patch35-design.md` e **não** está
-> implementado. Ver
-> `docs/plan/evidence/p08-preemption-patch3-independent-review.md`
-> (veredito B; PATCH 3 aceite),
-> `docs/plan/evidence/p08-preemption-patch3-validation.md` e
-> `docs/plan/evidence/p08-preemption-patch2-independent-review.md`.
+> guest entregue no jogo.** `PATCH4_READY: YES` for implementation
+> gates; independent review is required before enable/regen.
 
 ## Próximos passos práticos
 

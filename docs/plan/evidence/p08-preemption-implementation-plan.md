@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3 accepted (review B); PATCH 3.5 design complete; implement 3.5 next; PATCH4_READY NO."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3.5 landed (flag OFF); PATCH4_READY YES pending independent review."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES (PATCH 3 accepted review B; PATCH 3.5 design complete — implement next; PATCH4_READY NO)
+IMPLEMENTATION_READY: YES (PATCH 3.5 landed; PATCH4_READY YES pending independent review)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -264,7 +264,7 @@ PATCH 3 — generator safepoints     [flag still OFF for games]  LANDED
   C ABI void* is status_reg; generated arg is (void*)&ctx->status_reg.
   Isolate hunks from dirty resolve_jal. T11 PASS. No Tooie regen.
 
-PATCH 3.5 — semantic closure       [flag still OFF]            DESIGN COMPLETE
+PATCH 3.5 — semantic closure       [flag still OFF]            LANDED
   See [[p08-preemption-patch35-design]]. Implement next.
   MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
   pending service + thread-dispatch resume hook (trigger B).
@@ -572,8 +572,8 @@ T01-E:
 
 ```text
 NEXT_SINGLE_ACTION:
-  Design the smallest PATCH 3.5 semantic closure before
-  implementation (X1 cause/class, MTC0 re-enable, recorded PATCH 3
+  Independent high-risk review of PATCH 3.5 before PATCH 4
+  activation (X1 cause/class, MTC0 re-enable, recorded PATCH 3
   coverage gaps). Do not enable the flag. Do not regenerate Tooie.
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: "P08 — PATCH 3.5 semantic-closure design"
-description: "Design/arbitration only. Smallest cause/class + MTC0 closure before Hybrid F' enable. Not implemented."
+description: "Design/arbitration for A+ annotated-hold. Implemented and validated in p08-preemption-patch35-validation. Flag still OFF."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -18,15 +18,15 @@ RUNTIME_BASE:         ca568b6ad79b9029d14077f0c3ffa757727c5559
 N64RECOMP_BASE:       2b6f05688de2abc7d86da5b4a89b84c2c6acbabe
 ARCHITECTURE:         Hybrid F' (not reopened)
 PATCH35_DESIGN_COMPLETE: YES
-READY_TO_IMPLEMENT_PATCH35: YES
+PATCH35_IMPLEMENTED:  YES
 THREAD_SWITCH_DELTA:   YES (4.8 resume hook; see thread-switch review)
-PATCH4_READY:         NO
-SOURCE_CODE_CHANGED:  NO
+PATCH4_READY:         YES (implementation gates; independent review next)
+SOURCE_CODE_CHANGED:  YES
+VALIDATION:           [[p08-preemption-patch35-validation]]
 ```
 
-This document is the implementation contract for PATCH 3.5. It does **not**
-implement the model. Do not treat any structure below as present in the
-runtime until a later implementation session lands it.
+This document remains the implementation contract. PATCH 3.5 is landed and
+validated; do not re-derive X1. Flag remains OFF. Do not regenerate Tooie.
 
 Do not enable the flag. Do not regenerate Tooie. Do not implement PATCH 4.
 Do not investigate `func_800BCF28`. DeepSeek Hybrid F remains
