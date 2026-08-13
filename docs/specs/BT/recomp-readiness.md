@@ -71,6 +71,8 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > existente ainda não contém chamadas. **Não tratar como preempção
 > guest entregue no jogo.** `PATCH4_READY: NO` (X1 cause/class + MTC0
 > re-enable). Ver
+> `docs/plan/evidence/p08-preemption-patch3-independent-review.md`
+> (veredito B; PATCH 3 aceite; PATCH 3.5 design next),
 > `docs/plan/evidence/p08-preemption-patch3-validation.md` e
 > `docs/plan/evidence/p08-preemption-patch2-independent-review.md`.
 

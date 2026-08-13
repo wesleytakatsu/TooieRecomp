@@ -12,9 +12,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `89737cac4e84ca76378432bc6b1844935b2d8b88`
-  (`docs(p08): independent review of preemption PATCH 2`). This session
-  implemented PATCH 3 generator safepoints (flag OFF, no Tooie regen).
+- Checkpoint base/parent: `e94d89a13680f720cd376245e5fceed3746a3eb1`
+  (`build(p08): add generated preemption safepoints`). This session
+  independently reviewed PATCH 3 (verdict B). Docs only; no source.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -136,34 +136,39 @@ ARBITRATION (Grok 4.5 HIGH):
    [[p08-preemption-patch1-independent-review]] verdict B. PATCH 2
    landed — [[p08-preemption-patch2-validation]]. Independent review
    [[p08-preemption-patch2-independent-review]] verdict B. PATCH 3
-   landed — [[p08-preemption-patch3-validation]]. PATCH4_READY NO
-   (X1 cause/class + MTC0 re-enable). Do not implement DeepSeek Hybrid F.
+   landed — [[p08-preemption-patch3-validation]]. Independent review
+   [[p08-preemption-patch3-independent-review]] verdict B. PATCH4_READY
+   NO (X1 cause/class + MTC0 re-enable + PATCH 3.5 semantic closure).
+   Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PATCH 3 LANDED.** Independent review of PATCH 3 is the next
-single action. Do not start PATCH 4. Feature remains OFF for games.
-C ABI is `void*` = `uint32_t* status_reg`. Close X1 (cause/class) and
-MTC0 re-enable before enabling the flag. Cumulative artifacts:
+**PATCH 3 ACCEPTED (review B).** Design the smallest PATCH 3.5
+semantic closure before implementation. Do not start PATCH 4.
+Feature remains OFF for games. C ABI is `void*` = `uint32_t* status_reg`.
+Close X1 (cause/class), MTC0 re-enable, and recorded PATCH 3 coverage
+gaps before enabling the flag. Cumulative artifacts:
 `patches/runtime/n64modernruntime-preemption.patch`,
 `patches/runtime/n64recomp-tooie.patch`.
 
 Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
 Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
 `RecompiledFuncs` à mão. Sem resetar o dirty do runtime. Sem
-habilitar a flag. Sem regenerar Tooie.
+habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 3.5
+ainda — só o design.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch3-validation]] — **CURRENT: PATCH 3 landed**
-2. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B; inherited pre-PATCH4 blockers
-3. [[p08-preemption-implementation-plan]] — remaining PATCH 4 spec
-4. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-5. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-6. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+1. [[p08-preemption-patch3-independent-review]] — **CURRENT: PATCH 3 review B**
+2. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
+3. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B; inherited pre-PATCH4 blockers
+4. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
+5. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+6. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
+7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
 
@@ -181,10 +186,10 @@ Run clean → confirm freeze (`d` stable ≥6s, black) → attach only after fre
 
 ```text
 CODE_CHANGED             = NO (Tooie src/RecompiledFuncs untouched)
-RUNTIME_CODE_CHANGED     = YES (external dirty; C ABI + harness T11-F)
-GENERATOR_CODE_CHANGED   = YES (external dirty N64Recomp; not regenerated)
-PATCH_CODE_CHANGED       = YES (cumulative runtime + n64recomp-tooie)
+RUNTIME_CODE_CHANGED     = NO this session (external dirty preserved)
+GENERATOR_CODE_CHANGED   = NO this session (external dirty preserved)
+PATCH_CODE_CHANGED       = NO this session
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (PATCH 3 validation)
+EVIDENCE_CHANGED         = YES (PATCH 3 independent review)
 ```

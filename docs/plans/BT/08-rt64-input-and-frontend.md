@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch3-validation]] (**CURRENT** — PATCH 3 generator; T11 PASS; flag OFF)
+- [[../../plan/evidence/p08-preemption-patch3-independent-review]] (**CURRENT** — PATCH 3 review B; PATCH 3.5 design next)
+- [[../../plan/evidence/p08-preemption-patch3-validation]] (PATCH 3 generator; T11 PASS; flag OFF)
 - [[../../plan/evidence/p08-preemption-patch2-independent-review]] (PATCH 2 review B; inherited pre-PATCH4 blockers)
 - [[../../plan/evidence/p08-preemption-patch2-validation]] (PATCH 2 landed; T01–T10/T12 PASS; flag OFF)
 - [[../../plan/evidence/p08-preemption-patch1-independent-review]] (PATCH 1 review B)
@@ -79,8 +80,9 @@ Evidência corrente:
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
   = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1–3
-  landed (flag OFF; T11 generator PASS). PATCH4_READY NO (X1 + MTC0).
-  Attract ainda bloqueado até enable + `func_800BCF28`.
+  landed (flag OFF; T11 generator PASS). PATCH 3 independent review B.
+  PATCH4_READY NO (X1 + MTC0 + PATCH 3.5). Attract ainda bloqueado até
+  enable + `func_800BCF28`.
 
 
 ## Implementado / validado
@@ -107,7 +109,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch3-validation]] | **CURRENT:** PATCH 3 generator; T11 PASS; flag OFF |
+| [[../../plan/evidence/p08-preemption-patch3-independent-review]] | **CURRENT:** PATCH 3 independent review B; 3.5 design next |
+| [[../../plan/evidence/p08-preemption-patch3-validation]] | PATCH 3 generator; T11 PASS; flag OFF |
 | [[../../plan/evidence/p08-preemption-patch2-independent-review]] | PATCH 2 independent review B; pre-PATCH4 blockers |
 | [[../../plan/evidence/p08-preemption-patch2-validation]] | PATCH 2 runtime service |
 | [[../../plan/evidence/p08-preemption-patch1-independent-review]] | PATCH 1 independent review B |
@@ -145,10 +148,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Review independente de PATCH 2**, depois PATCH 3 —
-   [[../../plan/evidence/p08-preemption-implementation-plan]],
-   [[../../plan/evidence/p08-preemption-patch2-validation]].
-   Arquitetura:
+1. **Design PATCH 3.5** (fecho semântico mínimo) — review B em
+   [[../../plan/evidence/p08-preemption-patch3-independent-review]].
+   Não PATCH 4. Arquitetura:
    [[../../plan/evidence/p08-preemption-design-adversarial-review]].
 2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
    (chain gsworldDll/basetup/input/bakey). Fora do escopo até o fix permanente.
@@ -166,7 +168,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** review independente de PATCH 2, depois PATCH 3 (generator
-safepoints). Review: [[../../plan/evidence/p08-preemption-patch2-validation]].
+**NEXT:** design PATCH 3.5 semantic closure before implementation.
+Review: [[../../plan/evidence/p08-preemption-patch3-independent-review]].
 Não PATCH 4. Depois: SIGSEGV `func_800BCF28`. Após demo: input e
 [[09-gameplay-parity-and-enhancements]].
