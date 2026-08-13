@@ -45,24 +45,18 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**GAP DE PREEMPÇÃO CAUSALMENTE PROVADO (CLASS A).** Hybrid F DeepSeek foi
-**revisado adversarialmente** (veredito C — major revision). Próximos passos:
+**IMPLEMENTATION PLAN READY** (Hybrid F' aprovado). Próximos passos:
 
-1. **IMPLEMENTAR Hybrid F'** (não o texto DeepSeek as-is): safepoint após
-   delay slot em backedge + antes de jump-table; epoch atômico relaxed;
-   service com recheck e publish-on-requeue; `osSetIntMask` /
-   `__osDisableInt` com o contrato libultra real (não boolean/nesting).
-   Evidência: [[plan/evidence/p08-preemption-design-adversarial-review]].
-   O desenho DeepSeek fica em
-   [[plan/evidence/p08-permanent-preemption-design]] como
-   `CORRECTED/SUPERSEDED`.
-2. **Investigar o novo SIGSEGV downstream em `func_800BCF28`** só depois do
-   fix permanente aterrar (chain gsworldDll_entrypoint_2 →
-   basetup_entrypoint_2 → func_800A4B08 → func_80097B4C → bakey_heldCount;
-   RIP off 0x656d11).
+1. **IMPLEMENTAR na ordem do plano**
+   [[plan/evidence/p08-preemption-implementation-plan]]:
+   PATCH 1 stubs/harness → PATCH 2 runtime service → PATCH 3 generator
+   → PATCH 4 regen Tooie. Começar por PATCH 1. Não implementar Hybrid F
+   DeepSeek ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
+2. **Investigar `func_800BCF28`** só depois do fix permanente aterrar.
 3. Então: gsattract ep1 / demo, depois input title/file-select.
 
-Não forçar clear; não BaKey; não reabrir Scheduler C sem prova nova.
+Não forçar clear; não BaKey; não reabrir Scheduler C; não editar
+`RecompiledFuncs`; não resetar o dirty do runtime.
 
 ## Estado do produto validado
 
@@ -111,9 +105,9 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-design-adversarial-review]]
-2. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
-3. [[plan/evidence/p08-guest-preemption-causal-validation]]
-4. [[plan/evidence/p08-guest-preemption-runtime-audit]]
+1. [[plan/evidence/p08-preemption-implementation-plan]]
+2. [[plan/evidence/p08-preemption-design-adversarial-review]]
+3. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
+4. [[plan/evidence/p08-guest-preemption-causal-validation]]
 5. [[plan/evidence/p08-session-handoff]]
 6. [[plans/BT/08-rt64-input-and-frontend]]

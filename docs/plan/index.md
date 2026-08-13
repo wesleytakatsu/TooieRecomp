@@ -160,9 +160,10 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-design-adversarial-review]] — **CURRENT design:**
-  revisão adversarial (Grok 4.6 HIGH) do Hybrid F. Veredito C — major
-  revision. Hybrid F' pronto para implementar; DeepSeek as-is rejeitado.
+- [[evidence/p08-preemption-implementation-plan]] — **CURRENT:** spec de
+  implementação Hybrid F' (PATCH 1–4 + T01–T15). Sem código ainda.
+- [[evidence/p08-preemption-design-adversarial-review]] — arquitetura F'
+  aprovada (veredito C). DeepSeek Hybrid F rejeitado as-is.
 - [[evidence/p08-permanent-preemption-design]] — DeepSeek Hybrid F;
   `CORRECTED/SUPERSEDED`.
 - [[evidence/p08-guest-preemption-causal-validation]] — experimento

@@ -12,9 +12,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `63d41a871b1708f4ff945a5df26ce17e3139529c`
-  (`docs(p08): design generic guest preemption fix`). This session lands
-  the adversarial review on top.
+- Checkpoint base/parent: `e729e7efd6caee620670cd490b789ffff0433cf1`
+  (`docs(p08): adversarially review preemption design`). This session
+  lands the implementation plan on top.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -131,31 +131,30 @@ ARBITRATION (Grok 4.5 HIGH):
 2. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
 3. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
 4. Host fix location: runtime scheduler opportunity (generic preemption) —
-   PROVEN needed. DeepSeek Hybrid F is `CORRECTED/SUPERSEDED`; implement
-   Hybrid F' in [[p08-preemption-design-adversarial-review]].
+   PROVEN needed. Hybrid F' architecture APPROVED; implementation spec in
+   [[p08-preemption-implementation-plan]]. Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PREEMPTION GAP CAUSALLY PROVEN** (class A). O Hybrid F DeepSeek foi
-**revisado adversarialmente** (Grok 4.6 HIGH): veredito **C — MAJOR
-REVISION REQUIRED**. Esqueleto safepoint+hint+service+swap sobrevive;
-modelo de interrupção, protocolo do flag, cobertura backedge-only e API
-do gerador são Hybrid F'. Evidência:
-[[p08-preemption-design-adversarial-review]].
+**IMPLEMENTATION PLAN READY.** Hybrid F' is specified at
+file/function level in [[p08-preemption-implementation-plan]]
+(PATCH 1 stubs/harness → PATCH 2 runtime service → PATCH 3 generator
+→ PATCH 4 Tooie regen). Next chat: DeepSeek V4 Flash/Pro implements
+**PATCH 1 only** first.
 
-**Próximo chat: IMPLEMENTAR Hybrid F'** (runtime + N64Recomp). Não
-implementar o texto DeepSeek as-is. Não investigar `func_800BCF28` até o
-fix permanente aterrar. Sem force-clear, BaKey ou reopen do Scheduler C.
+Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
+Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
+`RecompiledFuncs` à mão. Sem resetar o dirty do runtime.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-design-adversarial-review]] — **CURRENT design (F', não implementado)**
-2. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`
-3. [[p08-guest-preemption-causal-validation]] — causal experiment (class A)
-4. [[p08-guest-preemption-runtime-audit]] — Gemini structural audit
+1. [[p08-preemption-implementation-plan]] — **CURRENT: implement this**
+2. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+3. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
+4. [[p08-guest-preemption-causal-validation]] — class A experiment
 5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
@@ -179,5 +178,5 @@ GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (adversarial review of Hybrid F → F')
+EVIDENCE_CHANGED         = YES (implementation plan for Hybrid F')
 ```

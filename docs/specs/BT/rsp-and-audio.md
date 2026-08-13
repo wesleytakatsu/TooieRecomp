@@ -98,8 +98,8 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   preempção: `yield_self_1ms` em `func_800C2AB8` deixa AUDIO rodar e
   `func_800205D0` limpar `table[2].word0`. Ver
   `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
-- **Design (2026-08-13):** fix genérico revisto em
-  `docs/plan/evidence/p08-preemption-design-adversarial-review.md`
+- **Design (2026-08-13):** Hybrid F' + spec de implementação em
+  `docs/plan/evidence/p08-preemption-implementation-plan.md`
   (não implementado; não é contrato de áudio).
 
 ## Referências

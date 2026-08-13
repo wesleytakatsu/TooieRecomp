@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-design-adversarial-review]] (**CURRENT** — Hybrid F' revisto; não implementado)
+- [[../../plan/evidence/p08-preemption-implementation-plan]] (**CURRENT** — spec de implementação F'; não implementado)
+- [[../../plan/evidence/p08-preemption-design-adversarial-review]] (arquitetura F' aprovada)
 - [[../../plan/evidence/p08-permanent-preemption-design]] (DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`)
 - [[../../plan/evidence/p08-guest-preemption-causal-validation]]
 - [[../../plan/evidence/p08-guest-preemption-runtime-audit]]
@@ -101,7 +102,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-design-adversarial-review]] | **CURRENT:** revisão adversarial Hybrid F → F' (veredito C) |
+| [[../../plan/evidence/p08-preemption-implementation-plan]] | **CURRENT:** spec file/function + T01–T15 |
+| [[../../plan/evidence/p08-preemption-design-adversarial-review]] | arquitetura F' aprovada (veredito C) |
 | [[../../plan/evidence/p08-permanent-preemption-design]] | DeepSeek Hybrid F; `CORRECTED/SUPERSEDED` |
 | [[../../plan/evidence/p08-guest-preemption-causal-validation]] | experimento limpo class A — gap de preempção provado causalmente |
 | [[../../plan/evidence/p08-guest-preemption-runtime-audit]] | auditoria estrutural do gap (Gemini) |
@@ -133,8 +135,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Implementar Hybrid F'** — gap PROVADO causalmente; Hybrid F DeepSeek
-   **rejeitado as-is** (veredito C). Desenho corrigido:
+1. **Implementar Hybrid F'** na ordem PATCH 1→4 —
+   [[../../plan/evidence/p08-preemption-implementation-plan]].
+   Arquitetura:
    [[../../plan/evidence/p08-preemption-design-adversarial-review]].
 2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
    (chain gsworldDll/basetup/input/bakey). Fora do escopo até o fix permanente.

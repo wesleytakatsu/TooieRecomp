@@ -77,9 +77,10 @@ limpo reversível):** strong override temporário de `func_800C2AB8` chamando
 limpa `table[2].word0` (0x8005C1B0→0), slot 7 dispensado por `func_800C16A4`,
 `func_800C2AB8` retorna, attract progride até **SIGSEGV downstream novo** em
 `func_800BCF28` (fora do escopo). Patch revertido. Criador `func_80020790`,
-clearer `func_800205D0`. **Próximo:** implementar Hybrid F' (revisão adversarial,
-[[../../plan/evidence/p08-preemption-design-adversarial-review]]);
+clearer `func_800205D0`. **Próximo:** implementar Hybrid F' PATCH 1→4
+([[../../plan/evidence/p08-preemption-implementation-plan]]);
 `func_800BCF28` só depois. Input title/file-select diferido. Evidência:
+[[../../plan/evidence/p08-preemption-implementation-plan]],
 [[../../plan/evidence/p08-preemption-design-adversarial-review]],
 [[../../plan/evidence/p08-guest-preemption-causal-validation]],
 [[../../plan/evidence/p08-guest-preemption-runtime-audit]],

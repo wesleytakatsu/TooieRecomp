@@ -62,12 +62,10 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > `func_800205D0` limpar `table[2].word0` e o busy-wait convergir. Ver
 > `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
 >
-> **Design (2026-08-13):** o Hybrid F DeepSeek foi revisado adversarialmente
-> (veredito C). O contrato acima (itens 1–4) permanece o requisito N64
-> PROVEN. O desenho corrigido (Hybrid F') está em
-> `docs/plan/evidence/p08-preemption-design-adversarial-review.md` e
-> **não está implementado**. Não tratar o desenho como comportamento
-> entregue.
+> **Design (2026-08-13):** Hybrid F' aprovado; spec de implementação em
+> `docs/plan/evidence/p08-preemption-implementation-plan.md`. O contrato
+> acima (itens 1–4) permanece o requisito N64 PROVEN. **Não implementado.**
+> Não tratar o plano como comportamento entregue.
 
 ## Próximos passos práticos
 
