@@ -68,20 +68,15 @@ adicionais durante P08. Detalhe: [[06-overlays-and-syscalls]].
 por ouvido** no sink default. Residual: SFX/pause/hotplug/soak (T06 resto +
 T07). Detalhe: [[07-rsp-and-audio]].
 
-### Nota P08 (2026-08-12)
+### Nota P08 (2026-08-13)
 
-RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido no clean freeze;
-mode-5 alcançado. **Gap de preempção do runtime provado causalmente (experimento
-limpo reversível):** strong override temporário de `func_800C2AB8` chamando
-`yield_self_1ms(rdram)` → AUDIO roda (contadores de áudio avançam), `func_800205D0`
-limpa `table[2].word0` (0x8005C1B0→0), slot 7 dispensado por `func_800C16A4`,
-`func_800C2AB8` retorna, attract progride até **SIGSEGV downstream novo** em
-`func_800BCF28` (fora do escopo). Patch revertido. Criador `func_80020790`,
-clearer `func_800205D0`. A correção PATCH 3.5 TLS RCP per-OSThread foi aceita
-independentemente (verdict B; `PATCH4_READY YES`). **Próximo:** implementar
-somente PATCH 4 activation/regeneration/validation
-([[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]]);
-`func_800BCF28` só depois de PATCH 4. Input title/file-select diferido. Evidência:
+RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido; mode-5
+alcançado. **C2AB8 permanently resolved by PATCH 4 (CLASS A).** Hybrid F'
+is ON for Tooie at startup (`ULTRAMODERN_GUEST_PREEMPTION=0` rollback).
+Attract/world init progresses to **SIGSEGV `func_800BCF28`**. **Próximo:**
+independent review of [[../../plan/evidence/p08-preemption-patch4-validation]],
+then `func_800BCF28` only. Input title/file-select diferido. Evidência:
+[[../../plan/evidence/p08-preemption-patch4-validation]],
 [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]],
 [[../../plan/evidence/p08-preemption-patch35-rcp-correction]],
 [[../../plan/evidence/p08-preemption-patch35-independent-review]],

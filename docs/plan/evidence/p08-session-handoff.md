@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: intro para attract demo"
-description: "Estado autossuficiente do blocker pós-Jiggy e ponto exato para a próxima investigação."
+description: "Estado autossuficiente após PATCH 4: C2AB8 resolvido; blocker corrente é func_800BCF28."
 status: evidence
 phase: P08
 updated: 2026-08-13
-tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, preemption]
+tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28]
 ---
 
 # P08 — session handoff: INTRO → ATTRACT DEMO
@@ -12,69 +12,71 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Independent-review base: `bc636edd28f784d9e2a8ad10998eaacc1f681907`.
-  Confirm with `git rev-parse HEAD` after pull.
+- PATCH 4 base: `33d23ad8a2d9792bf8aff833af3782b597216283`.
+  Confirm `git rev-parse HEAD` after pull; expect a newer
+  `build(p08): enable guest preemption for Tooie` commit.
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend. Prioridade: abrir a first attract/gameplay demo
-após intro/Jiggy. Title/file-select input continua diferido.
+P08 — RT64, input e frontend. Prioridade: abrir a first attract/gameplay
+demo. Title/file-select input continua diferido.
 
 ## CURRENT_PRODUCT_STATE
 
 - Intro visual completa (céu, logo, Jiggy).
-- Attract request correto (`map=335`, `entrance=8`, `kind=2`).
-- Transition type-4 **completa**; `warp=3` **consumido**; mode-5 alcançado.
-- Gameplay demo **não** começa: black freeze na init do mode-5/attract.
+- Attract request correto; type-4 completa; warp consumido; mode-5 alcançado.
+- Hybrid F' **production ON** no Tooie (startup).
+- `func_800C2AB8` **não** congela mais com PATCH4 default ON.
+- Gameplay demo **não** começa: SIGSEGV em `func_800BCF28`.
 - `RecompiledFuncs` é gerado — não editar.
 
 ## CURRENT_BLOCKER
 
-**Kinematics slot-7 readiness busy-wait** in `func_800C2AB8`.
+**SIGSEGV in `func_800BCF28`** after C2AB8 returns and attract/world init
+progresses.
 
 ```text
-slot7 (0x80128F10): enabled=1, mode=3, substate=2
-table base 0x80128B08; table[2].word0 = live pool object (e.g. 0x8005C168)
-func_800C269C(7)==0 forever -> pending!=0 -> C2AB8 never returns
+#0 func_800BCF28
+#1 bakey_heldCount
+#2 bainput_func_80097B4C
+#5 func_800A4B08
+#7 basetup_entrypoint_2
+#10 gsworldDll_entrypoint_2
+#14 func_800A76F4
 ```
 
-## PROVEN_ROOT_MECHANISM
+Matches the 2026-08-12 temporary-yield observation. Not diagnosed in PATCH 4.
+
+## PROVEN_ROOT_MECHANISM (old C2AB8)
 
 ```text
-YES — synchronous dependency cycle / busy-wait:
+YES — synchronous dependency cycle / busy-wait, starved because MAIN
+held the host execution token in a pure MIPS loop:
   table[2].word0 != 0
   -> C269C(7)==0
   -> C2AB8 outer loop infinite
-  -> MAIN stuck in mode-5 init (A76F4 -> A7380 -> C2AB8)
+  -> AUDIO cannot run -> 205D0 never clears table[2]
 ```
-
-`func_80026500` as hang PC: **REFUTED**.
 
 ## ROOT_CAUSE_STATUS
 
 ```text
-ROOT_CAUSE_PROVEN: YES (causally, via clean dynamic experiment)
+ROOT_CAUSE_PROVEN: YES
+PERMANENT_FIX:     YES for the observed C2AB8 path (PATCH 4, CLASS A)
 ```
 
-A causa raiz foi integralmente demonstrada estruturalmente, validada
-dinamicamente E agora **provada causalmente por experimento limpo reversível**
-(ver [[p08-guest-preemption-causal-validation]]):
+Same generated binary:
 
-- No N64 original, a interrupção de áudio preempta imediatamente o loop CPU de MAIN (`func_800C2AB8`), pois `Status.IE = 1` e Priority(AUDIO)=50 > Priority(MAIN)=20.
-- No `N64ModernRuntime`, o agendamento é puramente cooperativo; `external_messages` só são consumidas em chamadas de API (`osRecvMesg`, `osSendMesg`, `osYieldThread`).
-- Como `func_800C2AB8` é um loop MIPS puro sem chamadas de runtime, MAIN retém o token de execução host indefinidamente, mantendo a thread AUDIO estacionada em `LightweightSemaphore::waitWithPartialSpinning` e impedindo a execução de `func_800205D0`.
-- **EXPERIMENTO CAUSAL (2026-08-12):** strong override temporário de
-  `func_800C2AB8` chamando a primitiva existente `yield_self_1ms(rdram)` por
-  passada com pending: AUDIO rodou (contadores de áudio avançaram o run todo),
-  `func_800205D0` limpou `table[2].word0` (0x8005C1B0 -> 0x00000000), slot7 foi
-  dispensado por `func_800C16A4`, `func_800C2AB8` RETORNOU e o attract progrediu
-  até um SIGSEGV downstream NOVO em `func_800BCF28` (input/world init, fora do
-  escopo). Patch revertido; nenhum código permanece.
+- `ULTRAMODERN_GUEST_PREEMPTION` unset → C2AB8 returns, AUDIO progresses,
+  crash in `func_800BCF28`.
+- `ULTRAMODERN_GUEST_PREEMPTION=0` → old freeze (d/audio/last_ovl stable ≥58s).
+
+No C2AB8 override, no `yield_self_1ms`, no forced table[2] clear.
 
 ## CURRENT_FIRST_DIVERGENCE
 
-Inanição do runtime de threads guest: MAIN retém o execution token do host em `func_800C2AB8` sem ceder CPU cooperativamente, impedindo o processamento da fila de mensagens externas que acordaria a thread AUDIO (prioridade 50). **CAUSALLY PROVEN** por experimento limpo: com uma oportunidade cooperativa (`yield_self_1ms`) o chain `func_8001ED68 → func_8001EE34 → func_800200B8 → func_800205D0` limpa `table[2].word0` e C2AB8 retorna.
-
+Downstream world-init / input path: `func_800BCF28` SIGSEGV. Do not treat
+this as a scheduler regression.
 
 ## RESOLVED_DO_NOT_REOPEN
 
@@ -88,99 +90,46 @@ Inanição do runtime de threads guest: MAIN retém o execution token do host em
 8. Type-4 incomplete / warp gated as clean-freeze blocker.
 9. Warp not consumed as clean-freeze blocker.
 10. `func_80026500` list walk as current hang PC.
-11. **`func_800A907C -> func_8001EE34` as object driver** — REFUTED (static).
-12. **"table[2] object NÃO está agendado" / "C — event never registered"** —
-    **REFUTED** (clean dynamic: entrada na HEAD da delta-queue, delta 0).
+11. **`func_800A907C -> func_8001EE34` as object driver** — REFUTED.
+12. **"table[2] object NÃO está agendado"** — REFUTED.
+13. **C2AB8 cooperative freeze as current blocker** — RESOLVED by PATCH 4.
+14. Hybrid F' architecture / PATCH 1 / 2 / 3 / 3.5 internals.
 
 Do not reopen these without new evidence.
 
 ## MODEL_DISAGREEMENTS
 
-```text
-MODEL_DISAGREEMENT:
-Gemini:
-  STALE_INTRO audio SFX; ROOT_CAUSE_PROVEN YES; clearer 205D0 via 200B8;
-  no clearer before C2AB8.
-
-DeepSeek:
-  LIVE attract object; countdown +0x34 still 2; 205D0 never ran; free/active
-  lists valid; ROOT_CAUSE_PROVEN NO; driver A907C->1EE34.
-
-ARBITRATION (Grok 4.5 HIGH):
-  CLASS C — BOTH PARTIAL.
-  ACCEPT: creator 20790, clearer 205D0<-200B8<-1EE34, backref +0x30,
-          +0x34 countdown init 2, C2AB8 cannot self-progress,
-          CLEARER_BEFORE_C2AB8=NO on transition path,
-          dynamic integrity/live/no-205D0.
-  REJECT: Gemini ROOT_CAUSE_PROVEN YES; DeepSeek A907C->1EE34;
-          STALE_INTRO or ATTRACT origin as proven.
-  OBJECT_ORIGIN: UNKNOWN.
-  C2AB8 progress source: A and/or C (not B).
-  Full write-up: [[p08-slot7-object-lifecycle-arbitration]]
-```
+Historical Gemini vs DeepSeek slot7 arbitration is preserved in
+[[p08-slot7-object-lifecycle-arbitration]]. Not reopened. PATCH 4 did not
+depend on object-origin remaining UNKNOWN.
 
 ## OPEN_QUESTIONS
 
-1. **NOVO BLOCKER downstream:** após C2AB8 retornar (com a prova causal), o
-   attract/world init progride até SIGSEGV determinístico em `func_800BCF28`
-   (chain gsworldDll_entrypoint_2 → basetup_entrypoint_2 → func_800A4B08 →
-   func_80097B4C → bakey_heldCount → func_800BCF28; RIP off 0x656d11). Fora do
-   escopo desta tarefa; próximo passo natural.
-2. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
-3. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
-4. Host fix location: runtime scheduler opportunity (generic preemption) —
-   PROVEN needed. Hybrid F' APPROVED. PATCH 1 (stubs, flag OFF, T01)
-   landed — [[p08-preemption-patch1-validation]]. Independent review
-   [[p08-preemption-patch1-independent-review]] verdict B. PATCH 2
-   landed — [[p08-preemption-patch2-validation]]. Independent review
-   [[p08-preemption-patch2-independent-review]] verdict B. PATCH 3
-   landed — [[p08-preemption-patch3-validation]]. Independent review
-   [[p08-preemption-patch3-independent-review]] verdict B. PATCH 3.5
-   landed — [[p08-preemption-patch35-validation]]. Independent review
-   [[p08-preemption-patch35-independent-review]] verdict C: current RCP/MI
-   mask was process-global. Implementer correction
-   [[p08-preemption-patch35-rcp-correction]] (TLS `current_mi_mask`,
-   RCP-X1..X4 PASS, P3-X6+ PASS) is independently approved by
-   [[p08-preemption-patch35-rcp-independent-review]] (verdict B;
-   PATCH4_READY YES). Do not implement DeepSeek Hybrid F.
-5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
-6. Meaning of any observation at `0x8004E5A8` (not found statically).
-7. BaKey only after attract init progresses — possible downstream only.
+1. **CURRENT BLOCKER:** SIGSEGV `func_800BCF28` (BaKey / world input init).
+   Diagnose only after independent review of PATCH 4 evidence.
+2. Exact creation epoch/call chain RA for the historical table[2] object.
+3. Generic non-RA JR still lacks safepoint coverage (deferred).
+4. Timer IM7 / PI completion remain approved approximations (deferred).
 
 ## NEXT_SINGLE_ACTION
 
-**Implement PATCH 4 activation/regeneration/validation only.** PATCH 3.5 and
-its per-OSThread RCP correction are independently accepted; see
-[[p08-preemption-patch35-rcp-independent-review]]. PATCH 4 owns startup flag
-activation, Tooie regeneration, and the prescribed validation. Do not expand
-into `func_800BCF28` until PATCH 4 lands.
+**Independent review of PATCH 4 evidence**, then investigate `func_800BCF28`
+only. See [[p08-preemption-patch4-validation]].
 
-Cumulative artifacts still:
-`patches/runtime/n64modernruntime-preemption.patch`,
-`patches/runtime/n64recomp-tooie.patch`.
-
-Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
-Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
-`RecompiledFuncs` à mão. Sem resetar o dirty do runtime. Sem
-habilitar a flag ou regenerar Tooie fora da execução controlada de PATCH 4.
+Não reabrir Hybrid F' / PATCH 1–3.5. Sem force-clear, BaKey ou edição de
+`RecompiledFuncs`. Sem resetar o dirty do runtime.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch35-rcp-independent-review]] — **CURRENT: correction accepted; PATCH4_READY YES**
-2. [[p08-preemption-patch35-rcp-correction]] — implementer correction evidence
-3. [[p08-preemption-patch35-independent-review]] — pre-correction verdict C (finding resolved, history preserved)
-4. [[p08-preemption-patch35-thread-switch-review]] — thread-switch eligibility (verdict B)
-5. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
-6. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
-7. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
-8. [[p08-preemption-implementation-plan]] — PATCH 4 spec
-9. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-10. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-11. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+1. [[p08-preemption-patch4-validation]] — **CURRENT**
+2. [[p08-preemption-implementation-plan]]
+3. [[p08-preemption-patch35-rcp-independent-review]]
+4. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
-## CLEAN-FREEZE REPRO
+## CLEAN-FREEZE REPRO (rollback)
 
 ```sh
+ULTRAMODERN_GUEST_PREEMPTION=0 \
 TOOIE_AUTO_START=1 \
 TOOIE_DIAG=1 \
 TOOIE_DISABLE_LAUNCHER_MUSIC=1 \
@@ -188,16 +137,15 @@ VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json \
 ./build/TooieRecompiled
 ```
 
-Run clean → confirm freeze (`d` stable ≥6s, black) → attach only after freeze.
+PATCH4 default (ON): omit the env var. Expect C2AB8 to return and then
+SIGSEGV in `func_800BCF28`.
 
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = NO (Tooie src/RecompiledFuncs untouched)
-RUNTIME_CODE_CHANGED     = YES (external dirty: intmask TLS + harness; not committed there)
-GENERATOR_CODE_CHANGED   = NO
-PATCH_CODE_CHANGED       = YES (cumulative n64modernruntime-preemption.patch)
-CORE_INCLUDED            = NO
-BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (PATCH 3.5 RCP correction)
+CODE_CHANGED             = YES (Tooie startup activation + T15)
+RUNTIME_CODE_CHANGED     = NO (dirty tree protected, unused by this commit)
+GENERATOR_CODE_CHANGED   = NO (already patched; used for regen)
+PATCH_CODE_CHANGED       = NO
+RECOMPILEDFUNCS          = regenerated, gitignored
 ```

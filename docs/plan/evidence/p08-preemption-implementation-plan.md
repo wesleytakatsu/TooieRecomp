@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3.5 RCP correction implemented; independent review of that correction is the PATCH 4 gate."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 4 landed: Tooie activation + regen + T13/T14/T15 CLASS A."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,8 +21,9 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: NO (PATCH 4 blocked on independent review of RCP correction)
+IMPLEMENTATION_READY: YES (PATCH 4 landed; see p08-preemption-patch4-validation)
 ARCHITECTURE_STATUS:  APPROVED
+PATCH4_STATUS:        LANDED / CLASS A
 ```
 
 Não reabrir arquitetura salvo contradição concreta. Contradição encontrada:
@@ -601,8 +602,8 @@ T03: 20 isolated child runs PASS; historical flake class E, nonblocking
 
 ```text
 NEXT_SINGLE_ACTION:
-  Implement PATCH 4 activation/regeneration/validation only.
-  Until that task starts, keep the flag OFF and do not regenerate Tooie.
+  Independent review of PATCH 4 evidence
+  (p08-preemption-patch4-validation), then investigate func_800BCF28 only.
 ```
 
 === END IMPLEMENTATION PLAN ===

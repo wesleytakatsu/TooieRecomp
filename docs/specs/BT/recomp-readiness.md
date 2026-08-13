@@ -77,8 +77,14 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > independently accepted with verdict B (`RCP-X1..X4`, old-global
 > discriminator, P3-X6+, reconstruction and regressions PASS); see
 > `docs/plan/evidence/p08-preemption-patch35-rcp-independent-review.md`.
-> `PATCH4_READY` is YES. Production flag remains OFF and Tooie remains
-> unregenerated, so **ainda não tratar como preempção guest entregue no jogo.**
+> `PATCH4_READY` is YES. **PATCH 4 landed (2026-08-13):** Tooie startup
+> activates Hybrid F' (default ON; `ULTRAMODERN_GUEST_PREEMPTION=0`
+> rollback). Tooie was regenerated with 4298 static safepoints. C2AB8
+> freeze is permanently resolved (CLASS A). Guest-preemption
+> runtime/generator contract is delivered for Tooie. See
+> `docs/plan/evidence/p08-preemption-patch4-validation.md`.
+> Current product blocker is downstream `func_800BCF28` SIGSEGV, not
+> the scheduler/C2AB8 path.
 
 ## Próximos passos práticos
 

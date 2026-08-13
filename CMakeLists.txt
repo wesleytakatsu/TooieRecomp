@@ -180,3 +180,18 @@ else()
 endif()
 
 set_property(TARGET TooieRecompiled PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+# PATCH 4 T15: C2AB8-shaped preemption microbenchmark. No guest ROM.
+# EXCLUDE_FROM_ALL so default TooieRecompiled builds stay unchanged.
+add_executable(preemption_t15
+    ${CMAKE_SOURCE_DIR}/tests/preemption_t15.cpp
+)
+target_include_directories(preemption_t15 PRIVATE
+    ${N64MR}/ultramodern/include
+    ${N64MR}/include
+)
+target_link_libraries(preemption_t15 PRIVATE
+    ultramodern
+    Threads::Threads
+)
+set_target_properties(preemption_t15 PROPERTIES EXCLUDE_FROM_ALL TRUE)

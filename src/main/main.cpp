@@ -813,6 +813,39 @@ void on_launcher_init(recompui::LauncherMenu *menu) {
 
 #define REGISTER_FUNC(name) recomp::overlays::register_base_export(#name, name)
 
+// PATCH 4: Tooie-scoped Hybrid F' activation. Startup/quiescent only.
+// Unset → ON. Explicit false values → OFF for the whole process.
+// Not a public hot-toggle. Guest OSThreads must not exist yet.
+static bool env_is_explicit_false(const char* raw) {
+    if (raw == nullptr || raw[0] == '\0') {
+        return false;
+    }
+    if (raw[0] == '0' && raw[1] == '\0') {
+        return true;
+    }
+    char folded[8]{};
+    size_t n = 0;
+    for (; raw[n] != '\0' && n + 1 < sizeof(folded); ++n) {
+        const unsigned char c = static_cast<unsigned char>(raw[n]);
+        folded[n] = static_cast<char>((c >= 'A' && c <= 'Z') ? (c - 'A' + 'a') : c);
+    }
+    if (raw[n] != '\0') {
+        return false;
+    }
+    return std::strcmp(folded, "false") == 0 ||
+           std::strcmp(folded, "off") == 0 ||
+           std::strcmp(folded, "no") == 0;
+}
+
+static void activate_tooie_guest_preemption() {
+    const char* raw = std::getenv("ULTRAMODERN_GUEST_PREEMPTION");
+    const bool enabled = !env_is_explicit_false(raw);
+    ultramodern::set_guest_preemption_safepoints(enabled);
+    std::fprintf(stderr, "[tooie] guest preemption: %s (ULTRAMODERN_GUEST_PREEMPTION=%s)\n",
+                 enabled ? "ON" : "OFF",
+                 raw == nullptr ? "<unset>" : raw);
+}
+
 int main(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "--launcher-music-child") == 0) {
@@ -1088,6 +1121,9 @@ int main(int argc, char** argv) {
 
     // Register the .rtz texture pack file format with the previous content type as its only allowed content type.
     recomp::mods::register_mod_container_type("rtz", std::vector{ texture_pack_content_type_id }, false);
+
+    // Before recomp::start / ultramodern::preinit / any guest OSThread.
+    activate_tooie_guest_preemption();
 
     recomp::start(
         project_version,

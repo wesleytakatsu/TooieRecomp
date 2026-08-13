@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; **gap de preempção provado**; PATCH 3 accepted (review B, flag OFF); PATCH 3.5 RCP correction implemented (TLS per-OSThread); independent review of that correction next; then PATCH 4 / SIGSEGV func_800BCF28 |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); current blocker SIGSEGV `func_800BCF28` |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (PATCH 3.5 RCP correction implemented; independent review of correction next; then PATCH 4 / func_800BCF28) |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (PATCH 4 landed; C2AB8 resolved; blocker func_800BCF28) |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 
@@ -160,8 +160,10 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-patch35-rcp-independent-review]] — **CURRENT:**
-  verdict B; per-OSThread RCP correction accepted; PATCH4_READY YES.
+- [[evidence/p08-preemption-patch4-validation]] — **CURRENT:** PATCH 4
+  landed; C2AB8 CLASS A; production preemption ON; blocker `func_800BCF28`.
+- [[evidence/p08-preemption-patch35-rcp-independent-review]] —
+  verdict B; per-OSThread RCP correction accepted.
 - [[evidence/p08-preemption-patch35-rcp-correction]] — implementer correction
   evidence; TLS RCP, RCP-X1..X4 and P3-X6+.
 - [[evidence/p08-preemption-patch35-independent-review]] — historical verdict
@@ -177,7 +179,7 @@ O trabalho só está concluído quando todos os critérios de
 - [[evidence/p08-preemption-patch2-validation]] — PATCH 2 runtime
   service landed; feature OFF; T01–T10/T12 PASS.
 - [[evidence/p08-preemption-implementation-plan]] — spec Hybrid F'
-  (PATCH 1–4 + T01–T15). PATCH 3.5 accepted; PATCH 4 next.
+  (PATCH 1–4 + T01–T15). PATCH 4 landed.
 - [[evidence/p08-preemption-design-adversarial-review]] — arquitetura F'
   aprovada (veredito C). DeepSeek Hybrid F rejeitado as-is.
 - [[evidence/p08-permanent-preemption-design]] — DeepSeek Hybrid F;

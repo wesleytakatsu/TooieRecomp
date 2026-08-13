@@ -21,10 +21,9 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 ## Estado corrente
 
 **P08 ACTIVE BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK; first attract
-demo ausente. O freeze de MAIN em `func_800C2AB8` (slot 7, `table[2].word0` live
-pool object) foi **causalmente provado** como gap de preempção do runtime e
-superado em experimento limpo; agora um **SIGSEGV downstream** em
-`func_800BCF28` (attract/world input init) bloqueia o demo.
+demo ausente. O freeze de MAIN em `func_800C2AB8` foi **permanentemente
+resolvido** por Hybrid F' PATCH 4 (CLASS A). Agora um **SIGSEGV downstream**
+em `func_800BCF28` (attract/world input init) bloqueia o demo.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -38,7 +37,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]] (**CURRENT** — verdict B; PATCH35 accepted; PATCH4_READY YES)
+- [[../../plan/evidence/p08-preemption-patch4-validation]] (**CURRENT** — PATCH 4 landed, CLASS A)
+- [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]] (verdict B; PATCH35 accepted)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (implementer TLS RCP correction evidence)
 - [[../../plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; finding resolved, history preserved)
 - [[../../plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; RCP/P3-X6 claims superseded)
@@ -84,16 +84,10 @@ Evidência corrente:
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
 - [~] `P08-T09` Evidência visual: intro/Jiggy OK; first demo ausente.
 - [ ] `P08-T10` Input title/file select (diferido).
-- [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
-  = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1–3
-  landed (flag OFF; T11 generator PASS). PATCH 3 independent review B.
-  PATCH 3.5 landed ([[../../plan/evidence/p08-preemption-patch35-validation]]);
-  thread-switch resume hook (design 4.8). Flag OFF. Sem regen.
-  Independent review C then implementer RCP correction
-  ([[../../plan/evidence/p08-preemption-patch35-rcp-correction]]): current
-  RCP/MI mask is per native guest OSThread. Flag OFF. Sem regen. Attract
-  ainda bloqueado até review da correção, PATCH 4 enable e então
-  `func_800BCF28`.
+- [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
+  RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
+  Tooie. Residual: SIGSEGV `func_800BCF28`. See
+  [[../../plan/evidence/p08-preemption-patch4-validation]].
 
 
 ## Implementado / validado
@@ -120,7 +114,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch35-independent-review]] | **CURRENT:** verdict C; per-OSThread RCP correction required |
+| [[../../plan/evidence/p08-preemption-patch4-validation]] | **CURRENT:** PATCH 4 landed; C2AB8 CLASS A; blocker `func_800BCF28` |
+| [[../../plan/evidence/p08-preemption-patch35-independent-review]] | historical verdict C; RCP finding resolved |
 | [[../../plan/evidence/p08-preemption-patch35-validation]] | implementer evidence; PATCH4 gate superseded |
 | [[../../plan/evidence/p08-preemption-patch35-design]] | PATCH 3.5 design contract (implemented) |
 | [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] | **CURRENT:** thread-switch eligibility; verdict B; resume hook |
@@ -157,19 +152,16 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ```text
 ... warp consumido, A76F4(5) ...
- -> A7380 -> C2AB8 busy-wait (slot7 / table[2] live object)
- -> black freeze; demo não começa
+ -> C2AB8 returns (PATCH 4 Hybrid F')
+ -> gsworldDll / basetup
+ -> SIGSEGV func_800BCF28; demo não começa
 ```
 
 ## Residual prioritário
 
-1. **Correção de PATCH 3.5** — current RCP/MI mask deve ser per-thread;
-   adicionar RCP-X1..X4 e fortalecer P3-X6. Review:
-   [[../../plan/evidence/p08-preemption-patch35-independent-review]].
-   `PATCH4_READY: NO`. Não PATCH 4 nesta etapa. Arquitetura:
-   [[../../plan/evidence/p08-preemption-design-adversarial-review]].
-2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
-   (chain gsworldDll/basetup/input/bakey). Fora do escopo até o fix permanente.
+1. **SIGSEGV `func_800BCF28`** — after C2AB8 returns (gsworldDll / basetup /
+   BaKey). Next after independent review of PATCH 4 evidence.
+2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN.
 4. Então: gsattract ep1 / demo, depois input title/file-select.
 

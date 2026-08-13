@@ -2,7 +2,7 @@
 title: "BT — RSP e áudio"
 status: current
 area: "specs/BT"
-updated: 2026-08-09
+updated: 2026-08-13
 tags:
   - banjo-tooie
   - rsp
@@ -100,12 +100,14 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
 - **Design (2026-08-13):** Hybrid F' + spec de implementação em
   `docs/plan/evidence/p08-preemption-implementation-plan.md`.
-  PATCH 3.5 landed cause-aware hold-until-eligible (flag OFF; Tooie não
-  regenerado). Current RCP/MI mask is per native guest OSThread (TLS).
-  Independent review accepted the correction with verdict B and
-  `PATCH4_READY YES`. Áudio do jogo ainda não é preemptado because the flag
-  remains OFF and Tooie was not regenerated. Ver
-  `docs/plan/evidence/p08-preemption-patch35-rcp-independent-review.md`.
+  PATCH 3.5 landed cause-aware hold-until-eligible. Current RCP/MI mask
+  is per native guest OSThread (TLS). **PATCH 4 (2026-08-13):** Tooie
+  regenerated with Hybrid F' ON at startup. The C2AB8 AUDIO-starvation
+  path is permanently resolved (CLASS A ON/OFF). Intro audio still
+  advances; AUDIO runs during the former freeze window. Ver
+  `docs/plan/evidence/p08-preemption-patch4-validation.md`.
+  Downstream `func_800BCF28` SIGSEGV is the current product blocker;
+  it is not an audio/scheduler regression.
 
 ## Referências
 
