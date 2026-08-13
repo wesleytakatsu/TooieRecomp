@@ -136,20 +136,21 @@ ARBITRATION (Grok 4.5 HIGH):
 
 ## NEXT_SINGLE_ACTION
 
-**PREEMPTION GAP CAUSALLY PROVEN** (class A). O próximo passo é projetar e
-revisar o **fix genérico de preempção no N64ModernRuntime** (oportunidade
-cooperativa de scheduler durante spins de guest / agendamento de áudio), e em
-paralelo investigar o **novo SIGSEGV downstream em `func_800BCF28`** que surge
-após C2AB8 retornar (attract/world input init). Não implementar fix nesta fase.
+**PREEMPTION GAP CAUSALLY PROVEN** (class A). O fix genérico de preempção foi
+**PROJETADO** (não implementado) em
+[[p08-permanent-preemption-design]] — safepoint gerado em backward-branch +
+flag atômica + service não-bloqueante no runtime. Próximo passo: **revisão
+adversarial de arquitetura** (Grok 4.6 High) e, em paralelo, investigar o
+**novo SIGSEGV downstream em `func_800BCF28`**. Não implementar fix nesta fase.
 
 No fix. No force-clear. No BaKey. No Scheduler C reopen.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-guest-preemption-causal-validation]] — **CURRENT causal experiment (class A)**
-2. [[p08-guest-preemption-runtime-audit]] — Gemini structural audit
-3. [[p08-slot7-scheduled-event-validation]] — clean freeze dynamic validation
-4. [[p08-slot7-scheduled-event-driver]] — Gemini static reconstruction
+1. [[p08-permanent-preemption-design]] — **CURRENT design (não implementado)**
+2. [[p08-guest-preemption-causal-validation]] — causal experiment (class A)
+3. [[p08-guest-preemption-runtime-audit]] — Gemini structural audit
+4. [[p08-slot7-scheduled-event-validation]] — clean freeze dynamic validation
 5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO

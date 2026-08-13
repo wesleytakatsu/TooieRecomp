@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-guest-preemption-causal-validation]] (**CURRENT**)
+- [[../../plan/evidence/p08-permanent-preemption-design]] (**CURRENT** — design do fix genérico, não implementado)
+- [[../../plan/evidence/p08-guest-preemption-causal-validation]]
 - [[../../plan/evidence/p08-guest-preemption-runtime-audit]]
 - [[../../plan/evidence/p08-slot7-scheduled-event-validation]]
 - [[../../plan/evidence/p08-slot7-scheduled-event-driver]]
@@ -129,9 +130,11 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Fix genérico de preempção no runtime** (oportunidade cooperativa de
-   scheduler durante spins de guest / agendamento de áudio) — gap PROVADO
-   causalmente; desenhar/revisar sem implementar ainda.
+1. **Fix genérico de preempção no runtime** — gap PROVADO causalmente; **design
+   pronto** (safepoint gerado em backward-branch + flag atômica +
+   service não-bloqueante; ver
+   [[../../plan/evidence/p08-permanent-preemption-design]]). Revisão adversarial
+   antes de implementar.
 2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
    (chain gsworldDll/basetup/input/bakey). Fora do escopo atual.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN.
@@ -148,7 +151,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** (1) desenhar/revisar o fix genérico de preempção no N64ModernRuntime
-(gap provado causalmente; não implementar ainda); (2) investigar o novo SIGSEGV
+**NEXT:** (1) revisão adversarial de arquitetura do fix genérico de preempção
+(design pronto em [[../../plan/evidence/p08-permanent-preemption-design]]; gap
+provado causalmente; não implementar ainda); (2) investigar o novo SIGSEGV
 downstream em `func_800BCF28` que surge após C2AB8 retornar. Após demo atrair:
 retomar input e [[09-gameplay-parity-and-enhancements]].

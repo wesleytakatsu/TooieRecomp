@@ -47,9 +47,12 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 **GAP DE PREEMPÇÃO CAUSALMENTE PROVADO (CLASS A).** Próximos passos:
 
-1. **Projetar e revisar o fix genérico de preempção no N64ModernRuntime**
-   (oportunidade cooperativa de scheduler durante spins de guest / agendamento
-   de áudio) — não implementar ainda.
+1. **Fix genérico de preempção PROJETADO** (não implementado): safepoint gerado
+   em backward-branch + flag atômica `preemption_requested` +
+   `service_preemption_if_requested` não-bloqueante + gate de interrupção (IE +
+   máscara global). Evidência:
+   [[plan/evidence/p08-permanent-preemption-design]]. Próximo passo é a
+   **revisão adversarial de arquitetura** antes de qualquer código.
 2. **Investigar o novo SIGSEGV downstream em `func_800BCF28`** que surge após
    C2AB8 retornar (chain gsworldDll_entrypoint_2 → basetup_entrypoint_2 →
    func_800A4B08 → func_80097B4C → bakey_heldCount; RIP off 0x656d11).
@@ -104,8 +107,9 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-guest-preemption-causal-validation]]
-2. [[plan/evidence/p08-guest-preemption-runtime-audit]]
-3. [[plan/evidence/p08-session-handoff]]
-4. [[plan/evidence/p08-slot7-scheduled-event-validation]]
-5. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-permanent-preemption-design]]
+2. [[plan/evidence/p08-guest-preemption-causal-validation]]
+3. [[plan/evidence/p08-guest-preemption-runtime-audit]]
+4. [[plan/evidence/p08-session-handoff]]
+5. [[plan/evidence/p08-slot7-scheduled-event-validation]]
+6. [[plans/BT/08-rt64-input-and-frontend]]
