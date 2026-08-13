@@ -64,8 +64,11 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 >
 > **Design (2026-08-13):** Hybrid F' aprovado; spec de implementação em
 > `docs/plan/evidence/p08-preemption-implementation-plan.md`. O contrato
-> acima (itens 1–4) permanece o requisito N64 PROVEN. **Não implementado.**
-> Não tratar o plano como comportamento entregue.
+> acima (itens 1–4) permanece o requisito N64 PROVEN.
+> PATCH 2 landed o *runtime service* (epoch/intmask/translations) com
+> flag OFF; jogos gerados ainda não chamam safepoints. **Não tratar
+> como comportamento entregue no jogo.** Ver
+> `docs/plan/evidence/p08-preemption-patch2-validation.md`.
 
 ## Próximos passos práticos
 

@@ -12,9 +12,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `417880fc4ea4e78387399e3f32d1b58fd8c62915`
-  (`build(p08): scaffold guest preemption infrastructure`). This session
-  independently reviewed PATCH 1 (verdict B). PATCH 2 not started.
+- Checkpoint base/parent: `0dd3b8020fcd2a90d780118f0a5b598f90139921`
+  (`docs(p08): independently review preemption patch 1`). This session
+  implements PATCH 2 (runtime service). PATCH 3 not started.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -133,18 +133,19 @@ ARBITRATION (Grok 4.5 HIGH):
 4. Host fix location: runtime scheduler opportunity (generic preemption) —
    PROVEN needed. Hybrid F' APPROVED. PATCH 1 (stubs, flag OFF, T01)
    landed — [[p08-preemption-patch1-validation]]. Independent review
-   [[p08-preemption-patch1-independent-review]] verdict B; PATCH 2 ready.
-   Do not implement DeepSeek Hybrid F.
+   [[p08-preemption-patch1-independent-review]] verdict B. PATCH 2
+   landed — [[p08-preemption-patch2-validation]]. Do not implement
+   DeepSeek Hybrid F. Do not start PATCH 3 before independent review.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PATCH 1 REVIEWED (verdict B).** Implement PATCH 2 only (runtime
-service: publish/enqueue/requeue, real service, intmask translations,
-T02–T10/T12). Use cumulative preemption patch artifact (strategy B).
-Do not start PATCH 3/4.
+**PATCH 2 LANDED.** Independent review of PATCH 2, then PATCH 3
+(generator safepoints). Do not start PATCH 4. Feature remains OFF
+for games. Cumulative artifact:
+`patches/runtime/n64modernruntime-preemption.patch`.
 
 Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
 Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
@@ -152,9 +153,9 @@ Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch1-independent-review]] — **CURRENT: PATCH 1 review B**
-2. [[p08-preemption-patch1-validation]] — PATCH 1 implementer evidence
-3. [[p08-preemption-implementation-plan]] — remaining PATCH 2–4 spec
+1. [[p08-preemption-patch2-validation]] — **CURRENT: PATCH 2 result**
+2. [[p08-preemption-patch1-independent-review]] — PATCH 1 review B
+3. [[p08-preemption-implementation-plan]] — remaining PATCH 3–4 spec
 4. [[p08-preemption-design-adversarial-review]] — approved architecture F'
 5. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
 6. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
@@ -174,11 +175,11 @@ Run clean → confirm freeze (`d` stable ≥6s, black) → attach only after fre
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = NO
-RUNTIME_CODE_CHANGED     = NO
+CODE_CHANGED             = NO (Tooie src/RecompiledFuncs untouched)
+RUNTIME_CODE_CHANGED     = YES (external dirty; versioned as patch)
 GENERATOR_CODE_CHANGED   = NO
-PATCH_CODE_CHANGED       = NO
+PATCH_CODE_CHANGED       = YES (cumulative preemption artifact)
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (independent review of PATCH 1)
+EVIDENCE_CHANGED         = YES (PATCH 2 validation)
 ```

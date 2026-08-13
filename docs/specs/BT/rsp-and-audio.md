@@ -99,8 +99,9 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   `func_800205D0` limpar `table[2].word0`. Ver
   `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
 - **Design (2026-08-13):** Hybrid F' + spec de implementação em
-  `docs/plan/evidence/p08-preemption-implementation-plan.md`
-  (não implementado; não é contrato de áudio).
+  `docs/plan/evidence/p08-preemption-implementation-plan.md`.
+  PATCH 2 landed o runtime service (flag OFF); áudio do jogo ainda não
+  é preemptado. Ver `docs/plan/evidence/p08-preemption-patch2-validation.md`.
 
 ## Referências
 

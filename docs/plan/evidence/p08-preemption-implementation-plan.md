@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 1 reviewed (verdict B); PATCH 2+ not started."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 2 landed (runtime service); PATCH 3+ not started."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES (PATCH 1 reviewed B; PATCH 2 not started)
+IMPLEMENTATION_READY: YES (PATCH 2 landed; PATCH 3 not started)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -246,11 +246,10 @@ PATCH 1 — infrastructure / tests   [default flag OFF]  LANDED + REVIEWED (B)
   Env ULTRAMODERN_GUEST_PREEMPTION: deferred to PATCH 4.
   No enqueue publish. No generator. No translation bodies.
   T01: PASS. T02–T12: SKIPPED.
-  Isolated: yes. Tooie/Banjo binary does not even pull the
-  unused stub .o. External runtime left uncommitted; Tooie
-  versions patches/runtime/n64modernruntime-preemption-patch1.patch.
+  Isolated: yes. External runtime left uncommitted.
 
-PATCH 2 — runtime service          [flag still OFF for games]
+PATCH 2 — runtime service          [flag still OFF for games]  LANDED
+  See [[p08-preemption-patch2-validation]].
   Real publish on enqueue+requeue. Real service protocol.
   Real osSetIntMask / Disable / Restore / cop0 IE/IM.
   status_reg + MI init.
@@ -553,8 +552,8 @@ T01-E:
 
 ```text
 NEXT_SINGLE_ACTION:
-  Implement PATCH 2 only (runtime service). Do not implement
-  generator safepoints or enable the flag.
+  Independent review of PATCH 2, then PATCH 3 generator
+  safepoints. Do not enable the flag. Do not regenerate Tooie.
 ```
 
 === END IMPLEMENTATION PLAN ===

@@ -59,13 +59,13 @@ apply_one_patch \
     "1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309" \
     "scheduler"
 
-# Hybrid F' PATCH 1 — preemption infrastructure stubs (feature OFF).
+# Hybrid F' PATCH 1+2 cumulative — runtime service (feature OFF for games).
 apply_one_patch \
     "$RUNTIME" \
-    "$PATCH_DIR/n64modernruntime-preemption-patch1.patch" \
+    "$PATCH_DIR/n64modernruntime-preemption.patch" \
     "ca568b6ad79b9029d14077f0c3ffa757727c5559" \
-    "1dc7bab8cc5004b2243f1e890c0a79b6bc094532f247cdefba8350d7030521dd" \
-    "preemption patch1 scaffold"
+    "c2e2a908cd7be0ddafb92405b2f3f8c37b27624815c95a9131f8f9467f4c7ade" \
+    "preemption runtime service"
 
 # N64Recomp generator policy patch — N64Recomp submodule.
 apply_one_patch \

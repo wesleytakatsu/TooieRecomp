@@ -45,12 +45,14 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 1 REVIEWED (verdict B).** Próximos passos:
+**PATCH 2 LANDED** (runtime service, flag OFF, T01–T10/T12 PASS).
+Próximos passos:
 
-1. **PATCH 2 only** (runtime service) conforme
+1. **Review independente de PATCH 2**, depois PATCH 3 (generator
+   safepoints) conforme
    [[plan/evidence/p08-preemption-implementation-plan]] e
-   [[plan/evidence/p08-preemption-patch1-independent-review]].
-   Artefato cumulativo (estratégia B). Não implementar Hybrid F DeepSeek
+   [[plan/evidence/p08-preemption-patch2-validation]].
+   Não implementar Hybrid F DeepSeek
    ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
 2. **Investigar `func_800BCF28`** só depois do fix permanente aterrar.
 3. Então: gsattract ep1 / demo, depois input title/file-select.
@@ -105,10 +107,11 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch1-independent-review]]
+1. [[plan/evidence/p08-preemption-patch2-validation]]
 2. [[plan/evidence/p08-preemption-implementation-plan]]
-3. [[plan/evidence/p08-preemption-design-adversarial-review]]
-4. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
-5. [[plan/evidence/p08-guest-preemption-causal-validation]]
-6. [[plan/evidence/p08-session-handoff]]
-7. [[plans/BT/08-rt64-input-and-frontend]]
+3. [[plan/evidence/p08-preemption-patch1-independent-review]]
+4. [[plan/evidence/p08-preemption-design-adversarial-review]]
+5. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
+6. [[plan/evidence/p08-guest-preemption-causal-validation]]
+7. [[plan/evidence/p08-session-handoff]]
+8. [[plans/BT/08-rt64-input-and-frontend]]

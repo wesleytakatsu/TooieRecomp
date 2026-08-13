@@ -34,6 +34,7 @@
 - [[plan/evidence/p08-permanent-preemption-design]] — P08 — permanent guest-preemption design (DeepSeek Hybrid F) — `CORRECTED/SUPERSEDED` pela revisão adversarial.
 - [[plan/evidence/p08-preemption-design-adversarial-review]] — P08 — adversarial review of generic guest-preemption design — Hybrid F quebrado (veredito C); Hybrid F' aprovado.
 - [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — spec file/function + matriz T01–T15. PATCH 1 landed; PATCH 2+ pending.
+- [[plan/evidence/p08-preemption-patch2-validation]] — P08 — preemption PATCH 2 runtime service validation — epoch/service/intmask; T01–T10/T12 PASS; flag OFF; cumulative artifact.
 - [[plan/evidence/p08-preemption-patch1-independent-review]] — P08 — independent review of preemption PATCH 1 — Veredito B; PATCH 2 ready; T01-E WEAK; cumulative artifact B; PATCH 3 void*/recomp_context* collision.
 - [[plan/evidence/p08-preemption-patch1-validation]] — P08 — preemption PATCH 1 scaffold validation — stubs, flag OFF, harness T01 PASS, dirty files untouched.
 - [[plan/evidence/p08-slot7-scheduled-event-validation]] — P08 — slot7 scheduled-event dynamic validation (clean freeze, class A) — 3 clean freezes: objeto de table[2] agendado na delta-queue do SoundManager (head, delta 0), handler func_8001ED68, func_8001EE34 pending, thread [Game] AUDIO estacionada + contadores de áudio congelados → CLASS A (callback agendado e devido, mas contexto de dispatch não pode rodar).

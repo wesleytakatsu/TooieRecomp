@@ -38,9 +38,10 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch1-independent-review]] (**CURRENT** — PATCH 1 review B; PATCH 2 ready)
-- [[../../plan/evidence/p08-preemption-patch1-validation]] (PATCH 1 implementer evidence; T01 PASS; flag OFF)
-- [[../../plan/evidence/p08-preemption-implementation-plan]] (spec F'; PATCH 1 reviewed, PATCH 2+ pending)
+- [[../../plan/evidence/p08-preemption-patch2-validation]] (**CURRENT** — PATCH 2 landed; T01–T10/T12 PASS; flag OFF)
+- [[../../plan/evidence/p08-preemption-patch1-independent-review]] (PATCH 1 review B)
+- [[../../plan/evidence/p08-preemption-patch1-validation]] (PATCH 1 implementer evidence)
+- [[../../plan/evidence/p08-preemption-implementation-plan]] (spec F'; PATCH 2 landed, PATCH 3+ pending)
 - [[../../plan/evidence/p08-preemption-design-adversarial-review]] (arquitetura F' aprovada)
 - [[../../plan/evidence/p08-permanent-preemption-design]] (DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`)
 - [[../../plan/evidence/p08-guest-preemption-causal-validation]]
@@ -76,8 +77,8 @@ Evidência corrente:
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
   = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1
-  reviewed (verdict B); PATCH 2 ready, not started. Attract ainda bloqueado
-  até o fix permanente + `func_800BCF28`.
+  PATCH 2 landed (runtime service, flag OFF). PATCH 3+ pending. Attract
+  ainda bloqueado até safepoints + `func_800BCF28`.
 
 
 ## Implementado / validado
@@ -104,9 +105,10 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch1-independent-review]] | **CURRENT:** PATCH 1 independent review B |
+| [[../../plan/evidence/p08-preemption-patch2-validation]] | **CURRENT:** PATCH 2 runtime service |
+| [[../../plan/evidence/p08-preemption-patch1-independent-review]] | PATCH 1 independent review B |
 | [[../../plan/evidence/p08-preemption-patch1-validation]] | PATCH 1 scaffold + T01 PASS |
-| [[../../plan/evidence/p08-preemption-implementation-plan]] | spec file/function + T01–T15; PATCH 1 reviewed |
+| [[../../plan/evidence/p08-preemption-implementation-plan]] | spec file/function + T01–T15; PATCH 2 landed |
 | [[../../plan/evidence/p08-preemption-design-adversarial-review]] | arquitetura F' aprovada (veredito C) |
 | [[../../plan/evidence/p08-permanent-preemption-design]] | DeepSeek Hybrid F; `CORRECTED/SUPERSEDED` |
 | [[../../plan/evidence/p08-guest-preemption-causal-validation]] | experimento limpo class A — gap de preempção provado causalmente |
@@ -139,9 +141,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Implementar Hybrid F' PATCH 2** (PATCH 1 reviewed, verdict B) —
+1. **Review independente de PATCH 2**, depois PATCH 3 —
    [[../../plan/evidence/p08-preemption-implementation-plan]],
-   [[../../plan/evidence/p08-preemption-patch1-independent-review]].
+   [[../../plan/evidence/p08-preemption-patch2-validation]].
    Arquitetura:
    [[../../plan/evidence/p08-preemption-design-adversarial-review]].
 2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
@@ -160,7 +162,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** implementar Hybrid F' PATCH 2 only (runtime service; artefato
-cumulativo B). Review: [[../../plan/evidence/p08-preemption-patch1-independent-review]].
-Não PATCH 3/4. Depois: SIGSEGV `func_800BCF28`. Após demo: input e
+**NEXT:** review independente de PATCH 2, depois PATCH 3 (generator
+safepoints). Review: [[../../plan/evidence/p08-preemption-patch2-validation]].
+Não PATCH 4. Depois: SIGSEGV `func_800BCF28`. Após demo: input e
 [[09-gameplay-parity-and-enhancements]].
