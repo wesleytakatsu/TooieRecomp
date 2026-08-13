@@ -27,6 +27,18 @@ Estado clean-freeze (determinístico):
 > - `func_8001ED68` desempilha eventos expirados da delta-queue e chama `func_8001EE34(event)`.
 > - Para opcode `0x200`, `func_8001EE34` chama `func_800200B8 → func_800205D0`, que zera `*obj->0x30` (`table[2].word0 = 0`).
 > - No N64 original, a thread de áudio (OSThread 4) preempta MAIN e avança a síntese. No TooieRecomp, o spin síncrono de MAIN em `func_800C2AB8` impede a execução do dispatcher de áudio, causando inanição do clearer. Evidência: [[plan/evidence/p08-slot7-scheduled-event-driver]].
+>
+> **VALIDAÇÃO DINÂMICA CLEAN FREEZE (2026-08-12):** 3 clean freezes determinísticos
+> (`d=179285/179325/179310`) confirmam — **CLASS A** — que o objeto de `table[2]`
+> **ESTÁ agendado** na delta-queue do SoundManager (`*(0x800411DC)=0x8007E9C0`,
+> listhdr `+0x14`): entrada na HEAD com `payload.p4 == table[2].word0` e
+> **delta-key 0 (devida agora)**; handler `mgr+0x08 = func_8001ED68` (MATCH);
+> `func_8001EE34` pending. O contexto de dispatch (thread `[Game] AUDIO`) está
+> **estacionado em `LightweightSemaphore::waitWithPartialSpinning`** e os
+> contadores de áudio do diag ficam **congelados** no freeze
+> (`rsp_aud=1529`, `queue_samp=2305888`) — MAIN gira em `func_800C2AB8` sem
+> ceder, então `func_8001ED68/1EE34/200B8/205D0` não podem rodar.
+> Evidência: [[plan/evidence/p08-slot7-scheduled-event-validation]].
 
 
 Descrição canônica:
@@ -44,6 +56,15 @@ Discriminador mínimo pós-freeze (sem fix):
 
 1. dump do objeto em `table[2]` (`+0x08/+0x34/+0x44/+0x45/+0x30` + config);
 2. se autorizado depois: contadores de `20790` / `1EE34` / `205D0` + thread.
+
+**RESOLVIDO (2026-08-12, clean dynamic):** o discriminador do objeto `table[2]`
+foi capturado em 3 clean freezes: objeto agendado na delta-queue do SoundManager
+(head, delta 0, `payload.p4 == table[2].word0`), handler `func_8001ED68`
+registrado, `func_8001EE34` pending, thread AUDIO estacionada (scheduler
+cooperativo) e contadores de áudio congelados → **CLASS A** (callback agendado e
+devido, mas contexto de dispatch não pode rodar). Próximo passo: decidir o ponto
+de serviço do dispatch de áudio no host / onde MAIN deveria ceder; re-check da
+ordem dos 2 eventos enfileirados (delta 0 + delta 13294/2997).
 
 Não forçar clear; não BaKey; não reabrir Scheduler C sem prova nova.
 

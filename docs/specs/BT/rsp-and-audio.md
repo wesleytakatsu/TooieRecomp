@@ -88,6 +88,12 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
 
 - Smoke técnico: milhares de `M_AUDTASK` sem tipo desconhecido.
 - **Ouvido (2026-08-09):** música inicial correta no device default.
+- **Clean freeze dinâmico (2026-08-12):** o contrato do scheduler (delta-queue
+  `D_800411DC + 0x14`, handler `func_8001ED68`, dispatch `func_8001EE34`) foi
+  validado em 3 freezes determinísticos: o objeto pendente de `table[2]` está
+  agendado na delta-queue (head, delta 0), e o contexto de dispatch (thread
+  `[Game] AUDIO`) fica estacionado enquanto MAIN gira em `func_800C2AB8`
+  (class A). Ver `docs/plan/evidence/p08-slot7-scheduled-event-validation.md`.
 
 ## Referências
 

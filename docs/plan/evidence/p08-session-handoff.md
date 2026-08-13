@@ -12,8 +12,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle]
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `28634288c1c17ac0cb2a75371d911e1889f33908`
-  (slot7 readiness loop correction). Arbitration docs land on top of this.
+- Checkpoint base/parent: `e4c6c0a2763341146f6d79293fea3db3e3168576`
+  (slot7 scheduled-event contract; validation docs land on top).
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -54,20 +54,29 @@ YES — synchronous dependency cycle / busy-wait:
 ## ROOT_CAUSE_STATUS
 
 ```text
-ROOT_CAUSE_PROVEN: YES
+ROOT_CAUSE_PROVEN: YES (mechanism)
 ```
 
-O mecanismo que limpa `table[2].word0` foi integralmente reconstruído estaticamente:
-- O despachante de eventos `func_8001ED68` é registrado em `D_800411DC + 0x8` por `func_8001EB10`.
-- A síntese de áudio (`func_800128C0 → func_800129FC → func_80021574`) executa chamada indireta (`jalr client->handler`).
-- `func_8001ED68` consome a delta-queue e chama `func_8001EE34`, que no término da voz (opcode `0x200`) chama `func_800200B8 → func_800205D0`.
-- `func_800205D0` zera `*obj->0x30 = 0` (`table[2].word0 = 0`), permitindo que `func_800C269C(7)` retorne 1 e `func_800C2AB8` termine.
-- **Falha no TooieRecomp:** `func_800C2AB8` roda em busy-wait na thread MAIN enquanto a thread de áudio / processamento de síntese não é despachada concorrentemente no host, gerando inanição do clearer.
+Mecanismo que limpa `table[2].word0` reconstruído estaticamente e agora
+**validado dinamicamente em 3 clean freezes** (ver
+[[p08-slot7-scheduled-event-validation]]):
+
+- O objeto pendente de `table[2]` **ESTÁ agendado** na delta-queue do
+  SoundManager (`*(0x800411DC)=0x8007E9C0`, listhdr `+0x14`): entrada na HEAD
+  com `payload.p4 == table[2].word0` e **delta-key 0 (devida AGORA)**.
+- Handler registrado `mgr+0x08 = 0x8001ED68` (MATCH); `func_8001EE34` pending.
+- Contexto de dispatch = thread `[Game] AUDIO` (guest OSThread 4) via
+  `func_800128C0 → func_800129FC → func_80021574 → jalr mgr->handler`.
+- A thread AUDIO está **estacionada em `LightweightSemaphore::waitWithPartialSpinning`**
+  (scheduler cooperativo do runtime); contadores de áudio do diag ficam
+  **congelados** durante o freeze (`rsp_aud=1529`, `queue_samp=2305888`).
+- MAIN gira em `func_800C2AB8` sem ceder → dispatch de áudio não pode rodar →
+  `func_8001ED68/1EE34/200B8/205D0` não executam → `table[2].word0` não zera.
+- **CLASS A**: callback agendado e due, mas contexto de dispatch não pode rodar.
 
 ## CURRENT_FIRST_DIVERGENCE
 
-MAIN entra em `func_800C2AB8` no path de transição de modo (`func_800A76F4(5) → func_800A7380(1) → func_800C2AB8`) com uma voz de áudio ativa vinculada ao slot 7 (`table[2].word0 = 0x8005C168`), e o busy-wait síncrono no host impede o progresso do scheduler de áudio que chamaria `func_800205D0`.
-
+MAIN entra em `func_800C2AB8` no path de transição de modo (`func_800A76F4(5) → func_800A7380(1) → func_800C2AB8`) com o evento de áudio do objeto de `table[2]` **ainda agendado e devido** (delta 0) na delta-queue do SoundManager; o busy-wait síncrono no host estaciona a thread AUDIO (scheduler cooperativo), impedindo o dispatch `func_8001ED68 → func_8001EE34 → func_800205D0` que limparia `table[2].word0`.
 
 ## RESOLVED_DO_NOT_REOPEN
 
@@ -82,6 +91,8 @@ MAIN entra em `func_800C2AB8` no path de transição de modo (`func_800A76F4(5) 
 9. Warp not consumed as clean-freeze blocker.
 10. `func_80026500` list walk as current hang PC.
 11. **`func_800A907C -> func_8001EE34` as object driver** — REFUTED (static).
+12. **"table[2] object NÃO está agendado" / "C — event never registered"** —
+    **REFUTED** (clean dynamic: entrada na HEAD da delta-queue, delta 0).
 
 Do not reopen these without new evidence.
 
@@ -113,29 +124,31 @@ ARBITRATION (Grok 4.5 HIGH):
 ## OPEN_QUESTIONS
 
 1. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
-2. Config identity at `object+0x08` (DeepSeek saw `0x801301E0`) — field dump.
-3. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C).
-4. Whether host audio/event thread that jalr-dispatches into `1ED68`/`1EE34` is runnable while MAIN spins.
+2. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
+3. Host fix location: how to let the audio/event dispatch progress while MAIN spins (runtime scheduling / thread model), NOT a game-code clear.
+4. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 5. Meaning of any observation at `0x8004E5A8` (not found statically).
 6. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-Run the **minimal post-freeze discriminator** in
-[[p08-slot7-object-lifecycle-arbitration#17-next-single-action-discriminator-only--do-not-implement-fix]]:
+With class A proven (event scheduled + due; dispatch context AUDIO parked), the
+root cause is host-side: the audio/event dispatch context cannot run while MAIN
+busy-waits. Next investigation (no fix yet):
 
-- dump object `+0x08/+0x34/+0x44/+0x45/+0x30` and config blob
-- if needed later: one authorized lightly-instrumented run counting
-  `20790`/`1EE34`/`205D0` hits + host thread identity
+- decide where the async audio/event dispatch should be serviced in the host
+  (runtime thread/event model) vs where MAIN's C2AB8 spin should yield;
+- re-check the two queued entries (delta 0 + delta 13294/2997) order vs the
+  intended 0x0400→0x200 chained completion.
 
 No fix. No force-clear. No BaKey. No Scheduler C reopen.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-slot7-object-lifecycle-arbitration]] — **CURRENT arbitration**
-2. [[p08-attract-actor-loop-diagnosis]] — freeze mechanism / slot7
-3. [[p08-type4-transition-semantics-audit]] — type-4 complete, warp consumed
-4. [[p08-intro-to-demo-transition-diagnosis]] — historical timeline
+1. [[p08-slot7-scheduled-event-validation]] — **CURRENT dynamic validation (class A)**
+2. [[p08-slot7-scheduled-event-driver]] — Gemini static reconstruction
+3. [[p08-slot7-object-lifecycle-arbitration]] — arbitration (origin open)
+4. [[p08-attract-actor-loop-diagnosis]] — freeze mechanism / slot7
 5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
@@ -159,5 +172,5 @@ GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (lifecycle arbitration)
+EVIDENCE_CHANGED         = YES (scheduled-event dynamic validation, class A)
 ```

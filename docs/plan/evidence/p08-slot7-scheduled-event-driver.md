@@ -237,6 +237,15 @@ DISCRIMINATOR_PROPOSAL (Post-Freeze Snapshot):
      - Está bloqueada aguardando mensagem ou sem tempo de CPU porque MAIN está em 100% spin?
 ```
 
+> **VALIDADO DINAMICAMENTE (2026-08-12):** o discriminador foi executado em 3
+> clean freezes. Respostas: (1) SIM — evento na HEAD da delta-queue
+> (`*(0x800411DC)+0x14`, listhdr[8]) com `payload.p4 == table[2].word0` e
+> **delta 0 (devido agora)**; (2) a thread `[Game] AUDIO` está **estacionada em
+> `LightweightSemaphore::waitWithPartialSpinning`** (scheduler cooperativo do
+> runtime) e os contadores de áudio do diag ficam **congelados** no freeze.
+> `func_8001EE34` pending; handler `mgr+0x08 = func_8001ED68` (MATCH). → CLASS A.
+> Ver [[p08-slot7-scheduled-event-validation]].
+
 ---
 
 ## 11. Proof Summary

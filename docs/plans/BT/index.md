@@ -72,10 +72,17 @@ T07). Detalhe: [[07-rsp-and-audio]].
 
 RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido no clean freeze;
 mode-5 alcançado. Freeze: MAIN em `func_800C2AB8` (slot 7 pending,
-`table[2].word0` = pool object vivo). Arbitragem lifecycle (Grok): creator
-`func_80020790`, clearer `func_800205D0`, driver `func_8001EE34`; origem
-intro/attract UNKNOWN; `ROOT_CAUSE_PROVEN=NO`. **Prioridade:** discriminador
-do objeto `table[2]` (sem fix). Input title/file-select diferido. Evidência:
+`table[2].word0` = pool object vivo). **Validação dinâmica do scheduler
+(3 clean freezes):** o objeto de `table[2]` ESTÁ agendado na delta-queue do
+SoundManager (head, delta 0), handler `func_8001ED68` registrado, `func_8001EE34`
+pending; thread `[Game] AUDIO` estacionada em `LightweightSemaphore` wait e
+contadores de áudio congelados → **CLASS A** (callback agendado e devido, mas
+contexto de dispatch não pode rodar). Criador `func_80020790`, clearer
+`func_800205D0`; origem do objeto (intro/attract) ainda UNKNOWN.
+**Próximo:** decidir ponto de serviço do dispatch de áudio no host (sem fix).
+Input title/file-select diferido. Evidência:
+[[../../plan/evidence/p08-slot7-scheduled-event-validation]],
+[[../../plan/evidence/p08-slot7-scheduled-event-driver]],
 [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]],
 [[../../plan/evidence/p08-session-handoff]],
 [[../../plan/evidence/p08-attract-actor-loop-diagnosis]],

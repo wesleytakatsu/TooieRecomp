@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; freeze em C2AB8 slot7 (`table[2]` pool object never cleared); lifecycle arbitration aberta (origem/root cause) |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; freeze em C2AB8 slot7 (`table[2]` pool object never cleared); **class A validada dinamicamente** (evento agendado+due na delta-queue; dispatch AUDIO estacionado); origem do objeto ainda UNKNOWN |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -160,6 +160,16 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
+- [[evidence/p08-slot7-scheduled-event-validation]] — **CURRENT:** validação
+  dinâmica clean-freeze do contrato do scheduler (3 runs): objeto de `table[2]`
+  agendado na delta-queue do SoundManager (head, delta 0), handler
+  `func_8001ED68` registrado, `func_8001EE34` pending, thread `[Game] AUDIO`
+  estacionada + contadores de áudio congelados → **CLASS A** (callback agendado
+  e devido, mas contexto de dispatch não pode rodar).
+- [[evidence/p08-slot7-scheduled-event-driver]] — reconstrução estática do
+  scheduler/event-driver (Gemini).
+- [[evidence/p08-slot7-object-lifecycle-arbitration]] — arbitragem lifecycle
+  (estrutura/clearer/ordem; origem UNKNOWN).
 - [[evidence/p08-type4-transition-semantics-audit]] — auditoria estática +
   clean-freeze type-4 snapshot (8/8 runs): type-4 completa, campos
   `0.9/3.5/2883` corrigidos para `+0x0C/+0x18/+0x10`, warp consumido; blocker

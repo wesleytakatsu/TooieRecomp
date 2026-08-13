@@ -30,9 +30,19 @@ Reconstrução do Scheduler/Driver: Cadeia completa de despacho indireto provada
 O clearer roda no contexto da thread de áudio / síntese, a qual é inibida de
 progredir pelo spin síncrono da thread MAIN no host.
 
+> **VALIDAÇÃO DINÂMICA CLEAN FREEZE (2026-08-12):** 3 clean freezes
+> determinísticos confirmam **CLASS A**: o objeto de `table[2]` está agendado na
+> delta-queue do SoundManager (head, delta 0, payload.p4 == table[2].word0),
+> handler `mgr+0x08 = func_8001ED68` (MATCH), `func_8001EE34` pending; a thread
+> `[Game] AUDIO` está estacionada em `LightweightSemaphore::waitWithPartialSpinning`
+> e os contadores de áudio ficam congelados no freeze → o dispatch não pode rodar
+> enquanto MAIN gira em `func_800C2AB8`. Ver
+> [[../../plan/evidence/p08-slot7-scheduled-event-validation]].
+
 Evidência corrente:
 
-- [[../../plan/evidence/p08-slot7-scheduled-event-driver]] (**CURRENT**)
+- [[../../plan/evidence/p08-slot7-scheduled-event-validation]] (**CURRENT**)
+- [[../../plan/evidence/p08-slot7-scheduled-event-driver]]
 - [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]]
 - [[../../plan/evidence/p08-session-handoff]]
 - [[../../plan/evidence/p08-attract-actor-loop-diagnosis]]
@@ -51,7 +61,8 @@ Evidência corrente:
 - [~] `P08-T09` Evidência visual: intro/Jiggy OK; first demo ausente.
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **blocker =
-  slot7 / table[2] audio scheduler preemption vs C2AB8 busy-wait**.
+  slot7 / table[2] audio scheduler preemption vs C2AB8 busy-wait** (class A
+  validada dinamicamente — evento agendado e devido, dispatch AUDIO estacionado).
 
 
 ## Implementado / validado
@@ -78,7 +89,9 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]] | **CURRENT:** arbitragem Gemini×DeepSeek; struct/driver/order |
+| [[../../plan/evidence/p08-slot7-scheduled-event-validation]] | **CURRENT:** validação dinâmica class A (evento agendado+due, dispatch AUDIO estacionado) |
+| [[../../plan/evidence/p08-slot7-scheduled-event-driver]] | reconstrução estática do scheduler/driver |
+| [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]] | arbitragem Gemini×DeepSeek; struct/driver/order |
 | [[../../plan/evidence/p08-session-handoff]] | **CURRENT:** handoff para chat zerado |
 | [[../../plan/evidence/p08-attract-actor-loop-diagnosis]] | freeze mechanism slot7 / C2AB8 |
 | [[../../plan/evidence/p08-type4-transition-semantics-audit]] | type-4 complete, warp consumido |
@@ -104,10 +117,11 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Discriminador lifecycle:** origem do objeto `table[2]` + se 1EE34/205D0
-   deveriam rodar antes ou durante C2AB8 (A vs C).
-2. Só depois: fechar root cause e **um** fix candidate (sem implementar ainda
-   nesta fase se a causa não fechar).
+1. **Origem do objeto `table[2]`** (intro/attract/handoff) — permanece UNKNOWN
+   (countdown=2 e config SFX 0x801301E0 não fecham o epoch).
+2. Só depois: fechar o ponto de fix **host-side** (como servir o dispatch de
+   áudio enquanto MAIN gira, ou onde MAIN deve ceder) e **um** fix candidate
+   (sem implementar ainda nesta fase se a causa não fechar).
 3. Então: gsattract ep1 / demo, depois input title/file-select.
 
 ## Gate de saída
@@ -121,7 +135,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** discriminador dinâmico mínimo do objeto `table[2]` (dump pós-freeze;
-opcional contadores 20790/1EE34/205D0). Não implementar fix; não BaKey; não
-reabrir scheduler. Após demo atrair: retomar input e
+**NEXT:** fechar a origem do objeto `table[2]` (epoch) e decidir o ponto de
+serviço do dispatch de áudio no host (class A: evento agendado e devido; thread
+AUDIO estacionada; MAIN não cede). Não implementar fix; não BaKey; não reabrir
+scheduler. Após demo atrair: retomar input e
 [[09-gameplay-parity-and-enhancements]].
