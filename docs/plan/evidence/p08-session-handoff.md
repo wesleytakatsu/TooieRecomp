@@ -12,8 +12,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle]
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `e4c6c0a2763341146f6d79293fea3db3e3168576`
-  (slot7 scheduled-event contract; validation docs land on top).
+- Checkpoint base/parent: `e42162469aaf815be25b5fb0e771e80c8aa54306`
+  (guest preemption scheduling gap audit; causal validation lands on top).
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -54,17 +54,27 @@ YES — synchronous dependency cycle / busy-wait:
 ## ROOT_CAUSE_STATUS
 
 ```text
-ROOT_CAUSE_PROVEN: YES
+ROOT_CAUSE_PROVEN: YES (causally, via clean dynamic experiment)
 ```
 
-A causa raiz foi integralmente demonstrada estruturalmente e validada dinamicamente:
+A causa raiz foi integralmente demonstrada estruturalmente, validada
+dinamicamente E agora **provada causalmente por experimento limpo reversível**
+(ver [[p08-guest-preemption-causal-validation]]):
+
 - No N64 original, a interrupção de áudio preempta imediatamente o loop CPU de MAIN (`func_800C2AB8`), pois `Status.IE = 1` e Priority(AUDIO)=50 > Priority(MAIN)=20.
 - No `N64ModernRuntime`, o agendamento é puramente cooperativo; `external_messages` só são consumidas em chamadas de API (`osRecvMesg`, `osSendMesg`, `osYieldThread`).
 - Como `func_800C2AB8` é um loop MIPS puro sem chamadas de runtime, MAIN retém o token de execução host indefinidamente, mantendo a thread AUDIO estacionada em `LightweightSemaphore::waitWithPartialSpinning` e impedindo a execução de `func_800205D0`.
+- **EXPERIMENTO CAUSAL (2026-08-12):** strong override temporário de
+  `func_800C2AB8` chamando a primitiva existente `yield_self_1ms(rdram)` por
+  passada com pending: AUDIO rodou (contadores de áudio avançaram o run todo),
+  `func_800205D0` limpou `table[2].word0` (0x8005C1B0 -> 0x00000000), slot7 foi
+  dispensado por `func_800C16A4`, `func_800C2AB8` RETORNOU e o attract progrediu
+  até um SIGSEGV downstream NOVO em `func_800BCF28` (input/world init, fora do
+  escopo). Patch revertido; nenhum código permanece.
 
 ## CURRENT_FIRST_DIVERGENCE
 
-Inanição do runtime de threads guest: MAIN retém o execution token do host em `func_800C2AB8` sem ceder CPU cooperativamente, impedindo o processamento da fila de mensagens externas que acordaria a thread AUDIO (prioridade 50).
+Inanição do runtime de threads guest: MAIN retém o execution token do host em `func_800C2AB8` sem ceder CPU cooperativamente, impedindo o processamento da fila de mensagens externas que acordaria a thread AUDIO (prioridade 50). **CAUSALLY PROVEN** por experimento limpo: com uma oportunidade cooperativa (`yield_self_1ms`) o chain `func_8001ED68 → func_8001EE34 → func_800200B8 → func_800205D0` limpa `table[2].word0` e C2AB8 retorna.
 
 
 ## RESOLVED_DO_NOT_REOPEN
@@ -112,32 +122,34 @@ ARBITRATION (Grok 4.5 HIGH):
 
 ## OPEN_QUESTIONS
 
-1. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
-2. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
-3. Host fix location: how to let the audio/event dispatch progress while MAIN spins (runtime scheduling / thread model), NOT a game-code clear.
-4. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
-5. Meaning of any observation at `0x8004E5A8` (not found statically).
-6. BaKey only after attract init progresses — possible downstream only.
+1. **NOVO BLOCKER downstream:** após C2AB8 retornar (com a prova causal), o
+   attract/world init progride até SIGSEGV determinístico em `func_800BCF28`
+   (chain gsworldDll_entrypoint_2 → basetup_entrypoint_2 → func_800A4B08 →
+   func_80097B4C → bakey_heldCount → func_800BCF28; RIP off 0x656d11). Fora do
+   escopo desta tarefa; próximo passo natural.
+2. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
+3. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
+4. Host fix location: runtime scheduler opportunity (generic preemption design) — PROVEN needed, not implemented.
+5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
+6. Meaning of any observation at `0x8004E5A8` (not found statically).
+7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-With class A proven (event scheduled + due; dispatch context AUDIO parked), the
-root cause is host-side: the audio/event dispatch context cannot run while MAIN
-busy-waits. Next investigation (no fix yet):
-
-- decide where the async audio/event dispatch should be serviced in the host
-  (runtime thread/event model) vs where MAIN's C2AB8 spin should yield;
-- re-check the two queued entries (delta 0 + delta 13294/2997) order vs the
-  intended 0x0400→0x200 chained completion.
+**PREEMPTION GAP CAUSALLY PROVEN** (class A). O próximo passo é projetar e
+revisar o **fix genérico de preempção no N64ModernRuntime** (oportunidade
+cooperativa de scheduler durante spins de guest / agendamento de áudio), e em
+paralelo investigar o **novo SIGSEGV downstream em `func_800BCF28`** que surge
+após C2AB8 retornar (attract/world input init). Não implementar fix nesta fase.
 
 No fix. No force-clear. No BaKey. No Scheduler C reopen.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-slot7-scheduled-event-validation]] — **CURRENT dynamic validation (class A)**
-2. [[p08-slot7-scheduled-event-driver]] — Gemini static reconstruction
-3. [[p08-slot7-object-lifecycle-arbitration]] — arbitration (origin open)
-4. [[p08-attract-actor-loop-diagnosis]] — freeze mechanism / slot7
+1. [[p08-guest-preemption-causal-validation]] — **CURRENT causal experiment (class A)**
+2. [[p08-guest-preemption-runtime-audit]] — Gemini structural audit
+3. [[p08-slot7-scheduled-event-validation]] — clean freeze dynamic validation
+4. [[p08-slot7-scheduled-event-driver]] — Gemini static reconstruction
 5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
@@ -161,5 +173,5 @@ GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (scheduled-event dynamic validation, class A)
+EVIDENCE_CHANGED         = YES (guest preemption causal validation, class A)
 ```

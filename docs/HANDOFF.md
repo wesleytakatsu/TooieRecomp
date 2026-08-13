@@ -21,11 +21,16 @@ Estado clean-freeze (determinístico):
 - único pending: kinematics **slot 7** (`substate=2`, `table[2].word0` = live
   pool object, p.ex. `0x8005C168`) → `func_800C269C(7)==0` para sempre.
 
-> **AUDITORIA ESTRUTURAL DE PREEMPÇÃO (2026-08-12):** O gap entre o hardware N64 e o runtime foi integralmente mapeado:
-> - **N64 Original:** Interrupts habilitados (`Status.IE = 1`) durante `func_800C2AB8`; interrupção de áudio/timer acorda `OSThread 4` (Priority 50) que preempta imediatamente `OSThread 6` MAIN (Priority 20) via hardware context switch.
-> - **N64ModernRuntime (`ultramodern`):** Escalonamento puramente cooperativo com token único de execução. `external_messages` só são processadas quando a thread atual chama a API do runtime (`osRecvMesg`, `osSendMesg`, `osYieldThread`).
-> - Como `func_800C2AB8` é um loop MIPS puro em código guest, MAIN nunca cede o token e AUDIO permanece estacionada em `LightweightSemaphore::waitWithPartialSpinning`.
-> - Evidência: [[plan/evidence/p08-guest-preemption-runtime-audit]].
+> **VALIDAÇÃO CAUSAL DO GAP DE PREEMPÇÃO (2026-08-12):** experimento limpo
+> reversível prova causalmente o gap. Strong override temporário de
+> `func_800C2AB8` chamando a primitiva existente `yield_self_1ms(rdram)` por
+> passada com pending: a thread AUDIO rodou (contadores de áudio avançaram o run
+> todo), `func_800205D0` limpou `table[2].word0` (0x8005C1B0 → 0x00000000), o
+> slot 7 foi dispensado por `func_800C16A4`, `func_800C2AB8` RETORNOU e o
+> attract progrediu até um **SIGSEGV downstream NOVO** em `func_800BCF28`
+> (chain gsworldDll/basetup/input, fora do escopo). **CLASS A — CAUSAL
+> CONFIRMATION.** Patch revertido; nenhum código permanece.
+> Evidência: [[plan/evidence/p08-guest-preemption-causal-validation]].
 
 
 
@@ -40,19 +45,15 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-Discriminador mínimo pós-freeze (sem fix):
+**GAP DE PREEMPÇÃO CAUSALMENTE PROVADO (CLASS A).** Próximos passos:
 
-1. dump do objeto em `table[2]` (`+0x08/+0x34/+0x44/+0x45/+0x30` + config);
-2. se autorizado depois: contadores de `20790` / `1EE34` / `205D0` + thread.
-
-**RESOLVIDO (2026-08-12, clean dynamic):** o discriminador do objeto `table[2]`
-foi capturado em 3 clean freezes: objeto agendado na delta-queue do SoundManager
-(head, delta 0, `payload.p4 == table[2].word0`), handler `func_8001ED68`
-registrado, `func_8001EE34` pending, thread AUDIO estacionada (scheduler
-cooperativo) e contadores de áudio congelados → **CLASS A** (callback agendado e
-devido, mas contexto de dispatch não pode rodar). Próximo passo: decidir o ponto
-de serviço do dispatch de áudio no host / onde MAIN deveria ceder; re-check da
-ordem dos 2 eventos enfileirados (delta 0 + delta 13294/2997).
+1. **Projetar e revisar o fix genérico de preempção no N64ModernRuntime**
+   (oportunidade cooperativa de scheduler durante spins de guest / agendamento
+   de áudio) — não implementar ainda.
+2. **Investigar o novo SIGSEGV downstream em `func_800BCF28`** que surge após
+   C2AB8 retornar (chain gsworldDll_entrypoint_2 → basetup_entrypoint_2 →
+   func_800A4B08 → func_80097B4C → bakey_heldCount; RIP off 0x656d11).
+3. Então: gsattract ep1 / demo, depois input title/file-select.
 
 Não forçar clear; não BaKey; não reabrir Scheduler C sem prova nova.
 
@@ -62,7 +63,9 @@ Não forçar clear; não BaKey; não reabrir Scheduler C sem prova nova.
 2. Música inicial OK.
 3. Intro 3D + logo + Jiggy OK.
 4. Attract request + type-4 complete + warp consumido OK.
-5. First gameplay demo **ausente** (freeze mode-5/slot7).
+5. First gameplay demo **ausente**: o freeze de C2AB8 foi **causalmente
+   resolvido em experimento** (attract progrediu até world init), mas agora um
+   **SIGSEGV downstream** em `func_800BCF28` bloqueia o demo.
 6. Title/file-select input diferido.
 
 ## Arquitetura e regras
@@ -81,6 +84,8 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
 - Type-4 incomplete / warp gated (clean freeze)
 - `func_80026500` as hang PC
 - `func_800A907C → func_8001EE34` as object driver (refutado)
+- **Freeze de C2AB8 como blocker terminal** — superado causalmente em
+  experimento (attract progride; novo SIGSEGV downstream em `func_800BCF28`)
 
 ## Current expected flow
 
@@ -99,8 +104,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-session-handoff]]
-2. [[plan/evidence/p08-slot7-object-lifecycle-arbitration]]
-3. [[plan/evidence/p08-attract-actor-loop-diagnosis]]
-4. [[plan/evidence/p08-type4-transition-semantics-audit]]
+1. [[plan/evidence/p08-guest-preemption-causal-validation]]
+2. [[plan/evidence/p08-guest-preemption-runtime-audit]]
+3. [[plan/evidence/p08-session-handoff]]
+4. [[plan/evidence/p08-slot7-scheduled-event-validation]]
 5. [[plans/BT/08-rt64-input-and-frontend]]

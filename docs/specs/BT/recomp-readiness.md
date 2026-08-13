@@ -56,6 +56,13 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 3. Loops de busy-wait em código guest puro (como `func_800C2AB8` durante transições de modo) que não executam chamadas de runtime retêm o token de execução e causam inanição das threads de áudio/scheduler.
 4. O runtime ou o código do jogo devem prover pontos de yield/preempção cooperativa periódicos para manter a paridade com o comportamento de interrupções de hardware do N64.
 
+> **Validação causal (2026-08-12):** o item 3/4 foi provado causalmente em
+> experimento limpo reversível — dar a `func_800C2AB8` uma oportunidade
+> cooperativa (`yield_self_1ms` existente) deixa a thread AUDIO rodar,
+> `func_800205D0` limpar `table[2].word0` e o busy-wait convergir. Ver
+> `docs/plan/evidence/p08-guest-preemption-causal-validation.md`. O fix
+> genérico de preempção no runtime permanece em projeto (não implementado).
+
 ## Próximos passos práticos
 
 O decompressor possui rotinas que imprimem símbolos/relocations e geram a

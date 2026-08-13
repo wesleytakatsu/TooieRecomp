@@ -94,6 +94,10 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   agendado na delta-queue (head, delta 0), e o contexto de dispatch (thread
   `[Game] AUDIO`) fica estacionado enquanto MAIN gira em `func_800C2AB8`
   (class A). Ver `docs/plan/evidence/p08-slot7-scheduled-event-validation.md`.
+- **Causal (2026-08-12):** experimento limpo reversível prova o gap de
+  preempção: `yield_self_1ms` em `func_800C2AB8` deixa AUDIO rodar e
+  `func_800205D0` limpar `table[2].word0`. Ver
+  `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
 
 ## Referências
 

@@ -21,18 +21,25 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 ## Estado corrente
 
 **P08 ACTIVE BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK; first attract
-demo ausente. MAIN busy-wait em `func_800C2AB8` no slot 7 porque
-`table[2].word0` aponta para um pool object vivo nunca limpo por
-`func_800205D0`.
+demo ausente. O freeze de MAIN em `func_800C2AB8` (slot 7, `table[2].word0` live
+pool object) foi **causalmente provado** como gap de preempção do runtime e
+superado em experimento limpo; agora um **SIGSEGV downstream** em
+`func_800BCF28` (attract/world input init) bloqueia o demo.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
 - Hardware N64: Hardware interrupt preempta `OSThread 6` MAIN (Pri 20) imediatamente para `OSThread 4` AUDIO (Pri 50).
 - `N64ModernRuntime`: Agendamento puramente cooperativo; o busy-wait puro em `func_800C2AB8` retém o token de execução e impede que mensagens externas acordem a thread AUDIO.
+- **Causa validada (experimento limpo 2026-08-12):** strong override temporário
+  de `func_800C2AB8` com `yield_self_1ms(rdram)` → AUDIO roda, `func_800205D0`
+  limpa `table[2].word0`, `func_800C269C(7)==1`, `func_800C16A4(7)` dispensa o
+  slot 7, `func_800C2AB8` retorna, attract progride até SIGSEGV em
+  `func_800BCF28`. Patch revertido.
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-guest-preemption-runtime-audit]] (**CURRENT**)
+- [[../../plan/evidence/p08-guest-preemption-causal-validation]] (**CURRENT**)
+- [[../../plan/evidence/p08-guest-preemption-runtime-audit]]
 - [[../../plan/evidence/p08-slot7-scheduled-event-validation]]
 - [[../../plan/evidence/p08-slot7-scheduled-event-driver]]
 - [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]]
@@ -62,9 +69,10 @@ Evidência corrente:
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
 - [~] `P08-T09` Evidência visual: intro/Jiggy OK; first demo ausente.
 - [ ] `P08-T10` Input title/file select (diferido).
-- [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **blocker =
-  slot7 / table[2] audio scheduler preemption vs C2AB8 busy-wait** (class A
-  validada dinamicamente — evento agendado e devido, dispatch AUDIO estacionado).
+- [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
+  = gap de preempção do runtime, provado causalmente** (experimento limpo:
+  yield_self_1ms em C2AB8 → AUDIO limpa table[2] → C2AB8 retorna → attract
+  progride até SIGSEGV downstream em func_800BCF28).
 
 
 ## Implementado / validado
@@ -91,7 +99,9 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-slot7-scheduled-event-validation]] | **CURRENT:** validação dinâmica class A (evento agendado+due, dispatch AUDIO estacionado) |
+| [[../../plan/evidence/p08-guest-preemption-causal-validation]] | **CURRENT:** experimento limpo class A — gap de preempção provado causalmente |
+| [[../../plan/evidence/p08-guest-preemption-runtime-audit]] | auditoria estrutural do gap (Gemini) |
+| [[../../plan/evidence/p08-slot7-scheduled-event-validation]] | validação dinâmica class A (evento agendado+due, dispatch AUDIO estacionado) |
 | [[../../plan/evidence/p08-slot7-scheduled-event-driver]] | reconstrução estática do scheduler/driver |
 | [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]] | arbitragem Gemini×DeepSeek; struct/driver/order |
 | [[../../plan/evidence/p08-session-handoff]] | **CURRENT:** handoff para chat zerado |
@@ -119,16 +129,17 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Origem do objeto `table[2]`** (intro/attract/handoff) — permanece UNKNOWN
-   (countdown=2 e config SFX 0x801301E0 não fecham o epoch).
-2. Só depois: fechar o ponto de fix **host-side** (como servir o dispatch de
-   áudio enquanto MAIN gira, ou onde MAIN deve ceder) e **um** fix candidate
-   (sem implementar ainda nesta fase se a causa não fechar).
-3. Então: gsattract ep1 / demo, depois input title/file-select.
+1. **Fix genérico de preempção no runtime** (oportunidade cooperativa de
+   scheduler durante spins de guest / agendamento de áudio) — gap PROVADO
+   causalmente; desenhar/revisar sem implementar ainda.
+2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
+   (chain gsworldDll/basetup/input/bakey). Fora do escopo atual.
+3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN.
+4. Então: gsattract ep1 / demo, depois input title/file-select.
 
 ## Gate de saída
 
-- [~] Abertura até Jiggy/type-4/warp; demo ainda ausente (slot7).
+- [~] Abertura até Jiggy/type-4/warp; demo ainda ausente (SIGSEGV downstream func_800BCF28).
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -137,8 +148,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** fechar a origem do objeto `table[2]` (epoch) e decidir o ponto de
-serviço do dispatch de áudio no host (class A: evento agendado e devido; thread
-AUDIO estacionada; MAIN não cede). Não implementar fix; não BaKey; não reabrir
-scheduler. Após demo atrair: retomar input e
-[[09-gameplay-parity-and-enhancements]].
+**NEXT:** (1) desenhar/revisar o fix genérico de preempção no N64ModernRuntime
+(gap provado causalmente; não implementar ainda); (2) investigar o novo SIGSEGV
+downstream em `func_800BCF28` que surge após C2AB8 retornar. Após demo atrair:
+retomar input e [[09-gameplay-parity-and-enhancements]].

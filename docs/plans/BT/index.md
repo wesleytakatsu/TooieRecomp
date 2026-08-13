@@ -71,20 +71,19 @@ T07). Detalhe: [[07-rsp-and-audio]].
 ### Nota P08 (2026-08-12)
 
 RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido no clean freeze;
-mode-5 alcançado. Freeze: MAIN em `func_800C2AB8` (slot 7 pending,
-`table[2].word0` = pool object vivo). **Validação dinâmica do scheduler
-(3 clean freezes):** o objeto de `table[2]` ESTÁ agendado na delta-queue do
-SoundManager (head, delta 0), handler `func_8001ED68` registrado, `func_8001EE34`
-pending; thread `[Game] AUDIO` estacionada em `LightweightSemaphore` wait e
-contadores de áudio congelados → **CLASS A** (callback agendado e devido, mas
-contexto de dispatch não pode rodar). Criador `func_80020790`, clearer
-`func_800205D0`; origem do objeto (intro/attract) ainda UNKNOWN.
-**Próximo:** decidir ponto de serviço do dispatch de áudio no host (sem fix).
-Input title/file-select diferido. Evidência:
+mode-5 alcançado. **Gap de preempção do runtime provado causalmente (experimento
+limpo reversível):** strong override temporário de `func_800C2AB8` chamando
+`yield_self_1ms(rdram)` → AUDIO roda (contadores de áudio avançam), `func_800205D0`
+limpa `table[2].word0` (0x8005C1B0→0), slot 7 dispensado por `func_800C16A4`,
+`func_800C2AB8` retorna, attract progride até **SIGSEGV downstream novo** em
+`func_800BCF28` (fora do escopo). Patch revertido. Criador `func_80020790`,
+clearer `func_800205D0`. **Próximo:** desenhar fix genérico de preempção no
+N64ModernRuntime + investigar `func_800BCF28` (sem implementar). Input
+title/file-select diferido. Evidência:
+[[../../plan/evidence/p08-guest-preemption-causal-validation]],
+[[../../plan/evidence/p08-guest-preemption-runtime-audit]],
 [[../../plan/evidence/p08-slot7-scheduled-event-validation]],
 [[../../plan/evidence/p08-slot7-scheduled-event-driver]],
 [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]],
-[[../../plan/evidence/p08-session-handoff]],
-[[../../plan/evidence/p08-attract-actor-loop-diagnosis]],
-[[../../plan/evidence/p08-type4-transition-semantics-audit]]. Detalhe:
+[[../../plan/evidence/p08-session-handoff]]. Detalhe:
 [[08-rt64-input-and-frontend]].

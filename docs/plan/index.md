@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; freeze em C2AB8 slot7 (`table[2]` pool object never cleared); **class A validada dinamicamente** (evento agendado+due na delta-queue; dispatch AUDIO estacionado); origem do objeto ainda UNKNOWN |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; **gap de preempção do runtime provado causalmente** (experimento limpo: AUDIO limpa table[2], C2AB8 retorna, attract progride) — agora bloqueado por SIGSEGV downstream em func_800BCF28 |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -160,8 +160,16 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-slot7-scheduled-event-validation]] — **CURRENT:** validação
-  dinâmica clean-freeze do contrato do scheduler (3 runs): objeto de `table[2]`
+- [[evidence/p08-guest-preemption-causal-validation]] — **CURRENT:** experimento
+  limpo class A — o gap de preempção do runtime é provado causalmente: com
+  `yield_self_1ms` em `func_800C2AB8`, a thread AUDIO roda, `func_800205D0`
+  limpa `table[2].word0`, `func_800C269C(7)==1`, `func_800C16A4(7)` dispensa o
+  slot 7, `func_800C2AB8` retorna e o attract progride até um SIGSEGV downstream
+  novo em `func_800BCF28` (fora do escopo).
+- [[evidence/p08-guest-preemption-runtime-audit]] — auditoria estrutural do gap
+  N64 vs N64ModernRuntime (Gemini).
+- [[evidence/p08-slot7-scheduled-event-validation]] — validação dinâmica
+  clean-freeze do contrato do scheduler (3 runs): objeto de `table[2]`
   agendado na delta-queue do SoundManager (head, delta 0), handler
   `func_8001ED68` registrado, `func_8001EE34` pending, thread `[Game] AUDIO`
   estacionada + contadores de áudio congelados → **CLASS A** (callback agendado
