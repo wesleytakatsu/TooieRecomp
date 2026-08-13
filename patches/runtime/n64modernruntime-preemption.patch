@@ -1,3 +1,16 @@
+diff --git a/librecomp/src/mods.cpp b/librecomp/src/mods.cpp
+index 0f7de83..d24a152 100644
+--- a/librecomp/src/mods.cpp
++++ b/librecomp/src/mods.cpp
+@@ -494,6 +494,8 @@ recomp::mods::LiveRecompilerCodeHandle::LiveRecompilerCodeHandle(
+         .get_function = inputs.get_function,
+         .syscall_handler = nullptr, // TODO hook this up
+         .pause_self = pause_self,
++        .preemption_hint = ultramodern_preemption_hint,
++        .service_preemption = ultramodern_service_preemption,
+         .trigger_event = inputs.recomp_trigger_event,
+         .reference_section_addresses = inputs.reference_section_addresses,
+         // Use the reference section addresses as the local section addresses if this is regenerated code so that jump tables work correctly.
 diff --git a/librecomp/src/recomp.cpp b/librecomp/src/recomp.cpp
 index 1200f77..3a97149 100644
 --- a/librecomp/src/recomp.cpp
@@ -95,7 +108,7 @@ index 5593172..390403c 100644
 +    set_target_properties(preemption_harness PROPERTIES EXCLUDE_FROM_ALL TRUE)
 +endif()
 diff --git a/ultramodern/include/ultramodern/ultramodern.hpp b/ultramodern/include/ultramodern/ultramodern.hpp
-index 3b28af3..dbdab7e 100644
+index 3b28af3..9beaa24 100644
 --- a/ultramodern/include/ultramodern/ultramodern.hpp
 +++ b/ultramodern/include/ultramodern/ultramodern.hpp
 @@ -56,6 +56,37 @@ void enqueue_external_message(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, bool re
@@ -136,16 +149,17 @@ index 3b28af3..dbdab7e 100644
  // Thread scheduling.
  void check_running_queue(RDRAM_ARG1);
  void run_next_thread_and_wait(RDRAM_ARG1);
-@@ -150,6 +181,14 @@ void set_callbacks(
+@@ -150,6 +181,15 @@ void set_callbacks(
  );
  } // namespace ultramodern
  
 +// C ABI for generated code (PATCH 3). Declared at file scope so the
-+// unmangled names match pause_self. ctx is recomp_context*; void* avoids
++// unmangled names match pause_self. The second argument is an opaque
++// uint32_t* status_reg (typically (void*)&ctx->status_reg). void* avoids
 +// a N64Recomp/recomp.h dependency (anonymous struct typedef).
 +extern "C" {
 +bool ultramodern_preemption_hint(void);
-+void ultramodern_service_preemption(uint8_t* rdram, void* ctx);
++void ultramodern_service_preemption(uint8_t* rdram, void* status_reg);
 +}
 +
  #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -305,10 +319,10 @@ index 961de3d..2d29b27 100644
      bool received = do_recv(PASS_RDRAM mq_, msg_, flags == OS_MESG_BLOCK);
 diff --git a/ultramodern/src/preemption.cpp b/ultramodern/src/preemption.cpp
 new file mode 100644
-index 0000000..61999ab
+index 0000000..b0ab76a
 --- /dev/null
 +++ b/ultramodern/src/preemption.cpp
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,85 @@
 +#include "ultramodern/ultramodern.hpp"
 +
 +#include <atomic>
@@ -388,26 +402,24 @@ index 0000000..61999ab
 +    return g_work_epoch.load(std::memory_order_relaxed) != tls_last_seen;
 +}
 +
-+extern "C" void ultramodern_service_preemption(uint8_t* rdram, void* ctx) {
-+    // ctx is a recomp_context* at the generated-code ABI, but this TU must
-+    // not name that anonymous typedef. PATCH 3 / librecomp will supply a
-+    // wrapper that extracts status_reg. Until then: feature-OFF is a
-+    // no-op; feature-ON with a null/opaque ctx uses a fully-unmasked
-+    // fallback (harness mask tests use the C++ API with an explicit word).
-+    (void)ctx;
-+    uint32_t fallback = ultramodern::intmask::status_reg_init();
-+    ultramodern::service_preemption(rdram, &fallback);
++extern "C" void ultramodern_service_preemption(uint8_t* rdram, void* status_reg_opaque) {
++    // Generated code passes (void*)&ctx->status_reg. Do not interpret this
++    // as a recomp_context* (anonymous typedef; no layout dependency here).
++    auto* status_reg = static_cast<uint32_t*>(status_reg_opaque);
++    ultramodern::service_preemption(rdram, status_reg);
 +}
 diff --git a/ultramodern/test/preemption_harness.cpp b/ultramodern/test/preemption_harness.cpp
 new file mode 100644
-index 0000000..507dafb
+index 0000000..4df4d00
 --- /dev/null
 +++ b/ultramodern/test/preemption_harness.cpp
-@@ -0,0 +1,688 @@
-+// PATCH 2 standalone harness for Hybrid F' guest preemption.
+@@ -0,0 +1,768 @@
++// PATCH 2+3 standalone harness for Hybrid F' guest preemption.
 +// T01 repaired (service after enqueue). T02–T10 and T12 implemented.
-+// T11 is PATCH 3. Threaded tests run in a child process so leftover
-+// guest std::threads cannot poison later cases.
++// T11-F proves the C ABI consumes a status_reg pointer (not whole ctx).
++// Static/live generator T11 lives in N64Recomp PreemptionSafepointTest.
++// Threaded tests run in a child process so leftover guest std::threads
++// cannot poison later cases.
 +
 +#include <atomic>
 +#include <chrono>
@@ -477,6 +489,8 @@ index 0000000..507dafb
 +constexpr int32_t kEntryAudioRepeat = 12;
 +constexpr int32_t kEntryMainFifo = 13;
 +constexpr int32_t kEntryAudioFifo = 14;
++constexpr int32_t kEntryMainCAbiMasked = 15;
++constexpr int32_t kEntryMainCAbiUnmasked = 16;
 +
 +constexpr OSPri kPriMain = 20;
 +constexpr OSPri kPriAudio = 50;
@@ -723,6 +737,36 @@ index 0000000..507dafb
 +    park_forever(rdram);
 +}
 +
++void main_cabi_masked(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    uint32_t masked = 0; // IE=0 — not preemptible if the pointer is honored
++    ultramodern_service_preemption(rdram, &masked);
++    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
++                                       std::memory_order_release);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void main_cabi_unmasked(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    uint32_t unmasked = ultramodern::intmask::status_reg_init();
++    ultramodern_service_preemption(rdram, &unmasked);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
 +} // namespace
 +
 +void run_thread_function(uint8_t* rdram, uint64_t addr, uint64_t /*sp*/, uint64_t arg) {
@@ -768,6 +812,12 @@ index 0000000..507dafb
 +            break;
 +        case kEntryAudioFifo:
 +            audio_fifo(rdram);
++            break;
++        case kEntryMainCAbiMasked:
++            main_cabi_masked(rdram);
++            break;
++        case kEntryMainCAbiUnmasked:
++            main_cabi_unmasked(rdram);
 +            break;
 +        default:
 +            std::fprintf(stderr, "unknown harness entry %d arg=%llu\n",
@@ -990,6 +1040,45 @@ index 0000000..507dafb
 +    CHECK(coop.fifo_next.load(std::memory_order_acquire) == 3);
 +}
 +
++void t11_abi_masked() {
++    std::printf("T11-F C ABI honors IE=0 status_reg pointer\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainCAbiMasked, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(coop.audio_ran.load(std::memory_order_acquire) == false);
++}
++
++void t11_abi_unmasked() {
++    std::printf("T11-F C ABI unmasked status_reg pointer preempts\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainCAbiUnmasked, 0, gptr(kOffMainSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osStartThread(g_rdram, gptr(kOffMainThread));
++    CHECK(wait_until([&] { return coop.audio_blocked.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++}
++
++void t11_abi_flag_off() {
++    std::printf("T11-G C ABI flag OFF does not service\n");
++    CHECK(ultramodern::guest_preemption_safepoints_enabled() == false);
++    uint32_t unmasked = ultramodern::intmask::status_reg_init();
++    ultramodern_service_preemption(nullptr, &unmasked);
++    CHECK(ultramodern_preemption_hint() == false);
++}
++
 +void t12_threadqueue() {
 +    std::printf("T12 Fix B threadqueue contract\n");
 +    uint8_t* rdram = new uint8_t[kRdramBytes]{};
@@ -1082,9 +1171,10 @@ index 0000000..507dafb
 +    run_isolated("T08", t08_requeue);
 +    run_isolated("T09", t09_repeat);
 +    run_isolated("T10", t10_fifo);
++    run_isolated("T11-F-masked", t11_abi_masked);
++    run_isolated("T11-F-unmasked", t11_abi_unmasked);
++    t11_abi_flag_off();
 +    run_isolated("T12", t12_threadqueue);
-+
-+    skip("T11", "static vs LiveRecomp equivalence — PATCH 3");
 +
 +    std::printf("PATCH2 %s  (pass=%d fail=%d skipped=%d)\n",
 +                g_fail == 0 ? "PASS" : "FAIL", g_pass, g_fail, g_skip);

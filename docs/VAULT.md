@@ -33,7 +33,8 @@
 - [[plan/evidence/p08-guest-preemption-causal-validation]] — P08 — guest preemption causal validation (clean experiment, class A) — Experimento limpo reversível: yield_self_1ms em func_800C2AB8 → AUDIO roda, func_800205D0 limpa table[2].word0, C2AB8 retorna, attract progride (até SIGSEGV downstream novo em func_800BCF28). Gap de preempção provado causalmente.
 - [[plan/evidence/p08-permanent-preemption-design]] — P08 — permanent guest-preemption design (DeepSeek Hybrid F) — `CORRECTED/SUPERSEDED` pela revisão adversarial.
 - [[plan/evidence/p08-preemption-design-adversarial-review]] — P08 — adversarial review of generic guest-preemption design — Hybrid F quebrado (veredito C); Hybrid F' aprovado.
-- [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — spec file/function + matriz T01–T15. PATCH 1 landed; PATCH 2+ pending.
+- [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — spec file/function + matriz T01–T15. PATCH 3 landed; PATCH4_READY NO.
+- [[plan/evidence/p08-preemption-patch3-validation]] — P08 — preemption PATCH 3 generator safepoint validation — T11 static/live/ABI PASS; flag OFF; sem regen Tooie.
 - [[plan/evidence/p08-preemption-patch2-independent-review]] — P08 — independent review of preemption PATCH 2 — Veredito B; PATCH 3 ready; X1 cause/class before PATCH 4; C ABI must wrap status_reg.
 - [[plan/evidence/p08-preemption-patch2-validation]] — P08 — preemption PATCH 2 runtime service validation — epoch/service/intmask; T01–T10/T12 PASS; flag OFF; cumulative artifact.
 - [[plan/evidence/p08-preemption-patch1-independent-review]] — P08 — independent review of preemption PATCH 1 — Veredito B; PATCH 2 ready; T01-E WEAK; cumulative artifact B; PATCH 3 void*/recomp_context* collision.

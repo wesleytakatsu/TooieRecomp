@@ -1,0 +1,643 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 55f10a5..1b97e02 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -205,3 +205,17 @@ target_include_directories(LiveRecompTest PRIVATE
+ )
+ 
+ target_link_libraries(LiveRecompTest LiveRecomp)
++
++# PATCH 3: static/live preemption safepoint placement (T11)
++project(PreemptionSafepointTest)
++add_executable(PreemptionSafepointTest)
++
++target_sources(PreemptionSafepointTest PRIVATE
++    ${CMAKE_CURRENT_SOURCE_DIR}/LiveRecomp/preemption_safepoint_test.cpp
++)
++
++target_include_directories(PreemptionSafepointTest PRIVATE
++    ${CMAKE_CURRENT_SOURCE_DIR}/lib/sljit/sljit_src
++)
++
++target_link_libraries(PreemptionSafepointTest LiveRecomp)
+diff --git a/LiveRecomp/live_generator.cpp b/LiveRecomp/live_generator.cpp
+index 61e1ff5..8084727 100644
+--- a/LiveRecomp/live_generator.cpp
++++ b/LiveRecomp/live_generator.cpp
+@@ -1,4 +1,5 @@
+ #include <cassert>
++#include <cstddef>
+ #include <fstream>
+ #include <unordered_map>
+ #include <cmath>
+@@ -1933,6 +1934,20 @@ void N64Recomp::LiveGenerator::emit_pause_self() const {
+     sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS1V(P), SLJIT_IMM, sljit_sw(inputs.pause_self));
+ }
+ 
++void N64Recomp::LiveGenerator::emit_preemption_safepoint() const {
++    if (inputs.preemption_hint == nullptr || inputs.service_preemption == nullptr) {
++        return;
++    }
++    // hint() -> bool in AL. Mask to bit 0 so a C _Bool return is well-defined.
++    sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS0(32), SLJIT_IMM, sljit_sw(inputs.preemption_hint));
++    sljit_emit_op2(compiler, SLJIT_AND32, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_IMM, 1);
++    sljit_jump* skip = sljit_emit_cmp(compiler, SLJIT_EQUAL | SLJIT_32, SLJIT_R0, 0, SLJIT_IMM, 0);
++    sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R0, 0, Registers::rdram, 0, SLJIT_IMM, rdram_offset);
++    sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, Registers::ctx, 0, SLJIT_IMM, offsetof(recomp_context, status_reg));
++    sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2V(P, P), SLJIT_IMM, sljit_sw(inputs.service_preemption));
++    sljit_set_label(skip, sljit_emit_label(compiler));
++}
++
+ void N64Recomp::LiveGenerator::emit_trigger_event(uint32_t event_index) const {
+     // Load rdram and ctx into R0 and R1.
+     sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R0, 0, Registers::rdram, 0, SLJIT_IMM, rdram_offset);
+diff --git a/LiveRecomp/live_recompiler_test.cpp b/LiveRecomp/live_recompiler_test.cpp
+index c5673eb..423c9e7 100644
+--- a/LiveRecomp/live_recompiler_test.cpp
++++ b/LiveRecomp/live_recompiler_test.cpp
+@@ -82,6 +82,15 @@ void test_switch_error(const char* func, uint32_t vram, uint32_t jtbl) {
+     printf("  Switch-case out of bounds in %s at 0x%08X for jump table at 0x%08X\n", func, vram, jtbl);
+ }
+ 
++static bool test_preemption_hint(void) {
++    return false;
++}
++
++static void test_service_preemption(uint8_t* rdram, void* status_reg) {
++    (void)rdram;
++    (void)status_reg;
++}
++
+ TestStats run_test(const std::filesystem::path& tests_dir, const std::string& test_name) {
+     std::filesystem::path input_path = tests_dir / (test_name + "_data.bin");
+     std::filesystem::path data_dump_path = tests_dir / (test_name + "_data_out.bin");
+@@ -241,6 +250,9 @@ TestStats run_test(const std::filesystem::path& tests_dir, const std::string& te
+     N64Recomp::LiveGeneratorInputs generator_inputs {
+         .switch_error = test_switch_error,
+         .get_function = test_get_function,
++        .pause_self = nullptr,
++        .preemption_hint = test_preemption_hint,
++        .service_preemption = test_service_preemption,
+         .reference_section_addresses = nullptr,
+         .local_section_addresses = section_addresses.data()
+     };
+diff --git a/LiveRecomp/preemption_safepoint_test.cpp b/LiveRecomp/preemption_safepoint_test.cpp
+new file mode 100644
+index 0000000..dabf5d3
+--- /dev/null
++++ b/LiveRecomp/preemption_safepoint_test.cpp
+@@ -0,0 +1,339 @@
++// T11: static C / LiveRecomp preemption safepoint placement.
++// Proves request-site policy in recompilation.cpp, not backend-local guesses.
++
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <sstream>
++#include <string>
++#include <string_view>
++#include <vector>
++
++#include "recompiler/context.h"
++#include "recompiler/live_recompiler.h"
++#include "recomp.h"
++
++namespace {
++
++int g_fail = 0;
++int g_pass = 0;
++
++#define CHECK(cond)                                                          \
++    do {                                                                     \
++        if (cond) {                                                          \
++            ++g_pass;                                                        \
++        } else {                                                             \
++            ++g_fail;                                                        \
++            std::fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
++        }                                                                    \
++    } while (0)
++
++constexpr uint32_t kVram = 0x80001000u;
++constexpr int kRa = 31;
++constexpr int kA0 = 4;
++constexpr int kT0 = 8;
++constexpr int kT1 = 9;
++constexpr int kT2 = 10;
++
++uint32_t r_type(uint32_t rs, uint32_t rt, uint32_t rd, uint32_t funct) {
++    return (rs << 21) | (rt << 16) | (rd << 11) | funct;
++}
++uint32_t i_type(uint32_t op, uint32_t rs, uint32_t rt, uint32_t imm) {
++    return (op << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFFu);
++}
++uint32_t j_type(uint32_t op, uint32_t target) {
++    return (op << 26) | ((target >> 2) & 0x03FFFFFFu);
++}
++
++uint32_t addiu(uint32_t rt, uint32_t rs, int16_t imm) { return i_type(0x09, rs, rt, static_cast<uint16_t>(imm)); }
++uint32_t bne(uint32_t rs, uint32_t rt, int16_t off) { return i_type(0x05, rs, rt, static_cast<uint16_t>(off)); }
++uint32_t beq(uint32_t rs, uint32_t rt, int16_t off) { return i_type(0x04, rs, rt, static_cast<uint16_t>(off)); }
++uint32_t j(uint32_t target) { return j_type(0x02, target); }
++uint32_t jr(uint32_t rs) { return r_type(rs, 0, 0, 0x08); }
++uint32_t lui(uint32_t rt, uint16_t imm) { return i_type(0x0F, 0, rt, imm); }
++uint32_t lw(uint32_t rt, uint32_t rs, int16_t imm) { return i_type(0x23, rs, rt, static_cast<uint16_t>(imm)); }
++uint32_t addu(uint32_t rd, uint32_t rs, uint32_t rt) { return r_type(rs, rt, rd, 0x21); }
++
++void append_be(std::vector<uint8_t>& rom, uint32_t word) {
++    rom.push_back(static_cast<uint8_t>(word >> 24));
++    rom.push_back(static_cast<uint8_t>(word >> 16));
++    rom.push_back(static_cast<uint8_t>(word >> 8));
++    rom.push_back(static_cast<uint8_t>(word));
++}
++
++struct ToyFunc {
++    N64Recomp::Context context;
++    std::vector<uint32_t> words;
++};
++
++void finish_toy(ToyFunc& toy, const std::vector<uint32_t>& mips_words, const std::vector<uint32_t>& extra_rom_words) {
++    toy.context.rom.clear();
++    toy.words.clear();
++    for (uint32_t w : mips_words) {
++        append_be(toy.context.rom, w);
++        toy.words.push_back(byteswap(w));
++    }
++    for (uint32_t w : extra_rom_words) {
++        append_be(toy.context.rom, w);
++    }
++    toy.context.sections.resize(1);
++    toy.context.sections[0].rom_addr = 0;
++    toy.context.sections[0].ram_addr = kVram;
++    toy.context.sections[0].size = static_cast<uint32_t>(toy.context.rom.size());
++    toy.context.sections[0].executable = true;
++    toy.context.sections[0].relocatable = false;
++    toy.context.section_functions.resize(1);
++    toy.context.functions_by_vram[kVram].emplace_back(0);
++    toy.context.sections[0].function_addrs.emplace_back(kVram);
++    toy.context.functions.emplace_back(kVram, 0, toy.words, "test_func", 0);
++}
++
++int count_substr(std::string_view hay, std::string_view needle) {
++    int n = 0;
++    for (size_t pos = 0; (pos = hay.find(needle, pos)) != std::string_view::npos; pos += needle.size()) {
++        ++n;
++    }
++    return n;
++}
++
++bool recompile_static(ToyFunc& toy, std::string& out) {
++    std::ostringstream oss;
++    std::vector<std::vector<uint32_t>> dummy;
++    if (!N64Recomp::recompile_function(toy.context, 0, oss, dummy, false)) {
++        return false;
++    }
++    out = oss.str();
++    return true;
++}
++
++struct LiveCounts {
++    int hint = 0;
++    int service = 0;
++    int pause = 0;
++    void* last_status = nullptr;
++    bool hint_true = true;
++};
++
++LiveCounts* g_live = nullptr;
++
++bool live_hint(void) {
++    ++g_live->hint;
++    return g_live->hint_true;
++}
++
++void live_service(uint8_t* rdram, void* status_reg) {
++    (void)rdram;
++    ++g_live->service;
++    g_live->last_status = status_reg;
++}
++
++void live_pause(uint8_t* rdram) {
++    (void)rdram;
++    ++g_live->pause;
++}
++
++void live_switch_error(const char* func, uint32_t vram, uint32_t jtbl) {
++    std::fprintf(stderr, "switch error %s 0x%08X 0x%08X\n", func, vram, jtbl);
++}
++
++bool run_live(ToyFunc& toy, recomp_context* ctx, LiveCounts& counts) {
++    g_live = &counts;
++    N64Recomp::live_recompiler_init();
++    int32_t section_addr = static_cast<int32_t>(kVram);
++    N64Recomp::LiveGeneratorInputs inputs{
++        .switch_error = live_switch_error,
++        .pause_self = live_pause,
++        .preemption_hint = live_hint,
++        .service_preemption = live_service,
++        .local_section_addresses = &section_addr,
++    };
++    N64Recomp::LiveGenerator generator{1, inputs};
++    std::ostringstream dummy_out;
++    std::vector<std::vector<uint32_t>> dummy;
++    if (!N64Recomp::recompile_function_live(generator, toy.context, 0, dummy_out, dummy, false)) {
++        return false;
++    }
++    N64Recomp::LiveGeneratorOutput output = generator.finish();
++    if (!output.good || output.functions.empty() || output.functions[0] == nullptr) {
++        return false;
++    }
++    std::vector<uint8_t> rdram(0x1000, 0);
++    output.functions[0](rdram.data(), ctx);
++    return true;
++}
++
++// bne offset is from the delay-slot PC.
++int16_t bne_off(uint32_t branch_vram, uint32_t target_vram) {
++    return static_cast<int16_t>((static_cast<int32_t>(target_vram) - static_cast<int32_t>(branch_vram + 4)) / 4);
++}
++
++void t11_forward() {
++    std::printf("T11-A forward branch: no safepoint\n");
++    // beq zero, zero, L ; nop ; addiu ; L: jr ra ; nop
++    ToyFunc toy;
++    finish_toy(toy, {
++        beq(0, 0, bne_off(kVram, kVram + 0x0C)),
++        0,
++        addiu(kA0, kA0, 1),
++        jr(kRa),
++        0,
++    }, {});
++    std::string c;
++    CHECK(recompile_static(toy, c));
++    CHECK(count_substr(c, "ultramodern_preemption_hint") == 0);
++    CHECK(count_substr(c, "goto L_") >= 1);
++
++    recomp_context ctx{};
++    ctx.r4 = 0;
++    LiveCounts counts{};
++    CHECK(run_live(toy, &ctx, counts));
++    CHECK(counts.service == 0);
++    CHECK(counts.hint == 0);
++}
++
++void t11_backedge_and_delay() {
++    std::printf("T11-B/D backedge after delay slot\n");
++    // L: addiu a0, a0, -1 ; bne a0, zero, L ; addiu a0, a0, 0 ; jr ra ; nop
++    // Delay slot is a distinctive addiu immediate 0x1234 so we can order-check.
++    const uint32_t delay = addiu(kT0, kT0, 0x1234);
++    ToyFunc toy;
++    finish_toy(toy, {
++        addiu(kA0, kA0, -1),
++        bne(kA0, 0, bne_off(kVram + 4, kVram)),
++        delay,
++        jr(kRa),
++        0,
++    }, {});
++    std::string c;
++    CHECK(recompile_static(toy, c));
++    CHECK(count_substr(c, "ultramodern_preemption_hint") == 1);
++    CHECK(c.find("(void*)&ctx->status_reg") != std::string::npos);
++    const size_t delay_pos = c.find("0x1234");
++    const size_t hint_pos = c.find("ultramodern_preemption_hint");
++    const size_t goto_pos = c.find("goto L_80001000");
++    CHECK(delay_pos != std::string::npos);
++    CHECK(hint_pos != std::string::npos);
++    CHECK(goto_pos != std::string::npos);
++    CHECK(delay_pos < hint_pos);
++    CHECK(hint_pos < goto_pos);
++
++    recomp_context ctx{};
++    ctx.r4 = 3;
++    ctx.status_reg = 0xA5A5A5A5u;
++    LiveCounts counts{};
++    CHECK(run_live(toy, &ctx, counts));
++    CHECK(counts.service == 2);
++    CHECK(counts.hint == 2);
++    CHECK(counts.last_status == &ctx.status_reg);
++}
++
++void t11_self_loop() {
++    std::printf("T11-C self-loop pause_self, no extra safepoint\n");
++    ToyFunc toy;
++    finish_toy(toy, {
++        j(kVram),
++        0,
++        jr(kRa),
++        0,
++    }, {});
++    std::string c;
++    CHECK(recompile_static(toy, c));
++    CHECK(count_substr(c, "pause_self") == 1);
++    CHECK(count_substr(c, "ultramodern_preemption_hint") == 0);
++
++    recomp_context ctx{};
++    LiveCounts counts{};
++    CHECK(run_live(toy, &ctx, counts));
++    CHECK(counts.pause == 1);
++    CHECK(counts.service == 0);
++    CHECK(counts.hint == 0);
++}
++
++void t11_switch() {
++    std::printf("T11-D jump table: safepoint before switch\n");
++    const uint32_t case0 = kVram + 0x14;
++    const uint32_t case1 = kVram + 0x1C;
++    const uint32_t jtbl = kVram + 0x30;
++    ToyFunc toy;
++    finish_toy(toy, {
++        lui(kT0, 0x8000),
++        addu(kT0, kT0, kT1),
++        lw(kT2, kT0, static_cast<int16_t>(jtbl & 0xFFFF)),
++        jr(kT2),
++        0,
++        jr(kRa),
++        0,
++        jr(kRa),
++        0,
++    }, {
++        0, 0, 0, // pad 0x24, 0x28, 0x2C
++        case0, case1, 0,
++    });
++    std::string c;
++    CHECK(recompile_static(toy, c));
++    CHECK(count_substr(c, "ultramodern_preemption_hint") == 1);
++    const size_t hint_pos = c.find("ultramodern_preemption_hint");
++    const size_t switch_pos = c.find("switch (");
++    CHECK(hint_pos != std::string::npos);
++    CHECK(switch_pos != std::string::npos);
++    CHECK(hint_pos < switch_pos);
++
++    recomp_context ctx{};
++    ctx.r9 = 0; // t1 addend = 0 -> case 0
++    ctx.status_reg = 0x11223344u;
++    LiveCounts counts{};
++    CHECK(run_live(toy, &ctx, counts));
++    CHECK(counts.service == 1);
++    CHECK(counts.hint == 1);
++    CHECK(counts.last_status == &ctx.status_reg);
++}
++
++void t11_flag_off_live() {
++    std::printf("T11-G flag/hint false: no service\n");
++    ToyFunc toy;
++    finish_toy(toy, {
++        addiu(kA0, kA0, -1),
++        bne(kA0, 0, bne_off(kVram + 4, kVram)),
++        0,
++        jr(kRa),
++        0,
++    }, {});
++    recomp_context ctx{};
++    ctx.r4 = 3;
++    LiveCounts counts{};
++    counts.hint_true = false;
++    CHECK(run_live(toy, &ctx, counts));
++    CHECK(counts.hint == 2);
++    CHECK(counts.service == 0);
++}
++
++void t11_static_c_compiles() {
++    std::printf("T11 static generated C mentions void* status_reg ABI\n");
++    ToyFunc toy;
++    finish_toy(toy, {
++        addiu(kA0, kA0, -1),
++        bne(kA0, 0, bne_off(kVram + 4, kVram)),
++        0,
++        jr(kRa),
++        0,
++    }, {});
++    std::string c;
++    CHECK(recompile_static(toy, c));
++    CHECK(c.find("ultramodern_service_preemption(rdram, (void*)&ctx->status_reg)") != std::string::npos);
++}
++
++} // namespace
++
++int main() {
++    N64Recomp::live_recompiler_init();
++    t11_forward();
++    t11_backedge_and_delay();
++    t11_self_loop();
++    t11_switch();
++    t11_flag_off_live();
++    t11_static_c_compiles();
++
++    std::printf("T11 %s  (pass=%d fail=%d)\n", g_fail == 0 ? "PASS" : "FAIL", g_pass, g_fail);
++    return g_fail == 0 ? 0 : 1;
++}
+diff --git a/include/recomp.h b/include/recomp.h
+index 73f3e73..4ba7853 100644
+--- a/include/recomp.h
++++ b/include/recomp.h
+@@ -3,6 +3,7 @@
+ 
+ #include <stdlib.h>
+ #include <stdint.h>
++#include <stdbool.h>
+ #include <math.h>
+ #include <fenv.h>
+ #include <assert.h>
+@@ -468,6 +469,9 @@ void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int32_t instruc
+ 
+ void pause_self(uint8_t *rdram);
+ 
++bool ultramodern_preemption_hint(void);
++void ultramodern_service_preemption(uint8_t* rdram, void* status_reg);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/include/recompiler/generator.h b/include/recompiler/generator.h
+index 145bcd0..082a135 100644
+--- a/include/recompiler/generator.h
++++ b/include/recompiler/generator.h
+@@ -59,6 +59,7 @@ namespace N64Recomp {
+         virtual void emit_syscall(uint32_t instr_vram) const = 0;
+         virtual void emit_do_break(uint32_t instr_vram) const = 0;
+         virtual void emit_pause_self() const = 0;
++        virtual void emit_preemption_safepoint() const = 0;
+         virtual void emit_trigger_event(uint32_t event_index) const = 0;
+         virtual void emit_comment(const std::string& comment) const = 0;
+     };
+@@ -96,6 +97,7 @@ namespace N64Recomp {
+         void emit_syscall(uint32_t instr_vram) const final;
+         void emit_do_break(uint32_t instr_vram) const final;
+         void emit_pause_self() const final;
++        void emit_preemption_safepoint() const final;
+         void emit_trigger_event(uint32_t event_index) const final;
+         void emit_comment(const std::string& comment) const final;
+     private:
+diff --git a/include/recompiler/live_recompiler.h b/include/recompiler/live_recompiler.h
+index d155b83..5139a7d 100644
+--- a/include/recompiler/live_recompiler.h
++++ b/include/recompiler/live_recompiler.h
+@@ -75,6 +75,8 @@ namespace N64Recomp {
+         recomp_func_t* (*get_function)(int32_t vram);
+         void (*syscall_handler)(uint8_t* rdram, recomp_context* ctx, int32_t instruction_vram);
+         void (*pause_self)(uint8_t* rdram);
++        bool (*preemption_hint)(void);
++        void (*service_preemption)(uint8_t* rdram, void* status_reg);
+         void (*trigger_event)(uint8_t* rdram, recomp_context* ctx, uint32_t event_index);
+         int32_t *reference_section_addresses;
+         int32_t *local_section_addresses;
+@@ -128,6 +130,7 @@ namespace N64Recomp {
+         void emit_syscall(uint32_t instr_vram) const final;
+         void emit_do_break(uint32_t instr_vram) const final;
+         void emit_pause_self() const final;
++        void emit_preemption_safepoint() const final;
+         void emit_trigger_event(uint32_t event_index) const final;
+         void emit_comment(const std::string& comment) const final;
+     private:
+diff --git a/src/cgenerator.cpp b/src/cgenerator.cpp
+index 94f85c5..4a5e876 100644
+--- a/src/cgenerator.cpp
++++ b/src/cgenerator.cpp
+@@ -554,6 +554,11 @@ void N64Recomp::CGenerator::emit_pause_self() const {
+     fmt::print(output_file, "pause_self(rdram);\n");
+ }
+ 
++void N64Recomp::CGenerator::emit_preemption_safepoint() const {
++    fmt::print(output_file,
++        "if (ultramodern_preemption_hint()) {{ ultramodern_service_preemption(rdram, (void*)&ctx->status_reg); }}\n");
++}
++
+ void N64Recomp::CGenerator::emit_trigger_event(uint32_t event_index) const {
+     fmt::print(output_file, "recomp_trigger_event(rdram, ctx, base_event_index + {});\n", event_index);
+ }
+diff --git a/src/main.cpp b/src/main.cpp
+index b2816c0..57b527f 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -463,6 +463,10 @@ int main(int argc, char** argv) {
+         exit_failure("Config file must provide either an elf or a symbols file\n");
+     }
+ 
++    // TooieRecomp local policy: Banjo-Tooie decomp still has many zero-sized function
++    // symbols, so strict JAL resolution fails. Force runtime LOOKUP_FUNC for all calls.
++    // Documented in docs/plans/BT/04-static-recompilation.md — do not upstream blindly.
++    context.use_lookup_for_all_function_calls = true;
+ 
+     fmt::print("Function count: {}\n", context.functions.size());
+ 
+diff --git a/src/recompilation.cpp b/src/recompilation.cpp
+index c228433..aaf81dd 100644
+--- a/src/recompilation.cpp
++++ b/src/recompilation.cpp
+@@ -22,11 +22,6 @@ enum class JalResolutionResult {
+ };
+ 
+ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_section_index, uint32_t target_func_vram, size_t& matched_function_index) {
+-    // Skip resolution if all function calls should use lookup and just return Ambiguous.
+-    if (context.use_lookup_for_all_function_calls) {
+-        return JalResolutionResult::Ambiguous;
+-    }
+-
+     // Look for symbols with the target vram address
+     const N64Recomp::Section& cur_section = context.sections[cur_section_index];
+     const auto matching_funcs_find = context.functions_by_vram.find(target_func_vram);
+@@ -39,8 +34,16 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
+     thread_local std::vector<size_t> matched_funcs{};
+     matched_funcs.clear();
+ 
+-    // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
+-    if (matching_funcs_find != context.functions_by_vram.end()) {
++    // A target in the same section as the current function must be loaded together with it, so it
++    // is statically unambiguous. Bind it directly to a C call even when lookups are otherwise
++    // forced for all function calls: multiple relocatable overlays can share a canonical vram
++    // (e.g. 0x80800000), so a cross-overlay LOOKUP_FUNC would resolve to whichever overlay was
++    // most recently mapped. Same-section targets avoid that collision by construction.
++    //
++    // Restrict to relocatable sections: non-relocatable sections (boot/core) can have host
++    // runtime hooks installed over generated functions at runtime (e.g. libultra stubs at
++    // 0x8001xxxx), so a direct C call would bypass the hook that a LOOKUP_FUNC would reach.
++    if (context.sections[cur_section_index].relocatable && matching_funcs_find != context.functions_by_vram.end()) {
+         for (size_t target_func_index : matching_funcs_find->second) {
+             const auto& target_func = context.functions[target_func_index];
+ 
+@@ -53,10 +56,33 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
+ 
+             // Immediately accept a function in the same section as this one, since it must also be loaded if the current function is.
+             if (target_func.section_index == cur_section_index) {
+-                exact_match_found = true;
+-                matched_funcs.clear();
+-                matched_funcs.push_back(target_func_index);
+-                break;
++                // Only bind functions that are actually generated as C. Reimplemented/ignored/stubbed
++                // functions have no C definition (the runtime registers them by vram), so they must
++                // keep using LOOKUP_FUNC to dispatch through the runtime's function table.
++                if (target_func.reimplemented || target_func.ignored || target_func.stubbed) {
++                    continue;
++                }
++                matched_function_index = target_func_index;
++                return JalResolutionResult::Match;
++            }
++        }
++    }
++
++    // Skip resolution if all function calls should use lookup and just return Ambiguous.
++    if (context.use_lookup_for_all_function_calls) {
++        return JalResolutionResult::Ambiguous;
++    }
++
++    // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
++    if (matching_funcs_find != context.functions_by_vram.end()) {
++        for (size_t target_func_index : matching_funcs_find->second) {
++            const auto& target_func = context.functions[target_func_index];
++
++            // Zero-sized symbol handling. unless there's only one matching target.
++            if (target_func.words.empty()) {
++                if (!N64Recomp::is_manual_patch_symbol(target_func.vram)) {
++                    continue;
++                }
+             }
+ 
+             // If the function's section isn't relocatable, add the function as a candidate.
+@@ -239,10 +265,15 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+         return true;
+     };
+ 
+-    auto print_goto_with_delay_slot = [&](const std::string& target) {
++    auto print_goto_with_delay_slot = [&](const std::string& target, uint32_t target_vram) {
+         if (!process_delay_slot(false)) {
+             return false;
+         }
++        // Backward / self-transfer: safepoint after the delay slot, before goto.
++        if (target_vram <= instr_vram) {
++            print_indent();
++            generator.emit_preemption_safepoint();
++        }
+         print_indent();
+         generator.emit_goto(target);
+         print_link_branch();
+@@ -381,6 +412,12 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+             return false;
+         }
+ 
++        if (branch_target <= instr_vram) {
++            print_indent();
++            print_indent();
++            generator.emit_preemption_safepoint();
++        }
++
+         print_indent();
+         print_indent();
+         generator.emit_goto(fmt::format("L_{:08X}", branch_target));
+@@ -496,7 +533,7 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+             }
+             // Check if the branch is within this function
+             else if (branch_target >= func.vram && branch_target < func_vram_end) {
+-                print_goto_with_delay_slot(fmt::format("L_{:08X}", branch_target));
++                print_goto_with_delay_slot(fmt::format("L_{:08X}", branch_target), branch_target);
+             }
+             // This may be a tail call in the middle of the control flow due to a previous check
+             // For example:
+@@ -539,6 +576,8 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+                     return false;
+                 }
+                 print_indent();
++                generator.emit_preemption_safepoint();
++                print_indent();
+                 generator.emit_switch(context, cur_jtbl, rs);
+                 for (size_t entry_index = 0; entry_index < cur_jtbl.entries.size(); entry_index++) {
+                     print_indent();

@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 2 reviewed B; PATCH 3 ready under inherited constraints."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3 landed (generator, flag OFF); PATCH4_READY NO."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES (PATCH 2 reviewed B; PATCH 3 ready)
+IMPLEMENTATION_READY: YES (PATCH 3 landed; PATCH4_READY NO)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -257,12 +257,11 @@ PATCH 2 — runtime service          [flag still OFF for games]  LANDED
   T02–T10, T12.
   Isolated: games do not call service; coop path ungated.
 
-PATCH 3 — generator safepoints     [flag still OFF for games]
+PATCH 3 — generator safepoints     [flag still OFF for games]  LANDED
+  See [[p08-preemption-patch3-validation]].
   emit_preemption_safepoint + recompilation.cpp hooks + live inputs.
-  Isolate hunks from dirty resolve_jal.
-  Rebuild N64Recomp. T11 (static vs live on a toy function).
-  Isolated: hint returns false when flag OFF, even if generated
-  code is regenerated later.
+  C ABI void* is status_reg; generated arg is (void*)&ctx->status_reg.
+  Isolate hunks from dirty resolve_jal. T11 PASS. No Tooie regen.
 
 PATCH 4 — integration              [flag ON]
   Tooie: rebuild N64Recomp, run_recomp.sh, cmake build TooieRecompiled.
@@ -564,9 +563,9 @@ T01-E:
 
 ```text
 NEXT_SINGLE_ACTION:
-  Implement PATCH 3 generator safepoints only. Do not enable the
-  flag. Do not regenerate Tooie. See inherited constraints in
-  [[p08-preemption-patch2-independent-review]] §17.
+  Independent review of PATCH 3 before any pre-PATCH4 semantic
+  correction (X1 cause/class, MTC0 re-enable). Do not enable the
+  flag. Do not regenerate Tooie.
 ```
 
 === END IMPLEMENTATION PLAN ===
