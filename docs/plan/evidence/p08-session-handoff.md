@@ -12,9 +12,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Independent-review base/parent: `baeae496d0836e522bf9bf91589d124a1db1feee`.
-  PATCH 3.5 review verdict is C; source remains unchanged.
-- Confirm with `git rev-parse HEAD` after pull.
+- Parent before this correction: `620fcfe8f13dfb9b3f2173979c15141b21a29da4`.
+  Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
 
@@ -139,25 +138,22 @@ ARBITRATION (Grok 4.5 HIGH):
    [[p08-preemption-patch3-independent-review]] verdict B. PATCH 3.5
    landed — [[p08-preemption-patch35-validation]]. Independent review
    [[p08-preemption-patch35-independent-review]] verdict C: current RCP/MI
-   mask is process-global, RCP-only dispatch and old-return tests fail.
-   PATCH4_READY NO. Do not implement DeepSeek Hybrid F.
+   mask was process-global. Implementer correction
+   [[p08-preemption-patch35-rcp-correction]] (TLS `current_mi_mask`,
+   RCP-X1..X4 PASS, P3-X6+ PASS). Independent review of that correction
+   is the remaining PATCH 4 gate. Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PATCH 3.5 CORRECTION REQUIRED.** Replace only the current process-global
-RCP/MI mask with per-native-guest-thread state (recommended TLS, initial
-`0x3F`), add RCP-X1..X4, and strengthen P3-X6. See
-[[p08-preemption-patch35-independent-review]]. Do not enable
+**Independent review of the corrected PATCH 3.5.** TLS per-OSThread RCP
+mask is implemented and RCP-X1..X4 / P3-X6+ pass. See
+[[p08-preemption-patch35-rcp-correction]]. Do not enable
 `ULTRAMODERN_GUEST_PREEMPTION`, implement PATCH 4, regenerate Tooie, or
 investigate `func_800BCF28` yet.
 
-Thread-switch eligibility reviewed
-([[p08-preemption-patch35-thread-switch-review]]): verdict B; held causes
-become eligible on thread change; add resume hook in
-`threads.cpp::wait_for_resumed` + `service_pending_interrupts_for_current_guest`.
 Cumulative artifacts still:
 `patches/runtime/n64modernruntime-preemption.patch`,
 `patches/runtime/n64recomp-tooie.patch`.
@@ -169,8 +165,8 @@ habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 4.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch35-design]] — **CURRENT: implement this** (incl. 4.8 resume hook)
-2. [[p08-preemption-patch35-independent-review]] — **CURRENT: verdict C; RCP correction required**
+1. [[p08-preemption-patch35-rcp-correction]] — **CURRENT: implementer correction evidence**
+2. [[p08-preemption-patch35-independent-review]] — pre-correction verdict C (findings preserved)
 3. [[p08-preemption-patch35-thread-switch-review]] — thread-switch eligibility (verdict B)
 4. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
 5. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
@@ -196,10 +192,10 @@ Run clean → confirm freeze (`d` stable ≥6s, black) → attach only after fre
 
 ```text
 CODE_CHANGED             = NO (Tooie src/RecompiledFuncs untouched)
-RUNTIME_CODE_CHANGED     = NO this session (external dirty preserved)
-GENERATOR_CODE_CHANGED   = NO this session (external dirty preserved)
-PATCH_CODE_CHANGED       = NO this session
+RUNTIME_CODE_CHANGED     = YES (external dirty: intmask TLS + harness; not committed there)
+GENERATOR_CODE_CHANGED   = NO
+PATCH_CODE_CHANGED       = YES (cumulative n64modernruntime-preemption.patch)
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (PATCH 3.5 independent review C)
+EVIDENCE_CHANGED         = YES (PATCH 3.5 RCP correction)
 ```

@@ -239,6 +239,14 @@ DOWNSTREAM_BLOCKER:    func_800BCF28
 > mask state is process-global although libultra saves/restores it per
 > OSThread. Disposable RCP-only dispatch and `osSetIntMask` old-return tests
 > both fail. `PATCH4_READY: NO`; correct PATCH 3.5 only before PATCH 4.
+>
+> **P3-X6 PASS as context-survival proof: CORRECTED/SUPERSEDED** by the same
+> review — the original assertions did not prove AUDIO ran inside the
+> service/safepoint interval.
+>
+> **Correction implemented (2026-08-13):**
+> [[p08-preemption-patch35-rcp-correction]]. Do not treat the PASS list
+> above as proof of per-OSThread RCP isolation.
 
 ## Classification
 

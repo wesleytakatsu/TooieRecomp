@@ -73,8 +73,11 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > existente ainda não contém chamadas. **Não tratar como preempção
 > guest entregue no jogo.** Independent review
 > `p08-preemption-patch35-independent-review.md` found the current RCP/MI
-> mask process-global instead of per OSThread. `PATCH4_READY: NO` until the
-> narrow PATCH 3.5 correction and RCP isolation tests pass.
+> mask process-global instead of per OSThread. The narrow correction is
+> implemented (`thread_local current_mi_mask`, RCP-X1..X4 / P3-X6+ PASS;
+> `docs/plan/evidence/p08-preemption-patch35-rcp-correction.md`). Production
+> flag remains OFF. **Ainda não tratar como preempção guest entregue no jogo.**
+> Independent review of the correction is the remaining PATCH 4 gate.
 
 ## Próximos passos práticos
 

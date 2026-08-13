@@ -30,8 +30,9 @@ This document remains the implementation contract. PATCH 3.5 is landed and
 validated; do not re-derive X1. Flag remains OFF. Do not regenerate Tooie.
 
 > **Correction (2026-08-13):** independent review found current RCP/MI mask
-> storage process-global instead of per OSThread. `PATCH4_READY: NO` until the
-> narrow PATCH 3.5 correction and RCP isolation tests pass.
+> storage process-global instead of per OSThread. Implementer correction:
+> [[p08-preemption-patch35-rcp-correction]] (TLS `current_mi_mask`, RCP-X1..X4,
+> P3-X6+). Independent review of that correction is the remaining PATCH 4 gate.
 
 Do not enable the flag. Do not regenerate Tooie. Do not implement PATCH 4.
 Do not investigate `func_800BCF28`. DeepSeek Hybrid F remains

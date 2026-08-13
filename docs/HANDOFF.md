@@ -45,15 +45,14 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 3.5 INDEPENDENT REVIEW: VERDICT C.** Flag OFF. Sem regen Tooie.
-O RCP/MI mask corrente é process-global, mas libultra o salva/restaura por
-OSThread. RCP-only dispatch e `osSetIntMask` old-return falham.
-`PATCH4_READY: NO`.
+**PATCH 3.5 RCP CORRECTION IMPLEMENTED.** Flag OFF. Sem regen Tooie.
+Current RCP/MI mask is per native guest OSThread (`thread_local`).
+RCP-X1..X4 e P3-X6+ PASS. Review da correção ainda é o gate de PATCH 4.
 
-1. **Corrigir PATCH 3.5 somente** — per-thread RCP state + RCP-X1..X4 +
-   P3-X6 fortalecido. Review: [[plan/evidence/p08-preemption-patch35-independent-review]].
+1. **Independent review da correção PATCH 3.5** —
+   [[plan/evidence/p08-preemption-patch35-rcp-correction]].
    Não habilitar a flag. Não regenerar Tooie. Não PATCH 4 nesta etapa.
-2. **PATCH 4** só após correção/re-review: env/default ON + Tooie regen + T15.
+2. **PATCH 4** só após review da correção: env/default ON + Tooie regen + T15.
 3. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
 
 Não forçar clear; não BaKey; não reabrir Scheduler C; não editar
@@ -106,9 +105,9 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch35-independent-review]] (**CURRENT** — verdict C)
-2. [[plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; gate superseded)
-3. [[plan/evidence/p08-preemption-patch35-design]]
+1. [[plan/evidence/p08-preemption-patch35-rcp-correction]] (**CURRENT** — implementer correction)
+2. [[plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; findings preserved)
+3. [[plan/evidence/p08-preemption-patch35-validation]] (original implementer evidence; RCP/P3-X6 claims superseded)
 4. [[plan/evidence/p08-preemption-patch35-thread-switch-review]] (verdict B)
 5. [[plan/evidence/p08-preemption-patch3-independent-review]]
 6. [[plan/evidence/p08-preemption-implementation-plan]]

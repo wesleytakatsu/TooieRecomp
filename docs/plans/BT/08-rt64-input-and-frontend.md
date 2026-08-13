@@ -38,8 +38,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch35-independent-review]] (**CURRENT** — verdict C; RCP correction required)
-- [[../../plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; PATCH4 gate superseded)
+- [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (**CURRENT** — TLS RCP correction; RCP-X1..X4 / P3-X6+ PASS)
+- [[../../plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; findings preserved)
+- [[../../plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; RCP/P3-X6 claims superseded)
 - [[../../plan/evidence/p08-preemption-patch35-design]] (PATCH 3.5 design contract; implemented)
 - [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B; thread-dispatch resume hook)
 - [[../../plan/evidence/p08-preemption-patch3-independent-review]] (PATCH 3 review B)
@@ -87,10 +88,11 @@ Evidência corrente:
   landed (flag OFF; T11 generator PASS). PATCH 3 independent review B.
   PATCH 3.5 landed ([[../../plan/evidence/p08-preemption-patch35-validation]]);
   thread-switch resume hook (design 4.8). Flag OFF. Sem regen.
-  Independent review C
-  ([[../../plan/evidence/p08-preemption-patch35-independent-review]]): RCP/MI
-  mask process-global; `PATCH4_READY: NO`. Attract ainda bloqueado até a
-  correção, PATCH 4 enable e então `func_800BCF28`.
+  Independent review C then implementer RCP correction
+  ([[../../plan/evidence/p08-preemption-patch35-rcp-correction]]): current
+  RCP/MI mask is per native guest OSThread. Flag OFF. Sem regen. Attract
+  ainda bloqueado até review da correção, PATCH 4 enable e então
+  `func_800BCF28`.
 
 
 ## Implementado / validado

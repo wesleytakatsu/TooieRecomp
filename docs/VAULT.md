@@ -34,6 +34,7 @@
 - [[plan/evidence/p08-permanent-preemption-design]] — P08 — permanent guest-preemption design (DeepSeek Hybrid F) — `CORRECTED/SUPERSEDED` pela revisão adversarial.
 - [[plan/evidence/p08-preemption-design-adversarial-review]] — P08 — adversarial review of generic guest-preemption design — Hybrid F quebrado (veredito C); Hybrid F' aprovado.
 - [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — PATCH 3.5 RCP correction required; PATCH4_READY NO.
+- [[plan/evidence/p08-preemption-patch35-rcp-correction]] — P08 — PATCH 3.5 RCP per-OSThread correction — TLS `current_mi_mask`; RCP-X1..X4 and P3-X6+ PASS; flag OFF; independent review of the correction is next.
 - [[plan/evidence/p08-preemption-patch35-independent-review]] — P08 — independent review of preemption PATCH 3.5 — Verdict C; per-OSThread RCP defect proven by two disposable failing tests.
 - [[plan/evidence/p08-preemption-patch35-validation]] — P08 — PATCH 3.5 implementer validation — A+ hold-until-eligible claims; PATCH4 gate corrected/superseded by independent review.
 - [[plan/evidence/p08-preemption-patch35-design]] — P08 — PATCH 3.5 semantic-closure design — implemented/validated.

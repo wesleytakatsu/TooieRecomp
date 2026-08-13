@@ -348,20 +348,34 @@ index 090cc42..4ca2117 100644
  void ultramodern::init_events(RDRAM_ARG ultramodern::renderer::WindowHandle window_handle) {
 diff --git a/ultramodern/src/intmask.cpp b/ultramodern/src/intmask.cpp
 new file mode 100644
-index 0000000..450f67e
+index 0000000..b93299f
 --- /dev/null
 +++ b/ultramodern/src/intmask.cpp
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,125 @@
 +#include "ultramodern/ultramodern.hpp"
 +
 +#include <cstdint>
 +
 +// PATCH 2: software interrupt-mask state matching libultra osSetIntMask /
 +// __osDisableInt / __osRestoreInt. No real MI hardware.
++//
++// Current RCP/MI mask is per native guest OSThread. The scheduler keeps a
++// 1:1 OSThread lifetime <-> std::thread affinity, so thread_local matches
++// libultra THREAD_RCP save/restore without an explicit resume helper.
++// Initial 0x3F is the OS_IM_ALL RCP portion (osCreateThread). A destroyed
++// and later recreated OSThread gets a new native thread and therefore a
++// fresh 0x3F; it does not inherit the creator mask.
++//
++// g_global_int_mask (__OSGlobalIntMask) remains process-global.
++//
++// current_combined_mask / apply_os_set_int_mask / cause_eligible are
++// guest-execution-context operations. Host producer threads (VI/AI/SP/DP/
++// SI/PI/timer) must not call them. Eligibility is evaluated only on the
++// game-token owner via drain_pending_external.
 +
 +namespace ultramodern::intmask {
 +
-+uint32_t g_mi_mask = 0x3Fu;
++thread_local uint32_t current_mi_mask = 0x3Fu;
 +uint32_t g_global_int_mask = ~0u;
 +
 +uint32_t status_reg_init() {
@@ -371,7 +385,7 @@ index 0000000..450f67e
 +uint32_t current_combined_mask(uint32_t status_reg) {
 +    const uint32_t ie = status_reg & SR_IE;
 +    const uint32_t cpu = status_reg & SR_IMASK;
-+    const uint32_t rcp = (g_mi_mask << 16) & RCP_IMASK;
++    const uint32_t rcp = (current_mi_mask << 16) & RCP_IMASK;
 +    return ie | cpu | rcp;
 +}
 +
@@ -379,7 +393,7 @@ index 0000000..450f67e
 +    const uint32_t prev = current_combined_mask(status_reg != nullptr ? *status_reg : 0u);
 +
 +    const uint32_t global_rcp = (g_global_int_mask & RCP_IMASK) >> 16;
-+    g_mi_mask = ((a0 & RCP_IMASK) >> 16) & global_rcp;
++    current_mi_mask = ((a0 & RCP_IMASK) >> 16) & global_rcp;
 +
 +    if (status_reg != nullptr) {
 +        const uint32_t global_im = g_global_int_mask & SR_IMASK;
@@ -443,7 +457,7 @@ index 0000000..450f67e
 +    if ((status_reg & SR_IM2) == 0) {
 +        return false;
 +    }
-+    if ((g_mi_mask & mi_bit) == 0) {
++    if ((current_mi_mask & mi_bit) == 0) {
 +        return false;
 +    }
 +    if (((g_global_int_mask >> 16) & mi_bit) == 0) {
@@ -708,10 +722,10 @@ index 961de3d..ed5289c 100644
      bool received = do_recv(PASS_RDRAM mq_, msg_, flags == OS_MESG_BLOCK);
 diff --git a/ultramodern/src/preemption.cpp b/ultramodern/src/preemption.cpp
 new file mode 100644
-index 0000000..871bc4a
+index 0000000..ef8dd5a
 --- /dev/null
 +++ b/ultramodern/src/preemption.cpp
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,139 @@
 +#include "ultramodern/ultramodern.hpp"
 +
 +#include <atomic>
@@ -735,7 +749,11 @@ index 0000000..871bc4a
 +
 +void ultramodern::set_guest_preemption_safepoints(bool enabled) {
 +    const bool was = g_guest_preemption_enabled.exchange(enabled, std::memory_order_relaxed);
-+    // Production treats the flag as startup-immutable. Tests may toggle.
++    // Production treats the flag as startup-immutable. Tests may toggle
++    // only while guest service is quiescent. Do not mutate concurrently
++    // with an active guest drain: held_ineligible is token-serialized,
++    // but this public setter is not. PATCH 4 env is startup init, not
++    // hot toggling.
 +    // If we turn OFF with held hardware events, flush them back onto the
 +    // MPMC so the legacy drain-all path can see them. Do not strand.
 +    if (was && !enabled) {
@@ -879,10 +897,10 @@ index 276301b..25b2c60 100644
                  cur_timer->timestamp = cur_timer->interval + time_now();
 diff --git a/ultramodern/test/preemption_harness.cpp b/ultramodern/test/preemption_harness.cpp
 new file mode 100644
-index 0000000..ddac2b3
+index 0000000..bdbde98
 --- /dev/null
 +++ b/ultramodern/test/preemption_harness.cpp
-@@ -0,0 +1,1320 @@
+@@ -0,0 +1,1688 @@
 +// PATCH 2+3 standalone harness for Hybrid F' guest preemption.
 +// T01 repaired (service after enqueue). T02–T10 and T12 implemented.
 +// T11-F proves the C ABI consumes a status_reg pointer (not whole ctx).
@@ -971,6 +989,27 @@ index 0000000..ddac2b3
 +constexpr int32_t kEntryAudioP3X6 = 25;
 +constexpr int32_t kEntryMainX1F = 26;
 +constexpr int32_t kEntryMainNonint = 27;
++constexpr int32_t kEntryMainRcpX1 = 28;
++constexpr int32_t kEntryThreadBRcpX1 = 29;
++constexpr int32_t kEntryMainRcpX2 = 30;
++constexpr int32_t kEntryThreadBRcpX2 = 31;
++constexpr int32_t kEntryThreadARcpX3 = 32;
++constexpr int32_t kEntryThreadBRcpX3 = 33;
++constexpr int32_t kEntryThreadCRcpX3 = 34;
++constexpr int32_t kEntryMainRcpX4 = 35;
++constexpr int32_t kEntryThreadBRcpX4 = 36;
++
++constexpr uint32_t kOsImSpDp = ultramodern::intmask::OS_IM_SP | ultramodern::intmask::OS_IM_DP;
++constexpr uint32_t kRcpAi = 0x00040000u;
++constexpr uint32_t kRcpVi = 0x00080000u;
++constexpr uint32_t kRcpSpDp = 0x00210000u;
++
++enum class SwapPhase : int {
++    Unset = 0,
++    BeforeService = 1,
++    InServiceWindow = 2,
++    AfterService = 3,
++};
 +
 +constexpr OSPri kPriMain = 20;
 +constexpr OSPri kPriAudio = 50;
@@ -1023,8 +1062,27 @@ index 0000000..ddac2b3
 +    std::atomic<bool> b_resumed{false};
 +    std::atomic<bool> toy_survived{false};
 +    uint32_t toy_gpr2 = 0;
++    uint32_t toy_gpr4 = 0;
++    uint32_t toy_gpr16 = 0;
++    uint32_t toy_hi = 0;
++    uint32_t toy_lo = 0;
++    uint32_t toy_fpu0 = 0;
++    uint32_t toy_fpu1 = 0;
 +    uint32_t toy_local = 0;
++    uint32_t toy_local2 = 0;
 +    uint32_t toy_status_after = 0;
++    std::atomic<int> phase{static_cast<int>(SwapPhase::Unset)};
++    std::atomic<int> phase_seen_by_high{static_cast<int>(SwapPhase::Unset)};
++    uint32_t rcp_old_r2 = 0;
++    uint32_t rcp_mask_a = 0;
++    uint32_t rcp_mask_b = 0;
++    uint32_t rcp_mask_c = 0;
++    std::atomic<int> rcp_cycles_a{0};
++    std::atomic<int> rcp_cycles_b{0};
++    std::atomic<int> rcp_cycles_c{0};
++    std::atomic<int> rcp_ready{0};
++    std::atomic<bool> rcp_leak{false};
++    std::atomic<size_t> held_at_service{0};
 +};
 +
 +CoopState* g_coop = nullptr;
@@ -1436,20 +1494,49 @@ index 0000000..ddac2b3
 +
 +void toy_generated(uint8_t* rdram, ToyCtx* ctx) {
 +    const uint32_t local_addend = 0xA5A5u;
++    const uint32_t local_scratch = 0x5A5Au;
 +    ctx->gpr[2] = 0x11111111u;
++    ctx->gpr[4] = 0x44444444u;
++    ctx->gpr[16] = 0x16161616u;
 +    ctx->hi = 0x22222222u;
 +    ctx->lo = 0x33333333u;
 +    ctx->fpu[0] = 0x4048F5C3u;
++    ctx->fpu[1] = 0x3F800000u;
++    g_coop->phase.store(static_cast<int>(SwapPhase::BeforeService), std::memory_order_release);
 +    if (ultramodern_preemption_hint()) {
++        // Service window begins here. HIGH must observe InServiceWindow;
++        // a later cooperative park after this function returns is AfterService.
++        g_coop->phase.store(static_cast<int>(SwapPhase::InServiceWindow), std::memory_order_release);
 +        ultramodern_service_preemption(rdram, &ctx->status_reg);
++        g_coop->phase.store(static_cast<int>(SwapPhase::AfterService), std::memory_order_release);
 +    }
 +    g_coop->toy_gpr2 = static_cast<uint32_t>(ctx->gpr[2]);
++    g_coop->toy_gpr4 = static_cast<uint32_t>(ctx->gpr[4]);
++    g_coop->toy_gpr16 = static_cast<uint32_t>(ctx->gpr[16]);
++    g_coop->toy_hi = static_cast<uint32_t>(ctx->hi);
++    g_coop->toy_lo = static_cast<uint32_t>(ctx->lo);
++    g_coop->toy_fpu0 = ctx->fpu[0];
++    g_coop->toy_fpu1 = ctx->fpu[1];
 +    g_coop->toy_local = local_addend;
++    g_coop->toy_local2 = local_scratch;
 +    g_coop->toy_status_after = ctx->status_reg;
 +    g_coop->toy_survived.store(
-+        ctx->gpr[2] == 0x11111111u && ctx->hi == 0x22222222u && ctx->lo == 0x33333333u &&
-+            ctx->fpu[0] == 0x4048F5C3u && local_addend == 0xA5A5u,
++        ctx->gpr[2] == 0x11111111u && ctx->gpr[4] == 0x44444444u && ctx->gpr[16] == 0x16161616u &&
++            ctx->hi == 0x22222222u && ctx->lo == 0x33333333u && ctx->fpu[0] == 0x4048F5C3u &&
++            ctx->fpu[1] == 0x3F800000u && local_addend == 0xA5A5u && local_scratch == 0x5A5Au,
 +        std::memory_order_release);
++}
++
++void audio_p3x6(uint8_t* rdram) {
++    g_coop->audio_blocked.store(true, std::memory_order_release);
++    const s32 rc = osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_BLOCK);
++    if (rc == 0) {
++        g_coop->phase_seen_by_high.store(g_coop->phase.load(std::memory_order_acquire),
++                                         std::memory_order_release);
++        g_coop->audio_ran.store(true, std::memory_order_release);
++        g_coop->audio_count.fetch_add(1, std::memory_order_acq_rel);
++    }
++    osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_BLOCK);
 +}
 +
 +void main_p3x6(uint8_t* rdram) {
@@ -1468,6 +1555,176 @@ index 0000000..ddac2b3
 +    park_forever(rdram);
 +}
 +
++// Mirrors librecomp osSetIntMask_recomp: commit MI/IM, write previous
++// combined mask to the architectural return (r2), THEN service. The
++// harness does not link librecomp, so this is the production sequence
++// against a local ctx analog. r2 must be B's previous mask after A->B.
++struct OsSetIntMaskCtx {
++    uint32_t status_reg = 0;
++    uint64_t r2 = 0;
++    uint64_t r4 = 0;
++};
++
++void osSetIntMask_recomp_analog(uint8_t* rdram, OsSetIntMaskCtx* ctx) {
++    ctx->r2 = ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &ctx->status_reg, static_cast<uint32_t>(ctx->r4));
++    ultramodern::after_interrupt_state_change(rdram, &ctx->status_reg);
++}
++
++void note_rcp_leak(uint32_t observed, uint32_t want_rcp) {
++    if ((observed & ultramodern::intmask::RCP_IMASK) != want_rcp) {
++        g_coop->rcp_leak.store(true, std::memory_order_release);
++    }
++    if ((observed & ultramodern::intmask::SR_IE) == 0) {
++        g_coop->rcp_leak.store(true, std::memory_order_release);
++    }
++    if ((observed & ultramodern::intmask::SR_IM2) == 0) {
++        g_coop->rcp_leak.store(true, std::memory_order_release);
++    }
++}
++
++void main_rcp_x1(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    // IE=1 and SR.IM2=1 stay set. Only RCP AI is closed on THIS thread.
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->held_at_service.store(ultramodern::held_ineligible_count(), std::memory_order_release);
++    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
++                                       std::memory_order_release);
++    osRecvMesg(rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), OS_MESG_BLOCK);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void thread_b_rcp_x1(uint8_t* rdram) {
++    // B's TLS starts at 0x3F. Pin MI.AI open explicitly. Do not touch the
++    // mask again after resume — TLS must restore it automatically.
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->waiter_status, ultramodern::intmask::OS_IM_AI);
++    g_coop->b_started.store(true, std::memory_order_release);
++    osStartThread(rdram, gptr(kOffMainThread));
++    g_coop->b_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void main_rcp_x2(uint8_t* rdram) {
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    osRecvMesg(rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), OS_MESG_BLOCK);
++    park_forever(rdram);
++}
++
++void thread_b_rcp_x2(uint8_t* rdram) {
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->waiter_status, ultramodern::intmask::OS_IM_AI);
++    osStartThread(rdram, gptr(kOffMainThread));
++    OsSetIntMaskCtx ctx{};
++    ctx.status_reg = g_coop->waiter_status;
++    ctx.r4 = ultramodern::intmask::OS_IM_ALL;
++    osSetIntMask_recomp_analog(rdram, &ctx);
++    g_coop->waiter_status = ctx.status_reg;
++    g_coop->rcp_old_r2 = static_cast<uint32_t>(ctx.r2);
++    g_coop->b_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void thread_a_rcp_x3(uint8_t* rdram) {
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_AI);
++    g_coop->rcp_ready.fetch_add(1, std::memory_order_acq_rel);
++    osRecvMesg(rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), OS_MESG_BLOCK);
++    for (int i = 0; i < 8; ++i) {
++        const uint32_t m = ultramodern::intmask::current_combined_mask(g_coop->status);
++        g_coop->rcp_mask_a = m;
++        note_rcp_leak(m, kRcpAi);
++        g_coop->rcp_cycles_a.fetch_add(1, std::memory_order_acq_rel);
++        (void)osSendMesg(rdram, gptr(kOffExtraMq), 1, OS_MESG_NOBLOCK);
++        if (i + 1 < 8) {
++            osRecvMesg(rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), OS_MESG_BLOCK);
++        }
++    }
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    // Drop below B/C so they can finish their last recv. park_forever would
++    // keep this thread highest-priority and runnable, starving the ring.
++    osSetThreadPri(rdram, NULLPTR, 0);
++    park_forever(rdram);
++}
++
++void thread_b_rcp_x3(uint8_t* rdram) {
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->audio_status, ultramodern::intmask::OS_IM_VI);
++    osStartThread(rdram, gptr(kOffMainThread));
++    g_coop->rcp_ready.fetch_add(1, std::memory_order_acq_rel);
++    osRecvMesg(rdram, gptr(kOffExtraMq), gptr(kOffExtraMsg), OS_MESG_BLOCK);
++    for (int i = 0; i < 8; ++i) {
++        const uint32_t m = ultramodern::intmask::current_combined_mask(g_coop->audio_status);
++        g_coop->rcp_mask_b = m;
++        note_rcp_leak(m, kRcpVi);
++        g_coop->rcp_cycles_b.fetch_add(1, std::memory_order_acq_rel);
++        (void)osSendMesg(rdram, gptr(kOffAudioMq), 1, OS_MESG_NOBLOCK);
++        if (i + 1 < 8) {
++            osRecvMesg(rdram, gptr(kOffExtraMq), gptr(kOffExtraMsg), OS_MESG_BLOCK);
++        }
++    }
++    osSetThreadPri(rdram, NULLPTR, 0);
++    park_forever(rdram);
++}
++
++void thread_c_rcp_x3(uint8_t* rdram) {
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->waiter_status, kOsImSpDp);
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (g_coop->rcp_ready.load(std::memory_order_acquire) < 2) {
++        std::this_thread::yield();
++    }
++    for (int i = 0; i < 8; ++i) {
++        const uint32_t m = ultramodern::intmask::current_combined_mask(g_coop->waiter_status);
++        g_coop->rcp_mask_c = m;
++        note_rcp_leak(m, kRcpSpDp);
++        g_coop->rcp_cycles_c.fetch_add(1, std::memory_order_acq_rel);
++        (void)osSendMesg(rdram, gptr(kOffDummyMq), 1, OS_MESG_NOBLOCK);
++        osRecvMesg(rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), OS_MESG_BLOCK);
++    }
++    park_forever(rdram);
++}
++
++void main_rcp_x4(uint8_t* rdram) {
++    osStartThread(rdram, gptr(kOffAudioThread));
++    while (!g_coop->audio_blocked.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->status, ultramodern::intmask::OS_IM_VI);
++    g_coop->masked_ready.store(true, std::memory_order_release);
++    while (!g_coop->host_enqueued.load(std::memory_order_acquire)) {
++        std::this_thread::yield();
++    }
++    ultramodern::service_preemption(rdram, &g_coop->status);
++    g_coop->held_at_service.store(ultramodern::held_ineligible_count(), std::memory_order_release);
++    g_coop->swapped_while_masked.store(g_coop->audio_ran.load(std::memory_order_acquire),
++                                       std::memory_order_release);
++    osRecvMesg(rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), OS_MESG_BLOCK);
++    g_coop->main_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
++void thread_b_rcp_x4(uint8_t* rdram) {
++    (void)ultramodern::intmask::apply_os_set_int_mask(
++        rdram, &g_coop->waiter_status, ultramodern::intmask::OS_IM_AI);
++    g_coop->b_started.store(true, std::memory_order_release);
++    osStartThread(rdram, gptr(kOffMainThread));
++    g_coop->b_resumed.store(true, std::memory_order_release);
++    park_forever(rdram);
++}
++
 +} // namespace
 +
 +void run_thread_function(uint8_t* rdram, uint64_t addr, uint64_t /*sp*/, uint64_t arg) {
@@ -1483,7 +1740,14 @@ index 0000000..ddac2b3
 +        case kEntryWaiterOnce:
 +        case kEntryWaiterVi:
 +        case kEntryThreadBX1G:
++        case kEntryThreadBRcpX1:
++        case kEntryThreadBRcpX2:
++        case kEntryThreadCRcpX3:
++        case kEntryThreadBRcpX4:
 +            sr = &g_coop->waiter_status;
++            break;
++        case kEntryThreadBRcpX3:
++            sr = &g_coop->audio_status;
 +            break;
 +        default:
 +            break;
@@ -1571,7 +1835,34 @@ index 0000000..ddac2b3
 +            main_p3x6(rdram);
 +            break;
 +        case kEntryAudioP3X6:
-+            audio_once(rdram);
++            audio_p3x6(rdram);
++            break;
++        case kEntryMainRcpX1:
++            main_rcp_x1(rdram);
++            break;
++        case kEntryThreadBRcpX1:
++            thread_b_rcp_x1(rdram);
++            break;
++        case kEntryMainRcpX2:
++            main_rcp_x2(rdram);
++            break;
++        case kEntryThreadBRcpX2:
++            thread_b_rcp_x2(rdram);
++            break;
++        case kEntryThreadARcpX3:
++            thread_a_rcp_x3(rdram);
++            break;
++        case kEntryThreadBRcpX3:
++            thread_b_rcp_x3(rdram);
++            break;
++        case kEntryThreadCRcpX3:
++            thread_c_rcp_x3(rdram);
++            break;
++        case kEntryMainRcpX4:
++            main_rcp_x4(rdram);
++            break;
++        case kEntryThreadBRcpX4:
++            thread_b_rcp_x4(rdram);
 +            break;
 +        default:
 +            std::fprintf(stderr, "unknown harness entry %d arg=%llu\n",
@@ -2103,7 +2394,7 @@ index 0000000..ddac2b3
 +}
 +
 +void t_p3x6() {
-+    std::printf("P3-X6 real context swap through toy generated function\n");
++    std::printf("P3-X6+ real safepoint swap with phase-ordered HIGH ownership\n");
 +    ultramodern::set_guest_preemption_safepoints(true);
 +    CoopState coop{};
 +    setup_common(&coop);
@@ -2116,8 +2407,99 @@ index 0000000..ddac2b3
 +    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
 +    CHECK(wait_until([&] { return coop.toy_survived.load(std::memory_order_acquire); }, 2000));
 +    CHECK(wait_until([&] { return coop.main_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.phase_seen_by_high.load(std::memory_order_acquire) ==
++          static_cast<int>(SwapPhase::InServiceWindow));
++    CHECK(coop.phase.load(std::memory_order_acquire) == static_cast<int>(SwapPhase::AfterService));
 +    CHECK(coop.toy_gpr2 == 0x11111111u);
++    CHECK(coop.toy_gpr4 == 0x44444444u);
++    CHECK(coop.toy_gpr16 == 0x16161616u);
++    CHECK(coop.toy_hi == 0x22222222u);
++    CHECK(coop.toy_lo == 0x33333333u);
++    CHECK(coop.toy_fpu0 == 0x4048F5C3u);
++    CHECK(coop.toy_fpu1 == 0x3F800000u);
 +    CHECK(coop.toy_local == 0xA5A5u);
++    CHECK(coop.toy_local2 == 0x5A5Au);
++    CHECK((coop.toy_status_after & ultramodern::intmask::SR_IE) != 0);
++}
++
++void t_rcp_x1() {
++    std::printf("RCP-X1 RCP-only dispatch: A masks MI.AI, B open, same SR.IM2\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainRcpX1, 0, gptr(kOffMainSp), kPriMid);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osCreateThread(g_rdram, gptr(kOffWaiterThread), 5, kEntryThreadBRcpX1, 0, gptr(kOffWaiterSp), kPriLow);
++    osStartThread(g_rdram, gptr(kOffWaiterThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    CHECK(ultramodern::held_ineligible_count() == 0);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.b_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(coop.held_at_service.load(std::memory_order_acquire) == 1);
++    CHECK(ultramodern::held_ineligible_count() == 0);
++}
++
++void t_rcp_x2() {
++    std::printf("RCP-X2 osSetIntMask old return is current thread RCP\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainRcpX2, 0, gptr(kOffMainSp), kPriMid);
++    osCreateThread(g_rdram, gptr(kOffWaiterThread), 5, kEntryThreadBRcpX2, 0, gptr(kOffWaiterSp), kPriLow);
++    osStartThread(g_rdram, gptr(kOffWaiterThread));
++    CHECK(wait_until([&] { return coop.b_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK((coop.rcp_old_r2 & kRcpAi) != 0);
++    CHECK((coop.rcp_old_r2 & kRcpVi) == 0);
++    CHECK((coop.rcp_old_r2 & ultramodern::intmask::SR_IE) != 0);
++    CHECK((coop.rcp_old_r2 & ultramodern::intmask::SR_IM2) != 0);
++    CHECK(coop.rcp_old_r2 == ultramodern::intmask::OS_IM_AI);
++}
++
++void t_rcp_x3() {
++    std::printf("RCP-X3 three-thread RCP isolation over real swaps\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateMesgQueue(g_rdram, gptr(kOffAudioMq), gptr(kOffAudioMsg), 16);
++    osCreateMesgQueue(g_rdram, gptr(kOffDummyMq), gptr(kOffDummyMsg), 16);
++    osCreateMesgQueue(g_rdram, gptr(kOffExtraMq), gptr(kOffExtraMsg), 16);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryThreadARcpX3, 0, gptr(kOffMainSp), kPriMid);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryThreadBRcpX3, 0, gptr(kOffAudioSp), kPriMain);
++    osCreateThread(g_rdram, gptr(kOffWaiterThread), 5, kEntryThreadCRcpX3, 0, gptr(kOffWaiterSp), kPriLow);
++    osStartThread(g_rdram, gptr(kOffWaiterThread));
++    const bool progressed = wait_until([&] {
++        return coop.rcp_cycles_a.load(std::memory_order_acquire) == 8 &&
++               coop.rcp_cycles_b.load(std::memory_order_acquire) == 8 &&
++               coop.rcp_cycles_c.load(std::memory_order_acquire) == 8;
++    }, 4000);
++    CHECK(progressed);
++    CHECK(coop.rcp_leak.load(std::memory_order_acquire) == false);
++    CHECK((coop.rcp_mask_a & ultramodern::intmask::RCP_IMASK) == kRcpAi);
++    CHECK((coop.rcp_mask_b & ultramodern::intmask::RCP_IMASK) == kRcpVi);
++    CHECK((coop.rcp_mask_c & ultramodern::intmask::RCP_IMASK) == kRcpSpDp);
++}
++
++void t_rcp_x4() {
++    std::printf("RCP-X4 held AI delivers on B resume via TLS RCP, no re-enqueue\n");
++    ultramodern::set_guest_preemption_safepoints(true);
++    CoopState coop{};
++    setup_common(&coop);
++    osCreateThread(g_rdram, gptr(kOffMainThread), 6, kEntryMainRcpX4, 0, gptr(kOffMainSp), kPriMid);
++    osCreateThread(g_rdram, gptr(kOffAudioThread), 4, kEntryAudioOnce, 0, gptr(kOffAudioSp), kPriAudio);
++    osCreateThread(g_rdram, gptr(kOffWaiterThread), 5, kEntryThreadBRcpX4, 0, gptr(kOffWaiterSp), kPriLow);
++    osStartThread(g_rdram, gptr(kOffWaiterThread));
++    CHECK(wait_until([&] { return coop.masked_ready.load(std::memory_order_acquire); }, 2000));
++    ultramodern::enqueue_external_message(gptr(kOffAudioMq), 7, false, false, ultramodern::InterruptCause::AI);
++    coop.host_enqueued.store(true, std::memory_order_release);
++    CHECK(wait_until([&] { return coop.audio_ran.load(std::memory_order_acquire); }, 2000));
++    CHECK(wait_until([&] { return coop.b_resumed.load(std::memory_order_acquire); }, 2000));
++    CHECK(coop.swapped_while_masked.load(std::memory_order_acquire) == false);
++    CHECK(coop.held_at_service.load(std::memory_order_acquire) == 1);
++    CHECK(ultramodern::held_ineligible_count() == 0);
++    CHECK(mq_count(kOffAudioMq) == 0);
 +}
 +
 +void t_mtc0_flag_off() {
@@ -2194,7 +2576,11 @@ index 0000000..ddac2b3
 +    run_isolated("REQUEUE_CAUSE", t_requeue_cause);
 +    run_isolated("NONINTERRUPT", t_noninterrupt);
 +    run_isolated("TLS", t_tls);
-+    run_isolated("P3-X6", t_p3x6);
++    run_isolated("P3-X6+", t_p3x6);
++    run_isolated("RCP-X1", t_rcp_x1);
++    run_isolated("RCP-X2", t_rcp_x2);
++    run_isolated("RCP-X3", t_rcp_x3);
++    run_isolated("RCP-X4", t_rcp_x4);
 +    t_mtc0_flag_off();
 +
 +    std::printf("PATCH35 %s  (pass=%d fail=%d skipped=%d)\n",

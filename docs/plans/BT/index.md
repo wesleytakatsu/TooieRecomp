@@ -77,10 +77,12 @@ limpo reversível):** strong override temporário de `func_800C2AB8` chamando
 limpa `table[2].word0` (0x8005C1B0→0), slot 7 dispensado por `func_800C16A4`,
 `func_800C2AB8` retorna, attract progride até **SIGSEGV downstream novo** em
 `func_800BCF28` (fora do escopo). Patch revertido. Criador `func_80020790`,
-clearer `func_800205D0`. **Próximo:** implementar PATCH 3.5 (flag OFF; PATCH4_READY NO)
-([[../../plan/evidence/p08-preemption-patch35-design]],
-[[../../plan/evidence/p08-preemption-implementation-plan]]);
-`func_800BCF28` só depois. Input title/file-select diferido. Evidência:
+clearer `func_800205D0`. **Próximo:** independent review da correção PATCH 3.5
+(flag OFF; TLS RCP per-OSThread)
+([[../../plan/evidence/p08-preemption-patch35-rcp-correction]]);
+`func_800BCF28` só depois de PATCH 4. Input title/file-select diferido. Evidência:
+[[../../plan/evidence/p08-preemption-patch35-rcp-correction]],
+[[../../plan/evidence/p08-preemption-patch35-independent-review]],
 [[../../plan/evidence/p08-preemption-patch35-design]],
 [[../../plan/evidence/p08-preemption-patch3-independent-review]],
 [[../../plan/evidence/p08-preemption-patch3-validation]],

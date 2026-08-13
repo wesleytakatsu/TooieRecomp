@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3.5 requires per-OSThread RCP correction before PATCH 4."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3.5 RCP correction implemented; independent review of that correction is the PATCH 4 gate."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: NO (PATCH 3.5 per-OSThread RCP correction required)
+IMPLEMENTATION_READY: NO (PATCH 4 blocked on independent review of RCP correction)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 

@@ -59,13 +59,14 @@ apply_one_patch \
     "1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309" \
     "scheduler"
 
-# Hybrid F' PATCH 1+2+3+3.5 cumulative — runtime service + C ABI +
-# cause-aware hold-until-eligible (feature OFF for games).
+# Hybrid F' PATCH 1+2+3+3.5+RCP cumulative — runtime service + C ABI +
+# cause-aware hold-until-eligible + per-OSThread RCP mask
+# (feature OFF for games).
 apply_one_patch \
     "$RUNTIME" \
     "$PATCH_DIR/n64modernruntime-preemption.patch" \
     "ca568b6ad79b9029d14077f0c3ffa757727c5559" \
-    "469537d6def22d267ee72bc6b52c204a3592c0abb024ad140c7e274fac0e5ad7" \
+    "8959055e6c51767fcd7c58b403a2c6ce8bc7aa0ab6c23ffab9dc181905eacd6b" \
     "preemption runtime service"
 
 # N64Recomp Tooie generator patch — same-section JAL + PATCH 3 safepoints.
