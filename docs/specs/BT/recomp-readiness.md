@@ -4,7 +4,7 @@ description: "Inventário dos artefatos existentes no banjo-tooie-Recomp, contra
 status: current
 type: specification
 project: banjo-tooie-Recomp
-updated: 2026-08-09
+updated: 2026-08-13
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -69,10 +69,12 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > em transferências para trás e antes de `emit_switch`). A flag de
 > produção permanece OFF e o Tooie **não** foi regenerado — o C gerado
 > existente ainda não contém chamadas. **Não tratar como preempção
-> guest entregue no jogo.** `PATCH4_READY: NO` (X1 cause/class + MTC0
-> re-enable). Ver
+> guest entregue no jogo.** `PATCH4_READY: NO`. O design de fechamento
+> semântico (X1 annotated-hold + MTC0) está em
+> `docs/plan/evidence/p08-preemption-patch35-design.md` e **não** está
+> implementado. Ver
 > `docs/plan/evidence/p08-preemption-patch3-independent-review.md`
-> (veredito B; PATCH 3 aceite; PATCH 3.5 design next),
+> (veredito B; PATCH 3 aceite),
 > `docs/plan/evidence/p08-preemption-patch3-validation.md` e
 > `docs/plan/evidence/p08-preemption-patch2-independent-review.md`.
 

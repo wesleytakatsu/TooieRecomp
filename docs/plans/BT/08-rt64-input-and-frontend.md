@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch3-independent-review]] (**CURRENT** — PATCH 3 review B; PATCH 3.5 design next)
+- [[../../plan/evidence/p08-preemption-patch35-design]] (**CURRENT** — PATCH 3.5 design complete; implement next)
+- [[../../plan/evidence/p08-preemption-patch3-independent-review]] (PATCH 3 review B)
 - [[../../plan/evidence/p08-preemption-patch3-validation]] (PATCH 3 generator; T11 PASS; flag OFF)
 - [[../../plan/evidence/p08-preemption-patch2-independent-review]] (PATCH 2 review B; inherited pre-PATCH4 blockers)
 - [[../../plan/evidence/p08-preemption-patch2-validation]] (PATCH 2 landed; T01–T10/T12 PASS; flag OFF)
@@ -81,8 +82,9 @@ Evidência corrente:
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
   = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1–3
   landed (flag OFF; T11 generator PASS). PATCH 3 independent review B.
-  PATCH4_READY NO (X1 + MTC0 + PATCH 3.5). Attract ainda bloqueado até
-  enable + `func_800BCF28`.
+  PATCH 3.5 design complete ([[../../plan/evidence/p08-preemption-patch35-design]]).
+  PATCH4_READY NO. Attract ainda bloqueado até implement 3.5 + enable +
+  `func_800BCF28`.
 
 
 ## Implementado / validado
@@ -109,7 +111,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch3-independent-review]] | **CURRENT:** PATCH 3 independent review B; 3.5 design next |
+| [[../../plan/evidence/p08-preemption-patch35-design]] | **CURRENT:** PATCH 3.5 semantic-closure design; implement next |
+| [[../../plan/evidence/p08-preemption-patch3-independent-review]] | PATCH 3 independent review B |
 | [[../../plan/evidence/p08-preemption-patch3-validation]] | PATCH 3 generator; T11 PASS; flag OFF |
 | [[../../plan/evidence/p08-preemption-patch2-independent-review]] | PATCH 2 independent review B; pre-PATCH4 blockers |
 | [[../../plan/evidence/p08-preemption-patch2-validation]] | PATCH 2 runtime service |

@@ -45,17 +45,18 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 3 ACCEPTED** (independent review B; generator capability only;
-flag OFF; sem regen Tooie). PATCH4_READY NO.
+**PATCH 3.5 DESIGN COMPLETE.** PATCH 3 accepted (review B).
+PATCH4_READY NO. Flag OFF. Sem regen Tooie.
 Próximos passos:
 
-1. **Design PATCH 3.5 semantic closure** before any implementation.
-   Não habilitar a flag. Não regenerar Tooie. Fechar X1 (cause/class),
-   MTC0 re-enable, e os gaps registados na review (JR genérico, T11,
-   CONTEXT_SAFE) antes do PATCH 4. Não implementar Hybrid F DeepSeek
-   ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
-   Evidência: [[plan/evidence/p08-preemption-patch3-independent-review]].
-2. **Investigar `func_800BCF28`** só depois do fix permanente aterrar.
+1. **Implement PATCH 3.5** segundo
+   [[plan/evidence/p08-preemption-patch35-design]].
+   MUST: X1 annotated-hold + MTC0/mask-change service.
+   TEST: X1-A..F, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
+   DEFER: generic JR, function-entry safepoints, status-init, TLS epoch.
+   Não habilitar a flag. Não regenerar Tooie. Não implementar Hybrid F
+   DeepSeek ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
+2. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
 3. Então: gsattract ep1 / demo, depois input title/file-select.
 
 Não forçar clear; não BaKey; não reabrir Scheduler C; não editar
@@ -108,11 +109,11 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch3-independent-review]]
-2. [[plan/evidence/p08-preemption-patch3-validation]]
-3. [[plan/evidence/p08-preemption-patch2-independent-review]]
-4. [[plan/evidence/p08-preemption-implementation-plan]]
-5. [[plan/evidence/p08-preemption-patch2-validation]]
+1. [[plan/evidence/p08-preemption-patch35-design]] (**CURRENT**)
+2. [[plan/evidence/p08-preemption-patch3-independent-review]]
+3. [[plan/evidence/p08-preemption-patch3-validation]]
+4. [[plan/evidence/p08-preemption-patch2-independent-review]]
+5. [[plan/evidence/p08-preemption-implementation-plan]]
 6. [[plan/evidence/p08-preemption-design-adversarial-review]]
 7. [[plan/evidence/p08-permanent-preemption-design]] (SUPERSEDED)
 8. [[plan/evidence/p08-guest-preemption-causal-validation]]

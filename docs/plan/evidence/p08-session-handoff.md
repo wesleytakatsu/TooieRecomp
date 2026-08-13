@@ -12,9 +12,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `e94d89a13680f720cd376245e5fceed3746a3eb1`
-  (`build(p08): add generated preemption safepoints`). This session
-  independently reviewed PATCH 3 (verdict B). Docs only; no source.
+- Checkpoint base/parent: `7106cedead5988cfa809067a106afa95cf43031b`
+  (`docs(p08): independently review preemption patch 3`). This session
+  designed PATCH 3.5 (semantic closure). Docs only; no source.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -138,7 +138,8 @@ ARBITRATION (Grok 4.5 HIGH):
    [[p08-preemption-patch2-independent-review]] verdict B. PATCH 3
    landed — [[p08-preemption-patch3-validation]]. Independent review
    [[p08-preemption-patch3-independent-review]] verdict B. PATCH4_READY
-   NO (X1 cause/class + MTC0 re-enable + PATCH 3.5 semantic closure).
+   NO (implement PATCH 3.5 first: X1 annotated-hold + MTC0).
+   Design: [[p08-preemption-patch35-design]].
    Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
@@ -146,29 +147,32 @@ ARBITRATION (Grok 4.5 HIGH):
 
 ## NEXT_SINGLE_ACTION
 
-**PATCH 3 ACCEPTED (review B).** Design the smallest PATCH 3.5
-semantic closure before implementation. Do not start PATCH 4.
+**PATCH 3.5 DESIGN COMPLETE.** Implement PATCH 3.5 according to
+[[p08-preemption-patch35-design]]. Do not start PATCH 4.
 Feature remains OFF for games. C ABI is `void*` = `uint32_t* status_reg`.
-Close X1 (cause/class), MTC0 re-enable, and recorded PATCH 3 coverage
-gaps before enabling the flag. Cumulative artifacts:
+
+MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
+pending service. MUST_TEST: X1-A..F, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
+DEFER: generic JR, function cycles, status-init change, TLS epoch.
+Cumulative artifacts still:
 `patches/runtime/n64modernruntime-preemption.patch`,
 `patches/runtime/n64recomp-tooie.patch`.
 
 Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
 Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
 `RecompiledFuncs` à mão. Sem resetar o dirty do runtime. Sem
-habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 3.5
-ainda — só o design.
+habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 4.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch3-independent-review]] — **CURRENT: PATCH 3 review B**
-2. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
-3. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B; inherited pre-PATCH4 blockers
-4. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
-5. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-6. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+1. [[p08-preemption-patch35-design]] — **CURRENT: implement this**
+2. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
+3. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
+4. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
+5. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
+6. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+7. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
+8. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
 
@@ -191,5 +195,5 @@ GENERATOR_CODE_CHANGED   = NO this session (external dirty preserved)
 PATCH_CODE_CHANGED       = NO this session
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (PATCH 3 independent review)
+EVIDENCE_CHANGED         = YES (PATCH 3.5 design)
 ```

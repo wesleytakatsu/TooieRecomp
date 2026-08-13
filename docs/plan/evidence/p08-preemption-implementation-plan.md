@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3 accepted (review B); PATCH 3.5 design next; PATCH4_READY NO."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 3 accepted (review B); PATCH 3.5 design complete; implement 3.5 next; PATCH4_READY NO."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES (PATCH 3 accepted review B; design PATCH 3.5 next; PATCH4_READY NO)
+IMPLEMENTATION_READY: YES (PATCH 3 accepted review B; PATCH 3.5 design complete — implement next; PATCH4_READY NO)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -264,11 +264,12 @@ PATCH 3 — generator safepoints     [flag still OFF for games]  LANDED
   C ABI void* is status_reg; generated arg is (void*)&ctx->status_reg.
   Isolate hunks from dirty resolve_jal. T11 PASS. No Tooie regen.
 
-PATCH 3.5 — semantic closure       [flag still OFF]            DESIGN NEXT
-  Smallest design before any enable/regen. Must include inherited
-  X1 cause/class + MTC0 re-enable, plus review findings:
-  generic JR coverage, T11 likely/survival tests, CONTEXT_SAFE
-  swap proof. Do not implement in the review session.
+PATCH 3.5 — semantic closure       [flag still OFF]            DESIGN COMPLETE
+  See [[p08-preemption-patch35-design]]. Implement next.
+  MUST_IMPLEMENT: X1 annotated-hold cause model + MTC0/mask-change
+  pending service. MUST_TEST: X1-A..F, M1/M2, T04+, T07+, P3-X1/X2/X4/X6.
+  DEFER: generic JR, function-entry safepoints, status-init change,
+  TLS epoch replacement, cheaper hint. Do not enable. Do not regen.
 
 PATCH 4 — integration              [flag ON]
   Tooie: rebuild N64Recomp, run_recomp.sh, cmake build TooieRecompiled.
