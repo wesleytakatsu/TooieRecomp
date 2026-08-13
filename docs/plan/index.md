@@ -160,8 +160,12 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-patch35-independent-review]] — **CURRENT:**
-  verdict C; current RCP/MI mask is process-global; PATCH4_READY NO.
+- [[evidence/p08-preemption-patch35-rcp-independent-review]] — **CURRENT:**
+  verdict B; per-OSThread RCP correction accepted; PATCH4_READY YES.
+- [[evidence/p08-preemption-patch35-rcp-correction]] — implementer correction
+  evidence; TLS RCP, RCP-X1..X4 and P3-X6+.
+- [[evidence/p08-preemption-patch35-independent-review]] — historical verdict
+  C that proved the old process-global defect; finding resolved, preserved.
 - [[evidence/p08-preemption-patch35-validation]] — implementer evidence;
   PATCH4 gate corrected/superseded by independent review.
 - [[evidence/p08-preemption-patch35-thread-switch-review]] —
@@ -173,7 +177,7 @@ O trabalho só está concluído quando todos os critérios de
 - [[evidence/p08-preemption-patch2-validation]] — PATCH 2 runtime
   service landed; feature OFF; T01–T10/T12 PASS.
 - [[evidence/p08-preemption-implementation-plan]] — spec Hybrid F'
-  (PATCH 1–4 + T01–T15). PATCH 3 accepted; PATCH 3.5 design next.
+  (PATCH 1–4 + T01–T15). PATCH 3.5 accepted; PATCH 4 next.
 - [[evidence/p08-preemption-design-adversarial-review]] — arquitetura F'
   aprovada (veredito C). DeepSeek Hybrid F rejeitado as-is.
 - [[evidence/p08-permanent-preemption-design]] — DeepSeek Hybrid F;

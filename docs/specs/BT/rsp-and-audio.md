@@ -102,9 +102,10 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   `docs/plan/evidence/p08-preemption-implementation-plan.md`.
   PATCH 3.5 landed cause-aware hold-until-eligible (flag OFF; Tooie não
   regenerado). Current RCP/MI mask is per native guest OSThread (TLS).
-  Áudio do jogo ainda não é preemptado. Independent review of the RCP
-  correction is the remaining PATCH 4 gate. Ver
-  `docs/plan/evidence/p08-preemption-patch35-rcp-correction.md`.
+  Independent review accepted the correction with verdict B and
+  `PATCH4_READY YES`. Áudio do jogo ainda não é preemptado because the flag
+  remains OFF and Tooie was not regenerated. Ver
+  `docs/plan/evidence/p08-preemption-patch35-rcp-independent-review.md`.
 
 ## Referências
 

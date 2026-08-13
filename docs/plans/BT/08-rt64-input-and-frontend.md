@@ -38,8 +38,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (**CURRENT** — TLS RCP correction; RCP-X1..X4 / P3-X6+ PASS)
-- [[../../plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; findings preserved)
+- [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]] (**CURRENT** — verdict B; PATCH35 accepted; PATCH4_READY YES)
+- [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (implementer TLS RCP correction evidence)
+- [[../../plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; finding resolved, history preserved)
 - [[../../plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; RCP/P3-X6 claims superseded)
 - [[../../plan/evidence/p08-preemption-patch35-design]] (PATCH 3.5 design contract; implemented)
 - [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B; thread-dispatch resume hook)
@@ -183,9 +184,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** corrigir somente o estado RCP/MI per-OSThread em PATCH 3.5,
-adicionar RCP-X1..X4 e fortalecer P3-X6. Evidence:
-[[../../plan/evidence/p08-preemption-patch35-independent-review]].
-Não habilitar a flag. Não regenerar Tooie. Depois de re-review: PATCH 4, então
-SIGSEGV `func_800BCF28`. Após demo: input e
+**NEXT:** implementar somente PATCH 4 activation/regeneration/validation.
+PATCH 3.5 e a correção RCP per-OSThread foram aceitos independentemente:
+[[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]]. Depois
+de PATCH 4: SIGSEGV `func_800BCF28`. Após demo: input e
 [[09-gameplay-parity-and-enhancements]].

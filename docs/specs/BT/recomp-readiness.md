@@ -72,12 +72,13 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > produção permanece OFF e o Tooie **não** foi regenerado — o C gerado
 > existente ainda não contém chamadas. **Não tratar como preempção
 > guest entregue no jogo.** Independent review
-> `p08-preemption-patch35-independent-review.md` found the current RCP/MI
-> mask process-global instead of per OSThread. The narrow correction is
-> implemented (`thread_local current_mi_mask`, RCP-X1..X4 / P3-X6+ PASS;
-> `docs/plan/evidence/p08-preemption-patch35-rcp-correction.md`). Production
-> flag remains OFF. **Ainda não tratar como preempção guest entregue no jogo.**
-> Independent review of the correction is the remaining PATCH 4 gate.
+> `p08-preemption-patch35-independent-review.md` found the old current RCP/MI
+> mask process-global instead of per OSThread. The narrow TLS correction was
+> independently accepted with verdict B (`RCP-X1..X4`, old-global
+> discriminator, P3-X6+, reconstruction and regressions PASS); see
+> `docs/plan/evidence/p08-preemption-patch35-rcp-independent-review.md`.
+> `PATCH4_READY` is YES. Production flag remains OFF and Tooie remains
+> unregenerated, so **ainda não tratar como preempção guest entregue no jogo.**
 
 ## Próximos passos práticos
 

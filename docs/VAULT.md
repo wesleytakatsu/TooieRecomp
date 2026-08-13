@@ -33,9 +33,10 @@
 - [[plan/evidence/p08-guest-preemption-causal-validation]] — P08 — guest preemption causal validation (clean experiment, class A) — Experimento limpo reversível: yield_self_1ms em func_800C2AB8 → AUDIO roda, func_800205D0 limpa table[2].word0, C2AB8 retorna, attract progride (até SIGSEGV downstream novo em func_800BCF28). Gap de preempção provado causalmente.
 - [[plan/evidence/p08-permanent-preemption-design]] — P08 — permanent guest-preemption design (DeepSeek Hybrid F) — `CORRECTED/SUPERSEDED` pela revisão adversarial.
 - [[plan/evidence/p08-preemption-design-adversarial-review]] — P08 — adversarial review of generic guest-preemption design — Hybrid F quebrado (veredito C); Hybrid F' aprovado.
-- [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — PATCH 3.5 RCP correction required; PATCH4_READY NO.
-- [[plan/evidence/p08-preemption-patch35-rcp-correction]] — P08 — PATCH 3.5 RCP per-OSThread correction — TLS `current_mi_mask`; RCP-X1..X4 and P3-X6+ PASS; flag OFF; independent review of the correction is next.
-- [[plan/evidence/p08-preemption-patch35-independent-review]] — P08 — independent review of preemption PATCH 3.5 — Verdict C; per-OSThread RCP defect proven by two disposable failing tests.
+- [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — PATCH 3.5 accepted; PATCH4_READY YES.
+- [[plan/evidence/p08-preemption-patch35-rcp-independent-review]] — P08 — independent review of PATCH 3.5 RCP correction — Verdict B; old-global discriminator and regressions PASS; PATCH4_READY YES.
+- [[plan/evidence/p08-preemption-patch35-rcp-correction]] — P08 — PATCH 3.5 RCP per-OSThread correction — TLS `current_mi_mask`; RCP-X1..X4 and P3-X6+ PASS; flag OFF.
+- [[plan/evidence/p08-preemption-patch35-independent-review]] — P08 — historical independent review of preemption PATCH 3.5 — Verdict C; process-global RCP defect proven, now resolved by the preserved correction review.
 - [[plan/evidence/p08-preemption-patch35-validation]] — P08 — PATCH 3.5 implementer validation — A+ hold-until-eligible claims; PATCH4 gate corrected/superseded by independent review.
 - [[plan/evidence/p08-preemption-patch35-design]] — P08 — PATCH 3.5 semantic-closure design — implemented/validated.
 - [[plan/evidence/p08-preemption-patch3-independent-review]] — P08 — independent review of preemption PATCH 3 — Veredito B; PATCH 3 aceite; branch-likely PROVEN; JR genérico INCOMPLETE; PATCH 3.5 design next; PATCH4_READY NO.

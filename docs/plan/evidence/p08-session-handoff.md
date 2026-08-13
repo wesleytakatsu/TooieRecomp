@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Parent before this correction: `620fcfe8f13dfb9b3f2173979c15141b21a29da4`.
+- Independent-review base: `bc636edd28f784d9e2a8ad10998eaacc1f681907`.
   Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -140,19 +140,20 @@ ARBITRATION (Grok 4.5 HIGH):
    [[p08-preemption-patch35-independent-review]] verdict C: current RCP/MI
    mask was process-global. Implementer correction
    [[p08-preemption-patch35-rcp-correction]] (TLS `current_mi_mask`,
-   RCP-X1..X4 PASS, P3-X6+ PASS). Independent review of that correction
-   is the remaining PATCH 4 gate. Do not implement DeepSeek Hybrid F.
+   RCP-X1..X4 PASS, P3-X6+ PASS) is independently approved by
+   [[p08-preemption-patch35-rcp-independent-review]] (verdict B;
+   PATCH4_READY YES). Do not implement DeepSeek Hybrid F.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**Independent review of the corrected PATCH 3.5.** TLS per-OSThread RCP
-mask is implemented and RCP-X1..X4 / P3-X6+ pass. See
-[[p08-preemption-patch35-rcp-correction]]. Do not enable
-`ULTRAMODERN_GUEST_PREEMPTION`, implement PATCH 4, regenerate Tooie, or
-investigate `func_800BCF28` yet.
+**Implement PATCH 4 activation/regeneration/validation only.** PATCH 3.5 and
+its per-OSThread RCP correction are independently accepted; see
+[[p08-preemption-patch35-rcp-independent-review]]. PATCH 4 owns startup flag
+activation, Tooie regeneration, and the prescribed validation. Do not expand
+into `func_800BCF28` until PATCH 4 lands.
 
 Cumulative artifacts still:
 `patches/runtime/n64modernruntime-preemption.patch`,
@@ -161,20 +162,21 @@ Cumulative artifacts still:
 Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
 Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
 `RecompiledFuncs` à mão. Sem resetar o dirty do runtime. Sem
-habilitar a flag. Sem regenerar Tooie. Sem implementar PATCH 4.
+habilitar a flag ou regenerar Tooie fora da execução controlada de PATCH 4.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch35-rcp-correction]] — **CURRENT: implementer correction evidence**
-2. [[p08-preemption-patch35-independent-review]] — pre-correction verdict C (findings preserved)
-3. [[p08-preemption-patch35-thread-switch-review]] — thread-switch eligibility (verdict B)
-4. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
-5. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
-6. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
-7. [[p08-preemption-implementation-plan]] — remaining PATCH 3.5/4 spec
-8. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-9. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-10. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+1. [[p08-preemption-patch35-rcp-independent-review]] — **CURRENT: correction accepted; PATCH4_READY YES**
+2. [[p08-preemption-patch35-rcp-correction]] — implementer correction evidence
+3. [[p08-preemption-patch35-independent-review]] — pre-correction verdict C (finding resolved, history preserved)
+4. [[p08-preemption-patch35-thread-switch-review]] — thread-switch eligibility (verdict B)
+5. [[p08-preemption-patch3-independent-review]] — PATCH 3 review B
+6. [[p08-preemption-patch3-validation]] — PATCH 3 implementer evidence
+7. [[p08-preemption-patch2-independent-review]] — PATCH 2 review B
+8. [[p08-preemption-implementation-plan]] — PATCH 4 spec
+9. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+10. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
+11. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
 

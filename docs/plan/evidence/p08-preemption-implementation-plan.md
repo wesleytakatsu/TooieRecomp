@@ -584,13 +584,25 @@ TESTS: RCP-X1..X4 plus a P3-X6 proof that cannot pass without the
        safepoint swap
 ```
 
+The specific RCP finding above is **RESOLVED** by
+[[p08-preemption-patch35-rcp-independent-review]] (verdict B). The historical
+verdict C remains preserved as the pre-correction authority.
+
+```text
+PATCH35_ACCEPTED: YES
+PATCH4_READY: YES
+RCP-X1..X4: PASS
+OLD_GLOBAL_DISCRIMINATOR: PASS
+P3-X6+: STRONG / real guest swap
+T03: 20 isolated child runs PASS; historical flake class E, nonblocking
+```
+
 ## 10. Next
 
 ```text
 NEXT_SINGLE_ACTION:
-  Correct PATCH 3.5 RCP/per-thread state only and add RCP-X1..X4;
-  strengthen P3-X6 so it cannot pass without the safepoint swap.
-  Do not enable the flag, implement PATCH 4, or regenerate Tooie.
+  Implement PATCH 4 activation/regeneration/validation only.
+  Until that task starts, keep the flag OFF and do not regenerate Tooie.
 ```
 
 === END IMPLEMENTATION PLAN ===

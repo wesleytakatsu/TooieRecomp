@@ -45,15 +45,14 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**PATCH 3.5 RCP CORRECTION IMPLEMENTED.** Flag OFF. Sem regen Tooie.
-Current RCP/MI mask is per native guest OSThread (`thread_local`).
-RCP-X1..X4 e P3-X6+ PASS. Review da correção ainda é o gate de PATCH 4.
+**PATCH 3.5 RCP CORRECTION ACCEPTED (independent verdict B).** Flag OFF. Sem
+regen Tooie. Current RCP/MI mask is per native guest OSThread (`thread_local`).
+RCP-X1..X4, old-global discriminator, P3-X6+, T11 e reconstruction PASS.
+`PATCH4_READY: YES`.
 
-1. **Independent review da correção PATCH 3.5** —
-   [[plan/evidence/p08-preemption-patch35-rcp-correction]].
-   Não habilitar a flag. Não regenerar Tooie. Não PATCH 4 nesta etapa.
-2. **PATCH 4** só após review da correção: env/default ON + Tooie regen + T15.
-3. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
+1. **PATCH 4 activation/regeneration/validation only** —
+   [[plan/evidence/p08-preemption-patch35-rcp-independent-review]].
+2. **Investigar `func_800BCF28`** só depois do PATCH 4 aterrar.
 
 Não forçar clear; não BaKey; não reabrir Scheduler C; não editar
 `RecompiledFuncs`; não resetar o dirty do runtime.

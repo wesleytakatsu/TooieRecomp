@@ -18,12 +18,11 @@ PATCH4_READY:    NO
 SOURCE_CHANGED:  NO
 ```
 
-> **Correction pointer (2026-08-13):** implementer applied the recommended
-> TLS `current_mi_mask` fix and added RCP-X1..X4 plus P3-X6+. Evidence:
-> [[p08-preemption-patch35-rcp-correction]]. The findings in this review
-> remain the authority for the pre-correction defect. Resolution of those
-> findings is for the next independent review of the correction, not a
-> rewrite of this verdict.
+> **RESOLVED pointer (2026-08-13):** implementer applied the recommended TLS
+> `current_mi_mask` fix and added RCP-X1..X4 plus P3-X6+. The correction was
+> independently approved with verdict B in
+> [[p08-preemption-patch35-rcp-independent-review]]. This verdict C remains
+> the authority for the pre-correction defect and is not rewritten.
 
 This review treated the PATCH 3.5 handoff and its PASS list as claims. It
 reconstructed the exact artifacts, inspected current source, checked primary
