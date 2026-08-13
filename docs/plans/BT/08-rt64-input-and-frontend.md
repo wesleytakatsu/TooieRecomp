@@ -25,10 +25,20 @@ demo ausente. MAIN busy-wait em `func_800C2AB8` no slot 7 porque
 `table[2].word0` aponta para um pool object vivo nunca limpo por
 `func_800205D0`.
 
-Reconstrução do Scheduler/Driver: Cadeia completa de despacho indireto provada
-(`func_8001EB10 → func_800128C0 → func_80021574 → func_8001ED68 → func_8001EE34 → func_800200B8 → func_800205D0`).
-O clearer roda no contexto da thread de áudio / síntese, a qual é inibida de
-progredir pelo spin síncrono da thread MAIN no host.
+Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
+indireto de áudio e o gap estrutural de preempção foram provados:
+- Hardware N64: Hardware interrupt preempta `OSThread 6` MAIN (Pri 20) imediatamente para `OSThread 4` AUDIO (Pri 50).
+- `N64ModernRuntime`: Agendamento puramente cooperativo; o busy-wait puro em `func_800C2AB8` retém o token de execução e impede que mensagens externas acordem a thread AUDIO.
+
+Evidência corrente:
+
+- [[../../plan/evidence/p08-guest-preemption-runtime-audit]] (**CURRENT**)
+- [[../../plan/evidence/p08-slot7-scheduled-event-validation]]
+- [[../../plan/evidence/p08-slot7-scheduled-event-driver]]
+- [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]]
+- [[../../plan/evidence/p08-session-handoff]]
+- [[../../plan/evidence/p08-attract-actor-loop-diagnosis]]
+- [[../../plan/evidence/p08-type4-transition-semantics-audit]]
 
 > **VALIDAÇÃO DINÂMICA CLEAN FREEZE (2026-08-12):** 3 clean freezes
 > determinísticos confirmam **CLASS A**: o objeto de `table[2]` está agendado na
@@ -39,14 +49,6 @@ progredir pelo spin síncrono da thread MAIN no host.
 > enquanto MAIN gira em `func_800C2AB8`. Ver
 > [[../../plan/evidence/p08-slot7-scheduled-event-validation]].
 
-Evidência corrente:
-
-- [[../../plan/evidence/p08-slot7-scheduled-event-validation]] (**CURRENT**)
-- [[../../plan/evidence/p08-slot7-scheduled-event-driver]]
-- [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]]
-- [[../../plan/evidence/p08-session-handoff]]
-- [[../../plan/evidence/p08-attract-actor-loop-diagnosis]]
-- [[../../plan/evidence/p08-type4-transition-semantics-audit]]
 
 ## Tarefas
 

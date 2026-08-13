@@ -44,6 +44,20 @@ order `.z64`, ID `NB7E` e revisão `00`.
 | Syscalls | `syscall_symbol_addrs.us.txt` | dispatch entre módulos |
 | Código matching | `src/`, `asm/` e linker | nomes, estruturas e validação binária |
 
+## Contrato de Threads e Preempção do Runtime
+
+No hardware N64 original:
+1. O Libultra implementa agendamento preemptivo estrito por prioridade (`higher numeric priority wins`).
+2. Hardware interrupts (como AI e RSP) preemptam imediatamente código de baixa prioridade (como a thread MAIN, prioridade 20) para executar threads de alta prioridade (como a thread AUDIO, prioridade 50).
+
+No runtime nativo (`N64ModernRuntime` / `ultramodern`):
+1. O agendamento entre threads nativas utiliza um token único de execução (`LightweightSemaphore`).
+2. Mensagens externas de host são enfileiradas em `external_messages`, mas só são processadas cooperativamente em pontos de chamada de API (`osRecvMesg`, `osSendMesg`, `osYieldThread`).
+3. Loops de busy-wait em código guest puro (como `func_800C2AB8` durante transições de modo) que não executam chamadas de runtime retêm o token de execução e causam inanição das threads de áudio/scheduler.
+4. O runtime ou o código do jogo devem prover pontos de yield/preempção cooperativa periódicos para manter a paridade com o comportamento de interrupções de hardware do N64.
+
+## Próximos passos práticos
+
 O decompressor possui rotinas que imprimem símbolos/relocations e geram a
 configuração de overlays. `get_tooie_relocs` interpreta relocations diretamente
 do ELF. Esses caminhos devem ser estendidos para emitir entradas N64Recomp em

@@ -54,29 +54,18 @@ YES — synchronous dependency cycle / busy-wait:
 ## ROOT_CAUSE_STATUS
 
 ```text
-ROOT_CAUSE_PROVEN: YES (mechanism)
+ROOT_CAUSE_PROVEN: YES
 ```
 
-Mecanismo que limpa `table[2].word0` reconstruído estaticamente e agora
-**validado dinamicamente em 3 clean freezes** (ver
-[[p08-slot7-scheduled-event-validation]]):
-
-- O objeto pendente de `table[2]` **ESTÁ agendado** na delta-queue do
-  SoundManager (`*(0x800411DC)=0x8007E9C0`, listhdr `+0x14`): entrada na HEAD
-  com `payload.p4 == table[2].word0` e **delta-key 0 (devida AGORA)**.
-- Handler registrado `mgr+0x08 = 0x8001ED68` (MATCH); `func_8001EE34` pending.
-- Contexto de dispatch = thread `[Game] AUDIO` (guest OSThread 4) via
-  `func_800128C0 → func_800129FC → func_80021574 → jalr mgr->handler`.
-- A thread AUDIO está **estacionada em `LightweightSemaphore::waitWithPartialSpinning`**
-  (scheduler cooperativo do runtime); contadores de áudio do diag ficam
-  **congelados** durante o freeze (`rsp_aud=1529`, `queue_samp=2305888`).
-- MAIN gira em `func_800C2AB8` sem ceder → dispatch de áudio não pode rodar →
-  `func_8001ED68/1EE34/200B8/205D0` não executam → `table[2].word0` não zera.
-- **CLASS A**: callback agendado e due, mas contexto de dispatch não pode rodar.
+A causa raiz foi integralmente demonstrada estruturalmente e validada dinamicamente:
+- No N64 original, a interrupção de áudio preempta imediatamente o loop CPU de MAIN (`func_800C2AB8`), pois `Status.IE = 1` e Priority(AUDIO)=50 > Priority(MAIN)=20.
+- No `N64ModernRuntime`, o agendamento é puramente cooperativo; `external_messages` só são consumidas em chamadas de API (`osRecvMesg`, `osSendMesg`, `osYieldThread`).
+- Como `func_800C2AB8` é um loop MIPS puro sem chamadas de runtime, MAIN retém o token de execução host indefinidamente, mantendo a thread AUDIO estacionada em `LightweightSemaphore::waitWithPartialSpinning` e impedindo a execução de `func_800205D0`.
 
 ## CURRENT_FIRST_DIVERGENCE
 
-MAIN entra em `func_800C2AB8` no path de transição de modo (`func_800A76F4(5) → func_800A7380(1) → func_800C2AB8`) com o evento de áudio do objeto de `table[2]` **ainda agendado e devido** (delta 0) na delta-queue do SoundManager; o busy-wait síncrono no host estaciona a thread AUDIO (scheduler cooperativo), impedindo o dispatch `func_8001ED68 → func_8001EE34 → func_800205D0` que limparia `table[2].word0`.
+Inanição do runtime de threads guest: MAIN retém o execution token do host em `func_800C2AB8` sem ceder CPU cooperativamente, impedindo o processamento da fila de mensagens externas que acordaria a thread AUDIO (prioridade 50).
+
 
 ## RESOLVED_DO_NOT_REOPEN
 

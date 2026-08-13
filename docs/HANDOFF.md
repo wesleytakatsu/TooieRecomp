@@ -21,24 +21,12 @@ Estado clean-freeze (determinístico):
 - único pending: kinematics **slot 7** (`substate=2`, `table[2].word0` = live
   pool object, p.ex. `0x8005C168`) → `func_800C269C(7)==0` para sempre.
 
-> **RECONSTRUÇÃO SCHEDULER/DRIVER (2026-08-12):** O ciclo causal de limpeza de `table[2].word0` foi integralmente provado estaticamente:
-> - O cliente `SoundManager` (`D_800411DC`) é registrado por `func_8001EB10` com handler `func_8001ED68` em `+0x8`.
-> - A síntese de áudio por frame (`func_800128C0 → func_800129FC → func_80021574`) executa `jalr client->handler` (`func_8001ED68`).
-> - `func_8001ED68` desempilha eventos expirados da delta-queue e chama `func_8001EE34(event)`.
-> - Para opcode `0x200`, `func_8001EE34` chama `func_800200B8 → func_800205D0`, que zera `*obj->0x30` (`table[2].word0 = 0`).
-> - No N64 original, a thread de áudio (OSThread 4) preempta MAIN e avança a síntese. No TooieRecomp, o spin síncrono de MAIN em `func_800C2AB8` impede a execução do dispatcher de áudio, causando inanição do clearer. Evidência: [[plan/evidence/p08-slot7-scheduled-event-driver]].
->
-> **VALIDAÇÃO DINÂMICA CLEAN FREEZE (2026-08-12):** 3 clean freezes determinísticos
-> (`d=179285/179325/179310`) confirmam — **CLASS A** — que o objeto de `table[2]`
-> **ESTÁ agendado** na delta-queue do SoundManager (`*(0x800411DC)=0x8007E9C0`,
-> listhdr `+0x14`): entrada na HEAD com `payload.p4 == table[2].word0` e
-> **delta-key 0 (devida agora)**; handler `mgr+0x08 = func_8001ED68` (MATCH);
-> `func_8001EE34` pending. O contexto de dispatch (thread `[Game] AUDIO`) está
-> **estacionado em `LightweightSemaphore::waitWithPartialSpinning`** e os
-> contadores de áudio do diag ficam **congelados** no freeze
-> (`rsp_aud=1529`, `queue_samp=2305888`) — MAIN gira em `func_800C2AB8` sem
-> ceder, então `func_8001ED68/1EE34/200B8/205D0` não podem rodar.
-> Evidência: [[plan/evidence/p08-slot7-scheduled-event-validation]].
+> **AUDITORIA ESTRUTURAL DE PREEMPÇÃO (2026-08-12):** O gap entre o hardware N64 e o runtime foi integralmente mapeado:
+> - **N64 Original:** Interrupts habilitados (`Status.IE = 1`) durante `func_800C2AB8`; interrupção de áudio/timer acorda `OSThread 4` (Priority 50) que preempta imediatamente `OSThread 6` MAIN (Priority 20) via hardware context switch.
+> - **N64ModernRuntime (`ultramodern`):** Escalonamento puramente cooperativo com token único de execução. `external_messages` só são processadas quando a thread atual chama a API do runtime (`osRecvMesg`, `osSendMesg`, `osYieldThread`).
+> - Como `func_800C2AB8` é um loop MIPS puro em código guest, MAIN nunca cede o token e AUDIO permanece estacionada em `LightweightSemaphore::waitWithPartialSpinning`.
+> - Evidência: [[plan/evidence/p08-guest-preemption-runtime-audit]].
+
 
 
 Descrição canônica:
