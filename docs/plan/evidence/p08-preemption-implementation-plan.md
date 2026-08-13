@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. Docs only; sem implementação de runtime/gerador."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 1 landed (stubs/T01); PATCH 2+ not started."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -235,13 +235,19 @@ submodule worktree** (JAL policy must stay). Then `run_recomp.sh`.
 Every commit must **build**. Games stay feature-disabled until PATCH 4.
 
 ```text
-PATCH 1 — infrastructure / tests   [default flag OFF]
-  New: preemption.cpp stubs (hint=false, service no-op or empty loop),
-       intmask.cpp defaults, header decls, recomp.h decls,
-       CMake sources, preemption_harness skeleton.
+PATCH 1 — infrastructure / tests   [default flag OFF]  LANDED
+  See [[p08-preemption-patch1-validation]].
+  New: preemption.cpp stubs (hint=false, service no-op),
+       intmask.cpp defaults (no call sites), header decls,
+       CMake sources, preemption_harness + T01.
+  SLICING CORRECTION: recomp.h decls NOT in PATCH 1
+    (RECOMP_H_REQUIRED_IN_PATCH1=NO; defer to PATCH 3).
+  Env ULTRAMODERN_GUEST_PREEMPTION: deferred to PATCH 4.
   No enqueue publish. No generator. No translation bodies.
-  T01: existing coop path identical (osSend/Recv still work).
-  Isolated: yes. Tooie/Banjo binary behavior unchanged.
+  T01: PASS. T02–T12: SKIPPED.
+  Isolated: yes. Tooie/Banjo binary does not even pull the
+  unused stub .o. External runtime left uncommitted; Tooie
+  versions patches/runtime/n64modernruntime-preemption-patch1.patch.
 
 PATCH 2 — runtime service          [flag still OFF for games]
   Real publish on enqueue+requeue. Real service protocol.
@@ -525,9 +531,9 @@ at the design review.
 
 ```text
 NEXT_SINGLE_ACTION:
-  DeepSeek V4 Flash/Pro implements PATCH 1 exactly as §3.
-  Do not start PATCH 2 until T01 is written and the stub library
-  links into Tooie without behavior change.
+  Independent review of PATCH 1, then PATCH 2 runtime service.
+  Do not start PATCH 2 until that review. Do not implement
+  generator safepoints or enable the flag.
 ```
 
 === END IMPLEMENTATION PLAN ===

@@ -59,6 +59,14 @@ apply_one_patch \
     "1b3d3d4666e02f748c44d19d867d02669b83753d85fe7eb62d746a5a8cf38309" \
     "scheduler"
 
+# Hybrid F' PATCH 1 — preemption infrastructure stubs (feature OFF).
+apply_one_patch \
+    "$RUNTIME" \
+    "$PATCH_DIR/n64modernruntime-preemption-patch1.patch" \
+    "ca568b6ad79b9029d14077f0c3ffa757727c5559" \
+    "1dc7bab8cc5004b2243f1e890c0a79b6bc094532f247cdefba8350d7030521dd" \
+    "preemption patch1 scaffold"
+
 # N64Recomp generator policy patch — N64Recomp submodule.
 apply_one_patch \
     "$N64RECOMP" \

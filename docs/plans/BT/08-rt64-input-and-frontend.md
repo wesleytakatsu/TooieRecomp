@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-implementation-plan]] (**CURRENT** — spec de implementação F'; não implementado)
+- [[../../plan/evidence/p08-preemption-patch1-validation]] (**CURRENT** — PATCH 1 landed; T01 PASS; flag OFF)
+- [[../../plan/evidence/p08-preemption-implementation-plan]] (spec F'; PATCH 1 landed, PATCH 2+ pending)
 - [[../../plan/evidence/p08-preemption-design-adversarial-review]] (arquitetura F' aprovada)
 - [[../../plan/evidence/p08-permanent-preemption-design]] (DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`)
 - [[../../plan/evidence/p08-guest-preemption-causal-validation]]
@@ -73,9 +74,9 @@ Evidência corrente:
 - [~] `P08-T09` Evidência visual: intro/Jiggy OK; first demo ausente.
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **freeze C2AB8
-  = gap de preempção do runtime, provado causalmente** (experimento limpo:
-  yield_self_1ms em C2AB8 → AUDIO limpa table[2] → C2AB8 retorna → attract
-  progride até SIGSEGV downstream em func_800BCF28).
+  = gap de preempção do runtime, provado causalmente**. Hybrid F' PATCH 1
+  (stubs, flag OFF, T01) landed; PATCH 2+ pending. Attract ainda bloqueado
+  até o fix permanente + `func_800BCF28`.
 
 
 ## Implementado / validado
@@ -102,7 +103,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-implementation-plan]] | **CURRENT:** spec file/function + T01–T15 |
+| [[../../plan/evidence/p08-preemption-patch1-validation]] | **CURRENT:** PATCH 1 scaffold + T01 PASS |
+| [[../../plan/evidence/p08-preemption-implementation-plan]] | spec file/function + T01–T15; PATCH 1 landed |
 | [[../../plan/evidence/p08-preemption-design-adversarial-review]] | arquitetura F' aprovada (veredito C) |
 | [[../../plan/evidence/p08-permanent-preemption-design]] | DeepSeek Hybrid F; `CORRECTED/SUPERSEDED` |
 | [[../../plan/evidence/p08-guest-preemption-causal-validation]] | experimento limpo class A — gap de preempção provado causalmente |

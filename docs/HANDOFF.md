@@ -45,13 +45,13 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**IMPLEMENTATION PLAN READY** (Hybrid F' aprovado). Próximos passos:
+**PATCH 1 LANDED** (stubs, flag OFF, T01 PASS). Próximos passos:
 
-1. **IMPLEMENTAR na ordem do plano**
-   [[plan/evidence/p08-preemption-implementation-plan]]:
-   PATCH 1 stubs/harness → PATCH 2 runtime service → PATCH 3 generator
-   → PATCH 4 regen Tooie. Começar por PATCH 1. Não implementar Hybrid F
-   DeepSeek ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
+1. **Review independente de PATCH 1**, depois PATCH 2 (runtime service)
+   conforme [[plan/evidence/p08-preemption-implementation-plan]] e
+   [[plan/evidence/p08-preemption-patch1-validation]].
+   Não implementar Hybrid F DeepSeek
+   ([[plan/evidence/p08-permanent-preemption-design]], SUPERSEDED).
 2. **Investigar `func_800BCF28`** só depois do fix permanente aterrar.
 3. Então: gsattract ep1 / demo, depois input title/file-select.
 

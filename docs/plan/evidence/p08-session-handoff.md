@@ -12,9 +12,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, pre
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `e729e7efd6caee620670cd490b789ffff0433cf1`
-  (`docs(p08): adversarially review preemption design`). This session
-  lands the implementation plan on top.
+- Checkpoint base/parent: `9bce91d2d4c7e44b4e198d234abaed95cd2863d4`
+  (`docs(p08): finalize preemption implementation plan`). This session
+  lands PATCH 1 (stubs + T01) on top.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -131,19 +131,18 @@ ARBITRATION (Grok 4.5 HIGH):
 2. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
 3. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
 4. Host fix location: runtime scheduler opportunity (generic preemption) —
-   PROVEN needed. Hybrid F' architecture APPROVED; implementation spec in
-   [[p08-preemption-implementation-plan]]. Do not implement DeepSeek Hybrid F.
+   PROVEN needed. Hybrid F' APPROVED. PATCH 1 (stubs, flag OFF, T01)
+   landed — [[p08-preemption-patch1-validation]]. Do not implement
+   DeepSeek Hybrid F. Do not start PATCH 2 before independent review.
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**IMPLEMENTATION PLAN READY.** Hybrid F' is specified at
-file/function level in [[p08-preemption-implementation-plan]]
-(PATCH 1 stubs/harness → PATCH 2 runtime service → PATCH 3 generator
-→ PATCH 4 Tooie regen). Next chat: DeepSeek V4 Flash/Pro implements
-**PATCH 1 only** first.
+**PATCH 1 LANDED.** Independent review of PATCH 1, then PATCH 2
+(runtime service: publish/enqueue/requeue, real service, intmask
+translations, T02–T10/T12). Do not start PATCH 3/4.
 
 Não implementar DeepSeek Hybrid F. Não investigar `func_800BCF28`.
 Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
@@ -151,10 +150,10 @@ Sem force-clear, BaKey ou reopen do Scheduler C. Sem editar
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-implementation-plan]] — **CURRENT: implement this**
-2. [[p08-preemption-design-adversarial-review]] — approved architecture F'
-3. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
-4. [[p08-guest-preemption-causal-validation]] — class A experiment
+1. [[p08-preemption-patch1-validation]] — **CURRENT: PATCH 1 result**
+2. [[p08-preemption-implementation-plan]] — remaining PATCH 2–4 spec
+3. [[p08-preemption-design-adversarial-review]] — approved architecture F'
+4. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, SUPERSEDED
 5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
