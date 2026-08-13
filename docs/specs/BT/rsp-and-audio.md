@@ -101,13 +101,16 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
 - **Design (2026-08-13):** Hybrid F' + spec de implementação em
   `docs/plan/evidence/p08-preemption-implementation-plan.md`.
   PATCH 3.5 landed cause-aware hold-until-eligible. Current RCP/MI mask
-  is per native guest OSThread (TLS). **PATCH 4 (2026-08-13):** Tooie
-  regenerated with Hybrid F' ON at startup. The C2AB8 AUDIO-starvation
-  path is permanently resolved (CLASS A ON/OFF). Intro audio still
-  advances; AUDIO runs during the former freeze window. Ver
-  `docs/plan/evidence/p08-preemption-patch4-validation.md`.
-  Downstream `func_800BCF28` SIGSEGV is the current product blocker;
-  it is not an audio/scheduler regression.
+  is per native guest OSThread (TLS). **PATCH 4 behavior (2026-08-13):**
+  Tooie regenerates 4,298 safepoints and starts Hybrid F' ON. Same-binary
+  ON/OFF independently proves CLASS A; AUDIO advances through the former
+  freeze window. The exact PATCH 4 `table[2].word0 == 0` value is inferred,
+  while resolution of C2AB8's pending condition is proven. PATCH 4 delivery
+  is not accepted until ignored `RecompiledPatches` build inputs are
+  reproducible from tracked state. Ver
+  `docs/plan/evidence/p08-preemption-patch4-independent-review.md`.
+  Downstream `func_800BCF28` remains the next product divergence and was not
+  diagnosed in this review.
 
 ## Referências
 

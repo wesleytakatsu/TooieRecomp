@@ -34,6 +34,7 @@
 - [[plan/evidence/p08-permanent-preemption-design]] — P08 — permanent guest-preemption design (DeepSeek Hybrid F) — `CORRECTED/SUPERSEDED` pela revisão adversarial.
 - [[plan/evidence/p08-preemption-design-adversarial-review]] — P08 — adversarial review of generic guest-preemption design — Hybrid F quebrado (veredito C); Hybrid F' aprovado.
 - [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — PATCH 3.5 accepted; PATCH4_READY YES.
+- [[plan/evidence/p08-preemption-patch4-independent-review]] — P08 — independent review of PATCH 4 — Behavior CLASS A; verdict C because clean tracked Tooie build lacks reproducible `RecompiledPatches` scaffolds.
 - [[plan/evidence/p08-preemption-patch4-validation]] — P08 — PATCH 4 Hybrid F' activation / regen / T13–T15 — Tooie-scoped startup ON; 4298 safepoints; C2AB8 CLASS A; current blocker func_800BCF28.
 - [[plan/evidence/p08-preemption-patch35-rcp-independent-review]] — P08 — independent review of PATCH 3.5 RCP correction — Verdict B; old-global discriminator and regressions PASS; PATCH4_READY YES.
 - [[plan/evidence/p08-preemption-patch35-rcp-correction]] — P08 — PATCH 3.5 RCP per-OSThread correction — TLS `current_mi_mask`; RCP-X1..X4 and P3-X6+ PASS; flag OFF.

@@ -77,14 +77,17 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > independently accepted with verdict B (`RCP-X1..X4`, old-global
 > discriminator, P3-X6+, reconstruction and regressions PASS); see
 > `docs/plan/evidence/p08-preemption-patch35-rcp-independent-review.md`.
-> `PATCH4_READY` is YES. **PATCH 4 landed (2026-08-13):** Tooie startup
+> `PATCH4_READY` was YES. **PATCH 4 behavior (2026-08-13):** Tooie startup
 > activates Hybrid F' (default ON; `ULTRAMODERN_GUEST_PREEMPTION=0`
-> rollback). Tooie was regenerated with 4298 static safepoints. C2AB8
-> freeze is permanently resolved (CLASS A). Guest-preemption
-> runtime/generator contract is delivered for Tooie. See
-> `docs/plan/evidence/p08-preemption-patch4-validation.md`.
-> Current product blocker is downstream `func_800BCF28` SIGSEGV, not
-> the scheduler/C2AB8 path.
+> rollback), and 4,298 deterministic static safepoints regenerate from the
+> tracked patches. Same-binary ON/OFF is independently CLASS A, so the C2AB8
+> mechanism is behaviorally resolved. **Delivery is not yet accepted:** a
+> clean tracked Tooie checkout cannot build because required ignored
+> `RecompiledPatches` scaffolds have no tracked regeneration step. See
+> `docs/plan/evidence/p08-preemption-patch4-independent-review.md` (verdict C)
+> and preserve `p08-preemption-patch4-validation.md` as implementer evidence.
+> `func_800BCF28` remains the next product divergence, but is gated on the
+> PATCH 4 distribution correction.
 
 ## Próximos passos práticos
 

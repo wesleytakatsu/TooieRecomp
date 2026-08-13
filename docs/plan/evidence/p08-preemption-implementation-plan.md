@@ -223,7 +223,7 @@ both ways and compares swap/service counts.
 | FILE | CHANGE | WHEN |
 | --- | --- | --- |
 | `RecompiledFuncs/**` | regenerate via `tools/run_recomp.sh` only | PATCH 4 |
-| `src/**` | none (no Tooie yield) | — |
+| `src/main/main.cpp` | startup activation only | PATCH 4 |
 | generated C manual edit | **FORBIDDEN** | — |
 
 After PATCH 3, rebuild `N64Recomp/build/N64Recomp` **from the dirty
@@ -529,14 +529,19 @@ Tooie:   re-run old N64Recomp binary + old RecompiledFuncs
 Do not hand-edit generated C to strip safepoints.
 ```
 
+Independent PATCH 4 review confirms the runtime rollback itself: the same
+binary with OFF reproduces the old freeze, generated sites remain present,
+and the hint short-circuits without requiring rebuild or hot mutation.
+
 ---
 
 ## 8. Specs
 
-`recomp-readiness.md` items 1–4 stay the N64 **requirement**, not the
-delivered behavior. This plan is evidence, not a completed contract.
-`build.md` / `matching.md` untouched. `rsp-and-audio.md` already points
-at the design review.
+`recomp-readiness.md` items 1–4 stay the N64 **requirement**. PATCH 4 behavior
+is independently CLASS A, but delivery remains unaccepted until a clean
+tracked Tooie clone builds without hidden `RecompiledPatches` scaffolds.
+`build.md` / `matching.md` remain decomp-build specifications.
+`rsp-and-audio.md` records the same evidence-quality split.
 
 ---
 
@@ -602,8 +607,14 @@ T03: 20 isolated child runs PASS; historical flake class E, nonblocking
 
 ```text
 NEXT_SINGLE_ACTION:
-  Independent review of PATCH 4 evidence
-  (p08-preemption-patch4-validation), then investigate func_800BCF28 only.
+  Correct PATCH 4 tracked clean-build reproducibility, then independently
+  re-review the correction. Do not investigate func_800BCF28 first.
 ```
+
+Independent review: [[p08-preemption-patch4-independent-review]] (verdict C).
+Behavior is CLASS A and does not reopen Hybrid F'. The blocker is that a clean
+tracked clone regenerates 4,298 deterministic safepoints but cannot build
+without ignored `RecompiledPatches` scaffold files absent from the stated
+reconstruction contract.
 
 === END IMPLEMENTATION PLAN ===

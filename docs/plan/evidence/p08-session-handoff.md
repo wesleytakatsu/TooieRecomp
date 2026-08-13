@@ -12,21 +12,28 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28]
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- PATCH 4 base: `33d23ad8a2d9792bf8aff833af3782b597216283`.
-  Confirm `git rev-parse HEAD` after pull; expect a newer
-  `build(p08): enable guest preemption for Tooie` commit.
+- Independent review base:
+  `e2ac9c53426bddc3ed54b89a1f6c2b8f8ca0df98`.
+- Pull the documentation commit containing
+  [[p08-preemption-patch4-independent-review]].
 
 ## CURRENT_PHASE
 
 P08 — RT64, input e frontend. Prioridade: abrir a first attract/gameplay
-demo. Title/file-select input continua diferido.
+demo. PATCH 4 independent verdict is **C** because the clean tracked Tooie
+checkout cannot build; correct that distribution contract before the next
+product-divergence investigation. Title/file-select input continua diferido.
 
 ## CURRENT_PRODUCT_STATE
 
 - Intro visual completa (céu, logo, Jiggy).
 - Attract request correto; type-4 completa; warp consumido; mode-5 alcançado.
-- Hybrid F' **production ON** no Tooie (startup).
-- `func_800C2AB8` **não** congela mais com PATCH4 default ON.
+- Hybrid F' startup behavior is independently **CLASS A** in the local
+  regenerated binary; rollback OFF reproduces the old freeze.
+- `func_800C2AB8` is behaviorally resolved with PATCH4 default ON.
+- PATCH 4 delivery is **not accepted**: required ignored
+  `RecompiledPatches` scaffolds have no tracked regeneration step, so a clean
+  clone regenerates 4,298 safepoints but cannot build Tooie.
 - Gameplay demo **não** começa: SIGSEGV em `func_800BCF28`.
 - `RecompiledFuncs` é gerado — não editar.
 
@@ -62,7 +69,8 @@ held the host execution token in a pure MIPS loop:
 
 ```text
 ROOT_CAUSE_PROVEN: YES
-PERMANENT_FIX:     YES for the observed C2AB8 path (PATCH 4, CLASS A)
+LOCAL_BEHAVIOR:    FIXED for the observed C2AB8 path (PATCH 4, CLASS A)
+DELIVERY_ACCEPTED: NO — clean tracked build fails
 ```
 
 Same generated binary:
@@ -72,6 +80,8 @@ Same generated binary:
 - `ULTRAMODERN_GUEST_PREEMPTION=0` → old freeze (d/audio/last_ovl stable ≥58s).
 
 No C2AB8 override, no `yield_self_1ms`, no forced table[2] clear.
+`table[2].word0 == 0` is INFERENCE in PATCH 4; resolution of the C2AB8
+pending condition is PROVEN.
 
 ## CURRENT_FIRST_DIVERGENCE
 
@@ -113,18 +123,21 @@ depend on object-origin remaining UNKNOWN.
 
 ## NEXT_SINGLE_ACTION
 
-**Independent review of PATCH 4 evidence**, then investigate `func_800BCF28`
-only. See [[p08-preemption-patch4-validation]].
+**Correct PATCH 4 tracked clean-build reproducibility.** A clean checkout must
+recreate the required `RecompiledPatches` scaffolds and build without hidden
+local files. See [[p08-preemption-patch4-independent-review]].
 
-Não reabrir Hybrid F' / PATCH 1–3.5. Sem force-clear, BaKey ou edição de
-`RecompiledFuncs`. Sem resetar o dirty do runtime.
+Do not investigate `func_800BCF28` until that correction is independently
+closed. Não reabrir Hybrid F' / PATCH 1–3.5. Sem force-clear, BaKey ou edição
+de `RecompiledFuncs`. Sem resetar o dirty do runtime.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch4-validation]] — **CURRENT**
-2. [[p08-preemption-implementation-plan]]
-3. [[p08-preemption-patch35-rcp-independent-review]]
-4. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+1. [[p08-preemption-patch4-independent-review]] — **CURRENT / verdict C**
+2. [[p08-preemption-patch4-validation]] — implementer evidence, preserved
+3. [[p08-preemption-implementation-plan]]
+4. [[p08-preemption-patch35-rcp-independent-review]]
+5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO (rollback)
 

@@ -160,8 +160,11 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-patch4-validation]] — **CURRENT:** PATCH 4
-  landed; C2AB8 CLASS A; production preemption ON; blocker `func_800BCF28`.
+- [[evidence/p08-preemption-patch4-independent-review]] — **CURRENT:** verdict
+  C; behavior CLASS A, but clean tracked build fails without ignored
+  `RecompiledPatches` scaffolds. Correct distribution before downstream work.
+- [[evidence/p08-preemption-patch4-validation]] — implementer evidence;
+  preserved, with direct table[2] zero treated as inference.
 - [[evidence/p08-preemption-patch35-rcp-independent-review]] —
   verdict B; per-OSThread RCP correction accepted.
 - [[evidence/p08-preemption-patch35-rcp-correction]] — implementer correction

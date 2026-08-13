@@ -20,10 +20,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Estado corrente
 
-**P08 ACTIVE BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK; first attract
-demo ausente. O freeze de MAIN em `func_800C2AB8` foi **permanentemente
-resolvido** por Hybrid F' PATCH 4 (CLASS A). Agora um **SIGSEGV downstream**
-em `func_800BCF28` (attract/world input init) bloqueia o demo.
+**P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
+first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A in the
+local regenerated binary, but independent verdict **C** found that the stated
+tracked checkout cannot build without ignored `RecompiledPatches` scaffolds.
+Correct distributability before investigating the downstream SIGSEGV in
+`func_800BCF28`.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -37,7 +39,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch4-validation]] (**CURRENT** — PATCH 4 landed, CLASS A)
+- [[../../plan/evidence/p08-preemption-patch4-independent-review]] (**CURRENT** — verdict C; behavioral CLASS A; clean tracked build FAIL)
+- [[../../plan/evidence/p08-preemption-patch4-validation]] (implementer evidence; preserved)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]] (verdict B; PATCH35 accepted)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (implementer TLS RCP correction evidence)
 - [[../../plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; finding resolved, history preserved)
@@ -114,7 +117,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch4-validation]] | **CURRENT:** PATCH 4 landed; C2AB8 CLASS A; blocker `func_800BCF28` |
+| [[../../plan/evidence/p08-preemption-patch4-independent-review]] | **CURRENT:** verdict C; CLASS A behavior, tracked clean-build correction required |
+| [[../../plan/evidence/p08-preemption-patch4-validation]] | implementer evidence; history preserved |
 | [[../../plan/evidence/p08-preemption-patch35-independent-review]] | historical verdict C; RCP finding resolved |
 | [[../../plan/evidence/p08-preemption-patch35-validation]] | implementer evidence; PATCH4 gate superseded |
 | [[../../plan/evidence/p08-preemption-patch35-design]] | PATCH 3.5 design contract (implemented) |
@@ -159,15 +163,20 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **SIGSEGV `func_800BCF28`** — after C2AB8 returns (gsworldDll / basetup /
-   BaKey). Next after independent review of PATCH 4 evidence.
-2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
-3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN.
-4. Então: gsattract ep1 / demo, depois input title/file-select.
+1. **PATCH 4 tracked-state build/distribution:** track or reproducibly
+   generate the required `RecompiledPatches` scaffolds; clean clone regen
+   already produces 4,298 deterministic safepoints, but Tooie build FAILS.
+2. **SIGSEGV `func_800BCF28`** — next product divergence only after item 1 is
+   corrected and independently accepted. No diagnosis performed here.
+3. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
+4. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
+   PATCH 4 direct word-zero label is INFERENCE.
+5. Então: gsattract ep1 / demo, depois input title/file-select.
 
 ## Gate de saída
 
-- [~] Abertura até Jiggy/type-4/warp; demo ainda ausente (SIGSEGV downstream func_800BCF28).
+- [~] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A, but PATCH 4
+  distribution not accepted (clean tracked build FAIL).
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -176,8 +185,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** implementar somente PATCH 4 activation/regeneration/validation.
-PATCH 3.5 e a correção RCP per-OSThread foram aceitos independentemente:
-[[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]]. Depois
-de PATCH 4: SIGSEGV `func_800BCF28`. Após demo: input e
+**NEXT:** correct only PATCH 4 tracked clean-build reproducibility, then obtain
+independent acceptance. Do not investigate `func_800BCF28` first. Hybrid F'
+does not need reopening: same-binary ON/OFF behavior is CLASS A. After PATCH 4
+acceptance: investigate only `func_800BCF28`; after demo: input and
 [[09-gameplay-parity-and-enhancements]].
