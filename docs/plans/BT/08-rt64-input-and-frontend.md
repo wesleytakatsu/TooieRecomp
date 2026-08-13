@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-12
+updated: 2026-08-13
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -38,7 +38,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-permanent-preemption-design]] (**CURRENT** — design do fix genérico, não implementado)
+- [[../../plan/evidence/p08-preemption-design-adversarial-review]] (**CURRENT** — Hybrid F' revisto; não implementado)
+- [[../../plan/evidence/p08-permanent-preemption-design]] (DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`)
 - [[../../plan/evidence/p08-guest-preemption-causal-validation]]
 - [[../../plan/evidence/p08-guest-preemption-runtime-audit]]
 - [[../../plan/evidence/p08-slot7-scheduled-event-validation]]
@@ -100,7 +101,9 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-guest-preemption-causal-validation]] | **CURRENT:** experimento limpo class A — gap de preempção provado causalmente |
+| [[../../plan/evidence/p08-preemption-design-adversarial-review]] | **CURRENT:** revisão adversarial Hybrid F → F' (veredito C) |
+| [[../../plan/evidence/p08-permanent-preemption-design]] | DeepSeek Hybrid F; `CORRECTED/SUPERSEDED` |
+| [[../../plan/evidence/p08-guest-preemption-causal-validation]] | experimento limpo class A — gap de preempção provado causalmente |
 | [[../../plan/evidence/p08-guest-preemption-runtime-audit]] | auditoria estrutural do gap (Gemini) |
 | [[../../plan/evidence/p08-slot7-scheduled-event-validation]] | validação dinâmica class A (evento agendado+due, dispatch AUDIO estacionado) |
 | [[../../plan/evidence/p08-slot7-scheduled-event-driver]] | reconstrução estática do scheduler/driver |
@@ -130,13 +133,11 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Fix genérico de preempção no runtime** — gap PROVADO causalmente; **design
-   pronto** (safepoint gerado em backward-branch + flag atômica +
-   service não-bloqueante; ver
-   [[../../plan/evidence/p08-permanent-preemption-design]]). Revisão adversarial
-   antes de implementar.
+1. **Implementar Hybrid F'** — gap PROVADO causalmente; Hybrid F DeepSeek
+   **rejeitado as-is** (veredito C). Desenho corrigido:
+   [[../../plan/evidence/p08-preemption-design-adversarial-review]].
 2. **Novo SIGSEGV downstream em `func_800BCF28`** — surge após C2AB8 retornar
-   (chain gsworldDll/basetup/input/bakey). Fora do escopo atual.
+   (chain gsworldDll/basetup/input/bakey). Fora do escopo até o fix permanente.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN.
 4. Então: gsattract ep1 / demo, depois input title/file-select.
 

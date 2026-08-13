@@ -5,7 +5,7 @@ status: active
 type: plan
 project: TooieRecomp
 platform: linux-x86_64
-updated: 2026-08-12
+updated: 2026-08-13
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (first attract demo bloqueada por type-4 incompleta) |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (preemption Hybrid F' to implement; then func_800BCF28) |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 
@@ -160,7 +160,12 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-guest-preemption-causal-validation]] — **CURRENT:** experimento
+- [[evidence/p08-preemption-design-adversarial-review]] — **CURRENT design:**
+  revisão adversarial (Grok 4.6 HIGH) do Hybrid F. Veredito C — major
+  revision. Hybrid F' pronto para implementar; DeepSeek as-is rejeitado.
+- [[evidence/p08-permanent-preemption-design]] — DeepSeek Hybrid F;
+  `CORRECTED/SUPERSEDED`.
+- [[evidence/p08-guest-preemption-causal-validation]] — experimento
   limpo class A — o gap de preempção do runtime é provado causalmente: com
   `yield_self_1ms` em `func_800C2AB8`, a thread AUDIO roda, `func_800205D0`
   limpa `table[2].word0`, `func_800C269C(7)==1`, `func_800C16A4(7)` dispensa o

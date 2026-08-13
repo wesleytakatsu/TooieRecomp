@@ -1,11 +1,21 @@
 ---
 title: "P08 — permanent guest-preemption scheduler design (N64ModernRuntime + N64Recomp)"
-description: "Design de arquitetura do fix genérico de preempção de threads guest no N64ModernRuntime: safepoint gerado em backward-branch + flag atômica de preempção + primitiva de serviço não-bloqueante no runtime. Sem implementação; sem código commitado."
+description: "Design de arquitetura do fix genérico de preempção de threads guest no N64ModernRuntime: safepoint gerado em backward-branch + flag atômica de preempção + primitiva de serviço não-bloqueante no runtime. Sem implementação; sem código commitado. CORRECTED/SUPERSEDED pela revisão adversarial."
 status: evidence
 phase: P08
 updated: 2026-08-13
-tags: [tooie-recomp, p08, preemption, n64modernruntime, ultramodern, libultra, scheduler, safepoint, design, n64recomp]
+tags: [tooie-recomp, p08, preemption, n64modernruntime, ultramodern, libultra, scheduler, safepoint, design, n64recomp, superseded]
 ---
+
+> **CORRECTED/SUPERSEDED (2026-08-13, Grok 4.6 HIGH).**
+> Esta nota é o desenho DeepSeek V4 Pro (Hybrid F). **Não apagar** — é o
+> histórico. A revisão adversarial
+> [[p08-preemption-design-adversarial-review]] **quebra** o modelo de
+> interrupção (boolean + nesting), o protocolo clear-before-drain (requeue
+> sem publish), a cobertura backedge-only via `emit_goto` (jump tables /
+> live ijump) e a premissa "C2AB8 não faz jal". O esqueleto
+> safepoint+hint+service+swap sobrevive como Hybrid F'. Não implementar
+> este texto as-is.
 
 # P08 — PERMANENT GUEST-PREEMPTION DESIGN
 

@@ -3,8 +3,8 @@ title: "P08 — session handoff: intro para attract demo"
 description: "Estado autossuficiente do blocker pós-Jiggy e ponto exato para a próxima investigação."
 status: evidence
 phase: P08
-updated: 2026-08-12
-tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle]
+updated: 2026-08-13
+tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle, preemption]
 ---
 
 # P08 — session handoff: INTRO → ATTRACT DEMO
@@ -12,8 +12,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, type-4, slot7, lifecycle]
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Checkpoint base/parent: `e42162469aaf815be25b5fb0e771e80c8aa54306`
-  (guest preemption scheduling gap audit; causal validation lands on top).
+- Checkpoint base/parent: `63d41a871b1708f4ff945a5df26ce17e3139529c`
+  (`docs(p08): design generic guest preemption fix`). This session lands
+  the adversarial review on top.
 - Confirm with `git rev-parse HEAD` after pull.
 
 ## CURRENT_PHASE
@@ -129,28 +130,32 @@ ARBITRATION (Grok 4.5 HIGH):
    escopo desta tarefa; próximo passo natural.
 2. Exact creation epoch/call chain RA for this clean-run object (intro / attract / A76F4 handoff).
 3. Whether original expects pre-clear before C2AB8 (A) or async clear during wait (C) — dynamic points to **A (due + dispatch starved)**, origin epoch still open.
-4. Host fix location: runtime scheduler opportunity (generic preemption design) — PROVEN needed, not implemented.
+4. Host fix location: runtime scheduler opportunity (generic preemption) —
+   PROVEN needed. DeepSeek Hybrid F is `CORRECTED/SUPERSEDED`; implement
+   Hybrid F' in [[p08-preemption-design-adversarial-review]].
 5. Whether `0x0400`/`0xAB38` opcode event semantics require a chained re-schedule before the 0x200 completion (order of the 2 queued entries).
 6. Meaning of any observation at `0x8004E5A8` (not found statically).
 7. BaKey only after attract init progresses — possible downstream only.
 
 ## NEXT_SINGLE_ACTION
 
-**PREEMPTION GAP CAUSALLY PROVEN** (class A). O fix genérico de preempção foi
-**PROJETADO** (não implementado) em
-[[p08-permanent-preemption-design]] — safepoint gerado em backward-branch +
-flag atômica + service não-bloqueante no runtime. Próximo passo: **revisão
-adversarial de arquitetura** (Grok 4.6 High) e, em paralelo, investigar o
-**novo SIGSEGV downstream em `func_800BCF28`**. Não implementar fix nesta fase.
+**PREEMPTION GAP CAUSALLY PROVEN** (class A). O Hybrid F DeepSeek foi
+**revisado adversarialmente** (Grok 4.6 HIGH): veredito **C — MAJOR
+REVISION REQUIRED**. Esqueleto safepoint+hint+service+swap sobrevive;
+modelo de interrupção, protocolo do flag, cobertura backedge-only e API
+do gerador são Hybrid F'. Evidência:
+[[p08-preemption-design-adversarial-review]].
 
-No fix. No force-clear. No BaKey. No Scheduler C reopen.
+**Próximo chat: IMPLEMENTAR Hybrid F'** (runtime + N64Recomp). Não
+implementar o texto DeepSeek as-is. Não investigar `func_800BCF28` até o
+fix permanente aterrar. Sem force-clear, BaKey ou reopen do Scheduler C.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-permanent-preemption-design]] — **CURRENT design (não implementado)**
-2. [[p08-guest-preemption-causal-validation]] — causal experiment (class A)
-3. [[p08-guest-preemption-runtime-audit]] — Gemini structural audit
-4. [[p08-slot7-scheduled-event-validation]] — clean freeze dynamic validation
+1. [[p08-preemption-design-adversarial-review]] — **CURRENT design (F', não implementado)**
+2. [[p08-permanent-preemption-design]] — DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`
+3. [[p08-guest-preemption-causal-validation]] — causal experiment (class A)
+4. [[p08-guest-preemption-runtime-audit]] — Gemini structural audit
 5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO
@@ -174,5 +179,5 @@ GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO
 CORE_INCLUDED            = NO
 BUILD_ARTIFACT_INCLUDED  = NO
-EVIDENCE_CHANGED         = YES (guest preemption causal validation, class A)
+EVIDENCE_CHANGED         = YES (adversarial review of Hybrid F → F')
 ```

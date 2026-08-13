@@ -60,8 +60,14 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > experimento limpo reversível — dar a `func_800C2AB8` uma oportunidade
 > cooperativa (`yield_self_1ms` existente) deixa a thread AUDIO rodar,
 > `func_800205D0` limpar `table[2].word0` e o busy-wait convergir. Ver
-> `docs/plan/evidence/p08-guest-preemption-causal-validation.md`. O fix
-> genérico de preempção no runtime permanece em projeto (não implementado).
+> `docs/plan/evidence/p08-guest-preemption-causal-validation.md`.
+>
+> **Design (2026-08-13):** o Hybrid F DeepSeek foi revisado adversarialmente
+> (veredito C). O contrato acima (itens 1–4) permanece o requisito N64
+> PROVEN. O desenho corrigido (Hybrid F') está em
+> `docs/plan/evidence/p08-preemption-design-adversarial-review.md` e
+> **não está implementado**. Não tratar o desenho como comportamento
+> entregue.
 
 ## Próximos passos práticos
 
