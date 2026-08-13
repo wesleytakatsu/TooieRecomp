@@ -160,8 +160,10 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-preemption-implementation-plan]] — **CURRENT:** spec de
-  implementação Hybrid F' (PATCH 1–4 + T01–T15). Sem código ainda.
+- [[evidence/p08-preemption-patch1-independent-review]] — **CURRENT:**
+  PATCH 1 reviewed (verdict B); PATCH 2 ready, not started.
+- [[evidence/p08-preemption-implementation-plan]] — spec Hybrid F'
+  (PATCH 1–4 + T01–T15). PATCH 1 landed; PATCH 2+ pending.
 - [[evidence/p08-preemption-design-adversarial-review]] — arquitetura F'
   aprovada (veredito C). DeepSeek Hybrid F rejeitado as-is.
 - [[evidence/p08-permanent-preemption-design]] — DeepSeek Hybrid F;

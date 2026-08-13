@@ -1,6 +1,6 @@
 ---
 title: "P08 — preemption Hybrid F' implementation plan"
-description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 1 landed (stubs/T01); PATCH 2+ not started."
+description: "Patch spec file/function-level e matriz de regressão T01–T15 para o Hybrid F' aprovado. PATCH 1 reviewed (verdict B); PATCH 2+ not started."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -21,7 +21,7 @@ TOOIE:           clean at BASE_HEAD
 RUNTIME_HEAD:    ca568b6ad79b9029d14077f0c3ffa757727c5559
 RUNTIME_DIRTY:   threadqueue Fix B + threads NULLPTR + N64Recomp JAL
                  DO NOT reset. DO NOT fold into these patches.
-IMPLEMENTATION_READY: YES
+IMPLEMENTATION_READY: YES (PATCH 1 reviewed B; PATCH 2 not started)
 ARCHITECTURE_STATUS:  APPROVED
 ```
 
@@ -235,8 +235,9 @@ submodule worktree** (JAL policy must stay). Then `run_recomp.sh`.
 Every commit must **build**. Games stay feature-disabled until PATCH 4.
 
 ```text
-PATCH 1 — infrastructure / tests   [default flag OFF]  LANDED
-  See [[p08-preemption-patch1-validation]].
+PATCH 1 — infrastructure / tests   [default flag OFF]  LANDED + REVIEWED (B)
+  See [[p08-preemption-patch1-validation]] and
+  [[p08-preemption-patch1-independent-review]].
   New: preemption.cpp stubs (hint=false, service no-op),
        intmask.cpp defaults (no call sites), header decls,
        CMake sources, preemption_harness + T01.
@@ -527,12 +528,32 @@ at the design review.
 
 ---
 
-## 9. Next
+## 9. PATCH 2 constraints from independent review
+
+See [[p08-preemption-patch1-independent-review]].
+
+```text
+RECOMMENDED_PATCH_ARTIFACT_STRATEGY: B
+  Replace n64modernruntime-preemption-patch1.patch with a cumulative
+  preemption patch against runtime base ca568b6. Update the SHA in
+  apply_runtime_patches.sh. Do not add an incremental patch2 on top
+  of patch1 without teaching the script a reverse-check stack.
+
+PATCH3_C_ABI:
+  Do not declare ultramodern_service_preemption(uint8_t*, recomp_context*)
+  in recomp.h while ultramodern.hpp keeps void*. Keep void* in both
+  headers, or name the recomp_context struct tag first.
+
+T01-E:
+  Reorder the harness so service() runs after host enqueue, then
+  settle, then coop osSendMesg. Current T01-E is WEAK.
+```
+
+## 10. Next
 
 ```text
 NEXT_SINGLE_ACTION:
-  Independent review of PATCH 1, then PATCH 2 runtime service.
-  Do not start PATCH 2 until that review. Do not implement
+  Implement PATCH 2 only (runtime service). Do not implement
   generator safepoints or enable the flag.
 ```
 
