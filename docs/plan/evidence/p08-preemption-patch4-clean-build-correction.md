@@ -345,3 +345,9 @@ PATCH4_ACCEPTED: PENDING INDEPENDENT REVIEW
 
 Independent review of this clean-build correction. Do **not** investigate
 `func_800BCF28` until that review closes.
+
+## 15. Independent review pointer
+
+Reviewed in [[p08-preemption-patch4-clean-build-independent-review]]:
+verdict B, tracked-state blocker **RESOLVED**, PATCH 4 accepted. The implementer
+record above is preserved as written.

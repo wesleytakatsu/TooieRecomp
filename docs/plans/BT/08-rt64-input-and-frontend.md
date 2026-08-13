@@ -22,11 +22,10 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 **P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
 first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
-Independent verdict **C** is preserved. Implementer correction now tracks
-the empty `RecompiledPatches` scaffolds and a disposable clone builds; see
-[[../../plan/evidence/p08-preemption-patch4-clean-build-correction]].
-Independent review of that correction is required before investigating
-the downstream SIGSEGV in `func_800BCF28`.
+Historical verdict **C** is preserved; its tracked-state delivery finding is
+resolved by [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]]
+(verdict B). PATCH 4 is accepted. The downstream SIGSEGV in
+`func_800BCF28` is now the first product divergence.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -40,8 +39,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]] (**CURRENT** — implementer clean-build correction; pending review)
-- [[../../plan/evidence/p08-preemption-patch4-independent-review]] (verdict C preserved; behavioral CLASS A)
+- [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (**CURRENT** — verdict B; PATCH 4 accepted; tracked-state blocker resolved)
+- [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
+- [[../../plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; behavioral CLASS A; finding resolved)
 - [[../../plan/evidence/p08-preemption-patch4-validation]] (implementer evidence; preserved)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-independent-review]] (verdict B; PATCH35 accepted)
 - [[../../plan/evidence/p08-preemption-patch35-rcp-correction]] (implementer TLS RCP correction evidence)
@@ -119,7 +119,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch4-independent-review]] | **CURRENT:** verdict C; CLASS A behavior, tracked clean-build correction required |
+| [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] | **CURRENT:** verdict B; PATCH 4 accepted; tracked-state blocker resolved |
+| [[../../plan/evidence/p08-preemption-patch4-independent-review]] | historical verdict C preserved; CLASS A behavior; finding resolved by clean-build review |
 | [[../../plan/evidence/p08-preemption-patch4-validation]] | implementer evidence; history preserved |
 | [[../../plan/evidence/p08-preemption-patch35-independent-review]] | historical verdict C; RCP finding resolved |
 | [[../../plan/evidence/p08-preemption-patch35-validation]] | implementer evidence; PATCH4 gate superseded |
@@ -165,21 +166,17 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Independent review of the PATCH 4 clean-build correction.** Implementer
-   now tracks the empty scaffolds; clean clone regen 4,298 + Clang build
-   PASS. Acceptance pending review.
-2. **SIGSEGV `func_800BCF28`** — next product divergence only after item 1 is
-   independently accepted. No diagnosis performed here.
-3. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
-4. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
+1. **SIGSEGV `func_800BCF28`** — current first product divergence after
+   PATCH 4 acceptance. No diagnosis performed by the clean-build review.
+2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
+3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-5. Então: gsattract ep1 / demo, depois input title/file-select.
+4. Então: gsattract ep1 / demo, depois input title/file-select.
 
 ## Gate de saída
 
-- [~] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A. Implementer
-  clean tracked build PASS; PATCH 4 distribution pending independent
-  review of the correction.
+- [x] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A; clean tracked
+  Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -188,8 +185,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** independently review the PATCH 4 clean-build correction. Do not
-investigate `func_800BCF28` first. Hybrid F'
-does not need reopening: same-binary ON/OFF behavior is CLASS A. After PATCH 4
-acceptance: investigate only `func_800BCF28`; after demo: input and
+**NEXT:** investigate only `func_800BCF28` as the new first product
+divergence. Hybrid F' does not need reopening: clean-built same-binary ON/OFF
+behavior is CLASS A and PATCH 4 is accepted. After demo: input and
 [[09-gameplay-parity-and-enhancements]].

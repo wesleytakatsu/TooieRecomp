@@ -86,8 +86,11 @@ No runtime nativo (`N64ModernRuntime` / `ultramodern`):
 > disposable clone regenerates 4,298 safepoints and builds TooieRecompiled
 > with Clang. See
 > `docs/plan/evidence/p08-preemption-patch4-clean-build-correction.md`.
-> Independent review verdict C is preserved; **PATCH 4 is not accepted
-> until that correction is independently reviewed.** See
+> Independent review verdict C is preserved. Its tracked-state finding is
+> **RESOLVED** by
+> `docs/plan/evidence/p08-preemption-patch4-clean-build-independent-review.md`
+> (verdict B); PATCH 4 is accepted and permanent preemption is delivered.
+> Historical review:
 > `docs/plan/evidence/p08-preemption-patch4-independent-review.md`.
 > Preserve `p08-preemption-patch4-validation.md` as implementer behavioral
 > evidence. `func_800BCF28` remains the next product divergence.

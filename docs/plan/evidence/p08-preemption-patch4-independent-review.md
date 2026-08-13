@@ -21,10 +21,12 @@ function; its cause was not investigated.
 VERDICT: C — PATCH 4 correction required
 ```
 
-The original verdict C is **preserved**. Implementer correction of the
-distribution blocker is in
-[[p08-preemption-patch4-clean-build-correction]]. That correction is
-**not** independently accepted yet.
+The original verdict C is **preserved**. Its specific tracked-state delivery
+finding is now **RESOLVED** by
+[[p08-preemption-patch4-clean-build-independent-review]] (verdict B). The
+implementer correction remains recorded in
+[[p08-preemption-patch4-clean-build-correction]]. This resolution pointer does
+not rewrite the historical review or its verdict.
 
 The behavioral mechanism passes independent review. The same executable,
 SHA-256 `384c8261cd3327ef9441e7b547649d6ddd16c71627b06b5da39bc82af9fe5801`,

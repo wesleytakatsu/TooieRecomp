@@ -108,8 +108,10 @@ O subsistema de áudio de Banjo-Tooie implementa um scheduler de eventos tempori
   while resolution of C2AB8's pending condition is proven. Implementer
   clean-build correction tracks the empty `RecompiledPatches` scaffolds
   (`docs/plan/evidence/p08-preemption-patch4-clean-build-correction.md`).
-  PATCH 4 delivery is not accepted until that correction is independently
-  reviewed. Ver
+  Independent clean-build review verdict B resolves the tracked-state finding
+  and accepts PATCH 4; ver
+  `docs/plan/evidence/p08-preemption-patch4-clean-build-independent-review.md`.
+  Historical verdict C remains preserved in
   `docs/plan/evidence/p08-preemption-patch4-independent-review.md`.
   Downstream `func_800BCF28` remains the next product divergence and was not
   diagnosed in this review.

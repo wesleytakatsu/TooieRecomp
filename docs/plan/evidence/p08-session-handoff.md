@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: intro para attract demo"
-description: "Estado autossuficiente após PATCH 4: C2AB8 resolvido; clean-build correction pending independent review; next product divergence is func_800BCF28."
+description: "Estado autossuficiente após PATCH 4: clean-build correction accepted; C2AB8 resolved; current first product divergence is func_800BCF28."
 status: evidence
 phase: P08
 updated: 2026-08-13
@@ -13,17 +13,16 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28]
 
 - Branch: `main`.
 - Independent review base:
-  `c6c3ebc9e083b91c33dde57dbd58d2765677cac7`.
+  `f81d55289037404fa8f76b860a5c4182108775ad`.
 - Pull the documentation commit containing
-  [[p08-preemption-patch4-clean-build-correction]].
+  [[p08-preemption-patch4-clean-build-independent-review]].
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend. Prioridade: abrir a first attract/gameplay
-demo. PATCH 4 independent verdict **C** is preserved. Implementer
-clean-build correction is recorded and pending independent review before
-the next product-divergence investigation. Title/file-select input continua
-diferido.
+P08 — RT64, input e frontend. PATCH 4 is accepted: the historical verdict C
+is preserved, and its tracked-state delivery finding is resolved by the
+clean-build correction review (verdict B). Current priority is the first
+product divergence, `func_800BCF28`. Title/file-select input continua diferido.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -34,9 +33,9 @@ diferido.
 - `func_800C2AB8` is behaviorally resolved with PATCH4 default ON.
 - Implementer clean-build correction tracks the empty
   `RecompiledPatches` scaffolds; a disposable clone now regenerates 4,298
-  safepoints **and** builds. Delivery is **not accepted** until that
-  correction is independently reviewed. See
-  [[p08-preemption-patch4-clean-build-correction]].
+  safepoints **and** builds. Independent review verdict B accepts delivery
+  and resolves the tracked-state blocker. See
+  [[p08-preemption-patch4-clean-build-independent-review]].
 - Gameplay demo **não** começa: SIGSEGV em `func_800BCF28`.
 - `RecompiledFuncs` é gerado — não editar.
 
@@ -73,7 +72,7 @@ held the host execution token in a pure MIPS loop:
 ```text
 ROOT_CAUSE_PROVEN: YES
 LOCAL_BEHAVIOR:    FIXED for the observed C2AB8 path (PATCH 4, CLASS A)
-DELIVERY_ACCEPTED: NO — pending independent review of clean-build correction
+DELIVERY_ACCEPTED: YES — clean-build independent review verdict B
 ```
 
 Same generated binary:
@@ -119,28 +118,28 @@ depend on object-origin remaining UNKNOWN.
 ## OPEN_QUESTIONS
 
 1. **CURRENT BLOCKER:** SIGSEGV `func_800BCF28` (BaKey / world input init).
-   Diagnose only after independent review of PATCH 4 evidence.
+   PATCH 4 acceptance is complete; this is now the first product divergence.
 2. Exact creation epoch/call chain RA for the historical table[2] object.
 3. Generic non-RA JR still lacks safepoint coverage (deferred).
 4. Timer IM7 / PI completion remain approved approximations (deferred).
 
 ## NEXT_SINGLE_ACTION
 
-**Independently review the PATCH 4 clean-build correction** before
-investigating `func_800BCF28`. See
-[[p08-preemption-patch4-clean-build-correction]]. Verdict C of
-[[p08-preemption-patch4-independent-review]] is preserved.
+**Investigate `func_800BCF28` as the new first product divergence.** PATCH 4
+is accepted by [[p08-preemption-patch4-clean-build-independent-review]]
+(verdict B). Verdict C of [[p08-preemption-patch4-independent-review]] remains
+preserved with its tracked-state finding explicitly resolved.
 
 Não reabrir Hybrid F' / PATCH 1–3.5. Sem force-clear, BaKey ou edição
 de `RecompiledFuncs`. Sem resetar o dirty do runtime.
 
 ## FILES_TO_READ_NEXT
 
-1. [[p08-preemption-patch4-clean-build-correction]] — **CURRENT** implementer correction
-2. [[p08-preemption-patch4-independent-review]] — verdict C preserved
-3. [[p08-preemption-patch4-validation]] — implementer evidence, preserved
-4. [[p08-preemption-implementation-plan]]
-5. [[p08-preemption-patch35-rcp-independent-review]]
+1. [[p08-preemption-patch4-clean-build-independent-review]] — **CURRENT** verdict B; delivery accepted
+2. [[p08-preemption-patch4-clean-build-correction]] — implementer correction
+3. [[p08-preemption-patch4-independent-review]] — historical verdict C preserved; finding resolved
+4. [[p08-preemption-patch4-validation]] — implementer evidence, preserved
+5. [[p08-preemption-implementation-plan]]
 6. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CLEAN-FREEZE REPRO (rollback)

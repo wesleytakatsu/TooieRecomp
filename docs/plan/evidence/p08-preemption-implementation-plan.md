@@ -538,12 +538,13 @@ and the hint short-circuits without requiring rebuild or hot mutation.
 ## 8. Specs
 
 `recomp-readiness.md` items 1–4 stay the N64 **requirement**. PATCH 4 behavior
-is independently CLASS A. Implementer correction now tracks the empty
-`RecompiledPatches` scaffolds and reproduces a clean Clang build; see
-[[p08-preemption-patch4-clean-build-correction]]. Delivery remains
-**pending independent review** of that correction. `build.md` /
-`matching.md` remain decomp-build specifications. `rsp-and-audio.md`
-records the same evidence-quality split.
+is independently CLASS A. The empty `RecompiledPatches` scaffolds now track
+cleanly, and the correction is independently accepted with verdict B; see
+[[p08-preemption-patch4-clean-build-independent-review]]. The historical
+verdict C remains preserved in [[p08-preemption-patch4-independent-review]],
+with its tracked-state finding resolved. `build.md` / `matching.md` remain
+decomp-build specifications. `rsp-and-audio.md` records the same
+evidence-quality split.
 
 ---
 
@@ -609,14 +610,12 @@ T03: 20 isolated child runs PASS; historical flake class E, nonblocking
 
 ```text
 NEXT_SINGLE_ACTION:
-  Independently review the PATCH 4 clean-build correction before
-  investigating func_800BCF28.
+  Investigate func_800BCF28 as the new first product divergence.
 ```
 
 Independent review: [[p08-preemption-patch4-independent-review]] (verdict C,
-preserved). Behavior is CLASS A and does not reopen Hybrid F'. Implementer
-correction: [[p08-preemption-patch4-clean-build-correction]] (tracked empty
-scaffolds; clean clone regen 4,298 + clean Clang build PASS). Acceptance of
-that correction is still pending independent review.
+preserved). Behavior is CLASS A and does not reopen Hybrid F'. Clean-build
+correction review: [[p08-preemption-patch4-clean-build-independent-review]]
+(verdict B; tracked-state blocker resolved; PATCH4 accepted).
 
 === END IMPLEMENTATION PLAN ===
