@@ -26,10 +26,11 @@ Hollow). Hybrid F' PATCH 4 is independently CLASS A. PATCH 4 is accepted.
 The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]. The
 `func_80013A7C` lookup-zero is **RESOLVED**
-([[../../plan/evidence/p08-core1-ra-wrapper-fix]]). First fidelity gap is
-character/camera transform (Level C;
-[[../../plan/evidence/p08-visible-demo-movement-diagnosis]]). Historical
-150s `TOOIE_DIAG=1` run that did not observe the demo is preserved.
+([[../../plan/evidence/p08-core1-ra-wrapper-fix]]). First fidelity gap
+is character/camera transform discrimination (**Level B**;
+[[../../plan/evidence/p08-actor-camera-transform-discriminator]]):
+`Actor.rotation` and CPU model matrices are upright and correct; divergence
+is in `RENDER_SUBMISSION` (Rare's `G_MTX_PROJECTION` view-in-projection vs host renderer).
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -43,7 +44,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] (**CURRENT** — visible demo + movement)
+- [[../../plan/evidence/p08-actor-camera-transform-discriminator]] (**CURRENT** — transform discriminator)
+- [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
 - [[../../plan/evidence/p08-core1-ra-wrapper-fix]] (core1 RA-wrapper fix; resolved)
 - [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
 - [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)

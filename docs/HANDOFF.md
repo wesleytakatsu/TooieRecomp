@@ -16,14 +16,11 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 8001
 `func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
 `func_80013A7C` lookup-zero is **RESOLVED**
 ([[plan/evidence/p08-core1-ra-wrapper-fix]]). **Visible attract / gameplay
-demo is reproduced** (mode-5, map 335 Wooded Hollow). First fidelity
-divergence is character/camera transform (Level C;
-[[plan/evidence/p08-visible-demo-movement-diagnosis]]).
-
-Historical 150s `TOOIE_DIAG=1` implementation run on `5c03c65` still
-recorded `VISIBLE_ATTRACT_DEMO: NO` / `mode=3 map=0`. That result is
-preserved; later no-DIAG window captures and a movement probe reached
-PRESS START / mode-5.
+demo is reproduced** (mode-5, map 335 Wooded Hollow). Character and camera
+transform discriminator is complete (**Level B**;
+[[plan/evidence/p08-actor-camera-transform-discriminator]]): simulation
+state and CPU model matrix are upright and correct; divergence is isolated to
+`RENDER_SUBMISSION` (Rare's `G_MTX_PROJECTION` view-in-projection vs host renderer).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -36,11 +33,10 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-Dump Banjo and first Jinjo `Actor.rotation` + camera for the first 8 s of
-Wooded Hollow mode-5, then name the exact writer if those rotations are
-already wrong in simulation.
-Do not reopen BCF28, Hybrid F' / PATCH 1–4, or the core1 RA wrappers.
-PATCH 4 stays ON. No gameplay fix in this checkpoint.
+Inspect RT64 matrix upload / view-in-projection interception in the render
+submission layer (or compare against BanjoRecomp's transform tagging patch).
+Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers, or
+Actor.rotation as root cause. PATCH 4 stays ON. No gameplay fix in this checkpoint.
 
 ## Estado do produto validado
 
@@ -54,10 +50,12 @@ PATCH 4 stays ON. No gameplay fix in this checkpoint.
    [[plan/evidence/p08-bcf28-binding-fix-independent-review]]).
 7. First gameplay demo **VISIBLE** after `func_80013A7C` lookup-zero
    **RESOLVED** ([[plan/evidence/p08-core1-ra-wrapper-fix]],
-   [[plan/evidence/p08-visible-demo-movement-diagnosis]]). Character
-   movement/orientation is the first fidelity gap (Level C). Historical
-   150s DIAG run that did not observe the demo is preserved.
-8. Title/file-select input diferido.
+   [[plan/evidence/p08-visible-demo-movement-diagnosis]]).
+8. **Actor vs Camera Transform Discrimination (Level B):** Character
+   `Actor.rotation` and CPU model matrix are proven upright and correct;
+   divergence is in `RENDER_SUBMISSION`
+   ([[plan/evidence/p08-actor-camera-transform-discriminator]]).
+9. Title/file-select input diferido.
 
 ## Arquitetura e regras
 
@@ -82,6 +80,7 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
   [[plan/evidence/p08-bcf28-binding-fix-independent-review]]
 - **`func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers** — RESOLVED
   ([[plan/evidence/p08-core1-ra-wrapper-fix]])
+- **Actor.rotation as root cause of supine pose** — REFUTED (Actor.rotation is upright)
 
 ## Current expected flow
 
@@ -93,20 +92,20 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 Observed: C2AB8 crossed; `func_800BCF28` completes; `func_80013A7C`
 enters at the native strong symbol and the old `LOOKUP_FUNC(0)` does not
-occur. Historical 150s `TOOIE_DIAG=1` run stayed on the opening probe at
-`mode=3 / map=0` (preserved). Later no-DIAG runs reach visible mode-5
-Wooded Hollow / PRESS START. Movement is wrong (Jinjo supine, camera
-inside meshes); Banjo XZ walk is plausible.
+occur. Visible mode-5 Wooded Hollow / PRESS START reached. Character and
+camera simulation state is upright and grounded; render matrix submission
+interpretation is the first visual fidelity divergence.
 
 ## Exonerated (current)
 
 Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 `func_80026500` hang, scheduler corruption (not proven), `func_800BCF28` binding,
-`func_80013A7C` lookup-zero.
+`func_80013A7C` lookup-zero, `Actor.rotation` simulation state.
 
 ## Files to read
 
-1. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (**CURRENT** — visible demo + movement)
+0. [[plan/evidence/p08-actor-camera-transform-discriminator]] (**CURRENT** — transform discriminator)
+1. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
 2. [[plan/evidence/p08-core1-ra-wrapper-fix]] (RA-wrapper fix; resolved)
 3. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
 4. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)

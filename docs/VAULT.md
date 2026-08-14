@@ -12,6 +12,7 @@
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
+- [[plan/evidence/p08-actor-camera-transform-discriminator]] — P08 — actor and camera transform discriminator — Telemetry discrimination between Actor.rotation simulation state, model matrix construction, and camera view transform during the first visible Wooded Hollow attract demo.
 - [[plan/evidence/p08-visible-demo-movement-diagnosis]] — P08 — visible demo movement diagnosis — Visible attract/gameplay demo reproduced after the RA-wrapper fix; first fidelity gap is character/camera transform (Level C). Historical 150s DIAG “no demo” run is preserved.
 - [[plan/evidence/p08-core1-ra-wrapper-fix]] — P08 — core1 RA wrapper fix — Tooie-native strong-symbol overrides for 0x800137D4 / 0x80013A5C / 0x80013A7C; old LOOKUP_FUNC(0) resolved.
 - [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] — P08 — func_80013A7C lookup-zero diagnosis — Proven root cause (Level A): leaf wrapper saves RA in $a3, but direct host calls do not write ctx->r31, causing LOOKUP_FUNC(0). Fix implemented.

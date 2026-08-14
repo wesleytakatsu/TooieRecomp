@@ -422,6 +422,104 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
                      a0, a1, a2, a3, stage, sub, bits_f32(timer_bits),
                      ps_addr, pos_addr, px, py, pz,
                      yaw, yaw_ideal, sx, sy, sang, sdist);
+
+        // Dump actors vector D_80136EE0
+        const gpr actors_vec_sym = static_cast<gpr>(static_cast<int32_t>(0x80136EE0u));
+        const uint32_t vec_addr = uint32_t(MEM_W(0, actors_vec_sym));
+        if (guest_ok(vec_addr)) {
+            const gpr vec = static_cast<gpr>(static_cast<int32_t>(vec_addr));
+            const uint32_t elem_size = uint32_t(MEM_W(0x00, vec));
+            const uint32_t begin = uint32_t(MEM_W(0x04, vec));
+            const uint32_t end = uint32_t(MEM_W(0x08, vec));
+            if (elem_size == 0x9C && guest_ok(begin) && guest_ok(end) && end >= begin) {
+                const uint32_t count = (end - begin) / elem_size;
+                for (uint32_t i = 0; i < count && i < 40; ++i) {
+                    const uint32_t act_addr = begin + i * 0x9C;
+                    const gpr act = static_cast<gpr>(static_cast<int32_t>(act_addr));
+                    const float ax = bits_f32(uint32_t(MEM_W(0x04, act)));
+                    const float ay = bits_f32(uint32_t(MEM_W(0x08, act)));
+                    const float az = bits_f32(uint32_t(MEM_W(0x0C, act)));
+                    const float rx = bits_f32(uint32_t(MEM_W(0x44, act)));
+                    const float ry = bits_f32(uint32_t(MEM_W(0x48, act)));
+                    const float rz = bits_f32(uint32_t(MEM_W(0x4C, act)));
+                    const float sc = bits_f32(uint32_t(MEM_W(0x38, act)));
+                    const uint32_t sys_entry = uint32_t(MEM_W(0x10, act));
+                    const uint32_t unk14 = uint32_t(MEM_W(0x14, act));
+                    const uint32_t d0 = uint32_t(MEM_W(0x18, act));
+                    const uint32_t d1 = uint32_t(MEM_W(0x1C, act));
+                    const uint32_t unk74 = uint32_t(MEM_W(0x74, act));
+                    std::fprintf(stderr,
+                                 "[tooie-actor] i=%u act=%08x pos=%.2f,%.2f,%.2f rot=%.2f,%.2f,%.2f scale=%.3f sys=%08x u14=%08x d0=%08x d1=%08x u74=%08x\n",
+                                 i, act_addr, ax, ay, az, rx, ry, rz, sc, sys_entry, unk14, d0, d1, unk74);
+                }
+            }
+        }
+
+        // Camera in D_80127728[0] and ps->0x184
+        uint32_t cam_addr = 0;
+        if (guest_ok(ps_addr)) {
+            const gpr ps = static_cast<gpr>(static_cast<int32_t>(ps_addr));
+            uint32_t cam_idx = uint32_t(MEM_W(0x184, ps));
+            const gpr cam_tab = static_cast<gpr>(static_cast<int32_t>(0x80127728u));
+            cam_addr = uint32_t(MEM_W(cam_idx * 4, cam_tab));
+        }
+        if (!guest_ok(cam_addr)) {
+            const gpr cam_tab = static_cast<gpr>(static_cast<int32_t>(0x80127728u));
+            cam_addr = uint32_t(MEM_W(0, cam_tab));
+        }
+        if (guest_ok(cam_addr)) {
+            const gpr cam = static_cast<gpr>(static_cast<int32_t>(cam_addr));
+            uint32_t sub_cam = uint32_t(MEM_W(0x04, cam));
+            if (guest_ok(sub_cam)) {
+                const gpr scam = static_cast<gpr>(static_cast<int32_t>(sub_cam));
+                float cx = bits_f32(uint32_t(MEM_W(0x74, scam)));
+                float cy = bits_f32(uint32_t(MEM_W(0x78, scam)));
+                float cz = bits_f32(uint32_t(MEM_W(0x7C, scam)));
+                float rx = bits_f32(uint32_t(MEM_W(0x80, scam)));
+                float ry = bits_f32(uint32_t(MEM_W(0x84, scam)));
+                float rz = bits_f32(uint32_t(MEM_W(0x88, scam)));
+                uint32_t target = uint32_t(MEM_W(0x64, scam));
+                float tx = 0, ty = 0, tz = 0;
+                if (guest_ok(target)) {
+                    const gpr tgt = static_cast<gpr>(static_cast<int32_t>(target));
+                    tx = bits_f32(uint32_t(MEM_W(0x00, tgt)));
+                    ty = bits_f32(uint32_t(MEM_W(0x04, tgt)));
+                    tz = bits_f32(uint32_t(MEM_W(0x08, tgt)));
+                }
+                std::fprintf(stderr,
+                             "[tooie-cam] cam=%08x scam=%08x eye=%.2f,%.2f,%.2f rot=%.2f,%.2f,%.2f target=%08x tgt_pos=%.2f,%.2f,%.2f\n",
+                             cam_addr, sub_cam, cx, cy, cz, rx, ry, rz, target, tx, ty, tz);
+            }
+        }
+
+        // Viewport in D_8012D500
+        const gpr vp_sym = static_cast<gpr>(static_cast<int32_t>(0x8012D500u));
+        const uint32_t vp_addr = uint32_t(MEM_W(0, vp_sym));
+        if (guest_ok(vp_addr)) {
+            const gpr vp = static_cast<gpr>(static_cast<int32_t>(vp_addr));
+            const float vx = bits_f32(uint32_t(MEM_W(0x00, vp)));
+            const float vy = bits_f32(uint32_t(MEM_W(0x04, vp)));
+            const float vz = bits_f32(uint32_t(MEM_W(0x08, vp)));
+            const float vscale = bits_f32(uint32_t(MEM_W(0x164, vp)));
+            float vm[16]{};
+            for (int k = 0; k < 16; ++k) {
+                vm[k] = bits_f32(uint32_t(MEM_W(0xA4 + k * 4, vp)));
+            }
+            std::fprintf(stderr,
+                         "[tooie-vp] vp=%08x trans=%.2f,%.2f,%.2f scale=%.3f\n"
+                         "  rot_mtx: [%.4f %.4f %.4f] [%.4f %.4f %.4f] [%.4f %.4f %.4f]\n",
+                         vp_addr, vx, vy, vz, vscale,
+                         vm[0], vm[1], vm[2],
+                         vm[4], vm[5], vm[6],
+                         vm[8], vm[9], vm[10]);
+        }
+
+        // Viewproj in D_8012D558
+        const gpr vp_mtx_sym = static_cast<gpr>(static_cast<int32_t>(0x8012D558u));
+        const uint32_t vpmtx_addr = uint32_t(MEM_W(0, vp_mtx_sym));
+        if (guest_ok(vpmtx_addr)) {
+            std::fprintf(stderr, "[tooie-viewproj] addr=%08x\n", vpmtx_addr);
+        }
         std::fflush(stderr);
     };
     dump_movement("enter");

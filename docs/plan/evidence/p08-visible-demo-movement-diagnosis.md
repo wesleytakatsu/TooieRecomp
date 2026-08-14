@@ -359,7 +359,9 @@ Raw logs/screenshots live under `/tmp/tooie-p08-runA` and
 
 ## 14. Next single action
 
-Run the single highest-value discriminator: dump Banjo and first Jinjo
-`Actor.rotation` + camera transform for the first 8 s of Wooded Hollow
-mode-5, then name the exact writer if the rotations are already wrong
-in simulation.
+The actor vs matrix vs camera discriminator has been completed in
+[p08-actor-camera-transform-discriminator.md](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/docs/plan/evidence/p08-actor-camera-transform-discriminator.md).
+Simulation state (`Actor.rotation`) and CPU model matrices (`func_800E28A4`)
+are proven upright and correct. The discrepancy is isolated to `RENDER_SUBMISSION`
+(Rare's `G_MTX_PROJECTION` view-in-projection convention vs host renderer decomposition).
+Next step: investigate RT64 matrix upload / view-in-projection interception in the render layer.
