@@ -5,7 +5,7 @@ status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-14
-tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28]
+tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c]
 ---
 
 # Handoff — TooieRecomp
@@ -13,11 +13,11 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28]
 ## Prioridade atual
 
 **P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is accepted and default ON. The
-`func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
-[[plan/evidence/p08-bcf28-binding-fix-independent-review]]:
-`0x800BCCC0` and `0x800BCCD8` are bound to Tooie-native recomp helpers
-in `src/game/boot_hw_stubs.cpp`. Nonblocking integer-domain / test notes
-only. Implementer evidence: [[plan/evidence/p08-bcf28-binding-fix]].
+`func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The current first
+product divergence `func_80013A7C` ("Failed to find function at 0x00000000") is
+**DIAGNOSED (Level A)** in [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]:
+non-standard leaf wrapper saves RA in `$a3`, but direct host calls do not
+materialize `ctx->r31`, so `jr a3` evaluates `LOOKUP_FUNC(0)`.
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -30,7 +30,8 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.**
+**Implement only the proven minimal `func_80013A7C` Tooie-native fix** (and its
+companion wrappers `0x800137D4` / `0x80013A5C` if scoped).
 Do not reopen the accepted BCF28 helper binding or Hybrid F' / PATCH 1–4.
 PATCH 4 stays ON.
 
@@ -44,8 +45,8 @@ PATCH 4 stays ON.
    clean tracked Clang build PASS; PATCH 4 accepted by verdict B).
 6. **`func_800BCF28` SIGSEGV RESOLVED** and independently accepted (verdict B;
    [[plan/evidence/p08-bcf28-binding-fix-independent-review]]).
-7. First gameplay demo ausente: novo blocker downstream em `func_80013A7C`
-   (`Failed to find function at 0x00000000`).
+7. First gameplay demo ausente: `func_80013A7C` lookup-zero **DIAGNOSED (Level A)**
+   in [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]. Fix pending.
 8. Title/file-select input diferido.
 
 ## Arquitetura e regras
@@ -88,12 +89,13 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (**CURRENT** — verdict B; BCF28 fix accepted)
-2. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
-3. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
-4. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
-5. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
-6. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
-7. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
-8. [[plan/evidence/p08-session-handoff]]
-9. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (**CURRENT** — root cause Level A diagnosis)
+2. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
+3. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
+4. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+5. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
+6. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
+7. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
+8. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
+9. [[plan/evidence/p08-session-handoff]]
+10. [[plans/BT/08-rt64-input-and-frontend]]

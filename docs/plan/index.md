@@ -160,7 +160,10 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-bcf28-binding-fix]] — **CURRENT:** BCF28 helper bindings
+- [[evidence/p08-80013a7c-lookup-zero-diagnosis]] — **CURRENT:** `func_80013A7C`
+  lookup-zero root cause PROVEN (A); leaf wrapper saves RA in $a3, direct host calls do not write ctx->r31.
+- [[evidence/p08-bcf28-binding-fix-independent-review]] — BCF28 fix independently accepted (verdict B).
+- [[evidence/p08-bcf28-binding-fix]] — BCF28 helper bindings
   fix implemented & validated; exact Tooie-native recomp accessors bound.
 - [[evidence/p08-bcf28-crash-diagnosis]] — `func_800BCF28` SIGSEGV
   root cause PROVEN (A); `get_function(0x800BCCC0)` = `lookup_gap_stub` (v0=0)

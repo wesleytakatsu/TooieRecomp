@@ -12,6 +12,7 @@
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
+- [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] — P08 — func_80013A7C lookup-zero diagnosis — Proven root cause (Level A): leaf wrapper saves RA in $a3, but direct host calls do not write ctx->r31, causing LOOKUP_FUNC(0).
 - [[plan/evidence/p08-bcf28-binding-fix-independent-review]] — P08 — func_800BCF28 helper binding fix independent review — Verdict B: native 0x800BCCC0/0x800BCCD8 bindings accepted; old SIGSEGV resolved; next blocker func_80013A7C (not diagnosed).
 - [[plan/evidence/p08-bcf28-binding-fix]] — P08 — func_800BCF28 helper binding fix — Tooie-native recomp helpers bound at 0x800BCCC0 and 0x800BCCD8, replacing erroneous gap stubs and resolving func_800BCF28 SIGSEGV.
 - [[plan/evidence/p08-bcf28-crash-diagnosis]] — P08 — func_800BCF28 SIGSEGV root cause PROVEN (A) — `get_function(0x800BCCC0)` = `lookup_gap_stub` (v0=0) masks real element accessor (a0+a1*56+0x24); caller dereferences null base → SIGSEGV at rdram+0x8000000c. Binding fix later implemented and independently accepted.

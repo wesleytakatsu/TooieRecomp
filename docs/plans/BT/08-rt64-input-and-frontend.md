@@ -26,7 +26,10 @@ PATCH 4 is accepted. The `func_800BCF28` binding fix is **ACCEPTED
 (verdict B)** by [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]:
 `0x800BCCC0` and `0x800BCCD8` are bound to Tooie-native recomp helpers
 in `src/game/boot_hw_stubs.cpp`. Nonblocking integer-domain / test notes
-only. Execution progresses past `gsworldDll` / `basetup` to `func_80013A7C`.
+only. The subsequent divergence in `func_80013A7C` ("Failed to find function at 0x00000000")
+is **DIAGNOSED (Level A)** in [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]:
+non-standard leaf wrapper saves RA in `$a3`, but direct host calls do not
+materialize `ctx->r31`, so `jr a3` evaluates `LOOKUP_FUNC(0)`.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -40,7 +43,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] (**CURRENT** — verdict B; BCF28 fix accepted)
+- [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (**CURRENT** — root cause Level A diagnosis)
+- [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
 - [[../../plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence; preserved)
 - [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis; preserved)
 - [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted; tracked-state blocker resolved)
@@ -59,7 +63,7 @@ Evidência corrente:
 - [[../../plan/evidence/p08-preemption-patch2-validation]] (PATCH 2 runtime service)
 - [[../../plan/evidence/p08-preemption-patch1-independent-review]] (PATCH 1 review B)
 - [[../../plan/evidence/p08-preemption-patch1-validation]] (PATCH 1 implementer evidence)
-- [[../../plan/evidence/p08-preemption-implementation-plan]] (spec F'; PATCH 2 landed, PATCH 3+ pending)
+- [[../../plan/evidence/p08-preemption-implementation-plan]] (spec Hybrid F'; PATCH 2 landed, PATCH 3+ pending)
 - [[../../plan/evidence/p08-preemption-design-adversarial-review]] (arquitetura F' aprovada)
 - [[../../plan/evidence/p08-permanent-preemption-design]] (DeepSeek Hybrid F, `CORRECTED/SUPERSEDED`)
 - [[../../plan/evidence/p08-guest-preemption-causal-validation]]
@@ -95,8 +99,8 @@ Evidência corrente:
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
-  Tooie. **`func_800BCF28` RESOLVED** by [[../../plan/evidence/p08-bcf28-binding-fix]].
-  Residual: `func_80013A7C` (next). BCF28 independently accepted (verdict B).
+  Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
+  Residual: `func_80013A7C` (diagnosed Level A).
 
 
 ## Implementado / validado
@@ -125,7 +129,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] | **CURRENT:** verdict B; BCF28 helper binding fix accepted |
+| [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] | **CURRENT:** root cause Level A diagnosis |
+| [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] | verdict B; BCF28 helper binding fix accepted |
 | [[../../plan/evidence/p08-bcf28-binding-fix]] | implementer binding-fix evidence (preserved) |
 | [[../../plan/evidence/p08-bcf28-crash-diagnosis]] | root cause A diagnosis (preserved) |
 | [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] | verdict B; PATCH 4 accepted; tracked-state blocker resolved |
@@ -171,13 +176,12 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
  -> C2AB8 returns (PATCH 4 Hybrid F')
  -> gsworldDll / basetup
  -> func_800BCF28 completes cleanly
- -> stops at func_80013A7C
+ -> stops at func_80013A7C (lookup-zero diagnosed)
 ```
 
 ## Residual prioritário
 
-1. **Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.**
-   Do not reopen the accepted BCF28 helper binding or PATCH 4.
+1. **Implement only the proven minimal `func_80013A7C` fix** ([[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]).
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
@@ -188,6 +192,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 - [x] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A; clean tracked
   Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
 - [x] `func_800BCF28` binding fix implementado, validado e aceito (verdict B).
+- [~] `func_80013A7C` lookup-zero diagnosticado (Level A).
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -196,6 +201,6 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.
+**NEXT:** Implement only the proven minimal `func_80013A7C` Tooie-native fix.
 Do not reopen the accepted BCF28 helper binding or PATCH 4 / Hybrid F'.
 After demo: input and [[09-gameplay-parity-and-enhancements]].
