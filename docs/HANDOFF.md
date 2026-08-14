@@ -13,11 +13,12 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 8001
 ## Prioridade atual
 
 **P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is accepted and default ON. The
-`func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The current first
-product divergence `func_80013A7C` ("Failed to find function at 0x00000000") is
-**DIAGNOSED (Level A)** in [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]:
-non-standard leaf wrapper saves RA in `$a3`, but direct host calls do not
-materialize `ctx->r31`, so `jr a3` evaluates `LOOKUP_FUNC(0)`.
+`func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
+`func_80013A7C` lookup-zero is **RESOLVED** by Tooie-native strong-symbol
+overrides of the proven core1 RA-wrapper cluster
+([[plan/evidence/p08-core1-ra-wrapper-fix]]). Next first signature after
+that crossing is a non-fatal opening continuation (`mode=3 / map=0 / warp=0`);
+not diagnosed.
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -30,8 +31,8 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**Implement only the proven minimal `func_80013A7C` Tooie-native fix** (and its
-companion wrappers `0x800137D4` / `0x80013A5C` if scoped).
+**Independent Gemini 3.7 Flash HIGH review of the narrow core1 RA-wrapper
+fix** before diagnosing the next blocker.
 Do not reopen the accepted BCF28 helper binding or Hybrid F' / PATCH 1–4.
 PATCH 4 stays ON.
 
@@ -45,8 +46,9 @@ PATCH 4 stays ON.
    clean tracked Clang build PASS; PATCH 4 accepted by verdict B).
 6. **`func_800BCF28` SIGSEGV RESOLVED** and independently accepted (verdict B;
    [[plan/evidence/p08-bcf28-binding-fix-independent-review]]).
-7. First gameplay demo ausente: `func_80013A7C` lookup-zero **DIAGNOSED (Level A)**
-   in [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]. Fix pending.
+7. First gameplay demo ausente: `func_80013A7C` lookup-zero **RESOLVED**
+   ([[plan/evidence/p08-core1-ra-wrapper-fix]]). Next first signature is a
+   non-fatal post-80013A7C opening continuation; not diagnosed.
 8. Title/file-select input diferido.
 
 ## Arquitetura e regras
@@ -70,6 +72,8 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
 - **`func_800BCF28` SIGSEGV / `0x800BCCC0` gap stub** — RESOLVED and
   independently accepted (verdict B) by
   [[plan/evidence/p08-bcf28-binding-fix-independent-review]]
+- **`func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers** — RESOLVED
+  ([[plan/evidence/p08-core1-ra-wrapper-fix]])
 
 ## Current expected flow
 
@@ -79,23 +83,27 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
  -> gameplay demo
 ```
 
-Observed: C2AB8 crossed; `func_800BCF28` completes; world init executes;
-stops at `func_80013A7C` (`Failed to find function at 0x00000000`).
+Observed: C2AB8 crossed; `func_800BCF28` completes; `func_80013A7C`
+enters at the native strong symbol and the old `LOOKUP_FUNC(0)` does not
+occur. 150s clean run continues (opening `mode=3 / map=0`); attract/demo
+not observed.
 
 ## Exonerated (current)
 
 Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
-`func_80026500` hang, scheduler corruption (not proven), `func_800BCF28` binding.
+`func_80026500` hang, scheduler corruption (not proven), `func_800BCF28` binding,
+`func_80013A7C` lookup-zero.
 
 ## Files to read
 
-1. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (**CURRENT** — root cause Level A diagnosis)
-2. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
-3. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
-4. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
-5. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
-6. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
-7. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
-8. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
-9. [[plan/evidence/p08-session-handoff]]
-10. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-core1-ra-wrapper-fix]] (**CURRENT** — RA-wrapper fix)
+2. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
+3. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
+4. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
+5. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+6. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
+7. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
+8. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
+9. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
+10. [[plan/evidence/p08-session-handoff]]
+11. [[plans/BT/08-rt64-input-and-frontend]]

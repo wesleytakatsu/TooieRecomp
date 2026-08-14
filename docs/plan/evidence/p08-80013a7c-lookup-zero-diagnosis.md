@@ -1,6 +1,6 @@
 ---
 title: "P08 — func_80013A7C lookup-zero diagnosis"
-description: "Proven root cause (Level A): func_80013A7C saves caller return address in a3 (move a3, ra), calls func_80013ABC, and returns via jr a3. N64Recomp host C direct calls do not materialize return addresses in ctx->r31, so ctx->r7 copies zero, causing LOOKUP_FUNC(0x00000000)."
+description: "Proven root cause (Level A): func_80013A7C saves caller return address in a3 (move a3, ra), calls func_80013ABC, and returns via jr a3. N64Recomp host C direct calls do not materialize return addresses in ctx->r31, so ctx->r7 copies zero, causing LOOKUP_FUNC(0x00000000). Fix implemented: see p08-core1-ra-wrapper-fix."
 status: evidence
 phase: P08
 updated: 2026-08-14
@@ -17,8 +17,13 @@ BCF28_FIX_ACCEPTED:  YES
 CRASH_REPRODUCED:    YES
 CRASH_DETERMINISTIC: YES
 ROOT_CAUSE_LEVEL:    A — ROOT CAUSE PROVEN
-FIX_IMPLEMENTED:     NO
+FIX_IMPLEMENTED:     YES — [[p08-core1-ra-wrapper-fix]]
 ```
+
+Resolution (2026-08-14): Tooie-native strong-symbol overrides for
+`func_800137D4` / `func_80013A5C` / `func_80013A7C` landed in
+`src/game/boot_hw_stubs.cpp`. Old `LOOKUP_FUNC(0)` from `func_80013A7C`
+is **RESOLVED**. See [[p08-core1-ra-wrapper-fix]].
 
 ## 1. Executive summary
 

@@ -73,10 +73,13 @@ T07). Detalhe: [[07-rsp-and-audio]].
 RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido; mode-5
 alcançado. PATCH 4 behavior is independently **CLASS A**. Verdict C
 preserved; the tracked-state finding is resolved by independent verdict B,
-and PATCH 4 is accepted. **`func_800BCF28` SIGSEGV root cause PROVEN (A):**
-`lookup_gap_stub` masks the real element accessor `0x800BCCC0`/`0x800BCCD8`
-(v0=0 → null deref); fix pending. Input title/file-select diferido.
+and PATCH 4 is accepted. `func_800BCF28` binding fix **ACCEPTED (verdict B)**.
+`func_80013A7C` lookup-zero **RESOLVED** (Tooie-native core1 RA wrappers).
+Input title/file-select diferido.
 Evidência:
+[[../../plan/evidence/p08-core1-ra-wrapper-fix]],
+[[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]],
+[[../../plan/evidence/p08-bcf28-binding-fix-independent-review]],
 [[../../plan/evidence/p08-bcf28-crash-diagnosis]],
 [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]],
 [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]],

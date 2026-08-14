@@ -250,3 +250,33 @@ target_link_libraries(bcf28_helpers_test PRIVATE
     Threads::Threads
 )
 set_target_properties(bcf28_helpers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P08 core1 RA-wrapper regression: 0x800137D4 / 0x800137F4 / 0x80013A5C / 0x80013A7C.
+add_executable(core1_ra_wrappers_test
+    ${CMAKE_SOURCE_DIR}/tests/core1_ra_wrappers_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
+)
+target_include_directories(core1_ra_wrappers_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/game
+    ${CMAKE_SOURCE_DIR}/RecompiledFuncs
+    ${N64MR}/ultramodern/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/N64Recomp/include
+)
+target_compile_options(core1_ra_wrappers_test PRIVATE
+    -fno-strict-aliasing
+    -fms-extensions
+    -Wno-unused-parameter
+)
+target_link_libraries(core1_ra_wrappers_test PRIVATE
+    PatchesLib
+    RecompiledFuncs
+    librecomp
+    ultramodern
+    Threads::Threads
+)
+set_target_properties(core1_ra_wrappers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

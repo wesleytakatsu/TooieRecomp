@@ -23,13 +23,11 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 **P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
 first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
 PATCH 4 is accepted. The `func_800BCF28` binding fix is **ACCEPTED
-(verdict B)** by [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]:
-`0x800BCCC0` and `0x800BCCD8` are bound to Tooie-native recomp helpers
-in `src/game/boot_hw_stubs.cpp`. Nonblocking integer-domain / test notes
-only. The subsequent divergence in `func_80013A7C` ("Failed to find function at 0x00000000")
-is **DIAGNOSED (Level A)** in [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]:
-non-standard leaf wrapper saves RA in `$a3`, but direct host calls do not
-materialize `ctx->r31`, so `jr a3` evaluates `LOOKUP_FUNC(0)`.
+(verdict B)** by [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]].
+The `func_80013A7C` lookup-zero is **RESOLVED** by Tooie-native
+strong-symbol overrides of the proven core1 RA-wrapper cluster
+([[../../plan/evidence/p08-core1-ra-wrapper-fix]]). Next first signature
+is a non-fatal post-80013A7C opening continuation; not diagnosed.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -43,7 +41,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (**CURRENT** — root cause Level A diagnosis)
+- [[../../plan/evidence/p08-core1-ra-wrapper-fix]] (**CURRENT** — core1 RA-wrapper fix)
+- [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
 - [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
 - [[../../plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence; preserved)
 - [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis; preserved)
@@ -100,7 +99,7 @@ Evidência corrente:
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
-  Residual: `func_80013A7C` (diagnosed Level A).
+  Residual: post-`80013A7C` continuation (not diagnosed).
 
 
 ## Implementado / validado
@@ -123,13 +122,16 @@ Evidência corrente:
 - `func_80026500` como PC do hang;
 - `func_800A907C → func_8001EE34` como driver do objeto (refutado);
 - `func_800BCF28` binding / null dereference (resolvido e aceito, verdict B:
-  [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]).
+  [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]);
+- `func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers (resolvido:
+  [[../../plan/evidence/p08-core1-ra-wrapper-fix]]).
 
 ## Evidências P08
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] | **CURRENT:** root cause Level A diagnosis |
+| [[../../plan/evidence/p08-core1-ra-wrapper-fix]] | **CURRENT:** core1 RA-wrapper native fix |
+| [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] | Level A diagnosis; resolved by the fix |
 | [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] | verdict B; BCF28 helper binding fix accepted |
 | [[../../plan/evidence/p08-bcf28-binding-fix]] | implementer binding-fix evidence (preserved) |
 | [[../../plan/evidence/p08-bcf28-crash-diagnosis]] | root cause A diagnosis (preserved) |
@@ -176,12 +178,14 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
  -> C2AB8 returns (PATCH 4 Hybrid F')
  -> gsworldDll / basetup
  -> func_800BCF28 completes cleanly
- -> stops at func_80013A7C (lookup-zero diagnosed)
+ -> func_80013A7C native body entered; old LOOKUP_FUNC(0) absent
+ -> 150s continuation at opening mode=3 / map=0 (not diagnosed)
 ```
 
 ## Residual prioritário
 
-1. **Implement only the proven minimal `func_80013A7C` fix** ([[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]]).
+1. **Independent review of the core1 RA-wrapper fix**, then diagnose the
+   next first divergence ([[../../plan/evidence/p08-core1-ra-wrapper-fix]]).
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
@@ -192,7 +196,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 - [x] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A; clean tracked
   Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
 - [x] `func_800BCF28` binding fix implementado, validado e aceito (verdict B).
-- [~] `func_80013A7C` lookup-zero diagnosticado (Level A).
+- [x] `func_80013A7C` lookup-zero resolvido (Tooie-native RA wrappers).
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -201,6 +205,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Implement only the proven minimal `func_80013A7C` Tooie-native fix.
+**NEXT:** Independent Gemini 3.7 Flash HIGH review of the RA-wrapper fix
+before diagnosing the next blocker.
 Do not reopen the accepted BCF28 helper binding or PATCH 4 / Hybrid F'.
 After demo: input and [[09-gameplay-parity-and-enhancements]].

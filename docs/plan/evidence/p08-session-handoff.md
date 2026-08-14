@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: intro para attract demo"
-description: "Estado autossuficiente após diagnóstico do lookup-zero em func_80013A7C: C2AB8 e BCF28 resolvidos; root cause de func_80013A7C PROVEN (Level A)."
+description: "Estado autossuficiente após o fix nativo dos wrappers RA de core1: C2AB8, BCF28 e o lookup-zero de func_80013A7C resolvidos."
 status: evidence
 phase: P08
 updated: 2026-08-14
@@ -12,17 +12,17 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Base commit: `bbdc304ba717b0c30372365343270e7ccae54ba1`.
-- Diagnosis evidence: [[p08-80013a7c-lookup-zero-diagnosis]].
+- Base commit: `a6b024fcb321aab9b64258089d53696fac54d79b` (pre-fix).
+- Fix evidence: [[p08-core1-ra-wrapper-fix]].
+- Diagnosis: [[p08-80013a7c-lookup-zero-diagnosis]] (resolved by the fix).
 
 ## CURRENT_PHASE
 
 P08 — RT64, input e frontend. PATCH 4 is accepted and default ON. The
-`func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The current first
-product divergence `func_80013A7C` ("Failed to find function at 0x00000000") is
-**DIAGNOSED (Level A)**: non-standard leaf wrapper saves RA in `$a3`, but direct
-host C calls do not materialize `ctx->r31`, so `jr a3` evaluates `LOOKUP_FUNC(0)`.
-Title/file-select input continua diferido.
+`func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
+`func_80013A7C` lookup-zero is **RESOLVED** by Tooie-native strong-symbol
+overrides of the proven core1 RA-wrapper cluster. Title/file-select input
+continua diferido.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -34,16 +34,19 @@ Title/file-select input continua diferido.
   regenerated binary; rollback OFF reproduces the old freeze.
 - `func_800C2AB8` is behaviorally resolved with PATCH4 default ON.
 - Clean-build correction tracks the empty `RecompiledPatches` scaffolds.
-- **`func_80013A7C` lookup-zero DIAGNOSED (Level A)**: root cause proven; fix
-  pending.
+- **`func_80013A7C` lookup-zero RESOLVED** (Tooie-native RA wrappers;
+  [[p08-core1-ra-wrapper-fix]]).
 - `RecompiledFuncs` é gerado — não editar.
 
 ## CURRENT_BLOCKER
 
-**`Failed to find function at 0x00000000` in `func_80013A7C`** — ROOT CAUSE PROVEN
-(Level A): `func_80013A7C` performs `move a3, ra; jal 80013abc; jr a3`. Direct
-host calls do not write `ctx->r31`, leading to `ctx->r7 == 0` and `LOOKUP_FUNC(0)`.
-Identical to precedent `func_800137F4`. See [[p08-80013a7c-lookup-zero-diagnosis]].
+Old `func_80013A7C` `LOOKUP_FUNC(0)` is **RESOLVED**.
+
+New first high-level signature (NOT diagnosed): after native `func_80013A7C`,
+a 150s clean run continues with live audio and overlay loads; opening probe
+stays at `mode=3 / map=0 / warp=0 / attr=0`. Mode-5 / map-335 / visible
+attract were not observed. No new crash string. See
+[[p08-core1-ra-wrapper-fix]].
 
 ## PROVEN_ROOT_MECHANISM (old C2AB8)
 
@@ -62,13 +65,13 @@ held the host execution token in a pure MIPS loop:
 C2AB8_ROOT_CAUSE_PROVEN:   YES (PATCH 4, CLASS A)
 BCF28_ROOT_CAUSE_PROVEN:   YES (Level A; ACCEPTED verdict B)
 80013A7C_ROOT_CAUSE_PROVEN: YES (Level A)
-80013A7C_FIX_STATUS:       DIAGNOSED (pending implementation)
+80013A7C_FIX_STATUS:       RESOLVED (Tooie-native strong symbols)
 ```
 
 ## CURRENT_FIRST_DIVERGENCE
 
-`func_80013A7C` lookup failure (`0x00000000`) reached during downstream world
-init after `func_800BCF28` completion.
+Non-fatal post-`80013A7C` continuation: opening `mode=3 / map=0 / warp=0`,
+no mode-5/attract observed in 150s, no `LOOKUP_FUNC(0)`. Not diagnosed.
 
 ## RESOLVED_DO_NOT_REOPEN
 
@@ -87,6 +90,7 @@ init after `func_800BCF28` completion.
 13. **C2AB8 cooperative freeze as current blocker** — RESOLVED by PATCH 4.
 14. Hybrid F' architecture / PATCH 1 / 2 / 3 / 3.5 internals.
 15. **`func_800BCF28` SIGSEGV / `0x800BCCC0` lookup_gap_stub** — RESOLVED and accepted.
+16. **`func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers** — RESOLVED.
 
 Do not reopen these without new evidence.
 
@@ -98,21 +102,21 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-**Implement only the proven minimal `func_80013A7C` Tooie-native fix** (and its
-companion wrappers `0x800137D4` / `0x80013A5C` if scoped).
+**Independent Gemini 3.7 Flash HIGH review of this narrow RA-wrapper fix**
+before diagnosing the next blocker.
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-80013a7c-lookup-zero-diagnosis]] — **CURRENT:** root cause Level A diagnosis
-1. [[p08-bcf28-binding-fix-independent-review]] — verdict B; BCF28 fix accepted
-2. [[p08-bcf28-binding-fix]] — BCF28 helper bindings fix evidence
+0. [[p08-core1-ra-wrapper-fix]] — **CURRENT:** implementer evidence
+1. [[p08-80013a7c-lookup-zero-diagnosis]] — Level A diagnosis (resolved)
+2. [[p08-bcf28-binding-fix-independent-review]] — verdict B; BCF28 fix accepted
 3. [[p08-preemption-patch4-clean-build-independent-review]] — verdict B; PATCH 4 accepted
 4. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = NO (diagnosis only)
+CODE_CHANGED             = YES (Tooie-native RA wrappers + test)
 RUNTIME_CODE_CHANGED     = NO
 GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO

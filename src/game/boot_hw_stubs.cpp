@@ -47,6 +47,7 @@ extern "C" recomp_func_t* get_function(int32_t addr);
 extern "C" void load_overlays(uint32_t rom, int32_t ram_addr, uint32_t size);
 extern "C" void unload_overlays(int32_t ram_addr, uint32_t size);
 extern "C" void func_80013818(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80013ABC(uint8_t* rdram, recomp_context* ctx);
 
 // Declared in syscall_handler.cpp
 extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr);
@@ -960,6 +961,42 @@ extern "C" void func_800137F4(uint8_t* rdram, recomp_context* ctx) {
     ctx->f16.u32l = ctx->r1;
     func_80013818(rdram, ctx);
     ctx->f0.fl = ctx->f2.fl;
+}
+
+// Companion core1 RA wrappers with the same non-standard return pattern.
+// Generated bodies copy unmaterialized ctx->r31 and LOOKUP_FUNC the saved
+// register (a1/a3). Strong-symbol interposition is sufficient: Clang
+// RECOMP_FUNC is weak, and recomp_overlays.inl binds .func = func_80013xxx
+// by symbol name, so LOOKUP_FUNC(vram) and direct calls both resolve here.
+//
+// 0x800137D4: move a1, ra; jal func_80013818; jr a1 / mov.s $f0, $f2
+extern "C" void func_800137D4(uint8_t* rdram, recomp_context* ctx) {
+    ctx->r1 = S32(0x8004 << 16);
+    ctx->f14.u32l = MEM_W(ctx->r1, 0x16CC);
+    ctx->f16.u32l = MEM_W(ctx->r1, 0x16D0);
+    func_80013818(rdram, ctx);
+    ctx->f0.fl = ctx->f2.fl;
+}
+
+// 0x80013A5C: move a3, ra; jal func_80013ABC (delay: lwc1 $f14);
+//             lwc1 $f2 AFTER the helper (which clobbers $f2); jr a3 / sub.s
+extern "C" void func_80013A5C(uint8_t* rdram, recomp_context* ctx) {
+    ctx->r1 = S32(0x8004 << 16);
+    ctx->f14.u32l = MEM_W(ctx->r1, 0x1700);
+    func_80013ABC(rdram, ctx);
+    ctx->r1 = S32(0x8004 << 16);
+    ctx->f2.u32l = MEM_W(ctx->r1, 0x1704);
+    ctx->f0.fl = ctx->f2.fl - ctx->f0.fl;
+}
+
+// 0x80013A7C: move a3, ra; jal func_80013ABC; mtc1 90.0, $f2; jr a3 / sub.s
+extern "C" void func_80013A7C(uint8_t* rdram, recomp_context* ctx) {
+    ctx->r1 = S32(0x3E34 << 16);
+    ctx->f14.u32l = ctx->r1;
+    func_80013ABC(rdram, ctx);
+    ctx->r1 = S32(0x42B4 << 16);
+    ctx->f2.u32l = ctx->r1;
+    ctx->f0.fl = ctx->f2.fl - ctx->f0.fl;
 }
 
 // Submit one unit of background TIDY work. The original uses a blocking send
