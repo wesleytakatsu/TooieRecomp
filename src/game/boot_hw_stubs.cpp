@@ -171,6 +171,43 @@ static void tooie_sin_degrees(uint8_t* rdram, recomp_context* ctx) {
     ctx->f0.fl = std::sin(ctx->f12.fl * kDegreesToRadians);
 }
 
+// Core2 unnamed button data accessor (__get_button_data_ptr(arg0, arg1)).
+// MIPS:
+//   sll   t6, a1, 3
+//   subu  t6, t6, a1    ; t6 = a1 * 7
+//   sll   t6, t6, 3     ; t6 = a1 * 56
+//   addu  v0, a0, t6    ; v0 = a0 + a1 * 56
+//   jr    ra
+//   addiu v0, v0, 36    ; v0 = a0 + a1 * 56 + 0x24 (36)
+static void tooie_helper_800BCCC0(uint8_t* rdram, recomp_context* ctx) {
+    (void)rdram;
+    const int32_t a0 = static_cast<int32_t>(ctx->r4);
+    const int32_t a1 = static_cast<int32_t>(ctx->r5);
+    const uint32_t t6 = static_cast<uint32_t>((a1 << 3) - a1) << 3; // a1 * 56
+    const int32_t v0 = static_cast<int32_t>(static_cast<uint32_t>(a0) + t6 + 36u);
+    ctx->r14 = static_cast<gpr>(static_cast<int32_t>(t6));
+    ctx->r2 = static_cast<gpr>(v0);
+}
+
+// Core2 unnamed stick data accessor (__get_stick_data_ptr(arg0)).
+// MIPS:
+//   lbu   t6, 4(a0)     ; t6 = *(uint8_t*)(a0 + 4)
+//   sll   t7, t6, 3
+//   subu  t7, t7, t6    ; t7 = t6 * 7
+//   sll   t7, t7, 3     ; t7 = t6 * 56
+//   addu  v0, a0, t7    ; v0 = a0 + t6 * 56
+//   jr    ra
+//   addiu v0, v0, 36    ; v0 = a0 + t6 * 56 + 0x24 (36)
+static void tooie_helper_800BCCD8(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t t6 = static_cast<uint32_t>(MEM_BU(4, ctx->r4));
+    const uint32_t t7 = ((t6 << 3) - t6) << 3; // t6 * 56
+    const int32_t a0 = static_cast<int32_t>(ctx->r4);
+    const int32_t v0 = static_cast<int32_t>(static_cast<uint32_t>(a0) + t7 + 36u);
+    ctx->r14 = static_cast<gpr>(t6);
+    ctx->r15 = static_cast<gpr>(static_cast<int32_t>(t7));
+    ctx->r2 = static_cast<gpr>(v0);
+}
+
 // LOOKUP_FUNC targets with no recompiled symbol (N64Recomp gaps). No-op stubs
 // keep boot/runtime from aborting for still-unknown helpers only.
 // DO NOT put real libultra entry points here — that overwrites the func_map and
@@ -189,8 +226,6 @@ static constexpr int32_t kLookupGapAddrs[] = {
     static_cast<int32_t>(0x80036670),
     static_cast<int32_t>(0x80036728),
     static_cast<int32_t>(0x800979D8),
-    static_cast<int32_t>(0x800BCCC0),
-    static_cast<int32_t>(0x800BCCD8),
 };
 
 static recomp_func_t* const kLookupGapFuncs[] = {
@@ -199,8 +234,6 @@ static recomp_func_t* const kLookupGapFuncs[] = {
     lookup_gap_stub<static_cast<int32_t>(0x80036670)>,
     lookup_gap_stub<static_cast<int32_t>(0x80036728)>,
     lookup_gap_stub<static_cast<int32_t>(0x800979D8)>,
-    lookup_gap_stub<static_cast<int32_t>(0x800BCCC0)>,
-    lookup_gap_stub<static_cast<int32_t>(0x800BCCD8)>,
 };
 
 // Host libultra implementations (librecomp). Declared so the linker pulls them in
@@ -1084,11 +1117,15 @@ void register_boot_lookup_stubs() {
                                           tooie_cos_degrees);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80013970),
                                           tooie_sin_degrees);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCCC0),
+                                          tooie_helper_800BCCC0);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCCD8),
+                                          tooie_helper_800BCCD8);
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }
     std::fprintf(stderr,
-                 "[tooie] registered %zu ultra LOOKUP hooks + 3 core math hooks + %zu gap stubs\n",
+                 "[tooie] registered %zu ultra LOOKUP hooks + 5 core helper hooks + %zu gap stubs\n",
                  sizeof(kUltraLookupHooks) / sizeof(kUltraLookupHooks[0]),
                  sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]));
 }

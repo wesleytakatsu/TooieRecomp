@@ -9,6 +9,9 @@ tags: [tooie-recomp, p08, bcf28, function-binding, gap-stub, bootstrap, diagnosi
 
 # P08 — func_800BCF28 SIGSEGV DIAGNOSIS
 
+> [!NOTE]
+> **RESOLUTION:** The binding fix diagnosed in this document has been implemented and validated in [[p08-bcf28-binding-fix]]. Exact Tooie-native recomp helpers are bound to `0x800BCCC0` and `0x800BCCD8`, resolving the SIGSEGV at `func_800BCF28`.
+
 ```text
 BASE_HEAD:   7c11aaa28d85945abf633cf9abc5e112a0e2b91d
 MODEL:       DeepSeek V4 Flash HIGH

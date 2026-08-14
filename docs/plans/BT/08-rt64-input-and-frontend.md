@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-13
+updated: 2026-08-14
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -22,15 +22,11 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 **P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
 first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
-Historical verdict **C** is preserved; its tracked-state delivery finding is
-resolved by [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]]
-(verdict B). PATCH 4 is accepted. The downstream SIGSEGV in
-`func_800BCF28` is now the first product divergence, and its **root cause is
-PROVEN (level A)**: the JAL target `0x800BCCC0`/`0x800BCCD8` is a real unnamed
-element accessor with no generated function; `lookup_gap_stub` in
-`src/game/boot_hw_stubs.cpp` returns `v0=0`, so `func_800BCF28` dereferences a
-null base. See
-[[../../plan/evidence/p08-bcf28-crash-diagnosis]]. Fix not implemented.
+PATCH 4 is accepted. The downstream binding defect in `func_800BCF28` is
+**RESOLVED** by [[../../plan/evidence/p08-bcf28-binding-fix]]:
+`0x800BCCC0` and `0x800BCCD8` are bound to exact Tooie-native recomp helpers
+in `src/game/boot_hw_stubs.cpp`, removing them from `kLookupGapAddrs`.
+Execution progresses past `gsworldDll` / `basetup` to `func_80013A7C`.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -39,13 +35,14 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 - **Causa validada (experimento limpo 2026-08-12):** strong override temporário
   de `func_800C2AB8` com `yield_self_1ms(rdram)` → AUDIO roda, `func_800205D0`
   limpa `table[2].word0`, `func_800C269C(7)==1`, `func_800C16A4(7)` dispensa o
-  slot 7, `func_800C2AB8` retorna, attract progride até SIGSEGV em
-  `func_800BCF28`. Patch revertido.
+  slot 7, `func_800C2AB8` retorna, attract progride. Patch revertido; resolvido
+  permanentemente por PATCH 4.
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (**CURRENT** — root cause A; fix pending)
-- [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (**CURRENT** — verdict B; PATCH 4 accepted; tracked-state blocker resolved)
+- [[../../plan/evidence/p08-bcf28-binding-fix]] (**CURRENT** — BCF28 helper bindings fix implemented & validated)
+- [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+- [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted; tracked-state blocker resolved)
 - [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
 - [[../../plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; behavioral CLASS A; finding resolved)
 - [[../../plan/evidence/p08-preemption-patch4-validation]] (implementer evidence; preserved)
@@ -54,11 +51,11 @@ Evidência corrente:
 - [[../../plan/evidence/p08-preemption-patch35-independent-review]] (pre-correction verdict C; finding resolved, history preserved)
 - [[../../plan/evidence/p08-preemption-patch35-validation]] (implementer evidence; RCP/P3-X6 claims superseded)
 - [[../../plan/evidence/p08-preemption-patch35-design]] (PATCH 3.5 design contract; implemented)
-- [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (**CURRENT** — verdict B; thread-dispatch resume hook)
+- [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] (thread-dispatch resume hook)
 - [[../../plan/evidence/p08-preemption-patch3-independent-review]] (PATCH 3 review B)
 - [[../../plan/evidence/p08-preemption-patch3-validation]] (PATCH 3 generator; T11 PASS; flag OFF)
 - [[../../plan/evidence/p08-preemption-patch2-independent-review]] (PATCH 2 review B; inherited pre-PATCH4 blockers)
-- [[../../plan/evidence/p08-preemption-patch2-validation]] (PATCH 2 landed; T01–T10/T12 PASS; flag OFF)
+- [[../../plan/evidence/p08-preemption-patch2-validation]] (PATCH 2 runtime service)
 - [[../../plan/evidence/p08-preemption-patch1-independent-review]] (PATCH 1 review B)
 - [[../../plan/evidence/p08-preemption-patch1-validation]] (PATCH 1 implementer evidence)
 - [[../../plan/evidence/p08-preemption-implementation-plan]] (spec F'; PATCH 2 landed, PATCH 3+ pending)
@@ -97,8 +94,8 @@ Evidência corrente:
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
-  Tooie. Residual: SIGSEGV `func_800BCF28`. See
-  [[../../plan/evidence/p08-preemption-patch4-validation]].
+  Tooie. **`func_800BCF28` RESOLVED** by [[../../plan/evidence/p08-bcf28-binding-fix]].
+  Residual: `func_80013A7C`.
 
 
 ## Implementado / validado
@@ -119,19 +116,22 @@ Evidência corrente:
 - R_MIPS_26 / do_dma;
 - type-4 incomplete e warp não consumido (clean freeze);
 - `func_80026500` como PC do hang;
-- `func_800A907C → func_8001EE34` como driver do objeto (refutado).
+- `func_800A907C → func_8001EE34` como driver do objeto (refutado);
+- `func_800BCF28` binding / null dereference (resolvido por [[../../plan/evidence/p08-bcf28-binding-fix]]).
 
 ## Evidências P08
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] | **CURRENT:** verdict B; PATCH 4 accepted; tracked-state blocker resolved |
+| [[../../plan/evidence/p08-bcf28-binding-fix]] | **CURRENT:** BCF28 helper bindings fix implemented & validated |
+| [[../../plan/evidence/p08-bcf28-crash-diagnosis]] | root cause A diagnosis |
+| [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] | verdict B; PATCH 4 accepted; tracked-state blocker resolved |
 | [[../../plan/evidence/p08-preemption-patch4-independent-review]] | historical verdict C preserved; CLASS A behavior; finding resolved by clean-build review |
 | [[../../plan/evidence/p08-preemption-patch4-validation]] | implementer evidence; history preserved |
 | [[../../plan/evidence/p08-preemption-patch35-independent-review]] | historical verdict C; RCP finding resolved |
 | [[../../plan/evidence/p08-preemption-patch35-validation]] | implementer evidence; PATCH4 gate superseded |
 | [[../../plan/evidence/p08-preemption-patch35-design]] | PATCH 3.5 design contract (implemented) |
-| [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] | **CURRENT:** thread-switch eligibility; verdict B; resume hook |
+| [[../../plan/evidence/p08-preemption-patch35-thread-switch-review]] | thread-switch eligibility; verdict B; resume hook |
 | [[../../plan/evidence/p08-preemption-patch3-independent-review]] | PATCH 3 independent review B |
 | [[../../plan/evidence/p08-preemption-patch3-validation]] | PATCH 3 generator; T11 PASS; flag OFF |
 | [[../../plan/evidence/p08-preemption-patch2-independent-review]] | PATCH 2 independent review B; pre-PATCH4 blockers |
@@ -167,24 +167,24 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 ... warp consumido, A76F4(5) ...
  -> C2AB8 returns (PATCH 4 Hybrid F')
  -> gsworldDll / basetup
- -> SIGSEGV func_800BCF28; demo não começa
+ -> func_800BCF28 completes cleanly
+ -> stops at func_80013A7C
 ```
 
 ## Residual prioritário
 
-1. **SIGSEGV `func_800BCF28`** — root cause **PROVEN (A)**: no-op
-   `lookup_gap_stub` masks real element accessor `0x800BCCC0`/`0x800BCCD8`
-   (v0=0 → null deref). Fix not implemented. See
-   [[../../plan/evidence/p08-bcf28-crash-diagnosis]].
+1. **Independent review of `func_800BCF28` binding fix** ([[../../plan/evidence/p08-bcf28-binding-fix]]).
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-4. Então: gsattract ep1 / demo, depois input title/file-select.
+4. Próximo blocker: `func_80013A7C` lookup failure (`0x00000000`).
+5. Então: gsattract ep1 / demo, depois input title/file-select.
 
 ## Gate de saída
 
 - [x] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A; clean tracked
   Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
+- [x] `func_800BCF28` binding fix implementado e validado.
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -193,7 +193,6 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** implement only the proven minimal `func_800BCF28` fix (restore the
-two accessors `0x800BCCC0`/`0x800BCCD8`). Hybrid F' does not need reopening:
-clean-built same-binary ON/OFF behavior is CLASS A and PATCH 4 is accepted.
+**NEXT:** Independent Grok 4.6 High review of the narrow `func_800BCF28` binding fix
+before diagnosing the next blocker (`func_80013A7C`).
 After demo: input and [[09-gameplay-parity-and-enhancements]].

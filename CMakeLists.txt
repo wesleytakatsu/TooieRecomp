@@ -220,3 +220,33 @@ target_link_libraries(preemption_t15 PRIVATE
     Threads::Threads
 )
 set_target_properties(preemption_t15 PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P08 BCF28 regression test: proves 0x800BCCC0 and 0x800BCCD8 bindings and semantics.
+add_executable(bcf28_helpers_test
+    ${CMAKE_SOURCE_DIR}/tests/bcf28_helpers_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
+)
+target_include_directories(bcf28_helpers_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/game
+    ${CMAKE_SOURCE_DIR}/RecompiledFuncs
+    ${N64MR}/ultramodern/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/N64Recomp/include
+)
+target_compile_options(bcf28_helpers_test PRIVATE
+    -fno-strict-aliasing
+    -fms-extensions
+    -Wno-unused-parameter
+)
+target_link_libraries(bcf28_helpers_test PRIVATE
+    PatchesLib
+    RecompiledFuncs
+    librecomp
+    ultramodern
+    Threads::Threads
+)
+set_target_properties(bcf28_helpers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

@@ -160,7 +160,9 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-bcf28-crash-diagnosis]] — **CURRENT:** `func_800BCF28` SIGSEGV
+- [[evidence/p08-bcf28-binding-fix]] — **CURRENT:** BCF28 helper bindings
+  fix implemented & validated; exact Tooie-native recomp accessors bound.
+- [[evidence/p08-bcf28-crash-diagnosis]] — `func_800BCF28` SIGSEGV
   root cause PROVEN (A); `get_function(0x800BCCC0)` = `lookup_gap_stub` (v0=0)
 - [[evidence/p08-preemption-patch4-clean-build-independent-review]] — **CURRENT:**
   verdict B; tracked-state blocker resolved; clean regen/build and clean-built
