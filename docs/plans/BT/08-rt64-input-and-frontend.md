@@ -22,11 +22,11 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 **P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
 first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
-PATCH 4 is accepted. The downstream binding defect in `func_800BCF28` is
-**RESOLVED** by [[../../plan/evidence/p08-bcf28-binding-fix]]:
-`0x800BCCC0` and `0x800BCCD8` are bound to exact Tooie-native recomp helpers
-in `src/game/boot_hw_stubs.cpp`, removing them from `kLookupGapAddrs`.
-Execution progresses past `gsworldDll` / `basetup` to `func_80013A7C`.
+PATCH 4 is accepted. The `func_800BCF28` binding fix is **ACCEPTED
+(verdict B)** by [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]:
+`0x800BCCC0` and `0x800BCCD8` are bound to Tooie-native recomp helpers
+in `src/game/boot_hw_stubs.cpp`. Nonblocking integer-domain / test notes
+only. Execution progresses past `gsworldDll` / `basetup` to `func_80013A7C`.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -40,8 +40,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-bcf28-binding-fix]] (**CURRENT** — BCF28 helper bindings fix implemented & validated)
-- [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+- [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] (**CURRENT** — verdict B; BCF28 fix accepted)
+- [[../../plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence; preserved)
+- [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis; preserved)
 - [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted; tracked-state blocker resolved)
 - [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
 - [[../../plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; behavioral CLASS A; finding resolved)
@@ -95,7 +96,7 @@ Evidência corrente:
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED** by [[../../plan/evidence/p08-bcf28-binding-fix]].
-  Residual: `func_80013A7C`.
+  Residual: `func_80013A7C` (next). BCF28 independently accepted (verdict B).
 
 
 ## Implementado / validado
@@ -117,14 +118,16 @@ Evidência corrente:
 - type-4 incomplete e warp não consumido (clean freeze);
 - `func_80026500` como PC do hang;
 - `func_800A907C → func_8001EE34` como driver do objeto (refutado);
-- `func_800BCF28` binding / null dereference (resolvido por [[../../plan/evidence/p08-bcf28-binding-fix]]).
+- `func_800BCF28` binding / null dereference (resolvido e aceito, verdict B:
+  [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]).
 
 ## Evidências P08
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-bcf28-binding-fix]] | **CURRENT:** BCF28 helper bindings fix implemented & validated |
-| [[../../plan/evidence/p08-bcf28-crash-diagnosis]] | root cause A diagnosis |
+| [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] | **CURRENT:** verdict B; BCF28 helper binding fix accepted |
+| [[../../plan/evidence/p08-bcf28-binding-fix]] | implementer binding-fix evidence (preserved) |
+| [[../../plan/evidence/p08-bcf28-crash-diagnosis]] | root cause A diagnosis (preserved) |
 | [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] | verdict B; PATCH 4 accepted; tracked-state blocker resolved |
 | [[../../plan/evidence/p08-preemption-patch4-independent-review]] | historical verdict C preserved; CLASS A behavior; finding resolved by clean-build review |
 | [[../../plan/evidence/p08-preemption-patch4-validation]] | implementer evidence; history preserved |
@@ -173,18 +176,18 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Independent review of `func_800BCF28` binding fix** ([[../../plan/evidence/p08-bcf28-binding-fix]]).
+1. **Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.**
+   Do not reopen the accepted BCF28 helper binding or PATCH 4.
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-4. Próximo blocker: `func_80013A7C` lookup failure (`0x00000000`).
-5. Então: gsattract ep1 / demo, depois input title/file-select.
+4. Então: gsattract ep1 / demo, depois input title/file-select.
 
 ## Gate de saída
 
 - [x] Abertura até Jiggy/type-4/warp; C2AB8 behavior CLASS A; clean tracked
   Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
-- [x] `func_800BCF28` binding fix implementado e validado.
+- [x] `func_800BCF28` binding fix implementado, validado e aceito (verdict B).
 - [~] RT64 intro OK; gameplay demo não comprovada.
 - [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
 - [ ] Entrada title/file select e rumble/hotplug.
@@ -193,6 +196,6 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Independent Grok 4.6 High review of the narrow `func_800BCF28` binding fix
-before diagnosing the next blocker (`func_80013A7C`).
+**NEXT:** Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.
+Do not reopen the accepted BCF28 helper binding or PATCH 4 / Hybrid F'.
 After demo: input and [[09-gameplay-parity-and-enhancements]].

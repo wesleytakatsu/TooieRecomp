@@ -13,9 +13,11 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28]
 ## Prioridade atual
 
 **P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is accepted and default ON. The
-`func_800BCF28` binding defect is **RESOLVED** by [[plan/evidence/p08-bcf28-binding-fix]]:
-`0x800BCCC0` and `0x800BCCD8` are bound to exact Tooie-native recomp helpers
-in `src/game/boot_hw_stubs.cpp`, removing them from `kLookupGapAddrs`.
+`func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
+[[plan/evidence/p08-bcf28-binding-fix-independent-review]]:
+`0x800BCCC0` and `0x800BCCD8` are bound to Tooie-native recomp helpers
+in `src/game/boot_hw_stubs.cpp`. Nonblocking integer-domain / test notes
+only. Implementer evidence: [[plan/evidence/p08-bcf28-binding-fix]].
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -28,9 +30,9 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**Independent Grok 4.6 High review of the narrow `func_800BCF28` binding fix**
-before diagnosing the next downstream blocker (`func_80013A7C`).
-Do not reopen Hybrid F' / PATCH 1–4. PATCH 4 stays ON.
+**Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.**
+Do not reopen the accepted BCF28 helper binding or Hybrid F' / PATCH 1–4.
+PATCH 4 stays ON.
 
 ## Estado do produto validado
 
@@ -40,8 +42,8 @@ Do not reopen Hybrid F' / PATCH 1–4. PATCH 4 stays ON.
 4. Attract request + type-4 complete + warp consumido OK.
 5. C2AB8 behavior and delivery resolved (clean-built same-binary CLASS A;
    clean tracked Clang build PASS; PATCH 4 accepted by verdict B).
-6. **`func_800BCF28` SIGSEGV RESOLVED** (Level A fix implemented and validated in
-   [[plan/evidence/p08-bcf28-binding-fix]]).
+6. **`func_800BCF28` SIGSEGV RESOLVED** and independently accepted (verdict B;
+   [[plan/evidence/p08-bcf28-binding-fix-independent-review]]).
 7. First gameplay demo ausente: novo blocker downstream em `func_80013A7C`
    (`Failed to find function at 0x00000000`).
 8. Title/file-select input diferido.
@@ -64,8 +66,9 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
 - `func_800A907C → func_8001EE34` as object driver (refutado)
 - **Freeze de C2AB8 como blocker terminal** — superado causalmente e agora
   **permanentemente** (PATCH 4 CLASS A)
-- **`func_800BCF28` SIGSEGV / `0x800BCCC0` gap stub** — RESOLVED by
-  [[plan/evidence/p08-bcf28-binding-fix]]
+- **`func_800BCF28` SIGSEGV / `0x800BCCC0` gap stub** — RESOLVED and
+  independently accepted (verdict B) by
+  [[plan/evidence/p08-bcf28-binding-fix-independent-review]]
 
 ## Current expected flow
 
@@ -85,11 +88,12 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-bcf28-binding-fix]] (**CURRENT** — BCF28 helper bindings fix)
-2. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
-3. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
-4. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
-5. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
-6. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
-7. [[plan/evidence/p08-session-handoff]]
-8. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (**CURRENT** — verdict B; BCF28 fix accepted)
+2. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
+3. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+4. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
+5. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
+6. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
+7. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
+8. [[plan/evidence/p08-session-handoff]]
+9. [[plans/BT/08-rt64-input-and-frontend]]

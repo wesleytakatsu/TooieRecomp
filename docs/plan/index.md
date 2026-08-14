@@ -5,7 +5,7 @@ status: active
 type: plan
 project: TooieRecomp
 platform: linux-x86_64
-updated: 2026-08-13
+updated: 2026-08-14
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); `func_800BCF28` SIGSEGV **root cause PROVEN (A)** — `lookup_gap_stub` masks real accessor `0x800BCCC0`/`0x800BCCD8` |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); `func_800BCF28` SIGSEGV **RESOLVED and accepted (verdict B)**; current blocker `func_80013A7C` |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (PATCH 4 landed; C2AB8 resolved; blocker func_800BCF28) |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (PATCH 4 + BCF28 accepted; blocker func_80013A7C) |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 

@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: intro para attract demo"
-description: "Estado autossuficiente após fix de binding de func_800BCF28: C2AB8 e BCF28 resolvidos; current first product divergence is func_80013A7C."
+description: "Estado autossuficiente após review independente do fix BCF28 (verdict B): C2AB8 e BCF28 aceitos; current first product divergence is func_80013A7C."
 status: evidence
 phase: P08
 updated: 2026-08-14
@@ -12,23 +12,26 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28]
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Base commit: `870bd840c776c5b8a4e1025e7d9eff73defe8e8e`.
-- Implementation commit containing [[p08-bcf28-binding-fix]].
+- Base commit: `0bb38cc84147701654552e1b714f4a8053e4f481`.
+- Binding-fix commit reviewed in [[p08-bcf28-binding-fix-independent-review]]
+  (verdict B). Implementation evidence remains [[p08-bcf28-binding-fix]].
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend. PATCH 4 is accepted and default ON. The downstream
-`func_800BCF28` binding defect is **RESOLVED** by [[p08-bcf28-binding-fix]]:
-`0x800BCCC0` and `0x800BCCD8` are bound to exact Tooie-native recomp helpers
-in `src/game/boot_hw_stubs.cpp`, removing them from `kLookupGapAddrs`.
-Title/file-select input continua diferido.
+P08 — RT64, input e frontend. PATCH 4 is accepted and default ON. The
+`func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
+[[p08-bcf28-binding-fix-independent-review]]: `0x800BCCC0` and `0x800BCCD8`
+are bound to Tooie-native recomp helpers in `src/game/boot_hw_stubs.cpp`.
+Nonblocking integer-domain / test notes only. Title/file-select input
+continua diferido.
 
 ## CURRENT_PRODUCT_STATE
 
-- **`func_800BCF28` SIGSEGV RESOLVED** (2026-08-14): exact Tooie-native helpers
-  bound at `0x800BCCC0` and `0x800BCCD8` in `src/game/boot_hw_stubs.cpp`.
-  `func_800BCF28`, `bakey_heldCount`, `bainput_func_80097B4C`, `basetup_entrypoint_2`,
-  and `gsworldDll_entrypoint_2` execute cleanly. See [[p08-bcf28-binding-fix]].
+- **`func_800BCF28` SIGSEGV RESOLVED and independently accepted (verdict B)**
+  (2026-08-14): Tooie-native helpers bound at `0x800BCCC0` and `0x800BCCD8`.
+  Independent run: `func_800BCF28` entered; `0x800BCCC0(a0=0x801D2560,a1=0)`
+  expected `v0=0x801D2584`; `basetup` / `gsworldDll` ep2 continue; old
+  `0x800BCF58` SIGSEGV absent. See [[p08-bcf28-binding-fix-independent-review]].
 - Intro visual completa (céu, logo, Jiggy).
 - Attract request correto; type-4 completa; warp consumido; mode-5 alcançado.
 - Hybrid F' startup behavior is independently **CLASS A** in the local
@@ -61,7 +64,7 @@ held the host execution token in a pure MIPS loop:
 ```text
 C2AB8_ROOT_CAUSE_PROVEN:  YES (PATCH 4, CLASS A)
 BCF28_ROOT_CAUSE_PROVEN:  YES (Level A)
-BCF28_FIX_STATUS:         IMPLEMENTED + VALIDATED (TOOIE_NATIVE)
+BCF28_FIX_STATUS:         ACCEPTED (verdict B; TOOIE_NATIVE)
 ```
 
 ## CURRENT_FIRST_DIVERGENCE
@@ -98,22 +101,24 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-**Independent Grok 4.6 High review of this narrow fix before diagnosing the next blocker.**
+**Diagnose `func_80013A7C` / `Failed to find function at 0x00000000`.**
+Do not reopen the accepted BCF28 helper binding or PATCH 4 / Hybrid F'.
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-bcf28-binding-fix]] — **CURRENT:** BCF28 helper bindings implemented & validated
-1. [[p08-bcf28-crash-diagnosis]] — root cause diagnosis (level A)
-2. [[p08-preemption-patch4-clean-build-independent-review]] — verdict B; delivery accepted
-3. [[p08-preemption-patch4-validation]] — implementer evidence, preserved
+0. [[p08-bcf28-binding-fix-independent-review]] — **CURRENT:** verdict B; BCF28 fix accepted
+1. [[p08-bcf28-binding-fix]] — implementer binding-fix evidence (preserved)
+2. [[p08-bcf28-crash-diagnosis]] — root cause diagnosis (level A, preserved)
+3. [[p08-preemption-patch4-clean-build-independent-review]] — verdict B; PATCH 4 accepted
 4. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (src/game/boot_hw_stubs.cpp, tests/bcf28_helpers_test.cpp, CMakeLists.txt)
+CODE_CHANGED             = NO (this checkpoint is the independent review)
 RUNTIME_CODE_CHANGED     = NO
 GENERATOR_CODE_CHANGED   = NO
 PATCH_CODE_CHANGED       = NO
 RECOMPILEDFUNCS          = NOT EDITED (untouched)
+BCF28_REVIEW_VERDICT     = B
 ```
