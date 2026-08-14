@@ -70,13 +70,16 @@ T07). Detalhe: [[07-rsp-and-audio]].
 
 ### Nota P08 (2026-08-14)
 
-RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido; mode-5
-alcançado. PATCH 4 behavior is independently **CLASS A**. Verdict C
-preserved; the tracked-state finding is resolved by independent verdict B,
-and PATCH 4 is accepted. `func_800BCF28` binding fix **ACCEPTED (verdict B)**.
-`func_80013A7C` lookup-zero **RESOLVED** (Tooie-native core1 RA wrappers).
-Input title/file-select diferido.
+RT64/Vulkan: intro/Jiggy OK; type-4 completa e warp consumido; **visible
+attract/gameplay demo reproduced** (mode-5, map 335). PATCH 4 behavior is
+independently **CLASS A**. Verdict C preserved; the tracked-state finding
+is resolved by independent verdict B, and PATCH 4 is accepted.
+`func_800BCF28` binding fix **ACCEPTED (verdict B)**. `func_80013A7C`
+lookup-zero **RESOLVED**. First fidelity gap: character/camera transform
+(Level C). Historical 150s DIAG “no demo” run is preserved. Input
+title/file-select diferido.
 Evidência:
+[[../../plan/evidence/p08-visible-demo-movement-diagnosis]],
 [[../../plan/evidence/p08-core1-ra-wrapper-fix]],
 [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]],
 [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]],

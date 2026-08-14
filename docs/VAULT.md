@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — Estado global corrente do port, com prioridade P08 no handoff intro para attract demo.
+- [[HANDOFF]] — Handoff — TooieRecomp — Estado global corrente do port: P08 visible attract/gameplay demo reached; first fidelity gap is character/camera transform.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
@@ -12,6 +12,7 @@
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
+- [[plan/evidence/p08-visible-demo-movement-diagnosis]] — P08 — visible demo movement diagnosis — Visible attract/gameplay demo reproduced after the RA-wrapper fix; first fidelity gap is character/camera transform (Level C). Historical 150s DIAG “no demo” run is preserved.
 - [[plan/evidence/p08-core1-ra-wrapper-fix]] — P08 — core1 RA wrapper fix — Tooie-native strong-symbol overrides for 0x800137D4 / 0x80013A5C / 0x80013A7C; old LOOKUP_FUNC(0) resolved.
 - [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] — P08 — func_80013A7C lookup-zero diagnosis — Proven root cause (Level A): leaf wrapper saves RA in $a3, but direct host calls do not write ctx->r31, causing LOOKUP_FUNC(0). Fix implemented.
 - [[plan/evidence/p08-bcf28-binding-fix-independent-review]] — P08 — func_800BCF28 helper binding fix independent review — Verdict B: native 0x800BCCC0/0x800BCCD8 bindings accepted; old SIGSEGV resolved; next blocker func_80013A7C (not diagnosed).
@@ -32,7 +33,7 @@
 - [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — diagnóstico: relocation de data de overlay perdida (chcollballcontrol) — Prova que o construtor recompilado devolvia 0x80804FA0 (link-time) porque o pipeline de metadados truncava nomes de seção; relocs existiam no ELF. Fix na camada generator/metadata; ActorInfo[0x38] == 0x80107C2C.
 - [[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] — P08 — corrigir binding de R_MIPS_26 intra-overlay no GENERATOR — Fix estrutural no N64Recomp: jal same-section em seções relocatable agora resolve para chamada direta a C, mesmo com use_lookup_for_all_function_calls=true. Elimina a colisão de base vram 0x80800000 (chintrochar→gsworldDll). Scheduler preservado via restrição a relocatable. Validado 3/3 smokes + 140s run.
 - [[plan/evidence/p08-runtime-frontend-smoke]] — BT P08 — runtime, launcher e música — Evidência do desbloqueio DP/VI e do ciclo de música do launcher.
-- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: INTRO → ATTRACT DEMO — PATCH 4 and BCF28 accepted; 80013A7C lookup-zero resolved.
+- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: INTRO → ATTRACT DEMO — Visible demo reproduced; movement/orientation Level C; RA wrappers / BCF28 / PATCH 4 remain resolved.
 - [[plan/evidence/p08-slot7-object-lifecycle-arbitration]] — P08 — slot7 table[2] object lifecycle arbitration (Grok) — Arbitragem Gemini×DeepSeek: creator 20790, clearer 205D0, countdown +0x34, C2AB8 progress A|C; origem UNKNOWN; ROOT_CAUSE_PROVEN=NO.
 - [[plan/evidence/p08-guest-preemption-runtime-audit]] — P08 — guest preemption & runtime scheduler structural audit — Auditoria estrutural do gap N64 (interrupt preemption) vs N64ModernRuntime (cooperative token único).
 - [[plan/evidence/p08-guest-preemption-causal-validation]] — P08 — guest preemption causal validation (clean experiment, class A) — Experimento limpo reversível: yield_self_1ms em func_800C2AB8 → AUDIO roda, func_800205D0 limpa table[2].word0, C2AB8 retorna, attract progride (até SIGSEGV downstream novo em func_800BCF28). Gap de preempção provado causalmente.

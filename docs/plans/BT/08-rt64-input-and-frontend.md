@@ -21,13 +21,15 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 ## Estado corrente
 
 **P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
-first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
-PATCH 4 is accepted. The `func_800BCF28` binding fix is **ACCEPTED
-(verdict B)** by [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]].
-The `func_80013A7C` lookup-zero is **RESOLVED** by Tooie-native
-strong-symbol overrides of the proven core1 RA-wrapper cluster
-([[../../plan/evidence/p08-core1-ra-wrapper-fix]]). Next first signature
-is a non-fatal post-80013A7C opening continuation; not diagnosed.
+**visible attract/gameplay demo reproduced** (mode-5, map 335 Wooded
+Hollow). Hybrid F' PATCH 4 is independently CLASS A. PATCH 4 is accepted.
+The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
+[[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]. The
+`func_80013A7C` lookup-zero is **RESOLVED**
+([[../../plan/evidence/p08-core1-ra-wrapper-fix]]). First fidelity gap is
+character/camera transform (Level C;
+[[../../plan/evidence/p08-visible-demo-movement-diagnosis]]). Historical
+150s `TOOIE_DIAG=1` run that did not observe the demo is preserved.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -41,7 +43,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-core1-ra-wrapper-fix]] (**CURRENT** — core1 RA-wrapper fix)
+- [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] (**CURRENT** — visible demo + movement)
+- [[../../plan/evidence/p08-core1-ra-wrapper-fix]] (core1 RA-wrapper fix; resolved)
 - [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
 - [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
 - [[../../plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence; preserved)
@@ -94,12 +97,13 @@ Evidência corrente:
 - [x] `P08-T06` Esconder launcher no auto-start e título Tooie.
 - [ ] `P08-T07` Janela, fullscreen, foco, multi-monitor e escalas.
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
-- [~] `P08-T09` Evidência visual: intro/Jiggy OK; first demo ausente.
+- [~] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible**
+  (movement/orientation still wrong).
 - [ ] `P08-T10` Input title/file select (diferido).
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
-  Residual: post-`80013A7C` continuation (not diagnosed).
+  Residual: visible demo movement/orientation (Level C).
 
 
 ## Implementado / validado
@@ -130,7 +134,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-core1-ra-wrapper-fix]] | **CURRENT:** core1 RA-wrapper native fix |
+| [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] | **CURRENT:** visible demo reproduced; movement Level C |
+| [[../../plan/evidence/p08-core1-ra-wrapper-fix]] | core1 RA-wrapper native fix (resolved) |
 | [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] | Level A diagnosis; resolved by the fix |
 | [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] | verdict B; BCF28 helper binding fix accepted |
 | [[../../plan/evidence/p08-bcf28-binding-fix]] | implementer binding-fix evidence (preserved) |

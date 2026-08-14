@@ -1,11 +1,11 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port, com prioridade P08 no handoff intro para attract demo."
+description: "Estado global corrente do port: P08 visible attract/gameplay demo reached; first fidelity gap is character/camera transform."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-14
-tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c]
+tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, movement]
 ---
 
 # Handoff — TooieRecomp
@@ -14,11 +14,16 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 8001
 
 **P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is accepted and default ON. The
 `func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
-`func_80013A7C` lookup-zero is **RESOLVED** by Tooie-native strong-symbol
-overrides of the proven core1 RA-wrapper cluster
-([[plan/evidence/p08-core1-ra-wrapper-fix]]). Next first signature after
-that crossing is a non-fatal opening continuation (`mode=3 / map=0 / warp=0`);
-not diagnosed.
+`func_80013A7C` lookup-zero is **RESOLVED**
+([[plan/evidence/p08-core1-ra-wrapper-fix]]). **Visible attract / gameplay
+demo is reproduced** (mode-5, map 335 Wooded Hollow). First fidelity
+divergence is character/camera transform (Level C;
+[[plan/evidence/p08-visible-demo-movement-diagnosis]]).
+
+Historical 150s `TOOIE_DIAG=1` implementation run on `5c03c65` still
+recorded `VISIBLE_ATTRACT_DEMO: NO` / `mode=3 map=0`. That result is
+preserved; later no-DIAG window captures and a movement probe reached
+PRESS START / mode-5.
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -31,10 +36,11 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**Independent Gemini 3.7 Flash HIGH review of the narrow core1 RA-wrapper
-fix** before diagnosing the next blocker.
-Do not reopen the accepted BCF28 helper binding or Hybrid F' / PATCH 1–4.
-PATCH 4 stays ON.
+Dump Banjo and first Jinjo `Actor.rotation` + camera for the first 8 s of
+Wooded Hollow mode-5, then name the exact writer if those rotations are
+already wrong in simulation.
+Do not reopen BCF28, Hybrid F' / PATCH 1–4, or the core1 RA wrappers.
+PATCH 4 stays ON. No gameplay fix in this checkpoint.
 
 ## Estado do produto validado
 
@@ -46,9 +52,11 @@ PATCH 4 stays ON.
    clean tracked Clang build PASS; PATCH 4 accepted by verdict B).
 6. **`func_800BCF28` SIGSEGV RESOLVED** and independently accepted (verdict B;
    [[plan/evidence/p08-bcf28-binding-fix-independent-review]]).
-7. First gameplay demo ausente: `func_80013A7C` lookup-zero **RESOLVED**
-   ([[plan/evidence/p08-core1-ra-wrapper-fix]]). Next first signature is a
-   non-fatal post-80013A7C opening continuation; not diagnosed.
+7. First gameplay demo **VISIBLE** after `func_80013A7C` lookup-zero
+   **RESOLVED** ([[plan/evidence/p08-core1-ra-wrapper-fix]],
+   [[plan/evidence/p08-visible-demo-movement-diagnosis]]). Character
+   movement/orientation is the first fidelity gap (Level C). Historical
+   150s DIAG run that did not observe the demo is preserved.
 8. Title/file-select input diferido.
 
 ## Arquitetura e regras
@@ -85,8 +93,10 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 Observed: C2AB8 crossed; `func_800BCF28` completes; `func_80013A7C`
 enters at the native strong symbol and the old `LOOKUP_FUNC(0)` does not
-occur. 150s clean run continues (opening `mode=3 / map=0`); attract/demo
-not observed.
+occur. Historical 150s `TOOIE_DIAG=1` run stayed on the opening probe at
+`mode=3 / map=0` (preserved). Later no-DIAG runs reach visible mode-5
+Wooded Hollow / PRESS START. Movement is wrong (Jinjo supine, camera
+inside meshes); Banjo XZ walk is plausible.
 
 ## Exonerated (current)
 
@@ -96,14 +106,15 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-core1-ra-wrapper-fix]] (**CURRENT** — RA-wrapper fix)
-2. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
-3. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
-4. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
-5. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
-6. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
-7. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
-8. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
-9. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
-10. [[plan/evidence/p08-session-handoff]]
-11. [[plans/BT/08-rt64-input-and-frontend]]
+1. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (**CURRENT** — visible demo + movement)
+2. [[plan/evidence/p08-core1-ra-wrapper-fix]] (RA-wrapper fix; resolved)
+3. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
+4. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
+5. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
+6. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+7. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
+8. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
+9. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
+10. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
+11. [[plan/evidence/p08-session-handoff]]
+12. [[plans/BT/08-rt64-input-and-frontend]]

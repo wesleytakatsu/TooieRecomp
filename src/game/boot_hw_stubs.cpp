@@ -153,23 +153,31 @@ extern "C" void boot___osEPiRawWriteIo(uint8_t* rdram, recomp_context* ctx) {
 // sine table; native libm is equivalent at the game-facing precision.
 static void tooie_wrap_degrees(uint8_t* rdram, recomp_context* ctx) {
     (void)rdram;
-    float result = std::fmod(ctx->f12.fl, 360.0f);
+    const float input = ctx->f12.fl;
+    float result = std::fmod(input, 360.0f);
     if (result < 0.0f) {
         result += 360.0f;
     }
     ctx->f0.fl = result;
+    tooie_diag::note_math("wrap_deg", input, result);
 }
 
 static void tooie_cos_degrees(uint8_t* rdram, recomp_context* ctx) {
     (void)rdram;
     constexpr float kDegreesToRadians = 0.01745329251994329577f;
-    ctx->f0.fl = std::cos(ctx->f12.fl * kDegreesToRadians);
+    const float input = ctx->f12.fl;
+    const float result = std::cos(input * kDegreesToRadians);
+    ctx->f0.fl = result;
+    tooie_diag::note_math("cos_deg", input, result);
 }
 
 static void tooie_sin_degrees(uint8_t* rdram, recomp_context* ctx) {
     (void)rdram;
     constexpr float kDegreesToRadians = 0.01745329251994329577f;
-    ctx->f0.fl = std::sin(ctx->f12.fl * kDegreesToRadians);
+    const float input = ctx->f12.fl;
+    const float result = std::sin(input * kDegreesToRadians);
+    ctx->f0.fl = result;
+    tooie_diag::note_math("sin_deg", input, result);
 }
 
 // Core2 unnamed button data accessor (__get_button_data_ptr(arg0, arg1)).
@@ -955,12 +963,14 @@ extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx) {
 // Keep the original constants and approximation helper, but return through the
 // host call normally instead of replaying the synthetic MIPS return jump.
 extern "C" void func_800137F4(uint8_t* rdram, recomp_context* ctx) {
+    const float input = ctx->f12.fl;
     ctx->r1 = S32(0x8004 << 16);
     ctx->f14.u32l = MEM_W(ctx->r1, 0x16D4);
     ctx->r1 = S32(0x43B4 << 16);
     ctx->f16.u32l = ctx->r1;
     func_80013818(rdram, ctx);
     ctx->f0.fl = ctx->f2.fl;
+    tooie_diag::note_math("800137F4", input, ctx->f0.fl);
 }
 
 // Companion core1 RA wrappers with the same non-standard return pattern.
@@ -971,32 +981,38 @@ extern "C" void func_800137F4(uint8_t* rdram, recomp_context* ctx) {
 //
 // 0x800137D4: move a1, ra; jal func_80013818; jr a1 / mov.s $f0, $f2
 extern "C" void func_800137D4(uint8_t* rdram, recomp_context* ctx) {
+    const float input = ctx->f12.fl;
     ctx->r1 = S32(0x8004 << 16);
     ctx->f14.u32l = MEM_W(ctx->r1, 0x16CC);
     ctx->f16.u32l = MEM_W(ctx->r1, 0x16D0);
     func_80013818(rdram, ctx);
     ctx->f0.fl = ctx->f2.fl;
+    tooie_diag::note_math("800137D4", input, ctx->f0.fl);
 }
 
 // 0x80013A5C: move a3, ra; jal func_80013ABC (delay: lwc1 $f14);
 //             lwc1 $f2 AFTER the helper (which clobbers $f2); jr a3 / sub.s
 extern "C" void func_80013A5C(uint8_t* rdram, recomp_context* ctx) {
+    const float input = ctx->f12.fl;
     ctx->r1 = S32(0x8004 << 16);
     ctx->f14.u32l = MEM_W(ctx->r1, 0x1700);
     func_80013ABC(rdram, ctx);
     ctx->r1 = S32(0x8004 << 16);
     ctx->f2.u32l = MEM_W(ctx->r1, 0x1704);
     ctx->f0.fl = ctx->f2.fl - ctx->f0.fl;
+    tooie_diag::note_math("80013A5C", input, ctx->f0.fl);
 }
 
 // 0x80013A7C: move a3, ra; jal func_80013ABC; mtc1 90.0, $f2; jr a3 / sub.s
 extern "C" void func_80013A7C(uint8_t* rdram, recomp_context* ctx) {
+    const float input = ctx->f12.fl;
     ctx->r1 = S32(0x3E34 << 16);
     ctx->f14.u32l = ctx->r1;
     func_80013ABC(rdram, ctx);
     ctx->r1 = S32(0x42B4 << 16);
     ctx->f2.u32l = ctx->r1;
     ctx->f0.fl = ctx->f2.fl - ctx->f0.fl;
+    tooie_diag::note_math("80013A7C", input, ctx->f0.fl);
 }
 
 // Submit one unit of background TIDY work. The original uses a blocking send

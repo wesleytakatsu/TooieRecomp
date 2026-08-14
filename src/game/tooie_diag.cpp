@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -18,7 +19,9 @@ void report_now(const char* reason);
 namespace {
 
 std::atomic<bool> g_enabled{false};
+std::atomic<bool> g_movement_enabled{false};
 std::atomic<bool> g_inited{false};
+std::atomic<uint64_t> g_gfx_ticks{0};
 std::atomic<uint64_t> g_syscall_dispatch{0};
 std::atomic<uint64_t> g_syscall_return{0};
 std::atomic<uint64_t> g_sched_ack{0};
@@ -52,6 +55,9 @@ void ensure_init() {
     }
     const char* e = std::getenv("TOOIE_DIAG");
     g_enabled.store(e != nullptr && e[0] != '\0' && e[0] != '0', std::memory_order_relaxed);
+    const char* mv = std::getenv("TOOIE_DIAG_MOVEMENT");
+    g_movement_enabled.store(mv != nullptr && mv[0] != '\0' && mv[0] != '0',
+                             std::memory_order_relaxed);
     const char* iv = std::getenv("TOOIE_DIAG_INTERVAL_MS");
     if (iv && iv[0]) {
         int v = std::atoi(iv);
@@ -78,6 +84,12 @@ void ensure_init() {
             }
         }).detach();
     }
+    if (g_movement_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[tooie-move] enabled (independent of TOOIE_DIAG) "
+                     "probe=D_80127630/D_80127760/D_80135470 player=D_80135490[0]\n");
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -103,6 +115,64 @@ void format_stack(char* buf, size_t buflen) {
 bool enabled() {
     ensure_init();
     return g_enabled.load(std::memory_order_relaxed);
+}
+
+bool movement_enabled() {
+    ensure_init();
+    return g_movement_enabled.load(std::memory_order_relaxed);
+}
+
+uint64_t gfx_ticks() {
+    return g_gfx_ticks.load(std::memory_order_relaxed);
+}
+
+void note_math(const char* name, float input, float output) {
+    if (!movement_enabled()) {
+        return;
+    }
+    struct Slot {
+        uint32_t count;
+        float last_out;
+        bool have_last;
+    };
+    static Slot slots[8]{};
+    static const char* names[8]{};
+    int idx = -1;
+    for (int i = 0; i < 8; ++i) {
+        if (names[i] == name || (names[i] != nullptr && name != nullptr &&
+                                 std::strcmp(names[i], name) == 0)) {
+            idx = i;
+            break;
+        }
+        if (names[i] == nullptr) {
+            names[i] = name;
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0) {
+        return;
+    }
+    Slot& s = slots[idx];
+    const uint32_t n = ++s.count;
+    const bool bad = !std::isfinite(input) || !std::isfinite(output) ||
+                     std::fabs(output) > 1.0e6f;
+    const bool jump = s.have_last && std::isfinite(s.last_out) &&
+                      std::isfinite(output) && std::fabs(output - s.last_out) > 180.0f;
+    const bool sample = (n <= 16u) || ((n & 63u) == 0u) || bad || jump;
+    s.last_out = output;
+    s.have_last = true;
+    if (!sample) {
+        return;
+    }
+    std::fprintf(stderr,
+                 "[tooie-move] math name=%s n=%u in=%g out=%g%s%s gfx=%llu\n",
+                 name ? name : "?", n, static_cast<double>(input),
+                 static_cast<double>(output),
+                 bad ? " BAD" : "",
+                 jump ? " JUMP" : "",
+                 static_cast<unsigned long long>(g_gfx_ticks.load()));
+    std::fflush(stderr);
 }
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep) {
@@ -221,6 +291,9 @@ void report_now(const char* reason) {
 
 void tick() {
     ensure_init();
+    if (g_movement_enabled.load(std::memory_order_relaxed)) {
+        g_gfx_ticks.fetch_add(1, std::memory_order_relaxed);
+    }
     if (!enabled()) {
         return;
     }

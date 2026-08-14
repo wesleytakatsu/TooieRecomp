@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <chrono>
 #include <algorithm>
 #include <array>
@@ -326,9 +327,109 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     };
     dump_opening("enter");
 
+    // TOOIE_DIAG_MOVEMENT: independent of TOOIE_DIAG. Dumps the opening
+    // probe fields plus player-0 simulation pose so visible-demo movement
+    // can be classified without the older overlay-timed diagnostic path.
+    auto dump_movement = [&](const char* tag) {
+        if (!tooie_diag::movement_enabled()) {
+            return;
+        }
+        static auto s_last = std::chrono::steady_clock::time_point{};
+        static int s_last_mode = 0x7fffffff;
+        static int s_last_map = 0x7fffffff;
+        const auto now = std::chrono::steady_clock::now();
+        const gpr mode = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
+        const gpr attr = static_cast<gpr>(static_cast<int32_t>(0x80127760u));
+        const gpr stg = static_cast<gpr>(static_cast<int32_t>(0x80135470u));
+        const int mode_v = int(MEM_H(0x2, mode));
+        const int map_v = int(MEM_H(0x10, mode));
+        const bool changed = (mode_v != s_last_mode) || (map_v != s_last_map);
+        const bool due = (s_last.time_since_epoch().count() == 0) ||
+                         (now - s_last >= std::chrono::milliseconds(200));
+        // Always sample gsattract (731) and player overlays more densely.
+        const bool hot = (overlay_index == 731u || overlay_index == 419u);
+        if (!changed && !due && !hot) {
+            return;
+        }
+        if (!changed && hot &&
+            (now - s_last < std::chrono::milliseconds(80))) {
+            return;
+        }
+        s_last = now;
+        s_last_mode = mode_v;
+        s_last_map = map_v;
+
+        auto bits_f32 = [](uint32_t bits) {
+            float f = 0.0f;
+            std::memcpy(&f, &bits, sizeof(f));
+            return f;
+        };
+        auto guest_ok = [](uint32_t addr) {
+            return ((addr & 0x1FFFFFFFu) < 0x00800000u) && ((addr & 3u) == 0u) &&
+                   (addr >= 0x80000000u);
+        };
+
+        const uint32_t warp = uint32_t(MEM_BU(0x12, mode));
+        const int entr = int(MEM_B(0x13, mode));
+        const uint32_t a0 = uint32_t(MEM_BU(0x0, attr));
+        const uint32_t a1 = uint32_t(MEM_BU(0x1, attr));
+        const uint32_t a2 = uint32_t(MEM_BU(0x2, attr));
+        const uint32_t a3 = uint32_t(MEM_BU(0x3, attr));
+        const uint32_t stage = uint32_t(MEM_BU(0x0, stg));
+        const uint32_t sub = uint32_t(MEM_BU(0x1, stg));
+        const uint32_t timer_bits = uint32_t(MEM_W(0x4, stg));
+
+        float px = 0, py = 0, pz = 0;
+        float yaw = 0, yaw_ideal = 0;
+        float sx = 0, sy = 0, sang = 0, sdist = 0;
+        uint32_t ps_addr = 0, pos_addr = 0, yaw_addr = 0, stick_addr = 0;
+        const gpr plist = static_cast<gpr>(static_cast<int32_t>(0x80135490u));
+        ps_addr = uint32_t(MEM_W(0, plist));
+        if (guest_ok(ps_addr)) {
+            const gpr ps = static_cast<gpr>(static_cast<int32_t>(ps_addr));
+            pos_addr = uint32_t(MEM_W(0xE4, ps));
+            yaw_addr = uint32_t(MEM_W(0xF8, ps));
+            stick_addr = uint32_t(MEM_W(0x128, ps));
+            if (guest_ok(pos_addr)) {
+                const gpr pos = static_cast<gpr>(static_cast<int32_t>(pos_addr));
+                px = bits_f32(uint32_t(MEM_W(0x0, pos)));
+                py = bits_f32(uint32_t(MEM_W(0x4, pos)));
+                pz = bits_f32(uint32_t(MEM_W(0x8, pos)));
+            }
+            if (guest_ok(yaw_addr)) {
+                const gpr yw = static_cast<gpr>(static_cast<int32_t>(yaw_addr));
+                yaw = bits_f32(uint32_t(MEM_W(0x0, yw)));
+                yaw_ideal = bits_f32(uint32_t(MEM_W(0x4, yw)));
+            }
+            if (guest_ok(stick_addr)) {
+                const gpr st = static_cast<gpr>(static_cast<int32_t>(stick_addr));
+                sx = bits_f32(uint32_t(MEM_W(0x54, st)));
+                sy = bits_f32(uint32_t(MEM_W(0x58, st)));
+                sang = bits_f32(uint32_t(MEM_W(0x5C, st)));
+                sdist = bits_f32(uint32_t(MEM_W(0x60, st)));
+            }
+        }
+
+        std::fprintf(stderr,
+                     "[tooie-move] %s ovl=%u ep=%u gfx=%llu "
+                     "mode=%d warp=%u map=%d entr=%d "
+                     "attr=%u/%u/%u/%u stage=%u sub=%u t=%g "
+                     "ps=%08x pos=%08x xyz=%.3f,%.3f,%.3f "
+                     "yaw=%.2f ideal=%.2f stick=%.3f,%.3f ang=%.2f dist=%.3f\n",
+                     tag, overlay_index, entry_index,
+                     static_cast<unsigned long long>(tooie_diag::gfx_ticks()),
+                     mode_v, warp, map_v, entr,
+                     a0, a1, a2, a3, stage, sub, bits_f32(timer_bits),
+                     ps_addr, pos_addr, px, py, pz,
+                     yaw, yaw_ideal, sx, sy, sang, sdist);
+        std::fflush(stderr);
+    };
+    dump_movement("enter");
+
     func(rdram, ctx);
 
     dump_opening("leave");
+    dump_movement("leave");
 
     if (time_call) {
         const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
