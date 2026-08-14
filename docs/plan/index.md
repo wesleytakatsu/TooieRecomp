@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); current blocker SIGSEGV `func_800BCF28` |
+| RT64/input P08 | **active (intro → attract blocker)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); `func_800BCF28` SIGSEGV **root cause PROVEN (A)** — `lookup_gap_stub` masks real accessor `0x800BCCC0`/`0x800BCCD8` |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -160,6 +160,8 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
+- [[evidence/p08-bcf28-crash-diagnosis]] — **CURRENT:** `func_800BCF28` SIGSEGV
+  root cause PROVEN (A); `get_function(0x800BCCC0)` = `lookup_gap_stub` (v0=0)
 - [[evidence/p08-preemption-patch4-clean-build-independent-review]] — **CURRENT:**
   verdict B; tracked-state blocker resolved; clean regen/build and clean-built
   same-binary CLASS A; PATCH 4 accepted.

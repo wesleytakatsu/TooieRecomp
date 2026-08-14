@@ -25,7 +25,12 @@ first attract demo ausente. Hybrid F' PATCH 4 is independently CLASS A.
 Historical verdict **C** is preserved; its tracked-state delivery finding is
 resolved by [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]]
 (verdict B). PATCH 4 is accepted. The downstream SIGSEGV in
-`func_800BCF28` is now the first product divergence.
+`func_800BCF28` is now the first product divergence, and its **root cause is
+PROVEN (level A)**: the JAL target `0x800BCCC0`/`0x800BCCD8` is a real unnamed
+element accessor with no generated function; `lookup_gap_stub` in
+`src/game/boot_hw_stubs.cpp` returns `v0=0`, so `func_800BCF28` dereferences a
+null base. See
+[[../../plan/evidence/p08-bcf28-crash-diagnosis]]. Fix not implemented.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -39,6 +44,7 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
+- [[../../plan/evidence/p08-bcf28-crash-diagnosis]] (**CURRENT** — root cause A; fix pending)
 - [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (**CURRENT** — verdict B; PATCH 4 accepted; tracked-state blocker resolved)
 - [[../../plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
 - [[../../plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; behavioral CLASS A; finding resolved)
@@ -166,8 +172,10 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **SIGSEGV `func_800BCF28`** — current first product divergence after
-   PATCH 4 acceptance. No diagnosis performed by the clean-build review.
+1. **SIGSEGV `func_800BCF28`** — root cause **PROVEN (A)**: no-op
+   `lookup_gap_stub` masks real element accessor `0x800BCCC0`/`0x800BCCD8`
+   (v0=0 → null deref). Fix not implemented. See
+   [[../../plan/evidence/p08-bcf28-crash-diagnosis]].
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
@@ -185,7 +193,7 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** investigate only `func_800BCF28` as the new first product
-divergence. Hybrid F' does not need reopening: clean-built same-binary ON/OFF
-behavior is CLASS A and PATCH 4 is accepted. After demo: input and
-[[09-gameplay-parity-and-enhancements]].
+**NEXT:** implement only the proven minimal `func_800BCF28` fix (restore the
+two accessors `0x800BCCC0`/`0x800BCCD8`). Hybrid F' does not need reopening:
+clean-built same-binary ON/OFF behavior is CLASS A and PATCH 4 is accepted.
+After demo: input and [[09-gameplay-parity-and-enhancements]].

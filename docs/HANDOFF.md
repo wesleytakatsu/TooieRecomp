@@ -42,12 +42,12 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-**Investigate `func_800BCF28` as the new first product divergence.** PATCH 4
-acceptance evidence:
-[[plan/evidence/p08-preemption-patch4-clean-build-independent-review]].
-
-Não forçar clear; não BaKey; não reabrir Scheduler C / Hybrid F'; não editar
-`RecompiledFuncs`; não resetar o dirty do runtime.
+**Implement the proven minimal `func_800BCF28` fix.** Root cause level A: the
+JAL target `0x800BCCC0` / `0x800BCCD8` is a real unnamed element accessor with
+no generated function; `lookup_gap_stub` in `src/game/boot_hw_stubs.cpp`
+returns `v0=0`, so `func_800BCF28` dereferences a null base → SIGSEGV at
+`rdram+0x8000000c`. Diagnosis: [[plan/evidence/p08-bcf28-crash-diagnosis]].
+Do not reopen Hybrid F' / PATCH 1–4. PATCH 4 stays ON.
 
 ## Estado do produto validado
 
@@ -57,8 +57,10 @@ Não forçar clear; não BaKey; não reabrir Scheduler C / Hybrid F'; não edita
 4. Attract request + type-4 complete + warp consumido OK.
 5. C2AB8 behavior and delivery resolved (clean-built same-binary CLASS A;
    clean tracked Clang build PASS; PATCH 4 accepted by verdict B).
-6. First gameplay demo **ausente**: attract/world init reaches **SIGSEGV** in
-   `func_800BCF28`; cause not investigated in this review.
+6. **First gameplay demo ausente: `func_800BCF28` SIGSEGV — root cause PROVEN
+   (A): `lookup_gap_stub` masks real accessor `0x800BCCC0`/`0x800BCCD8`
+   (v0=0 → null deref).** [[plan/evidence/p08-bcf28-crash-diagnosis]].
+   Fix not implemented.
 7. Title/file-select input diferido.
 
 ## Arquitetura e regras
@@ -78,7 +80,10 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
 - `func_80026500` as hang PC
 - `func_800A907C → func_8001EE34` as object driver (refutado)
 - **Freeze de C2AB8 como blocker terminal** — superado causalmente e agora
-  **permanentemente** (PATCH 4 CLASS A; novo SIGSEGV em `func_800BCF28`)
+  **permanentemente** (PATCH 4 CLASS A; novo SIGSEGV em `func_800BCF28`,
+  **root cause PROVEN** — ver NEXT)
+- `func_800BCF28` SIGSEGV como divergence não-diagnosticada — **diagnosed**
+  (root cause A; fix pendente)
 
 ## Current expected flow
 
@@ -99,7 +104,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-1. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (**CURRENT** — verdict B; PATCH 4 accepted)
+1. [[plan/evidence/p08-bcf28-crash-diagnosis]] (**CURRENT** — root cause A)
+2. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
 2. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
 3. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
 4. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)

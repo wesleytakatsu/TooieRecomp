@@ -26,6 +26,12 @@ product divergence, `func_800BCF28`. Title/file-select input continua diferido.
 
 ## CURRENT_PRODUCT_STATE
 
+- **`func_800BCF28` SIGSEGV root cause PROVEN** (level A, 2026-08-14): the
+  JAL to `0x800BCCC0` / `0x800BCCD8` resolves to the no-op `lookup_gap_stub`
+  (`v0=0`) registered in `src/game/boot_hw_stubs.cpp` instead of the real
+  element accessor. `func_800BCF28` dereferences `v0 + (index<<2)` as a
+  pointer → `rdram+0x8000000c` → SIGSEGV. See
+  [[p08-bcf28-crash-diagnosis]]. Fix not implemented (diagnosis only).
 - Intro visual completa (céu, logo, Jiggy).
 - Attract request correto; type-4 completa; warp consumido; mode-5 alcançado.
 - Hybrid F' startup behavior is independently **CLASS A** in the local
@@ -41,8 +47,12 @@ product divergence, `func_800BCF28`. Title/file-select input continua diferido.
 
 ## CURRENT_BLOCKER
 
-**SIGSEGV in `func_800BCF28`** after C2AB8 returns and attract/world init
-progresses.
+**SIGSEGV in `func_800BCF28`** — ROOT CAUSE PROVEN (level A): the JAL target
+`0x800BCCC0` (and `0x800BCCD8`) is a real unnamed element accessor with no
+generated function, so `get_function` resolves it to the no-op
+`lookup_gap_stub<0x800BCCC0>` (v0=0) in `boot_hw_stubs.cpp`. `func_800BCF28`
+dereferences that 0 as a pointer → SIGSEGV at `rdram+0x8000000c`. Fix not
+implemented.
 
 ```text
 #0 func_800BCF28
@@ -54,7 +64,8 @@ progresses.
 #14 func_800A76F4
 ```
 
-Matches the 2026-08-12 temporary-yield observation. Not diagnosed in PATCH 4.
+Matches the 2026-08-12 temporary-yield observation. Not a scheduler or
+PATCH4 regression.
 
 ## PROVEN_ROOT_MECHANISM (old C2AB8)
 
@@ -87,8 +98,9 @@ pending condition is PROVEN.
 
 ## CURRENT_FIRST_DIVERGENCE
 
-Downstream world-init / input path: `func_800BCF28` SIGSEGV. Do not treat
-this as a scheduler regression.
+`func_800BCF28` SIGSEGV — **root cause PROVEN (A)**: `lookup_gap_stub`
+masks real accessor `0x800BCCC0`/`0x800BCCD8` → v0=0 → null dereference.
+See [[p08-bcf28-crash-diagnosis]]. Not a scheduler regression.
 
 ## RESOLVED_DO_NOT_REOPEN
 
@@ -117,24 +129,26 @@ depend on object-origin remaining UNKNOWN.
 
 ## OPEN_QUESTIONS
 
-1. **CURRENT BLOCKER:** SIGSEGV `func_800BCF28` (BaKey / world input init).
-   PATCH 4 acceptance is complete; this is now the first product divergence.
+1. **CURRENT BLOCKER:** SIGSEGV `func_800BCF28` — **root cause PROVEN** (level
+   A): `lookup_gap_stub` masks real element accessor `0x800BCCC0`/`0x800BCCD8`.
+   Fix layer pending (stub impl vs symbol metadata). See
+   [[p08-bcf28-crash-diagnosis]].
 2. Exact creation epoch/call chain RA for the historical table[2] object.
 3. Generic non-RA JR still lacks safepoint coverage (deferred).
 4. Timer IM7 / PI completion remain approved approximations (deferred).
 
 ## NEXT_SINGLE_ACTION
 
-**Investigate `func_800BCF28` as the new first product divergence.** PATCH 4
-is accepted by [[p08-preemption-patch4-clean-build-independent-review]]
-(verdict B). Verdict C of [[p08-preemption-patch4-independent-review]] remains
-preserved with its tracked-state finding explicitly resolved.
-
-Não reabrir Hybrid F' / PATCH 1–3.5. Sem force-clear, BaKey ou edição
-de `RecompiledFuncs`. Sem resetar o dirty do runtime.
+**Implement the proven minimal `func_800BCF28` binding fix** (restore the two
+accessors `0x800BCCC0` / `0x800BCCD8`, either via `boot_hw_stubs.cpp` native
+body or via symbol metadata so the generator emits them). PATCH 4 stays ON.
+Do not reopen Hybrid F' / PATCH 1–3.5. E.g. diagnostic:
+[[p08-bcf28-crash-diagnosis]].
 
 ## FILES_TO_READ_NEXT
 
+0. [[p08-bcf28-crash-diagnosis]] — **CURRENT:** root cause PROVEN (A);
+   `get_function(0x800BCCC0)` = `lookup_gap_stub` (v0=0)
 1. [[p08-preemption-patch4-clean-build-independent-review]] — **CURRENT** verdict B; delivery accepted
 2. [[p08-preemption-patch4-clean-build-correction]] — implementer correction
 3. [[p08-preemption-patch4-independent-review]] — historical verdict C preserved; finding resolved
