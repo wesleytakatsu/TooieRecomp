@@ -35,8 +35,8 @@ at function level after focused independent re-review verdict A
 ([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Manual WASD
 runtime is **RESOLVED**. Full analog/gamepad remains **PENDING**. The
 gameplay-demo player uses `glrecord` recorded pad through bastick; the
-remaining small path residual is a ~2% horiz-speed overshoot versus
-`tspd` ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]]).
+first-straight ~510 vs `tspd` 500 is **original slope-scaled physics**
+([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14).
 The historical verdict C and its narrow missing `$at` side-effect finding
 are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];
@@ -170,7 +170,7 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | **CURRENT:** recorded-pad demo residual; speed-contract discriminator COMPLETE — tspd is pre-accel target; post-physics input-boundary write unproven |
+| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | **CURRENT:** first-straight 510 is original slope-scaled physics (`func_800EF04C` / `func_8009AE08`); post-physics writer REFUTED; PASS |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -233,14 +233,14 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Demo-path residual — speed-contract discriminator COMPLETE (2026-08-15)**
-   ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §13).
-   `tspd` proven to be a **pre-acceleration target** (B), not a final-speed
-   contract; the physics ramp converges the velocity field to `tspd` exactly
-   (ratio 1.0000 at `func_8009AE08` exit). The ~1.02× value (510.2) is a
-   **post-physics input-boundary velocity-field write** (writer unproven);
-   the previous `|vel_xz|==tspd` expectation is CORRECTED/SUPERSEDED.
-   glrecord cadence = 1 sample/logic tick (no double-consume, no skip).
+1. **Demo-path first straight — PASS (2026-08-15)**
+   ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14).
+   Hardware watchpoints prove the only `phys+0x10/+0x18` writer between
+   glrecord samples is original `func_800EF04C` from `func_8009AE08`. Slope
+   path taken; working target `500 * 1.019454 = 509.727`. The ~510 settle is
+   **intended original** downhill slope-scaled walk speed. Previous
+   post-physics-writer / AE08-exit==500 claims are REFUTED /
+   CORRECTED/SUPERSEDED.
 2. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
    full controller is PENDING.
 3. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
@@ -264,13 +264,11 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Demo-path speed-contract discriminator is COMPLETE
-([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §13); the
-post-physics `phys+0x10` writer is unproven. If a later task continues the
-residual, watchpoint `phys+0x10` between `func_8009B590` return and the next
-glrecord dispatch, or compare the firstp walk-state velocity write
-(D_8080A650 table). Otherwise proceed to analog/gamepad validation of
-USER_BUG_A. Do not implement a precision fix, cinematic facing, or transform
-tagging yet. Do not reopen the accepted BCF28 helper binding, PATCH 4 /
-Hybrid F', the core1 RA wrappers, the render-submission matrix split, or the
-accepted `func_80013B70` cardinal semantics. Do not modify shared RT64.
+**NEXT:** First-straight internal fidelity is **PASS**
+([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14). Compare
+exactly one later recorded analog transition where the visual path miss
+actually begins. Do not implement a precision fix, cinematic facing, or
+transform tagging yet. Do not reopen the accepted BCF28 helper binding,
+PATCH 4 / Hybrid F', the core1 RA wrappers, the render-submission matrix
+split, or the accepted `func_80013B70` cardinal semantics. Do not modify
+shared RT64.

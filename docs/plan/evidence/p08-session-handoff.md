@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; gameplay-demo residual is ~2% speed vs tspd on recorded-pad playback; USER_BUG_B and full controller remain open."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 is original slope-scaled physics (PASS); later analog transition and USER_BUG_B remain open."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -70,22 +70,21 @@ runtime is **RESOLVED**. Full analog/gamepad is **PENDING**.
 Gameplay-demo player movement uses `glrecord` recorded pad through bastick
 ([[p08-demo-movement-precision-diagnosis]]). **Per-logic-tick speed contract
 discriminator (DeepSeek V4 Flash HIGH) COMPLETE** (2026-08-15):
-`tspd` is a **pre-acceleration target** (`phys+0x3C`, written by
-`baphysics_set_target_horizontal_velocity`); the physics ramp converges the
-velocity field to `tspd` exactly (ratio 1.0000 at `func_8009AE08` exit), and
-the ~1.02× value (510.2) appears only at the **glrecord input boundary** as a
-post-physics velocity-field write whose exact writer is not yet isolated.
-`TSPD_EXPECTED_TO_EQUAL_FINAL_VEL_XZ = NO`; the previous `|vel_xz|==tspd`
-hypothesis is `CORRECTED/SUPERSEDED`. glrecord cadence = 1 sample/logic tick
-(no double-consume, no skip). Attract/cinematic facing (USER_BUG_B) is
-**OPEN_SEPARATE**.
+`tspd` is a **pre-acceleration target** (`phys+0x3C`). **Post-physics
+velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
+**no** post-physics `vx`/`vz` write. The first (and only) store in the
+glrecord→glrecord window is original `func_800EF04C` called from
+`func_8009AE08`. Wooded Hollow is on-slope (`func_80096518==1`); the working
+target is scaled `500 * 1.019454 = 509.727`. Settle at ~510.2 is that
+original slope-scaled ramp. Previous "AE08 exit velxz==500 (n=220)" and
+"post-physics writer" claims are **CORRECTED/SUPERSEDED** / **REFUTED**.
+`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
+(USER_BUG_B) is **OPEN_SEPARATE**.
 
 Next steps in Phase P08:
-1. ~~Remaining demo-path discriminator~~ **COMPLETE** — per-logic-tick
-   `|vel_xz|` vs `tspd` and glrecord index vs game frame measured
-   ([[p08-demo-movement-precision-diagnosis]] §13). tspd is a
-   pre-acceleration target, not a final-speed contract; the 2% value is a
-   post-physics input-boundary write, writer unproven.
+1. ~~Remaining demo-path discriminator~~ **COMPLETE** — first straight has
+   no proven internal movement defect
+   ([[p08-demo-movement-precision-diagnosis]] §14).
 2. Analog/gamepad validation of USER_BUG_A.
 3. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
 
@@ -102,12 +101,10 @@ FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 STICK_ANGLE_13B70_FIX:               ACCEPTED (WASD runtime RESOLVED; analog PENDING)
-DEMO_PATH_RESIDUAL:                  LEVEL C — CORRECTED
-  tspd proven to be a pre-acceleration target (B); physics ramp converges
-  velocity field to tspd exactly (ratio 1.0 at func_8009AE08 exit); the
-  510.2 vs 500 is a post-physics input-boundary velocity-field write whose
-  writer is unproven. Previous EXPECTED_VALUE (|vel_xz|==tspd) is
-  CORRECTED/SUPERSEDED.
+DEMO_PATH_RESIDUAL:                  LEVEL D — first straight PASS
+  510 is original slope-scaled physics integration (func_800EF04C from
+  func_8009AE08; working target 500*1.019454). Previous post-physics
+  writer / AE08-exit==500 claims are REFUTED / CORRECTED/SUPERSEDED.
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
@@ -139,15 +136,11 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-The demo-path speed-contract discriminator is **COMPLETE**
-([[p08-demo-movement-precision-diagnosis]] §13). tspd is a pre-acceleration
-target, not a final-speed contract; the physics ramp converges to it
-exactly, and the 2% value is a post-physics input-boundary write (writer
-unproven). Next: if a later task continues the residual, watchpoint the
-`phys+0x10` writer between `func_8009B590` return and the next glrecord
-dispatch, or compare the firstp walk-state velocity write (D_8080A650 table).
-Otherwise proceed to analog/gamepad validation of USER_BUG_A. Keep P08-T10
-and USER_BUG_B separate.
+The first-straight 510 value is **original slope-scaled physics**
+([[p08-demo-movement-precision-diagnosis]] §14).
+`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`. Next: compare exactly one later
+recorded analog transition where the visual path miss actually begins.
+Keep P08-T10 and USER_BUG_B separate.
 
 ## FILES_TO_READ_NEXT
 
@@ -167,7 +160,7 @@ and USER_BUG_B separate.
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (TOOIE_DIAG_DEMO_PATH in tooie_diag / boot_hw_stubs / syscall_handler)
+CODE_CHANGED             = NO (docs-only; GDB watchpoints only)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

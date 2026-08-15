@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; small gameplay-demo path residual characterized as ~2% speed vs physics target; full controller and USER_BUG_B remain open."
+description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 is original slope-scaled physics (PASS); full controller and USER_BUG_B remain open."
 status: current
 type: handoff
 project: TooieRecomp
@@ -38,13 +38,13 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
 1. ~~Run the remaining demo-path discriminator~~ **COMPLETE (2026-08-15)**
-   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §13): per-logic-tick
-   `|vel_xz|` vs `tspd` measured on the first Wooded Hollow UP hold. `tspd` is
-   a **pre-acceleration target**, not a final-speed contract; the physics ramp
-   converges the velocity field to `tspd` exactly (ratio 1.0000 at
-   `func_8009AE08` exit); the ~1.02× value (510.2) is a **post-physics
-   input-boundary velocity-field write** whose exact writer is unproven.
-   glrecord cadence = 1 sample/logic tick (no double-consume, no skip).
+   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14): first
+   Wooded Hollow UP hold has **no post-physics velocity writer**. The only
+   `phys+0x10/+0x18` store between glrecord samples is original
+   `func_800EF04C` from `func_8009AE08`. Slope path is taken
+   (`func_80096518==1`); working target is `500 * 1.019454 = 509.727`.
+   Settle at ~510.2 is **original intended** downhill slope-scaled walk
+   speed. `FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`.
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
 3. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
@@ -91,13 +91,11 @@ RT64. PATCH 4 stays ON.
     travels in the broadly correct directions because that clip is
     recorded-pad playback through bastick
     ([[plan/evidence/p08-demo-movement-precision-diagnosis]]).
-    **Per-logic-tick speed-contract discriminator COMPLETE** (DeepSeek V4
-    Flash HIGH): `tspd` proven to be a pre-acceleration target (B); physics
-    ramp converges the velocity field to `tspd` exactly (ratio 1.0 at
-    `func_8009AE08` exit); the ~1.02× value (510.2) is a post-physics
-    input-boundary velocity-field write, writer unproven. The previous
-    `|vel_xz|==tspd` expectation is **CORRECTED/SUPERSEDED**.
-    Attract/cinematic facing remains USER_BUG_B.
+    **Post-physics velocity writer discriminator COMPLETE** (Grok 4.6 HIGH):
+    510 is original slope-scaled physics integration (`func_800EF04C` from
+    `func_8009AE08`); the post-physics-writer hypothesis is **REFUTED**;
+    first-straight internal fidelity **PASS**. Attract/cinematic facing
+    remains USER_BUG_B.
 
 ## Arquitetura e regras
 

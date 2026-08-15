@@ -1,6 +1,6 @@
 ---
 title: "P08 — demo movement precision diagnosis"
-description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. WASD directional collapse is resolved; attract-bypass claim is corrected. Per-logic-tick speed contract discriminator added (DeepSeek V4 Flash HIGH)."
+description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. WASD directional collapse is resolved; attract-bypass claim is corrected. Per-logic-tick speed contract discriminator added (DeepSeek V4 Flash HIGH). Post-physics velocity writer discriminator: 510 is original slope-scaled physics integration (Grok 4.6 HIGH)."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -512,6 +512,10 @@ NEXT_SINGLE_ACTION:           if a later task continues: watchpoint the
                               table) directly.
 ```
 
+**§13 superseded by §14 (Grok 4.6 HIGH):** the "velxz==500 at AE08 exit
+(n=220)" count is **CORRECTED/SUPERSEDED** (grep hit `tvelxz=500.00`). The
+"post-physics writer" is **REFUTED**. See §14.
+
 ### 13.9 Instrumentation retained (this checkpoint)
 
 ```text
@@ -544,3 +548,213 @@ TOOIE_BUILD:        PASS
 
 STOP. No fix implemented, no later analog-turn analysis, no USER_BUG_B
 diagnosis, no transform tagging, no shared-RT64/runtime/generator edits.
+
+---
+
+## 14. POST-PHYSICS VELOCITY WRITER DISCRIMINATOR — Grok 4.6 HIGH
+
+```text
+BASE_HEAD:                         d1fdd6fac8a4c4ac245244053dccd7a12571403e
+MODEL:                             Grok 4.6 HIGH
+MODE:                              DYNAMIC WATCHPOINT ROOT-CAUSE DISCRIMINATOR
+SELECTED_DEMO:                     Wooded Hollow first recorded-pad UP hold
+```
+
+The previous §13 claim that `|vel_xz| = 500.00` at `func_8009AE08` /
+`func_8009B590` exit (n=220) is **CORRECTED/SUPERSEDED**. That count was a
+grep false positive on the substring `tvelxz=500.00` inside `[demo-ae08] post`
+lines. Temporary probe logs on the same clip (`/tmp/tooie-p08-tick28.log`)
+already showed `AE08_POST |vel_xz|` tracking the input-boundary value through
+the whole ramp, including 510.2.
+
+### 14.1 Watchpoint window (PROVEN)
+
+Hardware watchpoints on player `phys+0x10` / `phys+0x18`, armed at
+`tooie_demo_path_tick` `s_emitted==23` (first-straight, `|vel_xz|=493.1466`)
+and held until the next glrecord overlay-698 dispatch.
+
+Player this run: `ps=801d1470` `phys=801d1e6c`.
+
+| seq | field | guest store | host symbol | old \|vel_xz\| | new \|vel_xz\| |
+| ---: | --- | --- | --- | ---: | ---: |
+| 1 | vx | `0x800EF060` | `func_800EF04C+98` | 493.1466 | 500.3375 |
+| 2 | vz | `0x800EF07C` | `func_800EF04C+193` | 500.3375 | 500.3590 |
+
+No other `vx`/`vz` write occurred in the window. The next glrecord sampled
+`|vel_xz|=500.3590`, matching write #2.
+
+Call stack of both stores (PROVEN):
+
+```text
+func_800EF04C
+  <- func_8009AE08          (jal at 0x8009AFF0; a0 = phys+0x10)
+    <- func_8009B590
+      <- func_800991B0
+        <- func_800F468C
+          <- func_800F84FC
+            <- func_800EA170
+              <- func_800A7D84
+                <- func_800123BC / func_800123F4
+```
+
+```text
+PHYSICS_EXIT_VEL_XZ:               500.3590  (this tick; later ticks settle ~510.2)
+NEXT_INPUT_BOUNDARY_VEL_XZ:        500.3590  (same; no post-physics write)
+FIRST_POST_PHYSICS_VEL_WRITER_PC:  0x800EF060
+FIRST_POST_PHYSICS_VEL_WRITER_FUNCTION: func_800EF04C
+FIRST_POST_PHYSICS_VEL_WRITER_CALLER:   func_8009AE08
+WRITE_SEQUENCE:                    493.1466 -> 500.3375 (vx) -> 500.3590 (vz)
+OLD_VEL_XZ:                        493.146623
+NEW_VEL_XZ:                        500.3590
+DELTA:                             +7.21 (|delta_xz|; |vel_xz| +7.21)
+```
+
+There is **no** writer between physics exit and the next glrecord. The
+"post-physics input-boundary write" hypothesis is **REFUTED**.
+
+### 14.2 Writer semantics (PROVEN, original MIPS)
+
+`func_800EF04C` is `dst[i] += src[i]` (in-place vec3 add). Original:
+
+```text
+800EF04C  lwc1 f4, 0(a0) ; lwc1 f6, 0(a1) ; add.s ; swc1 0(a0)   # X
+800EF064  same for Y
+800EF070  same for Z ; jr ra in delay of last swc1
+```
+
+`func_8009AE08` uses it twice:
+
+1. `func_800EF04C(phys+0x10, sp+0x7C)` — **velocity** integration (the watch hit).
+2. `func_800EF04C(phys+0x04, phys+0x28)` — **position** integration (`pos += vel*dt`).
+
+Velocity update reconstructed from `func_8009AE08.s` (PROVEN):
+
+```text
+target = {sin(yaw), 0, cos(yaw)} * tspd * mult     # phys+0x1C; tspd=500
+if func_80096518(player) != 0:                     # on slope
+    scale working_target by (1 + slope_term)       # ml_vec3f_apply_scale
+k = func_80094E98(player)                          # anim-table / fallback
+delta = (k*working_target - k*vel_xz) * time_getDelta() * 30.0
+vel += delta                                       # func_800EF04C
+vy += gravity * dt; clamp terminal
+pos += vel * dt                                    # second func_800EF04C
+func_800F2168(vel, 0.0001)                         # near-zero snap; no store this tick
+```
+
+Second GDB window (same actor, same tick) (PROVEN):
+
+```text
+func_80096518 v0 = 1                               # slope path taken
+ml_vec3f_apply_scale(working_target, 1.019454)
+  working_target |xz| before scale = 500.0000
+  500 * 1.019454 = 509.727
+dt during add = 0.05000
+dt*30 = 1.500000 (second apply_scale on the difference)
+EF04C delta = (-7.1971, 0, -0.5128)  |d_xz|=7.2154
+```
+
+The ramp therefore approaches the **slope-scaled** target (~509.7), not raw
+`tspd` 500. That matches the previously measured settle at ~510.2.
+
+```text
+WRITER_PURPOSE:                    E (momentum/inertia integration) applied
+                                   to a C (slope/terrain) scaled target
+FIRSTP_500_LITERAL_USED:           NO (writer reads phys+0x3C tspd, already 500)
+FIRSTP_510_LITERAL_USED:           NO
+510_LITERAL_ADDRESS:               n/a (not pursued; writer does not load 510.0)
+510_LITERAL_READER:                n/a
+```
+
+`D_8080A6B4` / `D_8080A6B8` firstp 510.0 remains a lead only. This writer
+never reads it.
+
+### 14.3 Root motion vs position (PROVEN / CORRECTED)
+
+```text
+ROOT_MOTION_ACTIVE:                NO  (velocity writer is baphysics add, not anim)
+ROOT_MOTION_DELTA_XZ:              0 (not applied to this velocity field)
+ROOT_MOTION_EXPECTED:              NO for the 500->510 velocity change
+PHYSICS_POSITION_FIELD:            phys+0x04 / +0x08 / +0x0C
+ACTOR_POSITION_FIELD:              *(player+0xE4) + 0 / +4 / +8
+SAME_STORAGE:                      NO
+POST_PHYSICS_POSITION_WRITER:      func_800EF04C from func_8009AE08
+                                   (phys_pos += vel * dt)
+```
+
+Actor XZ equals physics XZ on the sampled ticks (`pos.xz == ppos.xz`); actor Y
+differs (terrain/visual height). The earlier "physics 25.0 vs actor 25.5" split
+is **CORRECTED/SUPERSEDED**: 25.0 was `tspd*0.05`; actual integration uses
+`|vel_xz|*dt`. After settle, `510.2 * 0.05 = 25.51`, which matches the actor
+`dposxz=25.5` samples.
+
+### 14.4 Tick / dt order (PROVEN)
+
+```text
+TICK_ORDER:
+  1. glrecord overlay 698 ep0 consumes one recorded sample
+  2. tooie_demo_path_tick samples the input boundary
+  3. func_800123F4 frame update
+  4. func_800991B0 player update (bastick / state / tspd already 500)
+  5. func_8009B590 -> func_8009AE08
+  6. slope-scale working target (~1.0195)
+  7. func_800EF04C vel += (k*T - k*V)*dt*30
+  8. phys_pos += vel * dt
+  9. next glrecord sample
+
+DT_BEFORE_PHYSICS:                 0.03333  (ARM / input boundary, fc=2)
+DT_DURING_PHYSICS:                 0.05000  (func_800D8FF8 / D_8012C760)
+DT_AFTER_PHYSICS:                  0.05000  (this next-glrecord sample)
+DT_WRITER_OR_CLAMP:                func_800D8F50 clamps to D_80125D10
+                                   (.float 0.05000000447)
+IS_0P05_ORIGINAL_INTENDED_SEMANTIC: YES
+```
+
+The 0.05 clamp is original Tooie `func_800D8F50` / `D_80125D10`, not a host
+timing defect. P08-T03 is not reopened.
+
+### 14.5 Is 510 intended? (PROVEN)
+
+```text
+POST_PHYSICS_510_INTENDED:         YES
+PREVIOUS_2_PERCENT_BUG_HYPOTHESIS: REFUTED
+FIRST_STRAIGHT_INTERNAL_FIDELITY:  PASS
+ROOT_CAUSE_LEVEL:                  D
+```
+
+Proof is original MIPS + live slope scale, not the user's visual residual:
+
+- store is original `func_800EF04C` (no native override);
+- caller is original `func_8009AE08` (no native override);
+- slope path `func_80096518==1` is taken on this clip;
+- working target is explicitly scaled 500 → 509.727 before the ramp;
+- settle at ~510.2 is that scaled target plus the original
+  `(k*T-k*V)*dt*30` integrator.
+
+Not a 1.02 helper bug, not a duplicated application, not a wrong constant
+reader, not a post-physics overlay write.
+
+```text
+FIRST_BAD_STAGE:                   none on the first straight
+FIRST_BAD_FUNCTION:                none
+ROOT_CAUSE:                        first straight internally faithful;
+                                   510 is original downhill slope-scaled
+                                   walk speed, not a recomp defect
+FIX_OWNER_CANDIDATE:               none
+MINIMAL_FIX_FILES:                 none
+FIX_IMPLEMENTED:                   NO
+```
+
+### 14.6 Validation (this checkpoint)
+
+```text
+STICK_ANGLE_TEST:                  PASS
+MATRIX_SUBMISSION_TEST:            PASS
+INPUT_DIRECTION_TEST:              PASS
+BCF28_TEST:                        PASS
+CORE1_RA_TEST:                     PASS
+TOOIE_BUILD:                       PASS (ninja: no work to do)
+```
+
+No production code changed. Watchpoints were GDB-only (`/tmp/p08-vel-watch*.py`).
+
+STOP. No fix. No later analog-turn analysis. No USER_BUG_B. No transform tagging.

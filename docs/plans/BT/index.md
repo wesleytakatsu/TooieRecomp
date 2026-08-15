@@ -81,10 +81,9 @@ focused independent re-review verdict A
 ([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Manual WASD
 runtime is **RESOLVED**. Gameplay-demo residual is characterized in
 [[../../plan/evidence/p08-demo-movement-precision-diagnosis]]; the
-per-logic-tick speed-contract discriminator is **COMPLETE** (DeepSeek V4
-Flash HIGH): `tspd` is a pre-acceleration target, the physics ramp converges
-to it exactly, and the ~1.02× value is a post-physics input-boundary
-velocity-field write (writer unproven). The historical
+post-physics velocity writer discriminator is **COMPLETE** (Grok 4.6 HIGH):
+first-straight 510 is original slope-scaled physics (`func_800EF04C` from
+`func_8009AE08`); the post-physics-writer hypothesis is **REFUTED**. The historical
 verdict C is preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]].
 Current P08-T10
