@@ -49,6 +49,10 @@ std::atomic<uint32_t> g_depth{0};
 std::atomic<uint32_t> g_max_depth{0};
 std::atomic<uint64_t> g_host_update_gfx{0};
 std::atomic<uint64_t> g_guest_input_updates{0};
+std::atomic<uint64_t> g_guest_vi{0};
+std::atomic<uint64_t> g_game_logic{0};
+std::atomic<uint64_t> g_display_list{0};
+std::atomic<uint64_t> g_animation_update{0};
 
 // Nested stack of in-flight syscalls (ovl<<16|ep), up to 8 levels.
 constexpr int kStackMax = 8;
@@ -71,6 +75,10 @@ void ensure_init() {
     const char* timing = std::getenv("TOOIE_DIAG_TIMING");
     g_timing_enabled.store(timing != nullptr && timing[0] != '\0' && timing[0] != '0',
                            std::memory_order_relaxed);
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_interval_ms = 1000;
+        g_timing_start = std::chrono::steady_clock::now();
+    }
     const char* mv = std::getenv("TOOIE_DIAG_MOVEMENT");
     g_movement_enabled.store(mv != nullptr && mv[0] != '\0' && mv[0] != '0',
                              std::memory_order_relaxed);
@@ -202,6 +210,11 @@ void format_stack(char* buf, size_t buflen) {
 bool enabled() {
     ensure_init();
     return g_enabled.load(std::memory_order_relaxed);
+}
+
+bool timing_enabled() {
+    ensure_init();
+    return g_timing_enabled.load(std::memory_order_relaxed);
 }
 
 bool movement_enabled() {
@@ -599,6 +612,39 @@ void note_audio_device(uint32_t device_id, const char* driver, const char* devic
     }
 }
 
+std::atomic<int32_t> g_frame_divisor{-1};
+
+void note_guest_vi() {
+    ensure_init();
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_guest_vi.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void note_game_logic(int32_t divisor) {
+    ensure_init();
+    if (divisor > 0) {
+        g_frame_divisor.store(divisor, std::memory_order_relaxed);
+    }
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_game_logic.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void note_display_list() {
+    ensure_init();
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_display_list.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void note_animation_update() {
+    ensure_init();
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_animation_update.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
 void note_host_update_gfx() {
     ensure_init();
     if (g_timing_enabled.load(std::memory_order_relaxed)) {
@@ -628,44 +674,85 @@ void report_now(const char* reason) {
         std::snprintf(driver, sizeof(driver), "%s", g_driver[0] ? g_driver : "?");
         std::snprintf(dname, sizeof(dname), "%s", g_device_name[0] ? g_device_name : "?");
     }
-    std::fprintf(stderr,
-                 "[tooie-diag] %s "
-                 "syscall d=%llu r=%llu inflight=%lld "
-                 "sched_ack=%llu rsp_aud=%llu "
-                 "queue_calls=%llu queue_samp=%llu nonzero=%llu peak=%d maxpeak=%d queue_bytes=%u "
-                 "audio_dev=%u/%s/\"%s\" "
-                 "last_ovl=%u:%u depth=%u max_depth=%u stack=%s\n",
-                 reason ? reason : "report",
-                 static_cast<unsigned long long>(g_syscall_dispatch.load()),
-                 static_cast<unsigned long long>(g_syscall_return.load()),
-                 static_cast<long long>(g_syscall_dispatch.load() - g_syscall_return.load()),
-                 static_cast<unsigned long long>(g_sched_ack.load()),
-                 static_cast<unsigned long long>(g_rsp_aud.load()),
-                 static_cast<unsigned long long>(g_queue_calls.load()),
-                 static_cast<unsigned long long>(g_queue_samples.load()),
-                 static_cast<unsigned long long>(g_queue_nonzero.load()),
-                 g_last_peak.load(),
-                 g_max_peak.load(),
-                 g_last_queue_bytes.load(),
-                 g_audio_device.load(),
-                 driver,
-                 dname,
-                 g_last_ovl.load(),
-                 g_last_ep.load(),
-                 g_depth.load(),
-                 g_max_depth.load(),
-                 stack);
-    std::fflush(stderr);
+    if (g_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[tooie-diag] %s "
+                     "syscall d=%llu r=%llu inflight=%lld "
+                     "sched_ack=%llu rsp_aud=%llu "
+                     "queue_calls=%llu queue_samp=%llu nonzero=%llu peak=%d maxpeak=%d queue_bytes=%u "
+                     "audio_dev=%u/%s/\"%s\" "
+                     "last_ovl=%u:%u depth=%u max_depth=%u stack=%s\n",
+                     reason ? reason : "report",
+                     static_cast<unsigned long long>(g_syscall_dispatch.load()),
+                     static_cast<unsigned long long>(g_syscall_return.load()),
+                     static_cast<long long>(g_syscall_dispatch.load() - g_syscall_return.load()),
+                     static_cast<unsigned long long>(g_sched_ack.load()),
+                     static_cast<unsigned long long>(g_rsp_aud.load()),
+                     static_cast<unsigned long long>(g_queue_calls.load()),
+                     static_cast<unsigned long long>(g_queue_samples.load()),
+                     static_cast<unsigned long long>(g_queue_nonzero.load()),
+                     g_last_peak.load(),
+                     g_max_peak.load(),
+                     g_last_queue_bytes.load(),
+                     g_audio_device.load(),
+                     driver,
+                     dname,
+                     g_last_ovl.load(),
+                     g_last_ep.load(),
+                     g_depth.load(),
+                     g_max_depth.load(),
+                     stack);
+        std::fflush(stderr);
+    }
 
     if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        static auto s_last_tp = g_timing_start;
+        static uint64_t s_last_vi = 0;
+        static uint64_t s_last_logic = 0;
+        static uint64_t s_last_dl = 0;
+        static uint64_t s_last_anim = 0;
+        static uint64_t s_last_gfx = 0;
+        static uint64_t s_last_inp = 0;
+
         const auto now = std::chrono::steady_clock::now();
         const double wall_seconds = std::chrono::duration<double>(now - g_timing_start).count();
+        const double dt = std::chrono::duration<double>(now - s_last_tp).count();
+
+        const uint64_t vi_c = g_guest_vi.load(std::memory_order_relaxed);
+        const uint64_t logic_c = g_game_logic.load(std::memory_order_relaxed);
+        const uint64_t dl_c = g_display_list.load(std::memory_order_relaxed);
+        const uint64_t anim_c = g_animation_update.load(std::memory_order_relaxed);
+        const uint64_t gfx_c = g_host_update_gfx.load(std::memory_order_relaxed);
+        const uint64_t inp_c = g_guest_input_updates.load(std::memory_order_relaxed);
+
+        const double vi_hz = (dt > 0.001) ? double(vi_c - s_last_vi) / dt : 0.0;
+        const double logic_hz = (dt > 0.001) ? double(logic_c - s_last_logic) / dt : 0.0;
+        const double dl_hz = (dt > 0.001) ? double(dl_c - s_last_dl) / dt : 0.0;
+        const double anim_hz = (dt > 0.001) ? double(anim_c - s_last_anim) / dt : 0.0;
+        const double gfx_hz = (dt > 0.001) ? double(gfx_c - s_last_gfx) / dt : 0.0;
+        const double inp_hz = (dt > 0.001) ? double(inp_c - s_last_inp) / dt : 0.0;
+
+        s_last_tp = now;
+        s_last_vi = vi_c;
+        s_last_logic = logic_c;
+        s_last_dl = dl_c;
+        s_last_anim = anim_c;
+        s_last_gfx = gfx_c;
+        s_last_inp = inp_c;
+
+        const int32_t divisor = g_frame_divisor.load(std::memory_order_relaxed);
         std::fprintf(stderr,
-                     "[tooie-diag] timing wall=%.3f host_update_gfx=%llu "
-                     "guest_input_updates=%llu\n",
-                     wall_seconds,
-                     static_cast<unsigned long long>(g_host_update_gfx.load()),
-                     static_cast<unsigned long long>(g_guest_input_updates.load()));
+                     "[tooie-timing] wall=%.3fs vi_hz=%.2f (total=%llu) "
+                     "logic_hz=%.2f (total=%llu) game_frame_hz=%.2f (total=%llu) "
+                     "anim_hz=%.2f (total=%llu) host_gfx_hz=%.2f (total=%llu) "
+                     "divisor=%d inp_hz=%.2f\n",
+                     wall_seconds, vi_hz, (unsigned long long)vi_c,
+                     logic_hz, (unsigned long long)logic_c,
+                     dl_hz, (unsigned long long)dl_c,
+                     anim_hz, (unsigned long long)anim_c,
+                     gfx_hz, (unsigned long long)gfx_c,
+                     divisor,
+                     inp_hz);
         std::fflush(stderr);
     }
 }

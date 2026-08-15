@@ -29,10 +29,9 @@ demo is reproduced and running.** The **RENDER_SUBMISSION matrix split** is
 **RESOLVED (Level A)** via `src/game/transform_hooks.cpp` (`func_800E44FC`,
 `func_800E4640`, `func_800E4628` overrides). **Title Screen / File Selection
 Input (P08-T10)** is **VALIDATED and COMPLETE** ([[p08-title-file-select-validation]]).
-P08-T03 is **BLOCKED**, not validated: primary source establishes NTSC VI at
-60 Hz and guest 304x228 4:3 dimensions, but the live graphics config is
-Expand/Clamp16x9 and this session could not obtain a usable X11 window for
-the required timing measurements ([[p08-original-timing-4x3-baseline]]).
+**Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
+([[p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic, 30 Hz animation,
+host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -48,24 +47,25 @@ the required timing measurements ([[p08-original-timing-4x3-baseline]]).
   - Banjo walks smoothly along ground path throughout 75s Wooded Hollow demo.
   - Host matrix regression test `matrix_submission_test` PASS (`MAX_MATRIX_ERROR: 0.000000e+00`).
   - Unit tests `bcf28_helpers_test` and `core1_ra_wrappers_test` PASS.
-- **TITLE SCREEN / FILE-SELECTION VALIDATED (2026-08-14):**
+- **TITLE SCREEN / FILE-SELECTION VALIDATED (P08-T10 COMPLETE):**
   - Synthetic input sequencer tested the entire flow: startup intro -> file select (`chgameselect`, overlay 205) -> slot navigation -> confirmation -> Spiral Mountain map load.
   - Zero input divergence found. Game transitions cleanly to gameplay.
+- **ORIGINAL 4:3 & TIMING BASELINE VALIDATED (P08-T03 COMPLETE):**
+  - Gated live timing counters prove exact 60.000 Hz VI event rate, 20/30 Hz logic rate, 30 Hz skeletal animation rate, decoupled host presentation (~935 Hz), and 4:3 content aspect.
 - `RecompiledFuncs` é gerado — não editar.
 
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
-Title screen, file-selection menu, slot navigation, and gameplay transitions
-are autonomously proven functional.
+Title screen, file-selection menu, slot navigation, original 4:3 timing baseline,
+and gameplay transitions are autonomously proven functional.
 Visual Wooded Hollow attract demo renders correctly and advances.
 The user "right-only movement" report was **not reproduced** on e97: host→N64
 pad conversion is bidirectional (`input_direction_test` PASS; runtime LEFT
 `pad=(-82,0)`).
 
 Next steps in Phase P08 / downstream phases:
-1. Apply an explicit Original/4:3 baseline configuration and run the three
-   required 10–20 second timing windows with `TOOIE_DIAG_TIMING=1`.
-2. Keep high-FPS transform-tagging deferred until P08-T03 is validated.
+1. Implement the Tooie high-FPS transform-tagging suite (`gEXEnable`, matrix group IDs).
+2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
 3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS

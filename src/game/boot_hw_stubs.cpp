@@ -10,12 +10,17 @@
 #include <cstring>
 
 #include "recomp.h"
+#include "funcs.h"
 #include "librecomp/game.hpp"
 #include "librecomp/addresses.hpp"
 #include "librecomp/overlays.hpp"
 #include "ultramodern/ultramodern.hpp"
 #include "tooie_diag.h"
 #include "generated/overlay_dispatch.inc.h"
+
+namespace banjo {
+void register_boot_lookup_stubs();
+}
 
 // MEM_* expects KSEG0 addresses sign-extended into gpr (same as recomp codegen).
 static inline gpr kseg0_gpr(uint32_t addr) {
@@ -550,6 +555,7 @@ extern "C" void func_80019EC0(uint8_t* rdram, recomp_context* ctx) {
             MEM_W(static_cast<int32_t>(i), kseg0_gpr(bss_start)) = 0;
         }
     }
+    banjo::register_boot_lookup_stubs();
     ctx->r2 = 0;
 }
 
@@ -1200,6 +1206,28 @@ void register_boot_lookup_stubs() {
                                           tooie_helper_800BCCC0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCCD8),
                                           tooie_helper_800BCCD8);
+    // Boundary wrappers for live timing baseline measurement (TOOIE_DIAG_TIMING=1).
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8001443C),
+        [](uint8_t* rdram, recomp_context* ctx) {
+            tooie_diag::note_guest_vi();
+            func_8001443C(rdram, ctx);
+        });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800151BC),
+        [](uint8_t* rdram, recomp_context* ctx) {
+            int32_t divisor = MEM_W(0, kseg0_gpr(0x80078488));
+            tooie_diag::note_game_logic(divisor);
+            func_800151BC(rdram, ctx);
+        });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80014148),
+        [](uint8_t* rdram, recomp_context* ctx) {
+            tooie_diag::note_display_list();
+            func_80014148(rdram, ctx);
+        });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8008C894),
+        [](uint8_t* rdram, recomp_context* ctx) {
+            tooie_diag::note_animation_update();
+            baanim_update(rdram, ctx);
+        });
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }

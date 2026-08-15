@@ -102,7 +102,9 @@ Evidência corrente:
 
 - [x] `P08-T01` Integrar RT64 e validar Vulkan nesta máquina.
 - [~] `P08-T02` Catalogar display lists/efeitos Tooie; scheduler DP/VI OK.
-- [ ] `P08-T03` Reproduzir 4:3 e timing originais sem melhorias ativas.
+- [x] `P08-T03` Reproduzir 4:3 e timing originais sem melhorias ativas
+  ([[../../plan/evidence/p08-original-timing-4x3-baseline]]). 60Hz VI, 20/30Hz logic,
+  30Hz animação, desacoplamento do host gfx e aspecto 4:3 validados ao vivo.
 - [x] `P08-T04` Integrar path SDL/RecompFrontend do BanjoRecomp.
 - [x] `P08-T05` Defaults/persistência BanjoRecomp; `controls.json` lazy.
 - [x] `P08-T06` Esconder launcher no auto-start e título Tooie.
