@@ -12,6 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
+- Title & File Select Validation: [[p08-title-file-select-validation]].
 - Active Fix Evidence: [[p08-render-submission-matrix-fix]].
 - Directional input diagnosis: [[p08-directional-input-movement-diagnosis]].
 - Diagnosis: [[p08-render-submission-matrix-diagnosis]].
@@ -26,7 +27,8 @@ P08 — RT64, input e frontend. PATCH 4 is accepted and default ON. The
 `func_80013A7C` lookup-zero is **RESOLVED**. **Visible attract / gameplay
 demo is reproduced and running.** The **RENDER_SUBMISSION matrix split** is
 **RESOLVED (Level A)** via `src/game/transform_hooks.cpp` (`func_800E44FC`,
-`func_800E4640`, `func_800E4628` overrides).
+`func_800E4640`, `func_800E4628` overrides). **Title Screen / File Selection
+Input (P08-T10)** is **VALIDATED and COMPLETE** ([[p08-title-file-select-validation]]).
 
 ## CURRENT_PRODUCT_STATE
 
@@ -42,21 +44,24 @@ demo is reproduced and running.** The **RENDER_SUBMISSION matrix split** is
   - Banjo walks smoothly along ground path throughout 75s Wooded Hollow demo.
   - Host matrix regression test `matrix_submission_test` PASS (`MAX_MATRIX_ERROR: 0.000000e+00`).
   - Unit tests `bcf28_helpers_test` and `core1_ra_wrappers_test` PASS.
+- **TITLE SCREEN / FILE-SELECTION VALIDATED (2026-08-14):**
+  - Synthetic input sequencer tested the entire flow: startup intro -> file select (`chgameselect`, overlay 205) -> slot navigation -> confirmation -> Spiral Mountain map load.
+  - Zero input divergence found. Game transitions cleanly to gameplay.
 - `RecompiledFuncs` é gerado — não editar.
 
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
+Title screen, file-selection menu, slot navigation, and gameplay transitions
+are autonomously proven functional.
 Visual Wooded Hollow attract demo renders correctly and advances.
 The user "right-only movement" report was **not reproduced** on e97: host→N64
 pad conversion is bidirectional (`input_direction_test` PASS; runtime LEFT
-`pad=(-82,0)`). No playable file-select session was obtained autonomously.
-Do not promote that report above title/file-selection unless a later
-user-controlled session contradicts the conversion evidence
-([[p08-directional-input-movement-diagnosis]]).
+`pad=(-82,0)`).
+
 Next steps in Phase P08 / downstream phases:
-1. Title screen / frontend menu / file selection input integration.
-2. Full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
-3. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
+1. Full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
+2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
+3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -67,6 +72,7 @@ BCF28_ROOT_CAUSE_PROVEN:             YES (Level A; ACCEPTED verdict B)
 80013A7C_FIX_STATUS:                 RESOLVED (Tooie-native strong symbols)
 ACTOR_ROTATION_EXPLAINS_POSE:        NO (Actor.rotation is upright)
 RENDER_SUBMISSION_FIX_STATUS:        RESOLVED (Level A; transform_hooks.cpp)
+FRONTEND_INPUT_VALIDATION:           PASS (Zero divergence)
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 ```
@@ -91,12 +97,13 @@ WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 16. `func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers — RESOLVED.
 17. Actor.rotation as root cause of supine pose — REFUTED (Actor.rotation is upright).
 18. Tooie render submission matrix split — RESOLVED.
+19. Title screen / file-selection input flow — VALIDATED (No divergence).
 
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Address title screen input and frontend file-selection navigation in Phase P08.
+Implement full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation) or remaining P08 frontend/windowing tasks.
 
 ## FILES_TO_READ_NEXT
 

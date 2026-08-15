@@ -1092,7 +1092,7 @@ int main(int argc, char** argv) {
     auto tooie_get_n64_input = [](int controller, uint16_t* buttons, float* x, float* y) -> bool {
         const bool ok = recompinput::profiles::get_n64_input(controller, buttons, x, y);
         if (x != nullptr && y != nullptr) {
-            tooie_diag::apply_input_vector_override(x, y);
+            tooie_diag::apply_synthetic_input(controller, buttons, x, y);
         }
         tooie_diag::note_host_input(controller,
                                     x != nullptr ? *x : 0.0f,

@@ -105,7 +105,9 @@ Evidência corrente:
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
 - [x] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible & upright**
   (render submission matrix split resolved via `transform_hooks.cpp`).
-- [ ] `P08-T10` Input title/file select (diferido).
+- [x] `P08-T10` Input title/file select validado com sequenciador sintético autônomo
+  ([[../../plan/evidence/p08-title-file-select-validation]]). Zero divergência encontrada; transição
+  intro -> file select -> navegação de slots -> confirmação -> Spiral Mountain OK.
 - [x] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).

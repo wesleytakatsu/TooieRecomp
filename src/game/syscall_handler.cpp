@@ -327,6 +327,14 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     };
     dump_opening("enter");
 
+    if (tooie_diag::frontend_enabled()) {
+        const gpr mode_gpr = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
+        const int mode_val = int(MEM_H(0x2, mode_gpr));
+        const int map_val = int(MEM_H(0x10, mode_gpr));
+        const uint32_t warp_val = uint32_t(MEM_BU(0x12, mode_gpr));
+        tooie_diag::note_frontend_state(overlay_index, entry_index, mode_val, map_val, warp_val);
+    }
+
     // TOOIE_DIAG_MOVEMENT: independent of TOOIE_DIAG. Dumps the opening
     // probe fields plus player-0 simulation pose so visible-demo movement
     // can be classified without the older overlay-timed diagnostic path.

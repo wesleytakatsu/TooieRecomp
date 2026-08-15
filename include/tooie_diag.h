@@ -21,6 +21,7 @@ namespace tooie_diag {
 bool enabled();
 bool movement_enabled();
 bool input_enabled();
+bool frontend_enabled();
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
 void note_syscall_return(uint32_t ovl, uint32_t ep);
@@ -46,6 +47,13 @@ void report_now(const char* reason);
 
 // If TOOIE_DIAG_INPUT_VECTOR is set, replace *x/*y with that unit vector.
 void apply_input_vector_override(float* x, float* y);
+
+// Applies synthetic input sequence (e.g. START, stick, buttons) when
+// TOOIE_DIAG_FRONTEND=1 or TOOIE_DIAG_INPUT_SCRIPT is set.
+void apply_synthetic_input(int controller, uint16_t* buttons, float* x, float* y);
+
+// Note frontend / menu state transition (e.g. from chattract / chgameselect / mode changes).
+void note_frontend_state(uint32_t ovl, uint32_t ep, int32_t mode, int32_t map, uint32_t warp);
 
 // Throttled host-axis log (frontend normalized stick, after override).
 void note_host_input(int controller, float x, float y, uint16_t buttons);

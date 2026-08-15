@@ -19,10 +19,10 @@ tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 8001
 demo is reproduced** (mode-5, map 335 Wooded Hollow). The **Tooie render-submission
 matrix fix is RESOLVED and VALIDATED** ([[plan/evidence/p08-render-submission-matrix-fix]]):
 `func_800E44FC`, `func_800E4640`, and `func_800E4628` native overrides split
-the projection matrix submission into `LOAD P` followed by `MUL V_view`,
-avoiding RT64's erroneous unscaled viewproj decomposition and restoring correct
-orthonormal view extraction, upright character rendering (`chjinjo`, `Banjo`), and
-proper camera elevation.
+the projection matrix submission into `LOAD P` followed by `MUL V_view`.
+**Title Screen / File Selection Input (P08-T10)** is **VALIDATED and COMPLETE**
+([[plan/evidence/p08-title-file-select-validation]]): autonomous synthetic input
+proves zero input divergence from intro -> file select -> slot navigation -> confirmation -> Spiral Mountain map load.
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -35,12 +35,14 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-Address title screen input and frontend file-selection navigation in Phase P08.
-The user right-only movement report is **not reproduced** on e97
-([[plan/evidence/p08-directional-input-movement-diagnosis]]); host→pad
-conversion is bidirectional. Do not reopen BCF28, Hybrid F' / PATCH 1–4,
-the core1 RA wrappers, Actor.rotation, or the render-submission matrix
-split. Do not modify shared RT64. PATCH 4 stays ON.
+Advance downstream Phase P08 tasks:
+1. Implement full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
+2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
+3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
+
+Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
+Actor.rotation, the render-submission matrix split, or the title/file-select
+input validation. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## Estado do produto validado
 
@@ -63,7 +65,9 @@ split. Do not modify shared RT64. PATCH 4 stays ON.
    V MUL split implemented in `src/game/transform_hooks.cpp`
    ([[plan/evidence/p08-render-submission-matrix-fix]]). Characters and camera
    render upright and elevated; Wooded Hollow attract demo runs continuously for 75s.
-10. Title/file-select input diferido.
+10. **Title Screen / File Selection Input VALIDATED (P08-T10 COMPLETE):**
+    Autonomous end-to-end synthetic input validation proves full flow with zero divergence
+    ([[plan/evidence/p08-title-file-select-validation]]).
 
 ## Arquitetura e regras
 

@@ -21,9 +21,12 @@ namespace {
 std::atomic<bool> g_enabled{false};
 std::atomic<bool> g_movement_enabled{false};
 std::atomic<bool> g_input_enabled{false};
+std::atomic<bool> g_frontend_enabled{false};
 std::atomic<bool> g_inited{false};
 std::atomic<uint32_t> g_host_x_bits{0};
 std::atomic<uint32_t> g_host_y_bits{0};
+std::chrono::steady_clock::time_point g_first_input_tp{};
+std::atomic<bool> g_first_input_seen{false};
 float g_override_x = 0.0f;
 float g_override_y = 0.0f;
 bool g_override_active = false;
@@ -67,6 +70,9 @@ void ensure_init() {
     const char* inp = std::getenv("TOOIE_DIAG_INPUT");
     g_input_enabled.store(inp != nullptr && inp[0] != '\0' && inp[0] != '0',
                           std::memory_order_relaxed);
+    const char* fe = std::getenv("TOOIE_DIAG_FRONTEND");
+    g_frontend_enabled.store(fe != nullptr && fe[0] != '\0' && fe[0] != '0',
+                             std::memory_order_relaxed);
     const char* vec = std::getenv("TOOIE_DIAG_INPUT_VECTOR");
     if (vec != nullptr && vec[0] != '\0') {
         auto eq = [vec](const char* name) {
@@ -155,6 +161,11 @@ void ensure_init() {
                      g_override_x, g_override_y);
         std::fflush(stderr);
     }
+    if (g_frontend_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[tooie-fe] enabled (title & file select synthetic sequencer active)\n");
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -192,6 +203,11 @@ bool input_enabled() {
     return g_input_enabled.load(std::memory_order_relaxed);
 }
 
+bool frontend_enabled() {
+    ensure_init();
+    return g_frontend_enabled.load(std::memory_order_relaxed);
+}
+
 static uint32_t float_bits(float f) {
     uint32_t bits = 0;
     std::memcpy(&bits, &f, sizeof(bits));
@@ -211,6 +227,163 @@ void apply_input_vector_override(float* x, float* y) {
     }
     *x = g_override_x;
     *y = g_override_y;
+}
+
+void apply_synthetic_input(int controller, uint16_t* buttons, float* x, float* y) {
+    ensure_init();
+    if (controller != 0) {
+        return;
+    }
+
+    apply_input_vector_override(x, y);
+
+    if (!g_frontend_enabled.load(std::memory_order_relaxed)) {
+        return;
+    }
+
+    bool expected = false;
+    if (g_first_input_seen.compare_exchange_strong(expected, true)) {
+        g_first_input_tp = std::chrono::steady_clock::now();
+        std::fprintf(stderr, "[tooie-fe] synthetic input sequencer activated at t=0.00s\n");
+        std::fflush(stderr);
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const double elapsed = std::chrono::duration<double>(now - g_first_input_tp).count();
+    const uint32_t current_ovl = g_last_ovl.load(std::memory_order_relaxed);
+
+    static bool s_seen_attract = false;
+    static auto s_attract_tp = std::chrono::steady_clock::time_point{};
+    static bool s_seen_gameselect = false;
+    static auto s_gameselect_tp = std::chrono::steady_clock::time_point{};
+
+    if (current_ovl == 208 && !s_seen_attract) {
+        s_seen_attract = true;
+        s_attract_tp = now;
+        std::fprintf(stderr, "[tooie-fe] t=%.2fs detected chattract (overlay 208, Title Screen / PRESS START)\n", elapsed);
+        std::fflush(stderr);
+    }
+
+    if (current_ovl == 205 && !s_seen_gameselect) {
+        s_seen_gameselect = true;
+        s_gameselect_tp = now;
+        std::fprintf(stderr, "[tooie-fe] t=%.2fs detected chgameselect (overlay 205, File Selection)\n", elapsed);
+        std::fflush(stderr);
+    }
+
+    int phase = 0;
+    const char* phase_name = "IDLE";
+
+    if (!s_seen_attract && !s_seen_gameselect) {
+        // Intro scene before title screen: pulse START periodically to skip logos/cutscenes
+        const int sub_sec = static_cast<int>(elapsed * 2.0) % 3; // every 1.5s, active for 0.5s
+        if (sub_sec == 0 && elapsed > 1.0) {
+            phase = 1;
+            phase_name = "INTRO_SKIP_START";
+            if (buttons != nullptr) {
+                *buttons |= 0x1000u; // CONT_START
+            }
+        } else {
+            phase = 0;
+            phase_name = "INTRO_WAIT";
+        }
+    } else if (s_seen_attract && !s_seen_gameselect) {
+        // At Title Screen: press START to transition to File Select
+        const double attract_elapsed = std::chrono::duration<double>(now - s_attract_tp).count();
+        if (attract_elapsed >= 0.5 && attract_elapsed < 2.5) {
+            phase = 2;
+            phase_name = "TITLE_PRESS_START";
+            if (buttons != nullptr) {
+                *buttons |= 0x1000u; // CONT_START
+            }
+        } else {
+            phase = 0;
+            phase_name = "TITLE_WAIT";
+        }
+    } else if (s_seen_gameselect) {
+        // Inside File Selection:
+        const double gs_elapsed = std::chrono::duration<double>(now - s_gameselect_tp).count();
+        if (gs_elapsed < 1.0) {
+            phase = 3;
+            phase_name = "GAMESELECT_INIT";
+        } else if (gs_elapsed >= 1.0 && gs_elapsed < 1.5) {
+            phase = 4;
+            phase_name = "GAMESELECT_STICK_LEFT";
+            if (x != nullptr) {
+                *x = -1.0f;
+            }
+        } else if (gs_elapsed >= 1.5 && gs_elapsed < 2.5) {
+            phase = 5;
+            phase_name = "GAMESELECT_SETTLE_LEFT";
+        } else if (gs_elapsed >= 2.5 && gs_elapsed < 3.0) {
+            phase = 6;
+            phase_name = "GAMESELECT_STICK_RIGHT";
+            if (x != nullptr) {
+                *x = 1.0f;
+            }
+        } else if (gs_elapsed >= 3.0 && gs_elapsed < 4.0) {
+            phase = 7;
+            phase_name = "GAMESELECT_SETTLE_RIGHT";
+        } else if (gs_elapsed >= 4.0 && gs_elapsed < 5.0) {
+            phase = 8;
+            phase_name = "GAMESELECT_CONFIRM_A";
+            if (buttons != nullptr) {
+                *buttons |= 0x8000u; // CONT_A
+            }
+        } else {
+            phase = 9;
+            phase_name = "GAMESELECT_WAIT_START";
+        }
+    }
+
+    static int s_last_phase = -1;
+    if (phase != s_last_phase) {
+        s_last_phase = phase;
+        std::fprintf(stderr,
+                     "[tooie-fe] t=%.2fs phase=%d (%s) ovl=%u injecting btn=%04x stick=(%.1f,%.1f)\n",
+                     elapsed, phase, phase_name, current_ovl,
+                     buttons ? *buttons : 0,
+                     x ? *x : 0.0f, y ? *y : 0.0f);
+        std::fflush(stderr);
+    }
+}
+
+void note_frontend_state(uint32_t ovl, uint32_t ep, int32_t mode, int32_t map, uint32_t warp) {
+    ensure_init();
+    if (!g_frontend_enabled.load(std::memory_order_relaxed)) {
+        return;
+    }
+    static uint32_t s_last_ovl = 0xFFFFFFFFu;
+    static int32_t s_last_mode = -999;
+    static int32_t s_last_map = -999;
+    static uint32_t s_last_warp = 0xFFFFFFFFu;
+
+    const bool changed = (ovl != s_last_ovl) || (mode != s_last_mode) ||
+                         (map != s_last_map) || (warp != s_last_warp);
+    if (!changed) {
+        return;
+    }
+    s_last_ovl = ovl;
+    s_last_mode = mode;
+    s_last_map = map;
+    s_last_warp = warp;
+
+    const char* ovl_name = "other";
+    if (ovl == 208) ovl_name = "chattract (208)";
+    else if (ovl == 205) ovl_name = "chgameselect (205)";
+    else if (ovl == 419) ovl_name = "chintroticker (419)";
+    else if (ovl == 440) ovl_name = "chintrochar (440)";
+    else if (ovl == 441) ovl_name = "chintrocam (441)";
+
+    double elapsed = 0.0;
+    if (g_first_input_seen.load(std::memory_order_relaxed)) {
+        elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - g_first_input_tp).count();
+    }
+
+    std::fprintf(stderr,
+                 "[tooie-fe] t=%.2fs state_change ovl=%s ep=%u mode=%d map=%d warp=%u\n",
+                 elapsed, ovl_name, ep, mode, map, warp);
+    std::fflush(stderr);
 }
 
 void note_host_input(int controller, float x, float y, uint16_t buttons) {
