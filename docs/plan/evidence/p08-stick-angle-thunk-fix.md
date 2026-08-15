@@ -280,12 +280,13 @@ Only `func_80013B70` is empty. No other sister of the 13B7C shared tail
 was implemented.
 
 ```text
-MID_FUNCTION_ENTRY_CODEGEN_GAP:  PROVEN
+MID_FUNCTION_ENTRY_CODEGEN_GAP:  CORRECTED/SUPERSEDED — see independent review
 ```
 
-N64Recomp left this function empty because it is (1) a mid-function jump
-into another symbol and (2) explicitly stubbed. A generic generator fix
-is out of scope. Tooie-local strong override is the repair.
+The historical diagnosis is preserved, but the generic generator conclusion is
+corrected/superseded. The immediate empty-body cause is the explicit
+`STUB_METADATA` entry. A standalone N64Recomp mid-function limitation remains
+`INFERENCE`, and the reason for the historical stub entry is `UNKNOWN`.
 
 ## 8. Runtime
 
@@ -363,4 +364,18 @@ Logs (ephemeral, not committed):
 ```text
 /tmp/tooie-p08-stick-angle-clean.txt
 /tmp/tooie-p08-stick-angle-t10.txt
+```
+
+## 11. Independent review pointer and verdict
+
+[[p08-stick-angle-thunk-fix-independent-review]]
+
+```text
+INDEPENDENT_REVIEW_VERDICT:       C
+FIX_ACCEPTED:                     NO
+BLOCKER:                          native 13B70 omits the original
+                                  y==0, x>=0 delay-slot $at/r1 clobber
+RUNTIME_PLAYER_VALIDATION:        NOT_PERFORMED
+USER_BUG_A_STATUS:                NOT_RESOLVED
+USER_BUG_B_STATUS:                OPEN_SEPARATE
 ```

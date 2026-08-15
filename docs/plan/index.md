@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (13B70 implemented; T10 synthetic mode=1 FAIL)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` stick-angle **IMPLEMENTED**; P08-T10 current synthetic mode=1 **FAIL** (separate); attract/cinematic facing **OPEN_SEPARATE** |
+| RT64/input P08 | **active (13B70 review verdict C; T10 synthetic mode=1 FAIL)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` implementation present but **NOT_ACCEPTED** due missing `$at` side effect; P08-T10 current synthetic mode=1 **FAIL** (separate); attract/cinematic facing **OPEN_SEPARATE** |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -162,7 +162,9 @@ O trabalho só está concluído quando todos os critérios de
 
 - [[evidence/p08-stick-angle-thunk-fix]] — **CURRENT:** `func_80013B70`
   native shared-tail override; cardinals/diagonals/third-arg PASS;
-  live player pending (T10 synthetic mode=1 FAIL is separate).
+  independent review **VERDICT C** for the missing `$at` side effect.
+- [[evidence/p08-stick-angle-thunk-fix-independent-review]] — independent
+  semantic review; fix rejected pending the narrow `$r1` correction.
 - [[evidence/p08-player-direction-facing-diagnosis]] — Level A empty-13B70
   diagnosis; resolution pointer to the fix.
 - [[evidence/p08-original-timing-4x3-baseline]] — P08-T03

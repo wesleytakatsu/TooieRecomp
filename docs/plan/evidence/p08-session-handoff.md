@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: func_80013B70 stick-angle override implemented; P08-T10 synthetic gameplay gate still FAIL; attract/cinematic facing separate."
+description: "Estado autossuficiente: func_80013B70 implementation rejected by independent semantic review for a narrow $r1 side-effect mismatch; P08-T10 synthetic gameplay gate still FAIL; attract/cinematic facing separate."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -13,6 +13,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 
 - Branch: `main`.
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
+- Independent Review: [[p08-stick-angle-thunk-fix-independent-review]] — **VERDICT C**; missing `$r1` delay-slot side effect.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
 - Title & File Select Validation: [[p08-title-file-select-validation]].
 - Render-submission fix: [[p08-render-submission-matrix-fix]].
@@ -58,17 +59,18 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
-`func_80013B70` stick-angle secondary entry is **implemented**
+`func_80013B70` stick-angle secondary entry has an implementation
 ([[p08-stick-angle-thunk-fix]]): native shared tail, strong-symbol bind,
-cardinal/diagonal/third-arg tests PASS. Live player motion is
-**IMPLEMENTED_PENDING_RUNTIME** because the P08-T10 synthetic file-select
+cardinal/diagonal/third-arg tests PASS. Independent review rejected acceptance
+with **VERDICT C** because the `y==0, x>=0` path omits the original `$r1`
+delay-slot clobber. Live player motion is **NOT_RESOLVED** because the P08-T10 synthetic file-select
 → mode=1 transition still **FAIL**s (CONT_A confirm ends in mode=3).
 That regression is a **separate next blocker**. Attract/cinematic facing
 (USER_BUG_B) is **OPEN_SEPARATE** — attract bypasses bastick.
 
 Next steps in Phase P08:
-1. Independent review of the stick-angle fix (MIPS/test proof first).
-2. Diagnose the file-select → Spiral Mountain regression independently.
+1. Correct only the missing `$r1` side effect identified by the independent review.
+2. Rerun the focused stick-angle and regression tests/build.
 3. Then: USER_BUG_B if still open; then transform-tagging; then `P08-T07`.
 
 ## ROOT_CAUSE_STATUS
@@ -83,7 +85,7 @@ RENDER_SUBMISSION_FIX_STATUS:        RESOLVED (Level A; transform_hooks.cpp)
 FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1 FAIL
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
-STICK_ANGLE_13B70_FIX:               IMPLEMENTED (unit-tested; runtime pending)
+STICK_ANGLE_13B70_FIX:               IMPLEMENTATION_REJECTED (review verdict C; `$r1` correction pending)
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
@@ -115,15 +117,16 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Independent GPT-5.6 Luna x-high review of the stick-angle fix
-([[p08-stick-angle-thunk-fix]]). Runtime player validation is blocked;
-review the semantic/test proof first, then separately diagnose the
-synthetic file-select regression before using it as a gameplay automation
+Correct only the missing `$r1` delay-slot side effect identified by
+[[p08-stick-angle-thunk-fix-independent-review]]; then rerun the focused
+tests/build. Keep the synthetic file-select regression separate and do not
+use it as a gameplay automation
 gate.
 
 ## FILES_TO_READ_NEXT
 
 0. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
+0a. [[p08-stick-angle-thunk-fix-independent-review]] — verdict C; `$r1` side-effect blocker
 0b. [[p08-player-direction-facing-diagnosis]] — Level A diagnosis
 0c. [[p08-directional-input-movement-diagnosis]] — host→pad (not reopened)
 1. [[p08-render-submission-matrix-fix]] — render matrix submission fix
