@@ -1109,13 +1109,13 @@ extern "C" void func_80013B70(uint8_t* rdram, recomp_context* ctx) {
     }
 
     // y == 0
+    ctx->r1 = S32(0x4334 << 16); // original bc1t delay-slot LUI (0x43340000)
     if (ctx->f10.fl <= ctx->f14.fl) {
         ctx->f0.fl = ctx->f10.fl; // 0.0
         tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
         return;
     }
-    ctx->r1 = S32(0x4334 << 16); // 180.0
-    ctx->f0.u32l = ctx->r1;
+    ctx->f0.u32l = ctx->r1; // 180.0
     tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
 }
 

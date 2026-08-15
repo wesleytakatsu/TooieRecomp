@@ -371,11 +371,12 @@ Logs (ephemeral, not committed):
 [[p08-stick-angle-thunk-fix-independent-review]]
 
 ```text
-INDEPENDENT_REVIEW_VERDICT:       C
-FIX_ACCEPTED:                     NO
+INDEPENDENT_REVIEW_VERDICT:       C (historical)
+FIX_ACCEPTED:                     NO (pending re-review of correction)
 BLOCKER:                          native 13B70 omits the original
                                   y==0, x>=0 delay-slot $at/r1 clobber
+CORRECTION:                       RESOLVED in [[p08-stick-angle-thunk-fix-correction]]
 RUNTIME_PLAYER_VALIDATION:        NOT_PERFORMED
-USER_BUG_A_STATUS:                NOT_RESOLVED
+USER_BUG_A_STATUS:                IMPLEMENTED_PENDING_RUNTIME
 USER_BUG_B_STATUS:                OPEN_SEPARATE
 ```

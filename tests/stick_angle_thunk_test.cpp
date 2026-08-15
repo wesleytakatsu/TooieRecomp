@@ -61,6 +61,7 @@ static int fail(const char* msg) {
 
 static void call_13b70(uint8_t* rdram, float y, float x, float distance, recomp_context* ctx) {
     *ctx = recomp_context{};
+    ctx->r1 = static_cast<gpr>(static_cast<int32_t>(0xDEADBEEF));
     ctx->r31 = 0;
     ctx->f0.fl = 999.0f;
     ctx->f12.fl = y;
@@ -92,12 +93,14 @@ int main() {
         float x;
         float expected;
         int helper_calls;
+        uint32_t expected_r1;
     };
     const Cardinal cardinals[] = {
-        {"RIGHT", 0.0f, 1.0f, 0.0f, 0},
-        {"UP", 1.0f, 0.0f, 90.0f, 0},
-        {"LEFT", 0.0f, -1.0f, 180.0f, 0},
-        {"DOWN", -1.0f, 0.0f, 270.0f, 0},
+        {"RIGHT", 0.0f, 1.0f, 0.0f, 0, 0x43340000u},
+        {"UP", 1.0f, 0.0f, 90.0f, 0, 0x42B40000u},
+        {"LEFT", 0.0f, -1.0f, 180.0f, 0, 0x43340000u},
+        {"DOWN", -1.0f, 0.0f, 270.0f, 0, 0x43870000u},
+        {"CENTER", 0.0f, 0.0f, 0.0f, 0, 0x43340000u},
     };
 
     for (const Cardinal& tc : cardinals) {
@@ -117,10 +120,16 @@ int main() {
                          tc.name, ctx.f0.fl, tc.expected);
             return 1;
         }
+        const uint32_t actual_r1 = static_cast<uint32_t>(ctx.r1);
+        if (actual_r1 != tc.expected_r1) {
+            std::fprintf(stderr, "[stick_angle_test] FAIL: %s r1=0x%08X expected 0x%08X (delay-slot clobber)\n",
+                         tc.name, actual_r1, tc.expected_r1);
+            return 1;
+        }
         if (nearly_eq(ctx.f0.fl, 1.0f)) {
             return fail("cardinal result collapsed to stick distance");
         }
-        std::printf("[stick_angle_test] PASS: %s = %.1f\n", tc.name, ctx.f0.fl);
+        std::printf("[stick_angle_test] PASS: %s = %.1f (r1=0x%08X)\n", tc.name, ctx.f0.fl, actual_r1);
     }
 
     struct Diagonal {

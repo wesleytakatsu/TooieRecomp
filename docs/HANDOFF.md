@@ -37,11 +37,9 @@ Historical context:
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
-1. Correct only the missing `$r1` delay-slot side effect identified by the
-   independent review of the `func_80013B70` fix
-   ([[plan/evidence/p08-stick-angle-thunk-fix-independent-review]]), then rerun
-   the focused tests/build. Keep runtime player validation and the separate
-   file-select synthetic regression out of this correction.
+1. Independent re-review of the corrected `func_80013B70`
+   ([[plan/evidence/p08-stick-angle-thunk-fix-correction]]). If accepted, obtain
+   manual/runtime cardinal validation before declaring USER_BUG_A resolved.
 2. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
    as a gameplay automation gate until it is fixed.
@@ -80,13 +78,11 @@ RT64. PATCH 4 stays ON.
 11. **Original timing / 4:3 baseline VALIDATED (P08-T03 COMPLETE):**
     60.0 Hz VI, 20/30 Hz logic, 30 Hz animation, host presentation decoupled, and 4:3 content aspect confirmed
     ([[plan/evidence/p08-original-timing-4x3-baseline]]).
-12. **`func_80013B70` stick-angle secondary entry implementation REJECTED**
-    by independent review verdict C
-    ([[plan/evidence/p08-stick-angle-thunk-fix-independent-review]]): native
-    shared-tail override passes angles and third-argument tests, but omits the
-    original `y==0, x>=0` `$r1` delay-slot clobber. Attract/cinematic facing is
-    a separate bug. P08-T10 synthetic mode=1 transition is a **separate
-    current FAIL**.
+12. **`func_80013B70` stick-angle secondary entry corrected**
+    ([[plan/evidence/p08-stick-angle-thunk-fix-correction]]): native
+    shared-tail override passes angles, third-argument tests, and reproduces
+    `$at/$r1 = 0x43340000` on all `y==0` paths. Pending independent re-review.
+    Attract/cinematic facing is a separate bug.
 
 ## Arquitetura e regras
 

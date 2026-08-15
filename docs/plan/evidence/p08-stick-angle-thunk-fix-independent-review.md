@@ -320,3 +320,7 @@ NEXT_SINGLE_ACTION:                correct only the missing r1 side effect
 
 === END HANDOFF ===
 ```
+
+## Resolution Note (2026-08-15)
+
+The single blocking finding from this review (missing `$at/$r1 = 0x43340000` on the `y == 0, x >= 0` path) has been corrected and verified in [[p08-stick-angle-thunk-fix-correction]]. The historical verdict C above is preserved intact; formal re-review is pending.

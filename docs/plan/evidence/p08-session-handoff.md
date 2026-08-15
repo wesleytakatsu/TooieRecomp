@@ -59,19 +59,18 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
-`func_80013B70` stick-angle secondary entry has an implementation
-([[p08-stick-angle-thunk-fix]]): native shared tail, strong-symbol bind,
-cardinal/diagonal/third-arg tests PASS. Independent review rejected acceptance
-with **VERDICT C** because the `y==0, x>=0` path omits the original `$r1`
-delay-slot clobber. Live player motion is **NOT_RESOLVED** because the P08-T10 synthetic file-select
-→ mode=1 transition still **FAIL**s (CONT_A confirm ends in mode=3).
-That regression is a **separate next blocker**. Attract/cinematic facing
-(USER_BUG_B) is **OPEN_SEPARATE** — attract bypasses bastick.
+`func_80013B70` stick-angle secondary entry has been corrected
+([[p08-stick-angle-thunk-fix-correction]]): native shared tail, strong-symbol bind,
+reproducing `$at/$r1 = 0x43340000` delay-slot clobber on all `y == 0` paths.
+All unit tests pass (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`,
+`bcf28_helpers_test`, `core1_ra_wrappers_test`).
+Independent re-review is pending. Live player motion is `IMPLEMENTED_PENDING_RUNTIME`.
+Attract/cinematic facing (USER_BUG_B) is **OPEN_SEPARATE** — attract bypasses bastick.
 
 Next steps in Phase P08:
-1. Correct only the missing `$r1` side effect identified by the independent review.
-2. Rerun the focused stick-angle and regression tests/build.
-3. Then: USER_BUG_B if still open; then transform-tagging; then `P08-T07`.
+1. Independent re-review of the corrected `func_80013B70`.
+2. Controllable runtime player validation.
+3. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -85,7 +84,7 @@ RENDER_SUBMISSION_FIX_STATUS:        RESOLVED (Level A; transform_hooks.cpp)
 FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1 FAIL
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
-STICK_ANGLE_13B70_FIX:               IMPLEMENTATION_REJECTED (review verdict C; `$r1` correction pending)
+STICK_ANGLE_13B70_FIX:               CORRECTED (review finding resolved; pending re-review)
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
