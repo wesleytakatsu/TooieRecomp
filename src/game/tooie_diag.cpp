@@ -582,6 +582,16 @@ uint64_t gfx_ticks() {
     return g_gfx_ticks.load(std::memory_order_relaxed);
 }
 
+std::atomic<uint64_t> g_guest_logic_tick{0};
+
+uint64_t note_guest_logic_tick() {
+    return g_guest_logic_tick.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
+uint64_t guest_logic_tick() {
+    return g_guest_logic_tick.load(std::memory_order_relaxed);
+}
+
 void note_math(const char* name, float input, float output) {
     if (!movement_enabled()) {
         return;

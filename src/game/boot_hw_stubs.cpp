@@ -1270,6 +1270,191 @@ extern "C" void func_8001DE64(uint8_t* rdram, recomp_context* ctx) {
     ctx->r29 = ADD32(ctx->r29, 0x28);
 }
 
+// Per-guest-logic-tick demo-path sampler (TOOIE_DIAG_DEMO_PATH=1).
+//
+// The attract gameplay demo (mode==5) is driven by the glrecord overlay
+// (overlay 698 entrypoint 0): each dispatch consumes one 6-byte recorded-pad
+// sample from D_8012D5B0 and writes OSContPad. That dispatch is the TRUE
+// recorded-input consumer and one guest logic tick during the walk.
+//
+// This discriminator resolves, on the first Wooded Hollow recorded-pad UP
+// hold: tspd semantics vs final |vel_xz|, glrecord sample cadence per logic
+// tick, accel ramp trajectory, and the local dt used by the position
+// integrator.
+extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick) {
+    // Player 0 struct D_80135490[0]; its phys is at +0xC8.
+    const gpr plist = kseg0_gpr(0x80135490u);
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, plist));
+    if (ps_addr == 0) {
+        return;
+    }
+    const gpr ps = kseg0_gpr(ps_addr);
+
+    auto bits_f32 = [](int32_t bits) -> float {
+        float f = 0.0f;
+        const uint32_t u = static_cast<uint32_t>(bits);
+        std::memcpy(&f, &u, sizeof(f));
+        return f;
+    };
+
+    // Mode/map: D_80127630.unk2 @ +0x2, map word @ +0x10.
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int map_v = int(MEM_H(0x10, kseg0_gpr(0x80127630u)));
+    if (mode_v != 5) {
+        // Only the mode-5 attract gameplay demo is the selected clip.
+        return;
+    }
+
+    // OSContPad for controller 0: buttons @ +0, stick_x @ +2, stick_y @ +3.
+    const gpr pad = kseg0_gpr(0x80079B40u);
+    const int8_t pad_x = int8_t(MEM_B(2, pad));
+    const int8_t pad_y = int8_t(MEM_B(3, pad));
+
+    // Remapped stick floats D_80079AF8+8/+C.
+    const gpr remap = kseg0_gpr(0x80079AF8u);
+    const float rmx = bits_f32(MEM_W(8, remap));
+    const float rmy = bits_f32(MEM_W(12, remap));
+
+    // Position pointer at ps+0xE4, yaw struct at +0xF8, physics at +0xC8,
+    // bastick at +0x128.
+    const uint32_t pos_addr = static_cast<uint32_t>(MEM_W(0xE4, ps));
+    const uint32_t yaw_addr = static_cast<uint32_t>(MEM_W(0xF8, ps));
+    const uint32_t phys_addr = static_cast<uint32_t>(MEM_W(0xC8, ps));
+    const uint32_t stick_addr = static_cast<uint32_t>(MEM_W(0x120, ps)); // bs_state
+    const uint32_t ba_stick_addr = static_cast<uint32_t>(MEM_W(0x128, ps));
+
+    auto is_guest = [](uint32_t a) {
+        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+    };
+
+    float px = 0, py = 0, pz = 0;
+    float yaw = 0, yaw_ideal = 0;
+    float vx = 0, vy = 0, vz = 0, tspd = 0;
+    float bstick_x = 0, bstick_y = 0, bstick_ang = 0, bstick_dist = 0;
+    float mult = 0;
+    float gx = 0, gy = 0, gz = 0;
+    float tvx = 0, tvz = 0, phys_yaw = 0;
+    float accel = 0, ptype = 0;
+    float ppx = 0, ppy = 0, ppz = 0;
+    int32_t bs_id = -1;
+    if (is_guest(pos_addr)) {
+        const gpr posp = kseg0_gpr(pos_addr);
+        px = bits_f32(MEM_W(0x0, posp));
+        py = bits_f32(MEM_W(0x4, posp));
+        pz = bits_f32(MEM_W(0x8, posp));
+    }
+    if (is_guest(yaw_addr)) {
+        const gpr yawp = kseg0_gpr(yaw_addr);
+        yaw = bits_f32(MEM_W(0x0, yawp));
+        yaw_ideal = bits_f32(MEM_W(0x4, yawp));
+    }
+    if (is_guest(phys_addr)) {
+        const gpr ph = kseg0_gpr(phys_addr);
+        ptype = bits_f32(MEM_W(0x00, ph));
+        ppx = bits_f32(MEM_W(0x04, ph));
+        ppy = bits_f32(MEM_W(0x08, ph));
+        ppz = bits_f32(MEM_W(0x0C, ph));
+        vx = bits_f32(MEM_W(0x10, ph));
+        vy = bits_f32(MEM_W(0x14, ph));
+        vz = bits_f32(MEM_W(0x18, ph));
+        tvx = bits_f32(MEM_W(0x1C, ph));
+        tvz = bits_f32(MEM_W(0x24, ph));
+        accel = bits_f32(MEM_W(0x44, ph));
+        phys_yaw = bits_f32(MEM_W(0x40, ph));
+        tspd = bits_f32(MEM_W(0x3C, ph));
+        mult = bits_f32(MEM_W(0x50, ph));
+        gx = bits_f32(MEM_W(0x64, ph));
+        gy = bits_f32(MEM_W(0x68, ph));
+        gz = bits_f32(MEM_W(0x6C, ph));
+    }
+    if (is_guest(ba_stick_addr)) {
+        const gpr st = kseg0_gpr(ba_stick_addr);
+        bstick_x = bits_f32(MEM_W(0x54, st)); // bastick value[0]
+        bstick_y = bits_f32(MEM_W(0x58, st)); // bastick value[1]
+        bstick_ang = bits_f32(MEM_W(0x5C, st));
+        bstick_dist = bits_f32(MEM_W(0x60, st));
+    }
+    if (is_guest(stick_addr)) {
+        bs_id = static_cast<int32_t>(MEM_W(0, kseg0_gpr(stick_addr)));
+    }
+
+    // glrecord: D_8012D5B0 +0x0 = sample base, +0x8 = current index, +0xC = count.
+    const gpr gl = kseg0_gpr(0x8012D5B0u);
+    const uint32_t gl_base = static_cast<uint32_t>(MEM_W(0, gl));
+    const int32_t gl_idx = static_cast<int32_t>(MEM_W(0x8, gl));
+    const int32_t gl_count = static_cast<int32_t>(MEM_W(0xC, gl));
+    int8_t g_rec_x = 0, g_rec_y = 0;
+    uint16_t g_rec_btn = 0;
+    if (is_guest(gl_base)) {
+        const gpr base = kseg0_gpr(gl_base + static_cast<uint32_t>(gl_idx) * 6u);
+        g_rec_x = int8_t(MEM_B(0, base));
+        g_rec_y = int8_t(MEM_B(1, base));
+        g_rec_btn = static_cast<uint16_t>(MEM_HU(2, base));
+    }
+
+    // Local movement dt: func_800D8FF8 -> D_8012C760 (gamespeed, min(dcount*1/60, 0.05)).
+    const float gamespeed = bits_f32(MEM_W(0, kseg0_gpr(0x8012C760u)));
+    const int32_t gfcnt = static_cast<int32_t>(MEM_W(0, kseg0_gpr(0x8012C764u)));
+
+    // Per-tick position delta against previous sampled guest logic tick.
+    static bool s_have_prev = false;
+    static float s_prev_px = 0, s_prev_pz = 0;
+    static int32_t s_prev_glidx = -1;
+    static uint64_t s_emitted = 0;
+    static bool s_moving = false;
+
+    const float dx = s_have_prev ? px - s_prev_px : 0.0f;
+    const float dz = s_have_prev ? pz - s_prev_pz : 0.0f;
+    const float dposxz = std::sqrt(dx * dx + dz * dz);
+    const float velxz = std::sqrt(vx * vx + vz * vz);
+    const int32_t gl_adv = s_have_prev ? gl_idx - s_prev_glidx : 0;
+
+    // Update prev state every guest tick (also during idle) so the walk-start
+    // delta/cadence becomes measurable.
+    if (s_have_prev) {
+        s_prev_glidx = gl_idx;
+    }
+    s_have_prev = true;
+
+    // First-straight window only: emit every guest tick once the recorded-pad
+    // walk begins (gl_adv > 0), up to 240 ticks. Do not run into later analog
+    // turns in the recorded demo.
+    if (gl_adv > 0 || dposxz > 1.0f) {
+        s_moving = true;
+    }
+    if (!s_moving) {
+        return; // pre-walk idle: skip
+    }
+    if (s_emitted >= 240) {
+        return;
+    }
+    ++s_emitted;
+
+    std::fprintf(stderr,
+                 "[demo-tick] tick=%llu map=%d glidx=%d adv=%d count=%d ptype=%.0f "
+                 "sample=(%d,%d,%04x) pad=(%d,%d) remap=(%.2f,%.2f) "
+                 "bstick=(%.2f,%.2f) bang=%.1f bdist=%.2f "
+                 "ideal=%.1f yaw=%.1f phys_yaw=%.1f tspd=%.1f mult=%.4f accel=%.2f "
+                 "vel=(%.1f,%.1f,%.1f) velxz=%.1f "
+                 "tvel=(%.1f,%.1f,%.1f) tvelxz=%.1f "
+                 "dpos=(%.2f,%.2f) dposxz=%.1f "
+                 "pos=(%.1f,%.1f,%.1f) ppos=(%.1f,%.1f,%.1f) gs=%.5f fc=%d bs=%d goto=(%.1f,%.1f,%.1f) n=%llu\n",
+                 static_cast<unsigned long long>(tick), map_v, gl_idx, gl_adv, gl_count, ptype,
+                 (int)g_rec_x, (int)g_rec_y, (unsigned)g_rec_btn,
+                 (int)pad_x, (int)pad_y, rmx, rmy,
+                 bstick_x, bstick_y, bstick_ang, bstick_dist,
+                 yaw_ideal, yaw, phys_yaw, tspd, mult, accel,
+                 vx, vy, vz, velxz,
+                 tvx, 0.0f, tvz, std::sqrt(tvx * tvx + tvz * tvz),
+                 dx, dz, dposxz,
+                 px, py, pz, ppx, ppy, ppz, gamespeed, gfcnt, bs_id, gx, gy, gz,
+                 static_cast<unsigned long long>(s_emitted));
+    std::fflush(stderr);
+
+    s_prev_px = px;
+    s_prev_pz = pz;
+}
+
 namespace banjo {
 void register_boot_lookup_stubs() {
     // Prefer real ultramodern/libultra recomp hooks at Tooie VRAMs.
@@ -1296,6 +1481,7 @@ void register_boot_lookup_stubs() {
         [](uint8_t* rdram, recomp_context* ctx) {
             int32_t divisor = MEM_W(0, kseg0_gpr(0x80078488));
             tooie_diag::note_game_logic(divisor);
+            tooie_diag::note_guest_logic_tick();
             func_800151BC(rdram, ctx);
         });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80014148),

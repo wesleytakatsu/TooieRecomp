@@ -37,10 +37,14 @@ Historical context:
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
-1. Run the remaining demo-path discriminator from
-   [[plan/evidence/p08-demo-movement-precision-diagnosis]] (per-tick
-   `|vel_xz|` vs `tspd` plus glrecord index vs game frame). Do not
-   implement a precision fix until that writer is proven.
+1. ~~Run the remaining demo-path discriminator~~ **COMPLETE (2026-08-15)**
+   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §13): per-logic-tick
+   `|vel_xz|` vs `tspd` measured on the first Wooded Hollow UP hold. `tspd` is
+   a **pre-acceleration target**, not a final-speed contract; the physics ramp
+   converges the velocity field to `tspd` exactly (ratio 1.0000 at
+   `func_8009AE08` exit); the ~1.02× value (510.2) is a **post-physics
+   input-boundary velocity-field write** whose exact writer is unproven.
+   glrecord cadence = 1 sample/logic tick (no double-consume, no skip).
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
 3. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
@@ -86,8 +90,13 @@ RT64. PATCH 4 stays ON.
     Full analog/gamepad remains **PENDING**. Gameplay-demo movement now
     travels in the broadly correct directions because that clip is
     recorded-pad playback through bastick
-    ([[plan/evidence/p08-demo-movement-precision-diagnosis]]). A small
-    residual (~2% horiz speed vs `tspd`) is characterized only.
+    ([[plan/evidence/p08-demo-movement-precision-diagnosis]]).
+    **Per-logic-tick speed-contract discriminator COMPLETE** (DeepSeek V4
+    Flash HIGH): `tspd` proven to be a pre-acceleration target (B); physics
+    ramp converges the velocity field to `tspd` exactly (ratio 1.0 at
+    `func_8009AE08` exit); the ~1.02× value (510.2) is a post-physics
+    input-boundary velocity-field write, writer unproven. The previous
+    `|vel_xz|==tspd` expectation is **CORRECTED/SUPERSEDED**.
     Attract/cinematic facing remains USER_BUG_B.
 
 ## Arquitetura e regras

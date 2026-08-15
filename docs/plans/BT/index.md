@@ -80,7 +80,11 @@ lookup-zero **RESOLVED**. Render-submission matrix split **RESOLVED**.
 focused independent re-review verdict A
 ([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Manual WASD
 runtime is **RESOLVED**. Gameplay-demo residual is characterized in
-[[../../plan/evidence/p08-demo-movement-precision-diagnosis]]. The historical
+[[../../plan/evidence/p08-demo-movement-precision-diagnosis]]; the
+per-logic-tick speed-contract discriminator is **COMPLETE** (DeepSeek V4
+Flash HIGH): `tspd` is a pre-acceleration target, the physics ramp converges
+to it exactly, and the ~1.02× value is a post-physics input-boundary
+velocity-field write (writer unproven). The historical
 verdict C is preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]].
 Current P08-T10

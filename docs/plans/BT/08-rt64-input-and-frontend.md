@@ -170,7 +170,7 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | **CURRENT:** recorded-pad demo residual; ~2% speed vs tspd |
+| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | **CURRENT:** recorded-pad demo residual; speed-contract discriminator COMPLETE — tspd is pre-accel target; post-physics input-boundary write unproven |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -233,9 +233,14 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Demo-path residual discriminator** — first-straight heading matches
-   ideal; remaining internal residual is ~2% `|vel_xz|` vs `tspd`
-   ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]]).
+1. **Demo-path residual — speed-contract discriminator COMPLETE (2026-08-15)**
+   ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §13).
+   `tspd` proven to be a **pre-acceleration target** (B), not a final-speed
+   contract; the physics ramp converges the velocity field to `tspd` exactly
+   (ratio 1.0000 at `func_8009AE08` exit). The ~1.02× value (510.2) is a
+   **post-physics input-boundary velocity-field write** (writer unproven);
+   the previous `|vel_xz|==tspd` expectation is CORRECTED/SUPERSEDED.
+   glrecord cadence = 1 sample/logic tick (no double-consume, no skip).
 2. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
    full controller is PENDING.
 3. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
@@ -259,9 +264,13 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Run the remaining demo-path discriminator
-([[../../plan/evidence/p08-demo-movement-precision-diagnosis]]). Do not
-implement a precision fix, cinematic facing, or transform tagging yet.
-Do not reopen the accepted BCF28 helper binding, PATCH 4 / Hybrid F', the
-core1 RA wrappers, the render-submission matrix split, or the accepted
-`func_80013B70` cardinal semantics. Do not modify shared RT64.
+**NEXT:** Demo-path speed-contract discriminator is COMPLETE
+([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §13); the
+post-physics `phys+0x10` writer is unproven. If a later task continues the
+residual, watchpoint `phys+0x10` between `func_8009B590` return and the next
+glrecord dispatch, or compare the firstp walk-state velocity write
+(D_8080A650 table). Otherwise proceed to analog/gamepad validation of
+USER_BUG_A. Do not implement a precision fix, cinematic facing, or transform
+tagging yet. Do not reopen the accepted BCF28 helper binding, PATCH 4 /
+Hybrid F', the core1 RA wrappers, the render-submission matrix split, or the
+accepted `func_80013B70` cardinal semantics. Do not modify shared RT64.

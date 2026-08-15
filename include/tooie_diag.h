@@ -37,7 +37,9 @@ void note_queue_samples(size_t sample_count, uint32_t queued_bytes_after,
                         int16_t peak_abs = 0, size_t nonzero = 0);
 void note_audio_device(uint32_t device_id, const char* driver, const char* device_name);
 
-// Timing baseline counters (TOOIE_DIAG_TIMING=1).
+// Timing counters (TOOIE_DIAG_TIMING=1).
+// guest_logic_tick: monotonically increasing counter, incremented exactly once
+// per proven main-game-logic boundary (func_800151BC wrapper).
 void note_guest_vi();
 void note_game_logic(int32_t divisor = -1);
 void note_display_list();
@@ -48,6 +50,11 @@ void note_guest_input_update();
 // gfx/VI-adjacent host tick counter (update_gfx). Always increments when
 // movement diagnostics are on so timebase can be compared to movement dumps.
 uint64_t gfx_ticks();
+
+// Increment the guest logic tick counter and return the new value. Called
+// exactly once per func_800151BC (proven main-game-logic boundary).
+uint64_t note_guest_logic_tick();
+uint64_t guest_logic_tick();
 
 // Sample a core1 degree-math / RA-wrapper result. Logs the first N calls,
 // then every Nth, plus any non-finite or huge discontinuity.
@@ -91,3 +98,7 @@ bool gameplay_detected();
 void note_movement_pipeline(uint8_t* rdram, const char* input_name);
 
 } // namespace tooie_diag
+
+// Per-guest-logic-tick demo-path sampler. Called once per glrecord sample
+// consumption (overlay 698 ep 0) during the attract gameplay demo (mode==5).
+extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick);

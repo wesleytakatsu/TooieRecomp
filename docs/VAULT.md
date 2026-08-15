@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — USER_BUG_A WASD resolved; demo-path residual ~2% speed vs tspd; analog controller and USER_BUG_B pending.
+- [[HANDOFF]] — Handoff — TooieRecomp — USER_BUG_A WASD resolved; demo-path speed-contract discriminator complete (tspd=pre-accel target; post-physics input-boundary write unproven); analog controller and USER_BUG_B pending.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
@@ -12,7 +12,7 @@
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
-- [[plan/evidence/p08-demo-movement-precision-diagnosis]] — P08 — demo movement precision diagnosis — Wooded Hollow gameplay demo is glrecord recorded pad through bastick; first-straight heading matches ideal; residual is ~2% horiz speed vs tspd.
+- [[plan/evidence/p08-demo-movement-precision-diagnosis]] — P08 — demo movement precision diagnosis — Wooded Hollow gameplay demo is glrecord recorded pad through bastick; first-straight heading matches ideal; per-logic-tick speed-contract discriminator COMPLETE — tspd is pre-accel target, physics ramp converges to it exactly, +2% is post-physics input-boundary write (writer unproven).
 - [[plan/evidence/p08-stick-angle-thunk-fix-correction]] — P08 — func_80013B70 review correction — Minimal semantic correction reproducing $at/$r1=0x43340000 delay slot on all y==0 paths.
 - [[plan/evidence/p08-stick-angle-thunk-fix]] — P08 — stick-angle secondary-entry fix — Native shared-tail override for empty generated func_80013B70; cardinals 0/90/180/270 and third-argument contract PASS.
 - [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] — P08 — focused independent re-review of corrected func_80013B70 — Verdict A; prior `$r1` delay-slot blocker resolved; function-level fix accepted, runtime player validation pending.

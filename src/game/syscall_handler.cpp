@@ -645,6 +645,14 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
 
     func(rdram, ctx);
 
+    // The attract gameplay demo (mode==5) consumes one recorded-pad sample per
+    // glrecord overlay dispatch (overlay 698 entrypoint 0). This is the TRUE
+    // recorded-input consumer / guest logic tick for the demo walk.
+    if (tooie_diag::demo_path_enabled() && overlay_index == 698u && entry_index == 0u) {
+        const uint64_t tick = tooie_diag::note_guest_logic_tick();
+        tooie_demo_path_tick(rdram, tick);
+    }
+
     dump_opening("leave");
     dump_movement("leave");
 
