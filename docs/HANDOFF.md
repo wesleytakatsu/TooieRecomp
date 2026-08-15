@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: func_80013B70 corrected and accepted at function level; runtime player validation remains pending; P08-T10 synthetic gameplay gate and attract/cinematic facing remain separate."
+description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; small gameplay-demo path residual characterized as ~2% speed vs physics target; full controller and USER_BUG_B remain open."
 status: current
 type: handoff
 project: TooieRecomp
@@ -37,14 +37,16 @@ Historical context:
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
-1. Obtain manual/runtime cardinal validation before declaring USER_BUG_A
-   resolved, using the accepted focused re-review
-   ([[plan/evidence/p08-stick-angle-thunk-fix-rereview]]).
-2. Separately diagnose the file-select → Spiral Mountain regression
+1. Run the remaining demo-path discriminator from
+   [[plan/evidence/p08-demo-movement-precision-diagnosis]] (per-tick
+   `|vel_xz|` vs `tspd` plus glrecord index vs game frame). Do not
+   implement a precision fix until that writer is proven.
+2. Analog/gamepad validation of USER_BUG_A remains PENDING.
+3. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
    as a gameplay automation gate until it is fixed.
-3. Then: attract/cinematic facing (USER_BUG_B) if still open, then
-   transform-tagging.
+4. USER_BUG_B (cinematic/forced facing) stays open and separate. Do not
+   implement transform tagging yet.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, the title/file-select
@@ -79,10 +81,14 @@ RT64. PATCH 4 stays ON.
     60.0 Hz VI, 20/30 Hz logic, 30 Hz animation, host presentation decoupled, and 4:3 content aspect confirmed
     ([[plan/evidence/p08-original-timing-4x3-baseline]]).
 12. **`func_80013B70` stick-angle secondary entry accepted at function level**
-    ([[plan/evidence/p08-stick-angle-thunk-fix-rereview]]): native shared-tail
-    override passes angles, third-argument tests, and reproduces
-    `$at/$r1 = 0x43340000` on all `y==0` paths. Runtime player validation is
-    pending; attract/cinematic facing is a separate bug.
+    ([[plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Manual WASD
+    runtime validation is **RESOLVED** (no more directional collapse).
+    Full analog/gamepad remains **PENDING**. Gameplay-demo movement now
+    travels in the broadly correct directions because that clip is
+    recorded-pad playback through bastick
+    ([[plan/evidence/p08-demo-movement-precision-diagnosis]]). A small
+    residual (~2% horiz speed vs `tspd`) is characterized only.
+    Attract/cinematic facing remains USER_BUG_B.
 
 ## Arquitetura e regras
 
@@ -132,7 +138,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-stick-angle-thunk-fix]] (**CURRENT** — stick-angle secondary-entry fix)
+0. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (**CURRENT** — demo path residual)
+0a. [[plan/evidence/p08-stick-angle-thunk-fix]] (accepted stick-angle secondary-entry fix)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` blocker resolved)
 0aa. [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)
 0b. [[plan/evidence/p08-player-direction-facing-diagnosis]] (Level A diagnosis; fix implemented)

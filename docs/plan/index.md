@@ -5,7 +5,7 @@ status: active
 type: plan
 project: TooieRecomp
 platform: linux-x86_64
-updated: 2026-08-14
+updated: 2026-08-15
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie

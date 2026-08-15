@@ -15,6 +15,10 @@
 // stick layers. Optional TOOIE_DIAG_INPUT_VECTOR=center|right|left|up|down|
 // up-right|up-left|down-right|down-left forces synthetic host axes after
 // the real frontend read. No effect when both are unset.
+//
+// Demo path precision probe (P08): TOOIE_DIAG_DEMO_PATH=1 is independent of
+// TOOIE_DIAG. It implies movement sampling and adds throttled func_80013B70
+// caller/RA logs plus player physics/goto fields for one attract clip.
 
 namespace tooie_diag {
 
@@ -23,6 +27,7 @@ bool timing_enabled();
 bool movement_enabled();
 bool input_enabled();
 bool frontend_enabled();
+bool demo_path_enabled();
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
 void note_syscall_return(uint32_t ovl, uint32_t ep);
@@ -47,6 +52,9 @@ uint64_t gfx_ticks();
 // Sample a core1 degree-math / RA-wrapper result. Logs the first N calls,
 // then every Nth, plus any non-finite or huge discontinuity.
 void note_math(const char* name, float input, float output);
+
+// Throttled func_80013B70 sample. ra is the caller return address (ctx->r31).
+void note_13b70(uint32_t ra, float y, float x, float mag, float angle);
 
 // Call from a frequent host path (e.g. update_gfx) — prints summary on interval.
 void tick();

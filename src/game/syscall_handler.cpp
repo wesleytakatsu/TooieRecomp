@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -352,15 +353,17 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         const int mode_v = int(MEM_H(0x2, mode));
         const int map_v = int(MEM_H(0x10, mode));
         const bool changed = (mode_v != s_last_mode) || (map_v != s_last_map);
+        const bool demo_clip = tooie_diag::demo_path_enabled() && (mode_v == 5);
+        const int due_ms = demo_clip ? 50 : 200;
         const bool due = (s_last.time_since_epoch().count() == 0) ||
-                         (now - s_last >= std::chrono::milliseconds(200));
+                         (now - s_last >= std::chrono::milliseconds(due_ms));
         // Always sample gsattract (731) and player overlays more densely.
-        const bool hot = (overlay_index == 731u || overlay_index == 419u);
+        const bool hot = (overlay_index == 731u || overlay_index == 419u || demo_clip);
         if (!changed && !due && !hot) {
             return;
         }
         if (!changed && hot &&
-            (now - s_last < std::chrono::milliseconds(80))) {
+            (now - s_last < std::chrono::milliseconds(demo_clip ? 50 : 80))) {
             return;
         }
         s_last = now;
@@ -430,6 +433,66 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
                      a0, a1, a2, a3, stage, sub, bits_f32(timer_bits),
                      ps_addr, pos_addr, px, py, pz,
                      yaw, yaw_ideal, sx, sy, sang, sdist);
+        if (tooie_diag::demo_path_enabled() && mode_v == 5) {
+            const gpr pad = static_cast<gpr>(static_cast<int32_t>(0x80079B40u));
+            const int8_t psx = int8_t(MEM_B(2, pad));
+            const int8_t psy = int8_t(MEM_B(3, pad));
+            const uint16_t pbuttons = uint16_t(MEM_HU(0, pad));
+            const gpr remap = static_cast<gpr>(static_cast<int32_t>(0x80079AF8u));
+            const float rx = bits_f32(uint32_t(MEM_W(8, remap)));
+            const float ry = bits_f32(uint32_t(MEM_W(12, remap)));
+            float vx = 0, vy = 0, vz = 0, tgt_spd = 0;
+            float gx = 0, gy = 0, gz = 0;
+            uint32_t phys_addr = 0;
+            uint32_t bs_addr = 0;
+            int32_t bs_id = -1;
+            static float s_px = 0, s_pz = 0;
+            static bool s_have_prev = false;
+            float dx = 0, dz = 0, dist = 0, head = 0;
+            if (guest_ok(ps_addr)) {
+                const gpr ps = static_cast<gpr>(static_cast<int32_t>(ps_addr));
+                phys_addr = uint32_t(MEM_W(0xC8, ps));
+                bs_addr = uint32_t(MEM_W(0x120, ps));
+                if (guest_ok(phys_addr)) {
+                    const gpr ph = static_cast<gpr>(static_cast<int32_t>(phys_addr));
+                    vx = bits_f32(uint32_t(MEM_W(0x10, ph)));
+                    vy = bits_f32(uint32_t(MEM_W(0x14, ph)));
+                    vz = bits_f32(uint32_t(MEM_W(0x18, ph)));
+                    tgt_spd = bits_f32(uint32_t(MEM_W(0x3C, ph)));
+                    gx = bits_f32(uint32_t(MEM_W(0x64, ph)));
+                    gy = bits_f32(uint32_t(MEM_W(0x68, ph)));
+                    gz = bits_f32(uint32_t(MEM_W(0x6C, ph)));
+                }
+                if (guest_ok(bs_addr)) {
+                    bs_id = int32_t(MEM_W(0, static_cast<gpr>(static_cast<int32_t>(bs_addr))));
+                }
+            }
+            if (s_have_prev) {
+                dx = px - s_px;
+                dz = pz - s_pz;
+                dist = std::sqrt(dx * dx + dz * dz);
+                if (dist > 1.0e-4f) {
+                    head = std::atan2(dx, dz) * (180.0f / 3.14159265f);
+                    if (head < 0.0f) {
+                        head += 360.0f;
+                    }
+                }
+            }
+            s_px = px;
+            s_pz = pz;
+            s_have_prev = true;
+            std::fprintf(stderr,
+                         "[tooie-demopath] sample gfx=%llu map=%d "
+                         "xyz=%.3f,%.3f,%.3f dlt=%.3f,%.3f dist=%.3f head=%.2f "
+                         "yaw=%.2f ideal=%.2f vel=%.3f,%.3f,%.3f tspd=%.3f "
+                         "goto=%.3f,%.3f,%.3f pad=(%d,%d) btn=%04x remap=(%.3f,%.3f) "
+                         "stick=%.3f,%.3f ang=%.2f distick=%.3f bs=%d phys=%08x\n",
+                         static_cast<unsigned long long>(tooie_diag::gfx_ticks()),
+                         map_v, px, py, pz, dx, dz, dist, head,
+                         yaw, yaw_ideal, vx, vy, vz, tgt_spd,
+                         gx, gy, gz, int(psx), int(psy), unsigned(pbuttons),
+                         rx, ry, sx, sy, sang, sdist, bs_id, phys_addr);
+        }
         if (tooie_diag::input_enabled()) {
             float hx = 0.0f, hy = 0.0f;
             tooie_diag::last_host_input(&hx, &hy);

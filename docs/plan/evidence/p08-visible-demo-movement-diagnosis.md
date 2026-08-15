@@ -176,8 +176,9 @@ Refuted as the *first* divergence:
 
 - B speed-only: Banjo XZ during Wooded Hollow is a smooth path, not a
   uniform time-scale error.
-- I attract stick stream: `stick=0,0` while position still advances
-  (scripted/attract driver).
+- I attract stick stream: **CORRECTED/SUPERSEDED**. Coarse `stick=0,0`
+  samples were idle/pre-walk. The walk uses recorded remapped stick
+  ([[p08-demo-movement-precision-diagnosis]]).
 - core1 RA-wrapper RA mechanism: already resolved; outputs finite and
   plausible (see §9).
 
@@ -235,8 +236,14 @@ model/camera transform.
 ## 9. Input, timebase, core1 math
 
 ```text
-MOVEMENT_DRIVER:          scripted attract / gsattract (not analog stick)
-INPUT_STREAM_PLAUSIBLE:   YES   (stick zero while path still moves)
+MOVEMENT_DRIVER:          CORRECTED/SUPERSEDED — see
+                          [[p08-demo-movement-precision-diagnosis]].
+                          Historical coarse samples showed stick=0 during
+                          idle frames. The Wooded Hollow *walk* is
+                          glrecord recorded pad → remapper → bastick.
+INPUT_STREAM_PLAUSIBLE:   YES for idle frames (stick zero). During the
+                          walk, remapped stick is non-zero and matches
+                          bastick. Live OSContPad stays ~0.
 GAME_TIMEBASE:            UNKNOWN-leaning-CORRECT
 ```
 

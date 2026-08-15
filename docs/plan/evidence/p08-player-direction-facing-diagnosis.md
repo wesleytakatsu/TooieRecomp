@@ -1,6 +1,6 @@
 ---
 title: "P08 — player direction / facing diagnosis"
-description: "Root-cause analysis of the user report that all directional input produces right-on-screen movement and that character facing is wrong in attract/cinematic contexts."
+description: "Root-cause analysis of the user report that all directional input produces right-on-screen movement and that character facing is wrong in attract/cinematic contexts. WASD runtime collapse is now RESOLVED; full controller still PENDING."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -13,10 +13,15 @@ tags: [tooie-recomp, p08, direction, facing, stick-angle, atan2, bastick, func_8
 BASE_HEAD:                    2a41007950bba10c43c6b268f396ee714a70f4b4
 MODEL:                        DeepSeek V4 Flash HIGH
 MODE:                         DYNAMIC ROOT-CAUSE DIAGNOSIS (static + limited dynamic)
-RIGHT_ONLY_PLAYER_MOVEMENT:   REPRODUCED (from static trace)
-ATTRACT_PLAYER_DIRECTION_WRONG: UNKNOWN (attract bypasses bastick — different mechanism)
-CINEMATIC_FACING_WRONG:       UNKNOWN (not diagnosed — requires live gameplay)
+RIGHT_ONLY_PLAYER_MOVEMENT:   RESOLVED (manual WASD on HEAD 6a0a696)
+ATTRACT_PLAYER_DIRECTION_WRONG: CORRECTED/SUPERSEDED — gameplay demo player
+                              uses bastick via glrecord; see
+                              [[p08-demo-movement-precision-diagnosis]]
+CINEMATIC_FACING_WRONG:       OPEN_SEPARATE (USER_BUG_B; not this note)
 BOTS_BEHAVIOR_PLAUSIBLE:      YES — bots bypass bastick/yaw pipeline
+USER_BUG_A_FUNCTION_LEVEL:    RESOLVED
+USER_BUG_A_WASD_RUNTIME:      RESOLVED
+USER_BUG_A_FULL_CONTROLLER:   PENDING
 ROOT_CAUSE_LEVEL:             A
 ROOT_CAUSE_CLASS:             A (stick angle calculation broken)
 FIX_IMPLEMENTED:              YES — see [[p08-stick-angle-thunk-fix]]
@@ -30,7 +35,7 @@ FIX_IMPLEMENTED:              YES — see [[p08-stick-angle-thunk-fix]]
 | neutral → stops correctly | distance=0 → angle update skipped in bastick_update |
 | changing requested direction doesn't change movement | all directions give same tiny angle ≈ distance (0.2–1.0) |
 | bots appear correct | bots set `yaw->ideal` directly from AI structs; bypass `bastick_update`/`bastick_getAngleRelativeToBanjo` entirely |
-| attract player also wrong | attract bypasses bastick pipeline (drives camera/pos directly); if wrong, it is a separate mechanism not diagnosed here |
+| attract player also wrong | **CORRECTED/SUPERSEDED:** gameplay-demo player uses bastick via `glrecord` recorded pad ([[p08-demo-movement-precision-diagnosis]]). Cinematic/forced facing remains USER_BUG_B. |
 
 ## 2. Root cause — specific
 
@@ -100,17 +105,25 @@ LIVE PLAYER PATH:
   → bastick_update → func_80013B70 [EMPTY → BROKEN] → bastick_getAngleRelativeToBanjo
   → func_8009D088 (yaw controller) → yaw_setIdeal → yaw_update
 
-ATTRACT PATH:
-  gsattract → camera + position direct manipulation
-  → skips bastick_update via unk17C/unk180 gate in func_800F468C
-  → BASTICK NOT USED
+ATTRACT / GAMEPLAY-DEMO PATH (CORRECTED/SUPERSEDED):
+  Historical claim that attract "skips bastick via func_800F468C" is
+  over-broad. func_800F468C is a gate that *calls* func_800991B0, and
+  that player update includes bastick_update.
+  Wooded Hollow gameplay demonstration:
+    gsattract mode-5 → func_800A9CAC (D_80127760 != 0)
+    → glrecord_entrypoint_0 writes recorded OSContPad
+    → func_8001608C remapper → bastick_update → func_80013B70
+    → BASTICK USED
+  Some cinematic/scripted actors still bypass bastick (USER_BUG_B).
 
 BOT PATH:
   AI struct → func_800F8444 / func_800F45E0 → yaw_setIdeal → same yaw_update
   → BASTICK NOT USED
 ```
 
-**FIRST_SHARED_DIRECTION_FUNCTION:** None — attract and bots do not use the bastick pipeline at all.
+**FIRST_SHARED_DIRECTION_FUNCTION:** `func_80013B70` is shared by live
+player bastick, gameplay-demo bastick, `func_800F18FC` world-delta heading,
+and `subaddiejoy`. Bots still do not enter `bastick_update`.
 
 **FIRST_PLAYER_VS_BOT_DIVERGENCE:** The entrance to bastick_update (0x8009EFF8). Bots never reach it.
 
@@ -211,8 +224,9 @@ STICK_ANGLE_CALLER:          RecompiledFuncs/funcs_13.c:4301–4316 (generated b
 ```text
 RESOLUTION:  [[p08-stick-angle-thunk-fix]]
 STATUS:      native override implemented; cardinal/diagonal/third-arg tests PASS
-RUNTIME:     live player not visually confirmed
+RUNTIME:     USER_BUG_A_WASD_RUNTIME RESOLVED (manual current-HEAD WASD)
+             USER_BUG_A_FULL_CONTROLLER PENDING
              (P08-T10 synthetic file-select → mode=1 still FAIL; separate)
-USER_BUG_A:  IMPLEMENTED_PENDING_RUNTIME
-USER_BUG_B:  OPEN_SEPARATE (attract/cinematic facing; not bastick)
+USER_BUG_A:  WASD resolved; full controller pending
+USER_BUG_B:  OPEN_SEPARATE (cinematic/forced facing; not this residual)
 ```

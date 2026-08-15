@@ -24,6 +24,7 @@ std::atomic<bool> g_movement_enabled{false};
 std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_frontend_enabled{false};
 std::atomic<bool> g_direction_enabled{false};
+std::atomic<bool> g_demo_path_enabled{false};
 std::atomic<bool> g_gameplay_seen{false};
 std::atomic<bool> g_inited{false};
 std::atomic<uint32_t> g_host_x_bits{0};
@@ -98,6 +99,12 @@ void ensure_init() {
         g_frontend_enabled.store(true, std::memory_order_relaxed);
         g_movement_enabled.store(true, std::memory_order_relaxed);
         g_input_enabled.store(true, std::memory_order_relaxed);
+    }
+    const char* demo = std::getenv("TOOIE_DIAG_DEMO_PATH");
+    g_demo_path_enabled.store(demo != nullptr && demo[0] != '\0' && demo[0] != '0',
+                              std::memory_order_relaxed);
+    if (g_demo_path_enabled.load(std::memory_order_relaxed)) {
+        g_movement_enabled.store(true, std::memory_order_relaxed);
     }
     const char* vec = std::getenv("TOOIE_DIAG_INPUT_VECTOR");
     if (vec != nullptr && vec[0] != '\0') {
@@ -196,6 +203,11 @@ void ensure_init() {
                      "[tooie-fe] enabled (title & file select synthetic sequencer active)\n");
         std::fflush(stderr);
     }
+    if (g_demo_path_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[tooie-demopath] enabled (implies movement; 13B70 RA + physics/goto)\n");
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -236,6 +248,11 @@ bool movement_enabled() {
 bool input_enabled() {
     ensure_init();
     return g_input_enabled.load(std::memory_order_relaxed);
+}
+
+bool demo_path_enabled() {
+    ensure_init();
+    return g_demo_path_enabled.load(std::memory_order_relaxed);
 }
 
 bool frontend_enabled() {
@@ -610,6 +627,42 @@ void note_math(const char* name, float input, float output) {
                  static_cast<double>(output),
                  bad ? " BAD" : "",
                  jump ? " JUMP" : "",
+                 static_cast<unsigned long long>(g_gfx_ticks.load()));
+    std::fflush(stderr);
+}
+
+void note_13b70(uint32_t ra, float y, float x, float mag, float angle) {
+    ensure_init();
+    if (!g_demo_path_enabled.load(std::memory_order_relaxed)) {
+        return;
+    }
+    static uint32_t s_n = 0;
+    static uint32_t s_nonzero = 0;
+    const uint32_t n = ++s_n;
+    const bool nz = (std::fabs(y) > 1.0e-6f) || (std::fabs(x) > 1.0e-6f);
+    if (nz) {
+        ++s_nonzero;
+    }
+    // First 48 calls, then every 16th, plus every non-zero sample until 80 of those.
+    const bool sample = (n <= 48u) || ((n & 15u) == 0u) ||
+                        (nz && s_nonzero <= 80u);
+    if (!sample) {
+        return;
+    }
+    const char* who = "other";
+    if (ra == 0x80016AD8u) {
+        who = "func_80016A74";
+    } else if (ra == 0x800F195Cu) {
+        who = "func_800F18FC";
+    } else if ((ra & 0xFFFF0000u) == 0x80800000u) {
+        who = "overlay8080";
+    } else if (ra >= 0x8009EFF8u && ra < 0x8009F18Cu) {
+        who = "bastick_update";
+    }
+    std::fprintf(stderr,
+                 "[tooie-demopath] 13b70 n=%u nz=%u ra=%08x who=%s "
+                 "y=%.5f x=%.5f mag=%.5f ang=%.3f gfx=%llu\n",
+                 n, s_nonzero, ra, who, y, x, mag, angle,
                  static_cast<unsigned long long>(g_gfx_ticks.load()));
     std::fflush(stderr);
 }

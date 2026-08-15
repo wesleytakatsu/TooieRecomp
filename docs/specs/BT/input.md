@@ -3,7 +3,7 @@ title: "BT — Input e controles nativos"
 description: "Contrato de controles do TooieRecomp, deliberadamente alinhado ao BanjoRecomp."
 status: current
 area: "specs/BT"
-updated: 2026-08-09
+updated: 2026-08-15
 tags: [banjo-tooie-Recomp, tooie-recomp, input, controller, rumble]
 ---
 
@@ -62,6 +62,15 @@ tráfego PIF privado do desafio CIC-6105; ele não deve interpretar controles.
 
 Breakpoints de runtime confirmaram `osContStartReadData_recomp` na thread
 `[Game] SCHEDULE` e `osContGetReadData_recomp` na thread `[Game] JOY`.
+
+### Attract / gameplay demonstration
+
+Quando o byte de attract `D_80127760` é não-zero, `func_8001608C` consome
+amostras gravadas via `_glrecord_entrypoint_0` e as escreve no `OSContPad`
+antes do remapper `D_80079AF8`. O player da demonstração de Wooded Hollow
+usa o mesmo `bastick_update` / `func_80013B70` do jogador ao vivo. Isso é
+um segundo *source* de pad Tooie, não um segundo framework de input host.
+Evidência: [[../../plan/evidence/p08-demo-movement-precision-diagnosis]].
 
 ## Defaults do controle moderno
 

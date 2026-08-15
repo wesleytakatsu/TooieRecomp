@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: func_80013B70 corrected and accepted at function level; runtime player validation remains pending; P08-T10 synthetic gameplay gate and attract/cinematic facing remain separate."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; gameplay-demo residual is ~2% speed vs tspd on recorded-pad playback; USER_BUG_B and full controller remain open."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -12,6 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
+- Active diagnosis: [[p08-demo-movement-precision-diagnosis]].
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
@@ -64,13 +65,18 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 reproducing `$at/$r1 = 0x43340000` delay-slot clobber on all `y == 0` paths.
 All unit tests pass (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`,
 `bcf28_helpers_test`, `core1_ra_wrappers_test`).
-Focused independent re-review is **ACCEPTED (verdict A)**. Live player motion is
-`IMPLEMENTED_PENDING_RUNTIME` pending controllable runtime validation.
-Attract/cinematic facing (USER_BUG_B) is **OPEN_SEPARATE** — attract bypasses bastick.
+Focused independent re-review is **ACCEPTED (verdict A)**. Manual WASD
+runtime is **RESOLVED**. Full analog/gamepad is **PENDING**.
+Gameplay-demo player movement uses `glrecord` recorded pad through bastick
+([[p08-demo-movement-precision-diagnosis]]); the remaining residual is a
+~2% horiz-speed overshoot versus `tspd` (Level C). Attract/cinematic
+facing (USER_BUG_B) is **OPEN_SEPARATE**.
 
 Next steps in Phase P08:
-1. Controllable runtime cardinal validation of USER_BUG_A.
-2. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
+1. Remaining demo-path discriminator (per-tick `|vel_xz|` vs `tspd`,
+   glrecord index vs game frame).
+2. Analog/gamepad validation of USER_BUG_A.
+3. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -84,7 +90,8 @@ RENDER_SUBMISSION_FIX_STATUS:        RESOLVED (Level A; transform_hooks.cpp)
 FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1 FAIL
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
-STICK_ANGLE_13B70_FIX:               CORRECTED (review finding resolved; pending re-review)
+STICK_ANGLE_13B70_FIX:               ACCEPTED (WASD runtime RESOLVED; analog PENDING)
+DEMO_PATH_RESIDUAL:                  LEVEL C (~2% speed vs tspd; heading matches)
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
@@ -116,14 +123,16 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Run manual/controllable runtime cardinal validation for USER_BUG_A, using
-[[p08-stick-angle-thunk-fix-rereview]] as the accepted function-level gate.
-Keep the synthetic file-select regression separate and do not use it as a
-gameplay automation gate.
+Run the remaining demo-path discriminator in
+[[p08-demo-movement-precision-diagnosis]]: per logic tick dump `|vel_xz|`
+versus `tspd` and glrecord sample-index versus game-frame updates on the
+first Wooded Hollow UP hold. Do not implement a precision fix until that
+writer is proven. Keep P08-T10 and USER_BUG_B separate.
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
+0. [[p08-demo-movement-precision-diagnosis]] — current residual
+0a. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
 0a. [[p08-stick-angle-thunk-fix-rereview]] — verdict A; blocker resolved
 0aa. [[p08-stick-angle-thunk-fix-independent-review]] — historical verdict C
 0b. [[p08-player-direction-facing-diagnosis]] — Level A diagnosis
@@ -138,7 +147,7 @@ gameplay automation gate.
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (boot_hw_stubs func_80013B70 + stick_angle_thunk_test)
+CODE_CHANGED             = YES (TOOIE_DIAG_DEMO_PATH in tooie_diag / boot_hw_stubs / syscall_handler)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

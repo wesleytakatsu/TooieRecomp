@@ -4,7 +4,7 @@ description: "Índice ordenado das etapas necessárias para entregar Banjo-Tooie
 status: active
 type: implementation-index
 project: TooieRecomp
-updated: 2026-08-13
+updated: 2026-08-15
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -78,13 +78,16 @@ is resolved by independent verdict B, and PATCH 4 is accepted.
 lookup-zero **RESOLVED**. Render-submission matrix split **RESOLVED**.
 `func_80013B70` stick-angle override is **ACCEPTED at function level** after
 focused independent re-review verdict A
-([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Runtime player
-validation remains pending; the historical verdict C is preserved in
+([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Manual WASD
+runtime is **RESOLVED**. Gameplay-demo residual is characterized in
+[[../../plan/evidence/p08-demo-movement-precision-diagnosis]]. The historical
+verdict C is preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]].
 Current P08-T10
 synthetic confirm → mode=1 is **FAIL** (separate). Attract/cinematic facing
 is **OPEN_SEPARATE**. P08-T03 original timing/4:3 baseline is **VALIDATED**.
 Evidência:
+[[../../plan/evidence/p08-demo-movement-precision-diagnosis]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]],

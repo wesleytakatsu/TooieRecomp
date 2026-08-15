@@ -1061,9 +1061,12 @@ extern "C" void func_80013A7C(uint8_t* rdram, recomp_context* ctx) {
 // by name.
 extern "C" void func_80013B70(uint8_t* rdram, recomp_context* ctx) {
     const float input_y = ctx->f12.fl;
+    const float input_x = ctx->f14.fl;
+    const uint32_t caller_ra = static_cast<uint32_t>(ctx->r31);
 
     // mtc1 $a2, $f16
     ctx->f16.u32l = static_cast<uint32_t>(ctx->r6);
+    const float input_mag = ctx->f16.fl;
 
     // 0x80013B90 shared tail
     ctx->f10.u32l = 0;
@@ -1093,6 +1096,7 @@ extern "C" void func_80013B70(uint8_t* rdram, recomp_context* ctx) {
                 ctx->f0.fl = ctx->f2.fl + ctx->f0.fl;
             }
             tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+            tooie_diag::note_13b70(caller_ra, input_y, input_x, input_mag, ctx->f0.fl);
             return;
         }
         // y != 0, x == 0
@@ -1100,11 +1104,13 @@ extern "C" void func_80013B70(uint8_t* rdram, recomp_context* ctx) {
             ctx->r1 = S32(0x42B4 << 16); // 90.0
             ctx->f0.u32l = ctx->r1;
             tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+            tooie_diag::note_13b70(caller_ra, input_y, input_x, input_mag, ctx->f0.fl);
             return;
         }
         ctx->r1 = S32(0x4387 << 16); // 270.0
         ctx->f0.u32l = ctx->r1;
         tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+        tooie_diag::note_13b70(caller_ra, input_y, input_x, input_mag, ctx->f0.fl);
         return;
     }
 
@@ -1113,10 +1119,12 @@ extern "C" void func_80013B70(uint8_t* rdram, recomp_context* ctx) {
     if (ctx->f10.fl <= ctx->f14.fl) {
         ctx->f0.fl = ctx->f10.fl; // 0.0
         tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+        tooie_diag::note_13b70(caller_ra, input_y, input_x, input_mag, ctx->f0.fl);
         return;
     }
     ctx->f0.u32l = ctx->r1; // 180.0
     tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+    tooie_diag::note_13b70(caller_ra, input_y, input_x, input_mag, ctx->f0.fl);
 }
 
 // Submit one unit of background TIDY work. The original uses a blocking send

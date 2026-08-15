@@ -3,7 +3,7 @@ title: "Banjo Tooie Decomp Fork — Index"
 description: "Especificações do fork local wesleytakatsu/banjo-tooie-Recomp e de sua relação com o upstream Mr-Wiseguy/banjo-tooie."
 status: current
 area: "specs/BT"
-updated: 2026-08-09
+updated: 2026-08-15
 source_path: banjo-tooie-Recomp
 source_repo: wesleytakatsu/banjo-tooie-Recomp
 upstream_repo: Mr-Wiseguy/banjo-tooie
@@ -33,7 +33,7 @@ At the verified baseline, `origin` is
 - [Overlays](overlays.md) — dynamic overlay architecture (851 overlays).
 - [Syscalls](syscalls.md) — overlay dispatch via the syscall table (decomp + TooieRecomp P06).
 - [RSP e áudio](rsp-and-audio.md) — n_aspMain / OSTask / pipeline SDL (TooieRecomp P07).
-- [Input e controles](input.md) — contrato compartilhado com BanjoRecomp, perfis, persistência e rumble.
+- [Input e controles](input.md) — contrato compartilhado com BanjoRecomp; attract/demo também consome `glrecord` no pad guest.
 - [Compression](compression.md) — cartridge/overlay deflate + CRC scaffold.
 - [Tools](tools.md) — C++ tooling for decompression / compression / overlays.
 - [Sources](sources.md) — `src/` tree layout and decompilation style.

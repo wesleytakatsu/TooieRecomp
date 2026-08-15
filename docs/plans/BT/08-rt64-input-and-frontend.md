@@ -32,9 +32,13 @@ The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 The user right-only live-player report is owned by the empty
 `func_80013B70` secondary entry. The Tooie-native implementation is accepted
 at function level after focused independent re-review verdict A
-([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]); runtime player
-validation remains pending. The historical verdict C and its narrow missing
-`$at` side-effect finding are preserved in
+([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]). Manual WASD
+runtime is **RESOLVED**. Full analog/gamepad remains **PENDING**. The
+gameplay-demo player uses `glrecord` recorded pad through bastick; the
+remaining small path residual is a ~2% horiz-speed overshoot versus
+`tspd` ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]]).
+The historical verdict C and its narrow missing `$at` side-effect finding
+are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];
 host→N64 pad conversion
 remains bidirectional and is not reopened. Attract/cinematic facing is a
@@ -54,6 +58,7 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
+- [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; recorded-pad + ~2% speed)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)
@@ -165,7 +170,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; independent review rejected acceptance |
+| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | **CURRENT:** recorded-pad demo residual; ~2% speed vs tspd |
+| [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
 | [[../../plan/evidence/p08-directional-input-movement-diagnosis]] | host→pad bidirectional; not reopened |
@@ -227,16 +233,16 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Run controllable runtime cardinal validation for USER_BUG_A** — the
-   function-level correction is accepted; runtime validation remains pending
-   (see [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]).
-2. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
+1. **Demo-path residual discriminator** — first-straight heading matches
+   ideal; remaining internal residual is ~2% `|vel_xz|` vs `tspd`
+   ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]]).
+2. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
+   full controller is PENDING.
+3. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
    current HEAD (regression from P08-T10 validated state).
-3. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
-4. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
+4. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
+5. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-5. User-controlled directional retest only if a later playable session
-   contradicts [[../../plan/evidence/p08-directional-input-movement-diagnosis]].
 
 ## Gate de saída
 
@@ -253,9 +259,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Complete the blocked P08-T03 timing/4:3 measurements with an
-explicit Original configuration and a usable display. Do not advance to
-high-FPS transform tagging until the baseline gate is closed.
+**NEXT:** Run the remaining demo-path discriminator
+([[../../plan/evidence/p08-demo-movement-precision-diagnosis]]). Do not
+implement a precision fix, cinematic facing, or transform tagging yet.
 Do not reopen the accepted BCF28 helper binding, PATCH 4 / Hybrid F', the
-core1 RA wrappers, or the render-submission matrix split. Do not modify
-shared RT64. Do not implement a directional-input "fix" on current evidence.
+core1 RA wrappers, the render-submission matrix split, or the accepted
+`func_80013B70` cardinal semantics. Do not modify shared RT64.
