@@ -194,8 +194,11 @@ a grounded walk, later scene drop). Not a +X-only integrator.
 ```text
 WORLD_DIRECTION_COLLAPSED:                         NO (attract)
 WORLD_DIRECTION_CORRECT_BUT_SCREEN_PROJECTION_WRONG: NO new proof
-USER_CONTROLLED_VS_ATTRACT_SHARED_ROOT:            REFUTED
-  (attract stick != live host pad)
+USER_CONTROLLED_VS_ATTRACT_SHARED_ROOT:            CORRECTED/SUPERSEDED
+  (old wording was too broad. Input sources differ, so INPUT_SOURCE_SHARED = NO.
+  Downstream convergence was never tested. p08-player-direction-facing-diagnosis
+  proves attract bypasses bastick entirely — both paths diverge before
+  bastick_update.)
 ```
 
 ## 5. Discriminated bug classes
@@ -268,6 +271,24 @@ If a later playable session still shows right-only motion while
 RIGHT, search **after** the shared N64 pad boundary (Tooie attract
 override / camera-relative yaw / file-select context). Do not patch
 `convert_to_n64_range` or `osContGetReadData_recomp` on current evidence.
+
+## 10. Updated finding (2026-08-15)
+
+See [[p08-player-direction-facing-diagnosis]] for the resolved root cause.
+The first bad stage is `func_80013B70` (0x80013B70) — the stick-angle atan2
+thunk. Its recompiled body is empty, so the stick angle is never computed;
+the stick distance (0–1) is incorrectly stored as the angle. This causes all
+cardinal directions to produce essentially the same desired yaw (~camera_yaw
++ 90°), matching the right-only movement symptom.
+
+This supersedes §7. The directional conversion (host → pad → remap) is still
+correct; the bug is entirely Tooie-side in the generated recompiled function
+`func_80013B70`.
+
+```text
+ROOT_CAUSE_LEVEL (2026-08-15):  A
+FIX_IMPLEMENTED (2026-08-15):   NO (diagnosis only)
+```
 
 ## 9. Future acceptance test
 

@@ -23,6 +23,8 @@ std::atomic<bool> g_timing_enabled{false};
 std::atomic<bool> g_movement_enabled{false};
 std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_frontend_enabled{false};
+std::atomic<bool> g_direction_enabled{false};
+std::atomic<bool> g_gameplay_seen{false};
 std::atomic<bool> g_inited{false};
 std::atomic<uint32_t> g_host_x_bits{0};
 std::atomic<uint32_t> g_host_y_bits{0};
@@ -88,6 +90,15 @@ void ensure_init() {
     const char* fe = std::getenv("TOOIE_DIAG_FRONTEND");
     g_frontend_enabled.store(fe != nullptr && fe[0] != '\0' && fe[0] != '0',
                              std::memory_order_relaxed);
+    const char* dir = std::getenv("TOOIE_DIAG_DIRECTION");
+    g_direction_enabled.store(dir != nullptr && dir[0] != '\0' && dir[0] != '0',
+                               std::memory_order_relaxed);
+    if (g_direction_enabled.load(std::memory_order_relaxed)) {
+        // Direction diagnosis implies frontend + movement + input diagnostics.
+        g_frontend_enabled.store(true, std::memory_order_relaxed);
+        g_movement_enabled.store(true, std::memory_order_relaxed);
+        g_input_enabled.store(true, std::memory_order_relaxed);
+    }
     const char* vec = std::getenv("TOOIE_DIAG_INPUT_VECTOR");
     if (vec != nullptr && vec[0] != '\0') {
         auto eq = [vec](const char* name) {
@@ -232,6 +243,19 @@ bool frontend_enabled() {
     return g_frontend_enabled.load(std::memory_order_relaxed);
 }
 
+bool direction_enabled() {
+    ensure_init();
+    return g_direction_enabled.load(std::memory_order_relaxed);
+}
+
+void set_gameplay_detected(bool v) {
+    g_gameplay_seen.store(v, std::memory_order_release);
+}
+
+bool gameplay_detected() {
+    return g_gameplay_seen.load(std::memory_order_acquire);
+}
+
 static uint32_t float_bits(float f) {
     uint32_t bits = 0;
     std::memcpy(&bits, &f, sizeof(bits));
@@ -354,9 +378,53 @@ void apply_synthetic_input(int controller, uint16_t* buttons, float* x, float* y
             if (buttons != nullptr) {
                 *buttons |= 0x8000u; // CONT_A
             }
-        } else {
+        } else if (gs_elapsed >= 5.0 && gs_elapsed < 12.0) {
             phase = 9;
             phase_name = "GAMESELECT_WAIT_START";
+        } else {
+            // After enough time has passed (gameselect confirm → map load → gameplay)
+            // inject cardinal stick directions to trace the movement pipeline.
+            // gs_elapsed ~5-12s wait (gameselect ep=7 unload at ~6s elapsed from
+            // gameselect, overlays load, mode=1 gameplay starts by ~8s after gs).
+            // Use wall-clock elapsed for simplicity; gs_elapsed is relative to
+            // first gameselect detection, so add 15s (so ~12+15=27s after
+            // start / ~22s after first frontend input).
+            const double dir_elapsed = elapsed - 20.0; // cardinal start window
+            if (dir_elapsed < 0.0) {
+                // Buffer before cardinal injection: neutral stick
+                phase = 9;
+                phase_name = "GAMESELECT_WAIT_START";
+            } else if (dir_elapsed < 2.0) {
+                phase = 10;
+                phase_name = "DIR_CENTER";
+                if (x != nullptr) { *x = 0.0f; }
+                if (y != nullptr) { *y = 0.0f; }
+            } else if (dir_elapsed < 4.0) {
+                phase = 11;
+                phase_name = "DIR_RIGHT";
+                if (x != nullptr) { *x = 1.0f; }
+                if (y != nullptr) { *y = 0.0f; }
+            } else if (dir_elapsed < 6.0) {
+                phase = 12;
+                phase_name = "DIR_LEFT";
+                if (x != nullptr) { *x = -1.0f; }
+                if (y != nullptr) { *y = 0.0f; }
+            } else if (dir_elapsed < 8.0) {
+                phase = 13;
+                phase_name = "DIR_UP";
+                if (x != nullptr) { *x = 0.0f; }
+                if (y != nullptr) { *y = 1.0f; }
+            } else if (dir_elapsed < 10.0) {
+                phase = 14;
+                phase_name = "DIR_DOWN";
+                if (x != nullptr) { *x = 0.0f; }
+                if (y != nullptr) { *y = -1.0f; }
+            } else {
+                phase = 15;
+                phase_name = "DIR_CENTER_END";
+                if (x != nullptr) { *x = 0.0f; }
+                if (y != nullptr) { *y = 0.0f; }
+            }
         }
     }
 
@@ -408,6 +476,10 @@ void note_frontend_state(uint32_t ovl, uint32_t ep, int32_t mode, int32_t map, u
                  "[tooie-fe] t=%.2fs state_change ovl=%s ep=%u mode=%d map=%d warp=%u\n",
                  elapsed, ovl_name, ep, mode, map, warp);
     std::fflush(stderr);
+
+    if (mode == 1) {
+        g_gameplay_seen.store(true, std::memory_order_release);
+    }
 }
 
 void note_host_input(int controller, float x, float y, uint16_t buttons) {

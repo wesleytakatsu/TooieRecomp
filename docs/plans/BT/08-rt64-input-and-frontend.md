@@ -215,12 +215,15 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **P08-T03 original timing/4:3 baseline**: apply an explicit Original
-   graphics configuration and collect the three required live windows.
-2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
-3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
+1. **Implement `func_80013B70` native override** — empty generated body causes
+   right-only movement (Level A root cause, see
+   [[../../plan/evidence/p08-player-direction-facing-diagnosis]]).
+2. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
+   current HEAD (regression from P08-T10 validated state).
+3. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
+4. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-4. User-controlled directional retest only if a later playable session
+5. User-controlled directional retest only if a later playable session
    contradicts [[../../plan/evidence/p08-directional-input-movement-diagnosis]].
 
 ## Gate de saída

@@ -59,14 +59,16 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 Title screen, file-selection menu, slot navigation, original 4:3 timing baseline,
 and gameplay transitions are autonomously proven functional.
 Visual Wooded Hollow attract demo renders correctly and advances.
-The user "right-only movement" report was **not reproduced** on e97: host→N64
-pad conversion is bidirectional (`input_direction_test` PASS; runtime LEFT
-`pad=(-82,0)`).
+The user "right-only movement" report is now **reproduced from static analysis**
+(see [[p08-player-direction-facing-diagnosis]]): root cause identified as the
+empty generated body of `func_80013B70` (stick-angle atan2 thunk at 0x80013B70).
 
-Next steps in Phase P08 / downstream phases:
-1. Implement the Tooie high-FPS transform-tagging suite (`gEXEnable`, matrix group IDs).
-2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
-3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
+Next steps in Phase P08:
+1. **Implement the fix for `func_80013B70`** (Tooie-native strong override).
+2. Investigate the file-select → Spiral Mountain regression (current HEAD no
+   longer transitions to mode=1 gameplay after CONT_A confirm).
+3. Then: implement the Tooie high-FPS transform-tagging suite.
+4. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 

@@ -74,4 +74,12 @@ void note_guest_pad(int8_t stick_x, int8_t stick_y, uint16_t buttons,
 // Last host axes observed by note_host_input (0,0 if never called).
 void last_host_input(float* x, float* y);
 
+// Gameplay detection for direction/facing diagnosis (TOOIE_DIAG_DIRECTION=1).
+bool direction_enabled();
+void set_gameplay_detected(bool v);
+bool gameplay_detected();
+
+// Read player bastick + yaw + position from rdram and log.
+void note_movement_pipeline(uint8_t* rdram, const char* input_name);
+
 } // namespace tooie_diag

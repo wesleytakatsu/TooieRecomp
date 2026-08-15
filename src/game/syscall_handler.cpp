@@ -441,15 +441,42 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
             const gpr remap = static_cast<gpr>(static_cast<int32_t>(0x80079AF8u));
             const float rx = bits_f32(uint32_t(MEM_W(8, remap)));
             const float ry = bits_f32(uint32_t(MEM_W(12, remap)));
+            // Camera yaw from D_80127708[camIdx] + 0x1C
+            float cam_yaw = -999.0f;
+            uint32_t cam_ptr = 0;
+            uint32_t cam_idx = 0;
+            if (guest_ok(ps_addr)) {
+                const gpr ps = static_cast<gpr>(static_cast<int32_t>(ps_addr));
+                cam_idx = uint32_t(MEM_W(0x184, ps));
+                const gpr cam_tab = static_cast<gpr>(static_cast<int32_t>(0x80127708u));
+                cam_ptr = uint32_t(MEM_W(cam_idx * 4, cam_tab));
+            }
+            if (guest_ok(cam_ptr)) {
+                const gpr cp = static_cast<gpr>(static_cast<int32_t>(cam_ptr));
+                cam_yaw = bits_f32(uint32_t(MEM_W(0x1C, cp)));
+            }
             std::fprintf(stderr,
                          "[tooie-input] %s host=(%.3f,%.3f) pad=(%d,%d) "
                          "buttons=%04x scale=%08x remap=(%.3f,%.3f) "
-                         "guest=(%.3f,%.3f) filtered=(%.3f,%.3f) mag=%.3f "
-                         "angle=%.2f cam_yaw= n/a desired_yaw=%.2f "
-                         "vel=n/a pos=(%.3f,%.3f)\n",
+                         "guest=(%.3f,%.3f) dist=%.3f "
+                         "stick_angle=%.2f cam_yaw=%.2f desired_yaw=%.2f "
+                         "cam_ptr=%08x cam_idx=%u "
+                         "pos=(%.3f,%.3f,%.3f)\n",
                          tag, hx, hy, int(psx), int(psy), unsigned(pbuttons),
-                         scale, rx, ry, sx, sy, sx, sy, sdist, sang,
-                         yaw_ideal, px, pz);
+                         scale, rx, ry, sx, sy, sdist,
+                         sang, cam_yaw, yaw_ideal,
+                         cam_ptr, cam_idx,
+                         px, py, pz);
+            // Direction pipeline trace line — one per call, no throttle.
+            if (tooie_diag::direction_enabled()) {
+                std::fprintf(stderr,
+                             "[tooie-dir] %s stick=(%.3f,%.3f) angle=%.2f "
+                             "cam_yaw=%.2f desired_yaw=%.2f actual_yaw=%.2f "
+                             "pos=(%.3f,%.3f,%.3f)\n",
+                             tag, sx, sy, sang,
+                             cam_yaw, yaw_ideal, yaw,
+                             px, py, pz);
+            }
         }
 
         // Dump actors vector D_80136EE0

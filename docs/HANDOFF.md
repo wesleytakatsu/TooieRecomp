@@ -35,17 +35,20 @@ Historical context:
 > Evidência: [[plan/evidence/p08-preemption-patch4-validation]].
 
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
-
 ## NEXT
 
-Advance downstream Phase P08 tasks:
-1. Implement full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
-2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
-3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
+1. **Implement `func_80013B70` tooie-native override** (stick-angle atan2 thunk).
+   Root cause identified: empty generated body causes all directions to collapse
+   to ~camera_yaw + 90° (right-only movement). See
+   [[plan/evidence/p08-player-direction-facing-diagnosis]].
+2. After the fix: investigate the file-select → Spiral Mountain transition
+   regression (mode=1 not reached on current HEAD).
+3. Then advance to transform-tagging suite.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, the title/file-select
-input validation, or the original timing/4:3 baseline. Do not modify shared RT64. PATCH 4 stays ON.
+input validation, or the original timing/4:3 baseline. Do not modify shared
+RT64. PATCH 4 stays ON.
 
 ## Estado do produto validado
 
