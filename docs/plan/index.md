@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (13B70 review verdict C; T10 synthetic mode=1 FAIL)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` implementation present but **NOT_ACCEPTED** due missing `$at` side effect; P08-T10 current synthetic mode=1 **FAIL** (separate); attract/cinematic facing **OPEN_SEPARATE** |
+| RT64/input P08 | **active (13B70 function-level verdict A; runtime pending; T10 synthetic mode=1 FAIL)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` corrected and **ACCEPTED** by focused re-review; P08-T10 current synthetic mode=1 **FAIL** (separate); attract/cinematic facing **OPEN_SEPARATE** |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -160,11 +160,13 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
-- [[evidence/p08-stick-angle-thunk-fix]] — **CURRENT:** `func_80013B70`
-  native shared-tail override; cardinals/diagonals/third-arg PASS;
-  independent review **VERDICT C** for the missing `$at` side effect.
-- [[evidence/p08-stick-angle-thunk-fix-independent-review]] — independent
-  semantic review; fix rejected pending the narrow `$r1` correction.
+- [[evidence/p08-stick-angle-thunk-fix]] — implementation evidence;
+  native shared-tail override; cardinals/diagonals/third-arg PASS.
+- [[evidence/p08-stick-angle-thunk-fix-rereview]] — **CURRENT:** focused
+  independent re-review **VERDICT A**; missing `$r1` delay-slot side effect
+  resolved and function-level fix accepted.
+- [[evidence/p08-stick-angle-thunk-fix-independent-review]] — historical
+  semantic review **VERDICT C**; blocker resolved by correction and re-review.
 - [[evidence/p08-player-direction-facing-diagnosis]] — Level A empty-13B70
   diagnosis; resolution pointer to the fix.
 - [[evidence/p08-original-timing-4x3-baseline]] — P08-T03

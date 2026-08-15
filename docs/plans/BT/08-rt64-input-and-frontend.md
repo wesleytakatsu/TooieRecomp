@@ -30,9 +30,12 @@ The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 **Render-submission matrix split RESOLVED and VALIDATED**
 ([[../../plan/evidence/p08-render-submission-matrix-fix]]).
 The user right-only live-player report is owned by the empty
-`func_80013B70` secondary entry. The Tooie-native implementation exists, but
-independent review verdict C rejected acceptance for a missing `$at` side
-effect ([[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]]);
+`func_80013B70` secondary entry. The Tooie-native implementation is accepted
+at function level after focused independent re-review verdict A
+([[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]); runtime player
+validation remains pending. The historical verdict C and its narrow missing
+`$at` side-effect finding are preserved in
+[[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];
 host→N64 pad conversion
 remains bidirectional and is not reopened. Attract/cinematic facing is a
 separate bug. **P08-T10 was historically VALIDATED**, but the current
@@ -51,8 +54,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-stick-angle-thunk-fix]] (**CURRENT** — func_80013B70 shared-tail override)
-- [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (**CURRENT REVIEW** — verdict C; missing `$r1` delay-slot side effect)
+- [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
+- [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
+- [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)
 - [[../../plan/evidence/p08-player-direction-facing-diagnosis]] (Level A stick-angle diagnosis)
 - [[../../plan/evidence/p08-directional-input-movement-diagnosis]] (host→pad bidirectional; not reopened)
 - [[../../plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix fix)
@@ -223,10 +227,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Correct the `func_80013B70` native override's `$r1` side effect** —
-   independent review verdict C found that the `y==0, x>=0` path omits the
-   original `lui $at, 0x4334` delay-slot clobber (see
-   [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]]).
+1. **Run controllable runtime cardinal validation for USER_BUG_A** — the
+   function-level correction is accepted; runtime validation remains pending
+   (see [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]]).
 2. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
    current HEAD (regression from P08-T10 validated state).
 3. Generic non-RA JR safepoints, Timer/PI approximations — deferred.

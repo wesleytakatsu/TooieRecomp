@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — func_80013B70 review finding ($r1 delay-slot clobber) corrected; unit tests PASS; pending independent re-review.
+- [[HANDOFF]] — Handoff — TooieRecomp — func_80013B70 review finding ($r1 delay-slot clobber) corrected and accepted at function level; runtime player validation pending.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
@@ -14,7 +14,8 @@
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
 - [[plan/evidence/p08-stick-angle-thunk-fix-correction]] — P08 — func_80013B70 review correction — Minimal semantic correction reproducing $at/$r1=0x43340000 delay slot on all y==0 paths.
 - [[plan/evidence/p08-stick-angle-thunk-fix]] — P08 — stick-angle secondary-entry fix — Native shared-tail override for empty generated func_80013B70; cardinals 0/90/180/270 and third-argument contract PASS.
-- [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] — P08 — independent review of the func_80013B70 secondary-entry fix — Verdict C: native override omits the original y==0, x>=0 `$r1` delay-slot clobber; stub metadata is the proven immediate cause of the empty generated body.
+- [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] — P08 — focused independent re-review of corrected func_80013B70 — Verdict A; prior `$r1` delay-slot blocker resolved; function-level fix accepted, runtime player validation pending.
+- [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] — P08 — historical independent review of the func_80013B70 secondary-entry fix — Verdict C preserved; prior `$r1` delay-slot blocker resolved by correction and re-review.
 - [[plan/evidence/p08-player-direction-facing-diagnosis]] — P08 — player direction / facing diagnosis — Level A: empty func_80013B70 stores distance as stick angle; attract/cinematic facing is separate.
 - [[plan/evidence/p08-directional-input-movement-diagnosis]] — P08 — directional input / movement diagnosis — Host→N64 pad conversion proven bidirectional; live-player angle later owned by func_80013B70.
 - [[plan/evidence/p08-original-timing-4x3-baseline]] — P08-T03 — original timing / 4:3 baseline — 60Hz VI, 20/30Hz logic, 30Hz animation, host decouple, and 4:3 content aspect validated with live measurements.

@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: func_80013B70 implementation rejected by independent semantic review for a narrow $r1 side-effect mismatch; P08-T10 synthetic gameplay gate still FAIL; attract/cinematic facing separate."
+description: "Estado autossuficiente: func_80013B70 corrected and accepted at function level; runtime player validation remains pending; P08-T10 synthetic gameplay gate and attract/cinematic facing remain separate."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -13,7 +13,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 
 - Branch: `main`.
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
-- Independent Review: [[p08-stick-angle-thunk-fix-independent-review]] — **VERDICT C**; missing `$r1` delay-slot side effect.
+- Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
 - Title & File Select Validation: [[p08-title-file-select-validation]].
 - Render-submission fix: [[p08-render-submission-matrix-fix]].
@@ -64,13 +64,13 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 reproducing `$at/$r1 = 0x43340000` delay-slot clobber on all `y == 0` paths.
 All unit tests pass (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`,
 `bcf28_helpers_test`, `core1_ra_wrappers_test`).
-Independent re-review is pending. Live player motion is `IMPLEMENTED_PENDING_RUNTIME`.
+Focused independent re-review is **ACCEPTED (verdict A)**. Live player motion is
+`IMPLEMENTED_PENDING_RUNTIME` pending controllable runtime validation.
 Attract/cinematic facing (USER_BUG_B) is **OPEN_SEPARATE** — attract bypasses bastick.
 
 Next steps in Phase P08:
-1. Independent re-review of the corrected `func_80013B70`.
-2. Controllable runtime player validation.
-3. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
+1. Controllable runtime cardinal validation of USER_BUG_A.
+2. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -116,16 +116,16 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Correct only the missing `$r1` delay-slot side effect identified by
-[[p08-stick-angle-thunk-fix-independent-review]]; then rerun the focused
-tests/build. Keep the synthetic file-select regression separate and do not
-use it as a gameplay automation
-gate.
+Run manual/controllable runtime cardinal validation for USER_BUG_A, using
+[[p08-stick-angle-thunk-fix-rereview]] as the accepted function-level gate.
+Keep the synthetic file-select regression separate and do not use it as a
+gameplay automation gate.
 
 ## FILES_TO_READ_NEXT
 
 0. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
-0a. [[p08-stick-angle-thunk-fix-independent-review]] — verdict C; `$r1` side-effect blocker
+0a. [[p08-stick-angle-thunk-fix-rereview]] — verdict A; blocker resolved
+0aa. [[p08-stick-angle-thunk-fix-independent-review]] — historical verdict C
 0b. [[p08-player-direction-facing-diagnosis]] — Level A diagnosis
 0c. [[p08-directional-input-movement-diagnosis]] — host→pad (not reopened)
 1. [[p08-render-submission-matrix-fix]] — render matrix submission fix

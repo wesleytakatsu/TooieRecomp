@@ -123,3 +123,22 @@ TooieRecompiled build:             PASS
 - `WHY_13B70_WAS_IN_STUBS`: `UNKNOWN`.
 - `USER_BUG_A`: `IMPLEMENTED_PENDING_RUNTIME` (controllable player movement pending manual/runtime validation).
 - `USER_BUG_B`: `OPEN_SEPARATE` (attract/cinematic character facing and rotation).
+
+## 7. Independent re-review resolution
+
+The focused re-review is recorded in
+[[p08-stick-angle-thunk-fix-rereview]]. It independently reconfirms the
+normal, non-likely `bc1t` and accepts the corrected implementation:
+
+```text
+LUNA_ORIGINAL_VERDICT_C_BLOCKER:      RESOLVED
+STICK_ANGLE_FUNCTION_LEVEL_STATUS:    RESOLVED
+VERDICT:                              A
+FIX_ACCEPTED:                         YES
+RUNTIME_PLAYER_VALIDATION:            NOT_PERFORMED
+```
+
+The historical verdict C remains preserved in
+[[p08-stick-angle-thunk-fix-independent-review]]. Acceptance is limited to
+the function-level correction; runtime USER_BUG_A validation and separate
+USER_BUG_B diagnosis remain open.

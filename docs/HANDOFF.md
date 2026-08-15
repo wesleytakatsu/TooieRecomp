@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: func_80013B70 implementation rejected by independent semantic review for a narrow $r1 side-effect mismatch; P08-T10 synthetic gameplay gate still FAIL; attract/cinematic facing separate."
+description: "Estado global corrente do port: func_80013B70 corrected and accepted at function level; runtime player validation remains pending; P08-T10 synthetic gameplay gate and attract/cinematic facing remain separate."
 status: current
 type: handoff
 project: TooieRecomp
@@ -37,9 +37,9 @@ Historical context:
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
-1. Independent re-review of the corrected `func_80013B70`
-   ([[plan/evidence/p08-stick-angle-thunk-fix-correction]]). If accepted, obtain
-   manual/runtime cardinal validation before declaring USER_BUG_A resolved.
+1. Obtain manual/runtime cardinal validation before declaring USER_BUG_A
+   resolved, using the accepted focused re-review
+   ([[plan/evidence/p08-stick-angle-thunk-fix-rereview]]).
 2. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
    as a gameplay automation gate until it is fixed.
@@ -78,11 +78,11 @@ RT64. PATCH 4 stays ON.
 11. **Original timing / 4:3 baseline VALIDATED (P08-T03 COMPLETE):**
     60.0 Hz VI, 20/30 Hz logic, 30 Hz animation, host presentation decoupled, and 4:3 content aspect confirmed
     ([[plan/evidence/p08-original-timing-4x3-baseline]]).
-12. **`func_80013B70` stick-angle secondary entry corrected**
-    ([[plan/evidence/p08-stick-angle-thunk-fix-correction]]): native
-    shared-tail override passes angles, third-argument tests, and reproduces
-    `$at/$r1 = 0x43340000` on all `y==0` paths. Pending independent re-review.
-    Attract/cinematic facing is a separate bug.
+12. **`func_80013B70` stick-angle secondary entry accepted at function level**
+    ([[plan/evidence/p08-stick-angle-thunk-fix-rereview]]): native shared-tail
+    override passes angles, third-argument tests, and reproduces
+    `$at/$r1 = 0x43340000` on all `y==0` paths. Runtime player validation is
+    pending; attract/cinematic facing is a separate bug.
 
 ## Arquitetura e regras
 
@@ -133,7 +133,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 ## Files to read
 
 0. [[plan/evidence/p08-stick-angle-thunk-fix]] (**CURRENT** — stick-angle secondary-entry fix)
-0a. [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (**CURRENT REVIEW** — verdict C; `$r1` side-effect blocker)
+0a. [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` blocker resolved)
+0aa. [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)
 0b. [[plan/evidence/p08-player-direction-facing-diagnosis]] (Level A diagnosis; fix implemented)
 0c. [[plan/evidence/p08-directional-input-movement-diagnosis]] (host→pad bidirectional; not reopened)
 1. [[plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix submission fix)
