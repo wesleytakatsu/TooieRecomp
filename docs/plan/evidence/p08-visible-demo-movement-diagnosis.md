@@ -21,8 +21,8 @@ USER_VISIBLE_DEMO_REPORT:     YES
 VISIBLE_DEMO_REPRODUCED:      YES
 OLD_AUTOMATED_NO_DEMO:        PRESERVED (historical)
 OLD_AUTOMATED_NO_DEMO_EXPLAINED: YES
-ROOT_CAUSE_LEVEL:             C
-FIX_IMPLEMENTED:              NO
+ROOT_CAUSE_LEVEL:             A (resolved by p08-render-submission-matrix-fix.md)
+FIX_IMPLEMENTED:              YES (see p08-render-submission-matrix-fix.md)
 ```
 
 ## 1. Two observations that must both be kept

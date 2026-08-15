@@ -119,6 +119,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
     ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
@@ -280,3 +281,16 @@ target_link_libraries(core1_ra_wrappers_test PRIVATE
     Threads::Threads
 )
 set_target_properties(core1_ra_wrappers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P08 matrix-submission regression: proves incremental P LOAD + V MUL equivalence and RT64 classification.
+add_executable(matrix_submission_test
+    ${CMAKE_SOURCE_DIR}/tests/matrix_submission_test.cpp
+)
+target_include_directories(matrix_submission_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_options(matrix_submission_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(matrix_submission_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

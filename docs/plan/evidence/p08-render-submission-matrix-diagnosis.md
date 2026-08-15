@@ -21,9 +21,11 @@ CAMERA_EXTRACTION_WRONG:             YES
 ACTOR_CAMERA_CAUSAL_CLASS:           B
 BANJO_TRANSFORM_TAGGING_FOUND:       YES
 BANJO_TOOIE_CONVENTION_EQUIVALENT:   PARTIAL
-IS_EQUIVALENT_LOGIC_PRESENT_IN_TOOIE: NO
-FIX_IMPLEMENTED:                     NO
+FIX_IMPLEMENTED:                     YES (see p08-render-submission-matrix-fix.md)
 ```
+
+> [!NOTE]
+> Fix implemented and validated in [[p08-render-submission-matrix-fix]].
 
 ---
 

@@ -23,7 +23,7 @@ CAMERA_LOGICAL_TRANSFORM_CORRECT:    YES
 CAMERA_VIEW_MATRIX_CORRECT:          YES
 FIRST_BAD_TRANSFORM_STAGE:           RENDER_SUBMISSION (Rare view-in-projection vs renderer)
 ACTOR_CAMERA_SHARED_ROOT:            PROVEN
-FIX_IMPLEMENTED:                     NO
+FIX_IMPLEMENTED:                     YES (see p08-render-submission-matrix-fix.md)
 ```
 
 ---

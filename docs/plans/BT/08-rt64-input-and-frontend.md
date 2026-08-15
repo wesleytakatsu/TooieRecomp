@@ -103,13 +103,14 @@ Evidência corrente:
 - [x] `P08-T06` Esconder launcher no auto-start e título Tooie.
 - [ ] `P08-T07` Janela, fullscreen, foco, multi-monitor e escalas.
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
-- [~] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible**
-  (movement/orientation still wrong).
+- [x] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible & upright**
+  (render submission matrix split resolved via `transform_hooks.cpp`).
 - [ ] `P08-T10` Input title/file select (diferido).
-- [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
+- [x] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
-  Residual: Wooded Hollow render-submission view extract (Level B).
+  **`func_80013A7C` core1 RA wrappers RESOLVED**.
+  **Render-submission matrix split RESOLVED and VALIDATED** ([[../../plan/evidence/p08-render-submission-matrix-fix]]).
 
 
 ## Implementado / validado

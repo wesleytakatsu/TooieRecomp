@@ -1,29 +1,28 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: P08 visible attract/gameplay demo reached; first fidelity gap is RT64 LOAD-path viewproj decompose."
+description: "Estado global corrente do port: P08 visible attract demo render-submission matrix fix validated; characters and camera render upright and elevated in Wooded Hollow mode 5."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-14
-tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, movement]
+tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks]
 ---
 
 # Handoff — TooieRecomp
 
 ## Prioridade atual
 
-**P08 ACTIVE INTEGRATION BLOCKER:** PATCH 4 is accepted and default ON. The
+**P08 ACTIVE INTEGRATION STATE:** PATCH 4 is accepted and default ON. The
 `func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
 `func_80013A7C` lookup-zero is **RESOLVED**
 ([[plan/evidence/p08-core1-ra-wrapper-fix]]). **Visible attract / gameplay
-demo is reproduced** (mode-5, map 335 Wooded Hollow). Character and camera
-transform discriminator is complete (**Level B**;
-[[plan/evidence/p08-actor-camera-transform-discriminator]]). Render-submission
-matrix diagnosis is complete (**Level B**;
-[[plan/evidence/p08-render-submission-matrix-diagnosis]]): Tooie LOADs
-`T_S * V_rot * P` onto `G_MTX_PROJECTION`; RT64 `matrixDecomposeViewProj`
-preserves the clip product but extracts a half-length view Z because
-Tooie P is scaled by 0.5. Banjo avoids this path. Fix not implemented.
+demo is reproduced** (mode-5, map 335 Wooded Hollow). The **Tooie render-submission
+matrix fix is RESOLVED and VALIDATED** ([[plan/evidence/p08-render-submission-matrix-fix]]):
+`func_800E44FC`, `func_800E4640`, and `func_800E4628` native overrides split
+the projection matrix submission into `LOAD P` followed by `MUL V_view`,
+avoiding RT64's erroneous unscaled viewproj decomposition and restoring correct
+orthonormal view extraction, upright character rendering (`chjinjo`, `Banjo`), and
+proper camera elevation.
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -36,10 +35,9 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-Implement only the proven render-submission transform fix: split
-`func_800E44FC` (and the `D_8012D558` reload) into `LOAD P` + `MUL` view.
-Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers, or
-Actor.rotation. Do not modify shared RT64. PATCH 4 stays ON.
+Address title screen input and frontend file-selection navigation in Phase P08.
+Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers, Actor.rotation,
+or the render-submission matrix split. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## Estado do produto validado
 
@@ -56,11 +54,12 @@ Actor.rotation. Do not modify shared RT64. PATCH 4 stays ON.
    [[plan/evidence/p08-visible-demo-movement-diagnosis]]).
 8. **Actor vs Camera Transform Discrimination (Level B):** Character
    `Actor.rotation` and CPU model matrix are proven upright and correct;
-   divergence is in `RENDER_SUBMISSION`
+   divergence isolated to `RENDER_SUBMISSION`
    ([[plan/evidence/p08-actor-camera-transform-discriminator]]).
-9. **Render-submission matrix diagnosis (Level B):** RT64 LOAD-path
-   viewproj decompose vs Tooie combined scaled VP
-   ([[plan/evidence/p08-render-submission-matrix-diagnosis]]).
+9. **Render-submission matrix fix (Level A, VALIDATED):** Incremental P LOAD +
+   V MUL split implemented in `src/game/transform_hooks.cpp`
+   ([[plan/evidence/p08-render-submission-matrix-fix]]). Characters and camera
+   render upright and elevated; Wooded Hollow attract demo runs continuously for 75s.
 10. Title/file-select input diferido.
 
 ## Arquitetura e regras
@@ -87,6 +86,7 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
 - **`func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers** — RESOLVED
   ([[plan/evidence/p08-core1-ra-wrapper-fix]])
 - **Actor.rotation as root cause of supine pose** — REFUTED (Actor.rotation is upright)
+- **Tooie render submission matrix split** — RESOLVED ([[plan/evidence/p08-render-submission-matrix-fix]])
 
 ## Current expected flow
 
@@ -97,31 +97,29 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 ```
 
 Observed: C2AB8 crossed; `func_800BCF28` completes; `func_80013A7C`
-enters at the native strong symbol and the old `LOOKUP_FUNC(0)` does not
-occur. Visible mode-5 Wooded Hollow / PRESS START reached. Character and
-camera simulation state is upright and grounded; RT64 extraction of view Z
-from Tooie's combined scaled `G_MTX_PROJECTION` LOAD is the first visual
-fidelity divergence.
+enters at the native strong symbol; visible mode-5 Wooded Hollow attract demo
+renders correctly with upright characters and elevated camera, progressing for 75s.
 
 ## Exonerated (current)
 
 Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 `func_80026500` hang, scheduler corruption (not proven), `func_800BCF28` binding,
-`func_80013A7C` lookup-zero, `Actor.rotation` simulation state.
+`func_80013A7C` lookup-zero, `Actor.rotation` simulation state, render-submission matrix split.
 
 ## Files to read
 
-0. [[plan/evidence/p08-render-submission-matrix-diagnosis]] (**CURRENT** — render matrix diagnosis)
-1. [[plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
-2. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
-3. [[plan/evidence/p08-core1-ra-wrapper-fix]] (RA-wrapper fix; resolved)
-4. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
-5. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
-6. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
-7. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
-8. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
-9. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
-10. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
-11. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
-12. [[plan/evidence/p08-session-handoff]]
-13. [[plans/BT/08-rt64-input-and-frontend]]
+0. [[plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix submission fix)
+1. [[plan/evidence/p08-render-submission-matrix-diagnosis]] (render matrix diagnosis)
+2. [[plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
+3. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
+4. [[plan/evidence/p08-core1-ra-wrapper-fix]] (RA-wrapper fix; resolved)
+5. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
+6. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
+7. [[plan/evidence/p08-bcf28-binding-fix]] (implementer binding-fix evidence)
+8. [[plan/evidence/p08-bcf28-crash-diagnosis]] (root cause A diagnosis)
+9. [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] (verdict B; PATCH 4 accepted)
+10. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
+11. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
+12. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
+13. [[plan/evidence/p08-session-handoff]]
+14. [[plans/BT/08-rt64-input-and-frontend]]
