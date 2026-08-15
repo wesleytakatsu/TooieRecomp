@@ -8,6 +8,7 @@
 #include "recompui/recompui.h"
 #include "recompui/renderer.h"
 #include "banjo_sound.h"
+#include "tooie_diag.h"
 #include "librecomp/helpers.hpp"
 #include "../patches/input.h"
 #include "../patches/graphics.h"
@@ -17,6 +18,7 @@
 #include "xxHash/xxh3.h"
 
 extern "C" void recomp_update_inputs(uint8_t* rdram, recomp_context* ctx) {
+    tooie_diag::note_guest_input_update();
     recompinput::poll_inputs();
 }
 

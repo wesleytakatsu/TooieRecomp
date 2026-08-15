@@ -19,6 +19,7 @@ void report_now(const char* reason);
 namespace {
 
 std::atomic<bool> g_enabled{false};
+std::atomic<bool> g_timing_enabled{false};
 std::atomic<bool> g_movement_enabled{false};
 std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_frontend_enabled{false};
@@ -46,6 +47,8 @@ std::atomic<uint32_t> g_last_ovl{0};
 std::atomic<uint32_t> g_last_ep{0};
 std::atomic<uint32_t> g_depth{0};
 std::atomic<uint32_t> g_max_depth{0};
+std::atomic<uint64_t> g_host_update_gfx{0};
+std::atomic<uint64_t> g_guest_input_updates{0};
 
 // Nested stack of in-flight syscalls (ovl<<16|ep), up to 8 levels.
 constexpr int kStackMax = 8;
@@ -55,6 +58,7 @@ char g_device_name[128]{};
 std::mutex g_name_mu;
 
 std::chrono::steady_clock::time_point g_last_report{};
+std::chrono::steady_clock::time_point g_timing_start{};
 int g_interval_ms = 2000;
 
 void ensure_init() {
@@ -64,6 +68,9 @@ void ensure_init() {
     }
     const char* e = std::getenv("TOOIE_DIAG");
     g_enabled.store(e != nullptr && e[0] != '\0' && e[0] != '0', std::memory_order_relaxed);
+    const char* timing = std::getenv("TOOIE_DIAG_TIMING");
+    g_timing_enabled.store(timing != nullptr && timing[0] != '\0' && timing[0] != '0',
+                           std::memory_order_relaxed);
     const char* mv = std::getenv("TOOIE_DIAG_MOVEMENT");
     g_movement_enabled.store(mv != nullptr && mv[0] != '\0' && mv[0] != '0',
                              std::memory_order_relaxed);
@@ -129,18 +136,22 @@ void ensure_init() {
         }
     }
     g_last_report = std::chrono::steady_clock::now();
-    if (g_enabled.load(std::memory_order_relaxed)) {
+    g_timing_start = g_last_report;
+    if (g_enabled.load(std::memory_order_relaxed) ||
+        g_timing_enabled.load(std::memory_order_relaxed)) {
         std::fprintf(stderr,
                      "[tooie-diag] enabled interval=%dms "
-                     "(syscall/rsp/queue/sched counters + hang stack)\n",
-                     g_interval_ms);
+                     "(syscall/rsp/queue/sched counters + hang stack; timing=%s)\n",
+                     g_interval_ms,
+                     g_timing_enabled.load(std::memory_order_relaxed) ? "on" : "off");
         std::fflush(stderr);
         // Background ticker so we still report when the game thread is stuck
         // and update_gfx is not running.
         std::thread([] {
             while (true) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(g_interval_ms));
-                if (!g_enabled.load(std::memory_order_relaxed)) {
+                if (!g_enabled.load(std::memory_order_relaxed) &&
+                    !g_timing_enabled.load(std::memory_order_relaxed)) {
                     continue;
                 }
                 report_now("bg");
@@ -588,9 +599,24 @@ void note_audio_device(uint32_t device_id, const char* driver, const char* devic
     }
 }
 
+void note_host_update_gfx() {
+    ensure_init();
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_host_update_gfx.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void note_guest_input_update() {
+    ensure_init();
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        g_guest_input_updates.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
 void report_now(const char* reason) {
     ensure_init();
-    if (!enabled()) {
+    if (!g_enabled.load(std::memory_order_relaxed) &&
+        !g_timing_enabled.load(std::memory_order_relaxed)) {
         return;
     }
     char stack[160];
@@ -630,6 +656,18 @@ void report_now(const char* reason) {
                  g_max_depth.load(),
                  stack);
     std::fflush(stderr);
+
+    if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        const auto now = std::chrono::steady_clock::now();
+        const double wall_seconds = std::chrono::duration<double>(now - g_timing_start).count();
+        std::fprintf(stderr,
+                     "[tooie-diag] timing wall=%.3f host_update_gfx=%llu "
+                     "guest_input_updates=%llu\n",
+                     wall_seconds,
+                     static_cast<unsigned long long>(g_host_update_gfx.load()),
+                     static_cast<unsigned long long>(g_guest_input_updates.load()));
+        std::fflush(stderr);
+    }
 }
 
 void tick() {
@@ -637,7 +675,8 @@ void tick() {
     if (g_movement_enabled.load(std::memory_order_relaxed)) {
         g_gfx_ticks.fetch_add(1, std::memory_order_relaxed);
     }
-    if (!enabled()) {
+    if (!g_enabled.load(std::memory_order_relaxed) &&
+        !g_timing_enabled.load(std::memory_order_relaxed)) {
         return;
     }
     const auto now = std::chrono::steady_clock::now();

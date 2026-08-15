@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: C2AB8, BCF28, core1 RA wrappers e render-submission matrix fix resolvidos; visible attract demo validado; right-only input report not reproduced on e97."
+description: "Estado autossuficiente: P08-T10 validated; P08-T03 original timing/4:3 baseline blocked pending clean config and live display measurements."
 status: evidence
 phase: P08
 updated: 2026-08-14
@@ -29,6 +29,10 @@ demo is reproduced and running.** The **RENDER_SUBMISSION matrix split** is
 **RESOLVED (Level A)** via `src/game/transform_hooks.cpp` (`func_800E44FC`,
 `func_800E4640`, `func_800E4628` overrides). **Title Screen / File Selection
 Input (P08-T10)** is **VALIDATED and COMPLETE** ([[p08-title-file-select-validation]]).
+P08-T03 is **BLOCKED**, not validated: primary source establishes NTSC VI at
+60 Hz and guest 304x228 4:3 dimensions, but the live graphics config is
+Expand/Clamp16x9 and this session could not obtain a usable X11 window for
+the required timing measurements ([[p08-original-timing-4x3-baseline]]).
 
 ## CURRENT_PRODUCT_STATE
 
@@ -59,8 +63,9 @@ pad conversion is bidirectional (`input_direction_test` PASS; runtime LEFT
 `pad=(-82,0)`).
 
 Next steps in Phase P08 / downstream phases:
-1. Full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
-2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
+1. Apply an explicit Original/4:3 baseline configuration and run the three
+   required 10–20 second timing windows with `TOOIE_DIAG_TIMING=1`.
+2. Keep high-FPS transform-tagging deferred until P08-T03 is validated.
 3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
@@ -98,12 +103,16 @@ WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 17. Actor.rotation as root cause of supine pose — REFUTED (Actor.rotation is upright).
 18. Tooie render submission matrix split — RESOLVED.
 19. Title screen / file-selection input flow — VALIDATED (No divergence).
+20. P08-T03 original timing/4:3 baseline — BLOCKED; no claim of baseline
+    correctness until the clean live measurements exist.
 
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Implement full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation) or remaining P08 frontend/windowing tasks.
+Run P08-T03 with explicit Original/4:3 configuration in a usable display
+session, collect VI/logic/animation/present/aspect evidence, and update the
+baseline classification.
 
 ## FILES_TO_READ_NEXT
 
@@ -118,8 +127,9 @@ Implement full transform-tagging suite (`gEXEnable`, matrix group IDs for high-F
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (tooie_diag + get_n64_input wrap + osContGetReadData wrap
-                               + input_direction_test; transform_hooks already on HEAD)
+CODE_CHANGED             = YES (tooie_diag + gated timing counters + get_n64_input wrap
+                               + osContGetReadData wrap + input_direction_test;
+                               transform_hooks already on HEAD)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

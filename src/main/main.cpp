@@ -321,6 +321,7 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 
 void update_gfx(void*) {
     recompinput::handle_events();
+    tooie_diag::note_host_update_gfx();
     tooie_diag::tick();
 }
 

@@ -31,7 +31,11 @@ The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 ([[../../plan/evidence/p08-render-submission-matrix-fix]]).
 The user right-only movement report is **not reproduced on e97**
 ([[../../plan/evidence/p08-directional-input-movement-diagnosis]]):
-host→N64 pad conversion is bidirectional. Title/file-select remains NEXT.
+host→N64 pad conversion is bidirectional. **P08-T10 is VALIDATED / COMPLETE**:
+intro -> file select -> slot navigation -> confirmation -> Spiral Mountain
+passes with zero frontend input divergence. **P08-T03 is BLOCKED** pending a
+clean explicit Original/4:3 runtime configuration and live timing windows;
+see [[../../plan/evidence/p08-original-timing-4x3-baseline]].
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -80,6 +84,7 @@ Evidência corrente:
 - [[../../plan/evidence/p08-slot7-scheduled-event-driver]]
 - [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]]
 - [[../../plan/evidence/p08-session-handoff]]
+- [[../../plan/evidence/p08-original-timing-4x3-baseline]] (**CURRENT:** P08-T03 baseline; blocked pending clean live measurements)
 - [[../../plan/evidence/p08-attract-actor-loop-diagnosis]]
 - [[../../plan/evidence/p08-type4-transition-semantics-audit]]
 
@@ -121,7 +126,13 @@ Evidência corrente:
 
 - RT64 + Vulkan, auto-start, janela “Banjo-Tooie: Recompiled”.
 - Música inicial validada.
-- Input host equivalente ao BanjoRecomp; title/file-select não validado.
+- Input host equivalente ao BanjoRecomp. **P08-T10 VALIDATED / COMPLETE**:
+  intro -> file select -> slot navigation -> confirmation -> Spiral Mountain
+  PASS. The historical wording that title/file-select was not validated is
+  **CORRECTED/SUPERSEDED** by [[../../plan/evidence/p08-title-file-select-validation]].
+- P08-T03 source contract and 4:3 guest dimensions are characterized, but the
+  clean runtime baseline is **BLOCKED** by the active Expand/Clamp16x9 config
+  and unavailable live display; [[../../plan/evidence/p08-original-timing-4x3-baseline]].
 
 ### Blockers históricos fechados
 
@@ -174,6 +185,7 @@ Evidência corrente:
 | [[../../plan/evidence/p08-slot7-scheduled-event-driver]] | reconstrução estática do scheduler/driver |
 | [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]] | arbitragem Gemini×DeepSeek; struct/driver/order |
 | [[../../plan/evidence/p08-session-handoff]] | **CURRENT:** handoff para chat zerado |
+| [[../../plan/evidence/p08-original-timing-4x3-baseline]] | **CURRENT:** P08-T03 original timing/4:3 baseline; BLOCKED pending clean live measurements |
 | [[../../plan/evidence/p08-attract-actor-loop-diagnosis]] | freeze mechanism slot7 / C2AB8 |
 | [[../../plan/evidence/p08-type4-transition-semantics-audit]] | type-4 complete, warp consumido |
 | [[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]] | timeline histórica |
@@ -201,7 +213,8 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Input title/file-select** (P08-T10).
+1. **P08-T03 original timing/4:3 baseline**: apply an explicit Original
+   graphics configuration and collect the three required live windows.
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
@@ -216,13 +229,16 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 - [x] `func_80013A7C` lookup-zero resolvido (Tooie-native RA wrappers).
 - [x] RT64 intro OK; first demo visible; Wooded Hollow render-submission fix validated.
 - [x] mode 5 / gsattract ep1 / gameplay demo renderizam (upright after matrix split).
-- [ ] Entrada title/file select e rumble/hotplug.
+- [x] Entrada title/file select validada; rumble/hotplug remains separate.
+- [ ] P08-T03 original timing/4:3 baseline (BLOCKED; see current evidence).
 - [x] Persistência BanjoRecomp; `controls.json` lazy.
 - [x] Sem melhorias que alterem timing/paridade de referência.
 
 ## Próxima etapa
 
-**NEXT:** Address title screen input and frontend file-selection navigation.
+**NEXT:** Complete the blocked P08-T03 timing/4:3 measurements with an
+explicit Original configuration and a usable display. Do not advance to
+high-FPS transform tagging until the baseline gate is closed.
 Do not reopen the accepted BCF28 helper binding, PATCH 4 / Hybrid F', the
 core1 RA wrappers, or the render-submission matrix split. Do not modify
 shared RT64. Do not implement a directional-input "fix" on current evidence.

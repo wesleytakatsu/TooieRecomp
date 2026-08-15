@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: P08 visible attract demo render-submission matrix fix validated; right-only movement report not reproduced on e97."
+description: "Estado global corrente do port: P08-T10 validated; P08-T03 original timing/4:3 baseline blocked pending clean live measurements."
 status: current
 type: handoff
 project: TooieRecomp
@@ -23,6 +23,10 @@ the projection matrix submission into `LOAD P` followed by `MUL V_view`.
 **Title Screen / File Selection Input (P08-T10)** is **VALIDATED and COMPLETE**
 ([[plan/evidence/p08-title-file-select-validation]]): autonomous synthetic input
 proves zero input divergence from intro -> file select -> slot navigation -> confirmation -> Spiral Mountain map load.
+**P08-T03 is BLOCKED**, not validated: the source establishes the NTSC VI
+contract and 304x228 guest 4:3 dimensions, but the active graphics config is
+Expand/Clamp16x9 and this session could not obtain a usable live window for
+the required timing/aspect measurements ([[plan/evidence/p08-original-timing-4x3-baseline]]).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -35,10 +39,10 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 
 ## NEXT
 
-Advance downstream Phase P08 tasks:
-1. Implement full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
-2. Investigate remaining downstream gameplay scenes (e.g. later Y=-2800 scenes).
-3. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
+Advance the single blocked P08-T03 gate first: apply an explicit Original/4:3
+graphics configuration and collect the three live timing windows with
+`TOOIE_DIAG_TIMING=1`. Only after that gate is closed should high-FPS
+transform-tagging be considered.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, or the title/file-select
@@ -68,6 +72,8 @@ input validation. Do not modify shared RT64. PATCH 4 stays ON.
 10. **Title Screen / File Selection Input VALIDATED (P08-T10 COMPLETE):**
     Autonomous end-to-end synthetic input validation proves full flow with zero divergence
     ([[plan/evidence/p08-title-file-select-validation]]).
+11. **Original timing / 4:3 baseline (P08-T03):** BLOCKED pending a clean
+    config and live display run ([[plan/evidence/p08-original-timing-4x3-baseline]]).
 
 ## Arquitetura e regras
 
@@ -94,6 +100,8 @@ Não editar `RecompiledFuncs` gerado. Repo Git: `TooieRecomp/`, branch `main`.
   ([[plan/evidence/p08-core1-ra-wrapper-fix]])
 - **Actor.rotation as root cause of supine pose** — REFUTED (Actor.rotation is upright)
 - **Tooie render submission matrix split** — RESOLVED ([[plan/evidence/p08-render-submission-matrix-fix]])
+- **Title/file-select pending validation** — CORRECTED/SUPERSEDED; P08-T10 is
+  VALIDATED / COMPLETE ([[plan/evidence/p08-title-file-select-validation]])
 
 ## Current expected flow
 
@@ -129,5 +137,6 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 10. [[plan/evidence/p08-preemption-patch4-clean-build-correction]] (implementer correction)
 11. [[plan/evidence/p08-preemption-patch4-independent-review]] (historical verdict C preserved; finding resolved)
 12. [[plan/evidence/p08-preemption-patch4-validation]] (implementer behavioral evidence)
-13. [[plan/evidence/p08-session-handoff]]
-14. [[plans/BT/08-rt64-input-and-frontend]]
+13. [[plan/evidence/p08-original-timing-4x3-baseline]] (P08-T03 current blocker)
+14. [[plan/evidence/p08-session-handoff]]
+15. [[plans/BT/08-rt64-input-and-frontend]]

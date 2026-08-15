@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — Estado global corrente do port: P08 visible attract demo and render-submission matrix fix validated; right-only input report not reproduced on e97.
+- [[HANDOFF]] — Handoff — TooieRecomp — P08-T10 title/file-select validated; P08-T03 original timing/4:3 baseline blocked pending clean live measurements.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
@@ -13,6 +13,7 @@
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
 - [[plan/evidence/p08-directional-input-movement-diagnosis]] — P08 — directional input / movement diagnosis — Right-only user report not reproduced on e97; host→N64 pad conversion proven bidirectional; attract stick is scripted.
+- [[plan/evidence/p08-original-timing-4x3-baseline]] — P08-T03 — original timing / 4:3 baseline — NTSC VI/source contract and guest 4:3 dimensions characterized; live validation blocked by active config/display environment.
 - [[plan/evidence/p08-render-submission-matrix-fix]] — P08 — Tooie render-submission matrix fix — Implementation of the proven incremental projection and view matrix submission split in TooieRecomp, avoiding RT64 viewproj decomposition and restoring correct camera/actor view extraction.
 - [[plan/evidence/p08-render-submission-matrix-diagnosis]] — P08 — render-submission matrix diagnosis — Rare view-in-projection vs RT64 G_MTX_PROJECTION LOAD decompose. Banjo incremental MUL avoids the path Tooie hits.
 - [[plan/evidence/p08-actor-camera-transform-discriminator]] — P08 — actor and camera transform discriminator — Telemetry discrimination between Actor.rotation simulation state, model matrix construction, and camera view transform during the first visible Wooded Hollow attract demo.
@@ -64,7 +65,8 @@
 - [[plan/evidence/p08-attract-actor-loop-diagnosis]] — P08 — attract actor-loop / slot7 readiness busy-wait — MAIN em C2AB8; slot7 pending; func_80026500 refutado como hang PC.
 - [[plan/evidence/p08-type4-transition-semantics-audit]] — P08 — auditoria estática + clean-freeze type-4 snapshot — Layout/estados da type-4; snapshot limpo (8/8 runs) prova type-4 completa, warp consumido e corrige 0.9/3.5/2883 para +0x0C/+0x18/+0x10. Blocker downstream no mode-5/attract init.
 - [[plan/evidence/p08-threadqueue-b-fix-validation]] — P08 — Fix B threadqueue: validação — Validação do fix B em threadqueue.cpp (scan real de links, sem field-equality guard). Contrato de thread_queue_remove provado: HEAD PASS, NON-HEAD/TAIL FAIL (infinite loop). SECOND SCHEDULER BUG CONFIRMED: remove só checa o HEAD. NO_THREADS_LEFT FIXED (0/2 smoke). Novo blocker: SIGSEGV em thread_queue_insert com queue==NULLPTR via osSetThreadPri sobre thread RUNNING (JOY).
-- [[plan/evidence/p08-title-input-eeprom]] — P08 — input title/file select — **NÃO RESOLVIDO** — **Status:** `blocked` / falhou validação do utilizador (2026-08-09). **Ação:** **outro agente assume** este ajuste. Não reabrir como “done”.
+- [[plan/evidence/p08-title-input-eeprom]] — P08 — input title/file select — **CORRECTED/SUPERSEDED** by [[plan/evidence/p08-title-file-select-validation]]; historical blocked wording retained for history only.
+- [[plan/evidence/p08-title-file-select-validation]] — P08-T10 — title/file-select — **VALIDATED / COMPLETE**; intro -> file select -> slot navigation -> confirmation -> Spiral Mountain PASS.
 - [[plan/evidence/p08-visual-validation/README]] — P08 — visual validation: intro → attract handoff — Inventário das capturas e interpretação humana validada da abertura até a tela preta pós-Jiggy.
 - [[plan/index]] — Plano mestre — Banjo-Tooie nativo no Linux — Plano executável para transformar os insumos BanjoRecomp e banjo-tooie-Recomp em um port nativo completo de Banjo-Tooie para Linux.
 

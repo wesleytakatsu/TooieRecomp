@@ -31,6 +31,12 @@ void note_queue_samples(size_t sample_count, uint32_t queued_bytes_after,
                         int16_t peak_abs = 0, size_t nonzero = 0);
 void note_audio_device(uint32_t device_id, const char* driver, const char* device_name);
 
+// Optional cadence counters. Enable with TOOIE_DIAG_TIMING=1.
+// These names describe the observed boundaries; they are not claims that
+// either boundary is the guest VI or game tick.
+void note_host_update_gfx();
+void note_guest_input_update();
+
 // gfx/VI-adjacent host tick counter (update_gfx). Always increments when
 // movement diagnostics are on so timebase can be compared to movement dumps.
 uint64_t gfx_ticks();

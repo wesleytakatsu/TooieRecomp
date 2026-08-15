@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (visible demo; render-submission RESOLVED)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); `func_800BCF28` **RESOLVED** (verdict B); `func_80013A7C` lookup-zero **RESOLVED**; **visible demo YES**; Tooie render-submission matrix fix **RESOLVED & VALIDATED**; right-only input report **not reproduced on e97** |
+| RT64/input P08 | **active (T10 complete; T03 blocked)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED** (PATCH 4 CLASS A); `func_800BCF28` **RESOLVED** (verdict B); `func_80013A7C` lookup-zero **RESOLVED**; **visible demo YES**; render-submission matrix fix **RESOLVED & VALIDATED**; P08-T10 title/file-select **VALIDATED / COMPLETE**; P08-T03 original timing/4:3 baseline **BLOCKED** pending clean live measurements |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (visible demo; render-submission RESOLVED) |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (P08-T10 complete; P08-T03 blocked) |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 
@@ -160,6 +160,10 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
+- [[evidence/p08-original-timing-4x3-baseline]] — **CURRENT:** P08-T03
+  original timing/4:3 baseline; source contract characterized, live gate blocked.
+- [[evidence/p08-title-file-select-validation]] — P08-T10 **VALIDATED / COMPLETE**:
+  intro -> file select -> slot navigation -> confirmation -> Spiral Mountain PASS.
 - [[evidence/p08-directional-input-movement-diagnosis]] — right-only movement
   report not reproduced on e97; host→N64 pad conversion bidirectional.
 - [[evidence/p08-80013a7c-lookup-zero-diagnosis]] — **CURRENT:** `func_80013A7C`
