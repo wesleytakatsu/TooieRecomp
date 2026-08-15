@@ -331,7 +331,7 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     // probe fields plus player-0 simulation pose so visible-demo movement
     // can be classified without the older overlay-timed diagnostic path.
     auto dump_movement = [&](const char* tag) {
-        if (!tooie_diag::movement_enabled()) {
+        if (!tooie_diag::movement_enabled() && !tooie_diag::input_enabled()) {
             return;
         }
         static auto s_last = std::chrono::steady_clock::time_point{};
@@ -422,6 +422,27 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
                      a0, a1, a2, a3, stage, sub, bits_f32(timer_bits),
                      ps_addr, pos_addr, px, py, pz,
                      yaw, yaw_ideal, sx, sy, sang, sdist);
+        if (tooie_diag::input_enabled()) {
+            float hx = 0.0f, hy = 0.0f;
+            tooie_diag::last_host_input(&hx, &hy);
+            const gpr pad = static_cast<gpr>(static_cast<int32_t>(0x80079B40u));
+            const int8_t psx = int8_t(MEM_B(2, pad));
+            const int8_t psy = int8_t(MEM_B(3, pad));
+            const uint16_t pbuttons = uint16_t(MEM_HU(0, pad));
+            const uint32_t scale = uint32_t(MEM_W(0, static_cast<gpr>(static_cast<int32_t>(0x8007DB54u))));
+            const gpr remap = static_cast<gpr>(static_cast<int32_t>(0x80079AF8u));
+            const float rx = bits_f32(uint32_t(MEM_W(8, remap)));
+            const float ry = bits_f32(uint32_t(MEM_W(12, remap)));
+            std::fprintf(stderr,
+                         "[tooie-input] %s host=(%.3f,%.3f) pad=(%d,%d) "
+                         "buttons=%04x scale=%08x remap=(%.3f,%.3f) "
+                         "guest=(%.3f,%.3f) filtered=(%.3f,%.3f) mag=%.3f "
+                         "angle=%.2f cam_yaw= n/a desired_yaw=%.2f "
+                         "vel=n/a pos=(%.3f,%.3f)\n",
+                         tag, hx, hy, int(psx), int(psy), unsigned(pbuttons),
+                         scale, rx, ry, sx, sy, sx, sy, sdist, sang,
+                         yaw_ideal, px, pz);
+        }
 
         // Dump actors vector D_80136EE0
         const gpr actors_vec_sym = static_cast<gpr>(static_cast<int32_t>(0x80136EE0u));

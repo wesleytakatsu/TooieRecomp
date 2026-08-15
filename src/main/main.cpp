@@ -1089,9 +1089,21 @@ int main(int argc, char** argv) {
         .set_frequency = set_frequency,
     };
 
+    auto tooie_get_n64_input = [](int controller, uint16_t* buttons, float* x, float* y) -> bool {
+        const bool ok = recompinput::profiles::get_n64_input(controller, buttons, x, y);
+        if (x != nullptr && y != nullptr) {
+            tooie_diag::apply_input_vector_override(x, y);
+        }
+        tooie_diag::note_host_input(controller,
+                                    x != nullptr ? *x : 0.0f,
+                                    y != nullptr ? *y : 0.0f,
+                                    buttons != nullptr ? *buttons : 0);
+        return ok;
+    };
+
     ultramodern::input::callbacks_t input_callbacks{
         .poll_input = recompinput::poll_inputs,
-        .get_input = recompinput::profiles::get_n64_input,
+        .get_input = tooie_get_n64_input,
         .set_rumble = recompinput::set_rumble,
         .get_connected_device_info = get_connected_device_info,
     };

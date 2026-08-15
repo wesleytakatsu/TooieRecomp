@@ -75,10 +75,11 @@ attract/gameplay demo reproduced** (mode-5, map 335). PATCH 4 behavior is
 independently **CLASS A**. Verdict C preserved; the tracked-state finding
 is resolved by independent verdict B, and PATCH 4 is accepted.
 `func_800BCF28` binding fix **ACCEPTED (verdict B)**. `func_80013A7C`
-lookup-zero **RESOLVED**. First fidelity gap: character/camera transform
-(Level C). Historical 150s DIAG “no demo” run is preserved. Input
+lookup-zero **RESOLVED**. Render-submission matrix split **RESOLVED**.
+Right-only movement report **not reproduced on e97**. Input
 title/file-select diferido.
 Evidência:
+[[../../plan/evidence/p08-directional-input-movement-diagnosis]],
 [[../../plan/evidence/p08-visible-demo-movement-diagnosis]],
 [[../../plan/evidence/p08-core1-ra-wrapper-fix]],
 [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]],

@@ -23,6 +23,10 @@ OLD_AUTOMATED_NO_DEMO:        PRESERVED (historical)
 OLD_AUTOMATED_NO_DEMO_EXPLAINED: YES
 ROOT_CAUSE_LEVEL:             A (resolved by p08-render-submission-matrix-fix.md)
 FIX_IMPLEMENTED:              YES (see p08-render-submission-matrix-fix.md)
+USER_RIGHT_ONLY_REPORT:       historical observation (may overlap the matrix bug)
+CURRENT_E97_RETEST:           not reproduced / conversion proven bidirectional;
+                              playable user session UNKNOWN
+                              (see [[p08-directional-input-movement-diagnosis]])
 ```
 
 ## 1. Two observations that must both be kept

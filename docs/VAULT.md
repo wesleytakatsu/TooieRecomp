@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — Estado global corrente do port: P08 visible attract/gameplay demo reached; first fidelity gap is RT64 LOAD-path viewproj decompose.
+- [[HANDOFF]] — Handoff — TooieRecomp — Estado global corrente do port: P08 visible attract demo and render-submission matrix fix validated; right-only input report not reproduced on e97.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
@@ -12,6 +12,7 @@
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
+- [[plan/evidence/p08-directional-input-movement-diagnosis]] — P08 — directional input / movement diagnosis — Right-only user report not reproduced on e97; host→N64 pad conversion proven bidirectional; attract stick is scripted.
 - [[plan/evidence/p08-render-submission-matrix-fix]] — P08 — Tooie render-submission matrix fix — Implementation of the proven incremental projection and view matrix submission split in TooieRecomp, avoiding RT64 viewproj decomposition and restoring correct camera/actor view extraction.
 - [[plan/evidence/p08-render-submission-matrix-diagnosis]] — P08 — render-submission matrix diagnosis — Rare view-in-projection vs RT64 G_MTX_PROJECTION LOAD decompose. Banjo incremental MUL avoids the path Tooie hits.
 - [[plan/evidence/p08-actor-camera-transform-discriminator]] — P08 — actor and camera transform discriminator — Telemetry discrimination between Actor.rotation simulation state, model matrix construction, and camera view transform during the first visible Wooded Hollow attract demo.
@@ -36,7 +37,7 @@
 - [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — diagnóstico: relocation de data de overlay perdida (chcollballcontrol) — Prova que o construtor recompilado devolvia 0x80804FA0 (link-time) porque o pipeline de metadados truncava nomes de seção; relocs existiam no ELF. Fix na camada generator/metadata; ActorInfo[0x38] == 0x80107C2C.
 - [[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] — P08 — corrigir binding de R_MIPS_26 intra-overlay no GENERATOR — Fix estrutural no N64Recomp: jal same-section em seções relocatable agora resolve para chamada direta a C, mesmo com use_lookup_for_all_function_calls=true. Elimina a colisão de base vram 0x80800000 (chintrochar→gsworldDll). Scheduler preservado via restrição a relocatable. Validado 3/3 smokes + 140s run.
 - [[plan/evidence/p08-runtime-frontend-smoke]] — BT P08 — runtime, launcher e música — Evidência do desbloqueio DP/VI e do ciclo de música do launcher.
-- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: INTRO → ATTRACT DEMO — Visible demo reproduced; render-submission Level B; RA wrappers / BCF28 / PATCH 4 remain resolved.
+- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: attract demo e render submission — Visible demo and matrix fix validated; right-only input report not reproduced on e97.
 - [[plan/evidence/p08-slot7-object-lifecycle-arbitration]] — P08 — slot7 table[2] object lifecycle arbitration (Grok) — Arbitragem Gemini×DeepSeek: creator 20790, clearer 205D0, countdown +0x34, C2AB8 progress A|C; origem UNKNOWN; ROOT_CAUSE_PROVEN=NO.
 - [[plan/evidence/p08-guest-preemption-runtime-audit]] — P08 — guest preemption & runtime scheduler structural audit — Auditoria estrutural do gap N64 (interrupt preemption) vs N64ModernRuntime (cooperative token único).
 - [[plan/evidence/p08-guest-preemption-causal-validation]] — P08 — guest preemption causal validation (clean experiment, class A) — Experimento limpo reversível: yield_self_1ms em func_800C2AB8 → AUDIO roda, func_800205D0 limpa table[2].word0, C2AB8 retorna, attract progride (até SIGSEGV downstream novo em func_800BCF28). Gap de preempção provado causalmente.

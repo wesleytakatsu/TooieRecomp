@@ -20,20 +20,18 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Estado corrente
 
-**P08 ACTIVE INTEGRATION BLOCKER (P08-T11):** intro/Jiggy/type-4/warp OK;
+**P08 ACTIVE INTEGRATION STATE:** intro/Jiggy/type-4/warp OK;
 **visible attract/gameplay demo reproduced** (mode-5, map 335 Wooded
 Hollow). Hybrid F' PATCH 4 is independently CLASS A. PATCH 4 is accepted.
 The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]. The
 `func_80013A7C` lookup-zero is **RESOLVED**
-([[../../plan/evidence/p08-core1-ra-wrapper-fix]]). First fidelity gap
-is character/camera transform discrimination (**Level B**;
-[[../../plan/evidence/p08-actor-camera-transform-discriminator]]):
-`Actor.rotation` and CPU model matrices are upright and correct; divergence
-is in `RENDER_SUBMISSION`. Render-submission matrix diagnosis (**Level B**;
-[[../../plan/evidence/p08-render-submission-matrix-diagnosis]]): Tooie
-LOADs `T_S * V_rot * P`; RT64 LOAD-path decompose preserves the clip
-product but extracts a half-length view Z. Fix not implemented.
+([[../../plan/evidence/p08-core1-ra-wrapper-fix]]).
+**Render-submission matrix split RESOLVED and VALIDATED**
+([[../../plan/evidence/p08-render-submission-matrix-fix]]).
+The user right-only movement report is **not reproduced on e97**
+([[../../plan/evidence/p08-directional-input-movement-diagnosis]]):
+host→N64 pad conversion is bidirectional. Title/file-select remains NEXT.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -47,7 +45,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] (**CURRENT** — render matrix diagnosis)
+- [[../../plan/evidence/p08-directional-input-movement-diagnosis]] (right-only report; not reproduced on e97)
+- [[../../plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix fix)
+- [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] (render matrix diagnosis)
 - [[../../plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
 - [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
 - [[../../plan/evidence/p08-core1-ra-wrapper-fix]] (core1 RA-wrapper fix; resolved)
@@ -141,7 +141,9 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] | **CURRENT:** RT64 LOAD-path viewproj decompose (Level B) |
+| [[../../plan/evidence/p08-directional-input-movement-diagnosis]] | right-only report; not reproduced on e97 |
+| [[../../plan/evidence/p08-render-submission-matrix-fix]] | **CURRENT:** Tooie render-submission matrix split validated |
+| [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] | RT64 LOAD-path viewproj decompose (resolved by the fix) |
 | [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] | visible demo reproduced; movement diagnosis |
 | [[../../plan/evidence/p08-core1-ra-wrapper-fix]] | core1 RA-wrapper native fix (resolved) |
 | [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] | Level A diagnosis; resolved by the fix |
@@ -197,12 +199,12 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Implement the proven `func_800E44FC` incremental-projection hook**
-   ([[../../plan/evidence/p08-render-submission-matrix-diagnosis]]).
+1. **Input title/file-select** (P08-T10).
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-4. Depois: input title/file-select.
+4. User-controlled directional retest only if a later playable session
+   contradicts [[../../plan/evidence/p08-directional-input-movement-diagnosis]].
 
 ## Gate de saída
 
@@ -210,15 +212,15 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
   Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
 - [x] `func_800BCF28` binding fix implementado, validado e aceito (verdict B).
 - [x] `func_80013A7C` lookup-zero resolvido (Tooie-native RA wrappers).
-- [~] RT64 intro OK; first demo visible; Wooded Hollow view extract wrong.
-- [~] mode 5 / gsattract ep1 / gameplay demo renderizam (orientation/camera still wrong).
+- [x] RT64 intro OK; first demo visible; Wooded Hollow render-submission fix validated.
+- [x] mode 5 / gsattract ep1 / gameplay demo renderizam (upright after matrix split).
 - [ ] Entrada title/file select e rumble/hotplug.
 - [x] Persistência BanjoRecomp; `controls.json` lazy.
 - [x] Sem melhorias que alterem timing/paridade de referência.
 
 ## Próxima etapa
 
-**NEXT:** Implement only the proven render-submission transform fix
-(`func_800E44FC` / `func_800E4640` incremental LOAD P + MUL view).
-Do not reopen the accepted BCF28 helper binding, PATCH 4 / Hybrid F', or
-the core1 RA wrappers. Do not modify shared RT64.
+**NEXT:** Address title screen input and frontend file-selection navigation.
+Do not reopen the accepted BCF28 helper binding, PATCH 4 / Hybrid F', the
+core1 RA wrappers, or the render-submission matrix split. Do not modify
+shared RT64. Do not implement a directional-input "fix" on current evidence.

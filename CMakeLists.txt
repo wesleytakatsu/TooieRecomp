@@ -294,3 +294,24 @@ target_compile_options(matrix_submission_test PRIVATE
     -Wno-unused-parameter
 )
 set_target_properties(matrix_submission_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P08 directional-input harness: real convert_to_n64_range + signed-byte + scale identity.
+# Compile the runtime converter source directly so the test does not reimplement
+# the mapping and does not have to link the full ultramodern archive.
+add_executable(input_direction_test
+    ${CMAKE_SOURCE_DIR}/tests/input_direction_test.cpp
+    ${N64MR}/ultramodern/src/input.cpp
+)
+target_include_directories(input_direction_test PRIVATE
+    ${N64MR}/ultramodern/include
+    ${N64MR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+    ${N64MR}/thirdparty/concurrentqueue
+    ${N64MR}/thirdparty/sse2neon
+)
+target_compile_options(input_direction_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(input_direction_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

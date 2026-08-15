@@ -20,7 +20,13 @@ namespace {
 
 std::atomic<bool> g_enabled{false};
 std::atomic<bool> g_movement_enabled{false};
+std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_inited{false};
+std::atomic<uint32_t> g_host_x_bits{0};
+std::atomic<uint32_t> g_host_y_bits{0};
+float g_override_x = 0.0f;
+float g_override_y = 0.0f;
+bool g_override_active = false;
 std::atomic<uint64_t> g_gfx_ticks{0};
 std::atomic<uint64_t> g_syscall_dispatch{0};
 std::atomic<uint64_t> g_syscall_return{0};
@@ -58,6 +64,57 @@ void ensure_init() {
     const char* mv = std::getenv("TOOIE_DIAG_MOVEMENT");
     g_movement_enabled.store(mv != nullptr && mv[0] != '\0' && mv[0] != '0',
                              std::memory_order_relaxed);
+    const char* inp = std::getenv("TOOIE_DIAG_INPUT");
+    g_input_enabled.store(inp != nullptr && inp[0] != '\0' && inp[0] != '0',
+                          std::memory_order_relaxed);
+    const char* vec = std::getenv("TOOIE_DIAG_INPUT_VECTOR");
+    if (vec != nullptr && vec[0] != '\0') {
+        auto eq = [vec](const char* name) {
+            return std::strcmp(vec, name) == 0;
+        };
+        if (eq("center") || eq("0")) {
+            g_override_x = 0.0f;
+            g_override_y = 0.0f;
+            g_override_active = true;
+        } else if (eq("right") || eq("+x")) {
+            g_override_x = 1.0f;
+            g_override_y = 0.0f;
+            g_override_active = true;
+        } else if (eq("left") || eq("-x")) {
+            g_override_x = -1.0f;
+            g_override_y = 0.0f;
+            g_override_active = true;
+        } else if (eq("up") || eq("+y")) {
+            g_override_x = 0.0f;
+            g_override_y = 1.0f;
+            g_override_active = true;
+        } else if (eq("down") || eq("-y")) {
+            g_override_x = 0.0f;
+            g_override_y = -1.0f;
+            g_override_active = true;
+        } else if (eq("up-right") || eq("ur")) {
+            g_override_x = 1.0f;
+            g_override_y = 1.0f;
+            g_override_active = true;
+        } else if (eq("up-left") || eq("ul")) {
+            g_override_x = -1.0f;
+            g_override_y = 1.0f;
+            g_override_active = true;
+        } else if (eq("down-right") || eq("dr")) {
+            g_override_x = 1.0f;
+            g_override_y = -1.0f;
+            g_override_active = true;
+        } else if (eq("down-left") || eq("dl")) {
+            g_override_x = -1.0f;
+            g_override_y = -1.0f;
+            g_override_active = true;
+        } else {
+            std::fprintf(stderr,
+                         "[tooie-input] unknown TOOIE_DIAG_INPUT_VECTOR='%s'\n",
+                         vec);
+            std::fflush(stderr);
+        }
+    }
     const char* iv = std::getenv("TOOIE_DIAG_INTERVAL_MS");
     if (iv && iv[0]) {
         int v = std::atoi(iv);
@@ -90,6 +147,14 @@ void ensure_init() {
                      "probe=D_80127630/D_80127760/D_80135470 player=D_80135490[0]\n");
         std::fflush(stderr);
     }
+    if (g_input_enabled.load(std::memory_order_relaxed) || g_override_active) {
+        std::fprintf(stderr,
+                     "[tooie-input] enabled log=%d override=%s host=(%.3f,%.3f)\n",
+                     int(g_input_enabled.load(std::memory_order_relaxed)),
+                     g_override_active ? (vec ? vec : "?") : "off",
+                     g_override_x, g_override_y);
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -120,6 +185,111 @@ bool enabled() {
 bool movement_enabled() {
     ensure_init();
     return g_movement_enabled.load(std::memory_order_relaxed);
+}
+
+bool input_enabled() {
+    ensure_init();
+    return g_input_enabled.load(std::memory_order_relaxed);
+}
+
+static uint32_t float_bits(float f) {
+    uint32_t bits = 0;
+    std::memcpy(&bits, &f, sizeof(bits));
+    return bits;
+}
+
+static float bits_float(uint32_t bits) {
+    float f = 0.0f;
+    std::memcpy(&f, &bits, sizeof(f));
+    return f;
+}
+
+void apply_input_vector_override(float* x, float* y) {
+    ensure_init();
+    if (!g_override_active || x == nullptr || y == nullptr) {
+        return;
+    }
+    *x = g_override_x;
+    *y = g_override_y;
+}
+
+void note_host_input(int controller, float x, float y, uint16_t buttons) {
+    ensure_init();
+    g_host_x_bits.store(float_bits(x), std::memory_order_relaxed);
+    g_host_y_bits.store(float_bits(y), std::memory_order_relaxed);
+    if (!g_input_enabled.load(std::memory_order_relaxed)) {
+        return;
+    }
+    static float s_x = 1e9f;
+    static float s_y = 1e9f;
+    static uint16_t s_buttons = 0xFFFFu;
+    static auto s_last = std::chrono::steady_clock::time_point{};
+    const auto now = std::chrono::steady_clock::now();
+    const bool changed = (std::fabs(x - s_x) > 0.02f) ||
+                         (std::fabs(y - s_y) > 0.02f) ||
+                         (buttons != s_buttons);
+    const bool due = (s_last.time_since_epoch().count() == 0) ||
+                     (now - s_last >= std::chrono::milliseconds(250));
+    const bool active = (x != 0.0f) || (y != 0.0f) || (buttons != 0);
+    if (!changed && !(due && active)) {
+        return;
+    }
+    s_x = x;
+    s_y = y;
+    s_buttons = buttons;
+    s_last = now;
+    std::fprintf(stderr,
+                 "[tooie-input] host ctrl=%d host=(%.3f,%.3f) buttons=%04x\n",
+                 controller, x, y, unsigned(buttons));
+    std::fflush(stderr);
+}
+
+void note_guest_pad(int8_t stick_x, int8_t stick_y, uint16_t buttons,
+                    int32_t scale_word, float remap_x, float remap_y) {
+    ensure_init();
+    if (!g_input_enabled.load(std::memory_order_relaxed)) {
+        return;
+    }
+    static int8_t s_sx = 127;
+    static int8_t s_sy = 127;
+    static uint16_t s_buttons = 0xFFFFu;
+    static int32_t s_scale = 0;
+    static auto s_last = std::chrono::steady_clock::time_point{};
+    const auto now = std::chrono::steady_clock::now();
+    const bool changed = (stick_x != s_sx) || (stick_y != s_sy) ||
+                         (buttons != s_buttons) || (scale_word != s_scale);
+    const bool due = (s_last.time_since_epoch().count() == 0) ||
+                     (now - s_last >= std::chrono::milliseconds(250));
+    const bool active = (stick_x != 0) || (stick_y != 0) || (buttons != 0);
+    if (!changed && !(due && active)) {
+        return;
+    }
+    s_sx = stick_x;
+    s_sy = stick_y;
+    s_buttons = buttons;
+    s_scale = scale_word;
+    s_last = now;
+    uint32_t scale_bits = static_cast<uint32_t>(scale_word);
+    uint32_t derived = 0xE955CCDDu - scale_bits;
+    float derived_f = bits_float(derived);
+    const float hx = bits_float(g_host_x_bits.load(std::memory_order_relaxed));
+    const float hy = bits_float(g_host_y_bits.load(std::memory_order_relaxed));
+    std::fprintf(stderr,
+                 "[tooie-input] host=(%.3f,%.3f) pad=(%d,%d) buttons=%04x "
+                 "scale=%08x derived=%.6f remap=(%.3f,%.3f)\n",
+                 hx, hy, int(stick_x), int(stick_y), unsigned(buttons),
+                 scale_bits, derived_f, remap_x, remap_y);
+    std::fflush(stderr);
+}
+
+void last_host_input(float* x, float* y) {
+    ensure_init();
+    if (x != nullptr) {
+        *x = bits_float(g_host_x_bits.load(std::memory_order_relaxed));
+    }
+    if (y != nullptr) {
+        *y = bits_float(g_host_y_bits.load(std::memory_order_relaxed));
+    }
 }
 
 uint64_t gfx_ticks() {

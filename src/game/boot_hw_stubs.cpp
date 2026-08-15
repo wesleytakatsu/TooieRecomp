@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 #include "recomp.h"
 #include "librecomp/game.hpp"
@@ -256,6 +257,31 @@ extern "C" void osPfsInit_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osContInit_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osContStartReadData_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osContGetReadData_recomp(uint8_t* rdram, recomp_context* ctx);
+
+// Diagnostic wrap only: call the shared runtime writer, then sample guest
+// OSContPad + the func_80015D60 scale word. No behavioral change when
+// TOOIE_DIAG_INPUT is unset.
+static void tooie_osContGetReadData(uint8_t* rdram, recomp_context* ctx) {
+    osContGetReadData_recomp(rdram, ctx);
+    if (!tooie_diag::input_enabled()) {
+        return;
+    }
+    const gpr pad = static_cast<gpr>(ctx->r4);
+    const int8_t sx = MEM_B(2, pad);
+    const int8_t sy = MEM_B(3, pad);
+    const uint16_t buttons = static_cast<uint16_t>(MEM_HU(0, pad));
+    const int32_t scale = MEM_W(0, kseg0_gpr(0x8007DB54u));
+    const gpr remap = kseg0_gpr(0x80079AF8u);
+    auto bits_f32 = [](int32_t bits) {
+        float f = 0.0f;
+        const uint32_t u = static_cast<uint32_t>(bits);
+        std::memcpy(&f, &u, sizeof(f));
+        return f;
+    };
+    const float remap_x = bits_f32(MEM_W(8, remap));
+    const float remap_y = bits_f32(MEM_W(12, remap));
+    tooie_diag::note_guest_pad(sx, sy, buttons, scale, remap_x, remap_y);
+}
 extern "C" void osContSetCh_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __osMotorAccess_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osMotorInit_recomp(uint8_t* rdram, recomp_context* ctx);
@@ -409,7 +435,7 @@ static const UltraLookupHook kUltraLookupHooks[] = {
     // Tooie's raw SI hook below is deliberately retained only for CIC-6105 PIF
     // traffic; ordinary input must reach RecompFrontend's profile callbacks.
     { static_cast<int32_t>(0x8002FF90), osContStartReadData_recomp, "osContStartReadData" },
-    { static_cast<int32_t>(0x80030014), osContGetReadData_recomp, "osContGetReadData" },
+    { static_cast<int32_t>(0x80030014), tooie_osContGetReadData, "osContGetReadData" },
     // JOY thread (func_800166DC): if osEepromProbe < EEPROM_TYPE_16K it forces
     // D_80079B90[0].errno = 8 and never calls osContGetReadData → title/save
     // select ignore pads. Must return host Eep16k (GameEntry.save_type).

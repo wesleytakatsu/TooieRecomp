@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: C2AB8, BCF28, core1 RA wrappers e render-submission matrix fix resolvidos; visible attract demo validado em Wooded Hollow mode 5."
+description: "Estado autossuficiente: C2AB8, BCF28, core1 RA wrappers e render-submission matrix fix resolvidos; visible attract demo validado; right-only input report not reproduced on e97."
 status: evidence
 phase: P08
 updated: 2026-08-14
-tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix]
+tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
@@ -13,6 +13,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 
 - Branch: `main`.
 - Active Fix Evidence: [[p08-render-submission-matrix-fix]].
+- Directional input diagnosis: [[p08-directional-input-movement-diagnosis]].
 - Diagnosis: [[p08-render-submission-matrix-diagnosis]].
 - Discriminator: [[p08-actor-camera-transform-discriminator]].
 - Movement diagnosis: [[p08-visible-demo-movement-diagnosis]].
@@ -46,6 +47,12 @@ demo is reproduced and running.** The **RENDER_SUBMISSION matrix split** is
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
 Visual Wooded Hollow attract demo renders correctly and advances.
+The user "right-only movement" report was **not reproduced** on e97: host→N64
+pad conversion is bidirectional (`input_direction_test` PASS; runtime LEFT
+`pad=(-82,0)`). No playable file-select session was obtained autonomously.
+Do not promote that report above title/file-selection unless a later
+user-controlled session contradicts the conversion evidence
+([[p08-directional-input-movement-diagnosis]]).
 Next steps in Phase P08 / downstream phases:
 1. Title screen / frontend menu / file selection input integration.
 2. Full transform-tagging suite (`gEXEnable`, matrix group IDs for high-FPS motion interpolation).
@@ -93,17 +100,19 @@ Address title screen input and frontend file-selection navigation in Phase P08.
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-render-submission-matrix-fix]] — **CURRENT:** render matrix submission fix
-1. [[p08-render-submission-matrix-diagnosis]] — render matrix diagnosis
-2. [[p08-actor-camera-transform-discriminator]] — actor vs camera discriminator
-3. [[p08-visible-demo-movement-diagnosis]] — visible demo + movement diagnosis
-4. [[p08-core1-ra-wrapper-fix]] — RA-wrapper fix (resolved; do not reopen)
-5. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+0. [[p08-directional-input-movement-diagnosis]] — directional input (not reproduced on e97)
+1. [[p08-render-submission-matrix-fix]] — render matrix submission fix
+2. [[p08-render-submission-matrix-diagnosis]] — render matrix diagnosis
+3. [[p08-actor-camera-transform-discriminator]] — actor vs camera discriminator
+4. [[p08-visible-demo-movement-diagnosis]] — visible demo + movement diagnosis
+5. [[p08-core1-ra-wrapper-fix]] — RA-wrapper fix (resolved; do not reopen)
+6. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (src/game/transform_hooks.cpp, tests/matrix_submission_test.cpp, CMakeLists.txt)
+CODE_CHANGED             = YES (tooie_diag + get_n64_input wrap + osContGetReadData wrap
+                               + input_direction_test; transform_hooks already on HEAD)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

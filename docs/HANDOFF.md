@@ -1,11 +1,11 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: P08 visible attract demo render-submission matrix fix validated; characters and camera render upright and elevated in Wooded Hollow mode 5."
+description: "Estado global corrente do port: P08 visible attract demo render-submission matrix fix validated; right-only movement report not reproduced on e97."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-14
-tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks]
+tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input]
 ---
 
 # Handoff — TooieRecomp
@@ -36,8 +36,11 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
 Address title screen input and frontend file-selection navigation in Phase P08.
-Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers, Actor.rotation,
-or the render-submission matrix split. Do not modify shared RT64. PATCH 4 stays ON.
+The user right-only movement report is **not reproduced** on e97
+([[plan/evidence/p08-directional-input-movement-diagnosis]]); host→pad
+conversion is bidirectional. Do not reopen BCF28, Hybrid F' / PATCH 1–4,
+the core1 RA wrappers, Actor.rotation, or the render-submission matrix
+split. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## Estado do produto validado
 
@@ -108,10 +111,11 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix submission fix)
-1. [[plan/evidence/p08-render-submission-matrix-diagnosis]] (render matrix diagnosis)
-2. [[plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
-3. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
+0. [[plan/evidence/p08-directional-input-movement-diagnosis]] (right-only report; not reproduced on e97)
+1. [[plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix submission fix)
+2. [[plan/evidence/p08-render-submission-matrix-diagnosis]] (render matrix diagnosis)
+3. [[plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
+4. [[plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
 4. [[plan/evidence/p08-core1-ra-wrapper-fix]] (RA-wrapper fix; resolved)
 5. [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
 6. [[plan/evidence/p08-bcf28-binding-fix-independent-review]] (verdict B; BCF28 fix accepted)
