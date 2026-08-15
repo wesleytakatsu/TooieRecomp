@@ -3,7 +3,7 @@ title: "P08 — directional input / movement diagnosis"
 description: "Narrow diagnosis of the user report that Banjo only moves toward the right side of the screen. Host-to-N64 pad conversion is proven bidirectional on e97; a playable user-controlled session was not reproduced autonomously."
 status: evidence
 phase: P08
-updated: 2026-08-14
+updated: 2026-08-15
 tags: [tooie-recomp, p08, input, stick, movement, diagnosis]
 ---
 
@@ -18,9 +18,10 @@ REPORT_SUPERSEDED_BY_MATRIX_FIX:           UNKNOWN (possible; not proven)
 PHYSICAL_USER_SESSION:                     NOT REPRODUCED (no autonomous pad)
 HOST_TO_PAD_BIDIRECTIONAL:                 YES (harness + runtime LEFT)
 D_8007DB54_SCALE_SEEDED:                   YES (0xAD090010 → 0.0125)
-FIX_IMPLEMENTED:                           NO
+FIX_IMPLEMENTED:                           NO (host-path diagnosis; live-player angle later)
 MATRIX_FIX_STILL_GOOD:                     YES
 ROOT_CAUSE_LEVEL:                          E
+LIVE_PLAYER_ANGLE_FIX:                     YES — [[p08-stick-angle-thunk-fix]]
 ```
 
 ## 1. User observation vs current HEAD
@@ -38,6 +39,12 @@ right-only motion still exists on `e97bd09`.
 
 ```text
 PHYSICAL 4-DIRECTION PLAYABLE RETEST:   NOT PERFORMED
+
+Later Level A work ([[p08-player-direction-facing-diagnosis]],
+[[p08-stick-angle-thunk-fix]]) proved the live-player right-only collapse is
+the empty `func_80013B70` secondary entry. Host→pad conversion on this note
+remains bidirectional and is not reopened. Attract/cinematic facing remains
+a separate bug.
   reason: no host physical controller/keyboard events in this environment
 SYNTHETIC HOST VECTOR INJECTION:        YES (TOOIE_DIAG_INPUT_VECTOR=left)
 ATTRACT DEMO ON E97:                    YES (mode 5, map 335 then later maps)

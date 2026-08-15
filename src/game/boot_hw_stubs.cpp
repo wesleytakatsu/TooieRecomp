@@ -1047,6 +1047,78 @@ extern "C" void func_80013A7C(uint8_t* rdram, recomp_context* ctx) {
     tooie_diag::note_math("80013A7C", input, ctx->f0.fl);
 }
 
+// func_80013B70 is a 12-byte secondary entry listed in tooie.us.rev0.recomp.toml
+// stubs[], so N64Recomp emits an empty body. Original MIPS:
+//   80013B70: mtc1  a2, $f16
+//   80013B74: j     80013B90          ; func_80013B7C + 0x14
+//   80013B78: nop
+// The shared tail expects $f16 to already hold the caller-supplied distance.
+// Calling the normal func_80013B7C entry is NOT equivalent: that preamble
+// overwrites $f16 with sqrt(y*y + x*x) and discards $a2. Real callers pass a
+// precomputed hypot that can differ from that fresh sqrt by add-order /
+// rounding (bastick: x*x+y*y; 13B7C: y*y then x*x). Strong-symbol
+// interposition only — the overlay table already stores .func = func_80013B70
+// by name.
+extern "C" void func_80013B70(uint8_t* rdram, recomp_context* ctx) {
+    const float input_y = ctx->f12.fl;
+
+    // mtc1 $a2, $f16
+    ctx->f16.u32l = static_cast<uint32_t>(ctx->r6);
+
+    // 0x80013B90 shared tail
+    ctx->f10.u32l = 0;
+    ctx->f18.fl = ctx->f14.fl;
+
+    const bool y_eq_zero = (ctx->f10.fl == ctx->f12.fl);
+    if (!y_eq_zero) {
+        // bc1fl delay: c.eq.s $f10, $f14
+        const bool x_eq_zero = (ctx->f10.fl == ctx->f14.fl);
+        if (!x_eq_zero) {
+            // bc1fl delay: lui $at, 0x3E34
+            ctx->r1 = S32(0x3E34 << 16);
+            ctx->f14.u32l = ctx->r1;
+            ctx->r7 = ctx->r31 | 0;
+            ctx->f12.fl = ctx->f12.fl / ctx->f16.fl;
+            func_80013ABC(rdram, ctx);
+            ctx->r31 = ctx->r7 | 0;
+            // bc1f is not "likely"; delay lui $at, 0x4334 always runs
+            ctx->r1 = S32(0x4334 << 16);
+            if (ctx->f18.fl < ctx->f10.fl) {
+                ctx->f2.u32l = ctx->r1;
+                ctx->f0.fl = ctx->f2.fl - ctx->f0.fl;
+            }
+            ctx->r1 = S32(0x43B4 << 16);
+            if (ctx->f0.fl < ctx->f10.fl) {
+                ctx->f2.u32l = ctx->r1;
+                ctx->f0.fl = ctx->f2.fl + ctx->f0.fl;
+            }
+            tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+            return;
+        }
+        // y != 0, x == 0
+        if (ctx->f10.fl < ctx->f12.fl) {
+            ctx->r1 = S32(0x42B4 << 16); // 90.0
+            ctx->f0.u32l = ctx->r1;
+            tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+            return;
+        }
+        ctx->r1 = S32(0x4387 << 16); // 270.0
+        ctx->f0.u32l = ctx->r1;
+        tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+        return;
+    }
+
+    // y == 0
+    if (ctx->f10.fl <= ctx->f14.fl) {
+        ctx->f0.fl = ctx->f10.fl; // 0.0
+        tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+        return;
+    }
+    ctx->r1 = S32(0x4334 << 16); // 180.0
+    ctx->f0.u32l = ctx->r1;
+    tooie_diag::note_math("80013B70", input_y, ctx->f0.fl);
+}
+
 // Submit one unit of background TIDY work. The original uses a blocking send
 // to a one-message queue, but host-side VI delivery can revisit MAIN before the
 // lower-priority TIDY thread drains the previous request. Blocking here stalls

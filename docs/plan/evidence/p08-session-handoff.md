@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: P08-T10 validated; P08-T03 original timing/4:3 baseline blocked pending clean config and live display measurements."
+description: "Estado autossuficiente: func_80013B70 stick-angle override implemented; P08-T10 synthetic gameplay gate still FAIL; attract/cinematic facing separate."
 status: evidence
 phase: P08
-updated: 2026-08-14
-tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input]
+updated: 2026-08-15
+tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input, stick-angle]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
@@ -12,8 +12,10 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
+- Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
+- Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
 - Title & File Select Validation: [[p08-title-file-select-validation]].
-- Active Fix Evidence: [[p08-render-submission-matrix-fix]].
+- Render-submission fix: [[p08-render-submission-matrix-fix]].
 - Directional input diagnosis: [[p08-directional-input-movement-diagnosis]].
 - Diagnosis: [[p08-render-submission-matrix-diagnosis]].
 - Discriminator: [[p08-actor-camera-transform-discriminator]].
@@ -56,19 +58,18 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
-Title screen, file-selection menu, slot navigation, original 4:3 timing baseline,
-and gameplay transitions are autonomously proven functional.
-Visual Wooded Hollow attract demo renders correctly and advances.
-The user "right-only movement" report is now **reproduced from static analysis**
-(see [[p08-player-direction-facing-diagnosis]]): root cause identified as the
-empty generated body of `func_80013B70` (stick-angle atan2 thunk at 0x80013B70).
+`func_80013B70` stick-angle secondary entry is **implemented**
+([[p08-stick-angle-thunk-fix]]): native shared tail, strong-symbol bind,
+cardinal/diagonal/third-arg tests PASS. Live player motion is
+**IMPLEMENTED_PENDING_RUNTIME** because the P08-T10 synthetic file-select
+→ mode=1 transition still **FAIL**s (CONT_A confirm ends in mode=3).
+That regression is a **separate next blocker**. Attract/cinematic facing
+(USER_BUG_B) is **OPEN_SEPARATE** — attract bypasses bastick.
 
 Next steps in Phase P08:
-1. **Implement the fix for `func_80013B70`** (Tooie-native strong override).
-2. Investigate the file-select → Spiral Mountain regression (current HEAD no
-   longer transitions to mode=1 gameplay after CONT_A confirm).
-3. Then: implement the Tooie high-FPS transform-tagging suite.
-4. Window sizing, fullscreen, focus, and multi-monitor options (`P08-T07`).
+1. Independent review of the stick-angle fix (MIPS/test proof first).
+2. Diagnose the file-select → Spiral Mountain regression independently.
+3. Then: USER_BUG_B if still open; then transform-tagging; then `P08-T07`.
 
 ## ROOT_CAUSE_STATUS
 
@@ -79,9 +80,11 @@ BCF28_ROOT_CAUSE_PROVEN:             YES (Level A; ACCEPTED verdict B)
 80013A7C_FIX_STATUS:                 RESOLVED (Tooie-native strong symbols)
 ACTOR_ROTATION_EXPLAINS_POSE:        NO (Actor.rotation is upright)
 RENDER_SUBMISSION_FIX_STATUS:        RESOLVED (Level A; transform_hooks.cpp)
-FRONTEND_INPUT_VALIDATION:           PASS (Zero divergence)
+FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1 FAIL
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
+STICK_ANGLE_13B70_FIX:               IMPLEMENTED (unit-tested; runtime pending)
+P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
 ## RESOLVED_DO_NOT_REOPEN
@@ -112,13 +115,17 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Run P08-T03 with explicit Original/4:3 configuration in a usable display
-session, collect VI/logic/animation/present/aspect evidence, and update the
-baseline classification.
+Independent GPT-5.6 Luna x-high review of the stick-angle fix
+([[p08-stick-angle-thunk-fix]]). Runtime player validation is blocked;
+review the semantic/test proof first, then separately diagnose the
+synthetic file-select regression before using it as a gameplay automation
+gate.
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-directional-input-movement-diagnosis]] — directional input (not reproduced on e97)
+0. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
+0b. [[p08-player-direction-facing-diagnosis]] — Level A diagnosis
+0c. [[p08-directional-input-movement-diagnosis]] — host→pad (not reopened)
 1. [[p08-render-submission-matrix-fix]] — render matrix submission fix
 2. [[p08-render-submission-matrix-diagnosis]] — render matrix diagnosis
 3. [[p08-actor-camera-transform-discriminator]] — actor vs camera discriminator
@@ -129,9 +136,7 @@ baseline classification.
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (tooie_diag + gated timing counters + get_n64_input wrap
-                               + osContGetReadData wrap + input_direction_test;
-                               transform_hooks already on HEAD)
+CODE_CHANGED             = YES (boot_hw_stubs func_80013B70 + stick_angle_thunk_test)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-14
+updated: 2026-08-15
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -29,13 +29,13 @@ The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 ([[../../plan/evidence/p08-core1-ra-wrapper-fix]]).
 **Render-submission matrix split RESOLVED and VALIDATED**
 ([[../../plan/evidence/p08-render-submission-matrix-fix]]).
-The user right-only movement report is **not reproduced on e97**
-([[../../plan/evidence/p08-directional-input-movement-diagnosis]]):
-host→N64 pad conversion is bidirectional. **P08-T10 is VALIDATED / COMPLETE**:
-intro -> file select -> slot navigation -> confirmation -> Spiral Mountain
-passes with zero frontend input divergence. **P08-T03 is BLOCKED** pending a
-clean explicit Original/4:3 runtime configuration and live timing windows;
-see [[../../plan/evidence/p08-original-timing-4x3-baseline]].
+The user right-only live-player report is owned by the empty
+`func_80013B70` secondary entry and is **implemented**
+([[../../plan/evidence/p08-stick-angle-thunk-fix]]); host→N64 pad conversion
+remains bidirectional and is not reopened. Attract/cinematic facing is a
+separate bug. **P08-T10 was historically VALIDATED**, but the current
+synthetic file-select → mode=1 transition **FAIL**s (separate blocker).
+**P08-T03 is VALIDATED** ([[../../plan/evidence/p08-original-timing-4x3-baseline]]).
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -49,7 +49,9 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-directional-input-movement-diagnosis]] (right-only report; not reproduced on e97)
+- [[../../plan/evidence/p08-stick-angle-thunk-fix]] (**CURRENT** — func_80013B70 shared-tail override)
+- [[../../plan/evidence/p08-player-direction-facing-diagnosis]] (Level A stick-angle diagnosis)
+- [[../../plan/evidence/p08-directional-input-movement-diagnosis]] (host→pad bidirectional; not reopened)
 - [[../../plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix fix)
 - [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] (render matrix diagnosis)
 - [[../../plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
@@ -112,9 +114,9 @@ Evidência corrente:
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
 - [x] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible & upright**
   (render submission matrix split resolved via `transform_hooks.cpp`).
-- [x] `P08-T10` Input title/file select validado com sequenciador sintético autônomo
-  ([[../../plan/evidence/p08-title-file-select-validation]]). Zero divergência encontrada; transição
-  intro -> file select -> navegação de slots -> confirmação -> Spiral Mountain OK.
+- [x] `P08-T10` Input title/file select validado historicamente
+  ([[../../plan/evidence/p08-title-file-select-validation]]). **Current HEAD
+  synthetic confirm → mode=1 is FAIL** (separate from the stick-angle fix).
 - [x] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
@@ -156,7 +158,9 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-directional-input-movement-diagnosis]] | right-only report; not reproduced on e97 |
+| [[../../plan/evidence/p08-stick-angle-thunk-fix]] | **CURRENT:** func_80013B70 native shared-tail override |
+| [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
+| [[../../plan/evidence/p08-directional-input-movement-diagnosis]] | host→pad bidirectional; not reopened |
 | [[../../plan/evidence/p08-render-submission-matrix-fix]] | **CURRENT:** Tooie render-submission matrix split validated |
 | [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] | RT64 LOAD-path viewproj decompose (resolved by the fix) |
 | [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] | visible demo reproduced; movement diagnosis |

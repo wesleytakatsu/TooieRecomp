@@ -282,6 +282,36 @@ target_link_libraries(core1_ra_wrappers_test PRIVATE
 )
 set_target_properties(core1_ra_wrappers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# P08 stick-angle secondary-entry: 0x80013B70 native shared-tail override.
+add_executable(stick_angle_thunk_test
+    ${CMAKE_SOURCE_DIR}/tests/stick_angle_thunk_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
+)
+target_include_directories(stick_angle_thunk_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/game
+    ${CMAKE_SOURCE_DIR}/RecompiledFuncs
+    ${N64MR}/ultramodern/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/N64Recomp/include
+)
+target_compile_options(stick_angle_thunk_test PRIVATE
+    -fno-strict-aliasing
+    -fms-extensions
+    -Wno-unused-parameter
+)
+target_link_libraries(stick_angle_thunk_test PRIVATE
+    PatchesLib
+    RecompiledFuncs
+    librecomp
+    ultramodern
+    Threads::Threads
+)
+set_target_properties(stick_angle_thunk_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 # P08 matrix-submission regression: proves incremental P LOAD + V MUL equivalence and RT64 classification.
 add_executable(matrix_submission_test
     ${CMAKE_SOURCE_DIR}/tests/matrix_submission_test.cpp

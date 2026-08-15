@@ -19,7 +19,7 @@ CINEMATIC_FACING_WRONG:       UNKNOWN (not diagnosed — requires live gameplay)
 BOTS_BEHAVIOR_PLAUSIBLE:      YES — bots bypass bastick/yaw pipeline
 ROOT_CAUSE_LEVEL:             A
 ROOT_CAUSE_CLASS:             A (stick angle calculation broken)
-FIX_IMPLEMENTED:              NO
+FIX_IMPLEMENTED:              YES — see [[p08-stick-angle-thunk-fix]]
 ```
 
 ## 1. Symptom-to-mechanism mapping
@@ -151,7 +151,12 @@ REFUTED_CANDIDATES:
   negative-X clipping                           — REFUTED (s8 `lb` path clean)
 ```
 
-## 7. Minimal fix design (not implemented)
+## 7. Minimal fix design — SUPERSEDED by implementation
+
+The sketch below is the original diagnosis proposal. Independent MIPS
+reconstruction proved that step 2 (full `func_80013B7C` entry) is **not**
+equivalent. The implemented fix materializes `$f16` from `$a2` and runs the
+shared tail at `0x80013B90` natively. See [[p08-stick-angle-thunk-fix]].
 
 ```text
 FIX_OWNER:          TOOIE_NATIVE (src/game/boot_hw_stubs.cpp or a new override file)
@@ -159,11 +164,12 @@ OWNING_LAYER:       TooieRecomp source (NOT RecompiledFuncs, NOT N64Recomp, NOT 
 FIX_MECHANISM:      Strong-symbol interposition (like func_800137D4, func_80013A7C etc.)
 FUNCTION_SEMANTICS: func_80013B70(y, x, distance):
                        1. ctx->f16.u32l = ctx->r6  // third arg (distance) as float
-                       2. func_80013B7C(rdram, ctx)  // call the shared atan2 body
+                       2. func_80013B7C(rdram, ctx)  // NOT used — not equivalent
                        3. return  // ctx->f0 holds the angle result
 
 MINIMAL_FILES:
   src/game/boot_hw_stubs.cpp  — add override + register in banjo::register_boot_lookup_stubs()
+  (registration was NOT required; overlay table binds the strong symbol by name)
 
 CHECK_BEFORE_FIX:
   - Verify func_80013B7C body (RecompiledFuncs/funcs_74.c:1175) is correct ✓ (appears correct)
@@ -199,3 +205,14 @@ STICK_ANGLE_CALLER:          RecompiledFuncs/funcs_13.c:4301–4316 (generated b
    - DOWN: stick_angle ≈ 270°
 3. Player desired yaw differs for each cardinal (no collapse)
 4. No regression: unit tests PASS, visible attract demo still renders upright
+
+## 10. Resolution pointer
+
+```text
+RESOLUTION:  [[p08-stick-angle-thunk-fix]]
+STATUS:      native override implemented; cardinal/diagonal/third-arg tests PASS
+RUNTIME:     live player not visually confirmed
+             (P08-T10 synthetic file-select → mode=1 still FAIL; separate)
+USER_BUG_A:  IMPLEMENTED_PENDING_RUNTIME
+USER_BUG_B:  OPEN_SEPARATE (attract/cinematic facing; not bastick)
+```

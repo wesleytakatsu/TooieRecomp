@@ -76,11 +76,13 @@ independently **CLASS A**. Verdict C preserved; the tracked-state finding
 is resolved by independent verdict B, and PATCH 4 is accepted.
 `func_800BCF28` binding fix **ACCEPTED (verdict B)**. `func_80013A7C`
 lookup-zero **RESOLVED**. Render-submission matrix split **RESOLVED**.
-Right-only movement report **not reproduced on e97**. P08-T10 title/file-select
-is **VALIDATED / COMPLETE** (intro -> file select -> slot navigation ->
-confirmation -> Spiral Mountain). P08-T03 original timing/4:3 baseline is
-**BLOCKED** pending a clean explicit baseline config and live measurements.
+`func_80013B70` stick-angle override **IMPLEMENTED**
+([[../../plan/evidence/p08-stick-angle-thunk-fix]]). Current P08-T10
+synthetic confirm → mode=1 is **FAIL** (separate). Attract/cinematic facing
+is **OPEN_SEPARATE**. P08-T03 original timing/4:3 baseline is **VALIDATED**.
 Evidência:
+[[../../plan/evidence/p08-stick-angle-thunk-fix]],
+[[../../plan/evidence/p08-player-direction-facing-diagnosis]],
 [[../../plan/evidence/p08-directional-input-movement-diagnosis]],
 [[../../plan/evidence/p08-visible-demo-movement-diagnosis]],
 [[../../plan/evidence/p08-core1-ra-wrapper-fix]],

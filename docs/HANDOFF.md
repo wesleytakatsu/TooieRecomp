@@ -1,11 +1,11 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: P08-T10 validated; P08-T03 original timing/4:3 baseline blocked pending clean live measurements."
+description: "Estado global corrente do port: func_80013B70 stick-angle override implemented; P08-T10 synthetic gameplay gate still FAIL; attract/cinematic facing separate."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-14
-tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input]
+updated: 2026-08-15
+tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle]
 ---
 
 # Handoff — TooieRecomp
@@ -37,13 +37,15 @@ Historical context:
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
-1. **Implement `func_80013B70` tooie-native override** (stick-angle atan2 thunk).
-   Root cause identified: empty generated body causes all directions to collapse
-   to ~camera_yaw + 90° (right-only movement). See
-   [[plan/evidence/p08-player-direction-facing-diagnosis]].
-2. After the fix: investigate the file-select → Spiral Mountain transition
-   regression (mode=1 not reached on current HEAD).
-3. Then advance to transform-tagging suite.
+1. Independent review of the `func_80013B70` stick-angle fix
+   ([[plan/evidence/p08-stick-angle-thunk-fix]]). Runtime player validation
+   was blocked by the separate file-select synthetic regression — review the
+   MIPS/test proof first.
+2. Separately diagnose the file-select → Spiral Mountain regression
+   (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
+   as a gameplay automation gate until it is fixed.
+3. Then: attract/cinematic facing (USER_BUG_B) if still open, then
+   transform-tagging.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, the title/file-select
@@ -77,6 +79,12 @@ RT64. PATCH 4 stays ON.
 11. **Original timing / 4:3 baseline VALIDATED (P08-T03 COMPLETE):**
     60.0 Hz VI, 20/30 Hz logic, 30 Hz animation, host presentation decoupled, and 4:3 content aspect confirmed
     ([[plan/evidence/p08-original-timing-4x3-baseline]]).
+12. **`func_80013B70` stick-angle secondary entry IMPLEMENTED**
+    ([[plan/evidence/p08-stick-angle-thunk-fix]]): native shared-tail override;
+    cardinals 0/90/180/270 and third-argument contract PASS. Live player
+    motion is **IMPLEMENTED_PENDING_RUNTIME**. Attract/cinematic facing is
+    a separate bug. P08-T10 synthetic mode=1 transition is a **separate
+    current FAIL**.
 
 ## Arquitetura e regras
 
@@ -126,7 +134,9 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-directional-input-movement-diagnosis]] (right-only report; not reproduced on e97)
+0. [[plan/evidence/p08-stick-angle-thunk-fix]] (**CURRENT** — stick-angle secondary-entry fix)
+0b. [[plan/evidence/p08-player-direction-facing-diagnosis]] (Level A diagnosis; fix implemented)
+0c. [[plan/evidence/p08-directional-input-movement-diagnosis]] (host→pad bidirectional; not reopened)
 1. [[plan/evidence/p08-render-submission-matrix-fix]] (**CURRENT** — render matrix submission fix)
 2. [[plan/evidence/p08-render-submission-matrix-diagnosis]] (render matrix diagnosis)
 3. [[plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
