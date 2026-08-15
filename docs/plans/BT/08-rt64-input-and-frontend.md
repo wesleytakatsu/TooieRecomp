@@ -30,7 +30,10 @@ The `func_800BCF28` binding fix is **ACCEPTED (verdict B)** by
 is character/camera transform discrimination (**Level B**;
 [[../../plan/evidence/p08-actor-camera-transform-discriminator]]):
 `Actor.rotation` and CPU model matrices are upright and correct; divergence
-is in `RENDER_SUBMISSION` (Rare's `G_MTX_PROJECTION` view-in-projection vs host renderer).
+is in `RENDER_SUBMISSION`. Render-submission matrix diagnosis (**Level B**;
+[[../../plan/evidence/p08-render-submission-matrix-diagnosis]]): Tooie
+LOADs `T_S * V_rot * P`; RT64 LOAD-path decompose preserves the clip
+product but extracts a half-length view Z. Fix not implemented.
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
 indireto de áudio e o gap estrutural de preempção foram provados:
@@ -44,7 +47,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-actor-camera-transform-discriminator]] (**CURRENT** — transform discriminator)
+- [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] (**CURRENT** — render matrix diagnosis)
+- [[../../plan/evidence/p08-actor-camera-transform-discriminator]] (transform discriminator)
 - [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] (visible demo + movement diagnosis)
 - [[../../plan/evidence/p08-core1-ra-wrapper-fix]] (core1 RA-wrapper fix; resolved)
 - [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] (Level A diagnosis; resolved)
@@ -105,7 +109,7 @@ Evidência corrente:
 - [~] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
-  Residual: visible demo movement/orientation (Level C).
+  Residual: Wooded Hollow render-submission view extract (Level B).
 
 
 ## Implementado / validado
@@ -136,7 +140,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] | **CURRENT:** visible demo reproduced; movement Level C |
+| [[../../plan/evidence/p08-render-submission-matrix-diagnosis]] | **CURRENT:** RT64 LOAD-path viewproj decompose (Level B) |
+| [[../../plan/evidence/p08-visible-demo-movement-diagnosis]] | visible demo reproduced; movement diagnosis |
 | [[../../plan/evidence/p08-core1-ra-wrapper-fix]] | core1 RA-wrapper native fix (resolved) |
 | [[../../plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] | Level A diagnosis; resolved by the fix |
 | [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] | verdict B; BCF28 helper binding fix accepted |
@@ -191,12 +196,12 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Independent review of the core1 RA-wrapper fix**, then diagnose the
-   next first divergence ([[../../plan/evidence/p08-core1-ra-wrapper-fix]]).
+1. **Implement the proven `func_800E44FC` incremental-projection hook**
+   ([[../../plan/evidence/p08-render-submission-matrix-diagnosis]]).
 2. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 3. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
-4. Então: gsattract ep1 / demo, depois input title/file-select.
+4. Depois: input title/file-select.
 
 ## Gate de saída
 
@@ -204,15 +209,15 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
   Clang build PASS; PATCH 4 distribution independently accepted (verdict B).
 - [x] `func_800BCF28` binding fix implementado, validado e aceito (verdict B).
 - [x] `func_80013A7C` lookup-zero resolvido (Tooie-native RA wrappers).
-- [~] RT64 intro OK; gameplay demo não comprovada.
-- [ ] mode 5 / gsattract ep1 / gameplay demo renderizam.
+- [~] RT64 intro OK; first demo visible; Wooded Hollow view extract wrong.
+- [~] mode 5 / gsattract ep1 / gameplay demo renderizam (orientation/camera still wrong).
 - [ ] Entrada title/file select e rumble/hotplug.
 - [x] Persistência BanjoRecomp; `controls.json` lazy.
 - [x] Sem melhorias que alterem timing/paridade de referência.
 
 ## Próxima etapa
 
-**NEXT:** Independent Gemini 3.7 Flash HIGH review of the RA-wrapper fix
-before diagnosing the next blocker.
-Do not reopen the accepted BCF28 helper binding or PATCH 4 / Hybrid F'.
-After demo: input and [[09-gameplay-parity-and-enhancements]].
+**NEXT:** Implement only the proven render-submission transform fix
+(`func_800E44FC` / `func_800E4640` incremental LOAD P + MUL view).
+Do not reopen the accepted BCF28 helper binding, PATCH 4 / Hybrid F', or
+the core1 RA wrappers. Do not modify shared RT64.

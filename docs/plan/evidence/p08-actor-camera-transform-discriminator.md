@@ -135,3 +135,10 @@ Both the character rotation symptom (supine models) and camera transform symptom
   1. Inspect `src/game/` matrix submission / RT64 display list interceptor for `G_MTX_PROJECTION` vs `G_MTX_MODELVIEW` decomposition.
   2. Verify if Banjo-Tooie requires the same transform-tagging / matrix patch as `BanjoRecomp/patches/transform_tagging.c`.
 - **STATUS:** Level B diagnosis complete. Zero source code changes made to game simulation.
+
+**Resolution / next (2026-08-14):** Render-submission diagnosis is in
+[[p08-render-submission-matrix-diagnosis]]. Product order here said
+`Proj * View`; that wording is **CORRECTED** to `T_S * V_rot * P`
+(view * proj). Next: implement only the proven `func_800E44FC` /
+`func_800E4640` incremental-projection hook. Do not reopen Actor.rotation
+or camera simulation.
