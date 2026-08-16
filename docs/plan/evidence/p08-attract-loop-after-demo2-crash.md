@@ -1,21 +1,22 @@
 ---
 title: "P08 — attract-loop crash after DEMO2"
-description: "Deterministic SIGSEGV after the second gameplay demo: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds to baflameline_entrypoint_5 (overlay VRAM collision). No production fix."
+description: "Deterministic SIGSEGV after DEMO2 resolved: bsrest 0x808003FC and unnamed same-section overlay targets resolved via N64Recomp CreateStatic ordering fix."
 status: evidence
 phase: P08
 updated: 2026-08-16
-tags: [tooie-recomp, p08, attract, demo2, sigsegv, bsrest, baflameline, overlay, lookup]
+tags: [tooie-recomp, p08, attract, demo2, sigsegv, bsrest, baflameline, overlay, lookup, createstatic, fix]
 ---
 
 # P08 — attract-loop crash after DEMO2
 
 ```text
-BASE_HEAD:                 0fb2b55dd3ba46823b4d9291d33c772b2cfd0ab8
-MODEL:                     Grok 4.6 HIGH
-MODE:                      DIAGNOSIS ONLY (no production fix)
+BASE_HEAD:                 915296127240d9ad2eb852b8ab9f9be7a1722905
+MODEL:                     Gemini 3.7 Flash HIGH
+MODE:                      IMPLEMENTATION + REGENERATION + VALIDATION
 CRASH_PREEXISTS_CURRENT_COLLISION_WORK: YES
 4dbcbad / 0fb2b55 blamed:  NO (REFUTED as introducers)
-FIX_IMPLEMENTED:           NO
+FIX_IMPLEMENTED:           YES (N64Recomp CreateStatic ordering fix)
+FIX_VALIDATED:             YES (CCL survived, CS intro 395 reached, 300s soak PASS)
 ```
 
 This is the current P08 blocker. Fire-egg collision, cinematic-facing, and
@@ -444,3 +445,48 @@ with a cross-overlay VRAM collision remains lookup-bound.
 The runtime regression remains: `INTRO -> demo1 -> demo2 -> CCL -> startup
 intro continues without crash`, with no guard, attract-index forcing, or state
 skipping.
+
+## 11. Implementation and Validation (2026-08-16, Gemini 3.7 Flash HIGH)
+
+### Implementation
+- **N64Recomp ordering fix:** In `src/recompilation.cpp` (`resolve_jal`), for relocatable sections, if `in_current_section` is true and no existing generated symbol matches in the section, `JalResolutionResult::CreateStatic` is returned before the `context.use_lookup_for_all_function_calls` fallback.
+- **Cumulative patch updated:** `patches/runtime/n64recomp-tooie.patch` updated cleanly against base `2b6f05688de2abc7d86da5b4a89b84c2c6acbabe`.
+- **SHA-256 updated:** `1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034` in `tools/apply_runtime_patches.sh`.
+- **Unit test suite:** `LiveRecomp/preemption_safepoint_test.cpp` augmented with `test_jal_resolution_policy` covering CASE 1 (same-section known -> Match), CASE 2 (same-section unnamed -> CreateStatic), CASE 3 (cross-section -> lookup), CASE 4 (non-relocatable -> lookup). Test result: `T11 PASS (pass=75 fail=0)`.
+
+### Regeneration Results
+- `tools/run_recomp.sh` regenerated all functions without manual edits.
+- All 7 audited `.bsrest` targets (`0x80800000`, `0x8080003C`, `0x80800080`, `0x808000E4`, `0x8080020C`, `0x8080032C`, `0x808003FC`) generated as local static bodies in `funcs_416.c` (`static_344_80800xxx`).
+- `static_344_808003FC` verified against original MIPS: stack setup (-0x18), RA save/restore, `func_800A0C20` call, conditional `func_800A0D14` call with `0.5f` (0x3F00), return.
+- `VULNERABLE_LOOKUPS_BEFORE: 17` -> `VULNERABLE_LOOKUPS_AFTER: 0`.
+- All 17 same-section JAL sites now call their local static helpers directly.
+
+### Static & Native Test Suites
+- `tests/attract_demo2_transition_jal_test.py`: **PASS** (all 7 targets represented, 17 lookups -> 0, semantics match).
+- `stick_angle_thunk_test`: **PASS**
+- `matrix_submission_test`: **PASS**
+- `input_direction_test`: **PASS**
+- `bcf28_helpers_test`: **PASS**
+- `core1_ra_wrappers_test`: **PASS**
+- `TooieRecompiled` build: **PASS**
+
+### Autonomous Attract Validation (300s Soak)
+Autonomous run with Vulkan (`TOOIE_AUTO_START=1 TOOIE_DISABLE_LAUNCHER_MUSIC=1`):
+```text
+WOOD_HOLLOW_REACHED:                     YES (map 335, mode 3 -> 2 -> 5)
+TDL_REACHED:                             YES (map 278, mode 5 -> 2 -> 5)
+CCL_REACHED:                             YES (map 314, mode 5 -> 2 -> 5)
+CCL_MODE2_PLAYER_INIT_COMPLETED:         YES
+BSREST_EP11_EXECUTED:                    YES (called static_344_808003FC directly)
+BSREST_808003FC_CORRECT_TARGET_EXECUTED: YES
+BAFLAMELINE_WRONG_BIND_COUNT:            0
+STARTUP_INTRO_395_REACHED:               YES (map 395, mode 5 -> 2 -> 3)
+SURVIVED_OLD_CRASH_POINT:                YES
+EXIT_139:                                NO (exit code 0 on timeout)
+ATTRACT_RUNTIME_SECONDS:                 300s
+ATTRACT_TRANSITIONS_COMPLETED:           7 (INTRO -> 335 -> 278 -> 314 -> 395 -> INTRO -> 235 -> 296)
+UNEXPECTED_SIGSEGV:                      NO
+WRONG_OVERLAY_BIND:                      NO
+NON_RELOCATABLE_LOOKUP_POLICY_PRESERVED: YES
+SCHEDULER_HOST_HOOK_REACHABILITY_PRESERVED: YES
+```

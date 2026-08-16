@@ -20,11 +20,10 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Estado corrente
 
-**CURRENT P08 BLOCKER:** deterministic SIGSEGV after DEMO2
-([[../../plan/evidence/p08-attract-loop-after-demo2-crash]]).
-`INTRO → 335 → 278` succeed; T3 (CCL 314 player init) calls
-`bsrest_entrypoint_11` and `LOOKUP_FUNC(0x808003FC)` is
-`baflameline_entrypoint_5`. Level A; no fix.
+**ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic SIGSEGV after DEMO2
+([[../../plan/evidence/p08-attract-loop-after-demo2-crash]]) is RESOLVED and VALIDATED.
+`INTRO → 335 → 278 → 314 → 395 → INTRO → 235 → 296` succeed; `bsrest_entrypoint_11`
+calls `static_344_808003FC` directly without lookup collision. Level A fix validated.
 
 **P08 ACTIVE INTEGRATION STATE:** intro/Jiggy/type-4/warp OK;
 **visible attract/gameplay demo reproduced** (mode-5, map 335 Wooded
@@ -314,30 +313,24 @@ BCF28 helper binding, PATCH 4 / Hybrid F', the core1 RA wrappers, the
 render-submission matrix split, or the accepted `func_80013B70` cardinal
 semantics. Do not modify shared RT64.
 
-## P08 unnamed overlay JAL independent review (2026-08-16) — NO FIX
+## P08 unnamed overlay JAL fix & validation (2026-08-16, Gemini 3.7 Flash HIGH)
 
-The DEMO2 attract SIGSEGV is independently **PROVEN Level A**. Original
-`.bsrest` `bsrest_entrypoint_11` (`0x80800668`) calls unnamed local
-`0x808003FC`; generated code instead emits `LOOKUP_FUNC`, which the runtime
-binds to `baflameline_entrypoint_5`. The original helper semantics are
-`func_800A0C20` plus conditional `func_800A0D14`; `a1=0x74` is **not UAF**.
+The DEMO2 attract SIGSEGV is **RESOLVED and VALIDATED** (Level A).
+Original `.bsrest` `bsrest_entrypoint_11` (`0x80800668`) called unnamed local `0x808003FC`,
+which generated `LOOKUP_FUNC(0x808003FC)` and bound to `baflameline_entrypoint_5`.
 
-The bounded structural audit found 17 vulnerable current lookup sites at
-seven unnamed same-section targets, all in `.bsrest`. This is class evidence,
-not a claim of 17 runtime crashes. cf31166 is correct for known same-section
-target functions; the missing case is unsupported metadata. The fix owner is
-**N64RECOMP**, whose existing `CreateStatic` path already derives function
-boundaries and emits stable local bodies. One-off metadata and metadata
-synthesis as the primary owner are rejected.
+The fix allows `CreateStatic` for unnamed same-section targets in relocatable sections
+before the lookup-all fallback. All 7 audited `.bsrest` targets now generate local static
+functions (`static_344_80800xxx`), and all 17 vulnerable sites use direct static calls.
+Validation: `tests/attract_demo2_transition_jal_test.py` PASS, 5 native tests PASS,
+and 300s autonomous soak with Vulkan confirmed all attract transitions without crash (`EXIT_139=NO`).
 
 ```text
 ROOT_CAUSE_LEVEL: A
 FIX_OWNER: N64RECOMP
-CF31166_140S_RUN_SEQUENCE_PROVEN: NO
-CF31166_AS_KNOWN_GOOD: NO
-UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
-FIX_IMPLEMENTED: NO
-NEXT_SINGLE_ACTION: implement the reviewed generator-layer change through
-                    the versioned runtime patch, then regenerate and rerun
-                    the structural/runtime regression contracts
+FIX_IMPLEMENTED: YES
+FIX_VALIDATED: YES
+PATCH_SHA256: 1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034
+VULNERABLE_LOOKUPS_AFTER: 0
+NEXT_SINGLE_ACTION: independent review of the generator fix if all acceptance gates pass; otherwise exactly the failing discriminator.
 ```

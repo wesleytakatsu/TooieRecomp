@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: P08 current blocker is the deterministic attract-loop SIGSEGV after DEMO2 (bsrest 0x808003FC → baflameline). Fire-egg miss, cinematic facing, and T10 results are preserved."
+description: "Estado global corrente do port: DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline) is RESOLVED and VALIDATED via N64Recomp CreateStatic ordering fix. Fire-egg miss, cinematic facing, and T10 results are preserved."
 status: current
 type: handoff
 project: TooieRecomp
@@ -12,11 +12,10 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 
 ## Prioridade atual
 
-**CURRENT P08 BLOCKER (2026-08-16):** deterministic attract-loop SIGSEGV
-after DEMO2. `INTRO → Wooded Hollow 335 → TDL 278` succeed; the next
-attract record (CCL 314, user-expected intro) dies in `mode=2` player
-init. `bsrest_entrypoint_11` `LOOKUP_FUNC(0x808003FC)` binds
-`baflameline_entrypoint_5`. Level A, no fix.
+**ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
+after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
+succeed cleanly. `bsrest_entrypoint_11` calls `static_344_808003FC` directly without
+LOOKUP_FUNC collision. Level A fix validated across unit tests, static contract, and 300s soak.
 See [[plan/evidence/p08-attract-loop-after-demo2-crash]].
 
 **P08 ACTIVE INTEGRATION STATE:** PATCH 4 is accepted and default ON. The
@@ -228,28 +227,25 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 14. [[plan/evidence/p08-session-handoff]]
 15. [[plans/BT/08-rt64-input-and-frontend]]
 
-## P08 unnamed overlay JAL independent review (2026-08-16) — NO FIX
+## P08 unnamed overlay JAL fix & validation (2026-08-16, Gemini 3.7 Flash HIGH)
 
-The current attract blocker is independently **PROVEN Level A**: original
-`.bsrest` `bsrest_entrypoint_11` (`0x80800668`) calls unnamed local
-`0x808003FC`, while generated code uses `LOOKUP_FUNC`; runtime resolves that
-VRAM to `baflameline_entrypoint_5`. The original local helper calls
-`func_800A0C20` and conditional `func_800A0D14`; `a1=0x74` is **not UAF**.
+The attract DEMO2 SIGSEGV is **RESOLVED and VALIDATED** (Level A).
+The root cause was N64Recomp falling back to global lookup for unnamed same-section
+overlay targets, binding `bsrest_entrypoint_11` (`0x80800668`) to `baflameline_entrypoint_5`
+at `0x808003FC`.
 
-The bounded ELF audit found **17** vulnerable same-section `R_MIPS_26` sites
-at **7** unnamed targets, all in `.bsrest`; this is a class-level risk record,
-not 17 runtime crash claims. cf31166 remains correct for known target symbols;
-the missing case is unsupported metadata. The selected structural owner is
-**N64RECOMP**: its existing `CreateStatic` machinery can establish boundaries,
-stable names, and generated bodies. One-off metadata and metadata synthesis as
-the primary fix are rejected.
+**Fix:** In N64Recomp `resolve_jal`, relocatable same-section targets take `CreateStatic`
+before the lookup-all fallback.
+- All 7 audited `.bsrest` targets generated as local static functions (`static_344_80800xxx`).
+- 17 risky lookups reduced to 0.
+- `tests/attract_demo2_transition_jal_test.py` PASS.
+- 300s autonomous soak with Vulkan confirmed clean progression through CCL (314), CS Intro (395), and subsequent attract demos without SIGSEGV (`EXIT_139=NO`).
 
 ```text
 FIX_OWNER: N64RECOMP
-CF31166_140S_RUN_SEQUENCE_PROVEN: NO
-CF31166_AS_KNOWN_GOOD: NO
-UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
-FIX_IMPLEMENTED: NO
-NEXT_SINGLE_ACTION: implement the reviewed N64Recomp CreateStatic ordering
-                    through the versioned runtime patch, then regenerate
+FIX_IMPLEMENTED: YES
+FIX_VALIDATED: YES
+PATCH_SHA256: 1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034
+VULNERABLE_LOOKUPS_AFTER: 0
+NEXT_SINGLE_ACTION: independent review of the generator fix if all acceptance gates pass; otherwise exactly the failing discriminator.
 ```

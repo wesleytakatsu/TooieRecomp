@@ -83,10 +83,10 @@ index c5673eb..423c9e7 100644
      };
 diff --git a/LiveRecomp/preemption_safepoint_test.cpp b/LiveRecomp/preemption_safepoint_test.cpp
 new file mode 100644
-index 0000000..296eb3a
+index 0000000..4c38290
 --- /dev/null
 +++ b/LiveRecomp/preemption_safepoint_test.cpp
-@@ -0,0 +1,481 @@
+@@ -0,0 +1,667 @@
 +// T11: static C / LiveRecomp preemption safepoint placement.
 +// Proves request-site policy in recompilation.cpp, not backend-local guesses.
 +
@@ -141,6 +141,7 @@ index 0000000..296eb3a
 +uint32_t beql(uint32_t rs, uint32_t rt, int16_t off) { return i_type(0x14, rs, rt, static_cast<uint16_t>(off)); }
 +uint32_t bnel(uint32_t rs, uint32_t rt, int16_t off) { return i_type(0x15, rs, rt, static_cast<uint16_t>(off)); }
 +uint32_t j(uint32_t target) { return j_type(0x02, target); }
++uint32_t jal(uint32_t target) { return j_type(0x03, target); }
 +uint32_t jr(uint32_t rs) { return r_type(rs, 0, 0, 0x08); }
 +uint32_t lui(uint32_t rt, uint16_t imm) { return i_type(0x0F, 0, rt, imm); }
 +uint32_t lw(uint32_t rt, uint32_t rs, int16_t imm) { return i_type(0x23, rs, rt, static_cast<uint16_t>(imm)); }
@@ -188,10 +189,14 @@ index 0000000..296eb3a
 +    return n;
 +}
 +
-+bool recompile_static(ToyFunc& toy, std::string& out) {
++bool recompile_static(ToyFunc& toy, std::string& out, std::vector<std::vector<uint32_t>>* static_funcs_out = nullptr) {
 +    std::ostringstream oss;
-+    std::vector<std::vector<uint32_t>> dummy;
-+    if (!N64Recomp::recompile_function(toy.context, 0, oss, dummy, false)) {
++    std::vector<std::vector<uint32_t>> local_statics(toy.context.sections.size());
++    auto& statics_ref = static_funcs_out ? *static_funcs_out : local_statics;
++    if (statics_ref.size() < toy.context.sections.size()) {
++        statics_ref.resize(toy.context.sections.size());
++    }
++    if (!N64Recomp::recompile_function(toy.context, 0, oss, statics_ref, false)) {
 +        return false;
 +    }
 +    out = oss.str();
@@ -551,6 +556,186 @@ index 0000000..296eb3a
 +    CHECK(c.find("ultramodern_service_preemption(rdram, (void*)&ctx->status_reg)") != std::string::npos);
 +}
 +
++void test_jal_resolution_policy() {
++    std::printf("JAL-1: relocatable same-section known target -> Match/direct\n");
++    {
++        ToyFunc toy;
++        toy.context.rom.resize(0x2000, 0);
++        toy.context.use_lookup_for_all_function_calls = true;
++        toy.context.sections.resize(1);
++        toy.context.sections[0].rom_addr = 0;
++        toy.context.sections[0].ram_addr = 0x80800000;
++        toy.context.sections[0].size = 0x1000;
++        toy.context.sections[0].executable = true;
++        toy.context.sections[0].relocatable = true;
++        toy.context.section_functions.resize(1);
++
++        std::vector<uint32_t> caller_words = {
++            jal(0x80800400),
++            0,
++            jr(kRa),
++            0
++        };
++        for (auto& w : caller_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x80800000, 0, caller_words, "caller_func", 0);
++        toy.context.functions_by_vram[0x80800000].push_back(0);
++        toy.context.sections[0].function_addrs.push_back(0x80800000);
++
++        std::vector<uint32_t> callee_words = {
++            jr(kRa),
++            0
++        };
++        for (auto& w : callee_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x80800400, 0x400, callee_words, "callee_known_func", 0);
++        toy.context.functions_by_vram[0x80800400].push_back(1);
++        toy.context.sections[0].function_addrs.push_back(0x80800400);
++
++        std::string c;
++        CHECK(recompile_static(toy, c));
++        CHECK(c.find("callee_known_func(rdram, ctx);") != std::string::npos);
++        CHECK(c.find("LOOKUP_FUNC(0x80800400)") == std::string::npos);
++    }
++
++    std::printf("JAL-2: relocatable same-section unnamed target -> CreateStatic\n");
++    {
++        ToyFunc toy;
++        toy.context.rom.resize(0x2000, 0);
++        toy.context.use_lookup_for_all_function_calls = true;
++        toy.context.sections.resize(2);
++        // Section 0: current relocatable overlay (.bsrest)
++        toy.context.sections[0].rom_addr = 0;
++        toy.context.sections[0].ram_addr = 0x80800000;
++        toy.context.sections[0].size = 0x1000;
++        toy.context.sections[0].executable = true;
++        toy.context.sections[0].relocatable = true;
++        // Section 1: colliding overlay (.baflameline)
++        toy.context.sections[1].rom_addr = 0x1000;
++        toy.context.sections[1].ram_addr = 0x80800000;
++        toy.context.sections[1].size = 0x1000;
++        toy.context.sections[1].executable = true;
++        toy.context.sections[1].relocatable = true;
++        toy.context.section_functions.resize(2);
++
++        // Caller at 0x80800000 in section 0
++        std::vector<uint32_t> caller_words = {
++            jal(0x808003FC),
++            0,
++            jr(kRa),
++            0
++        };
++        for (auto& w : caller_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x80800000, 0, caller_words, "bsrest_caller", 0);
++        toy.context.functions_by_vram[0x80800000].push_back(0);
++        toy.context.sections[0].function_addrs.push_back(0x80800000);
++
++        // Named function at 0x808003FC in SECTION 1 (different overlay)
++        std::vector<uint32_t> other_ovl_words = {
++            jr(kRa),
++            0
++        };
++        for (auto& w : other_ovl_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x808003FC, 0x13FC, other_ovl_words, "baflameline_ep5", 1);
++        toy.context.functions_by_vram[0x808003FC].push_back(1);
++        toy.context.sections[1].function_addrs.push_back(0x808003FC);
++
++        std::string c;
++        std::vector<std::vector<uint32_t>> statics;
++        CHECK(recompile_static(toy, c, &statics));
++        CHECK(c.find("static_0_808003FC(rdram, ctx);") != std::string::npos);
++        CHECK(c.find("LOOKUP_FUNC(0x808003FC)") == std::string::npos);
++        CHECK(c.find("baflameline_ep5") == std::string::npos);
++        CHECK(!statics.empty() && statics[0].size() == 1 && statics[0][0] == 0x808003FC);
++    }
++
++    std::printf("JAL-3: relocatable cross-section target -> lookup fallback\n");
++    {
++        ToyFunc toy;
++        toy.context.rom.resize(0x2000, 0);
++        toy.context.use_lookup_for_all_function_calls = true;
++        toy.context.sections.resize(2);
++        // Section 0: relocatable overlay
++        toy.context.sections[0].rom_addr = 0;
++        toy.context.sections[0].ram_addr = 0x80800000;
++        toy.context.sections[0].size = 0x1000;
++        toy.context.sections[0].executable = true;
++        toy.context.sections[0].relocatable = true;
++        // Section 1: core
++        toy.context.sections[1].rom_addr = 0x1000;
++        toy.context.sections[1].ram_addr = 0x800A0000;
++        toy.context.sections[1].size = 0x1000;
++        toy.context.sections[1].executable = true;
++        toy.context.sections[1].relocatable = false;
++        toy.context.section_functions.resize(2);
++
++        // Caller at 0x80800000 in section 0 calls cross-section 0x800A0C20
++        std::vector<uint32_t> caller_words = {
++            jal(0x800A0C20),
++            0,
++            jr(kRa),
++            0
++        };
++        for (auto& w : caller_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x80800000, 0, caller_words, "ovl_caller", 0);
++        toy.context.functions_by_vram[0x80800000].push_back(0);
++        toy.context.sections[0].function_addrs.push_back(0x80800000);
++
++        std::vector<uint32_t> core_words = {
++            jr(kRa),
++            0
++        };
++        for (auto& w : core_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x800A0C20, 0x1C20, core_words, "func_800A0C20", 1);
++        toy.context.functions_by_vram[0x800A0C20].push_back(1);
++        toy.context.sections[1].function_addrs.push_back(0x800A0C20);
++
++        std::string c;
++        CHECK(recompile_static(toy, c));
++        CHECK(c.find("LOOKUP_FUNC(0x800A0C20)(rdram, ctx);") != std::string::npos);
++        CHECK(c.find("func_800A0C20(rdram, ctx);") == std::string::npos);
++    }
++
++    std::printf("JAL-4: non-relocatable same-address runtime hook scenario -> lookup fallback\n");
++    {
++        ToyFunc toy;
++        toy.context.rom.resize(0x4000, 0);
++        toy.context.use_lookup_for_all_function_calls = true;
++        toy.context.sections.resize(1);
++        // Section 0: non-relocatable boot/core
++        toy.context.sections[0].rom_addr = 0;
++        toy.context.sections[0].ram_addr = 0x80000000;
++        toy.context.sections[0].size = 0x4000;
++        toy.context.sections[0].executable = true;
++        toy.context.sections[0].relocatable = false;
++        toy.context.section_functions.resize(1);
++
++        // Caller at 0x80001000 calls target in same non-relocatable section at 0x80002000
++        std::vector<uint32_t> caller_words = {
++            jal(0x80002000),
++            0,
++            jr(kRa),
++            0
++        };
++        for (auto& w : caller_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x80001000, 0x1000, caller_words, "boot_caller", 0);
++        toy.context.functions_by_vram[0x80001000].push_back(0);
++        toy.context.sections[0].function_addrs.push_back(0x80001000);
++
++        std::vector<uint32_t> target_words = {
++            jr(kRa),
++            0
++        };
++        for (auto& w : target_words) w = byteswap(w);
++        toy.context.functions.emplace_back(0x80002000, 0x2000, target_words, "scheduler_target", 0);
++        toy.context.functions_by_vram[0x80002000].push_back(1);
++        toy.context.sections[0].function_addrs.push_back(0x80002000);
++
++        std::string c;
++        CHECK(recompile_static(toy, c));
++        CHECK(c.find("LOOKUP_FUNC(0x80002000)(rdram, ctx);") != std::string::npos);
++        CHECK(c.find("scheduler_target(rdram, ctx);") == std::string::npos);
++    }
++}
++
 +} // namespace
 +
 +int main() {
@@ -564,6 +749,7 @@ index 0000000..296eb3a
 +    p3_x1_likely_taken();
 +    p3_x2_likely_not_taken();
 +    p3_x4_switch_hostile();
++    test_jal_resolution_policy();
 +
 +    std::printf("T11 %s  (pass=%d fail=%d)\n", g_fail == 0 ? "PASS" : "FAIL", g_pass, g_fail);
 +    return g_fail == 0 ? 0 : 1;
@@ -663,7 +849,7 @@ index b2816c0..57b527f 100644
      fmt::print("Function count: {}\n", context.functions.size());
  
 diff --git a/src/recompilation.cpp b/src/recompilation.cpp
-index c228433..aaf81dd 100644
+index c228433..8248e6c 100644
 --- a/src/recompilation.cpp
 +++ b/src/recompilation.cpp
 @@ -22,11 +22,6 @@ enum class JalResolutionResult {
@@ -678,12 +864,10 @@ index c228433..aaf81dd 100644
      // Look for symbols with the target vram address
      const N64Recomp::Section& cur_section = context.sections[cur_section_index];
      const auto matching_funcs_find = context.functions_by_vram.find(target_func_vram);
-@@ -39,8 +34,16 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
+@@ -39,6 +34,53 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
      thread_local std::vector<size_t> matched_funcs{};
      matched_funcs.clear();
  
--    // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
--    if (matching_funcs_find != context.functions_by_vram.end()) {
 +    // A target in the same section as the current function must be loaded together with it, so it
 +    // is statically unambiguous. Bind it directly to a C call even when lookups are otherwise
 +    // forced for all function calls: multiple relocatable overlays can share a canonical vram
@@ -693,27 +877,36 @@ index c228433..aaf81dd 100644
 +    // Restrict to relocatable sections: non-relocatable sections (boot/core) can have host
 +    // runtime hooks installed over generated functions at runtime (e.g. libultra stubs at
 +    // 0x8001xxxx), so a direct C call would bypass the hook that a LOOKUP_FUNC would reach.
-+    if (context.sections[cur_section_index].relocatable && matching_funcs_find != context.functions_by_vram.end()) {
-         for (size_t target_func_index : matching_funcs_find->second) {
-             const auto& target_func = context.functions[target_func_index];
- 
-@@ -53,10 +56,33 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
- 
-             // Immediately accept a function in the same section as this one, since it must also be loaded if the current function is.
-             if (target_func.section_index == cur_section_index) {
--                exact_match_found = true;
--                matched_funcs.clear();
--                matched_funcs.push_back(target_func_index);
--                break;
-+                // Only bind functions that are actually generated as C. Reimplemented/ignored/stubbed
-+                // functions have no C definition (the runtime registers them by vram), so they must
-+                // keep using LOOKUP_FUNC to dispatch through the runtime's function table.
-+                if (target_func.reimplemented || target_func.ignored || target_func.stubbed) {
-+                    continue;
++    if (context.sections[cur_section_index].relocatable) {
++        if (matching_funcs_find != context.functions_by_vram.end()) {
++            for (size_t target_func_index : matching_funcs_find->second) {
++                const auto& target_func = context.functions[target_func_index];
++
++                // Zero-sized symbol handling. unless there's only one matching target.
++                if (target_func.words.empty()) {
++                    if (!N64Recomp::is_manual_patch_symbol(target_func.vram)) {
++                        continue;
++                    }
 +                }
-+                matched_function_index = target_func_index;
-+                return JalResolutionResult::Match;
++
++                // Immediately accept a function in the same section as this one, since it must also be loaded if the current function is.
++                if (target_func.section_index == cur_section_index) {
++                    // Only bind functions that are actually generated as C. Reimplemented/ignored/stubbed
++                    // functions have no C definition (the runtime registers them by vram), so they must
++                    // keep using LOOKUP_FUNC to dispatch through the runtime's function table.
++                    if (target_func.reimplemented || target_func.ignored || target_func.stubbed) {
++                        return JalResolutionResult::Ambiguous;
++                    }
++                    matched_function_index = target_func_index;
++                    return JalResolutionResult::Match;
++                }
 +            }
++        }
++
++        // For an unnamed JAL target inside the current relocatable section with no existing generated function,
++        // allow CreateStatic to resolve/generate the local target before falling back to lookup-all.
++        if (in_current_section) {
++            return JalResolutionResult::CreateStatic;
 +        }
 +    }
 +
@@ -722,20 +915,25 @@ index c228433..aaf81dd 100644
 +        return JalResolutionResult::Ambiguous;
 +    }
 +
-+    // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
-+    if (matching_funcs_find != context.functions_by_vram.end()) {
-+        for (size_t target_func_index : matching_funcs_find->second) {
-+            const auto& target_func = context.functions[target_func_index];
-+
-+            // Zero-sized symbol handling. unless there's only one matching target.
-+            if (target_func.words.empty()) {
-+                if (!N64Recomp::is_manual_patch_symbol(target_func.vram)) {
-+                    continue;
-+                }
+     // Evaluate any functions with the target address to see if they're potential candidates for JAL resolution.
+     if (matching_funcs_find != context.functions_by_vram.end()) {
+         for (size_t target_func_index : matching_funcs_find->second) {
+@@ -51,14 +93,6 @@ JalResolutionResult resolve_jal(const N64Recomp::Context& context, size_t cur_se
+                 }
              }
  
+-            // Immediately accept a function in the same section as this one, since it must also be loaded if the current function is.
+-            if (target_func.section_index == cur_section_index) {
+-                exact_match_found = true;
+-                matched_funcs.clear();
+-                matched_funcs.push_back(target_func_index);
+-                break;
+-            }
+-
              // If the function's section isn't relocatable, add the function as a candidate.
-@@ -239,10 +265,15 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+             const auto& target_func_section = context.sections[target_func.section_index];
+             if (!target_func_section.relocatable) {
+@@ -239,10 +273,15 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
          return true;
      };
  
@@ -752,7 +950,7 @@ index c228433..aaf81dd 100644
          print_indent();
          generator.emit_goto(target);
          print_link_branch();
-@@ -381,6 +412,12 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+@@ -381,6 +420,12 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
              return false;
          }
  
@@ -765,7 +963,7 @@ index c228433..aaf81dd 100644
          print_indent();
          print_indent();
          generator.emit_goto(fmt::format("L_{:08X}", branch_target));
-@@ -496,7 +533,7 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+@@ -496,7 +541,7 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
              }
              // Check if the branch is within this function
              else if (branch_target >= func.vram && branch_target < func_vram_end) {
@@ -774,7 +972,7 @@ index c228433..aaf81dd 100644
              }
              // This may be a tail call in the middle of the control flow due to a previous check
              // For example:
-@@ -539,6 +576,8 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+@@ -539,6 +584,8 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
                      return false;
                  }
                  print_indent();

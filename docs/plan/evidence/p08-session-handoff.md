@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: current P08 blocker is the DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline). Fire-egg miss, cinematic facing, and T10 results are preserved."
+description: "Estado autossuficiente: DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline) is RESOLVED and VALIDATED via N64Recomp CreateStatic ordering fix. Fire-egg miss, cinematic facing, and T10 results are preserved."
 status: evidence
 phase: P08
 updated: 2026-08-16
@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Active diagnosis: [[p08-attract-loop-after-demo2-crash]] (**CURRENT BLOCKER**).
+- Active Fix Evidence: [[p08-attract-loop-after-demo2-crash]] (**RESOLVED and VALIDATED**).
 - Preserved diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
@@ -37,6 +37,8 @@ Input (P08-T10)** is **VALIDATED and COMPLETE** ([[p08-title-file-select-validat
 **Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
 ([[p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic, 30 Hz animation,
 host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
+**Attract DEMO2 SIGSEGV (bsrest 0x808003FC)** is **RESOLVED and VALIDATED**
+([[p08-attract-loop-after-demo2-crash]]).
 
 ## CURRENT_PRODUCT_STATE
 
@@ -64,14 +66,16 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
     inject the later START presses that skip the opening story cutscenes.
 - **ORIGINAL 4:3 & TIMING BASELINE VALIDATED (P08-T03 COMPLETE):**
   - Gated live timing counters prove exact 60.000 Hz VI event rate, 20/30 Hz logic rate, 30 Hz skeletal animation rate, decoupled host presentation (~935 Hz), and 4:3 content aspect.
+- **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):**
+  - Unnamed same-section overlay targets resolved via N64Recomp CreateStatic ordering fix.
+  - 17 risky lookups -> 0; all 7 static bodies generated and verified.
+  - 300s autonomous soak passed all transitions through CCL 314, CS Startup Intro 395, and beyond.
 - `RecompiledFuncs` é gerado — não editar.
 
-## CURRENT_BLOCKER / NEXT PHASE WORK
+## CURRENT_STATUS / NEXT PHASE WORK
 
-**CURRENT:** attract loop dies after DEMO2. `INTRO → 335 → 278` succeed;
-T3 (CCL 314 init, the record before CS intro 395) calls
-`bsrest_entrypoint_11` and `LOOKUP_FUNC(0x808003FC)` is
-`baflameline_entrypoint_5`. Level A. No fix.
+**RESOLVED:** attract loop dies after DEMO2. `INTRO → 335 → 278 → 314 → 395 → INTRO → 235 → 296` succeed;
+`bsrest_entrypoint_11` calls `static_344_808003FC` directly and completes player init cleanly.
 See [[p08-attract-loop-after-demo2-crash]].
 
 `func_80013B70` stick-angle secondary entry has been corrected
@@ -237,43 +241,58 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (compact [tooie-xition] + ovl_unload logs)
-RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
-GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
-PATCH_CODE_CHANGED       = NO
-RECOMPILEDFUNCS          = NOT EDITED (untouched)
+CODE_CHANGED             = YES (apply_runtime_patches.sh hash, attract static test)
+RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime core untouched)
+GENERATOR_CODE_CHANGED   = YES (N64Recomp recompilation.cpp CreateStatic ordering fix via patch)
+PATCH_CODE_CHANGED       = YES (patches/runtime/n64recomp-tooie.patch)
+RECOMPILEDFUNCS          = REGENERATED CLEANLY (not hand-edited)
 ```
 
-## P08 unnamed overlay JAL independent review (2026-08-16) — NO FIX
+## P08 unnamed overlay JAL fix & validation (2026-08-16, Gemini 3.7 Flash HIGH)
 
-`bsrest_entrypoint_11` at `0x80800668` JALs to unnamed `.bsrest`
-`0x808003FC`. Original MIPS calls `func_800A0C20` and conditionally
-`func_800A0D14`; generated C emits `LOOKUP_FUNC(0x808003FC)`, and live
-`get_function` binds `baflameline_entrypoint_5`. The Level-A causal chain is
-**PROVEN**; `a1=0x74` is **not UAF**. The other known named collision is
-`func_808003FC_chnastycavemen`.
+`bsrest_entrypoint_11` at `0x80800668` JALs to unnamed `.bsrest` `0x808003FC`.
+The root cause was Level A: `resolve_jal` previously fell back to
+`use_lookup_for_all_function_calls` (Ambiguous -> `LOOKUP_FUNC`), binding to
+`baflameline_entrypoint_5` due to shared overlay VRAM.
 
-The bounded ELF audit is **PROVEN** as a structural count: 17 current lookup
-sites at seven unnamed same-section targets, all in `.bsrest`; it is evidence
-of a vulnerable class, not 17 runtime diagnoses. The cf31166 contract is
-correct for known target functions; this is an unsupported metadata case,
-not a cf31166 implementation bug. N64Recomp is the selected owner because
-its existing `CreateStatic` path already derives boundaries and emits a stable
-local body. Options A (one-off metadata) and B (metadata synthesis as
-primary) are rejected; Option C is accepted.
+**Fix Implemented:** In N64Recomp `resolve_jal`, for relocatable sections, if
+`in_current_section` is true and no existing function symbol matched in this
+section, `JalResolutionResult::CreateStatic` is returned before the lookup-all
+fallback. All 7 audited `.bsrest` unnamed targets (`0x80800000`, `0x8080003C`,
+`0x80800080`, `0x808000E4`, `0x8080020C`, `0x8080032C`, `0x808003FC`) now
+generate local static bodies in `funcs_416.c`, and all 17 vulnerable same-section
+JAL sites call them directly without `LOOKUP_FUNC`.
+
+**Validation:**
+- `tests/attract_demo2_transition_jal_test.py`: **PASS** (17 lookups -> 0, 7/7 bodies present, semantics match original MIPS).
+- Generator unit test in `PreemptionSafepointTest` (`test_jal_resolution_policy`): **PASS** (75/75 assertions).
+- All native unit tests (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`, `bcf28_helpers_test`, `core1_ra_wrappers_test`): **PASS**.
+- Full 300s autonomous attract soak with Vulkan: **PASS** (completed transitions `INTRO → 335 Wooded Hollow → 278 TDL → 314 CCL → 395 CS Intro → INTRO → 235 Mayahem → 296 JRL`, `EXIT_139=NO`, `UNEXPECTED_SIGSEGV=NO`).
 
 ```text
 ROOT_CAUSE_LEVEL: A
 FIX_OWNER: N64RECOMP
-RECOMMENDED_FIX: allow relocatable same-section CreateStatic before the
-                 use_lookup_for_all_function_calls fallback
-CF31166_140S_RUN_SEQUENCE_PROVEN: NO
-CF31166_AS_KNOWN_GOOD: NO
-UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
-FIX_IMPLEMENTED: NO
+CREATESTATIC_ORDERING_FIX: IMPLEMENTED in patches/runtime/n64recomp-tooie.patch
+PATCH_SHA256: 1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034
+VULNERABLE_LOOKUPS_BEFORE: 17
+VULNERABLE_LOOKUPS_AFTER: 0
+GENERATED_LOCAL_BODIES: 7/7
+BSREST_808003FC_GENERATED_MATCH_ORIGINAL: YES
+ATTRACT_STATIC_TEST: PASS
+TOOIE_BUILD: PASS
+WOOD_HOLLOW_REACHED: YES
+TDL_REACHED: YES
+CCL_REACHED: YES
+CCL_MODE2_PLAYER_INIT_COMPLETED: YES
+BSREST_EP11_EXECUTED: YES
+CORRECT_BSREST_808003FC_TARGET_EXECUTED: YES
+WRONG_BAFLAMELINE_BIND_COUNT: 0
+STARTUP_INTRO_395_REACHED: YES
+SURVIVED_OLD_CRASH_POINT: YES
+EXIT_139: NO
+ATTRACT_RUNTIME_SECONDS: 300s
+ATTRACT_TRANSITIONS_COMPLETED: 7
+UNEXPECTED_SIGSEGV: NO
+FIX_IMPLEMENTED: YES
+FIX_VALIDATED: YES
 ```
-
-Validation at this checkpoint: the five existing native harnesses PASS,
-`TooieRecompiled` build PASS, and `tests/attract_demo2_transition_jal_test.py`
-FAILS as the pre-fix contract expects. The next single action is to implement
-the reviewed generator-layer change through the versioned runtime patch.
