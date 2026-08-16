@@ -1128,4 +1128,91 @@ CORE1_RA_TEST:                     PASS
 TOOIE_BUILD:                       PASS
 ```
 
-STOP. No fix. No second projectile. No cinematic actor. No transform tagging.
+## 17. ACTUAL DIGGER COLLISION VOLUME DISCRIMINATOR
+
+### 17.1 Objective
+
+Resolve the actual collision volume of the selected `chdiggerground` (sys = `0x80085C98`)
+and determine whether the current fire egg sweep should geometrically hit it.
+
+### 17.2 MIPS Static Collision Setup & Pipeline
+
+Static disassembly mapping from `banjo-tooie-Recomp/asm/`:
+
+1. **Actor & Overlay Registration**:
+   - `chdiggerground` is **Overlay 219** (entrypoint `chdiggerground_entrypoint_0` @ `0x80085C98`), returning `D_80800408_chdiggerground`.
+   - Init callback `func_808001C8_chdiggerground` delegates to `subaddieDll_entrypoint_1` -> `subaddieDll_entrypoint_2` and `sucoaster_entrypoint_0`.
+   - Marker address is stored at `actor->0x00` (`Unk80132ED0*`).
+2. **Collision Model & Hit Tables**:
+   - `marker->unkC` is initialized to `_subaddiecustomhits_entrypoint_1` (`0x80089FF8`), returning `D_80800350_subaddiecustomhits`.
+   - `D_80800350_subaddiecustomhits` offset `0x0C` contains `_subaddiecustomhits_entrypoint_2` (`0x8008A000`), which executes custom skeletal/bone intersection testing (`func_800B1F8C`) against model `0x0131` / animation `0x0671`.
+3. **Broadphase Bounding Sphere (`_subaddiecustomhits_entrypoint_5` / `func_800EC75C`)**:
+   - Collision offset vector: `marker->0x1E` contains 3 signed 16-bit integers `[0, +44, +4]` representing `(dx = 0.0, dy = +44.0, dz = +4.0)`.
+   - Collision radius: derived by `func_800EC708` -> `func_800EC5C0` from `marker->unk18 >> 21`. For `chdiggerground`, `marker->unk18 = 0x0E210060`, giving `base_r = 113.0`.
+   - Center formula: $\vec{C}_{\text{col}} = \vec{P}_{\text{actor}} + (0.0, +44.0, +4.0)$.
+4. **Projectile Sweep Narrowphase (`func_800CD820` / `func_800CD6B4`)**:
+   - Swept sphere from $\vec{P}_{\text{from}}$ to $\vec{P}_{\text{to}}$ with projectile radius $r_{\text{sweep}} = 38.0\text{f}$.
+   - Broadphase sphere overlap criterion: $\text{dist}(\vec{P}_{\text{step}}, \vec{C}_{\text{col}}) < R_{\text{target}} + r_{\text{sweep}} = 113.0 + 38.0 = 151.0\text{f}$.
+   - If broadphase overlaps, calls custom callback `_subaddiecustomhits_entrypoint_2` for exact skeletal bone geometry.
+
+### 17.3 Runtime Live Capture (Wooded Hollow Gameplay Demo)
+
+Captured via `TOOIE_DIAG_SHOT=1` on `TooieRecompiled` during attract mode 5:
+
+- **Fire Egg Launch**:
+  - `tick 1663`, `glidx 322`: launched at `(-4655.36, -422.81, 1113.75)`.
+  - Flight altitude: flat $y = -348.00\text{f}$ (`cheggfire_entrypoint_2` sets gravity = 0).
+  - Velocity: $v_{xz} \approx 505.6\text{f/s}$, step vector $\vec{d} \approx (-38.28, 0.0, +11.59)$, sweep radius $r_{\text{egg}} = 38.00\text{f}$.
+- **Target Digger State at Egg Arrival (tick 1749 / glidx 365)**:
+  - Actor Address: `0x801c5b74` / `0x801c5a04`, sys = `0x80085C98`, marker = `0x80132f60`.
+  - Actor Origin: `(-5890.15, -548.61, 1597.84)`.
+  - Target Collision Center: `(-5890.15, -504.61, 1601.84)`.
+  - Target Bounding Radius: `113.00\text{f}`.
+  - Target Collision Flags: `marker->unk18 = 0x0E210060`, `actor->scale = 1.800`.
+- **Terminal Egg Sweep Segment (tick 1749 / glidx 365)**:
+  - From: `(-5895.96, -348.00, 1495.50)`.
+  - To: `(-5912.92, -348.00, 1500.63)`.
+  - Closest approach point on segment: `(-5912.92, -348.00, 1500.63)` ($t = 1.000$).
+- **Geometric Intersection Analysis**:
+  - $\Delta x = -5890.15 - (-5912.92) = +22.77\text{f}$
+  - $\Delta y = -504.61 - (-348.00) = -156.61\text{f}$
+  - $\Delta z = 1601.84 - 1500.63 = +101.21\text{f}$
+  - 3D Distance to Collision Center: $\sqrt{22.77^2 + (-156.61)^2 + 101.21^2} = 187.85\text{f}$.
+  - XZ Distance to Collision Center: $103.74\text{f}$.
+  - DY to Collision Center: $156.61\text{f}$ (egg at $y = -348.00$, target center at $y = -504.61$).
+  - Sum of Radii: $R_{\text{egg}} + R_{\text{digger}} = 38.00 + 113.00 = 151.00\text{f}$.
+  - `TRUE_COLLISION_MISS_MARGIN`: $187.85 - 151.00 = \mathbf{+36.85\text{f}}$ (PROVEN).
+- **World Intercept**:
+  - Egg terminates at `(-5912.92, -348.00, 1500.63)` by colliding with static terrain triangle at guest address `0x8037bf94` with normal `(0.723, 0.080, 0.686)` via `func_800FAB50`.
+  - `TARGET_HIT_WOULD_PRECEDE_WORLD_HIT`: Geometrically, no target hit occurs on this trajectory. `func_800CD820` executes before world physics integration in each tick; if a valid target hit had existed, it would have consumed the egg prior to terrain impact. Because the trajectory misses the digger bounding sphere by $+36.85\text{f}$, the egg continues unimpeded until stopping against the cave wall at $x = -5912.92\text{f}$.
+
+### 17.4 Classification Summary
+
+```text
+TARGET_COLLISION_PRIMITIVE:             Custom skeletal hit model (0x80089FF8 / 0x8008A000)
+                                        with broadphase sphere (func_800EC75C / 0x8008A29C)
+TARGET_COLLISION_CENTER_WORLD:          (-5890.15, -504.61, 1601.84) at tick 1749 (glidx 365)
+TARGET_COLLISION_RADIUS:                113.00f
+TARGET_COLLISION_HEIGHT:                0.00f (broadphase sphere; narrowphase animated cylinders)
+TARGET_COLLISION_OFFSET_FROM_ORIGIN:    (0.00, +44.00, +4.00)
+TARGET_COLLISION_FLAGS:                 marker->0x18 = 0x0E210060 (hittable baddie, broadphase active)
+TARGET_HITTABLE_STATE:                  ACTIVE (hittable coaster baddie)
+TRUE_COLLISION_MISS_MARGIN:             +36.85f (3D center dist 187.85f - (38.00f + 113.00f))
+SHOULD_SWEEP_INTERSECT_TARGET:          NO (PROVEN)
+WORLD_INTERCEPT_ADDRESS:                0x8037bf94 (normal = (0.723, 0.080, 0.686))
+TARGET_HIT_WOULD_PRECEDE_WORLD_HIT:     YES (if geometrically intersecting, target test precedes world step)
+USER_PLAYER_SPEED_VISUAL_RESIDUAL:      OPEN_SEPARATE
+```
+
+### 17.5 Validation
+
+```text
+STICK_ANGLE_TEST:                  PASS
+MATRIX_SUBMISSION_TEST:            PASS
+INPUT_DIRECTION_TEST:              PASS
+BCF28_TEST:                        PASS
+CORE1_RA_TEST:                     PASS
+TOOIE_BUILD:                       PASS
+```
+
+STOP. Discriminator resolved. No fix.

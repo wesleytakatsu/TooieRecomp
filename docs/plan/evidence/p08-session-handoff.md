@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Active diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 (first demo shot miss).
+- Active diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
@@ -88,14 +88,13 @@ desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-
 velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing (USER_BUG_B) is
 **CURRENTLY_NOT_REPRODUCIBLE_BY_USER** for the scenes the user checked;
 `USER_BUG_B_GLOBAL_PROVEN_RESOLVED=NO`. Do not diagnose another cinematic
-actor. **First demo shot miss (Grok 4.6 HIGH) COMPLETE** (§16): earliest
-C-up fire-egg at `glidx=322` is a CLASS G collision-space miss versus the
-downhill `0x80085C98` digger (closest 223.6 / egg r=38; `ROOT_CAUSE_LEVEL=D`).
+actor. **First demo shot miss & target collision volume (Gemini 3.7 Flash HIGH) COMPLETE** (§16, §17):
+earliest C-up fire-egg at `glidx=322` has `TRUE_COLLISION_MISS_MARGIN = +36.85f` (3D center dist `187.85f` vs sum of radii `151.00f`; $R_{\text{egg}}=38.00\text{f}, R_{\text{target}}=113.00\text{f}$, target center offset $(0, +44, +4)$ from origin `(-5890.15, -548.61, 1597.84)`).
+`SHOULD_SWEEP_INTERSECT_TARGET_GEOMETRICALLY = NO` (PROVEN). World intercept stops egg at `(-5912.92, -348.00, 1500.63)` via terrain triangle `0x8037bf94`.
+`USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
 
 Next steps in Phase P08:
-1. ~~First straight, first analog transition, first demo shot~~ **COMPLETE**.
-   Shot residual discriminator: original mole/world hit volume for this
-   fire-egg, not a new projectile.
+1. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**.
 2. Do not implement a facing fix. USER_BUG_B cinematic facing is
    currently not reproducible by the user; global is not proven resolved.
 3. Analog/gamepad validation of USER_BUG_A.
@@ -118,7 +117,10 @@ MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 STICK_ANGLE_13B70_FIX:               ACCEPTED (WASD runtime RESOLVED; analog PENDING)
 DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog PASS
-  First demo shot (glidx 322 fire-egg) PRIMARY_MISS_CLASS=G; ROOT_CAUSE_LEVEL=D.
+  First demo shot (glidx 322 fire-egg) TRUE_COLLISION_MISS_MARGIN = +36.85f (PROVEN NO HIT)
+  Target collision center: (-5890.15, -504.61, 1601.84), radius = 113.00f
+  World intercept: (-5912.92, -348.00, 1500.63) terrain triangle 0x8037bf94
+  USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE
 USER_BUG_B:                          CURRENTLY_NOT_REPRODUCIBLE_BY_USER
   GLOBAL_PROVEN_RESOLVED=NO
   Historical chdiggerground actor remains REFUTED
@@ -155,10 +157,9 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-First demo shot miss is characterized (`PRIMARY_MISS_CLASS=G`,
-`ROOT_CAUSE_LEVEL=D`). Do not implement a fix. Remaining discriminator is
-the original mole/world hit volume for this fire-egg only.
-`USER_BUG_B_CINEMATIC_FACING=CURRENTLY_NOT_REPRODUCIBLE_BY_USER`.
+First demo shot miss discriminator is RESOLVED (`TRUE_COLLISION_MISS_MARGIN = +36.85f`, geometric miss proven).
+`USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
+Analog/gamepad validation of USER_BUG_A (P08-T06).
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 

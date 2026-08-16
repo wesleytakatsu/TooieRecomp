@@ -81,12 +81,13 @@ comparison proves that the 180° freeze is original return-leg behavior for
 this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 ## NEXT
 
-1. ~~First straight, first analog transition, first demo shot~~ **COMPLETE**
-   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15, §16).
-   First demo fire-egg (`glidx=322`) is a CLASS G collision-space miss
-   versus the downhill digger (`ROOT_CAUSE_LEVEL=D`). Do not implement a
-   fix. Remaining discriminator: original mole/world hit volume for this
-   shot only.
+1. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**
+   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15, §16, §17).
+   First demo fire-egg (`glidx=322`) has `TRUE_COLLISION_MISS_MARGIN = +36.85f`
+   versus the downhill `chdiggerground` collision sphere ($R_{\text{egg}}=38.00\text{f}, R_{\text{target}}=113.00\text{f}$, center at `(-5890.15, -504.61, 1601.84)`).
+   `SHOULD_SWEEP_INTERSECT_TARGET_GEOMETRICALLY = NO` (PROVEN).
+   World collision terminates the egg at `(-5912.92, -348.00, 1500.63)` against terrain triangle `0x8037bf94`.
+   `USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
 3. File-select → live `mode=1` is **not** a current-HEAD frontend
    regression (`CURRENT_T10_REGRESSION=REFUTED`).
