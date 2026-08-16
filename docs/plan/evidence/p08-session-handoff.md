@@ -53,6 +53,7 @@ Canonical tasks (T01..T11) audited:
 - **VISIBLE GAMEPLAY DEMO & RENDER SUBMISSION RESOLVED (2026-08-14):**
   - Incremental projection split implemented in `src/game/transform_hooks.cpp`.
   - RT64 avoids the erroneous unscaled `matrixDecomposeViewProj` path.
+  - Gameplay demo full motion synchronization diagnosis recorded in [[p08-demo-full-motion-sync-diagnosis]] with static MIPS layout validation, glrecord index increment semantics (stride=6, offset=0), input checksum match (glidx 70..76 & 322), dual-increment tick counter identified, and presentation interpolation / camera follow lag classified as provisional hypotheses pending original emulator numeric capture. Level D (NO FIX).
   - Characters (`chjinjo` and `Banjo`) and camera are upright and elevated.
   - Banjo walks smoothly along ground path throughout 75s Wooded Hollow demo.
   - Host matrix regression test `matrix_submission_test` PASS (`MAX_MATRIX_ERROR: 0.000000e+00`).

@@ -53,7 +53,7 @@ the START presses that skip the opening story cutscenes).
 ([[plan/evidence/p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic,
 30 Hz animation, host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
 **Gameplay Demo Motion Synchronization Diagnosis (2026-08-16)**:
-Full 766-sample Wooded Hollow demo trajectory characterized across 48 kinematic segments ([[plan/evidence/p08-demo-full-motion-sync-diagnosis]]). Cadence is 100% constant (1 glrecord sample / 33.33ms / 2 logic ticks). Perception differences isolated to camera follow lag (~45° angular lag during analog curve) and decoupled host 60+ Hz presentation without sub-frame view matrix smoothing. Original emulated trace script prepared (`tools/original_demo_trace_bizhawk.lua`). Level D (NO FIX).
+Full 766-sample Wooded Hollow demo trajectory characterized in Recomp across 48 kinematic segments ([[plan/evidence/p08-demo-full-motion-sync-diagnosis]]). Recomp internal cadence is 100% constant (1 glrecord sample / 33.33ms / 2 logic ticks). Original numeric comparison is UNKNOWN pending instrumented emulator trace. Presentation interpolation and camera follow lag are PROVISIONAL HYPOTHESES. Static MIPS layout and glrecord index semantics verified (stride=6, offset=0, index increment on read). Level D (NO FIX).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;

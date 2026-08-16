@@ -12,20 +12,25 @@ tags: [tooie-recomp, p08, demo-sync, glrecord, kinematics, cadence, camera-follo
 ## 1. Visão Geral e Objetivo
 
 ```text
-BASE_HEAD:                         2dca3433dbe8d4cee2d466bd32792b330ade63e0
+BASE_HEAD:                         1de0738f8c5881f22d03f3149a6a26d575617cf5
 MODEL:                             Gemini 3.7 Flash HIGH
 MODE:                              DIAGNÓSTICO DIFERENCIAL COMPLETO (SEM FIX DE PRODUÇÃO)
 SELECTED_DEMO:                     Wooded Hollow (Map 335, Entrada 8, Mode 5)
-TOTAL_SAMPLES:                     766 amostras de glrecord gravadas (glidx 2..766)
+RECOMP_INTERNAL_TRACE:             PROVEN (766 amostras de glrecord capturadas, glidx 2..766)
+ORIGINAL_NUMERIC_TRACE:            UNKNOWN (pendente de emulador N64 instrumentado)
+PROVISIONAL_PRIMARY_HYPOTHESIS:    PRESENTATION_INTERPOLATION / CAMERA_FOLLOW_LAG
 FIX_IMPLEMENTED:                   NO
 ROOT_CAUSE_LEVEL:                  D
+ROOT_CAUSE:                        UNKNOWN (pendente de linha de base numérica original)
 ```
 
-Este diagnóstico investiga a percepção visual de que o movimento do jogador durante a primeira demonstração de gameplay (Wooded Hollow attract demo) aparenta não sincronizar 100% com a experiência original do Nintendo 64.
+> [!IMPORTANT]
+> **Distinção Epistemológica de Evidências:**
+> - `MEASURED_RECOMP`: Dados empíricos extraídos ao vivo do executável `TooieRecompiled` via `TOOIE_DIAG_DEMO_SYNC=1`.
+> - `ORIGINAL_MIPS_NOMINAL_EXPECTATION`: Contratos extraídos estaticamente da descompilação MIPS (ex: `glrecord_entrypoint_0`, `bastick_update`, `func_800EF04C`, cadência nominal de 30 Hz).
+> - `MEASURED_ORIGINAL`: **UNKNOWN**. Nenhuma alegação de erro zero (`error = 0`) ou correspondência numérica (`match = YES`) é válida como comparação empírica até que uma captura de runtime original seja executada. Comparações anteriores não qualificadas são aqui **CORRIGIDAS/SUPERSEDIDAS (CORRECTED/SUPERSEDED)**.
 
-Foram realizadas duas análises ortogonais:
-1. **Espaço de Simulação (Por Amostra `glrecord`)**: Análise cinemática das 766 amostras gravadas, verificando posições, velocidades, ângulos de stick remapeado, aceleração, multiplicador de inclinação (`mult`), máquina de estados de animação (`bs`), câmera e atores autônomos.
-2. **Espaço Temporal / Apresentação**: Medição da cadência de consumo de amostras de `glrecord`, tiques lógicos do guest (`guest_logic_tick`), contagem de VIs, tempo monotônico de parede (`wall_ms`), e desfasamento de câmera e interpolação de renderização no RT64.
+Este diagnóstico investiga a percepção visual de que o movimento do jogador durante a primeira demonstração de gameplay (Wooded Hollow attract demo) aparenta não sincronizar 100% com a experiência original do Nintendo 64.
 
 ---
 
@@ -33,21 +38,28 @@ Foram realizadas duas análises ortogonais:
 
 Foi implementada uma sonda de diagnóstico por variáveis de ambiente (`TOOIE_DIAG_DEMO_SYNC=1`), sem efeito colateral na lógica do jogo, acionada a cada despacho do consumidor de `glrecord` (overlay 698 ep 0) no modo 5.
 
-### Resumo Global de Cadência
+### Resumo de Cadência do Recomp vs Expectativa Nominal MIPS
 
-| Métrica Temporal | Valor Medido no Recomp | Valor Nominal N64 | Status |
-|---|---|---|---|
-| **Taxa de Amostragem `glrecord`** | 1 amostra a cada 33.334 ms | 30.000 Hz | **PASS** (100% constante) |
-| **Tiques Lógicos por Amostra (`gl_adv`)** | 2.000000 logic ticks / sample | 2 ticks (60Hz VI / divisor 2) | **PASS** |
-| **`gamespeed` do Guest (`dt`)** | 0.033333 s (1/30 s) | 0.033333 s | **PASS** |
-| **Duração Total da Demonstração** | 25,434 ms (25.43 s) | ~25.4 s | **PASS** |
-| **Contagem de Amostras Processadas** | 765 amostras (glidx 2..766) | 766 amostras | **PASS** |
+| Métrica Temporal | Valor Medido no Recomp (`MEASURED_RECOMP`) | Expectativa Nominal MIPS (`NOMINAL_MIPS`) | Linha de Base Original (`MEASURED_ORIGINAL`) | Status da Comparação |
+|---|---|---|---|---|
+| **Taxa de Amostragem `glrecord`** | 1 amostra a cada 33.334 ms | 30.000 Hz | UNKNOWN | **NOMINAL_MATCH** (Recomp constante a 30.0 Hz) |
+| **Tiques Lógicos por Amostra (`gl_adv`)** | 2.000000 logic ticks / sample | 2 ticks (60Hz VI / divisor 2) | UNKNOWN | **NOMINAL_MATCH** |
+| **`gamespeed` do Guest (`dt`)** | 0.033333 s (1/30 s) | 0.033333 s | UNKNOWN | **NOMINAL_MATCH** |
+| **Duração Total da Demonstração** | 25,434 ms (25.43 s) | ~25.4 s | UNKNOWN | **NOMINAL_MATCH** |
+| **Contagem de Amostras Processadas** | 765 amostras (glidx 2..766) | 766 amostras | UNKNOWN | **NOMINAL_MATCH** |
 
 ```text
-GLRECORD_CADENCE_MATCHES_ORIGINAL: YES
-LOGIC_CADENCE_MATCHES_ORIGINAL:    YES
-VI_CADENCE_MATCHES_ORIGINAL:       YES
-GAMESPEED_STEP_MATCHES_ORIGINAL:   YES
+RECOMP_INTERNAL_CADENCE:           30.000 Hz CONSTANTE (1 sample / 33.334 ms)
+ORIGINAL_NUMERIC_CADENCE:          UNKNOWN (Pendente de captura em emulador)
+SIMULATION_BY_GLIDX_MATCH:         UNKNOWN (Pendente de comparação numérica com trace original)
+```
+
+```text
+GLRECORD_CADENCE_MATCHES_NOMINAL_30HZ: YES
+LOGIC_CADENCE_MATCHES_NOMINAL:          YES
+VI_CADENCE_MATCHES_NOMINAL:            YES
+GAMESPEED_STEP_MATCHES_NOMINAL:        YES
+ORIGINAL_NUMERIC_MATCH:                UNKNOWN
 ```
 
 ---
@@ -121,30 +133,88 @@ Para isolar se o atraso/deriva era exclusivo do jogador ou um fenômeno global d
 
 ---
 
-## 7. Protocolo de Captura no Emulador Original (BizHawk / Mupen64Plus)
+## 7. Validação Estática e Protocolo de Captura no Emulador Original
+
+### 7.1 Validação do Mapa de Memória e Estruturas MIPS
+
+Foi realizada a auditoria estática rigorosa de cada endereço de memória e deslocamento de estrutura contra o código MIPS original descompilado (`funcs_406.c`, `funcs_193.c`, etc.):
+
+| Símbolo / Estrutura | Endereço Guest | Deslocamento | Tipo / Campo | Verificação no MIPS |
+|---|---|---|---|---|
+| **`D_8012D5B0` (glrecord)** | `0x8012D5B0` | `+0x0` | `u32` (Ponteiro base do buffer de amostras) | `lw $t7, 0x0($a3)` em `glrecord_entrypoint_0` |
+| | | `+0x8` | `s32` (Índice da amostra corrente) | `lw $v0, 0x8($a3)` em `glrecord_entrypoint_0` |
+| | | `+0xC` | `s32` (Contagem total de amostras) | `lw $t0, 0xC($a3)` em `glrecord_entrypoint_0` |
+| **`D_80135490` (Player)** | `0x80135490` | `*0x80135490` | `PlayerState*` (Ponteiro para Banjo) | Verificado no loop de atores |
+| | `ps` | `+0xE4` | `f32*` (Ponteiro para posição X, Y, Z) | Verificado em `baphysics` |
+| | `ps` | `+0xF8` | `f32*` (Ponteiro para yaw, ideal_yaw) | Verificado em `yaw.c` |
+| | `ps` | `+0xC8` | `f32*` (Ponteiro para struct física) | `+0x10` vx, `+0x14` vy, `+0x18` vz, `+0x3C` tspd, `+0x40` phys_yaw, `+0x44` accel, `+0x50` mult |
+| | `ps` | `+0x120` | `s32*` (Ponteiro para state id `bs_id`) | Verificado em `bs.c` |
+| | `ps` | `+0x128` | `f32*` (Ponteiro para bastick) | `+0x54` bx, `+0x58` by, `+0x5C` ang, `+0x60` dist |
+| **`D_8012D500` (Câmera)** | `0x8012D500` | `+0x0` | `f32` (Posição X, Y, Z da viewport) | Verificado em `func_800CA7E4` |
+| | | `+0xA4` | `MtxF` (Matriz de rotação da câmera) | `m00` (+0xA4), `m02` (+0xAC) |
+| **`0x80136EE0` (Atores)** | `0x80136EE0` | `+0x0` | `u32` (Tamanho do elemento: `0x9C`) | Verificado no vetor de atores |
+| | | `+0x4` / `+0x8`| `u32` (`begin` / `end` do vetor) | `+0x6C` marker_id (`idw & 0x1FF`), `mid=337` é `chdiggerground` |
+
+```text
+ORIGINAL_SCRIPT_FIELD_MAP_VERIFIED: YES
+```
+
+### 7.2 Semântica do Índice de `glrecord` e Stride de Amostras
+
+A descompilação de `glrecord_entrypoint_0` em `funcs_406.c` comprova a semântica exata de avanço:
+1. **Stride da amostra**: `SAMPLE_STRIDE_BYTES = 6`
+   `sll $t6, $v0, 2; subu $t6, $t6, $v0; sll $t6, $t6, 1` computa exatamente `(4 - 1) * 2 = 6` bytes por amostra.
+2. **Ordem de incremento do índice**: `INDEX_INCREMENT_ORDER = INCREMENT_ON_CONSUMPTION`
+   A função lê `v0 = MEM_W(0x8, 0x8012D5B0)`, calcula o endereço da amostra como `base + v0 * 6`, escreve `t8 = v0 + 1` de volta em `MEM_W(0x8, 0x8012D5B0)`, e em seguida transfere os bytes da amostra para a struct `OSContPad`.
+   Portanto, no momento em que o despachador conclui, `gl_idx` contém o índice da próxima amostra (o valor lido no início foi a amostra imediatamente consumida).
+3. **Fórmula de endereço da amostra**: `CORRECT_SAMPLE_ADDRESS_FORMULA = base + gl_idx * 6` (onde `gl_idx` é o valor lido antes do incremento).
+
+### 7.3 Verificação de Checksum de Input e Alinhamento (`glidx`)
+
+A sequência de inputs gravados foi validada em marcos críticos:
+- **Curva Analógica (glidx 70..76)**:
+  - `glidx 70..73`: `pad=(-2, 80, 0000)`
+  - `glidx 74`: `pad=(-18, 82, 0000)`
+  - `glidx 75`: `pad=(-47, 78, 0000)`
+  - `glidx 76`: `pad=(-63, 74, 0000)`
+- **Disparo de Ovo (glidx 322)**:
+  - `glidx 322`: `pad=(-9, 84, 2008)` (`buttons = 0x2008` contendo `C-Up`)
+
+```text
+GLIDX_ALIGNMENT_OFFSET:            0
+RAW_INPUT_ALIGNMENT:               PASS
+```
+
+### 7.4 Significado Real do Contador "Tick"
+
+Foi auditada a origem do campo `tick` emitido na telemetria:
+- O contador global `g_guest_logic_tick` era incrementado tanto no wrapper de `func_800151BC` quanto no manipulador de syscalls de `glrecord` em `syscall_handler.cpp`.
+- Como `func_800151BC` executa no loop principal de jogo a 30 Hz (uma vez a cada 2 VIs de 60 Hz), o contador refletia um avanço duplo (`+2` por amostra consumida).
+
+```text
+PREVIOUS_TICK_FIELD_ACTUAL_MEANING: DUAL_INCREMENT_COUNTER (func_800151BC logic tick + glrecord dispatch notification)
+```
+
+### 7.5 Protocolo de Emulação Original
 
 Foi inspecionado o ambiente local para binários de emulação N64 (`mupen64plus`, `simple64`, `ares`, `retroarch`, `bizhawk`). Nenhum emulador de N64 encontra-se atualmente instalado no sistema host Linux.
 
 Para permitir a captura numérica externa comparativa de linha de base original sem suposições, foi gerado o script pronto para execução em Lua:
 - Arquivo: [`tools/original_demo_trace_bizhawk.lua`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tools/original_demo_trace_bizhawk.lua)
-- Endereços e Estruturas Mapeadas:
-  - `0x8012D5B0`: Struct de controle do `glrecord` (base, índice corrente, contagem total)
-  - `0x80135490`: Ponteiro para `PlayerState` do Banjo
-  - `ps + 0xE4`: Vetor de posição do jogador `(px, py, pz)`
-  - `ps + 0xF8`: Vetor de orientação `(yaw, ideal_yaw)`
-  - `ps + 0xC8`: Struct física `(vx, vy, vz, tspd, phys_yaw, accel, mult)`
-  - `0x8012D500`: Struct de viewport/câmera ativa `(cx, cy, cz)` e matriz de rotação `+0xA4`
-  - `0x80136EE0`: Vetor dinâmico de atores do mundo
+- Hash da ROM esperada / ROM verificada: SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` (`Banjo-Tooie (USA).z64` / `baserom.us.z64`)
+- `ROM_HASH_MATCH: YES`
 
 ---
 
 ## 8. Classificação e Veredito
 
 ```text
-PRIMARY_CLASS:                     PRESENTATION_INTERPOLATION / CAMERA_FOLLOW_LAG
-SIMULATION_BY_GLIDX_MATCH:         YES (cinemática interna preserva os 510/605/700 u/s e cadência 30Hz)
-VISUAL_TIME_BY_GLIDX_MATCH:        YES (1 sample a cada 33.33 ms / 2 logic ticks exatos)
-INTERPOLATION_DIFFERENCE:          Apresentação desacoplada a 60+ Hz sem interpolação de sub-frame na matriz de câmera
-ROOT_CAUSE_LEVEL:                  D (Diagnóstico completo e rastreável gerado; linha de base original emulada preparada via tools/original_demo_trace_bizhawk.lua)
+PROVISIONAL_PRIMARY_HYPOTHESIS:    PRESENTATION_INTERPOLATION / CAMERA_FOLLOW_LAG
+RECOMP_INTERNAL_TRACE:             PROVEN (766 amostras capturadas e caracterizadas)
+ORIGINAL_NUMERIC_TRACE:            UNKNOWN (pendente de emulador N64 instrumentado)
+SIMULATION_BY_GLIDX_MATCH:         UNKNOWN (nominalmente compatível com 510/605/700 u/s e 30Hz; numérico pendente)
+VISUAL_TIME_BY_GLIDX_MATCH:        UNKNOWN (nominalmente 33.33ms; numérico pendente)
+ROOT_CAUSE_LEVEL:                  D
+ROOT_CAUSE:                        UNKNOWN (pendente de linha de base numérica original)
 FIX_IMPLEMENTED:                   NO (Conforme instrução, nenhum fix de produção aplicado nesta tarefa)
 ```
