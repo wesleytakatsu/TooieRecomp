@@ -59,32 +59,34 @@ VK_ICD_FILENAMES=/nonexistent.json TOOIE_NO_GUI_DIALOG=1 timeout 3 ./build/Tooie
 
 ---
 
-## P08 Complete Task Audit (T01 - T11)
+## CANONICAL_P08_TASK_MATRIX (Restored from Phase Plan)
 
-| Task | Description | Status | Evidence / Verification |
+| Task | Canonical Task Description | Status | Evidence / Verification |
 |---|---|---|---|
-| **P08-T01** | RT64 submodule & build integration | **DONE** | RT64 Vulkan/Plume linked and operational in `TooieRecompiled` |
-| **P08-T02** | Render-submission matrix contract | **DONE** | [`tests/matrix_submission_test.cpp`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tests/matrix_submission_test.cpp) (PASS, `91bf65f`) |
-| **P08-T03** | Framebuffer / depth buffer setup & presentation | **DONE** | RT64 VI presentation loop verified (attract loop & gameplay rendering) |
-| **P08-T04** | Aspect ratio / internal resolution decoupling | **DONE** | Decoupled guest 4:3 baseline from host window resolution (`tooie_window`) |
-| **P08-T05** | Controller mapping & SDL gamepad integration | **DONE** | [`tests/input_direction_test.cpp`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tests/input_direction_test.cpp), `recompcontrollerdb.txt` |
-| **P08-T06** | Keyboard / mouse binding & input options | **DONE** | Inherited from `recompinput` & `recompui` |
-| **P08-T07** | Window, fullscreen, focus, multi-monitor, scale/DPI | **DONE** | [`tests/window_display_test.cpp`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tests/window_display_test.cpp) (45/45 assertions, `9d1bf9c`) |
-| **P08-T08** | Graphics driver / Vulkan fallback error handling | **DONE** | [`tests/graphics_failure_test.cpp`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tests/graphics_failure_test.cpp) (25/25 assertions, `38fb2a4`) |
-| **P08-T09** | Config UI / graphics & input settings menus | **DONE** | RecompUI graphics/input config tabs functional and persistent |
-| **P08-T10** | Launcher music preview loop lifecycle & auto-start | **DONE** | Child preview process lifecycle + orphan safeguard (`6e44d03`) |
-| **P08-T11** | Multi-target regression test suite | **DONE** | 7 automated test targets passing 100% |
+| **P08-T01** | Integrar RT64 e validar Vulkan nesta máquina. | **DONE** | RT64 Vulkan/Plume linked and operational in `TooieRecompiled` |
+| **P08-T02** | Catalogar display lists/efeitos Tooie; scheduler DP/VI OK. | **PARTIAL** | DP/VI scheduler and projection submission OK (`tests/matrix_submission_test.cpp`, `91bf65f`); full catalog of game-wide visual effects is ongoing into P09 |
+| **P08-T03** | Reproduzir 4:3 e timing originais sem melhorias ativas | **DONE** | [[p08-original-timing-4x3-baseline]] (60Hz VI, 20/30Hz logic, 30Hz animation, host decouple ~935 Hz, and 4:3 content aspect confirmed) |
+| **P08-T04** | Integrar path SDL/RecompFrontend do BanjoRecomp. | **DONE** | RecompFrontend event/render callbacks, RmlUi backend, and config tabs integrated |
+| **P08-T05** | Defaults/persistência BanjoRecomp; `controls.json` lazy. | **DONE** | Config persistence in `recomp::config` (`config.toml`) and lazy controller profile creation |
+| **P08-T06** | Esconder launcher no auto-start e título Tooie. | **DONE** | `TOOIE_AUTO_START` suppresses launcher UI; window title set to "Banjo-Tooie: Recompiled" |
+| **P08-T07** | Janela, fullscreen, foco, multi-monitor e escalas. | **IMPLEMENTED_MANUAL_VALIDATION_PENDING** | [`tests/window_display_test.cpp`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tests/window_display_test.cpp) (38/38 assertions PASS, `9726023`); SDL/RT64 fullscreen/focus/display handling verified on reference path; manual physical multi-monitor and fullscreen visual validation pending |
+| **P08-T08** | Fallback/mensagem para driver/API incompatível. | **DONE** | [`tests/graphics_failure_test.cpp`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tests/graphics_failure_test.cpp) (25/25 assertions, `38fb2a4`), negative env test PASS (`WINDOW_INIT_FAILED`, exit code 1) |
+| **P08-T09** | Evidência visual: intro/Jiggy OK; first demo visible & upright | **DONE** | Intro 3D, Jiggy logo, Wooded Hollow attract demo visible and upright (`src/game/transform_hooks.cpp` matrix split) |
+| **P08-T10** | Input title/file select VALIDATED | **DONE** | [[p08-title-file-select-validation]] (intro -> file select -> slot navigation -> `CONT_A` confirm PASS; destination `MAP_A1_CS_INTRO` mode 3) |
+| **P08-T11** | Máquina de estados da abertura: type-4+warp OK; C2AB8 RESOLVED by PATCH 4; `func_800BCF28` RESOLVED; `func_80013A7C` core1 RA wrappers RESOLVED; Render-submission matrix split RESOLVED | **DONE** | State machine, preemption, and all audited static overlays operational without crash ([[p08-attract-loop-after-demo2-crash]]) |
 
 ---
 
-## Exit Gate Evaluation & Boundary to P09
+## Exit Gate Evaluation & Closure Readiness (Verdict B)
 
 ### Exit Gate: `"logo/menu/gameplay renderizam e controles funcionam"`
-- **Evaluation**: **MET**.
+- **Evaluation**: **SUBSTANTIALLY COMPLETE / MANUAL VALIDATION PENDING (Verdict B)**.
   - Logos, menus, attract mode sequence (Intro -> Spiral Mountain cinematic -> File Select -> DEMO1 Jinjo -> DEMO2 Mayahem -> attract cycle), and gameplay render correctly with RT64 presentation.
-  - Controller and synthetic inputs function with proper deadzones and range mapping.
+  - Keyboard WASD and synthetic controller inputs function with proper deadzones and range mapping.
   - Windowing, DPI scaling, fullscreen toggle, and driver error handling operate reliably without crashes.
+  - Physical gamepad hardware testing on varied physical controllers and live physical multi-monitor migration remain pending manual human validation.
 
-### Boundary Recommendation: P08 -> P09
-- **P08 Scope (CLOSED)**: RT64 presentation baseline, input mapping, windowing, graphics/API error handling, launcher music preview, and static call correctness.
-- **P09 Scope (NEXT)**: Game loop timing, frame interpolation / 60 FPS motion smoothing, save/load state persistence, long-session stability, multi-level gameplay playthrough.
+### Phase Status
+- **P08 Status**: **ACTIVE (MANUAL_VALIDATION_PENDING)**.
+- **P09 Status**: **PENDING (NOT OPEN YET)**.
+- **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline.

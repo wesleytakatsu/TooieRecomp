@@ -27,12 +27,14 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend is **COMPLETE**. All tasks (T01..T11) are audited and closed.
-Exit gate `"logo/menu/gameplay renderizam e controles funcionam"` is **MET**.
-- P08-T07 (Window/display/scaling integration): COMPLETE (`9d1bf9c`, `tests/window_display_test.cpp` 45/45 PASS).
-- P08-T08 (Graphics driver / Vulkan failure handling): COMPLETE (`38fb2a4`, `tests/graphics_failure_test.cpp` 25/25 PASS, negative env test PASS).
+P08 — RT64, input e frontend is **ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B)**.
+Canonical tasks (T01..T11) audited:
+- T01, T03..T06, T08..T11: **DONE**
+- T02: **PARTIAL** (DP/VI scheduler & projection matrix submission OK; game-wide visual effect cataloging ongoing)
+- T07: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers verified via unit tests; fullscreen/focus/display handling operational on reference SDL/RT64 path; physical multi-monitor and visual fullscreen validation pending)
+- P08-T08 (Graphics driver / Vulkan failure handling): **DONE** (`tooie_error` reporting, `assert(false)` removal, negative env test PASS).
 - Attract DEMO2 SIGSEGV (bsrest 0x808003FC): RESOLVED and VALIDATED (`1f2aba1`, `887d132`).
-- Next phase: **P09 — Paridade de gameplay e melhorias**.
+- Next phase: **P09 remains PENDING** until manual hardware validation is completed.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -41,6 +43,7 @@ Exit gate `"logo/menu/gameplay renderizam e controles funcionam"` is **MET**.
   - Multi-monitor / display index validation with fallback to primary display (0).
   - Aspect ratio calculations decoupled from host window size; 4:3 baseline preserved.
   - Controlled graphics/Vulkan startup failure reporting via user-visible message box and technical stderr diagnostics without crashes (`assert(false)` removed).
+  - Dead duplicate state (`tooie_window::WindowState`) pruned to maintain clean single ownership in reference SDL/RT64 frontend.
 - **`func_800BCF28` SIGSEGV RESOLVED and independently accepted (verdict B)**: Tooie-native helpers bound at `0x800BCCC0` and `0x800BCCD8`.
 - Intro visual completa (céu, logo, Jiggy).
 - Attract request correto; type-4 completa; warp consumido; mode-5 alcançado.
@@ -73,9 +76,11 @@ Exit gate `"logo/menu/gameplay renderizam e controles funcionam"` is **MET**.
 
 ## CURRENT_STATUS / NEXT PHASE WORK
 
-**P08 is COMPLETE.** All 11 tasks are DONE.
-Next phase: **P09 — Paridade de gameplay e melhorias**.
-- Scope opening in P09: Game loop timing, frame interpolation / 60 FPS motion smoothing, save/load state persistence, long-session gameplay stabilization, multi-level campaign verification.
+**P08 Status: ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
+- Implementation is substantially complete with all automated tests passing.
+- Pending items before formal P08 exit gate close and P09 open:
+  1. Manual physical controller testing across varied hardware (USB/Bluetooth N64/Xbox/PS gamepad).
+  2. Live physical multi-monitor display migration and desktop fullscreen transition verification.
 - P08 Invariants (DO NOT REOPEN): attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## ROOT_CAUSE_STATUS

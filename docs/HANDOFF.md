@@ -1,22 +1,32 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 is COMPLETE (P08-T01..P08-T11 DONE; exit gate met). P08-T07 window/display/scaling and P08-T08 graphics driver failure handling implemented and validated. Ready to begin P09."
+description: "P08 implementation substantially complete (Verdict B; P08 ACTIVE / MANUAL_VALIDATION_PENDING). T07/T08 live integration reconciled and tested. Physical controller & multi-monitor validation pending."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-16
-tags: [tooie-recomp, handoff, p08, p09, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
+tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
 # Handoff — TooieRecomp
 
 ## Prioridade atual
 
-**PHASE P08 IS COMPLETE (2026-08-16):**
-- **P08-T07 (Window, fullscreen, focus, multi-monitor, scale/DPI)**: Implemented via `tooie_window` module, decoupled 4:3 aspect calculations, sanitized window sizing, and validated via `tests/window_display_test.cpp` (45/45 assertions PASS, `9d1bf9c`).
-- **P08-T08 (Graphics driver, Vulkan, and window initialization error handling)**: Implemented via `tooie_error` module with user-visible dialogs, removed `assert(false)` crash paths, added clean runtime exception wrapping, and validated via `tests/graphics_failure_test.cpp` (25/25 PASS) and real negative environment testing (`38fb2a4`).
-- **All 11 P08 tasks are DONE (T01..T11)**; exit gate `"logo/menu/gameplay renderizam e controles funcionam"` is **MET**.
-- See [[plan/evidence/p08-t07-t08-frontend-system-validation]] for complete audit matrix and validation records.
+**PHASE P08 IMPLEMENTATION STATUS (Verdict B — ACTIVE / MANUAL_VALIDATION_PENDING, 2026-08-16):**
+- **Canonical Task Audit**:
+  - `P08-T01` (RT64 / Vulkan): **DONE**
+  - `P08-T02` (Catalogar display lists/efeitos; scheduler DP/VI): **PARTIAL**
+  - `P08-T03` (4:3 e timing originais): **DONE**
+  - `P08-T04` (Path SDL/RecompFrontend): **DONE**
+  - `P08-T05` (Defaults/persistência): **DONE**
+  - `P08-T06` (Esconder launcher no auto-start): **DONE**
+  - `P08-T07` (Janela, fullscreen, foco, multi-monitor, escalas): **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers active and tested, reference SDL/RT64 path handles fullscreen/focus/display, physical hardware display validation pending).
+  - `P08-T08` (Fallback/mensagem para driver/API incompatível): **DONE** (`tooie_error` reporting active, `assert(false)` eliminated, negative tests passing).
+  - `P08-T09` (Evidência visual intro/first demo): **DONE**
+  - `P08-T10` (Input title/file select): **DONE**
+  - `P08-T11` (Máquina de estados / C2AB8 / BCF28 / RA wrappers / matrix split): **DONE**
+- **Pending for Formal Gate Sign-off**: Physical gamepad hardware verification on physical controller devices and live multi-monitor physical migration. Do NOT open P09 yet.
+- See [[plan/evidence/p08-t07-t08-frontend-system-validation]] for complete canonical audit matrix.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
@@ -149,12 +159,14 @@ this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 
 ## NEXT
 
-1. **P08 IS COMPLETE (ALL TASKS T01..T11 DONE).** Exit gate `logo/menu/gameplay renderizam e controles funcionam` is MET.
-2. **Open BT Phase P09 (Gameplay Parity and Enhancements):**
-   - Game loop timing & high framerate / motion smoothing.
-   - Save/load state persistence.
-   - Long-session gameplay stabilization and multi-level campaign verification.
-3. **P08 / P09 Boundary Invariants:**
+1. **P08 Status: ACTIVE / MANUAL_VALIDATION_PENDING (Verdict B).**
+   - Canonical task audit completed: T01, T03..T06, T08..T11 DONE; T02 PARTIAL; T07 IMPLEMENTED_MANUAL_VALIDATION_PENDING.
+   - Windowing, aspect ratio calculations, and display validation helpers implemented in `tooie_window`; fullscreen/focus/display event handling confirmed on reference SDL/RT64 path.
+   - Graphics and startup error reporting verified via `tooie_error` without crash or unhandled aborts.
+2. **Pending Before Formal P08 Close / P09 Open:**
+   - Physical gamepad testing across real physical controllers (USB/Bluetooth N64/Xbox/PlayStation).
+   - Live physical multi-monitor display switching and desktop fullscreen visual validation.
+3. **P08 / P09 Invariants (Protected):**
    - Closed in P08: RT64 presentation baseline, input mapping, window/scale integration, graphics/driver error handling, launcher preview, static call correctness.
    - Do NOT reopen: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline. Do not modify shared RT64. PATCH 4 stays ON.
 

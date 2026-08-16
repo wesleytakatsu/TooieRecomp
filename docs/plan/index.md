@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **done** | RT64 presentation, input mapping, window/scale integration (T07), graphics error fallback (T08), launcher preview and static calls complete; gate met |
+| RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; manual validation pending |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | done |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 

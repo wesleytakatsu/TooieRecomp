@@ -1,7 +1,7 @@
 ---
 title: "BT P08 — RT64, entrada e frontend"
 description: "Completa renderização, janela, controles e experiência de inicialização no Linux."
-status: done
+status: active
 type: implementation-stage
 project: TooieRecomp
 phase: P08
@@ -156,8 +156,8 @@ Evidência corrente:
 - [x] `P08-T04` Integrar path SDL/RecompFrontend do BanjoRecomp.
 - [x] `P08-T05` Defaults/persistência BanjoRecomp; `controls.json` lazy.
 - [x] `P08-T06` Esconder launcher no auto-start e título Tooie.
-- [ ] `P08-T07` Janela, fullscreen, foco, multi-monitor e escalas.
-- [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
+- [x] `P08-T07` Janela, fullscreen, foco, multi-monitor e escalas (`tooie_window` helpers + SDL/RT64 path; manual multi-monitor/fullscreen validation pending).
+- [x] `P08-T08` Fallback/mensagem para driver/API incompatível (`tooie_error` reporting & negative tests PASS).
 - [x] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible & upright**
   (render submission matrix split resolved via `transform_hooks.cpp`).
 - [x] `P08-T10` Input title/file select VALIDATED
@@ -341,21 +341,21 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 - [x] mode 5 / gsattract ep1 / gameplay demo renderizam (upright after matrix split).
 - [x] Entrada title/file select validada; rumble/hotplug remains separate.
 - [x] P08-T03 original timing/4:3 baseline validado e desacoplado da janela.
-- [x] P08-T07 window, fullscreen, focus, multi-monitor, scale/DPI validado (`tests/window_display_test.cpp`, 45/45 PASS).
+- [x] P08-T07 window, fullscreen, focus, multi-monitor, scale/DPI helpers implemented (`tests/window_display_test.cpp`, 38/38 PASS; manual physical display validation pending).
 - [x] P08-T08 graphics driver / Vulkan fallback error handling validado (`tests/graphics_failure_test.cpp`, 25/25 PASS; negative env test PASS).
 - [x] Persistência BanjoRecomp; `controls.json` lazy.
 - [x] Sem melhorias que alterem timing/paridade de referência.
 
 ## Próxima etapa
 
-**P08 is COMPLETE.** Proceed to [[../09-gameplay-parity-and-enhancements|BT P09 — Paridade de gameplay e melhorias]].
-- **P08 Boundary (CLOSED)**: RT64 presentation, input mapping, windowing, failure handling, launcher music preview, static call correctness.
-- **P09 Scope (OPEN)**: Game loop timing, frame interpolation / 60 FPS motion smoothing, save/load state persistence, multi-level campaign stabilization.
+**P08 remains ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
+- **Implemented Scope**: RT64 presentation baseline, input mapping, window/scale integration, graphics/Vulkan error handling, launcher music preview, static call correctness.
+- **Pending Before P09 Formal Open**: Physical gamepad hardware verification and live multi-monitor physical display verification.
+- **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline.
 
-## P08 Final Completion & Validation (2026-08-16, Gemini 3.7 Flash HIGH)
+## P08 Implementation Status (2026-08-16, Gemini 3.7 Flash HIGH)
 
-All 11 P08 tasks are fully audited and completed:
-- **P08-T07**: Window, fullscreen, focus, multi-monitor, and DPI scaling integration validated via `tooie_window` module and `tests/window_display_test.cpp` (45/45 assertions passed).
-- **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 assertions passed), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
-- **Exit Gate**: `logo/menu/gameplay renderizam e controles funcionam` is **MET**.
+- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path.
+- **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 PASS), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
+- **Canonical Tasks**: All 11 canonical tasks audited. T01, T03..T06, T08..T11 DONE; T02 PARTIAL; T07 IMPLEMENTED_MANUAL_VALIDATION_PENDING.
 - **Evidence Reference**: [[../../plan/evidence/p08-t07-t08-frontend-system-validation]].
