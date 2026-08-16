@@ -159,50 +159,61 @@ Foi realizada a auditoria estática rigorosa de cada endereço de memória e des
 ORIGINAL_SCRIPT_FIELD_MAP_VERIFIED: YES
 ```
 
-### 7.2 Semântica do Índice de `glrecord` e Stride de Amostras
+### 7.2 Semântica do Índice de `glrecord`, Stride de Amostras e Reparo Off-by-One
 
 A descompilação de `glrecord_entrypoint_0` em `funcs_406.c` comprova a semântica exata de avanço:
 1. **Stride da amostra**: `SAMPLE_STRIDE_BYTES = 6`
    `sll $t6, $v0, 2; subu $t6, $t6, $v0; sll $t6, $t6, 1` computa exatamente `(4 - 1) * 2 = 6` bytes por amostra.
 2. **Ordem de incremento do índice**: `INDEX_INCREMENT_ORDER = INCREMENT_ON_CONSUMPTION`
    A função lê `v0 = MEM_W(0x8, 0x8012D5B0)`, calcula o endereço da amostra como `base + v0 * 6`, escreve `t8 = v0 + 1` de volta em `MEM_W(0x8, 0x8012D5B0)`, e em seguida transfere os bytes da amostra para a struct `OSContPad`.
-   Portanto, no momento em que o despachador conclui, `gl_idx` contém o índice da próxima amostra (o valor lido no início foi a amostra imediatamente consumida).
-3. **Fórmula de endereço da amostra**: `CORRECT_SAMPLE_ADDRESS_FORMULA = base + gl_idx * 6` (onde `gl_idx` é o valor lido antes do incremento).
+   Portanto, no momento em que o despachador conclui ou quando `event.onframeend()` executa, `D_8012D5B0 + 0x8` contém `post_glidx = v0 + 1` (o índice da PRÓXIMA amostra a ser consumida).
+3. **Reparo Off-by-One (PROVEN: `SCRIPT_OFF_BY_ONE = YES`)**:
+   - A versão anterior indexava `base + post_glidx * 6`, associando o estado pós-consumo à amostra *seguinte*.
+   - A fórmula correta para a amostra que efetivamente produziu o estado do quadro é:
+     `consumed_glidx = (post_glidx > 0) ? (post_glidx - 1) : 0`
+     `CORRECT_SAMPLE_ADDRESS_FORMULA = base + consumed_glidx * 6`
+   - O script `tools/original_demo_trace_bizhawk.lua` e a sonda `tooie_demo_sync_tick` foram corrigidos para calcular e registrar explicitamente `consumed_glidx` e `post_glidx`.
 
 ### 7.3 Verificação de Checksum de Input e Alinhamento (`glidx`)
 
-A sequência de inputs gravados foi validada em marcos críticos:
-- **Curva Analógica (glidx 70..76)**:
-  - `glidx 70..73`: `pad=(-2, 80, 0000)`
-  - `glidx 74`: `pad=(-18, 82, 0000)`
-  - `glidx 75`: `pad=(-47, 78, 0000)`
-  - `glidx 76`: `pad=(-63, 74, 0000)`
-- **Disparo de Ovo (glidx 322)**:
-  - `glidx 322`: `pad=(-9, 84, 2008)` (`buttons = 0x2008` contendo `C-Up`)
+A sequência de inputs gravados foi validada em marcos críticos contra `consumed_glidx`:
+- **Curva Analógica (consumed_glidx 70..76)**:
+  - `consumed_glidx 70..73`: `pad=(-2, 80, 0000)`
+  - `consumed_glidx 74`: `pad=(-18, 82, 0000)`
+  - `consumed_glidx 75`: `pad=(-47, 78, 0000)`
+  - `consumed_glidx 76`: `pad=(-63, 74, 0000)`
+- **Disparo de Ovo (consumed_glidx 322)**:
+  - `consumed_glidx 322`: `pad=(-9, 84, 2008)` (`buttons = 0x2008` contendo `C-Up`)
 
 ```text
+INPUT_LANDMARK_SELFTEST:           PASS
 GLIDX_ALIGNMENT_OFFSET:            0
 RAW_INPUT_ALIGNMENT:               PASS
 ```
 
-### 7.4 Significado Real do Contador "Tick"
+### 7.4 Significado Real do Contador "Tick" e Taxa de Apresentação
 
-Foi auditada a origem do campo `tick` emitido na telemetria:
-- O contador global `g_guest_logic_tick` era incrementado tanto no wrapper de `func_800151BC` quanto no manipulador de syscalls de `glrecord` em `syscall_handler.cpp`.
-- Como `func_800151BC` executa no loop principal de jogo a 30 Hz (uma vez a cada 2 VIs de 60 Hz), o contador refletia um avanço duplo (`+2` por amostra consumida).
+1. **Significado do campo `tick`**:
+   - O contador global `g_guest_logic_tick` era incrementado tanto no wrapper de `func_800151BC` quanto no manipulador de syscalls de `glrecord` em `syscall_handler.cpp`.
+   - Como `func_800151BC` executa no loop principal de jogo a 30 Hz (uma vez a cada 2 VIs de 60 Hz), o contador refletia um avanço duplo (`+2` por amostra consumida).
+   `PREVIOUS_TICK_FIELD_ACTUAL_MEANING: DUAL_INCREMENT_COUNTER (func_800151BC logic tick + glrecord dispatch notification)`
 
-```text
-PREVIOUS_TICK_FIELD_ACTUAL_MEANING: DUAL_INCREMENT_COUNTER (func_800151BC logic tick + glrecord dispatch notification)
-```
+2. **Significado da métrica ~2644 Hz**:
+   - O contador `g_gfx_ticks` é incrementado em `tooie_diag::tick()` dentro da função `update_gfx` de `main.cpp`.
+   - Representa o número de iterações do loop de eventos e bombeamento de frames do host (`HOST_RENDER_LOOP_ITERATIONS`), que roda desbloqueado no host Vulkan.
+   `PREVIOUS_2644HZ_COUNTER_MEANING: HOST_RENDER_LOOP_ITERATIONS (host event/frame pump loop iterations in update_gfx)`
 
-### 7.5 Protocolo de Emulação Original
+### 7.5 Protocolo de Emulação Original e Pré-Requisitos
 
-Foi inspecionado o ambiente local para binários de emulação N64 (`mupen64plus`, `simple64`, `ares`, `retroarch`, `bizhawk`). Nenhum emulador de N64 encontra-se atualmente instalado no sistema host Linux.
-
-Para permitir a captura numérica externa comparativa de linha de base original sem suposições, foi gerado o script pronto para execução em Lua:
-- Arquivo: [`tools/original_demo_trace_bizhawk.lua`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tools/original_demo_trace_bizhawk.lua)
-- Hash da ROM esperada / ROM verificada: SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` (`Banjo-Tooie (USA).z64` / `baserom.us.z64`)
-- `ROM_HASH_MATCH: YES`
+1. **Script Autônomo e Auto-Validante**:
+   - Arquivo: [`tools/original_demo_trace_bizhawk.lua`](file:///home/wesley/projetos/N64-Recomp/TooieRecomp/tools/original_demo_trace_bizhawk.lua)
+   - Valida bounds de memória RDRAM (`0x80000000..0x80800000`), formato big-endian (`readfloat(..., true)`), faz autodiagnóstico de landmarks (70..76, 322) e grava CSV com `consumed_glidx`, `post_glidx`, `vi_count`, entradas do pad, posição, velocidade, tspd, yaw e câmera.
+2. **Hash da ROM Verificada**:
+   - SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` (`Banjo-Tooie (USA).z64` / `baserom.us.z64`)
+   - `ROM_HASH_MATCH: YES`
+3. **Pré-Requisito Externo para Captura Numérica**:
+   - O ambiente de execução do agente no host Linux não possui emulador N64 instalado nem permissão `sudo` para instalação de pacotes (`sudo apt-get` requer senha).
+   - O script `tools/original_demo_trace_bizhawk.lua` está pronto para execução no BizHawk / EmuHawk com Lua console em qualquer máquina que execute a ROM base oficial.
 
 ---
 

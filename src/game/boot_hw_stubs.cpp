@@ -1752,12 +1752,13 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
 
     const gpr gl = kseg0_gpr(0x8012D5B0u);
     const uint32_t gl_base = static_cast<uint32_t>(MEM_W(0, gl));
-    const int32_t gl_idx = static_cast<int32_t>(MEM_W(0x8, gl));
+    const int32_t post_glidx = static_cast<int32_t>(MEM_W(0x8, gl));
     const int32_t gl_count = static_cast<int32_t>(MEM_W(0xC, gl));
+    const int32_t consumed_glidx = (post_glidx > 0) ? (post_glidx - 1) : 0;
     int8_t rec_x = 0, rec_y = 0;
     uint16_t rec_btn = 0;
     if (is_guest(gl_base)) {
-        const gpr base = kseg0_gpr(gl_base + static_cast<uint32_t>(gl_idx) * 6u);
+        const gpr base = kseg0_gpr(gl_base + static_cast<uint32_t>(consumed_glidx) * 6u);
         rec_x = int8_t(MEM_B(0, base));
         rec_y = int8_t(MEM_B(1, base));
         rec_btn = static_cast<uint16_t>(MEM_HU(2, base));
@@ -1777,8 +1778,8 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
                              std::chrono::steady_clock::now() - s_t0).count();
 
     static int32_t s_prev_glidx = -1;
-    const int32_t gl_adv = (s_prev_glidx < 0) ? 0 : (gl_idx - s_prev_glidx);
-    s_prev_glidx = gl_idx;
+    const int32_t gl_adv = (s_prev_glidx < 0) ? 0 : (post_glidx - s_prev_glidx);
+    s_prev_glidx = post_glidx;
 
     float cx = 0, cy = 0, cz = 0, cam_yaw = 0;
     const gpr cam_vp_sym = kseg0_gpr(0x8012D500u);
@@ -1828,7 +1829,7 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
 
     const float velxz = std::sqrt(vx * vx + vz * vz);
     std::fprintf(stderr,
-                 "[demo-sync] glidx=%d tick=%llu wall_ms=%lld gfx=%llu adv=%d "
+                 "[demo-sync] glidx=%d post=%d tick=%llu wall_ms=%lld gfx=%llu adv=%d "
                  "pad=(%d,%d,%04x) remap=(%.2f,%.2f) bstick=(%.2f,%.2f,%.1f,%.2f) "
                  "bs=%d pos=(%.2f,%.2f,%.2f) ppos=(%.2f,%.2f,%.2f) "
                  "vel=(%.2f,%.2f,%.2f) velxz=%.2f tspd=%.1f "
@@ -1836,7 +1837,7 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
                  "cam=(%.2f,%.2f,%.2f,%.1f) "
                  "digger=(%.2f,%.2f,%.2f) act2=(%u,%08x,%.2f,%.2f,%.2f) "
                  "gs=%.5f fc=%d cnt=%d map=%d\n",
-                 gl_idx, static_cast<unsigned long long>(tick), static_cast<long long>(wall_ms),
+                 consumed_glidx, post_glidx, static_cast<unsigned long long>(tick), static_cast<long long>(wall_ms),
                  static_cast<unsigned long long>(host_gfx), gl_adv,
                  (int)rec_x, (int)rec_y, (unsigned)rec_btn, rmx, rmy,
                  bstick_x, bstick_y, bstick_ang, bstick_dist,

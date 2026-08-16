@@ -12,7 +12,7 @@ import sys
 
 def parse_demo_sync_log(filepath):
     pattern = re.compile(
-        r'\[demo-sync\] glidx=(?P<glidx>\d+) tick=(?P<tick>\d+) wall_ms=(?P<wall_ms>\d+) gfx=(?P<gfx>\d+) adv=(?P<adv>\d+) '
+        r'\[demo-sync\] glidx=(?P<glidx>\d+)(?: post=(?P<post>\d+))? tick=(?P<tick>\d+) wall_ms=(?P<wall_ms>\d+) gfx=(?P<gfx>\d+) adv=(?P<adv>\d+) '
         r'pad=\((?P<padx>-?\d+),(?P<pady>-?\d+),(?P<padbtn>[0-9a-fA-F]+)\) remap=\((?P<rmx>[-\d\.]+),(?P<rmy>[-\d\.]+)\) '
         r'bstick=\((?P<bsx>[-\d\.]+),(?P<bsy>[-\d\.]+),(?P<bsang>[-\d\.]+),(?P<bsdist>[-\d\.]+)\) '
         r'bs=(?P<bs>-?\d+) pos=\((?P<px>[-\d\.]+),(?P<py>[-\d\.]+),(?P<pz>[-\d\.]+)\) '
