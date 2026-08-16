@@ -60,6 +60,7 @@ extern char** environ;
 #include "banjo_launcher.h"
 #include "tooie_diag.h"
 #include "tooie_window.h"
+#include "tooie_error.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
 #include "theme.h"
@@ -184,11 +185,15 @@ bool start_launcher_music_preview() { return false; }
 
 template<typename... Ts>
 void exit_error(const char* str, Ts ...args) {
-    // TODO pop up an error
-    ((void)fprintf(stderr, str, args), ...);
-    assert(false);
-        
-    ultramodern::error_handling::quick_exit(__FILE__, __LINE__, __FUNCTION__);
+    char buf[1024];
+    std::snprintf(buf, sizeof(buf), str, args...);
+    tooie_error::report_error({
+        tooie_error::ErrorClass::WINDOW_INIT_FAILED,
+        "Banjo-Tooie: Startup Error",
+        "Failed to initialize the required window or graphics subsystem.",
+        buf
+    });
+    std::exit(EXIT_FAILURE);
 }
 
 ultramodern::gfx_callbacks_t::gfx_data_t create_gfx() {
@@ -199,7 +204,7 @@ ultramodern::gfx_callbacks_t::gfx_data_t create_gfx() {
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
     SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC) > 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC) != 0) {
         exit_error("Failed to initialize SDL2: %s\n", SDL_GetError());
     }
 
@@ -1149,18 +1154,31 @@ int main(int argc, char** argv) {
     // Before recomp::start / ultramodern::preinit / any guest OSThread.
     activate_tooie_guest_preemption();
 
-    recomp::start(
-        project_version,
-        {},
-        rsp_callbacks,
-        renderer_callbacks,
-        audio_callbacks,
-        input_callbacks,
-        gfx_callbacks,
-        thread_callbacks,
-        error_handling_callbacks,
-        threads_callbacks
-    );
+    try {
+        recomp::start(
+            project_version,
+            {},
+            rsp_callbacks,
+            renderer_callbacks,
+            audio_callbacks,
+            input_callbacks,
+            gfx_callbacks,
+            thread_callbacks,
+            error_handling_callbacks,
+            threads_callbacks
+        );
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[tooie-error] Fatal exception during execution: %s\n", e.what());
+        tooie_error::report_error({
+            tooie_error::ErrorClass::RT64_INIT_FAILED,
+            "Banjo-Tooie: Graphics Error",
+            "A fatal error occurred while initializing or running the graphics subsystem.",
+            e.what()
+        });
+        stop_launcher_music_preview();
+        NFD_Quit();
+        return EXIT_FAILURE;
+    }
 
     stop_launcher_music_preview();
 

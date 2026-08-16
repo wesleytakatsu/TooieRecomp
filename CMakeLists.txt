@@ -121,6 +121,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
@@ -367,3 +368,24 @@ target_link_libraries(window_display_test PRIVATE
     SDL2::SDL2
 )
 set_target_properties(window_display_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P08-T08 graphics failure regression test: proves error classification, message formatting, and simulated failure safety.
+add_executable(graphics_failure_test
+    ${CMAKE_SOURCE_DIR}/tests/graphics_failure_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
+)
+target_include_directories(graphics_failure_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/include
+    ${N64MR}/thirdparty
+    ${SDL2_INCLUDE_DIRS}
+)
+target_compile_options(graphics_failure_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+target_link_libraries(graphics_failure_test PRIVATE
+    SDL2::SDL2
+)
+set_target_properties(graphics_failure_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
