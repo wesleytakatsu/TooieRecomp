@@ -3,7 +3,7 @@ title: "P08 — session handoff: attract demo e render submission"
 description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; chdiggerground return-facing review remains semantically UNKNOWN (Level C)."
 status: evidence
 phase: P08
-updated: 2026-08-15
+updated: 2026-08-16
 tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input, stick-angle]
 ---
 
@@ -168,6 +168,11 @@ FIX_IMPLEMENTED:       NO
 ```
 
 Evidence: [[p08-forced-cinematic-facing-independent-review]].
+
+```text
+REVIEW_CHECKPOINT_COMMIT: b19bcf9
+REVIEW_CHECKPOINT_PUSHED: YES
+```
 
 ## FILES_TO_READ_NEXT
 

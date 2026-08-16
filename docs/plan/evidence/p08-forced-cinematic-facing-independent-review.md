@@ -183,8 +183,9 @@ BCF28_TEST:             PASS
 CORE1_RA_TEST:          PASS
 TOOIE_BUILD:            PASS
 MARKDOWN_VAULT_AUDIT:   PASS (repository-local audit; see checkpoint)
-COMMIT:                 pending checkpoint
-PUSHED:                 pending checkpoint
+COMMIT:                 b19bcf9 (review checkpoint)
+PUSHED:                 YES
+CHECKPOINT_NEW_HEAD:    b19bcf9
 WORKTREE:               documentation-only changes; no production-code fix
 ```
 

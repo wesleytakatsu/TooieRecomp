@@ -4,7 +4,7 @@ description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; 
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-15
+updated: 2026-08-16
 tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle]
 ---
 
