@@ -204,7 +204,8 @@ FUNC_80802760_GENERATED_MATCH_ORIGINAL: UNKNOWN
 FIRST_OBSERVED_MECHANISM:         case-11 return movement with preserved yaw
 ROOT_CAUSE:                       original actor/state contract; no recomp defect
 USER_BUG_B_GLOBAL:                OPEN
-NEXT_SINGLE_ACTION:               select a different user-confirmed actor
+PREVIOUS_NEXT_SINGLE_ACTION:      select a different user-confirmed actor
+                                  (CORRECTED/SUPERSEDED by the unnamed-JAL review)
 ```
 
 Evidence: [[p08-forced-cinematic-facing-independent-review]].
@@ -242,3 +243,37 @@ GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO
 RECOMPILEDFUNCS          = NOT EDITED (untouched)
 ```
+
+## P08 unnamed overlay JAL independent review (2026-08-16) — NO FIX
+
+`bsrest_entrypoint_11` at `0x80800668` JALs to unnamed `.bsrest`
+`0x808003FC`. Original MIPS calls `func_800A0C20` and conditionally
+`func_800A0D14`; generated C emits `LOOKUP_FUNC(0x808003FC)`, and live
+`get_function` binds `baflameline_entrypoint_5`. The Level-A causal chain is
+**PROVEN**; `a1=0x74` is **not UAF**. The other known named collision is
+`func_808003FC_chnastycavemen`.
+
+The bounded ELF audit is **PROVEN** as a structural count: 17 current lookup
+sites at seven unnamed same-section targets, all in `.bsrest`; it is evidence
+of a vulnerable class, not 17 runtime diagnoses. The cf31166 contract is
+correct for known target functions; this is an unsupported metadata case,
+not a cf31166 implementation bug. N64Recomp is the selected owner because
+its existing `CreateStatic` path already derives boundaries and emits a stable
+local body. Options A (one-off metadata) and B (metadata synthesis as
+primary) are rejected; Option C is accepted.
+
+```text
+ROOT_CAUSE_LEVEL: A
+FIX_OWNER: N64RECOMP
+RECOMMENDED_FIX: allow relocatable same-section CreateStatic before the
+                 use_lookup_for_all_function_calls fallback
+CF31166_140S_RUN_SEQUENCE_PROVEN: NO
+CF31166_AS_KNOWN_GOOD: NO
+UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
+FIX_IMPLEMENTED: NO
+```
+
+Validation at this checkpoint: the five existing native harnesses PASS,
+`TooieRecompiled` build PASS, and `tests/attract_demo2_transition_jal_test.py`
+FAILS as the pre-fix contract expects. The next single action is to implement
+the reviewed generator-layer change through the versioned runtime patch.

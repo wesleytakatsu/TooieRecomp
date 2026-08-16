@@ -307,9 +307,37 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Select a different concrete cinematic actor whose behavior is
+**NEXT (prior facing thread):** Select a different concrete cinematic actor whose behavior is
 user-confirmed against original Banjo-Tooie. Do not implement a fix for
 `chdiggerground`, a demo-path precision fix, or transform tagging. Do not reopen the accepted
 BCF28 helper binding, PATCH 4 / Hybrid F', the core1 RA wrappers, the
 render-submission matrix split, or the accepted `func_80013B70` cardinal
 semantics. Do not modify shared RT64.
+
+## P08 unnamed overlay JAL independent review (2026-08-16) — NO FIX
+
+The DEMO2 attract SIGSEGV is independently **PROVEN Level A**. Original
+`.bsrest` `bsrest_entrypoint_11` (`0x80800668`) calls unnamed local
+`0x808003FC`; generated code instead emits `LOOKUP_FUNC`, which the runtime
+binds to `baflameline_entrypoint_5`. The original helper semantics are
+`func_800A0C20` plus conditional `func_800A0D14`; `a1=0x74` is **not UAF**.
+
+The bounded structural audit found 17 vulnerable current lookup sites at
+seven unnamed same-section targets, all in `.bsrest`. This is class evidence,
+not a claim of 17 runtime crashes. cf31166 is correct for known same-section
+target functions; the missing case is unsupported metadata. The fix owner is
+**N64RECOMP**, whose existing `CreateStatic` path already derives function
+boundaries and emits stable local bodies. One-off metadata and metadata
+synthesis as the primary owner are rejected.
+
+```text
+ROOT_CAUSE_LEVEL: A
+FIX_OWNER: N64RECOMP
+CF31166_140S_RUN_SEQUENCE_PROVEN: NO
+CF31166_AS_KNOWN_GOOD: NO
+UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
+FIX_IMPLEMENTED: NO
+NEXT_SINGLE_ACTION: implement the reviewed generator-layer change through
+                    the versioned runtime patch, then regenerate and rerun
+                    the structural/runtime regression contracts
+```

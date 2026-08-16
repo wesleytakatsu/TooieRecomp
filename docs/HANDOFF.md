@@ -227,3 +227,29 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 13. [[plan/evidence/p08-original-timing-4x3-baseline]] (P08-T03 current blocker)
 14. [[plan/evidence/p08-session-handoff]]
 15. [[plans/BT/08-rt64-input-and-frontend]]
+
+## P08 unnamed overlay JAL independent review (2026-08-16) — NO FIX
+
+The current attract blocker is independently **PROVEN Level A**: original
+`.bsrest` `bsrest_entrypoint_11` (`0x80800668`) calls unnamed local
+`0x808003FC`, while generated code uses `LOOKUP_FUNC`; runtime resolves that
+VRAM to `baflameline_entrypoint_5`. The original local helper calls
+`func_800A0C20` and conditional `func_800A0D14`; `a1=0x74` is **not UAF**.
+
+The bounded ELF audit found **17** vulnerable same-section `R_MIPS_26` sites
+at **7** unnamed targets, all in `.bsrest`; this is a class-level risk record,
+not 17 runtime crash claims. cf31166 remains correct for known target symbols;
+the missing case is unsupported metadata. The selected structural owner is
+**N64RECOMP**: its existing `CreateStatic` machinery can establish boundaries,
+stable names, and generated bodies. One-off metadata and metadata synthesis as
+the primary fix are rejected.
+
+```text
+FIX_OWNER: N64RECOMP
+CF31166_140S_RUN_SEQUENCE_PROVEN: NO
+CF31166_AS_KNOWN_GOOD: NO
+UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
+FIX_IMPLEMENTED: NO
+NEXT_SINGLE_ACTION: implement the reviewed N64Recomp CreateStatic ordering
+                    through the versioned runtime patch, then regenerate
+```

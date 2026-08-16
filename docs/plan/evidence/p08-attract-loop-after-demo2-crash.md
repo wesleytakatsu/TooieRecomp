@@ -279,3 +279,168 @@ python3 tests/attract_demo2_transition_jal_test.py
 Always-on compact `[tooie-xition]` in `recomp_syscall_handler` and
 `[tooie] ovl_unload:` in `ovl_unload`. Same style as existing
 `ovl_load` prints. No `TOOIE_DIAG` timing path. No `RecompiledFuncs` edit.
+
+## 10. Independent structural review (2026-08-16) — NO FIX
+
+This section preserves the Grok diagnosis and records the independent static
+arbitration. Conclusions are classified explicitly.
+
+### Original call and generated call — PROVEN
+
+```text
+ORIGINAL_CALLER:              bsrest_entrypoint_11
+ORIGINAL_CALLER_PC:           0x80800668
+ORIGINAL_TARGET:              0x808003FC
+ORIGINAL_TARGET_SECTION:      .bsrest (0x80800000..0x80800940)
+ORIGINAL_TARGET_SYMBOL:       UNNAMED in the ELF function symbol table;
+                              the BT decomp source names its local helper
+                              func_808003FC_bsrest
+ORIGINAL_TARGET_FIRST_INSTRUCTIONS:
+  0x808003FC addiu sp,sp,-24
+  0x80800400 sw ra,20(sp)
+  0x80800404 jal func_800A0C20
+  0x80800408 sw a0,24(sp)
+  0x8080040C beqz v0,0x80800420
+  0x80800410 lw a0,24(sp)
+  0x80800414 move a1,zero
+  0x80800418 jal func_800A0D14
+  0x8080041C lui a2,0x3F00
+ORIGINAL_TARGET_CALLS:        func_800A0C20; conditional func_800A0D14
+ORIGINAL_CALL_TARGET_PROVEN:  YES
+```
+
+The target is in the same `.bsrest` section as the caller. The current
+generated `bsrest_entrypoint_11` (and also `_3` and `_7`) emits
+`LOOKUP_FUNC(0x808003FC)`, with no generated local body for that address.
+
+```text
+GENERATED_CALL_FORM: LOOKUP
+GENERATED_TARGET:   LOOKUP_FUNC(0x808003FC)
+RESOLVE_JAL_DECISION_PATH:
+  relocatable same-section pre-scan -> no Match because no known generated
+  function exists at 0x808003FC in .bsrest ->
+  use_lookup_for_all_function_calls=true -> Ambiguous -> LOOKUP_FUNC
+FIRST_GENERATOR_DECISION_CAUSING_AMBIGUOUS:
+  the same-section fast path requires an existing non-reimplemented,
+  non-ignored, non-stubbed function symbol; it does not create one.
+```
+
+### Collision and Level-A arbitration — PROVEN
+
+```text
+VRAM_808003FC_COLLIDERS:
+  baflameline_entrypoint_5          (.baflameline)
+  func_808003FC_chnastycavemen      (.chnastycavemen)
+  .bsrest target                    unnamed local helper
+LIVE_LOOKUP_RESULT:                 baflameline_entrypoint_5
+EXPECTED_SECTION_LOCAL_TARGET:     unnamed .bsrest helper at 0x808003FC
+```
+
+At the failing syscall, `get_function(0x808003FC)` reports the
+`baflameline_entrypoint_5` binding. That callee reaches `func_800EE7F8`, whose
+first operation reads `MEM_W(ctx->r5, 0)`. The wrong callee inherits guest
+`a1=0x74`; this is a register/provenance consequence of wrong dispatch, not a
+freed object.
+
+```text
+WRONG_CALLEE_PROVEN:       YES
+GENERATED_LOOKUP_CAUSAL:   YES
+RUNTIME_COLLISION_CAUSAL:  YES
+A1_0x74_IS_NOT_UAF:        YES
+ROOT_CAUSE_LEVEL:           A
+ROOT_CAUSE:                 an unnamed relocatable same-section JAL target is
+                            forced through a shared VRAM lookup and binds to a
+                            named function from another overlay.
+```
+
+### Bounded structural scope audit — PROVEN / INFERENCE
+
+The audit scanned the linked Tooie ELF's 849 canonical-VRAM relocatable
+overlay sections and 66,323 `R_MIPS_26` sites. A site was vulnerable only when
+its caller was relocatable, its target was inside the caller's section, there
+was no named function at that target in that section, and a named function
+existed at the same VRAM in another overlay.
+
+```text
+TOTAL_UNNAMED_SAME_SECTION_JAL_TARGETS: 17 sites
+UNIQUE_UNNAMED_TARGETS:                 7 addresses
+TOTAL_COLLIDING_UNNAMED_TARGETS:        7 addresses
+TOTAL_CURRENT_LOOKUP_CALLS_AT_RISK:    17 sites (lookup-for-all policy)
+AFFECTED_OVERLAYS:                      .bsrest only
+UNIQUE_TARGETS:
+  0x80800000, 0x8080003C, 0x80800080, 0x808000E4,
+  0x8080020C, 0x8080032C, 0x808003FC
+```
+
+Representative `.bsrest` sites include callers at `0x808004C8` and
+`0x8080058C` targeting `0x808003FC`, plus the failing caller at
+`0x80800668`. The six other addresses are the same unnamed-local pattern in
+the same overlay. This proves a class of vulnerable sites; it does not claim
+that all 17 are independently observed runtime crashes.
+
+### cf31166 contract and owner arbitration — PROVEN / INFERENCE
+
+```text
+CF31166_CONTRACT_CORRECT:       YES
+CF31166_MISSING_CASE:           same-section target has no known generated
+                                function symbol, so Match is impossible and
+                                CreateStatic is bypassed by lookup-all fallback
+IS_THIS_A_BUG_IN_CF31166_IMPLEMENTATION: NO
+IS_THIS_AN_UNSUPPORTED_METADATA_CASE:    YES
+```
+
+cf31166 implements direct binding for a known target function in the same
+relocatable section. It does not promise to infer a body for an unnamed
+target. N64Recomp already has the required `CreateStatic` path: it creates a
+stable `static_<section>_<address>` C identifier, obtains the end at the next
+known function/static or section boundary, and emits the body.
+
+```text
+OPTION_A_ONE_OFF_METADATA: REJECT
+  Fixes 0x808003FC only; the audit leaves the other six local targets.
+OPTION_B_SYNTHETIC_METADATA: REJECT as primary owner
+  Feasible only with conservative boundary derivation; it duplicates logic
+  already present in N64Recomp and risks inventing bodies for non-entry labels.
+OPTION_C_N64RECOMP: ACCEPT
+  Allow relocatable same-section CreateStatic before the global lookup-all
+  fallback; preserve lookup behavior for non-relocatable sections and hooks.
+FIX_OWNER: N64RECOMP
+RECOMMENDED_FIX_DESIGN:
+  In resolve_jal, let an unnamed target inside a relocatable current section
+  take the existing CreateStatic path, then regenerate all output.
+MINIMAL_FILES:
+  N64Recomp/src/recompilation.cpp (external checkout)
+  TooieRecomp/patches/runtime/n64recomp-tooie.patch (versioned owner patch)
+  tests/attract_demo2_transition_jal_test.py (static contract)
+GENERATED_C_EDIT_REQUIRED: NO
+FIX_IMPLEMENTED: NO
+```
+
+### Historical discrepancy — UNKNOWN / PROVEN negative
+
+The historical cf31166 run recorded approximately 70 reports / 140 seconds /
+179k syscalls and `last_ovl=635:2`, but did not record the later
+`Wooded Hollow 335 -> TDL 278 -> CCL 314 / bsrest ep11` transition. No old
+binary or generated-output snapshot proving that exact route is available.
+
+```text
+CF31166_140S_RUN_SEQUENCE_PROVEN: NO
+CF31166_AS_KNOWN_GOOD:             NO
+UNTRACKED_GENERATED_STATE_MAY_EXPLAIN: UNKNOWN
+```
+
+The supported classification is “the old run did not prove the exact
+sequence,” not “cf31166 was known-good” and not a guessed binary-state bisect.
+
+### Regression contract — INFERENCE
+
+The static test should assert that every vulnerable target selected by the
+audit, including `.bsrest` `0x808003FC`, emits no `LOOKUP_FUNC` and that the
+generated local function body exists. The N64Recomp `static_<section>_<address>`
+name is an implementation detail; the original address is the stable key.
+A generic audit should fail if any relocatable same-section unnamed target
+with a cross-overlay VRAM collision remains lookup-bound.
+
+The runtime regression remains: `INTRO -> demo1 -> demo2 -> CCL -> startup
+intro continues without crash`, with no guard, attract-index forcing, or state
+skipping.
