@@ -2,8 +2,9 @@
 -- Robust, self-validating BizHawk / EmuHawk Lua script for capturing original Banjo-Tooie (US) attract demo ground truth.
 -- Verified ROM SHA-1: af1a89e12b638b8d82cc4c085c8e01d4cba03fb3
 
-local log_file = io.open("original_wooded_hollow_demo_sync.csv", "w")
-log_file:write("consumed_glidx,post_glidx,vi_count,mode,map,pad_x,pad_y,pad_btn,px,py,pz,vx,vy,vz,velxz,tspd,yaw,ideal_yaw,phys_yaw,mult,accel,cam_x,cam_y,cam_z,cam_yaw,digger_x,digger_y,digger_z\n")
+local out_path = os.getenv("TOOIE_ORIGINAL_TRACE") or "original_wooded_hollow_demo_sync.csv"
+local log_file = io.open(out_path, "w")
+log_file:write("consumed_glidx,post_glidx,vi_count,gfcnt,mode,map,pad_x,pad_y,pad_btn,bs,px,py,pz,ppx,ppy,ppz,vx,vy,vz,velxz,tspd,yaw,ideal_yaw,phys_yaw,mult,accel,cam_x,cam_y,cam_z,cam_yaw,digger_x,digger_y,digger_z,act2_mid,act2_sys,act2_x,act2_y,act2_z\n")
 
 local prev_post_glidx = -1
 local captured_samples = 0
@@ -67,9 +68,11 @@ event.onframeend(function()
             -- D_80135490: Player struct pointer table
             local ps_addr = mainmemory.read_u32_be(0x135490)
             local px, py, pz = 0, 0, 0
+            local ppx, ppy, ppz = 0, 0, 0
             local vx, vy, vz, tspd = 0, 0, 0, 0
             local yaw, ideal_yaw, phys_yaw = 0, 0, 0
             local mult, accel = 0, 0
+            local bs_id = -1
 
             if is_valid_kseg0(ps_addr) then
                 local ps = kseg0_to_phys(ps_addr)
@@ -91,6 +94,9 @@ event.onframeend(function()
                 local phys_ptr = mainmemory.read_u32_be(ps + 0xC8)
                 if is_valid_kseg0(phys_ptr) then
                     local pphys = kseg0_to_phys(phys_ptr)
+                    ppx = mainmemory.readfloat(pphys + 0x04, true)
+                    ppy = mainmemory.readfloat(pphys + 0x08, true)
+                    ppz = mainmemory.readfloat(pphys + 0x0C, true)
                     vx = mainmemory.readfloat(pphys + 0x10, true)
                     vy = mainmemory.readfloat(pphys + 0x14, true)
                     vz = mainmemory.readfloat(pphys + 0x18, true)
@@ -98,6 +104,11 @@ event.onframeend(function()
                     phys_yaw = mainmemory.readfloat(pphys + 0x40, true)
                     accel = mainmemory.readfloat(pphys + 0x44, true)
                     mult = mainmemory.readfloat(pphys + 0x50, true)
+                end
+
+                local bs_ptr = mainmemory.read_u32_be(ps + 0x120)
+                if is_valid_kseg0(bs_ptr) then
+                    bs_id = mainmemory.read_s32_be(kseg0_to_phys(bs_ptr))
                 end
             end
 
@@ -118,6 +129,8 @@ event.onframeend(function()
             -- D_80136EE0: World actors vector pointer
             local vec_addr = mainmemory.read_u32_be(0x136EE0)
             local dgx, dgy, dgz = 0, 0, 0
+            local a2mid, a2sys = 0, 0
+            local a2x, a2y, a2z = 0, 0, 0
             if is_valid_kseg0(vec_addr) then
                 local vec = kseg0_to_phys(vec_addr)
                 local elem_size = mainmemory.read_u32_be(vec + 0x00)
@@ -133,17 +146,23 @@ event.onframeend(function()
                             dgx = mainmemory.readfloat(act + 0x04, true)
                             dgy = mainmemory.readfloat(act + 0x08, true)
                             dgz = mainmemory.readfloat(act + 0x0C, true)
-                            break
+                        elseif a2mid == 0 and mid ~= 0 and mid ~= 1 then
+                            a2mid = mid
+                            a2sys = mainmemory.read_u32_be(act + 0x10)
+                            a2x = mainmemory.readfloat(act + 0x04, true)
+                            a2y = mainmemory.readfloat(act + 0x08, true)
+                            a2z = mainmemory.readfloat(act + 0x0C, true)
                         end
                     end
                 end
             end
 
+            local gfcnt = mainmemory.read_s32_be(0x12C764)
             local velxz = math.sqrt(vx * vx + vz * vz)
-            log_file:write(string.format("%d,%d,%d,%d,%d,%d,%d,%04x,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.2f,%.2f\n",
-                consumed_glidx, post_glidx, vi_count, mode, map, pad_x, pad_y, pad_btn,
-                px, py, pz, vx, vy, vz, velxz, tspd, yaw, ideal_yaw, phys_yaw, mult, accel,
-                cx, cy, cz, cam_yaw, dgx, dgy, dgz))
+            log_file:write(string.format("%d,%d,%d,%d,%d,%d,%d,%d,%04x,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.4f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.2f,%.2f,%u,%08x,%.2f,%.2f,%.2f\n",
+                consumed_glidx, post_glidx, vi_count, gfcnt, mode, map, pad_x, pad_y, pad_btn, bs_id,
+                px, py, pz, ppx, ppy, ppz, vx, vy, vz, velxz, tspd, yaw, ideal_yaw, phys_yaw, mult, accel,
+                cx, cy, cz, cam_yaw, dgx, dgy, dgz, a2mid, a2sys, a2x, a2y, a2z))
             log_file:flush()
 
             if consumed_glidx % 50 == 0 or landmark_checks[consumed_glidx] then

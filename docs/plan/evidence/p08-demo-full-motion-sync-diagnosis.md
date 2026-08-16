@@ -1,6 +1,6 @@
 ---
 title: "P08 — Diagnóstico Diferencial de Sincronização e Movimento da Demo de Gameplay"
-description: "Diagnóstico completo da trajetória, cinemática, cadência temporal e interpolação da primeira demonstração gravada de gameplay (Wooded Hollow / glidx 2..766)."
+description: "Diagnóstico completo da trajetória, cinemática, cadência e comparação MEASURED_ORIGINAL vs MEASURED_RECOMP da primeira demonstração gravada (Wooded Hollow / consumed_glidx 1..765)."
 status: evidence
 phase: P08
 updated: 2026-08-16
@@ -12,23 +12,26 @@ tags: [tooie-recomp, p08, demo-sync, glrecord, kinematics, cadence, camera-follo
 ## 1. Visão Geral e Objetivo
 
 ```text
-BASE_HEAD:                         1de0738f8c5881f22d03f3149a6a26d575617cf5
-MODEL:                             Gemini 3.7 Flash HIGH
-MODE:                              DIAGNÓSTICO DIFERENCIAL COMPLETO (SEM FIX DE PRODUÇÃO)
-SELECTED_DEMO:                     Wooded Hollow (Map 335, Entrada 8, Mode 5)
-RECOMP_INTERNAL_TRACE:             PROVEN (766 amostras de glrecord capturadas, glidx 2..766)
-ORIGINAL_NUMERIC_TRACE:            UNKNOWN (pendente de emulador N64 instrumentado)
-PROVISIONAL_PRIMARY_HYPOTHESIS:    PRESENTATION_INTERPOLATION / CAMERA_FOLLOW_LAG
+BASE_HEAD:                         5a1fd33ee68b89104c4de4583afb4a7a187909d3
+MODEL:                             Grok 4.6 HIGH
+MODE:                              MEASURED_ORIGINAL vs MEASURED_RECOMP (SEM FIX DE PRODUÇÃO)
+SELECTED_DEMO:                     Wooded Hollow (mode 5, first clip consumed_glidx 1..765)
+RECOMP_INTERNAL_TRACE:             PROVEN (765 amostras, consumed_glidx 1..765, TOOIE_DIAG_DEMO_SYNC=1)
+ORIGINAL_NUMERIC_TRACE:            PROVEN (official mupen64plus 2.6.0 Pure Interpreter + Rice VI hook)
+PROVISIONAL_PRIMARY_HYPOTHESIS:    CAPTURE_POINT_PHASE (first 365) then later post-egg run split
 FIX_IMPLEMENTED:                   NO
-ROOT_CAUSE_LEVEL:                  D
-ROOT_CAUSE:                        UNKNOWN (pendente de linha de base numérica original)
+ROOT_CAUSE_LEVEL:                  C
+ROOT_CAUSE:                        same-index ~25u lead is one physics step (recomp dumps at
+                                   glrecord consume; original dumps at VI after the update).
+                                   After +1 shift, walk/analog/shot positions match.
+                                   Remaining discriminator: post-egg run/jump after glidx ~392.
 ```
 
 > [!IMPORTANT]
 > **Distinção Epistemológica de Evidências:**
 > - `MEASURED_RECOMP`: Dados empíricos extraídos ao vivo do executável `TooieRecompiled` via `TOOIE_DIAG_DEMO_SYNC=1`.
 > - `ORIGINAL_MIPS_NOMINAL_EXPECTATION`: Contratos extraídos estaticamente da descompilação MIPS (ex: `glrecord_entrypoint_0`, `bastick_update`, `func_800EF04C`, cadência nominal de 30 Hz).
-> - `MEASURED_ORIGINAL`: **UNKNOWN**. Nenhuma alegação de erro zero (`error = 0`) ou correspondência numérica (`match = YES`) é válida como comparação empírica até que uma captura de runtime original seja executada. Comparações anteriores não qualificadas são aqui **CORRIGIDAS/SUPERSEDIDAS (CORRECTED/SUPERSEDED)**.
+> - `MEASURED_ORIGINAL`: **PROVEN** (2026-08-16, Grok 4.6 HIGH). Official mupen64plus-core `6dca4c1` Pure Interpreter + Rice `038882d` `UpdateScreen` RDRAM hook. ROM SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` **MATCH**. Pad landmarks 70..76 and 322 **PASS**. Previous `ORIGINAL_NUMERIC_TRACE: UNKNOWN` is **CORRECTED/SUPERSEDED**.
 
 Este diagnóstico investiga a percepção visual de que o movimento do jogador durante a primeira demonstração de gameplay (Wooded Hollow attract demo) aparenta não sincronizar 100% com a experiência original do Nintendo 64.
 
@@ -42,24 +45,24 @@ Foi implementada uma sonda de diagnóstico por variáveis de ambiente (`TOOIE_DI
 
 | Métrica Temporal | Valor Medido no Recomp (`MEASURED_RECOMP`) | Expectativa Nominal MIPS (`NOMINAL_MIPS`) | Linha de Base Original (`MEASURED_ORIGINAL`) | Status da Comparação |
 |---|---|---|---|---|
-| **Taxa de Amostragem `glrecord`** | 1 amostra a cada 33.334 ms | 30.000 Hz | UNKNOWN | **NOMINAL_MATCH** (Recomp constante a 30.0 Hz) |
-| **Tiques Lógicos por Amostra (`gl_adv`)** | 2.000000 logic ticks / sample | 2 ticks (60Hz VI / divisor 2) | UNKNOWN | **NOMINAL_MATCH** |
-| **`gamespeed` do Guest (`dt`)** | 0.033333 s (1/30 s) | 0.033333 s | UNKNOWN | **NOMINAL_MATCH** |
-| **Duração Total da Demonstração** | 25,434 ms (25.43 s) | ~25.4 s | UNKNOWN | **NOMINAL_MATCH** |
-| **Contagem de Amostras Processadas** | 765 amostras (glidx 2..766) | 766 amostras | UNKNOWN | **NOMINAL_MATCH** |
+| **Taxa de Amostragem `glrecord`** | 1 amostra a cada 33.334 ms | 30.000 Hz | 1 sample / 2 VI after boot (mean 2.12, steady 2) | **MEASURED_MATCH** |
+| **Tiques Lógicos por Amostra (`gl_adv`)** | 1.000 capture advance / sample at consume | 2 VI / sample | 2 VI / sample (steady) | **MEASURED_MATCH** (clocks are different units) |
+| **`gamespeed` do Guest (`dt`)** | 0.033333 s (1/30 s) | 0.033333 s | not synthesized | **NOMINAL_MATCH** |
+| **Duração Total da Demonstração** | 25,459 ms (25.46 s) | ~25.4 s | 765 samples × 2 VI | **MEASURED_MATCH** |
+| **Contagem de Amostras Processadas** | 765 amostras (consumed 1..765) | 766 amostras | 765 (consumed 1..765) | **MEASURED_MATCH** |
 
 ```text
 RECOMP_INTERNAL_CADENCE:           30.000 Hz CONSTANTE (1 sample / 33.334 ms)
-ORIGINAL_NUMERIC_CADENCE:          UNKNOWN (Pendente de captura em emulador)
-SIMULATION_BY_GLIDX_MATCH:         UNKNOWN (Pendente de comparação numérica com trace original)
+ORIGINAL_NUMERIC_CADENCE:          2 VI / glrecord after intro (MEASURED_ORIGINAL)
+SIMULATION_BY_GLIDX_MATCH:         YES for walk/analog/shot after +1 capture-phase shift
 ```
 
 ```text
 GLRECORD_CADENCE_MATCHES_NOMINAL_30HZ: YES
 LOGIC_CADENCE_MATCHES_NOMINAL:          YES
-VI_CADENCE_MATCHES_NOMINAL:            YES
+VI_CADENCE_MATCHES_NOMINAL:            YES (original steady 2 VI / sample)
 GAMESPEED_STEP_MATCHES_NOMINAL:        YES
-ORIGINAL_NUMERIC_MATCH:                UNKNOWN
+ORIGINAL_NUMERIC_MATCH:                YES after capture-phase correction through glidx 365
 ```
 
 ---
@@ -211,21 +214,133 @@ RAW_INPUT_ALIGNMENT:               PASS
 2. **Hash da ROM Verificada**:
    - SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` (`Banjo-Tooie (USA).z64` / `baserom.us.z64`)
    - `ROM_HASH_MATCH: YES`
-3. **Pré-Requisito Externo para Captura Numérica**:
-   - O ambiente de execução do agente no host Linux não possui emulador N64 instalado nem permissão `sudo` para instalação de pacotes (`sudo apt-get` requer senha).
-   - O script `tools/original_demo_trace_bizhawk.lua` está pronto para execução no BizHawk / EmuHawk com Lua console em qualquer máquina que execute a ROM base oficial.
+3. **Pré-Requisito Externo (CORRECTED/SUPERSEDED 2026-08-16)**:
+   - Official BizHawk 2.11.1 Linux tarball is `.NET Framework 4.8` / Mono. This host has no `mono` and user-local `dotnet` 8 cannot run `EmuHawk.exe`.
+   - Official mupen64plus 2.6.0 was built user-local (`OSD=0 VULKAN=0 NO_ASM=1`, Pure Interpreter) with Rice video and an RDRAM dump on `UpdateScreen`.
+   - Dummy-gfx hangs Tooie in mode 3 (RDP/VI progress). Rice + SDL input (`Present=1`) reaches mode 5.
+   - BizHawk Lua remains valid for a Windows/Mono host; it was not the capture path used here.
 
 ---
 
 ## 8. Classificação e Veredito
 
 ```text
-PROVISIONAL_PRIMARY_HYPOTHESIS:    PRESENTATION_INTERPOLATION / CAMERA_FOLLOW_LAG
-RECOMP_INTERNAL_TRACE:             PROVEN (766 amostras capturadas e caracterizadas)
-ORIGINAL_NUMERIC_TRACE:            UNKNOWN (pendente de emulador N64 instrumentado)
-SIMULATION_BY_GLIDX_MATCH:         UNKNOWN (nominalmente compatível com 510/605/700 u/s e 30Hz; numérico pendente)
-VISUAL_TIME_BY_GLIDX_MATCH:        UNKNOWN (nominalmente 33.33ms; numérico pendente)
-ROOT_CAUSE_LEVEL:                  D
-ROOT_CAUSE:                        UNKNOWN (pendente de linha de base numérica original)
-FIX_IMPLEMENTED:                   NO (Conforme instrução, nenhum fix de produção aplicado nesta tarefa)
+PROVISIONAL_PRIMARY_HYPOTHESIS:    CAPTURE_POINT_PHASE then post-egg run split
+RECOMP_INTERNAL_TRACE:             PROVEN (765 amostras consumed 1..765)
+ORIGINAL_NUMERIC_TRACE:            PROVEN
+SIMULATION_BY_GLIDX_MATCH:         YES through shot after +1 shift; later run/jump still open
+VISUAL_TIME_BY_GLIDX_MATCH:        NOT used as causal evidence (host present loop ≠ guest clock)
+ROOT_CAUSE_LEVEL:                  C
+ROOT_CAUSE:                        see §9 MEASURED_ORIGINAL differential
+FIX_IMPLEMENTED:                   NO
 ```
+
+---
+
+## 9. MEASURED_ORIGINAL vs MEASURED_RECOMP (2026-08-16, Grok 4.6 HIGH)
+
+```text
+EMULATOR:                          official mupen64plus 2.6.0 (user-local source build)
+VERSION/COMMIT:                    core 6dca4c1 / ui-console c8ac486 / rice 038882d / rsp-hle 8a7a472
+N64_CORE:                          mupen64plus-core + rsp-hle + rice
+CPU_EXECUTION_MODE:                Pure Interpreter (NO_ASM=1, --emumode 0)
+RDRAM_ACCESS_METHOD:               GFX_INFO.RDRAM via Rice UpdateScreen; guest bytes rdram[phys^3]
+SCRIPT_OR_TRACE_METHOD:            tools/mupen64plus_demo_trace.c (standalone dummy) + Rice include hook
+WHY_THIS_RUNTIME_IS_SUITABLE:      official interpreter; live landmark checksums PASS; no random binary
+ROM_SHA1:                          af1a89e12b638b8d82cc4c085c8e01d4cba03fb3
+ROM_MATCH:                         YES
+LIVE_MEMORY_LAYOUT:                PASS (xor=3; mode=3 then 5; pad 70/74/322 PASS; finite player floats)
+CAPTURE_POINT:                     Rice UpdateScreen / VI after post_glidx advances
+STATE_ASSOCIATED_WITH_CONSUMED_SAMPLE: YES (one row per post_glidx change; next consume is 2 VI later)
+ORIGINAL_TRACE:                    YES (/tmp/p08-original-wh1-clip.csv, not committed)
+```
+
+Tolerances (justified): `EXACT_POS=0.001`, `MEANINGFUL_POS=2.0` world units; `EXACT_YAW=0.05°`, `MEANINGFUL_YAW=2.0°`; `EXACT_SPD=0.05`, `MEANINGFUL_SPD=2.0`. Host COP1/Rice float noise is sub-unit; a walk step at 510 u/s is 17 units.
+
+Join: first Wooded Hollow clip only (`consumed_glidx` 1..765, first occurrence). Later attract maps reuse glidx and must not be mixed.
+
+```text
+ORIGINAL_SAMPLE_COUNT:             765
+RECOMP_SAMPLE_COUNT:               765
+COMMON_SAMPLE_COUNT:               765
+PAD_SEQUENCE_MATCH_COUNT:          765
+PAD_SEQUENCE_MATCH_RATE:           100.0000%
+PAD_IDENTITY_GATE:                 PASS
+```
+
+Same-index player xz error (MEASURED, `tools/compare_demo_traces.py`):
+
+| glidx | orig pos | recomp pos | error_xz | spd o/r | yaw o/r | bs o/r |
+| --- | --- | --- | --- | --- | --- | --- |
+| 35 | (1461.08,-171.07,-183.31) | (1486.57,-168.44,-182.14) | 25.517 | 510.2/510.2 | 267.35/267.37 | 3/3 |
+| 74 | (468.72,-265.27,-231.39) | (494.13,-262.99,-230.13) | 25.441 | 508.9/508.9 | 271.43/267.18 | 3/3 |
+| 76 | (420.03,-269.65,-223.68) | (443.41,-267.54,-230.46) | 24.343 | 487.0/506.5 | 294.57/283.85 | 3/3 |
+| 91 | (141.61,-294.70,18.83) | (164.66,-292.63,9.58) | 24.837 | 496.8/492.2 | 290.97/294.24 | 3/3 |
+| 120 | (-538.64,-300.00,82.66) | (-522.12,-300.00,84.87) | 16.667 | 499.7/499.9 | 265.51/262.76 | 3/3 |
+| 200 | (-2043.40,-333.07,738.59) | (-2021.41,-332.99,726.67) | 25.013 | 500.4/500.4 | 299.03/298.56 | 3/3 |
+| 322 | (-4678.85,-425.16,1123.52) | (-4678.84,-425.16,1123.57) | 0.051 | 509.0/509.0 | 298.71/298.71 | 7/4 |
+| 334 | (-4709.54,-428.23,1136.36) | (-4709.52,-428.23,1136.41) | 0.054 | 0.85/0.85 | 284.79/284.79 | 7/7 |
+| 365 | (-4927.01,-448.84,1201.31) | (-4926.92,-448.83,1201.34) | 0.095 | 1.68/2.97 | 106.64/106.64 | 7/7 |
+| 550 | (-498.53,-300.53,1324.79) | (-518.07,-300.00,803.30) | 521.856 | 687.0/699.6 | 50.80/61.78 | 20/20 |
+| 765 | (2690.75,-1022.00,3848.87) | (2423.56,-1024.46,3757.11) | 282.507 | 1.05/1.47 | 75.62/70.70 | 4/4 |
+
+```text
+FIRST_EXACT_DIFFERENCE_GLIDX:      3   (camera xz 0.03 — below MEANINGFUL; FPU/VI noise)
+FIRST_MEANINGFUL_DIVERGENCE_GLIDX: 18  (same-index yaw 3.09° / bs 1 vs 0)
+FIRST_DIVERGENT_FIELD:             player yaw + bs at consume 18 (orig started turn; recomp still idle)
+PLAYER_ERROR_GL35:                 25.5168
+PLAYER_ERROR_GL91:                 24.8368
+PLAYER_ERROR_GL200:                25.0129
+PLAYER_ERROR_GL322:                0.0510
+PLAYER_ERROR_GL365:                0.0949
+PLAYER_ERROR_GL550:                521.8559
+PLAYER_ERROR_GL765:                282.5073
+DRIFT_CLASS:                       PIECEWISE  (constant ~25u = one physics step through the walk;
+                                   collapses at the shot stop; grows again after egg-exit run)
+```
+
+Capture-phase test (`orig[N]` vs `recomp[N+1]`, MEASURED):
+
+```text
+k=+0  xz_med=24.996 yaw_med=0.51
+k=+1  xz_med=0.010  yaw_med=0.00   ← walk/analog/shot-stop identity
+k=+2  xz_med=25.002
+k=-1  xz_med=49.683
+```
+
+`orig[35]==recomp[36]`, `orig[74]==recomp[75]`, `orig[91]==recomp[92]`, `orig[236]==recomp[237]` (including `bs=32`) at xz≤0.04.
+
+This is **INFERENCE** from the two capture sites, not a second runtime:
+
+- Recomp `tooie_demo_sync_tick` runs when overlay 698 ep 0 **returns** (pad inject). Player physics for sample N has not necessarily run.
+- Original Rice `UpdateScreen` runs on VI **after** that game update.
+- Therefore same-index `recomp[N]` is the state produced by sample N-1; `orig[N]` is the state produced by sample N.
+
+```text
+PLAYER_PHASE_GL322:                MATCH position (error_xz=0.051); state 7 vs 4 is the +1 phase
+                                   (recomp[323].bs=7). Do not treat as egg-collision evidence.
+DIGGER_PHASE_GL322:                UNKNOWN (both traces read 0,0,0 — marker 337 not in first 64)
+CAMERA_PHASE_GL322:                MATCH position (cam xz 0.041 same-index)
+CAMERA_LAG_GL91_ORIGINAL:          36.77°  (player 290.97 / cam 254.2)
+CAMERA_LAG_GL91_RECOMP:            40.04° same-index; 36.77° after +1 (player 290.97 / cam 254.2)
+CAMERA_LAG_MATCH:                  YES after capture-phase correction
+                                   previous ~45.11° claim is CORRECTED/SUPERSEDED (same-index artifact)
+ORIGINAL_VI_PER_GLRECORD:          2 (steady; mean 2.12 including first mode-5 34-VI gap)
+RECOMP_VI_PER_GLRECORD:            not a guest VI counter in the recomp row
+ORIGINAL_GAME_UPDATES_PER_GLRECORD: gfcnt is not monotonic here (do not synthesize)
+RECOMP_GAME_UPDATES_PER_GLRECORD:  1 consume / row (adv≈1)
+```
+
+The ~45° camera-lag visual hypothesis is **REFUTED** as a measured original-vs-recomp mismatch. Aligned lag is identical (36.77°).
+
+First **phase-corrected** growth past 2 units after the shot-stop is around consumed 392 during the post-egg trot (`bs=21`), then the jump (`bs=8`) opens to 150+ units by 440. That later split is the remaining discriminator. It was **not** walked back to a single writer in this task.
+
+```text
+PRIMARY_CLASS:                     MIXED
+                                   first 365 = CAPTURE_POINT / not a gameplay defect
+                                   after egg-exit run = one remaining precise discriminator
+ROOT_CAUSE_LEVEL:                  C
+FIX_IMPLEMENTED:                   NO
+```
+
+Digger mid=337 was not recovered in either first-clip dump (positions 0,0,0). Actor identity by heap pointer remains forbidden; this is a scan-window gap, not a phase proof.

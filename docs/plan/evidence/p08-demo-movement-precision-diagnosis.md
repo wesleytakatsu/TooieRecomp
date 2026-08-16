@@ -1,6 +1,6 @@
 ---
 title: "P08 — demo movement precision diagnosis"
-description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. First straight 510 is original slope-scaled physics (PASS). First later analog transition (glidx 74..91) is internally faithful (PASS). First user-confirmed demo shot: original HIT vs recomp MISS; earliest C-up fire-egg at glidx 322 misses the Wooded Hollow digger. PRIMARY_MISS_CLASS G. ROOT_CAUSE_LEVEL D."
+description: "Narrow differential of the gameplay-demo path after func_80013B70. MEASURED_ORIGINAL vs MEASURED_RECOMP: pad 100% match; same-index ~25u lead is one physics step (capture-point phase). First straight / first analog MATCH after +1 shift. Shot glidx 322 position MATCH. Previous ROOT_CAUSE_LEVEL D for numeric original is CORRECTED/SUPERSEDED."
 status: evidence
 phase: P08
 updated: 2026-08-16
@@ -26,7 +26,9 @@ behavior remains normal. That closes the previously pending runtime gate
 for USER_BUG_A. Analog/gamepad is **not** marked validated.
 
 > [!NOTE]
-> For the complete 766-sample trajectory, cadence, kinematic segmentation, and camera follow lag analysis across the entire Wooded Hollow gameplay demo, see [[p08-demo-full-motion-sync-diagnosis]].
+> For the complete 765-sample trajectory, cadence, and the first MEASURED_ORIGINAL vs MEASURED_RECOMP numeric differential, see [[p08-demo-full-motion-sync-diagnosis]] §9.
+
+**MEASURED_ORIGINAL (2026-08-16):** official mupen64plus Pure Interpreter, ROM SHA-1 match, pad landmarks PASS. Same-index player error is ~25 units through the first walk and 0.05 at glidx 322. `orig[N]` equals `recomp[N+1]` through the analog turn and shot-stop (`xz_med=0.010`). The previous 45.11° camera-lag mismatch is **CORRECTED/SUPERSEDED** (aligned lag 36.77° both sides). Remaining open discriminator is the post-egg run/jump after ~392. No production fix.
 
 Do **not** reopen the solved directional-collapse bug.
 

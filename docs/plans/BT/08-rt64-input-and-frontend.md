@@ -44,10 +44,18 @@ first-straight ~510 is **original slope-scaled physics**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14) and
 the first later analog transition (`glidx = 74..91`) is **internally faithful**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15).
-The first user-confirmed demo shot (`glidx = 322` fire-egg) is a
-**CLASS G** collision-space miss versus the downhill digger
-(`ROOT_CAUSE_LEVEL=D`;
-[[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §16).
+**MEASURED_ORIGINAL vs MEASURED_RECOMP (2026-08-16):** official mupen64plus
+Pure Interpreter, ROM SHA-1 match, pad 100% on consumed 1..765
+([[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] §9). Same-index
+~25u lead is capture-point phase (one physics step). First straight and
+first analog **MATCH** after +1 shift. Shot `glidx=322` position **MATCH**.
+The historical 45.11° camera-lag mismatch is **CORRECTED/SUPERSEDED**.
+Remaining discriminator is the post-egg run/jump after ~392. Level C, no fix.
+The first user-confirmed demo shot (`glidx = 322` fire-egg) remains a
+**CLASS G** collision-space miss versus the downhill digger in the earlier
+recomp-only study
+([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §16);
+this task did not re-diagnose egg collision.
 No fix is implemented. `USER_BUG_B_CINEMATIC_FACING` is
 **CURRENTLY_NOT_REPRODUCIBLE_BY_USER**.
 The earlier `USER_BUG_B` one-actor Level B classification is
@@ -92,7 +100,8 @@ Evidência corrente:
 - [[../../plan/evidence/p08-attract-loop-after-demo2-crash]] (**RESOLVED and ACCEPTED** — DEMO2 attract SIGSEGV; Level A, verdict B)
 - [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] (historical USER_BUG_B one-actor diagnosis; corrected/superseded)
 - [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] (**CURRENT:** original-MIPS case-11 contract; actor refuted, global open)
-- [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS)
+- [[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] (**CURRENT:** MEASURED_ORIGINAL vs MEASURED_RECOMP; capture-phase + later run split)
+- [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS; original numeric now measured)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)

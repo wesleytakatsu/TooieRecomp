@@ -52,8 +52,8 @@ the START presses that skip the opening story cutscenes).
 **Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
 ([[plan/evidence/p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic,
 30 Hz animation, host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
-**Gameplay Demo Motion Synchronization Diagnosis (2026-08-16)**:
-Full 766-sample Wooded Hollow demo trajectory characterized in Recomp across 48 kinematic segments ([[plan/evidence/p08-demo-full-motion-sync-diagnosis]]). Recomp internal cadence is 100% constant (1 glrecord sample / 33.33ms / 2 logic ticks). Off-by-one in Lua script repaired (`consumed_glidx = post_glidx - 1`, stride=6, input landmark self-test PASS). Camera and actor vectors arbitrated as `POINTER_TO_STRUCT`. Original numeric comparison is UNKNOWN pending instrumented emulator trace. Presentation interpolation and camera follow lag are PROVISIONAL HYPOTHESES. Level D (NO FIX).
+**Gameplay Demo Motion Synchronization (2026-08-16, MEASURED_ORIGINAL)**:
+Full 765-sample Wooded Hollow clip compared against official mupen64plus Pure Interpreter ([[plan/evidence/p08-demo-full-motion-sync-diagnosis]] §9). Pad identity 100%. Same-index ~25u player lead is one physics step (recomp dumps at glrecord consume; original at VI). After +1 shift, first walk / analog / shot-stop match. Prior 45.11° camera-lag mismatch **CORRECTED/SUPERSEDED** (aligned lag 36.77° both). Remaining discriminator: post-egg run/jump after ~392. Level C (NO FIX).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -162,7 +162,8 @@ this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 ## NEXT
 
 1. **P08 Status: ACTIVE / MANUAL_VALIDATION_PENDING (Verdict B).**
-   - Canonical task audit completed: T01, T03..T06, T08..T11 DONE; T02 PARTIAL; T07 IMPLEMENTED_MANUAL_VALIDATION_PENDING.
+   - Canonical task audit completed: T01, T03..T06, T08..T11 DONE; T02 display catalog DONE; T07 IMPLEMENTED_MANUAL_VALIDATION_PENDING.
+   - Next residual after the original-runtime differential: walk only the post-egg run/jump split (~glidx 392).
    - Windowing, aspect ratio calculations, and display validation helpers implemented in `tooie_window`; fullscreen/focus/display event handling confirmed on reference SDL/RT64 path.
    - Graphics and startup error reporting verified via `tooie_error` without crash or unhandled aborts.
 2. **Pending Before Formal P08 Close / P09 Open:**

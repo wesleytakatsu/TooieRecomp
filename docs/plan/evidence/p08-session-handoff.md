@@ -17,7 +17,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
-- Gameplay Demo Motion Sync Diagnosis: [[p08-demo-full-motion-sync-diagnosis]].
+- Gameplay Demo Motion Sync Diagnosis: [[p08-demo-full-motion-sync-diagnosis]] (**MEASURED_ORIGINAL vs MEASURED_RECOMP**, 2026-08-16).
 - Display & Effect Catalog: [[p08-display-effect-catalog]].
 - Title & File Select Validation: [[p08-title-file-select-validation]].
 - Render-submission fix: [[p08-render-submission-matrix-fix]].
@@ -53,7 +53,7 @@ Canonical tasks (T01..T11) audited:
 - **VISIBLE GAMEPLAY DEMO & RENDER SUBMISSION RESOLVED (2026-08-14):**
   - Incremental projection split implemented in `src/game/transform_hooks.cpp`.
   - RT64 avoids the erroneous unscaled `matrixDecomposeViewProj` path.
-  - Gameplay demo full motion synchronization diagnosis recorded in [[p08-demo-full-motion-sync-diagnosis]] with static MIPS layout validation, glrecord index increment semantics (stride=6, offset=0), off-by-one in Lua script repaired (`consumed_glidx = post_glidx - 1`, input landmark self-test PASS), camera and actor vectors arbitrated as `POINTER_TO_STRUCT`, dual-increment tick counter identified, and presentation interpolation / camera follow lag classified as provisional hypotheses pending original emulator numeric capture. Level D (NO FIX).
+  - Gameplay demo full motion synchronization now has **MEASURED_ORIGINAL** ([[p08-demo-full-motion-sync-diagnosis]] §9). Official mupen64plus Pure Interpreter + Rice VI hook; ROM SHA-1 match; pad 100% on 765 samples. Same-index ~25u lead is one physics step (recomp dumps at glrecord consume; original at VI). After +1 shift the first walk, analog turn, and shot-stop match. Prior 45.11° camera-lag mismatch **CORRECTED/SUPERSEDED**. Remaining discriminator: post-egg run/jump after ~392. Level C (NO FIX).
   - Characters (`chjinjo` and `Banjo`) and camera are upright and elevated.
   - Banjo walks smoothly along ground path throughout 75s Wooded Hollow demo.
   - Host matrix regression test `matrix_submission_test` PASS (`MAX_MATRIX_ERROR: 0.000000e+00`).
@@ -203,7 +203,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
-Implement and validate P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling). Do not reopen resolved items.
+Walk only the post-egg run/jump writer starting at the first phase-corrected split (~consumed_glidx 392, `bs=21` trot). Do not reopen first-straight 510, 13B70, matrix, or the capture-phase 25u lead.
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
