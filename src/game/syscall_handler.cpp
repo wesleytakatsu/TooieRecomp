@@ -28,6 +28,8 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80108C90(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80108474(uint8_t* rdram, recomp_context* ctx);
+extern recomp_func_t* get_function(int32_t addr);
+extern "C" void baflameline_entrypoint_5(uint8_t* rdram, recomp_context* ctx);
 
 struct ActiveOverlayMapping {
     uint32_t overlay_index = 0;
@@ -327,6 +329,65 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         std::fflush(stderr);
     };
     dump_opening("enter");
+
+    // Compact attract-cycle markers (T1/T2/T3). Always-on; change-only plus
+    // bsrest entrypoints that jal 0x808003FC (unnamed local vs baflameline).
+    {
+        const gpr mode = static_cast<gpr>(static_cast<int32_t>(0x80127630u));
+        const gpr attr = static_cast<gpr>(static_cast<int32_t>(0x80127760u));
+        const gpr stg = static_cast<gpr>(static_cast<int32_t>(0x80135470u));
+        const int mode_v = int(MEM_H(0x2, mode));
+        const int map_v = int(MEM_H(0x10, mode));
+        const int entr_v = int(MEM_B(0x13, mode));
+        const uint32_t warp_v = uint32_t(MEM_BU(0x12, mode));
+        const uint32_t stage_v = uint32_t(MEM_BU(0x0, stg));
+        const uint32_t sub_v = uint32_t(MEM_BU(0x1, stg));
+        const uint32_t attr0 = uint32_t(MEM_BU(0x0, attr));
+        static int s_xm = 0x7fffffff;
+        static int s_xp = 0x7fffffff;
+        static uint32_t s_xw = 0xffffffffu;
+        static uint32_t s_xs = 0xffffffffu;
+        static uint32_t s_xu = 0xffffffffu;
+        const bool changed = (mode_v != s_xm) || (map_v != s_xp) || (warp_v != s_xw) ||
+                             (stage_v != s_xs) || (sub_v != s_xu);
+        const bool rest_jal =
+            (overlay_index == 84u) &&
+            (entry_index == 3u || entry_index == 7u || entry_index == 11u);
+        if (changed || rest_jal) {
+            const char* tag = "other";
+            if (map_v == 335) {
+                tag = "T1_WH";
+            } else if (map_v == 278) {
+                tag = "T2_TDL";
+            } else if (map_v == 314) {
+                tag = "T3_CCL";
+            } else if (map_v == 395) {
+                tag = "T_CSINTRO";
+            } else if (mode_v == 3 && map_v == 0) {
+                tag = "T_INTRO";
+            }
+            recomp_func_t* looked = rest_jal ? get_function(static_cast<int32_t>(0x808003FC)) : nullptr;
+            const bool is_flameline =
+                rest_jal && (looked == reinterpret_cast<recomp_func_t*>(baflameline_entrypoint_5));
+            std::fprintf(stderr,
+                         "[tooie-xition] %s ovl=%u ep=%u mode=%d map=%d entr=%d warp=%u "
+                         "stage=%u sub=%u attr=%u/%u/%u/%u a0=%08x a1=%08x "
+                         "lookup808003FC=%p flameline=%d\n",
+                         tag, overlay_index, entry_index, mode_v, map_v, entr_v, warp_v,
+                         stage_v, sub_v,
+                         attr0, uint32_t(MEM_BU(0x1, attr)),
+                         uint32_t(MEM_BU(0x2, attr)), uint32_t(MEM_BU(0x3, attr)),
+                         static_cast<uint32_t>(ctx->r4), static_cast<uint32_t>(ctx->r5),
+                         reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(looked)),
+                         int(is_flameline));
+            std::fflush(stderr);
+            s_xm = mode_v;
+            s_xp = map_v;
+            s_xw = warp_v;
+            s_xs = stage_v;
+            s_xu = sub_v;
+        }
+    }
 
     if (tooie_diag::frontend_enabled()) {
         const gpr mode_gpr = static_cast<gpr>(static_cast<int32_t>(0x80127630u));

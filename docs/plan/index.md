@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active (13B70 WASD RESOLVED; first-straight PASS; T10 synthetic mode=1 FAIL)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` **ACCEPTED**; first-straight 510 is original slope-scaled physics; P08-T10 current synthetic mode=1 **FAIL** (separate); attract/cinematic facing **OPEN_SEPARATE** |
+| RT64/input P08 | **active (DEMO2 attract SIGSEGV is current blocker)** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` **ACCEPTED**; first-straight 510 is original slope-scaled physics; P08-T10 current synthetic mode=1 **FAIL** (separate); attract loop after DEMO2 **CURRENT BLOCKER**; attract/cinematic facing **OPEN_SEPARATE** |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -160,6 +160,9 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
+- [[evidence/p08-attract-loop-after-demo2-crash]] — **CURRENT BLOCKER:**
+  deterministic SIGSEGV after DEMO2; `bsrest` `LOOKUP_FUNC(0x808003FC)`
+  binds `baflameline_entrypoint_5` (Level A; no fix).
 - [[evidence/p08-stick-angle-thunk-fix]] — implementation evidence;
   native shared-tail override; cardinals/diagonals/third-arg PASS.
 - [[evidence/p08-stick-angle-thunk-fix-rereview]] — **CURRENT:** focused

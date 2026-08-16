@@ -20,6 +20,12 @@ launcher Linux suficiente para selecionar ROM e configurações essenciais.
 
 ## Estado corrente
 
+**CURRENT P08 BLOCKER:** deterministic SIGSEGV after DEMO2
+([[../../plan/evidence/p08-attract-loop-after-demo2-crash]]).
+`INTRO → 335 → 278` succeed; T3 (CCL 314 player init) calls
+`bsrest_entrypoint_11` and `LOOKUP_FUNC(0x808003FC)` is
+`baflameline_entrypoint_5`. Level A; no fix.
+
 **P08 ACTIVE INTEGRATION STATE:** intro/Jiggy/type-4/warp OK;
 **visible attract/gameplay demo reproduced** (mode-5, map 335 Wooded
 Hollow). Hybrid F' PATCH 4 is independently CLASS A. PATCH 4 is accepted.
@@ -84,6 +90,7 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
+- [[../../plan/evidence/p08-attract-loop-after-demo2-crash]] (**CURRENT BLOCKER** — DEMO2 attract SIGSEGV; Level A)
 - [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] (historical USER_BUG_B one-actor diagnosis; corrected/superseded)
 - [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] (**CURRENT:** original-MIPS case-11 contract; actor refuted, global open)
 - [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS)
@@ -202,6 +209,7 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
+| [[../../plan/evidence/p08-attract-loop-after-demo2-crash]] | **CURRENT BLOCKER:** DEMO2 attract SIGSEGV; bsrest 0x808003FC → baflameline (Level A; no fix) |
 | [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | historical USER_BUG_B one-actor diagnosis; corrected/superseded |
 | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] | **CURRENT:** original-MIPS case-11 contract; chdiggerground actor REFUTED; global USER_BUG_B OPEN |
 | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first straight + first analog PASS; first demo fire-egg glidx 322 target collision volume resolved (TRUE_MISS_MARGIN = +36.85f, PROVEN NO HIT) |

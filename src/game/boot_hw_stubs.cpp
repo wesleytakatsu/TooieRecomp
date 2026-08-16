@@ -805,6 +805,11 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx) {
     if (text_start != 0 && mapping_size != 0) {
         unload_overlays(text_start, mapping_size);
     }
+    std::fprintf(stderr,
+                 "[tooie] ovl_unload: idx=%u ptr=0x%x text=0x%x size=0x%x\n",
+                 overlay_index, static_cast<uint32_t>(overlay_ptr),
+                 static_cast<uint32_t>(text_start), mapping_size);
+    std::fflush(stderr);
 
     const int32_t new_count = load_count - 1;
     const int32_t swapped = MEM_W(new_count * 4, kseg0_gpr(kAddr_D_80126738));

@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; first demo fire-egg at glidx 322 characterized as a collision-space miss (CLASS G, Level D); cinematic facing currently not reproducible by the user; T10 current regression REFUTED."
+description: "Estado autossuficiente: current P08 blocker is the DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline). Fire-egg miss, cinematic facing, and T10 results are preserved."
 status: evidence
 phase: P08
 updated: 2026-08-16
-tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input, stick-angle]
+tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, baflameline, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input, stick-angle]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
@@ -12,7 +12,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Active diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
+- Active diagnosis: [[p08-attract-loop-after-demo2-crash]] (**CURRENT BLOCKER**).
+- Preserved diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
@@ -67,6 +68,12 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 
 ## CURRENT_BLOCKER / NEXT PHASE WORK
 
+**CURRENT:** attract loop dies after DEMO2. `INTRO → 335 → 278` succeed;
+T3 (CCL 314 init, the record before CS intro 395) calls
+`bsrest_entrypoint_11` and `LOOKUP_FUNC(0x808003FC)` is
+`baflameline_entrypoint_5`. Level A. No fix.
+See [[p08-attract-loop-after-demo2-crash]].
+
 `func_80013B70` stick-angle secondary entry has been corrected
 ([[p08-stick-angle-thunk-fix-correction]]): native shared tail, strong-symbol bind,
 reproducing `$at/$r1 = 0x43340000` delay-slot clobber on all `y == 0` paths.
@@ -94,11 +101,13 @@ earliest C-up fire-egg at `glidx=322` has `TRUE_COLLISION_MISS_MARGIN = +36.85f`
 `USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
 
 Next steps in Phase P08:
-1. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**.
-2. Do not implement a facing fix. USER_BUG_B cinematic facing is
+1. Independent review of [[p08-attract-loop-after-demo2-crash]]; no
+   production fix in the diagnosis checkpoint.
+2. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**.
+3. Do not implement a facing fix. USER_BUG_B cinematic facing is
    currently not reproducible by the user; global is not proven resolved.
-3. Analog/gamepad validation of USER_BUG_A.
-4. High-FPS transform tagging; window options (`P08-T07`).
+4. Analog/gamepad validation of USER_BUG_A.
+5. High-FPS transform tagging; window options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -127,6 +136,9 @@ USER_BUG_B:                          CURRENTLY_NOT_REPRODUCIBLE_BY_USER
   ([[p08-forced-cinematic-facing-independent-review]]).
 P08_T10_SYNTHETIC_FLOW_CURRENT:      REFUTED as a current-HEAD regression;
                                      sequencer never injects later START skips
+ATTRACT_DEMO2_LOOP_CRASH:            PROVEN Level A
+  bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) = baflameline_entrypoint_5
+  T1 335 and T2 278 succeed; T3 314 init SIGSEGV EXIT=139
 ```
 
 ## RESOLVED_DO_NOT_REOPEN
@@ -157,9 +169,8 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-First demo shot miss discriminator is RESOLVED (`TRUE_COLLISION_MISS_MARGIN = +36.85f`, geometric miss proven).
-`USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
-Analog/gamepad validation of USER_BUG_A (P08-T06).
+Independent review of [[p08-attract-loop-after-demo2-crash]] (Level A).
+Do not implement a null-guard or skip-rest hack.
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -207,7 +218,8 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-demo-movement-precision-diagnosis]] — **CURRENT** first demo shot miss §16
+0. [[p08-attract-loop-after-demo2-crash]] — **CURRENT BLOCKER** DEMO2 attract SIGSEGV
+0. [[p08-demo-movement-precision-diagnosis]] — first demo shot miss §16 (preserved)
 0. [[p08-forced-cinematic-facing-diagnosis]] — USER_BUG_B historical; currently not reproducible
 0a. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
 0a. [[p08-stick-angle-thunk-fix-rereview]] — verdict A; blocker resolved
@@ -224,7 +236,7 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = NO (historical diagnostic probe reverted)
+CODE_CHANGED             = YES (compact [tooie-xition] + ovl_unload logs)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

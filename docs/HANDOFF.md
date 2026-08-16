@@ -1,16 +1,23 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition PASS; first demo fire-egg at glidx 322 is a CLASS G collision-space miss (Level D); cinematic facing currently not reproducible by the user; T10 current regression REFUTED; full controller still pending."
+description: "Estado global corrente do port: P08 current blocker is the deterministic attract-loop SIGSEGV after DEMO2 (bsrest 0x808003FC → baflameline). Fire-egg miss, cinematic facing, and T10 results are preserved."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-16
-tags: [tooie-recomp, handoff, p08, intro, attract, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle]
+tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle]
 ---
 
 # Handoff — TooieRecomp
 
 ## Prioridade atual
+
+**CURRENT P08 BLOCKER (2026-08-16):** deterministic attract-loop SIGSEGV
+after DEMO2. `INTRO → Wooded Hollow 335 → TDL 278` succeed; the next
+attract record (CCL 314, user-expected intro) dies in `mode=2` player
+init. `bsrest_entrypoint_11` `LOOKUP_FUNC(0x808003FC)` binds
+`baflameline_entrypoint_5`. Level A, no fix.
+See [[plan/evidence/p08-attract-loop-after-demo2-crash]].
 
 **P08 ACTIVE INTEGRATION STATE:** PATCH 4 is accepted and default ON. The
 `func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
@@ -81,17 +88,21 @@ comparison proves that the 180° freeze is original return-leg behavior for
 this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 ## NEXT
 
-1. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**
+1. Independent review of
+   [[plan/evidence/p08-attract-loop-after-demo2-crash]] (Level A).
+   Do not implement a guard/skip. Owner is the generator/metadata
+   same-section bind for unnamed `.bsrest` `0x808003FC`.
+2. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**
    ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15, §16, §17).
    First demo fire-egg (`glidx=322`) has `TRUE_COLLISION_MISS_MARGIN = +36.85f`
    versus the downhill `chdiggerground` collision sphere ($R_{\text{egg}}=38.00\text{f}, R_{\text{target}}=113.00\text{f}$, center at `(-5890.15, -504.61, 1601.84)`).
    `SHOULD_SWEEP_INTERSECT_TARGET_GEOMETRICALLY = NO` (PROVEN).
    World collision terminates the egg at `(-5912.92, -348.00, 1500.63)` against terrain triangle `0x8037bf94`.
    `USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
-2. Analog/gamepad validation of USER_BUG_A remains PENDING.
-3. File-select → live `mode=1` is **not** a current-HEAD frontend
+3. Analog/gamepad validation of USER_BUG_A remains PENDING.
+4. File-select → live `mode=1` is **not** a current-HEAD frontend
    regression (`CURRENT_T10_REGRESSION=REFUTED`).
-4. `USER_BUG_B_CINEMATIC_FACING=CURRENTLY_NOT_REPRODUCIBLE_BY_USER`.
+5. `USER_BUG_B_CINEMATIC_FACING=CURRENTLY_NOT_REPRODUCIBLE_BY_USER`.
    `USER_BUG_B_GLOBAL_PROVEN_RESOLVED=NO`. Do not diagnose another
    cinematic actor. Do not implement transform tagging.
 
@@ -192,7 +203,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (**CURRENT** — first demo shot miss §16)
+0. [[plan/evidence/p08-attract-loop-after-demo2-crash]] (**CURRENT BLOCKER**)
+0. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (first demo shot miss §16; preserved)
 0a. [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] (USER_BUG_B historical; currently not reproducible)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix]] (accepted stick-angle secondary-entry fix)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` blocker resolved)
