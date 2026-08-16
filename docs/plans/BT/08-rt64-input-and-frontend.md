@@ -149,7 +149,7 @@ Evidência corrente:
 ## Tarefas
 
 - [x] `P08-T01` Integrar RT64 e validar Vulkan nesta máquina.
-- [~] `P08-T02` Catalogar display lists/efeitos Tooie; scheduler DP/VI OK.
+- [x] `P08-T02` Catalogar display lists/efeitos Tooie; scheduler DP/VI OK ([[../../plan/evidence/p08-display-effect-catalog]]).
 - [x] `P08-T03` Reproduzir 4:3 e timing originais sem melhorias ativas
   ([[../../plan/evidence/p08-original-timing-4x3-baseline]]). 60Hz VI, 20/30Hz logic,
   30Hz animação, desacoplamento do host gfx e aspecto 4:3 validados ao vivo.
@@ -247,6 +247,7 @@ Evidência corrente:
 | [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]] | arbitragem Gemini×DeepSeek; struct/driver/order |
 | [[../../plan/evidence/p08-session-handoff]] | **CURRENT:** handoff para chat zerado |
 | [[../../plan/evidence/p08-original-timing-4x3-baseline]] | **CURRENT:** P08-T03 original timing/4:3 baseline; BLOCKED pending clean live measurements |
+| [[../../plan/evidence/p08-display-effect-catalog]] | **CURRENT:** P08-T02 catálogo de display lists e efeitos gráficos |
 | [[../../plan/evidence/p08-attract-actor-loop-diagnosis]] | freeze mechanism slot7 / C2AB8 |
 | [[../../plan/evidence/p08-type4-transition-semantics-audit]] | type-4 complete, warp consumido |
 | [[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]] | timeline histórica |

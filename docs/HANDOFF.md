@@ -15,7 +15,7 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 **PHASE P08 IMPLEMENTATION STATUS (Verdict B — ACTIVE / MANUAL_VALIDATION_PENDING, 2026-08-16):**
 - **Canonical Task Audit**:
   - `P08-T01` (RT64 / Vulkan): **DONE**
-  - `P08-T02` (Catalogar display lists/efeitos; scheduler DP/VI): **PARTIAL**
+  - `P08-T02` (Catalogar display lists/efeitos; scheduler DP/VI): **DONE** ([[plan/evidence/p08-display-effect-catalog]])
   - `P08-T03` (4:3 e timing originais): **DONE**
   - `P08-T04` (Path SDL/RecompFrontend): **DONE**
   - `P08-T05` (Defaults/persistência): **DONE**

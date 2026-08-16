@@ -64,7 +64,7 @@ VK_ICD_FILENAMES=/nonexistent.json TOOIE_NO_GUI_DIALOG=1 timeout 3 ./build/Tooie
 | Task | Canonical Task Description | Status | Evidence / Verification |
 |---|---|---|---|
 | **P08-T01** | Integrar RT64 e validar Vulkan nesta máquina. | **DONE** | RT64 Vulkan/Plume linked and operational in `TooieRecompiled` |
-| **P08-T02** | Catalogar display lists/efeitos Tooie; scheduler DP/VI OK. | **PARTIAL** | DP/VI scheduler and projection submission OK (`tests/matrix_submission_test.cpp`, `91bf65f`); full catalog of game-wide visual effects is ongoing into P09 |
+| **P08-T02** | Catalogar display lists/efeitos Tooie; scheduler DP/VI OK. | **DONE** | [[p08-display-effect-catalog]] (28 effect families cataloged, RDP/RSP mapped, P09 matrix established, matrix submission test PASS) |
 | **P08-T03** | Reproduzir 4:3 e timing originais sem melhorias ativas | **DONE** | [[p08-original-timing-4x3-baseline]] (60Hz VI, 20/30Hz logic, 30Hz animation, host decouple ~935 Hz, and 4:3 content aspect confirmed) |
 | **P08-T04** | Integrar path SDL/RecompFrontend do BanjoRecomp. | **DONE** | RecompFrontend event/render callbacks, RmlUi backend, and config tabs integrated |
 | **P08-T05** | Defaults/persistência BanjoRecomp; `controls.json` lazy. | **DONE** | Config persistence in `recomp::config` (`config.toml`) and lazy controller profile creation |
