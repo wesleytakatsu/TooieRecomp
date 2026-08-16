@@ -303,13 +303,6 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
         exit_error("Failed to create window: %s\n", SDL_GetError());
     }
 
-    auto& ws = tooie_window::get_window_state();
-    ws.logical_width = init_w;
-    ws.logical_height = init_h;
-    SDL_GetWindowSizeInPixels(window, &ws.pixel_width, &ws.pixel_height);
-    tooie_window::calculate_drawable_scale(ws.logical_width, ws.logical_height, ws.pixel_width, ws.pixel_height, ws.scale_x, ws.scale_y);
-    ws.current_display = tooie_window::validate_display_index(SDL_GetWindowDisplayIndex(window), SDL_GetNumVideoDisplays());
-
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(window, &wmInfo);
@@ -1169,10 +1162,15 @@ int main(int argc, char** argv) {
         );
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[tooie-error] Fatal exception during execution: %s\n", e.what());
+        const std::string what_str = e.what();
+        const bool is_renderer_failure = what_str.find("renderer") != std::string::npos ||
+                                         what_str.find("RT64") != std::string::npos ||
+                                         what_str.find("graphics") != std::string::npos;
         tooie_error::report_error({
-            tooie_error::ErrorClass::RT64_INIT_FAILED,
-            "Banjo-Tooie: Graphics Error",
-            "A fatal error occurred while initializing or running the graphics subsystem.",
+            is_renderer_failure ? tooie_error::ErrorClass::RT64_INIT_FAILED : tooie_error::ErrorClass::UNKNOWN_GRAPHICS_ERROR,
+            is_renderer_failure ? "Banjo-Tooie: Graphics Error" : "Banjo-Tooie: Runtime Error",
+            is_renderer_failure ? "A fatal error occurred while initializing or running the graphics subsystem."
+                                : "A fatal runtime exception occurred during execution.",
             e.what()
         });
         stop_launcher_music_preview();

@@ -4,12 +4,6 @@
 
 namespace tooie_window {
 
-static WindowState g_window_state{};
-
-WindowState& get_window_state() {
-    return g_window_state;
-}
-
 int validate_display_index(int display_index, int num_displays) {
     if (num_displays <= 0) {
         return 0;
@@ -78,44 +72,6 @@ float calculate_cutscene_aspect_ratio(banjo::CutsceneAspectRatioMode mode, int w
                 return original_aspect;
             }
             return std::max(static_cast<float>(width) / static_cast<float>(height), original_aspect);
-    }
-}
-
-void handle_window_event(const SDL_WindowEvent& event, WindowState& state) {
-    switch (event.event) {
-        case SDL_WINDOWEVENT_SHOWN:
-            state.visible = true;
-            break;
-        case SDL_WINDOWEVENT_HIDDEN:
-            state.visible = false;
-            break;
-        case SDL_WINDOWEVENT_MINIMIZED:
-            state.minimized = true;
-            break;
-        case SDL_WINDOWEVENT_MAXIMIZED:
-        case SDL_WINDOWEVENT_RESTORED:
-            state.minimized = false;
-            break;
-        case SDL_WINDOWEVENT_FOCUS_GAINED:
-            state.focused = true;
-            break;
-        case SDL_WINDOWEVENT_FOCUS_LOST:
-            state.focused = false;
-            break;
-        case SDL_WINDOWEVENT_RESIZED:
-        case SDL_WINDOWEVENT_SIZE_CHANGED:
-            state.logical_width = event.data1;
-            state.logical_height = event.data2;
-            sanitize_window_dimensions(state.logical_width, state.logical_height);
-            break;
-        case SDL_WINDOWEVENT_MOVED:
-            // Query display index from window or coordinates
-            break;
-        case SDL_WINDOWEVENT_DISPLAY_CHANGED:
-            state.current_display = event.data1;
-            break;
-        default:
-            break;
     }
 }
 

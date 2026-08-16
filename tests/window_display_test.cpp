@@ -153,55 +153,6 @@ static void test_cutscene_aspect_ratio_modes() {
     TEST_ASSERT(std::abs(ar - orig_4_3) < 1e-4f, "Cutscene Full on 0x0 returns 4:3");
 }
 
-static void test_window_events_and_focus_state() {
-    tooie_window::WindowState state{};
-    state.focused = true;
-    state.visible = true;
-    state.minimized = false;
-    state.current_display = 0;
-
-    // Focus lost event
-    SDL_WindowEvent event{};
-    event.event = SDL_WINDOWEVENT_FOCUS_LOST;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(!state.focused, "FOCUS_LOST updates focused to false");
-
-    // Focus gained event
-    event.event = SDL_WINDOWEVENT_FOCUS_GAINED;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(state.focused, "FOCUS_GAINED updates focused to true");
-
-    // Minimize event
-    event.event = SDL_WINDOWEVENT_MINIMIZED;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(state.minimized, "MINIMIZED updates minimized to true");
-
-    // Restore event
-    event.event = SDL_WINDOWEVENT_RESTORED;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(!state.minimized, "RESTORED clears minimized state");
-
-    // Resize event
-    event.event = SDL_WINDOWEVENT_RESIZED;
-    event.data1 = 1280;
-    event.data2 = 720;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(state.logical_width == 1280 && state.logical_height == 720, "RESIZED updates logical dimensions to 1280x720");
-
-    // Resize to 0x0 clamped
-    event.event = SDL_WINDOWEVENT_SIZE_CHANGED;
-    event.data1 = 0;
-    event.data2 = 0;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(state.logical_width == 320 && state.logical_height == 240, "SIZE_CHANGED 0x0 clamped to 320x240");
-
-    // Display changed event
-    event.event = SDL_WINDOWEVENT_DISPLAY_CHANGED;
-    event.data1 = 2;
-    tooie_window::handle_window_event(event, state);
-    TEST_ASSERT(state.current_display == 2, "DISPLAY_CHANGED updates current_display to 2");
-}
-
 int main() {
     std::printf("=== Running tooie_window / P08-T07 Unit Tests ===\n");
     test_display_index_validation();
@@ -209,7 +160,6 @@ int main() {
     test_drawable_scale_calculation();
     test_aspect_ratio_safety_and_modes();
     test_cutscene_aspect_ratio_modes();
-    test_window_events_and_focus_state();
     std::printf("=== PASS: %d/%d assertions passed ===\n", g_pass_count, g_test_count);
     return 0;
 }

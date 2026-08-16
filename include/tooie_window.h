@@ -6,26 +6,7 @@
 #include "ultramodern/config.hpp"
 #include "banjo_config.h"
 
-#ifdef _WIN32
-#include "SDL.h"
-#else
-#include "SDL2/SDL.h"
-#endif
-
 namespace tooie_window {
-
-struct WindowState {
-    bool focused = true;
-    bool visible = true;
-    bool minimized = false;
-    int current_display = 0;
-    int logical_width = 1600;
-    int logical_height = 900;
-    int pixel_width = 1600;
-    int pixel_height = 900;
-    float scale_x = 1.0f;
-    float scale_y = 1.0f;
-};
 
 // Validates display index against available display count.
 // Returns a valid display index in [0, num_displays - 1], or 0 if num_displays <= 0.
@@ -45,12 +26,6 @@ float calculate_target_aspect_ratio(ultramodern::renderer::AspectRatio ar_option
 // Computes cutscene aspect ratio according to configured mode.
 // Guarantees safe aspect computation without zero division.
 float calculate_cutscene_aspect_ratio(banjo::CutsceneAspectRatioMode mode, int width, int height, float original_aspect = 4.0f / 3.0f);
-
-// Handles SDL_WINDOWEVENT events to track focus, resize, minimize, display change, etc.
-void handle_window_event(const SDL_WindowEvent& event, WindowState& state);
-
-// Global window state accessor for TooieRecomp frontend.
-WindowState& get_window_state();
 
 } // namespace tooie_window
 
