@@ -140,12 +140,10 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 The `keep old yaw via -1` hypothesis is REFUTED. The original-MIPS case-11
 comparison proves that the 180° freeze is original return-leg behavior for
 this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
+
 ## NEXT
 
-1. Independent review of
-   [[plan/evidence/p08-attract-loop-after-demo2-crash]] (Level A).
-   Do not implement a guard/skip. Owner is the generator/metadata
-   same-section bind for unnamed `.bsrest` `0x808003FC`.
+1. Implement and validate P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling). Attract DEMO2 crash is resolved and accepted (verdict B; [[plan/evidence/p08-attract-loop-after-demo2-crash]]).
 2. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**
    ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15, §16, §17).
    First demo fire-egg (`glidx=322`) has `TRUE_COLLISION_MISS_MARGIN = +36.85f`
@@ -257,7 +255,7 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-attract-loop-after-demo2-crash]] (**CURRENT BLOCKER**)
+0. [[plan/evidence/p08-attract-loop-after-demo2-crash]] (**RESOLVED and ACCEPTED** — DEMO2 attract SIGSEGV)
 0. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (first demo shot miss §16; preserved)
 0a. [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] (USER_BUG_B historical; currently not reproducible)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix]] (accepted stick-angle secondary-entry fix)

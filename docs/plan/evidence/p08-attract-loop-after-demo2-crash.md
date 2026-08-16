@@ -110,8 +110,7 @@ ATTRACT_DEMO2_CRASH:                        RESOLVED
 STATUS:                                     ACCEPTED with non-blocking runtime-environment caveat
 ```
 
-This is the current P08 blocker. Fire-egg collision, cinematic-facing, and
-T10 results are preserved and not reopened.
+This was the P08 attract-loop blocker, now resolved and accepted. Fire-egg collision, cinematic-facing, and T10 results are preserved and not reopened.
 
 ## 1. User observation vs actual sequence
 

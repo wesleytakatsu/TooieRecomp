@@ -105,13 +105,12 @@ earliest C-up fire-egg at `glidx=322` has `TRUE_COLLISION_MISS_MARGIN = +36.85f`
 `USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
 
 Next steps in Phase P08:
-1. Independent review of [[p08-attract-loop-after-demo2-crash]]; no
-   production fix in the diagnosis checkpoint.
+1. Attract DEMO2 crash fix independently accepted (verdict B; [[p08-attract-loop-after-demo2-crash]]).
 2. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**.
 3. Do not implement a facing fix. USER_BUG_B cinematic facing is
    currently not reproducible by the user; global is not proven resolved.
 4. Analog/gamepad validation of USER_BUG_A.
-5. High-FPS transform tagging; window options (`P08-T07`).
+5. P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling).
 
 ## ROOT_CAUSE_STATUS
 
@@ -231,9 +230,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
-
-Independent review of [[p08-attract-loop-after-demo2-crash]] (Level A).
-Do not implement a null-guard or skip-rest hack.
+Implement and validate P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling). Do not reopen resolved items.
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -282,7 +279,7 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-attract-loop-after-demo2-crash]] — **CURRENT BLOCKER** DEMO2 attract SIGSEGV
+0. [[p08-attract-loop-after-demo2-crash]] — **RESOLVED and ACCEPTED** DEMO2 attract SIGSEGV (Level A, verdict B)
 0. [[p08-demo-movement-precision-diagnosis]] — first demo shot miss §16 (preserved)
 0. [[p08-forced-cinematic-facing-diagnosis]] — USER_BUG_B historical; currently not reproducible
 0a. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
