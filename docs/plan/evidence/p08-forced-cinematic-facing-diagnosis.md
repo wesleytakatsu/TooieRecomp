@@ -191,6 +191,18 @@ Remaining discriminator to reach Level A: on the first reverse tick, does
 `func_80802760` return `-1` (keep old yaw) or a live index whose
 `func_800F5A00` point still sits at the outbound end?
 
+**RESOLVED (2026-08-16, DeepSeek V4 Flash Free / OpenCode Zen):**
+`func_80802760` returns node index **0** (`B_LIVE_NODE`) on all 3438
+captured calls across the whole run — outbound, the `0x98bb1941 ->
+0x98bb1942` flip, and the entire return leg. It **never** returns `-1`
+(`A_KEEP_OLD`, zero occurrences). See
+[[p08-forced-cinematic-facing-independent-review]] for the full this-run
+dynamic capture. The `keep old yaw via -1` path is
+therefore REFUTED; the return leg runs dispatch case 11
+(`u72=0x3008` -> `L_80800A3C`) which moves the digger back without writing
+`unk54`/`rotation.y`. Whether the original BT return-leg MIPS writes
+`unk54` remains UNKNOWN (no ROM/ELF in workspace to disassemble).
+
 ## 7. 180° / sideways / 360°
 
 ```text
@@ -316,3 +328,12 @@ independent review did not establish the original return-facing contract and
 did not capture the selected actor's node index discriminator. See
 [[p08-forced-cinematic-facing-independent-review]]. No production fix was
 implemented.
+
+**DISCRIMINATOR RESOLVED (2026-08-16, DeepSeek V4 Flash Free):**
+`func_80802760` returns node 0 (`B_LIVE_NODE`) on all 3438 calls in a
+this-run dynamic capture; `A_KEEP_OLD` (`-1`) is REFUTED (zero occurrences).
+The 180° freeze originates in the state-`0x98bb1942` return-leg dispatch
+case 11 (`L_80800A3C`), which moves the digger back without writing
+`unk54`/`rotation.y`. Original-MIPS intent remains UNKNOWN (no ROM/ELF in
+workspace). See the SELECTED-CALL DISCRIMINATOR section of the independent
+review.

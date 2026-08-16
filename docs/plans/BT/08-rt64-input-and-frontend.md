@@ -45,6 +45,12 @@ The earlier `USER_BUG_B` one-actor Level B classification is
 return-facing contract and selected node index remain **UNKNOWN**. See
 [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]].
 `USER_BUG_B_GLOBAL` remains **OPEN**; no fix is implemented.
+The selected node discriminator is **RESOLVED** (2026-08-16, DeepSeek V4
+Flash Free): `func_80802760` returns node 0 (`B_LIVE_NODE`) on all 3438
+captured calls and never `-1` (`A_KEEP_OLD` REFUTED); the 180° freeze is
+produced by the return-leg dispatch case 11 (`u72=0x3008` -> `L_80800A3C`)
+which moves the digger back without writing `unk54`/`rotation.y`. Original
+return-leg MIPS intent remains UNKNOWN (no ROM/ELF in workspace).
 The historical verdict C and its narrow missing `$at` side-effect finding
 are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];

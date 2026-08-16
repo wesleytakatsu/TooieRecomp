@@ -47,6 +47,28 @@ the reviewed control flow; no fix was implemented.
 
 See [[plan/evidence/p08-forced-cinematic-facing-independent-review]].
 `USER_BUG_B_THIS_ACTOR=UNKNOWN`; `USER_BUG_B_GLOBAL=OPEN`; `ROOT_CAUSE_LEVEL=C`.
+
+## P08 forced-facing node discriminator (2026-08-16, DeepSeek V4 Flash Free)
+
+The selected-call discriminator is now RESOLVED via a this-run dynamic
+capture of `func_80802760_sucoaster` (strong-symbol override, env-gated,
+reverted before checkpoint):
+
+```text
+FUNC_80802760_RETURNS:  0 (node index 0) on all 3438 calls
+NODE_CASE:              B_LIVE_NODE — A_KEEP_OLD (-1) REFUTED (zero)
+RETURN_LEG_HANDLER:     state 0x98bb1942 -> dispatch case 11 (u72=0x3008,
+                        L_80800A3C) -> moves digger back WITHOUT writing
+                        unk54/rotation.y
+FUNC_80802760_GENERATED_MATCH: YES (funcs_262.c body structurally faithful)
+ORIGINAL_MIPS_INTENT:   UNKNOWN (no ROM/ELF in workspace to disassemble)
+FIX_IMPLEMENTED:        NO
+```
+
+The `keep old yaw via -1` hypothesis is REFUTED. The 180° freeze is the
+return-leg handler never updating yaw during the reverse walk. Whether the
+original BT code does the same is undecidable here without an original-MIPS
+dump. No fix is authorized.
 ## NEXT
 
 1. ~~First straight & first later analog transition~~ **COMPLETE (2026-08-15)**

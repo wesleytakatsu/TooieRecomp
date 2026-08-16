@@ -81,8 +81,10 @@ desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-
 velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
 (USER_BUG_B) is **REVIEWED_ONE_ACTOR** (Level C;
 [[p08-forced-cinematic-facing-independent-review]]): Wooded Hollow
-`chdiggerground` return state is observed, but the original facing contract
-and selected node discriminator remain UNKNOWN.
+`chdiggerground` return state is observed; `func_80802760` discriminator is
+RESOLVED (returns node 0, `B_LIVE_NODE`, never -1); the 180° freeze is the
+return-leg case-11 handler not writing `unk54`/yaw; the original facing
+contract remains UNKNOWN (no original-MIPS dump in workspace).
 
 Next steps in Phase P08:
 1. ~~First straight & first later analog transition~~ **COMPLETE**.
@@ -111,8 +113,10 @@ DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog t
   glrecord cadence, deadzone remap, bastick distance, func_80013ABC table arcsin,
   quadrant correction, camera-relative yaw, yaw_update easing, and velocity integration.
   Later demo-path visual residual: DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
-USER_BUG_B:                          LEVEL C — return-facing contract and
-  selected node discriminator UNKNOWN. See
+USER_BUG_B:                          LEVEL C — func_80802760 discriminator
+  RESOLVED (returns node 0, B_LIVE_NODE; A_KEEP_OLD REFUTED); return-leg
+  handler is dispatch case 11 (L_80800A3C) which never writes unk54/yaw.
+  Original-MIPS intent UNKNOWN (no ROM/ELF in workspace). See
   [[p08-forced-cinematic-facing-independent-review]].
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
@@ -146,8 +150,12 @@ Do not reopen these without new evidence.
 ## NEXT_SINGLE_ACTION
 
 Independent review of the previously reported USER_BUG_B sucoaster facing
-observation is complete. The actor's original return-facing contract and
-selected node discriminator remain **UNKNOWN**; see
+observation is complete. The selected node discriminator is RESOLVED:
+`func_80802760` returns node 0 (`B_LIVE_NODE`) on all 3438 calls and never
+`-1` (`A_KEEP_OLD` REFUTED). The 180° freeze is produced by the return-leg
+dispatch case 11 (`L_80800A3C`), which moves the digger back without writing
+`unk54`/`rotation.y`. The actor's original return-facing contract remains
+**UNKNOWN** (no original-MIPS dump available in this workspace); see
 [[p08-forced-cinematic-facing-independent-review]]. No implementation is
 authorized.
 Do not diagnose a second cinematic actor. Demo-path residual stays deferred.
@@ -158,11 +166,14 @@ Do not diagnose a second cinematic actor. Demo-path residual stays deferred.
 SELECTED_ACTOR:        Wooded Hollow chdiggerground return
 RETURN_STATE:          0x98bb1942
 RETURN_ANIMATION:      0xc3aa1065 -> 0xc3ab8000
-MOVEMENT_INTENTION:    UNKNOWN
-EXPECTED_FACING:       UNKNOWN
-NODE_DISCRIMINATOR:    NOT CAPTURED for selected call
+MOVEMENT_INTENTION:    OTHER — position integrates backward (294.21°);
+                       return-leg handler (dispatch case 11) never writes
+                       unk54/rotation.y
+EXPECTED_FACING:       UNKNOWN (no original-MIPS dump in workspace)
+NODE_DISCRIMINATOR:    RESOLVED — func_80802760 returns node 0 (B_LIVE_NODE)
+                       on all 3438 calls; A_KEEP_OLD (-1) REFUTED (0)
 ROOT_CAUSE_LEVEL:      C
-USER_BUG_B_THIS_ACTOR: UNKNOWN
+USER_BUG_B_THIS_ACTOR: UNKNOWN (not PROVEN, not REFUTED)
 USER_BUG_B_GLOBAL:     OPEN
 FIX_IMPLEMENTED:       NO
 ```
@@ -172,6 +183,8 @@ Evidence: [[p08-forced-cinematic-facing-independent-review]].
 ```text
 REVIEW_CHECKPOINT_COMMIT: b19bcf9
 REVIEW_CHECKPOINT_PUSHED: YES
+DEEPSEEK_DISCRIMINATOR_COMMIT: (this checkpoint; docs-only)
+DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 ```
 
 ## FILES_TO_READ_NEXT

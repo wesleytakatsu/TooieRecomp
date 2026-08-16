@@ -200,3 +200,172 @@ NEXT_SINGLE_ACTION: run only the selected-call discriminator again with a
                     stable actor identity, or choose a different user-confirmed
                     forced/cinematic mismatch; do not implement a fix here
 ```
+
+## SELECTED-CALL DISCRIMINATOR — DeepSeek V4 Flash Free / OpenCode Zen
+
+```text
+BASE_HEAD:          337f6dd0a7c82a6eadf3a5a162dad6d0c165c877
+MODEL:              DeepSeek V4 Flash Free (opencode/deepseek-v4-flash-free)
+MODE:               narrow dynamic runtime capture, this-run actor identity
+FIX_IMPLEMENTED:    NO
+```
+
+### Method
+
+A strong-symbol diagnostic override of `func_80802760_sucoaster` was compiled
+into the TooieRecompiled target (`src/game/p08_dig_capture.cpp`, env-gated on
+`TOOIE_DIAG_FORCED_FACING=1`). `func_80802760` is the path helper shared by
+every sucoaster-overlay state handler; it returns either a live path-node
+index (`B_LIVE_NODE`) or `-1` (`A_KEEP_OLD`). The override replicates the
+generated body instruction-for-instruction (addiu/sw $ra; lw v0,0x18(a0);
+sll t7,v0,12; bgez → 0x8008A240(v0>>28)+0x8010D290(MEM_W(v0+0x3C)), else
+0x800F54E4), records `v0` before restoring it, and does not perturb guest
+state. All 8 call sites of `func_80802760` (grep-verified) resolve to the
+strong symbol, so **every** invocation in the run is captured — no stale heap
+address is used; the actor is identified by its sucoaster/path pointer, its
+state `0x98bb1941`/`0x98bb1942`, and its position in the known reversal
+region `x≈-2530..-2550, z≈972..980`.
+
+```text
+CURRENT_RUN_ACTOR_POINTER:     0x801c63ec -> 0x801c615c (dig6; same logical
+                               instance, realloc after state flip)
+CURRENT_RUN_SUCOASTER_POINTER: path 0x8020fef0 (digger path, outbound AND
+                               return leg), also 0x8020fc40 in return window
+IDENTITY_METHOD:               dynamic this-run (actor sys 0x80085C98
+                               chdiggerground, state 0x98bb1941/42, reversal-
+                               region position, digger path pointer); no
+                               fixed historical address
+```
+
+### Result — all 3438 captured calls across the whole run
+
+```text
+TOTAL_FUNC_80802760_CALLS:     3438 (dig4/dig5/dig6 runs, consistent)
+FUNC_80802760_RETURNS:         0  (node index 0)  — 3438 / 3438 calls
+A_KEEP_OLD (-1) OCCURRENCES:   0  (never)
+NODE_CASE:                     B_LIVE_NODE
+NODE_INDEX:                    0
+```
+
+Every invocation of `func_80802760` in the run — outbound leg, the
+`0x98bb1941 -> 0x98bb1942` state flip, and the entire sustained return leg
+(state `0x98bb1942`, gfx ticks ≈54356..56150 and beyond, path
+`0x8020fef0`) — returns node index **0**, never `-1`. Sample:
+
+```text
+[dig02760] tick=54805 path=8020fef0 path18=10c00000 v0=0 node_case=B_LIVE_NODE
+[dig02760] tick=55116 path=8020fef0 path18=10c00000 v0=0 node_case=B_LIVE_NODE
+... (all subsequent return-leg samples identical: v0=0)
+```
+
+### Case split resolution
+
+```text
+CASE_A_KEEP_OLD (v0 == -1):    REFUTED — zero occurrences in 3438 calls
+CASE_B_LIVE_NODE (v0 != -1):   PROVEN — node index 0 on every call,
+                               including the entire return leg
+```
+
+Because `func_80802760` always returns node 0 (not `-1`), the `keep old yaw`
+branch of `func_8080264C_sucoaster` (funcs_241.c:3772 `if (v0 != -1)`
+hand-off to `func_8010CD50`) is **never** the source of the frozen 114.21°:
+during the outbound leg `func_8080264C` always hands node 0 to
+`func_8010CD50`, and during the return leg `func_8080264C` is not called at
+all — the return leg runs a different handler (see below) that moves the
+digger back along the path without updating `Actor.rotation.y`/`unk54`.
+
+### Return-leg dispatch identification
+
+```text
+STATE_0x98BB1942_DISPATCH_KEY: u72 = 0x3008   (actor+0x72, halfword)
+DISPATCH_CASE:                 (0x3008 >> 10) - 1 = 11 -> L_80800A3C
+RETURN_LEG_HANDLER:            func_8080027C_sucoaster case 11
+                               (funcs_151.c:4683) -> sucoaster_entrypoint_19,
+                               func_80101DDC, func_80107070
+FUNC_8080264C_CALLED_ON_RETURN: NO (never called after state flip)
+```
+
+The facing probe captured `u72=0x3008` exclusively in state `0x98bb1942`
+(`[facing] ... u72=3008 ...`), i.e. the return leg is dispatched to case 11,
+whose chain does **not** call `func_8080264C`. The digger continues to query
+`func_80802760` on its path in the return window and gets node 0 every time,
+but no path-yaw writer updates `unk54`/`rotation.y` to the 294.21° travel
+heading — hence the exact 180° freeze.
+
+### Node-point note (not asserted)
+
+The diagnostic also dumped `node_pt` from the `func_800F5A00` table
+(`0x8013<<16 + 0x5490 + node*4`, matching funcs_393.c:5392). For node 0 the
+raw slot was read, but the resolved point goes through
+`func_800F3BB0 -> func_8009C128`, which the capture did not call; the
+dumped `pt=` bytes are therefore NOT asserted as the node position.
+
+```text
+NODE_POINT:        NOT ASSERTED (resolved via func_8009C128; not captured)
+NODE_HEADING:      NOT ASSERTED
+TRAVEL_HEADING:    294.21° stable return sample (previous review)
+```
+
+### Original-MIPS / generated review
+
+```text
+FUNC_80802760_GENERATED_MATCH:  YES — funcs_262.c:2679 body is structurally
+                                faithful: bgez on bit-19 sign of path+0x18,
+                                delay slots present (nop / srl / lw), two
+                                sub-branches (0x800F54E4 vs
+                                0x8008A240+0x8010D290), return v0. No ROM/
+                                original-MIPS disassembly available in the
+                                workspace to disassemble 0x80802760 directly
+                                (no .z64/.elf present); classification is
+                                based on generated-body structure + runtime
+                                return value, not an external MIPS dump.
+ORIGINAL_REVERSE_FACING_MECHANISM: UNKNOWN — no original dump to prove
+                                whether the original keeps yaw on the
+                                outbound node during return travel.
+RETURN_MOVEMENT_INTENTION:      OTHER — position integrates backward
+                                (294.21°) while yaw/unk54 stay frozen at the
+                                last outbound value (114.21°); the return-leg
+                                handler (case 11) does not write unk54.
+ORIGINAL_EXPECTED_FACING_RELATIVE_TO_TRAVEL: UNKNOWN (180° observed, but no
+                                original evidence that the intended facing is
+                                0° relative to the return travel).
+```
+
+### Decision
+
+```text
+USER_BUG_B_THIS_ACTOR:  UNKNOWN — not PROVEN, not REFUTED. The recomp runs
+                        the original path helper faithfully (node 0 always)
+                        and the return-leg case-11 handler moves the digger
+                        back without updating unk54/rotation.y. Whether the
+                        original BT code does the same (i.e. "back into the
+                        burrow" is intended) or updates yaw cannot be decided
+                        without an original-MIPS disassembly of the return
+                        leg. No ROM/ELF is present in this workspace.
+USER_BUG_B_GLOBAL:      OPEN
+ROOT_CAUSE_LEVEL:       C — one discriminator remains: original return-leg
+                        MIPS (does it write unk54 on state 0x98bb1942?).
+                        Case A (func_80802760 returning -1) is now REFUTED.
+FIX_OWNER_CANDIDATE:    NONE — no fix justified by this evidence
+FIX_IMPLEMENTED:        NO
+```
+
+### Tests / validation
+
+```text
+STICK_ANGLE_TEST:       PASS
+MATRIX_SUBMISSION_TEST: PASS
+INPUT_DIRECTION_TEST:   PASS
+BCF28_TEST:             PASS
+CORE1_RA_TEST:          PASS
+TOOIE_BUILD:            PASS
+MARKDOWN_VAULT_AUDIT:   PASS
+COMMIT:                 (docs-only checkpoint; see handoff)
+PUSHED:                 YES
+WORKTREE:               documentation-only; diagnostic override reverted
+```
+
+The diagnostic override (`src/game/p08_dig_capture.cpp`, CMakeLists entry,
+`u72` probe in `syscall_handler.cpp`) was **reverted** before this checkpoint.
+Runs consistently end in the pre-existing later-attract SIGSEGV (EXIT=139),
+which is not facing evidence.
