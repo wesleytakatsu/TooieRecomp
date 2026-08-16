@@ -205,9 +205,9 @@ CORE1_RA_TEST:          PASS
 TOOIE_BUILD:            PASS
 MARKDOWN_VAULT_AUDIT:   PASS_WITH_PREEXISTING_WARNINGS (errors=0; 50 warnings
                         across 118 files; no changed-file error identified)
-COMMIT:                 pending
-PUSHED:                 NO
-CHECKPOINT_NEW_HEAD:    pending
+COMMIT:                 902348f (semantic review checkpoint)
+PUSHED:                 YES
+CHECKPOINT_NEW_HEAD:    902348f (semantic review checkpoint)
 WORKTREE:               documentation-only changes; no production-code fix
 ```
 
@@ -366,8 +366,8 @@ BCF28_TEST:             PASS
 CORE1_RA_TEST:          PASS
 TOOIE_BUILD:            PASS
 MARKDOWN_VAULT_AUDIT:   PASS
-COMMIT:                 pending docs-only checkpoint
-PUSHED:                 NO
+COMMIT:                 902348f (semantic review checkpoint)
+PUSHED:                 YES
 WORKTREE:               documentation-only; diagnostic override reverted
 ```
 

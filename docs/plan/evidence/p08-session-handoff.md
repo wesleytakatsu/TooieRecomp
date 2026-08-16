@@ -193,8 +193,8 @@ NEXT_SINGLE_ACTION:               select a different user-confirmed actor
 Evidence: [[p08-forced-cinematic-facing-independent-review]].
 
 ```text
-REVIEW_CHECKPOINT_COMMIT: pending
-REVIEW_CHECKPOINT_PUSHED: NO
+REVIEW_CHECKPOINT_COMMIT: 902348f
+REVIEW_CHECKPOINT_PUSHED: YES
 DEEPSEEK_DISCRIMINATOR_COMMIT: (this checkpoint; docs-only)
 DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 ```
