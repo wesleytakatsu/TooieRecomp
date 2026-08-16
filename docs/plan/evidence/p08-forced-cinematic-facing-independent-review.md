@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, forced-facing, cinematic, chdiggerground, sucoaster, i
 ## Review boundary
 
 ```text
-BASE_HEAD:       a68e8a9d047098d51ef8b5bfda875b319c9b5b2f
+BASE_HEAD:       3aa3ebbbdfa156f03e02c81d92c0e22a34f18f7e
 MODEL:           GPT-5.6 Luna
 REASONING:       X-HIGH
 SELECTED_ACTOR:  Wooded Hollow gsattract mode 5, overlay 219 chdiggerground
@@ -31,19 +31,18 @@ actor is required to face its return travel.
 RETURN_STATE:                                0x98bb1942
 RETURN_ANIMATION:                            0xc3aa1065 at transition,
                                              0xc3ab8000 during sustained return
-RETURN_MOVEMENT_INTENTION:                   UNKNOWN
-ORIGINAL_EXPECTED_FACING_RELATIVE_TO_TRAVEL: UNKNOWN
-USER_BUG_B_THIS_ACTOR:                       UNKNOWN
+RETURN_MOVEMENT_INTENTION:                   PROVEN — reverse position update
+ORIGINAL_EXPECTED_FACING_RELATIVE_TO_TRAVEL: PROVEN — yaw/unk54 are preserved
+USER_BUG_B_THIS_ACTOR:                       REFUTED
 USER_BUG_B_GLOBAL:                           OPEN
-ROOT_CAUSE_LEVEL:                            C
+ROOT_CAUSE_LEVEL:                            R
 ```
 
 The selected actor changes from outbound state `0x98bb1941` to return state
 `0x98bb1942`. Its animation also changes (`0xc3a74406`/outbound samples to
-`0xc3aa1065`, then `0xc3ab8000`). That proves a real state/animation
-transition, but animation identity alone does not prove `FORWARD_WALK` or
-`BACKWARD_WALK`; no original state-table contract was found that authorizes
-that inference.
+`0xc3aa1065`, then `0xc3ab8000`). The original case-11 MIPS now establishes
+the missing contract: the return path invokes the position-update chain while
+leaving the actor's yaw/`unk54` unchanged.
 
 The first reverse sample in the current diagnostic run was approximately:
 
@@ -65,9 +64,10 @@ yaw/unk54:  114.21 degrees
 delta:      180.00 degrees
 ```
 
-Therefore the correct semantic answer is not “the recomp is wrong” and not
-“the actor is intentionally backward” yet. The original contract remains
-`UNKNOWN`.
+Therefore the exact 180° return-facing observation is original Banjo-Tooie
+semantics for this actor/state, not a recompilation defect. This conclusion
+is limited to `chdiggerground`; `USER_BUG_B_GLOBAL` remains open for other
+user-confirmed cinematic actors.
 
 ## Narrow runtime discriminator
 
@@ -79,10 +79,10 @@ hard-coded address from an earlier diagnostic run was not stable, while the
 facing probe did reach the same logical scene and transition.
 
 ```text
-NODE_INDEX_ON_LAST_OUTBOUND_TICK:  UNKNOWN
-NODE_INDEX_ON_FIRST_REVERSE_TICK:  UNKNOWN
-FUNC_80802760_RETURNS:              UNKNOWN for selected actor
-NODE_CASE:                          OTHER (selected call not captured)
+NODE_INDEX_ON_LAST_OUTBOUND_TICK:  0 (DeepSeek capture; 3438/3438 calls)
+NODE_INDEX_ON_FIRST_REVERSE_TICK:  0 (same selected-call capture)
+FUNC_80802760_RETURNS:              0; never -1
+NODE_CASE:                          B_LIVE_NODE; A_KEEP_OLD REFUTED
 NODE_POINT:                         UNKNOWN
 ACTOR_POS:                          captured by facing probe; see samples above
 NODE_HEADING:                       UNKNOWN
@@ -90,9 +90,8 @@ TRAVEL_HEADING:                     301.80 first reverse sample;
                                     294.21 stable reverse sample
 ```
 
-This means neither Case A (`-1`, keep old yaw) nor Case B (live stale node)
-is proven. No node index, path point, or node heading may be used to select a
-fix.
+The node discriminator is resolved dynamically. The original-MIPS comparison
+below, rather than the runtime capture alone, supplies the actor classification.
 
 ## State and node trace
 
@@ -104,9 +103,9 @@ NODE_SELECTION_INPUTS:  sucoaster/path object passed into
 EXPECTED_NODE_SELECTION: UNKNOWN — original return contract not established
 ACTUAL_NODE_SELECTION:   UNKNOWN — selected-call v0 was not captured
 FIRST_NODE_STATE_DIVERGENCE: UNKNOWN
-FIRST_BAD_STAGE:         UNKNOWN
-FIRST_BAD_FUNCTION:      UNKNOWN
-FIRST_BAD_GUEST_PC:      UNKNOWN
+FIRST_OBSERVED_STAGE:         return-leg dispatch case 11
+FIRST_OBSERVED_FUNCTION:      func_8080027C_sucoaster / case 11
+FIRST_OBSERVED_GUEST_PC:      0x80800A3C
 EXPECTED_VALUE:          UNKNOWN
 ACTUAL_VALUE:            yaw 114.21 degrees versus travel 294.21 degrees
                          in the stable reverse sample
@@ -120,25 +119,47 @@ that the actor fields or `func_8080264C` are the first bad writer.
 ## Original-MIPS / generated-body review
 
 ```text
-FUNC_8080264C_GENERATED_MATCH: YES
-FUNC_8010CD50_GENERATED_MATCH:  YES
-FUNC_80802760_GENERATED_MATCH:  UNKNOWN
+FUNC_8080264C_GENERATED_MATCH: UNKNOWN
+FUNC_8010CD50_GENERATED_MATCH:  UNKNOWN
+FUNC_80802760_GENERATED_MATCH_ORIGINAL: UNKNOWN
+
+ORIGINAL_CASE11_WRITES_YAW:       NO
+ORIGINAL_CASE11_WRITES_UNK54:     NO
+GENERATED_CASE11_MATCHES_ORIGINAL: YES
+DOES_ORIGINAL_CASE11_ADVANCE_POSITION_ALONG_RETURN_DIRECTION: YES
+DOES_ORIGINAL_CASE11_UPDATE_FACING_TO_RETURN_DIRECTION:       NO
+ORIGINAL_REVERSE_WALKS_BACKWARD:  YES
+ORIGINAL_RETURN_STATE_DISPATCH_MATCHES_RECOMP: YES
 ```
 
-`func_8080264C_sucoaster` preserves the helper call, `-1` comparison, live
-index handoff, and the delay-slot load that retains the prior yaw. The
-generated `func_8010CD50` preserves the node-point lookup followed by
-`func_800F1DF4` heading calculation and its delay-slot argument setup.
-Those two bodies therefore do not provide evidence for a native override.
+The exact case-11 comparison is between
+`banjo-tooie-Recomp/asm/nonmatchings/overlays/su/coaster/func_8080027C_sucoaster.s`
+`.L80800A3C_sucoaster` and
+`RecompiledFuncs/funcs_151.c::func_8080027C_sucoaster`, `L_80800A3C`.
+Instruction order, calls, argument setup, loads, stores, branches, and
+control flow match 1:1. Both preserve the two branch-likely delay-slot
+assignments for `beql v0, zero` and `bltzl`, call `func_80107070(s0, 2)`,
+conditionally call `sucoaster_entrypoint_10(s0, 13)` and
+`_subaddiefade_entrypoint_3(s0)`, then call `sucoaster_entrypoint_16(s0, 3)`
+and return through the common epilogue. Neither case body contains a yaw or
+`0x54` store.
 
-A complete original-MIPS side-by-side verification of `func_80802760` was not
-available in the indexed workspace during this review, and the selected
-runtime call did not yield its return value. It is consequently reported as
-`UNKNOWN`, not as a presumed generator defect.
+The movement-chain evidence is also original MIPS: case 11 calls
+`sucoaster_entrypoint_16(s0, 3)`; that helper resolves the route record and
+calls `sucoaster_entrypoint_17`, which computes the route point and invokes
+`func_800C4104` with the position-update arguments. The chain advances the
+actor along the return route but contains no update to yaw/`unk54`.
+
+The dispatcher reads `u72`, computes `(u72 >> 10) - 1`, and its original jump
+table sends `0x3008` to case 11, exactly as the generated dispatcher does.
+This verifies the return-state dispatch contract without reconstructing the
+complete state machine. `func_80802760` itself was not compared instruction
+by instruction, so its generated-match field remains `UNKNOWN`.
 
 ```text
-ORIGINAL_REVERSE_FACING_MECHANISM: UNKNOWN
-FIX_OWNER_CANDIDATE:               UNKNOWN
+ORIGINAL_REVERSE_FACING_MECHANISM: PROVEN — case-11 movement preserves yaw
+                                   and unk54 while position advances backward
+FIX_OWNER_CANDIDATE:               NONE
 MINIMAL_FIX_FILES:                 NONE — review only
 ```
 
@@ -182,23 +203,21 @@ INPUT_DIRECTION_TEST:   PASS
 BCF28_TEST:             PASS
 CORE1_RA_TEST:          PASS
 TOOIE_BUILD:            PASS
-MARKDOWN_VAULT_AUDIT:   PASS (repository-local audit; see checkpoint)
-COMMIT:                 b19bcf9 (review checkpoint)
-PUSHED:                 YES
-CHECKPOINT_NEW_HEAD:    b19bcf9
+MARKDOWN_VAULT_AUDIT:   PASS_WITH_PREEXISTING_WARNINGS (errors=0; 50 warnings
+                        across 118 files; no changed-file error identified)
+COMMIT:                 pending
+PUSHED:                 NO
+CHECKPOINT_NEW_HEAD:    pending
 WORKTREE:               documentation-only changes; no production-code fix
 ```
 
-The runtime discriminator is the remaining evidence gap. If the user later
-confirms this exact actor differs from original, the next review must capture
-the selected call without relying on a stale heap address. Otherwise, select
-a different concrete forced/cinematic actor whose original and recomp views
-are side-by-side confirmed.
+This actor's original contract is resolved. The next P08 action must select a
+different concrete forced/cinematic actor whose original and recomp views are
+side-by-side confirmed; the global observation remains open.
 
 ```text
-NEXT_SINGLE_ACTION: run only the selected-call discriminator again with a
-                    stable actor identity, or choose a different user-confirmed
-                    forced/cinematic mismatch; do not implement a fix here
+NEXT_SINGLE_ACTION: select a different user-confirmed forced/cinematic actor;
+                    do not implement a fix for chdiggerground
 ```
 
 ## SELECTED-CALL DISCRIMINATOR — DeepSeek V4 Flash Free / OpenCode Zen
@@ -306,46 +325,33 @@ NODE_HEADING:      NOT ASSERTED
 TRAVEL_HEADING:    294.21° stable return sample (previous review)
 ```
 
-### Original-MIPS / generated review
+### Original-MIPS / generated review (historical DeepSeek claim)
 
 ```text
-FUNC_80802760_GENERATED_MATCH:  YES — funcs_262.c:2679 body is structurally
-                                faithful: bgez on bit-19 sign of path+0x18,
-                                delay slots present (nop / srl / lw), two
-                                sub-branches (0x800F54E4 vs
-                                0x8008A240+0x8010D290), return v0. No ROM/
-                                original-MIPS disassembly available in the
-                                workspace to disassemble 0x80802760 directly
-                                (no .z64/.elf present); classification is
-                                based on generated-body structure + runtime
-                                return value, not an external MIPS dump.
-ORIGINAL_REVERSE_FACING_MECHANISM: UNKNOWN — no original dump to prove
-                                whether the original keeps yaw on the
-                                outbound node during return travel.
-RETURN_MOVEMENT_INTENTION:      OTHER — position integrates backward
+DEEPSEEK_GENERATED_MATCH_CLAIM:  CORRECTED/SUPERSEDED — funcs_262.c:2679 body
+                                was structurally reviewed without an original
+                                MIPS comparison.
+FUNC_80802760_GENERATED_MATCH_ORIGINAL: UNKNOWN
+ORIGINAL_CASE11_WRITES_YAW:     NO
+ORIGINAL_CASE11_WRITES_UNK54:   NO
+GENERATED_CASE11_MATCHES_ORIGINAL: YES
+ORIGINAL_REVERSE_FACING_MECHANISM: PROVEN — original case 11 keeps yaw on
+                                the outbound value during return travel.
+RETURN_MOVEMENT_INTENTION:      PROVEN — position integrates backward
                                 (294.21°) while yaw/unk54 stay frozen at the
-                                last outbound value (114.21°); the return-leg
-                                handler (case 11) does not write unk54.
-ORIGINAL_EXPECTED_FACING_RELATIVE_TO_TRAVEL: UNKNOWN (180° observed, but no
-                                original evidence that the intended facing is
-                                0° relative to the return travel).
+                                last outbound value (114.21°).
+ORIGINAL_EXPECTED_FACING_RELATIVE_TO_TRAVEL: PROVEN — this actor intentionally
+                                preserves the prior facing during return.
 ```
 
 ### Decision
 
 ```text
-USER_BUG_B_THIS_ACTOR:  UNKNOWN — not PROVEN, not REFUTED. The recomp runs
-                        the original path helper faithfully (node 0 always)
-                        and the return-leg case-11 handler moves the digger
-                        back without updating unk54/rotation.y. Whether the
-                        original BT code does the same (i.e. "back into the
-                        burrow" is intended) or updates yaw cannot be decided
-                        without an original-MIPS disassembly of the return
-                        leg. No ROM/ELF is present in this workspace.
+USER_BUG_B_THIS_ACTOR:  REFUTED — original and generated case 11 both move
+                        the digger back without updating unk54/rotation.y.
 USER_BUG_B_GLOBAL:      OPEN
-ROOT_CAUSE_LEVEL:       C — one discriminator remains: original return-leg
-                        MIPS (does it write unk54 on state 0x98bb1942?).
-                        Case A (func_80802760 returning -1) is now REFUTED.
+ROOT_CAUSE_LEVEL:       R — original actor/state contract, not a recomp defect.
+                        Case A (func_80802760 returning -1) is REFUTED.
 FIX_OWNER_CANDIDATE:    NONE — no fix justified by this evidence
 FIX_IMPLEMENTED:        NO
 ```
@@ -360,8 +366,8 @@ BCF28_TEST:             PASS
 CORE1_RA_TEST:          PASS
 TOOIE_BUILD:            PASS
 MARKDOWN_VAULT_AUDIT:   PASS
-COMMIT:                 (docs-only checkpoint; see handoff)
-PUSHED:                 YES
+COMMIT:                 pending docs-only checkpoint
+PUSHED:                 NO
 WORKTREE:               documentation-only; diagnostic override reverted
 ```
 

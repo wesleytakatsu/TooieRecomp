@@ -1,9 +1,9 @@
 ---
 title: "P08 — forced/cinematic actor facing diagnosis"
-description: "One-actor diagnosis of USER_BUG_B: Wooded Hollow sucoaster chdiggerground walks the return path with an exact 180° yaw freeze. Diagnosis only; no fix."
+description: "Historical one-actor diagnosis of USER_BUG_B: Wooded Hollow sucoaster chdiggerground walks the return path with an exact 180° yaw freeze. The actor contract is now refuted by original-MIPS review; no fix."
 status: evidence
 phase: P08
-updated: 2026-08-15
+updated: 2026-08-16
 tags: [tooie-recomp, p08, facing, cinematic, sucoaster, chdiggerground, user-bug-b]
 ---
 
@@ -18,7 +18,8 @@ TRANSFORM_TAGGING_IMPLEMENTED:     NO
 DEMO_MOVEMENT_RESIDUAL:            DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT
 USER_BUG_A_WASD_RUNTIME:           RESOLVED
 USER_BUG_A_FULL_CONTROLLER:        PENDING
-USER_BUG_B_STATUS:                 DIAGNOSED_ONE_ACTOR (Level B)
+USER_BUG_B_STATUS:                 CORRECTED/SUPERSEDED — this actor REFUTED;
+                                   global USER_BUG_B remains OPEN
 ```
 
 Do **not** reopen: WASD directional collapse, `func_80013B70`, first Wooded
@@ -166,19 +167,20 @@ sucoaster_entrypoint_2 (per-frame)
 
 Generated bodies of `func_8080264C_sucoaster` (`RecompiledFuncs/funcs_241.c`)
 and `func_8010CD50` (`RecompiledFuncs/funcs_414.c`) match original MIPS
-structure (delay slots present; not empty). READ ONLY. The defect is the
-**node / travel-direction convention**, not a smashed 13B70-style body.
+structure (delay slots present; not empty). READ ONLY. This was the historical
+Level B hypothesis; the later original-MIPS case-11 review refutes treating
+the observed facing as a recompilation defect.
 
 ```text
 FIRST_YAW_WRITER_PC:               0x808006F8  (swc1 f0, 0x54(s0)
                                                in func_8080027C)
 FIRST_YAW_WRITER_FUNCTION:         func_8080264C_sucoaster
-FIRST_BAD_STAGE:                   path-node look-at on reverse travel
-FIRST_BAD_FUNCTION:                func_8080264C + func_80802760 /
+FIRST_OBSERVED_STAGE:              path-node look-at on reverse travel
+FIRST_OBSERVED_FUNCTION:           func_8080264C + func_80802760 /
                                    func_800F5A00 node selection
                                    (func_8010CD50 look-at is faithful
                                    given the node it is handed)
-FIRST_BAD_GUEST_PC:                0x80802678  (jal func_8010CD50)
+FIRST_OBSERVED_GUEST_PC:           0x80802678  (jal func_8010CD50)
                                    or 0x80802760 (node == -1 keep)
 EXPECTED_VALUE:                    294.21°
 ACTUAL_VALUE:                      114.21°
@@ -255,17 +257,18 @@ LOGICAL_VS_RENDER:                 logical path-yaw and Actor.rotation.y
 
 Do not reopen matrix submission.
 
-## 11. Root cause
+## 11. Historical root-cause hypothesis
 
 ```text
-ROOT_CAUSE_LEVEL:                  B
-ROOT_CAUSE:                        sucoaster chdiggerground faces the
+ROOT_CAUSE_LEVEL:                  B (historical; CORRECTED/SUPERSEDED)
+ROOT_CAUSE:                        Historical hypothesis: sucoaster chdiggerground faces the
                                    heading to its current path node.
                                    On reverse, position travels 294.21°
                                    but the node/look-at stays the
                                    outbound end, so desired yaw, unk54,
                                    and rotation.y remain 114.21°.
-FIX_OWNER_CANDIDATE:               TOOIE_NATIVE (only after the remaining
+FIX_OWNER_CANDIDATE:               TOOIE_NATIVE (historical candidate; superseded;
+                                   only after the remaining
                                    node-index discriminator; do not edit
                                    RecompiledFuncs)
 MINIMAL_FIX_FILES:                 TBD: native override of the sucoaster
@@ -323,11 +326,44 @@ If review wants Level A: watch `func_80802760` `$v0` and the
 ## 15. Independent review pointer / correction status
 
 **CORRECTED/SUPERSEDED (2026-08-16):** The Level B and `TOOIE_NATIVE`
-classification above is preserved as historical Grok evidence. The
-independent review did not establish the original return-facing contract and
-did not capture the selected actor's node index discriminator. See
+classification above is preserved as historical Grok evidence. The independent
+review now compares original and generated case 11 and proves that this actor's
+return movement intentionally preserves yaw/`unk54`; `USER_BUG_B_THIS_ACTOR` is
+`REFUTED`, while `USER_BUG_B_GLOBAL` remains `OPEN`. See
 [[p08-forced-cinematic-facing-independent-review]]. No production fix was
 implemented.
+
+## 16. Original-MIPS arbitration (2026-08-16)
+
+```text
+ORIGINAL_CASE11_WRITES_YAW:       NO
+ORIGINAL_CASE11_WRITES_UNK54:     NO
+GENERATED_CASE11_MATCHES_ORIGINAL: YES
+DOES_ORIGINAL_CASE11_ADVANCE_POSITION_ALONG_RETURN_DIRECTION: YES
+DOES_ORIGINAL_CASE11_UPDATE_FACING_TO_RETURN_DIRECTION:       NO
+ORIGINAL_REVERSE_WALKS_BACKWARD:  YES
+ORIGINAL_RETURN_STATE_DISPATCH_MATCHES_RECOMP: YES
+DEEPSEEK_GENERATED_MATCH_CLAIM:  CORRECTED/SUPERSEDED
+FUNC_80802760_GENERATED_MATCH_ORIGINAL: UNKNOWN
+FIRST_OBSERVED_MECHANISM:         return-leg dispatch case 11
+                                   (`u72=0x3008`, `L_80800A3C`) advances
+                                   position through `sucoaster_entrypoint_16`
+                                   while preserving yaw/`unk54`
+USER_BUG_B_THIS_ACTOR:            REFUTED
+USER_BUG_B_GLOBAL:                OPEN
+ROOT_CAUSE_LEVEL:                 R
+ROOT_CAUSE:                       original Banjo-Tooie actor/state contract;
+                                  no recompilation defect
+FIX_IMPLEMENTED:                  NO
+```
+
+The original and generated case-11 bodies match instruction-for-instruction,
+including both branch-likely delay slots, argument setup, and the common
+epilogue. The original `sucoaster_entrypoint_16` → `sucoaster_entrypoint_17`
+chain performs the route-position update. The original dispatcher maps
+`(u72 >> 10) - 1`, with `u72=0x3008`, to case 11. `func_80802760` was not
+compared against its original MIPS here, so that separate generated-match
+claim remains `UNKNOWN`.
 
 **DISCRIMINATOR RESOLVED (2026-08-16, DeepSeek V4 Flash Free):**
 `func_80802760` returns node 0 (`B_LIVE_NODE`) on all 3438 calls in a

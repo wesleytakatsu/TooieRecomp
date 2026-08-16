@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-15
+updated: 2026-08-16
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -40,9 +40,10 @@ first-straight ~510 is **original slope-scaled physics**
 the first later analog transition (`glidx = 74..91`) is **internally faithful**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15).
 The earlier `USER_BUG_B` one-actor Level B classification is
-**CORRECTED/SUPERSEDED** by an independent review: Wooded Hollow sucoaster
-`chdiggerground` has a real return-state 180° observation, but its original
-return-facing contract and selected node index remain **UNKNOWN**. See
+**CORRECTED/SUPERSEDED** by an independent review: original-MIPS case 11
+matches generated instruction-for-instruction, advances the return position,
+and preserves yaw/`unk54`. Wooded Hollow sucoaster `chdiggerground` therefore
+has original actor/state semantics, not a recompilation defect. See
 [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]].
 `USER_BUG_B_GLOBAL` remains **OPEN**; no fix is implemented.
 The selected node discriminator is **RESOLVED** (2026-08-16, DeepSeek V4
@@ -50,7 +51,8 @@ Flash Free): `func_80802760` returns node 0 (`B_LIVE_NODE`) on all 3438
 captured calls and never `-1` (`A_KEEP_OLD` REFUTED); the 180° freeze is
 produced by the return-leg dispatch case 11 (`u72=0x3008` -> `L_80800A3C`)
 which moves the digger back without writing `unk54`/`rotation.y`. Original
-return-leg MIPS intent remains UNKNOWN (no ROM/ELF in workspace).
+return-leg MIPS is PROVEN for this case; `func_80802760` equivalence remains
+UNKNOWN because that separate function was not compared.
 The historical verdict C and its narrow missing `$at` side-effect finding
 are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];
@@ -72,7 +74,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] (USER_BUG_B one-actor; sucoaster chdiggerground 180°)
+- [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] (historical USER_BUG_B one-actor diagnosis; corrected/superseded)
+- [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] (**CURRENT:** original-MIPS case-11 contract; actor refuted, global open)
 - [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
@@ -185,7 +188,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | **CURRENT:** USER_BUG_B one-actor; sucoaster chdiggerground reverse 180°; Level B |
+| [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | historical USER_BUG_B one-actor diagnosis; corrected/superseded |
+| [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] | **CURRENT:** original-MIPS case-11 contract; chdiggerground actor REFUTED; global USER_BUG_B OPEN |
 | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math; PASS |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
@@ -249,11 +253,11 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **USER_BUG_B one-actor facing — DIAGNOSED (Level B, 2026-08-15)**
-   ([[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]]).
-   Wooded Hollow sucoaster `chdiggerground` reverse walk: movement heading
-   294.21°, `Actor.rotation.y` / `unk54` frozen at 114.21°. Independent
-   review before implementation.
+1. **USER_BUG_B `chdiggerground` actor — REFUTED (original-MIPS review,
+   2026-08-16)** ([[../../plan/evidence/p08-forced-cinematic-facing-independent-review]]).
+   The original case-11 return path advances position while preserving
+   `Actor.rotation.y` / `unk54`; no fix is authorized. `USER_BUG_B_GLOBAL`
+   remains OPEN for another user-confirmed cinematic actor.
 2. **Demo-path first straight and first later analog transition — PASS**
    ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15).
    Later demo-path visual residual:
@@ -281,10 +285,9 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** Independent review of the USER_BUG_B sucoaster facing defect
-([[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]]) before
-implementation. Do not diagnose a second cinematic actor. Do not implement
-a demo-path precision fix or transform tagging. Do not reopen the accepted
+**NEXT:** Select a different concrete cinematic actor whose behavior is
+user-confirmed against original Banjo-Tooie. Do not implement a fix for
+`chdiggerground`, a demo-path precision fix, or transform tagging. Do not reopen the accepted
 BCF28 helper binding, PATCH 4 / Hybrid F', the core1 RA wrappers, the
 render-submission matrix split, or the accepted `func_80013B70` cardinal
 semantics. Do not modify shared RT64.

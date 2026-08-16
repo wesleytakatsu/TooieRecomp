@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition (glidx 74..91) PASS; USER_BUG_B diagnosed on one sucoaster chdiggerground (Level B); full controller still pending."
+description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition (glidx 74..91) PASS; chdiggerground actor contract resolved/refuted by original MIPS; broader USER_BUG_B remains open; full controller still pending."
 status: current
 type: handoff
 project: TooieRecomp
@@ -39,14 +39,13 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## P08 forced-facing independent review (2026-08-16)
 
 The earlier Level B diagnosis of the Wooded Hollow `chdiggerground` return
-actor is **CORRECTED/SUPERSEDED** as a proven recompilation defect. The
-return state/animation and 180° logical-vs-travel observation are real, but
-the original return-facing contract and selected node index were not proven.
-The generated `func_8080264C` and `func_8010CD50` bodies remain faithful on
-the reviewed control flow; no fix was implemented.
+actor is **CORRECTED/SUPERSEDED** as a proven recompilation defect. Original
+MIPS case 11 matches generated instruction-for-instruction: it advances the
+return position while preserving yaw/`unk54`. The 180° observation is
+therefore original actor/state semantics; no fix was implemented.
 
 See [[plan/evidence/p08-forced-cinematic-facing-independent-review]].
-`USER_BUG_B_THIS_ACTOR=UNKNOWN`; `USER_BUG_B_GLOBAL=OPEN`; `ROOT_CAUSE_LEVEL=C`.
+`USER_BUG_B_THIS_ACTOR=REFUTED`; `USER_BUG_B_GLOBAL=OPEN`; `ROOT_CAUSE_LEVEL=R`.
 
 ## P08 forced-facing node discriminator (2026-08-16, DeepSeek V4 Flash Free)
 
@@ -60,15 +59,22 @@ NODE_CASE:              B_LIVE_NODE — A_KEEP_OLD (-1) REFUTED (zero)
 RETURN_LEG_HANDLER:     state 0x98bb1942 -> dispatch case 11 (u72=0x3008,
                         L_80800A3C) -> moves digger back WITHOUT writing
                         unk54/rotation.y
-FUNC_80802760_GENERATED_MATCH: YES (funcs_262.c body structurally faithful)
-ORIGINAL_MIPS_INTENT:   UNKNOWN (no ROM/ELF in workspace to disassemble)
+ORIGINAL_CASE11_WRITES_YAW: NO
+ORIGINAL_CASE11_WRITES_UNK54: NO
+GENERATED_CASE11_MATCHES_ORIGINAL: YES
+ORIGINAL_REVERSE_WALKS_BACKWARD: YES
+ORIGINAL_RETURN_STATE_DISPATCH_MATCHES_RECOMP: YES
+DEEPSEEK_GENERATED_MATCH_CLAIM: CORRECTED/SUPERSEDED
+FUNC_80802760_GENERATED_MATCH_ORIGINAL: UNKNOWN (not compared here)
+FIRST_OBSERVED_MECHANISM: case-11 return movement with preserved yaw/unk54
+ORIGINAL_MIPS_INTENT:   CASE11 PROVEN; func_80802760 equivalence UNKNOWN
 FIX_IMPLEMENTED:        NO
+MARKDOWN_VAULT_AUDIT:   PASS_WITH_PREEXISTING_WARNINGS (errors=0; 50 warnings)
 ```
 
-The `keep old yaw via -1` hypothesis is REFUTED. The 180° freeze is the
-return-leg handler never updating yaw during the reverse walk. Whether the
-original BT code does the same is undecidable here without an original-MIPS
-dump. No fix is authorized.
+The `keep old yaw via -1` hypothesis is REFUTED. The original-MIPS case-11
+comparison proves that the 180° freeze is original return-leg behavior for
+this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 ## NEXT
 
 1. ~~First straight & first later analog transition~~ **COMPLETE (2026-08-15)**
@@ -83,10 +89,10 @@ dump. No fix is authorized.
 3. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
    as a gameplay automation gate until it is fixed.
-4. USER_BUG_B one-actor diagnosis COMPLETE (Level B)
-   ([[plan/evidence/p08-forced-cinematic-facing-diagnosis]]): Wooded Hollow
-   sucoaster `chdiggerground` reverse walk, heading 294.21° vs yaw 114.21°.
-   Independent review before any facing fix. Do not implement transform tagging.
+4. USER_BUG_B `chdiggerground` actor contract **REFUTED** by original-MIPS
+   case-11 review. Select a different concrete cinematic actor whose behavior
+   is user-confirmed against original Banjo-Tooie; keep the global observation
+   OPEN. Do not implement transform tagging for this actor.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, the title/file-select
@@ -131,7 +137,8 @@ RT64. PATCH 4 stays ON.
     510 is original slope-scaled physics integration (`func_800EF04C` from
     `func_8009AE08`); the post-physics-writer hypothesis is **REFUTED**;
     first-straight internal fidelity **PASS**. Attract/cinematic facing
-    is USER_BUG_B, now diagnosed on one actor (Level B;
+    is the historical USER_BUG_B diagnosis, now corrected: this actor is
+    refuted by original-MIPS review (global USER_BUG_B remains OPEN;
     [[plan/evidence/p08-forced-cinematic-facing-diagnosis]]).
 
 ## Arquitetura e regras

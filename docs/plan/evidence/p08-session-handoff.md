@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; chdiggerground return-facing review remains semantically UNKNOWN (Level C)."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; chdiggerground original return-facing contract resolved and this actor refuted as a recompilation bug."
 status: evidence
 phase: P08
 updated: 2026-08-16
@@ -79,18 +79,18 @@ velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
 arcsin evaluation, error vs original 0.0000°, error vs atan2 < 0.001°), camera-relative
 desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-scaled
 velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
-(USER_BUG_B) is **REVIEWED_ONE_ACTOR** (Level C;
+(USER_BUG_B) is **REVIEWED_ONE_ACTOR** (actor REFUTED; global OPEN;
 [[p08-forced-cinematic-facing-independent-review]]): Wooded Hollow
 `chdiggerground` return state is observed; `func_80802760` discriminator is
-RESOLVED (returns node 0, `B_LIVE_NODE`, never -1); the 180° freeze is the
-return-leg case-11 handler not writing `unk54`/yaw; the original facing
-contract remains UNKNOWN (no original-MIPS dump in workspace).
+RESOLVED (returns node 0, `B_LIVE_NODE`, never -1). Original MIPS proves
+case 11 matches generated, advances position through the return route, and
+does not write `unk54`/yaw. The 180° freeze is original actor/state semantics.
 
 Next steps in Phase P08:
 1. ~~First straight & first later analog transition~~ **COMPLETE**.
    Demo-path residual is `DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT`.
-2. Independent review of USER_BUG_B is complete; do not implement a facing fix
-   until the original contract and selected node are proven.
+2. Independent review of this actor is complete; do not implement a facing fix
+   for `chdiggerground`. The global USER_BUG_B observation remains OPEN.
 3. Analog/gamepad validation of USER_BUG_A.
 4. High-FPS transform tagging; window options (`P08-T07`).
 
@@ -113,10 +113,10 @@ DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog t
   glrecord cadence, deadzone remap, bastick distance, func_80013ABC table arcsin,
   quadrant correction, camera-relative yaw, yaw_update easing, and velocity integration.
   Later demo-path visual residual: DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
-USER_BUG_B:                          LEVEL C — func_80802760 discriminator
+USER_BUG_B:                          ACTOR REFUTED; GLOBAL OPEN
   RESOLVED (returns node 0, B_LIVE_NODE; A_KEEP_OLD REFUTED); return-leg
   handler is dispatch case 11 (L_80800A3C) which never writes unk54/yaw.
-  Original-MIPS intent UNKNOWN (no ROM/ELF in workspace). See
+  Original case-11 contract PROVEN by original-MIPS comparison. See
   [[p08-forced-cinematic-facing-independent-review]].
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
@@ -149,16 +149,11 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Independent review of the previously reported USER_BUG_B sucoaster facing
-observation is complete. The selected node discriminator is RESOLVED:
-`func_80802760` returns node 0 (`B_LIVE_NODE`) on all 3438 calls and never
-`-1` (`A_KEEP_OLD` REFUTED). The 180° freeze is produced by the return-leg
-dispatch case 11 (`L_80800A3C`), which moves the digger back without writing
-`unk54`/`rotation.y`. The actor's original return-facing contract remains
-**UNKNOWN** (no original-MIPS dump available in this workspace); see
-[[p08-forced-cinematic-facing-independent-review]]. No implementation is
-authorized.
-Do not diagnose a second cinematic actor. Demo-path residual stays deferred.
+The `chdiggerground` original contract is resolved and
+`USER_BUG_B_THIS_ACTOR=REFUTED`: original and generated case 11 both move the
+digger back without writing `unk54`/`rotation.y`. `USER_BUG_B_GLOBAL` remains
+OPEN. Select a different concrete user-confirmed cinematic actor next; do not
+implement a fix for this actor. Demo-path residual stays deferred.
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -166,23 +161,40 @@ Do not diagnose a second cinematic actor. Demo-path residual stays deferred.
 SELECTED_ACTOR:        Wooded Hollow chdiggerground return
 RETURN_STATE:          0x98bb1942
 RETURN_ANIMATION:      0xc3aa1065 -> 0xc3ab8000
-MOVEMENT_INTENTION:    OTHER — position integrates backward (294.21°);
-                       return-leg handler (dispatch case 11) never writes
-                       unk54/rotation.y
-EXPECTED_FACING:       UNKNOWN (no original-MIPS dump in workspace)
+MOVEMENT_INTENTION:    PROVEN — position integrates backward (294.21°);
+                       original case 11 never writes unk54/rotation.y
+EXPECTED_FACING:       PRESERVE_PRIOR_YAW (original case-11 MIPS)
 NODE_DISCRIMINATOR:    RESOLVED — func_80802760 returns node 0 (B_LIVE_NODE)
                        on all 3438 calls; A_KEEP_OLD (-1) REFUTED (0)
-ROOT_CAUSE_LEVEL:      C
-USER_BUG_B_THIS_ACTOR: UNKNOWN (not PROVEN, not REFUTED)
+ROOT_CAUSE_LEVEL:      R
+USER_BUG_B_THIS_ACTOR: REFUTED
 USER_BUG_B_GLOBAL:     OPEN
 FIX_IMPLEMENTED:       NO
+MARKDOWN_VAULT_AUDIT:  PASS_WITH_PREEXISTING_WARNINGS (errors=0; 50 warnings
+                       across 118 files)
+```
+
+```text
+ORIGINAL_CASE11_WRITES_YAW:       NO
+ORIGINAL_CASE11_WRITES_UNK54:     NO
+GENERATED_CASE11_MATCHES_ORIGINAL: YES
+DOES_ORIGINAL_CASE11_ADVANCE_POSITION_ALONG_RETURN_DIRECTION: YES
+DOES_ORIGINAL_CASE11_UPDATE_FACING_TO_RETURN_DIRECTION:       NO
+ORIGINAL_REVERSE_WALKS_BACKWARD:  YES
+ORIGINAL_RETURN_STATE_DISPATCH_MATCHES_RECOMP: YES
+DEEPSEEK_GENERATED_MATCH_CLAIM:  CORRECTED/SUPERSEDED
+FUNC_80802760_GENERATED_MATCH_ORIGINAL: UNKNOWN
+FIRST_OBSERVED_MECHANISM:         case-11 return movement with preserved yaw
+ROOT_CAUSE:                       original actor/state contract; no recomp defect
+USER_BUG_B_GLOBAL:                OPEN
+NEXT_SINGLE_ACTION:               select a different user-confirmed actor
 ```
 
 Evidence: [[p08-forced-cinematic-facing-independent-review]].
 
 ```text
-REVIEW_CHECKPOINT_COMMIT: b19bcf9
-REVIEW_CHECKPOINT_PUSHED: YES
+REVIEW_CHECKPOINT_COMMIT: pending
+REVIEW_CHECKPOINT_PUSHED: NO
 DEEPSEEK_DISCRIMINATOR_COMMIT: (this checkpoint; docs-only)
 DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 ```
@@ -206,7 +218,7 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = YES (TOOIE_DIAG_FORCED_FACING probe only)
+CODE_CHANGED             = NO (historical diagnostic probe reverted)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO
