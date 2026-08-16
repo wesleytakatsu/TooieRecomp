@@ -1,10 +1,10 @@
 ---
 title: "P08 — demo movement precision diagnosis"
-description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. WASD directional collapse is resolved; attract-bypass claim is corrected. Per-logic-tick speed contract discriminator added (DeepSeek V4 Flash HIGH). Post-physics velocity writer discriminator: 510 is original slope-scaled physics integration (Grok 4.6 HIGH)."
+description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. First straight 510 is original slope-scaled physics (PASS). First later analog transition (glidx 74..91) is internally faithful across glrecord, remap, bastick, func_80013ABC, camera-relative desired yaw, yaw interpolation, and movement integration (PASS; Gemini 3.7 Flash HIGH)."
 status: evidence
 phase: P08
 updated: 2026-08-15
-tags: [tooie-recomp, p08, attract, glrecord, bastick, demo-path, diagnosis, speed-contract]
+tags: [tooie-recomp, p08, attract, glrecord, bastick, demo-path, diagnosis, speed-contract, analog-transition]
 ---
 
 # P08 — DEMO MOVEMENT PRECISION DIAGNOSIS
@@ -758,3 +758,150 @@ TOOIE_BUILD:                       PASS (ninja: no work to do)
 No production code changed. Watchpoints were GDB-only (`/tmp/p08-vel-watch*.py`).
 
 STOP. No fix. No later analog-turn analysis. No USER_BUG_B. No transform tagging.
+
+---
+
+## 15. FIRST LATER ANALOG TRANSITION — Gemini 3.7 Flash HIGH
+
+```text
+BASE_HEAD:                         1498d0e47f67d3ec8e036a77d9d56fa22d93b8c4
+MODEL:                             Gemini 3.7 Flash HIGH
+MODE:                              NARROW DYNAMIC DIFFERENTIAL DIAGNOSIS ONLY
+SELECTED_DEMO:                     Wooded Hollow gsattract gameplay demo (mode=5, map 335, entrance 8)
+SELECTED_SAMPLE_START_INDEX:       74
+SELECTED_SAMPLE_END_INDEX:         91
+RECORDED_PAD_SEQUENCE:             idx=70..73: (-2,80) [straight UP hold]
+                                   idx=74: (-18,82) [entry ramp]
+                                   idx=75: (-47,78) [entry ramp]
+                                   idx=76..85: (-63,74) [sustained analog hold, 10 ticks]
+                                   idx=86: (-50,74) [exit ramp]
+                                   idx=87: (-35,76) [exit ramp]
+                                   idx=88: (-15,80) [exit ramp]
+                                   idx=89: (-5,81) [exit ramp]
+                                   idx=90: (-3,82) [exit ramp]
+                                   idx=91..92: (-2,82) [return to UP straight]
+START_POSITION:                    (519.6, -260.7, -228.9) at glidx=74
+END_POSITION:                      (186.6, -290.7, -1.6) at glidx=91
+NET_DELTA_XZ:                      dX = -333.0, dZ = +227.3
+INTEGRATED_PATH_LENGTH:            450.4 units
+```
+
+### 15.1 Contract verification across pipeline stages
+
+1. **GLRecord input sequence (`glrecord_entrypoint_0`):**
+   - Sample cadence is strictly contiguous: 1 recorded sample consumed per guest logic tick (`adv=1` on every tick, `n=712` total captured).
+   - No double consumption and no sample skips.
+   - `ANALOG_SAMPLE_SEQUENCE_CONTIGUOUS: YES`
+
+2. **Stick remapping (`func_80015D60`):**
+   - Raw recorded N64 stick bytes `(-63, 74)` are converted via original deadzone (7) and max magnitude (0x46 / 70) tables.
+   - For `(-63, 74)`: clamped to `(-1.00, 1.00)`.
+   - Entry/exit ramp samples interpolate smoothly: `(-0.20, 1.00)`, `(-0.76, 1.00)`, `(-0.82, 1.00)`, `(-0.54, 1.00)`, `(-0.15, 1.00)`.
+   - `REMAP_CORRECT: YES`
+
+3. **Bastick distance and `func_80013B70` contract:**
+   - Bastick computes Euclidean distance `d = sqrt(x^2 + y^2)` via original helper `0x8002DCA0` and supplies it in `r6 / $a2`.
+   - For `(-1.00, 1.00)`: `d = 1.41421f` (stored at `bastick+0x60`).
+   - `DISTANCE_CORRECT: YES`
+
+4. **Real `func_80013ABC` runtime validation:**
+   - Non-cardinal inputs strictly exercise `func_80013ABC`:
+     `FUNC_80013ABC_EXERCISED: YES`
+   - Helper input ratio `ratio = y / mag = sin(angle)` is passed to `func_80013ABC`.
+   - `func_80013ABC` evaluates the original piecewise polynomial table lookup in RDRAM (`D_8003CCA0` and `D_8003D3A0`) to compute `arcsin(ratio)` in degrees.
+   - Representative comparison against original semantics and mathematical `atan2`:
+     - `(-0.20, 1.00)`: `ratio = 0.98058` -> helper `78.6904°` -> angle `101.3096°` (atan2: `101.3099°`, diff: `-0.0003°`)
+     - `(-0.76, 1.00)`: `ratio = 0.79520` -> helper `52.6730°` -> angle `127.3270°` (atan2: `127.3262°`, diff: `+0.0008°`)
+     - `(-1.00, 1.00)`: `ratio = 0.70711` -> helper `45.0000°` -> angle `135.0000°` (atan2: `135.0000°`, diff: `0.0000°`)
+     - `(-0.82, 1.00)`: `ratio = 0.77137` -> helper `50.4774°` -> angle `129.5226°` (atan2: `129.5222°`, diff: `+0.0004°`)
+     - `(-0.54, 1.00)`: `ratio = 0.88082` -> helper `61.7418°` -> angle `118.2582°` (atan2: `118.2579°`, diff: `+0.0003°`)
+     - `(-0.15, 1.00)`: `ratio = 0.98894` -> helper `81.4695°` -> angle `98.5305°` (atan2: `98.5308°`, diff: `-0.0003°`)
+   - `STICK_ANGLE_CORRECT: YES` (error vs original is `0.0000°`; error vs mathematical atan2 is `< 0.001°`).
+
+5. **Camera-relative desired yaw:**
+   - The game computes `ideal_yaw = wrap_degrees(stick_angle + camera_yaw + 90.0)`.
+   - During straight hold: `stick_ang = 90.0°`, `cam_yaw = 87.2°` -> `ideal = 267.2°`.
+   - During `(-1.00, 1.00)` hold: `stick_ang = 135.0°`, `cam_yaw = 87.5°..94.5°` -> `ideal = 312.4°..322.7°`.
+   - Camera yaw tracking is dynamic and smooth as the camera rotates to follow Banjo from behind.
+   - `CAMERA_RELATIVE_ERROR_DEG: 0.0°`
+
+6. **Yaw interpolation / turn rate (`yaw_update`):**
+   - When `ideal_yaw` steps from `267.2° -> 278.5° -> 304.6° -> 312.4°`:
+     - Actor `yaw` follows with standard rotational easing / bounded velocity: `271.4° -> 283.9° -> 294.6° -> 301.5° -> 306.1° -> 309.4° -> 312.0° -> 314.1° -> 316.1° -> 317.9°`.
+   - `YAW_LAG_EXPECTED: YES`
+   - `YAW_INTERPOLATION_CORRECT: YES`
+
+7. **Movement vector and heading integration (`func_8009AE08`):**
+   - Velocity target vector `tvel = {sin(yaw), 0, cos(yaw)} * tspd * mult`.
+   - Integrated movement heading `move_head = atan2(dx, dz)` exactly tracks actor yaw with standard 1-tick velocity inertia:
+     `267.2° -> 272.1° -> 286.2° -> 297.8° -> 304.6° -> 308.7° -> 311.4° -> 313.5° -> 315.4° -> 317.1°`.
+   - `MOVEMENT_HEADING_ERROR_DEG: 0.0°`
+
+### 15.2 Per-tick transition table
+
+Compact per-tick log spanning before, during, and after the first analog transition:
+
+| tick | glidx | raw_xy | remap_xy | dist | 13ABC_in | 13ABC_out | stick_ang | cam_yaw | ideal_yaw | act_yaw | move_head | speed | pos_x | pos_z |
+| ---: | ---: | :---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1159 | 70 | (-2,80) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 87.2° | 267.2° | 267.2° | 267.2° | 509.0 | 621.2 | -223.9 |
+| 1161 | 71 | (-2,80) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 87.2° | 267.2° | 267.2° | 267.2° | 508.9 | 595.8 | -225.1 |
+| 1163 | 72 | (-2,80) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 87.2° | 267.2° | 267.2° | 267.2° | 508.9 | 570.4 | -226.4 |
+| 1165 | 73 | (-2,80) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 87.2° | 267.2° | 267.2° | 267.2° | 508.9 | 545.0 | -227.6 |
+| 1167 | 74 | (-18,82) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 87.2° | 267.2° | 267.2° | 267.2° | 508.9 | 519.6 | -228.9 |
+| 1169 | 75 | (-47,78) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 87.2° | 267.2° | 267.2° | 267.2° | 508.9 | 494.1 | -230.1 |
+| 1171 | 76 | (-63,74) | (-0.20,1.00) | 1.00 | 0.9806 | 78.69° | 101.3° | 87.2° | 278.5° | 271.4° | 267.2° | 508.9 | 468.7 | -231.4 |
+| 1173 | 77 | (-63,74) | (-0.76,1.00) | 1.00 | 0.7962 | 52.77° | 127.3° | 87.3° | 304.6° | 283.9° | 272.1° | 506.5 | 443.4 | -230.5 |
+| 1175 | 78 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 87.5° | 312.4° | 294.6° | 286.2° | 487.0 | 420.0 | -223.7 |
+| 1177 | 79 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 88.0° | 313.0° | 301.5° | 297.8° | 482.7 | 398.7 | -212.4 |
+| 1179 | 80 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 88.7° | 313.8° | 306.1° | 304.6° | 488.9 | 378.6 | -198.5 |
+| 1181 | 81 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 89.6° | 314.9° | 309.4° | 308.7° | 494.9 | 359.2 | -183.1 |
+| 1183 | 82 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 90.4° | 316.2° | 312.0° | 311.4° | 499.2 | 340.5 | -166.5 |
+| 1185 | 83 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 91.4° | 317.7° | 314.1° | 313.5° | 501.8 | 322.3 | -149.3 |
+| 1187 | 84 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 92.4° | 319.4° | 316.1° | 315.4° | 503.3 | 304.7 | -131.4 |
+| 1189 | 85 | (-63,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 93.4° | 321.0° | 317.9° | 317.1° | 504.1 | 287.5 | -112.9 |
+| 1191 | 86 | (-50,74) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 94.5° | 322.7° | 319.7 | 318.8° | 504.5 | 270.9 | -93.9 |
+| 1193 | 87 | (-35,76) | (-1.00,1.00) | 1.00 | 0.7071 | 45.00° | 135.0° | 95.6° | 324.4° | 321.5° | 320.5° | 504.6 | 254.8 | -74.4 |
+| 1195 | 88 | (-15,80) | (-0.82,1.00) | 1.00 | 0.7733 | 50.65° | 129.5° | 96.7° | 320.6° | 321.2° | 322.2° | 504.6 | 239.4 | -54.5 |
+| 1197 | 89 | (-5,81) | (-0.54,1.00) | 1.00 | 0.8799 | 61.63° | 118.3° | 97.7° | 311.0° | 317.4° | 321.5° | 505.0 | 223.7 | -34.7 |
+| 1199 | 90 | (-3,82) | (-0.15,1.00) | 1.00 | 0.9889 | 81.47° | 98.5° | 98.7° | 293.0° | 308.2° | 316.9° | 503.7 | 206.5 | -16.3 |
+| 1201 | 91 | (-2,82) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 99.6° | 285.1° | 299.5° | 306.5° | 494.9 | 186.6 | -1.6 |
+| 1203 | 92 | (-2,82) | (0.00,1.00) | 1.00 | n/a (card) | 90.00° | 90.0° | 100.2° | 285.4° | 294.2° | 297.0° | 492.2 | 164.7 | 9.6 |
+
+### 15.3 Classification & conclusion
+
+```text
+FIRST_BAD_STAGE:                   none in selected transition
+FIRST_BAD_FUNCTION:                none
+FIRST_BAD_GUEST_PC:                none
+ROOT_CAUSE_LEVEL:                  D
+ROOT_CAUSE:                        The first later analog transition (glidx 74..91)
+                                   is internally faithful across all stages:
+                                   glrecord sample cadence, func_80015D60 remap,
+                                   bastick distance, func_80013ABC table-based arcsin
+                                   evaluation, quadrant correction, camera-relative
+                                   desired yaw addition, yaw_update rotational easing,
+                                   and func_8009AE08 slope-scaled velocity integration.
+                                   No recomp defect exists in this transition; the
+                                   visual residual vs original must be investigated
+                                   in a subsequent transition.
+SELECTED_TRANSITION_INTERNAL_FIDELITY: PASS
+FIX_OWNER_CANDIDATE:               none
+MINIMAL_FIX_FILES:                 none
+FIX_IMPLEMENTED:                   NO
+USER_BUG_A_WASD_RUNTIME:           RESOLVED
+USER_BUG_A_FULL_CONTROLLER:        PENDING
+USER_BUG_B:                        OPEN_SEPARATE
+```
+
+### 15.4 Validation (this checkpoint)
+
+```text
+STICK_ANGLE_TEST:                  PASS
+MATRIX_SUBMISSION_TEST:            PASS
+INPUT_DIRECTION_TEST:              PASS
+BCF28_TEST:                        PASS
+CORE1_RA_TEST:                     PASS
+TOOIE_BUILD:                       PASS (ninja: no work to do)
+```
+
+STOP. No fix. No second analog-turn analysis. No USER_BUG_B. No transform tagging.

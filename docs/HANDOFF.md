@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 is original slope-scaled physics (PASS); full controller and USER_BUG_B remain open."
+description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math (PASS); full controller and USER_BUG_B remain open."
 status: current
 type: handoff
 project: TooieRecomp
@@ -37,14 +37,14 @@ Historical context:
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
 ## NEXT
 
-1. ~~Run the remaining demo-path discriminator~~ **COMPLETE (2026-08-15)**
-   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14): first
-   Wooded Hollow UP hold has **no post-physics velocity writer**. The only
-   `phys+0x10/+0x18` store between glrecord samples is original
-   `func_800EF04C` from `func_8009AE08`. Slope path is taken
-   (`func_80096518==1`); working target is `500 * 1.019454 = 509.727`.
-   Settle at ~510.2 is **original intended** downhill slope-scaled walk
-   speed. `FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`.
+1. ~~First straight & first later analog transition~~ **COMPLETE (2026-08-15)**
+   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15):
+   first straight 510 is original downhill slope-scaled walk speed
+   (`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`). First later analog transition
+   (`glidx = 74..91`, `(-63, 74)`) is internally faithful across all stages
+   (`func_80013ABC` table arcsin, bastick distance, camera-relative yaw,
+   `yaw_update` easing, velocity integration; `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`).
+   Next: advance to the next transition where visual residual could begin.
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
 3. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow

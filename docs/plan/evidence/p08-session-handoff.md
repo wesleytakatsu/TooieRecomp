@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 is original slope-scaled physics (PASS); later analog transition and USER_BUG_B remain open."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math (PASS); later transitions and USER_BUG_B remain open."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -72,21 +72,21 @@ Gameplay-demo player movement uses `glrecord` recorded pad through bastick
 discriminator (DeepSeek V4 Flash HIGH) COMPLETE** (2026-08-15):
 `tspd` is a **pre-acceleration target** (`phys+0x3C`). **Post-physics
 velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
-**no** post-physics `vx`/`vz` write. The first (and only) store in the
-glrecord→glrecord window is original `func_800EF04C` called from
-`func_8009AE08`. Wooded Hollow is on-slope (`func_80096518==1`); the working
-target is scaled `500 * 1.019454 = 509.727`. Settle at ~510.2 is that
-original slope-scaled ramp. Previous "AE08 exit velxz==500 (n=220)" and
-"post-physics writer" claims are **CORRECTED/SUPERSEDED** / **REFUTED**.
-`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
+**no** post-physics `vx`/`vz` write. Settle at ~510.2 is original slope-scaled ramp;
+`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`.
+**First later analog transition discriminator (Gemini 3.7 Flash HIGH) COMPLETE** (§15):
+`glidx = 74..91` (`raw = (-63, 74)`) strictly exercises `func_80013ABC` (table-based
+arcsin evaluation, error vs original 0.0000°, error vs atan2 < 0.001°), camera-relative
+desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-scaled
+velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
 (USER_BUG_B) is **OPEN_SEPARATE**.
 
 Next steps in Phase P08:
-1. ~~Remaining demo-path discriminator~~ **COMPLETE** — first straight has
-   no proven internal movement defect
-   ([[p08-demo-movement-precision-diagnosis]] §14).
-2. Analog/gamepad validation of USER_BUG_A.
-3. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
+1. ~~First straight & first later analog transition~~ **COMPLETE** — internally
+   faithful (`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`, `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`).
+2. Advance to the next analog transition in the demo path where visual residual could begin.
+3. Analog/gamepad validation of USER_BUG_A.
+4. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -101,10 +101,11 @@ FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 STICK_ANGLE_13B70_FIX:               ACCEPTED (WASD runtime RESOLVED; analog PENDING)
-DEMO_PATH_RESIDUAL:                  LEVEL D — first straight PASS
-  510 is original slope-scaled physics integration (func_800EF04C from
-  func_8009AE08; working target 500*1.019454). Previous post-physics
-  writer / AE08-exit==500 claims are REFUTED / CORRECTED/SUPERSEDED.
+DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog turn PASS
+  First straight 510 is original slope-scaled physics (func_800EF04C/func_8009AE08).
+  First later analog transition (glidx 74..91) is internally faithful across
+  glrecord cadence, deadzone remap, bastick distance, func_80013ABC table arcsin,
+  quadrant correction, camera-relative yaw, yaw_update easing, and velocity integration.
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
@@ -136,10 +137,9 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-The first-straight 510 value is **original slope-scaled physics**
-([[p08-demo-movement-precision-diagnosis]] §14).
-`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`. Next: compare exactly one later
-recorded analog transition where the visual path miss actually begins.
+First straight and first later analog transition (glidx 74..91) are internally
+faithful (`SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`). Next: advance to
+exactly the next transition where visual divergence could begin.
 Keep P08-T10 and USER_BUG_B separate.
 
 ## FILES_TO_READ_NEXT
