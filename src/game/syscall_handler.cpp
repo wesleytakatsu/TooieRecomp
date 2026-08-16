@@ -340,7 +340,8 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     // probe fields plus player-0 simulation pose so visible-demo movement
     // can be classified without the older overlay-timed diagnostic path.
     auto dump_movement = [&](const char* tag) {
-        if (!tooie_diag::movement_enabled() && !tooie_diag::input_enabled()) {
+        if (!tooie_diag::movement_enabled() && !tooie_diag::input_enabled() &&
+            !tooie_diag::forced_facing_enabled()) {
             return;
         }
         static auto s_last = std::chrono::steady_clock::time_point{};
@@ -354,16 +355,19 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         const int map_v = int(MEM_H(0x10, mode));
         const bool changed = (mode_v != s_last_mode) || (map_v != s_last_map);
         const bool demo_clip = tooie_diag::demo_path_enabled() && (mode_v == 5);
-        const int due_ms = demo_clip ? 50 : 200;
+        const bool facing_clip =
+            tooie_diag::forced_facing_enabled() && (mode_v == 3 || mode_v == 5);
+        const int due_ms = (demo_clip || facing_clip) ? 50 : 200;
         const bool due = (s_last.time_since_epoch().count() == 0) ||
                          (now - s_last >= std::chrono::milliseconds(due_ms));
         // Always sample gsattract (731) and player overlays more densely.
-        const bool hot = (overlay_index == 731u || overlay_index == 419u || demo_clip);
+        const bool hot = (overlay_index == 731u || overlay_index == 419u ||
+                          demo_clip || facing_clip);
         if (!changed && !due && !hot) {
             return;
         }
         if (!changed && hot &&
-            (now - s_last < std::chrono::milliseconds(demo_clip ? 50 : 80))) {
+            (now - s_last < std::chrono::milliseconds((demo_clip || facing_clip) ? 50 : 80))) {
             return;
         }
         s_last = now;
@@ -552,6 +556,32 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
             const uint32_t end = uint32_t(MEM_W(0x08, vec));
             if (elem_size == 0x9C && guest_ok(begin) && guest_ok(end) && end >= begin) {
                 const uint32_t count = (end - begin) / elem_size;
+                struct FacingPrev {
+                    uint32_t addr;
+                    float x, z, yaw;
+                    uint64_t last;
+                    bool have;
+                };
+                static FacingPrev s_face[32]{};
+                const bool dump_all = tooie_diag::movement_enabled();
+                const bool dump_face = tooie_diag::forced_facing_enabled();
+                auto wrap360 = [](float a) {
+                    a = std::fmod(a, 360.0f);
+                    if (a < 0.0f) {
+                        a += 360.0f;
+                    }
+                    return a;
+                };
+                auto shortest = [&](float a, float b) {
+                    float d = wrap360(b) - wrap360(a);
+                    if (d > 180.0f) {
+                        d -= 360.0f;
+                    }
+                    if (d < -180.0f) {
+                        d += 360.0f;
+                    }
+                    return d;
+                };
                 for (uint32_t i = 0; i < count && i < 40; ++i) {
                     const uint32_t act_addr = begin + i * 0x9C;
                     const gpr act = static_cast<gpr>(static_cast<int32_t>(act_addr));
@@ -562,14 +592,83 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
                     const float ry = bits_f32(uint32_t(MEM_W(0x48, act)));
                     const float rz = bits_f32(uint32_t(MEM_W(0x4C, act)));
                     const float sc = bits_f32(uint32_t(MEM_W(0x38, act)));
+                    const float unk54 = bits_f32(uint32_t(MEM_W(0x54, act)));
                     const uint32_t sys_entry = uint32_t(MEM_W(0x10, act));
                     const uint32_t unk14 = uint32_t(MEM_W(0x14, act));
                     const uint32_t d0 = uint32_t(MEM_W(0x18, act));
                     const uint32_t d1 = uint32_t(MEM_W(0x1C, act));
                     const uint32_t unk74 = uint32_t(MEM_W(0x74, act));
-                    std::fprintf(stderr,
-                                 "[tooie-actor] i=%u act=%08x pos=%.2f,%.2f,%.2f rot=%.2f,%.2f,%.2f scale=%.3f sys=%08x u14=%08x d0=%08x d1=%08x u74=%08x\n",
-                                 i, act_addr, ax, ay, az, rx, ry, rz, sc, sys_entry, unk14, d0, d1, unk74);
+                    if (dump_all) {
+                        std::fprintf(stderr,
+                                     "[tooie-actor] i=%u act=%08x pos=%.2f,%.2f,%.2f rot=%.2f,%.2f,%.2f scale=%.3f sys=%08x u14=%08x d0=%08x d1=%08x u74=%08x\n",
+                                     i, act_addr, ax, ay, az, rx, ry, rz, sc, sys_entry, unk14, d0, d1, unk74);
+                    }
+                    if (dump_face) {
+                        // Visible scripted characters. Skip blob shadows and
+                        // Banjo's Actor.rotation.y=0 player slot.
+                        const bool intro = (sys_entry == 0x80086C98u);
+                        const bool digger_g = (sys_entry == 0x80085C98u);
+                        const bool digger_f = (sys_entry == 0x80085CA8u);
+                        const bool skip = (sys_entry == 0x80085768u);
+                        FacingPrev* prev = nullptr;
+                        FacingPrev* empty = nullptr;
+                        FacingPrev* oldest = nullptr;
+                        const uint64_t now_tick = tooie_diag::gfx_ticks();
+                        for (auto& slot : s_face) {
+                            if (slot.have && slot.addr == act_addr) {
+                                prev = &slot;
+                                break;
+                            }
+                            if (!slot.have && empty == nullptr) {
+                                empty = &slot;
+                            }
+                            if (slot.have &&
+                                (oldest == nullptr || slot.last < oldest->last)) {
+                                oldest = &slot;
+                            }
+                        }
+                        if (prev == nullptr) {
+                            prev = (empty != nullptr) ? empty : oldest;
+                            if (prev != nullptr) {
+                                *prev = {act_addr, ax, az, ry, now_tick, true};
+                            }
+                        } else {
+                            prev->last = now_tick;
+                        }
+                        float dx = 0, dz = 0, dist = 0, head = 0, dlt = 0;
+                        float dyaw = 0, raw_dyaw = 0;
+                        bool moved = false;
+                        if (prev != nullptr && prev->addr == act_addr) {
+                            dx = ax - prev->x;
+                            dz = az - prev->z;
+                            dist = std::sqrt(dx * dx + dz * dz);
+                            raw_dyaw = ry - prev->yaw;
+                            dyaw = shortest(prev->yaw, ry);
+                            if (dist > 0.4f) {
+                                moved = true;
+                                head = wrap360(std::atan2(dx, dz) * (180.0f / 3.14159265f));
+                                dlt = std::fabs(shortest(head, ry));
+                            }
+                            prev->x = ax;
+                            prev->z = az;
+                            prev->yaw = ry;
+                        }
+                        const bool interesting =
+                            !skip && (intro || digger_g || digger_f) &&
+                            (moved || std::fabs(dyaw) > 5.0f);
+                        if (interesting) {
+                            std::fprintf(stderr,
+                                         "[facing] tick=%llu mode=%d map=%d i=%u actor=%08x "
+                                         "sys=%08x state=%08x pos=%.2f,%.2f,%.2f dpos=%.2f,%.2f "
+                                         "move_head=%.2f yaw=%.2f unk54=%.2f pitch=%.2f "
+                                         "raw_delta=%.2f wrapped_delta=%.2f "
+                                         "move_vs_yaw=%.2f anim=%08x\n",
+                                         static_cast<unsigned long long>(tooie_diag::gfx_ticks()),
+                                         mode_v, map_v, i, act_addr, sys_entry, unk74,
+                                         ax, ay, az, dx, dz, head, ry, unk54, rx,
+                                         raw_dyaw, dyaw, dlt, d1);
+                        }
+                    }
                 }
             }
         }

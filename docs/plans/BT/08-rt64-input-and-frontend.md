@@ -39,6 +39,9 @@ first-straight ~510 is **original slope-scaled physics**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14) and
 the first later analog transition (`glidx = 74..91`) is **internally faithful**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15).
+USER_BUG_B is **DIAGNOSED_ONE_ACTOR** (Level B;
+[[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]]): Wooded Hollow
+sucoaster `chdiggerground` reverse walk faces 180° from travel.
 The historical verdict C and its narrow missing `$at` side-effect finding
 are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];
@@ -60,7 +63,8 @@ indireto de áudio e o gap estrutural de preempção foram provados:
 
 Evidência corrente:
 
-- [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; recorded-pad + ~2% speed)
+- [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] (USER_BUG_B one-actor; sucoaster chdiggerground 180°)
+- [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)
@@ -172,7 +176,8 @@ Evidência corrente:
 
 | evidência | estado/finalidade |
 | --- | --- |
-| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | **CURRENT:** first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math; PASS |
+| [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | **CURRENT:** USER_BUG_B one-actor; sucoaster chdiggerground reverse 180°; Level B |
+| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math; PASS |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -235,22 +240,21 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Residual prioritário
 
-1. **Demo-path first straight and first later analog transition — PASS (2026-08-15)**
+1. **USER_BUG_B one-actor facing — DIAGNOSED (Level B, 2026-08-15)**
+   ([[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]]).
+   Wooded Hollow sucoaster `chdiggerground` reverse walk: movement heading
+   294.21°, `Actor.rotation.y` / `unk54` frozen at 114.21°. Independent
+   review before implementation.
+2. **Demo-path first straight and first later analog transition — PASS**
    ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15).
-   Hardware watchpoints prove the only `phys+0x10/+0x18` writer between
-   glrecord samples is original `func_800EF04C` from `func_8009AE08`. Slope
-   path taken; working target `500 * 1.019454 = 509.727`. The ~510 settle is
-   **intended original** downhill slope-scaled walk speed.
-   First later analog transition (`glidx = 74..91`, `(-63, 74)`) is
-   **internally faithful** across `func_80013ABC` table arcsin, bastick distance,
-   camera-relative yaw, `yaw_update` easing, and velocity integration.
-   `FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`, `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`.
-2. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
+   Later demo-path visual residual:
+   `DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT`.
+3. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
    full controller is PENDING.
-3. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
+4. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
    current HEAD (regression from P08-T10 validated state).
-4. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
-5. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
+5. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
+6. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
 
 ## Gate de saída
@@ -268,11 +272,10 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
 
 ## Próxima etapa
 
-**NEXT:** First-straight and first later analog transition (glidx 74..91) are
-**PASS** ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15).
-Advance to the next analog transition in the demo path where visual residual
-could begin. Do not implement a precision fix, cinematic facing, or
-transform tagging yet. Do not reopen the accepted BCF28 helper binding,
-PATCH 4 / Hybrid F', the core1 RA wrappers, the render-submission matrix
-split, or the accepted `func_80013B70` cardinal semantics. Do not modify
-shared RT64.
+**NEXT:** Independent review of the USER_BUG_B sucoaster facing defect
+([[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]]) before
+implementation. Do not diagnose a second cinematic actor. Do not implement
+a demo-path precision fix or transform tagging. Do not reopen the accepted
+BCF28 helper binding, PATCH 4 / Hybrid F', the core1 RA wrappers, the
+render-submission matrix split, or the accepted `func_80013B70` cardinal
+semantics. Do not modify shared RT64.

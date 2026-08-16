@@ -19,6 +19,10 @@
 // Demo path precision probe (P08): TOOIE_DIAG_DEMO_PATH=1 is independent of
 // TOOIE_DIAG. It implies movement sampling and adds throttled func_80013B70
 // caller/RA logs plus player physics/goto fields for one attract clip.
+//
+// Forced/cinematic facing probe (P08 USER_BUG_B): TOOIE_DIAG_FORCED_FACING=1
+// is independent of TOOIE_DIAG. Compact per-actor [facing] lines for scripted
+// movers (filtered; not a full actor dump). Also enables throttled 13B70 RA.
 
 namespace tooie_diag {
 
@@ -28,6 +32,7 @@ bool movement_enabled();
 bool input_enabled();
 bool frontend_enabled();
 bool demo_path_enabled();
+bool forced_facing_enabled();
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
 void note_syscall_return(uint32_t ovl, uint32_t ep);

@@ -235,12 +235,12 @@ O trabalho só está concluído quando todos os critérios de
   clean-freeze type-4 snapshot (8/8 runs): type-4 completa, campos
   `0.9/3.5/2883` corrigidos para `+0x0C/+0x18/+0x10`, warp consumido; blocker
   downstream no mode-5/attract init.
-- [[evidence/p08-demo-movement-precision-diagnosis]] — **CURRENT:** recorded-pad
-  demo residual; per-logic-tick speed-contract discriminator COMPLETE
-  (DeepSeek V4 Flash HIGH): `tspd` is a pre-acceleration target (B), the
-  physics ramp converges to it exactly (ratio 1.0 at `func_8009AE08` exit),
-  and the ~1.02× value is a post-physics input-boundary velocity-field write
-  (writer unproven).
+- [[evidence/p08-forced-cinematic-facing-diagnosis]] — **CURRENT:** USER_BUG_B
+  one-actor facing (Level B): sucoaster `chdiggerground` reverse walk,
+  heading 294.21° vs yaw/unk54 114.21°.
+- [[evidence/p08-demo-movement-precision-diagnosis]] — recorded-pad demo path;
+  first straight 510 is original slope-scaled physics; first analog
+  transition `glidx 74..91` internally faithful; later residual deferred.
 - [[evidence/p08-session-handoff]] — estado autossuficiente e próximo single
   action para um novo chat.
 - [[evidence/p08-intro-to-demo-transition-diagnosis]] — timeline histórica;

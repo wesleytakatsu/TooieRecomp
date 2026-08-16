@@ -25,6 +25,7 @@ std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_frontend_enabled{false};
 std::atomic<bool> g_direction_enabled{false};
 std::atomic<bool> g_demo_path_enabled{false};
+std::atomic<bool> g_forced_facing_enabled{false};
 std::atomic<bool> g_gameplay_seen{false};
 std::atomic<bool> g_inited{false};
 std::atomic<uint32_t> g_host_x_bits{0};
@@ -106,6 +107,10 @@ void ensure_init() {
     if (g_demo_path_enabled.load(std::memory_order_relaxed)) {
         g_movement_enabled.store(true, std::memory_order_relaxed);
     }
+    const char* facing = std::getenv("TOOIE_DIAG_FORCED_FACING");
+    g_forced_facing_enabled.store(facing != nullptr && facing[0] != '\0' &&
+                                      facing[0] != '0',
+                                  std::memory_order_relaxed);
     const char* vec = std::getenv("TOOIE_DIAG_INPUT_VECTOR");
     if (vec != nullptr && vec[0] != '\0') {
         auto eq = [vec](const char* name) {
@@ -208,6 +213,11 @@ void ensure_init() {
                      "[tooie-demopath] enabled (implies movement; 13B70 RA + physics/goto)\n");
         std::fflush(stderr);
     }
+    if (g_forced_facing_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[facing] enabled (filtered scripted-actor heading vs yaw)\n");
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -253,6 +263,11 @@ bool input_enabled() {
 bool demo_path_enabled() {
     ensure_init();
     return g_demo_path_enabled.load(std::memory_order_relaxed);
+}
+
+bool forced_facing_enabled() {
+    ensure_init();
+    return g_forced_facing_enabled.load(std::memory_order_relaxed);
 }
 
 bool frontend_enabled() {
@@ -643,7 +658,8 @@ void note_math(const char* name, float input, float output) {
 
 void note_13b70(uint32_t ra, float y, float x, float mag, float angle) {
     ensure_init();
-    if (!g_demo_path_enabled.load(std::memory_order_relaxed)) {
+    if (!g_demo_path_enabled.load(std::memory_order_relaxed) &&
+        !g_forced_facing_enabled.load(std::memory_order_relaxed)) {
         return;
     }
     static uint32_t s_n = 0;
@@ -894,7 +910,8 @@ void report_now(const char* reason) {
 
 void tick() {
     ensure_init();
-    if (g_movement_enabled.load(std::memory_order_relaxed)) {
+    if (g_movement_enabled.load(std::memory_order_relaxed) ||
+        g_forced_facing_enabled.load(std::memory_order_relaxed)) {
         g_gfx_ticks.fetch_add(1, std::memory_order_relaxed);
     }
     if (!g_enabled.load(std::memory_order_relaxed) &&

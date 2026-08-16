@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — USER_BUG_A WASD resolved; first-straight 510 is original slope-scaled physics (PASS); analog controller and USER_BUG_B pending.
+- [[HANDOFF]] — Handoff — TooieRecomp — USER_BUG_A WASD resolved; first-straight 510 and first analog PASS; USER_BUG_B diagnosed on one sucoaster chdiggerground (Level B).
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
@@ -12,6 +12,7 @@
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
+- [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] — P08 — forced/cinematic actor facing diagnosis — USER_BUG_B one-actor: Wooded Hollow sucoaster `chdiggerground` reverse walk, heading 294.21° vs yaw 114.21° (Level B).
 - [[plan/evidence/p08-demo-movement-precision-diagnosis]] — P08 — demo movement precision diagnosis — Wooded Hollow first-straight 510 is original slope-scaled physics (`func_800EF04C` from `func_8009AE08`); post-physics writer REFUTED; FIRST_STRAIGHT_INTERNAL_FIDELITY PASS.
 - [[plan/evidence/p08-stick-angle-thunk-fix-correction]] — P08 — func_80013B70 review correction — Minimal semantic correction reproducing $at/$r1=0x43340000 delay slot on all y==0 paths.
 - [[plan/evidence/p08-stick-angle-thunk-fix]] — P08 — stick-angle secondary-entry fix — Native shared-tail override for empty generated func_80013B70; cardinals 0/90/180/270 and third-argument contract PASS.

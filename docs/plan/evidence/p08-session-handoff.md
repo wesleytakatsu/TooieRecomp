@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math (PASS); later transitions and USER_BUG_B remain open."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; USER_BUG_B diagnosed on one sucoaster chdiggerground (Level B)."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Active diagnosis: [[p08-demo-movement-precision-diagnosis]].
+- Active diagnosis: [[p08-forced-cinematic-facing-diagnosis]].
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
@@ -79,14 +79,17 @@ velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
 arcsin evaluation, error vs original 0.0000°, error vs atan2 < 0.001°), camera-relative
 desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-scaled
 velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
-(USER_BUG_B) is **OPEN_SEPARATE**.
+(USER_BUG_B) is **DIAGNOSED_ONE_ACTOR** (Level B;
+[[p08-forced-cinematic-facing-diagnosis]]): Wooded Hollow sucoaster
+`chdiggerground` `801c5d1c`/`801c5afc` reverse walk, heading 294.21° vs
+yaw/unk54 114.21°.
 
 Next steps in Phase P08:
-1. ~~First straight & first later analog transition~~ **COMPLETE** — internally
-   faithful (`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`, `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`).
-2. Advance to the next analog transition in the demo path where visual residual could begin.
+1. ~~First straight & first later analog transition~~ **COMPLETE**.
+   Demo-path residual is `DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT`.
+2. Independent review of the USER_BUG_B facing defect before implementation.
 3. Analog/gamepad validation of USER_BUG_A.
-4. USER_BUG_B diagnosis; high-FPS transform tagging; window options (`P08-T07`).
+4. High-FPS transform tagging; window options (`P08-T07`).
 
 ## ROOT_CAUSE_STATUS
 
@@ -106,6 +109,10 @@ DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog t
   First later analog transition (glidx 74..91) is internally faithful across
   glrecord cadence, deadzone remap, bastick distance, func_80013ABC table arcsin,
   quadrant correction, camera-relative yaw, yaw_update easing, and velocity integration.
+  Later demo-path visual residual: DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
+USER_BUG_B:                          LEVEL B — sucoaster chdiggerground reverse
+  heading 294.21 vs yaw/unk54 114.21 (exact 180°). See
+  [[p08-forced-cinematic-facing-diagnosis]].
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
@@ -137,14 +144,14 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-First straight and first later analog transition (glidx 74..91) are internally
-faithful (`SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`). Next: advance to
-exactly the next transition where visual divergence could begin.
-Keep P08-T10 and USER_BUG_B separate.
+Independent review of the proven USER_BUG_B sucoaster facing defect
+([[p08-forced-cinematic-facing-diagnosis]]) before implementation.
+Do not diagnose a second cinematic actor. Demo-path residual stays deferred.
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-demo-movement-precision-diagnosis]] — current residual
+0. [[p08-forced-cinematic-facing-diagnosis]] — USER_BUG_B one-actor facing
+0. [[p08-demo-movement-precision-diagnosis]] — demo path residual (PASS / deferred)
 0a. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
 0a. [[p08-stick-angle-thunk-fix-rereview]] — verdict A; blocker resolved
 0aa. [[p08-stick-angle-thunk-fix-independent-review]] — historical verdict C
@@ -160,7 +167,7 @@ Keep P08-T10 and USER_BUG_B separate.
 ## CHECKPOINT SCOPE
 
 ```text
-CODE_CHANGED             = NO (docs-only; GDB watchpoints only)
+CODE_CHANGED             = YES (TOOIE_DIAG_FORCED_FACING probe only)
 RUNTIME_CODE_CHANGED     = NO (N64ModernRuntime untouched)
 GENERATOR_CODE_CHANGED   = NO (N64Recomp untouched)
 PATCH_CODE_CHANGED       = NO

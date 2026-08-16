@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math (PASS); full controller and USER_BUG_B remain open."
+description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition (glidx 74..91) PASS; USER_BUG_B diagnosed on one sucoaster chdiggerground (Level B); full controller still pending."
 status: current
 type: handoff
 project: TooieRecomp
@@ -44,13 +44,15 @@ Handoff técnico: [[plan/evidence/p08-session-handoff]].
    (`glidx = 74..91`, `(-63, 74)`) is internally faithful across all stages
    (`func_80013ABC` table arcsin, bastick distance, camera-relative yaw,
    `yaw_update` easing, velocity integration; `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`).
-   Next: advance to the next transition where visual residual could begin.
+   Demo-path residual is DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
 3. Separately diagnose the file-select → Spiral Mountain regression
    (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
    as a gameplay automation gate until it is fixed.
-4. USER_BUG_B (cinematic/forced facing) stays open and separate. Do not
-   implement transform tagging yet.
+4. USER_BUG_B one-actor diagnosis COMPLETE (Level B)
+   ([[plan/evidence/p08-forced-cinematic-facing-diagnosis]]): Wooded Hollow
+   sucoaster `chdiggerground` reverse walk, heading 294.21° vs yaw 114.21°.
+   Independent review before any facing fix. Do not implement transform tagging.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, the title/file-select
@@ -95,7 +97,8 @@ RT64. PATCH 4 stays ON.
     510 is original slope-scaled physics integration (`func_800EF04C` from
     `func_8009AE08`); the post-physics-writer hypothesis is **REFUTED**;
     first-straight internal fidelity **PASS**. Attract/cinematic facing
-    remains USER_BUG_B.
+    is USER_BUG_B, now diagnosed on one actor (Level B;
+    [[plan/evidence/p08-forced-cinematic-facing-diagnosis]]).
 
 ## Arquitetura e regras
 
@@ -145,7 +148,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (**CURRENT** — demo path residual)
+0. [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] (**CURRENT** — USER_BUG_B one-actor facing)
+0a. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (demo path residual; first straight + first analog PASS)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix]] (accepted stick-angle secondary-entry fix)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` blocker resolved)
 0aa. [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)

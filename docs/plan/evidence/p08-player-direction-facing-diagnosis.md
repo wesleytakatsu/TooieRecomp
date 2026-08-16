@@ -17,7 +17,8 @@ RIGHT_ONLY_PLAYER_MOVEMENT:   RESOLVED (manual WASD on HEAD 6a0a696)
 ATTRACT_PLAYER_DIRECTION_WRONG: CORRECTED/SUPERSEDED — gameplay demo player
                               uses bastick via glrecord; see
                               [[p08-demo-movement-precision-diagnosis]]
-CINEMATIC_FACING_WRONG:       OPEN_SEPARATE (USER_BUG_B; not this note)
+CINEMATIC_FACING_WRONG:       DIAGNOSED_ONE_ACTOR — see
+                              [[p08-forced-cinematic-facing-diagnosis]]
 BOTS_BEHAVIOR_PLAUSIBLE:      YES — bots bypass bastick/yaw pipeline
 USER_BUG_A_FUNCTION_LEVEL:    RESOLVED
 USER_BUG_A_WASD_RUNTIME:      RESOLVED
@@ -228,5 +229,8 @@ RUNTIME:     USER_BUG_A_WASD_RUNTIME RESOLVED (manual current-HEAD WASD)
              USER_BUG_A_FULL_CONTROLLER PENDING
              (P08-T10 synthetic file-select → mode=1 still FAIL; separate)
 USER_BUG_A:  WASD resolved; full controller pending
-USER_BUG_B:  OPEN_SEPARATE (cinematic/forced facing; not this residual)
+USER_BUG_B:  DIAGNOSED_ONE_ACTOR — Wooded Hollow sucoaster
+             chdiggerground 801c5d1c/801c5afc reverse walk,
+             heading 294.21 vs yaw/unk54 114.21 (exact 180°);
+             Level B; see [[p08-forced-cinematic-facing-diagnosis]]
 ```

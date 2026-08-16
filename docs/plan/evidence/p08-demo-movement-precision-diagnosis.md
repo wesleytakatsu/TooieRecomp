@@ -246,7 +246,8 @@ or player-only +2% walk-speed residual.
 
 ## 8. Forced / cinematic facing — characterize only
 
-USER_BUG_B remains **OPEN_SEPARATE**.
+USER_BUG_B remains **OPEN_SEPARATE** here. Later one-actor diagnosis:
+[[p08-forced-cinematic-facing-diagnosis]] (Level B).
 
 One observed nearby actor during the first walk
 (`act=801ca174`, pos ≈ `-775,-300,-57`, `rot.y=201`, not translating)
@@ -890,7 +891,8 @@ MINIMAL_FIX_FILES:                 none
 FIX_IMPLEMENTED:                   NO
 USER_BUG_A_WASD_RUNTIME:           RESOLVED
 USER_BUG_A_FULL_CONTROLLER:        PENDING
-USER_BUG_B:                        OPEN_SEPARATE
+USER_BUG_B:                        DIAGNOSED_ONE_ACTOR (Level B;
+                                   [[p08-forced-cinematic-facing-diagnosis]])
 ```
 
 ### 15.4 Validation (this checkpoint)
