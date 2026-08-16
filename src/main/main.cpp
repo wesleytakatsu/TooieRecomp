@@ -59,6 +59,7 @@ extern char** environ;
 #include "banjo_game.h"
 #include "banjo_launcher.h"
 #include "tooie_diag.h"
+#include "tooie_window.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
 #include "theme.h"
@@ -288,11 +289,21 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
     flags |= SDL_WINDOW_VULKAN;
 #endif
 
-    window = SDL_CreateWindow(banjo::program_name.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 900, flags);
+    int init_w = 1600, init_h = 900;
+    tooie_window::sanitize_window_dimensions(init_w, init_h);
+
+    window = SDL_CreateWindow(banjo::program_name.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, init_w, init_h, flags);
 
     if (window == nullptr) {
         exit_error("Failed to create window: %s\n", SDL_GetError());
     }
+
+    auto& ws = tooie_window::get_window_state();
+    ws.logical_width = init_w;
+    ws.logical_height = init_h;
+    SDL_GetWindowSizeInPixels(window, &ws.pixel_width, &ws.pixel_height);
+    tooie_window::calculate_drawable_scale(ws.logical_width, ws.logical_height, ws.pixel_width, ws.pixel_height, ws.scale_x, ws.scale_y);
+    ws.current_display = tooie_window::validate_display_index(SDL_GetWindowDisplayIndex(window), SDL_GetNumVideoDisplays());
 
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);

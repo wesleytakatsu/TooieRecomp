@@ -120,6 +120,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
@@ -345,3 +346,24 @@ target_compile_options(input_direction_test PRIVATE
     -Wno-unused-parameter
 )
 set_target_properties(input_direction_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P08-T07 window & display regression test: proves display index validation, dimension sanitization, scale/DPI and aspect ratio contracts.
+add_executable(window_display_test
+    ${CMAKE_SOURCE_DIR}/tests/window_display_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
+)
+target_include_directories(window_display_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/include
+    ${N64MR}/thirdparty
+    ${SDL2_INCLUDE_DIRS}
+)
+target_compile_options(window_display_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+target_link_libraries(window_display_test PRIVATE
+    SDL2::SDL2
+)
+set_target_properties(window_display_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

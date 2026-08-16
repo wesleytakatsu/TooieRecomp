@@ -9,6 +9,7 @@
 #include "recompui/renderer.h"
 #include "banjo_sound.h"
 #include "tooie_diag.h"
+#include "tooie_window.h"
 #include "librecomp/helpers.hpp"
 #include "../patches/input.h"
 #include "../patches/graphics.h"
@@ -77,8 +78,9 @@ extern "C" void recomp_get_target_framerate(uint8_t* rdram, recomp_context* ctx)
 }
 
 extern "C" void recomp_get_window_resolution(uint8_t* rdram, recomp_context* ctx) {
-    int width, height;
+    int width = 0, height = 0;
     recompui::get_window_size(width, height);
+    tooie_window::sanitize_window_dimensions(width, height);
 
     gpr width_out = _arg<0, PTR(u32)>(rdram, ctx);
     gpr height_out = _arg<1, PTR(u32)>(rdram, ctx);
@@ -90,37 +92,18 @@ extern "C" void recomp_get_window_resolution(uint8_t* rdram, recomp_context* ctx
 extern "C" void recomp_get_target_aspect_ratio(uint8_t* rdram, recomp_context* ctx) {
     ultramodern::renderer::GraphicsConfig graphics_config = ultramodern::renderer::get_graphics_config();
     float original = _arg<0, float>(rdram, ctx);
-    int width, height;
+    int width = 0, height = 0;
     recompui::get_window_size(width, height);
 
-    switch (graphics_config.ar_option) {
-        case ultramodern::renderer::AspectRatio::Original:
-        default:
-            _return(ctx, original);
-            return;
-        case ultramodern::renderer::AspectRatio::Expand:
-            _return(ctx, std::max(static_cast<float>(width) / height, original));
-            return;
-    }
+    _return(ctx, tooie_window::calculate_target_aspect_ratio(graphics_config.ar_option, width, height, original));
 }
 
 extern "C" void recomp_get_cutscene_aspect_ratio(uint8_t *rdram, recomp_context *ctx) {
     float original = _arg<0, float>(rdram, ctx);
-    int width, height;
+    int width = 0, height = 0;
     recompui::get_window_size(width, height);
 
-    switch (banjo::get_cutscene_aspect_ratio_mode()) {
-        case banjo::CutsceneAspectRatioMode::Original:
-            _return(ctx, original);
-            return;
-        case banjo::CutsceneAspectRatioMode::Clamp16x9:
-        default:
-            _return(ctx, 16.0f / 9.0f);
-            return;
-        case banjo::CutsceneAspectRatioMode::Full:
-            _return(ctx, std::max(static_cast<float>(width) / height, original));
-            return;
-    }
+    _return(ctx, tooie_window::calculate_cutscene_aspect_ratio(banjo::get_cutscene_aspect_ratio_mode(), width, height, original));
 }
 
 extern "C" void recomp_get_bgm_volume(uint8_t* rdram, recomp_context* ctx) {
