@@ -145,6 +145,65 @@ ATTRACT_DEMO2_LOOP_CRASH:            PROVEN Level A
   T1 335 and T2 278 succeed; T3 314 init SIGSEGV EXIT=139
 ```
 
+## Independent acceptance review — 2026-08-16 (GPT-5.6 Luna, X-HIGH)
+
+The fix is accepted with a non-blocking runtime-environment caveat. The exact
+expected repository head was present, the durable patch base/hash contract was
+verified, and a clean regeneration reproduced the intended output. The policy
+unit test executed all four requested JAL cases (`T11 PASS`, `pass=75 fail=0`).
+
+```text
+BASE_HEAD:                                  1f2aba14665c064ce5af829955f1ac089792de77
+PATCH_BASE_CORRECT:                         YES
+PATCH_HASH_CORRECT:                         YES
+PATCH_APPLICATION_CONTRACT:                 PASS
+UNNAMED_SAME_SECTION_CREATESTATIC:          PASS
+CROSS_SECTION_POLICY_PRESERVED:             YES
+NON_RELOCATABLE_POLICY_PRESERVED:           YES
+HOST_HOOK_POLICY_PRESERVED:                 YES
+CREATESTATIC_BOUNDARIES:                    7/7 PASS
+BSREST_808003FC_VERDICT:                    A
+STATIC_HELPER_SPOTCHECK_1:                  8080020C — PASS (72/72, branches/JALs bounded)
+STATIC_HELPER_SPOTCHECK_2:                  8080032C — PASS (52/52, branches/JALs bounded)
+TOTAL_AUDITED_CALLS:                        17
+DIRECT_CORRECT_STATIC:                      17
+WRONG_STATIC:                               0
+CALL_MISSING:                               0
+LOOKUP_REMAINS:                             0
+STATIC_TEST_STRENGTH:                       B
+STATIC_TEST_FALSE_PASS_RISK:                LOW
+TEST_STRENGTHENED:                          YES (test-only)
+GENERATOR_POLICY_TEST_EXECUTED:              YES
+GENERATOR_POLICY_CASES:                      4/4
+CUMULATIVE_PATCH_PRIOR_CONTENT_PRESERVED:    YES
+UNRELATED_GENERATOR_SEMANTICS_CHANGED:      NO
+REGENERATED_LOCAL_BODIES:                   7/7
+REGENERATED_DIRECT_CALLS:                   17/17
+REGENERATED_VULNERABLE_LOOKUPS:             0
+ATTRACT_STATIC_TEST:                         PASS
+STICK_ANGLE_TEST:                            PASS
+MATRIX_SUBMISSION_TEST:                     PASS
+INPUT_DIRECTION_TEST:                       PASS
+BCF28_TEST:                                  PASS
+CORE1_RA_TEST:                               PASS
+TOOIE_BUILD:                                 PASS
+```
+
+The short independent LVP/Xvfb run launched and reached `T_INTRO`, with no
+SIGSEGV, but timed out before CCL; the Radeon/Xvfb path lacked DRI3 presentation.
+The earlier 300-second Vulkan soak remains implementation evidence. For this
+independent run: `CCL_REACHED=NO`, `BSREST_EP11_REACHED=NO`,
+`CORRECT_LOCAL_TARGET=UNKNOWN`, `BAFLAMELINE_WRONG_BIND=UNKNOWN`,
+`INTRO_395_REACHED=NO`, `EXIT_139=NO`.
+
+```text
+FIX_VERDICT:                                B
+FIX_ACCEPTED:                               YES
+ATTRACT_DEMO2_CRASH:                        RESOLVED
+MARKDOWN_VAULT_AUDIT:                       PASS (0 errors; pre-existing warnings/tasks remain)
+NEXT_SINGLE_ACTION:                         return to the next P08 residual
+```
+
 ## RESOLVED_DO_NOT_REOPEN
 
 1. Overlay data relocation / `LOOKUP_FUNC(0)`.

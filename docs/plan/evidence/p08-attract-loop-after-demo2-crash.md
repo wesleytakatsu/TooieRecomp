@@ -19,6 +19,97 @@ FIX_IMPLEMENTED:           YES (N64Recomp CreateStatic ordering fix)
 FIX_VALIDATED:             YES (CCL survived, CS intro 395 reached, 300s soak PASS)
 ```
 
+## Independent acceptance review — 2026-08-16 (GPT-5.6 Luna, X-HIGH)
+
+This review preserves the preceding implementation and Gemini history. The durable
+patch and the generated result were independently checked from the exact expected
+base; no generator behavior was reimplemented.
+
+```text
+BASE_HEAD:                                  1f2aba14665c064ce5af829955f1ac089792de77
+PATCH_BASE_CORRECT:                         YES
+PATCH_HASH_CORRECT:                         YES
+PATCH_APPLICATION_CONTRACT:                 PASS (exact base; checkout already applied)
+ACTIVE_PATCH:                               patches/runtime/n64recomp-tooie.patch
+N64RECOMP_BASE:                             2b6f05688de2abc7d86da5b4a89b84c2c6acbabe
+HISTORICAL_SUPERSEDED_PATCH_ACTIVE:         NO
+GENERATED_C_DURABLE_SOURCE:                 NO
+KNOWN_SAME_SECTION_POLICY:                  PASS
+UNNAMED_SAME_SECTION_CREATESTATIC:          PASS
+CROSS_SECTION_POLICY_PRESERVED:             YES
+NON_RELOCATABLE_POLICY_PRESERVED:           YES
+HOST_HOOK_POLICY_PRESERVED:                 YES
+FIRST_POLICY_MISMATCH:                      NONE
+```
+
+CreateStatic boundary review against `.bsrest` section 344 (`0x80800000..0x80800940`):
+
+| Target | Start | End | Result |
+|---|---:|---:|---|
+| 1 | `80800000` | `80800000` | PASS (zero-sized original target) |
+| 2 | `8080003C` | `80800080` | PASS |
+| 3 | `80800080` | `808000E4` | PASS |
+| 4 | `808000E4` | `80800188` | PASS (next named function) |
+| 5 | `8080020C` | `8080032C` | PASS |
+| 6 | `8080032C` | `808003FC` | PASS |
+| 7 | `808003FC` | `80800430` | PASS (next named function) |
+
+`CREATESTATIC_BOUNDARIES: 7/7 PASS`. Raw-ROM instruction coverage matched each
+inferred body exactly; no branch target exited its boundary and no named function
+was duplicated. The crash helper `static_344_808003FC` is a semantic match (A):
+stack/RA handling, `func_800A0C20`, delay-slot store, zero `a1`, conditional branch,
+`func_800A0D14`, `a2=0.5f`, and return path all match the original MIPS. Spot checks
+`0x8080020C` (72/72 instructions, 7 branches, 15 JALs) and `0x8080032C` (52/52,
+9 branches, 9 JALs) also passed.
+
+```text
+TOTAL_AUDITED_CALLS:                        17
+DIRECT_CORRECT_STATIC:                      17
+WRONG_STATIC:                               0
+CALL_MISSING:                               0
+LOOKUP_REMAINS:                             0
+GENERATED_LOCAL_BODIES:                     7/7
+REGENERATED_DIRECT_CALLS:                   17/17
+REGENERATED_VULNERABLE_LOOKUPS:             0
+```
+
+The regression test was strengthened in a test-only change. It now maps all 17
+original caller/target pairs, requires exact `static_344_<target>` definitions,
+requires 17 correct direct calls, and rejects missing, wrong, or lookup calls.
+`STATIC_TEST_STRENGTH: B`; `STATIC_TEST_FALSE_PASS_RISK: LOW`; `TEST_STRENGTHENED: YES`.
+The remaining textual 0x808003FC checks are covered jointly by the raw-MIPS review
+and the live generator policy test.
+
+```text
+GENERATOR_POLICY_TEST_EXECUTED:              YES
+GENERATOR_POLICY_CASES:                      4/4
+GENERATOR_POLICY_TEST_VERDICT:               A (T11 PASS, pass=75 fail=0)
+CUMULATIVE_PATCH_PRIOR_CONTENT_PRESERVED:    YES
+UNRELATED_GENERATOR_SEMANTICS_CHANGED:      NO
+REGENERATION:                                CLEAN, build succeeded
+STATIC_AND_NATIVE_TESTS:                     PASS
+TOOIE_BUILD:                                 PASS
+```
+
+The independent 30-second software-Vulkan/Xvfb run reached auto-start and
+`T_INTRO`, exited by the timeout (`124`), and emitted no SIGSEGV. It did not reach
+CCL within that environment; the hardware-oriented Xvfb attempt was blocked by
+missing DRI3 presentation. Thus the independent narrow runtime transition fields
+are `CCL_REACHED=NO`, `BSREST_EP11_REACHED=NO`, `CORRECT_LOCAL_TARGET=UNKNOWN`,
+`BAFLAMELINE_WRONG_BIND=UNKNOWN`, `INTRO_395_REACHED=NO`, `EXIT_139=NO`.
+The prior 300-second Vulkan soak above remains preserved as historical implementation
+evidence and is not rewritten or reclassified.
+
+```text
+FIX_VERDICT:                                B
+ROOT_CAUSE_LEVEL:                           A
+FIX_OWNER:                                  N64RECOMP
+FIX_IMPLEMENTED:                            YES
+FIX_ACCEPTED:                               YES
+ATTRACT_DEMO2_CRASH:                        RESOLVED
+STATUS:                                     ACCEPTED with non-blocking runtime-environment caveat
+```
+
 This is the current P08 blocker. Fire-egg collision, cinematic-facing, and
 T10 results are preserved and not reopened.
 

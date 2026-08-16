@@ -261,6 +261,46 @@ intro -> Jiggy -> gsattract -> map 335/entrance 8 -> type-4 complete
  -> gameplay demo
 ```
 
+## P08 unnamed same-section JAL fix — independent acceptance (2026-08-16)
+
+Independent review result: `FIX_VERDICT=B`, `FIX_ACCEPTED=YES`, and the old
+DEMO2/CCL SIGSEGV blocker is closed. The B classification records the test-only
+hardening and the fact that this host could not reproduce the transition runtime
+under Xvfb/lavapipe; it does not identify a generator blocker.
+
+Verified:
+
+- exact base `1f2aba14665c064ce5af829955f1ac089792de77`, patch base/hash contract,
+  and active durable ownership in `patches/runtime/n64recomp-tooie.patch`;
+- `resolve_jal` policy cases preserved: named same-section direct, unnamed
+  same-section `CreateStatic`, cross-section lookup semantics, and non-relocatable
+  host-hook lookup semantics;
+- all seven section-344 CreateStatic boundaries, original-MIPS helper semantics,
+  17/17 direct call-site mappings, 7/7 generated bodies, and zero vulnerable
+  lookups after clean regeneration;
+- live generator unit test 4/4 cases, all five native tests, and `TooieRecompiled`
+  build: PASS;
+- regression test strengthened only: exact 17-call mapping, exact section-344
+  helper definitions, and zero wrong/missing/lookup calls are now required.
+
+The independent 30-second software-Vulkan/Xvfb run reached `T_INTRO`, emitted no
+SIGSEGV, and timed out before CCL. The Radeon/Xvfb path was unavailable because
+of missing DRI3 presentation. The documented 300-second Vulkan soak remains
+preserved as historical implementation evidence.
+
+```text
+ROOT_CAUSE_LEVEL:                           A
+FIX_OWNER:                                  N64RECOMP
+FIX_IMPLEMENTED:                            YES
+FIX_ACCEPTED:                               YES
+ATTRACT_DEMO2_CRASH:                        RESOLVED
+CREATESTATIC_BOUNDARIES:                    7/7 PASS
+AUDITED_DIRECT_CALLS:                       17/17
+VULNERABLE_LOOKUPS:                         0
+MARKDOWN_VAULT_AUDIT:                       PASS (0 errors; pre-existing warnings/tasks)
+NEXT_SINGLE_ACTION:                         return to the next P08 residual
+```
+
 ## Estado observado (clean)
 
 ```text

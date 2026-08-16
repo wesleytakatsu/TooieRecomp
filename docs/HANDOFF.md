@@ -82,6 +82,61 @@ FIX_IMPLEMENTED:        NO
 MARKDOWN_VAULT_AUDIT:   PASS_WITH_PREEXISTING_WARNINGS (errors=0; 50 warnings)
 ```
 
+## P08 unnamed same-section JAL fix — independent acceptance (2026-08-16)
+
+The GPT-5.6 Luna X-HIGH review accepts the N64Recomp fix with a non-blocking
+runtime-environment caveat. Implementation history above is preserved; the only
+code change made during review was hardening the static regression test.
+
+```text
+BASE_HEAD:                                  1f2aba14665c064ce5af829955f1ac089792de77
+PATCH_BASE_CORRECT:                         YES
+PATCH_HASH_CORRECT:                         YES
+UNNAMED_SAME_SECTION_CREATESTATIC:          PASS
+CROSS_SECTION_POLICY_PRESERVED:             YES
+NON_RELOCATABLE_POLICY_PRESERVED:           YES
+HOST_HOOK_POLICY_PRESERVED:                 YES
+CREATESTATIC_BOUNDARIES:                    7/7 PASS
+BSREST_808003FC_VERDICT:                    A
+STATIC_HELPER_SPOTCHECK_1:                  8080020C PASS
+STATIC_HELPER_SPOTCHECK_2:                  8080032C PASS
+TOTAL_AUDITED_CALLS:                        17
+DIRECT_CORRECT_STATIC:                      17
+WRONG_STATIC:                               0
+CALL_MISSING:                               0
+LOOKUP_REMAINS:                             0
+STATIC_TEST_STRENGTH:                       B
+STATIC_TEST_FALSE_PASS_RISK:                LOW
+TEST_STRENGTHENED:                          YES
+GENERATOR_POLICY_TEST_EXECUTED:             YES
+GENERATOR_POLICY_CASES:                     4/4
+CUMULATIVE_PATCH_PRIOR_CONTENT_PRESERVED:   YES
+UNRELATED_GENERATOR_SEMANTICS_CHANGED:     NO
+REGENERATED_LOCAL_BODIES:                  7/7
+REGENERATED_DIRECT_CALLS:                  17/17
+REGENERATED_VULNERABLE_LOOKUPS:            0
+ATTRACT_STATIC_TEST:                        PASS
+STICK_ANGLE_TEST:                           PASS
+MATRIX_SUBMISSION_TEST:                    PASS
+INPUT_DIRECTION_TEST:                      PASS
+BCF28_TEST:                                 PASS
+CORE1_RA_TEST:                              PASS
+TOOIE_BUILD:                                PASS
+CCL_REACHED:                                NO (independent short run; prior soak YES)
+BSREST_EP11_REACHED:                        NO (not reached in short run)
+CORRECT_LOCAL_TARGET:                       UNKNOWN (not reached in short run)
+BAFLAMELINE_WRONG_BIND:                    UNKNOWN (not reached in short run)
+INTRO_395_REACHED:                          NO (not reached in short run)
+EXIT_139:                                   NO
+FIX_VERDICT:                                B
+FIX_ACCEPTED:                               YES
+ATTRACT_DEMO2_CRASH:                        RESOLVED
+MARKDOWN_VAULT_AUDIT:                      PASS (0 errors; pre-existing warnings/tasks)
+COMMIT:                                     test checkpoint + docs checkpoint
+PUSHED:                                     YES (scheduled origin/main push after checkpoints)
+NEXT_SINGLE_ACTION:                         return to the next P08 residual
+```
+
 The `keep old yaw via -1` hypothesis is REFUTED. The original-MIPS case-11
 comparison proves that the 180° freeze is original return-leg behavior for
 this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
