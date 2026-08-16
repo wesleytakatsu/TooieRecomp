@@ -1668,6 +1668,187 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
     std::fflush(stderr);
 }
 
+// Full Wooded Hollow gameplay demo synchronization diagnostic (TOOIE_DIAG_DEMO_SYNC=1).
+// Emits one line per glrecord dispatch across the entire demo run.
+extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
+    if (!tooie_diag::demo_sync_enabled()) {
+        return;
+    }
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int map_v = int(MEM_H(0x10, kseg0_gpr(0x80127630u)));
+    if (mode_v != 5) {
+        return;
+    }
+
+    auto bits_f32 = [](int32_t bits) -> float {
+        float f = 0.0f;
+        const uint32_t u = static_cast<uint32_t>(bits);
+        std::memcpy(&f, &u, sizeof(f));
+        return f;
+    };
+    auto is_guest = [](uint32_t a) {
+        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+    };
+
+    const gpr plist = kseg0_gpr(0x80135490u);
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, plist));
+    if (ps_addr == 0 || !is_guest(ps_addr)) {
+        return;
+    }
+    const gpr ps = kseg0_gpr(ps_addr);
+
+    const uint32_t pos_addr = static_cast<uint32_t>(MEM_W(0xE4, ps));
+    const uint32_t yaw_addr = static_cast<uint32_t>(MEM_W(0xF8, ps));
+    const uint32_t phys_addr = static_cast<uint32_t>(MEM_W(0xC8, ps));
+    const uint32_t bs_addr = static_cast<uint32_t>(MEM_W(0x120, ps));
+    const uint32_t ba_stick_addr = static_cast<uint32_t>(MEM_W(0x128, ps));
+
+    float px = 0, py = 0, pz = 0;
+    float yaw = 0, yaw_ideal = 0;
+    float vx = 0, vy = 0, vz = 0, tspd = 0;
+    float bstick_x = 0, bstick_y = 0, bstick_ang = 0, bstick_dist = 0;
+    float mult = 0, accel = 0, phys_yaw = 0;
+    float ppx = 0, ppy = 0, ppz = 0;
+    int32_t bs_id = -1;
+
+    if (is_guest(pos_addr)) {
+        const gpr posp = kseg0_gpr(pos_addr);
+        px = bits_f32(MEM_W(0x0, posp));
+        py = bits_f32(MEM_W(0x4, posp));
+        pz = bits_f32(MEM_W(0x8, posp));
+    }
+    if (is_guest(yaw_addr)) {
+        const gpr yawp = kseg0_gpr(yaw_addr);
+        yaw = bits_f32(MEM_W(0x0, yawp));
+        yaw_ideal = bits_f32(MEM_W(0x4, yawp));
+    }
+    if (is_guest(phys_addr)) {
+        const gpr ph = kseg0_gpr(phys_addr);
+        ppx = bits_f32(MEM_W(0x04, ph));
+        ppy = bits_f32(MEM_W(0x08, ph));
+        ppz = bits_f32(MEM_W(0x0C, ph));
+        vx = bits_f32(MEM_W(0x10, ph));
+        vy = bits_f32(MEM_W(0x14, ph));
+        vz = bits_f32(MEM_W(0x18, ph));
+        tspd = bits_f32(MEM_W(0x3C, ph));
+        phys_yaw = bits_f32(MEM_W(0x40, ph));
+        accel = bits_f32(MEM_W(0x44, ph));
+        mult = bits_f32(MEM_W(0x50, ph));
+    }
+    if (is_guest(ba_stick_addr)) {
+        const gpr st = kseg0_gpr(ba_stick_addr);
+        bstick_x = bits_f32(MEM_W(0x54, st));
+        bstick_y = bits_f32(MEM_W(0x58, st));
+        bstick_ang = bits_f32(MEM_W(0x5C, st));
+        bstick_dist = bits_f32(MEM_W(0x60, st));
+    }
+    if (is_guest(bs_addr)) {
+        bs_id = static_cast<int32_t>(MEM_W(0, kseg0_gpr(bs_addr)));
+    }
+
+    const gpr remap = kseg0_gpr(0x80079AF8u);
+    const float rmx = bits_f32(MEM_W(8, remap));
+    const float rmy = bits_f32(MEM_W(12, remap));
+
+    const gpr gl = kseg0_gpr(0x8012D5B0u);
+    const uint32_t gl_base = static_cast<uint32_t>(MEM_W(0, gl));
+    const int32_t gl_idx = static_cast<int32_t>(MEM_W(0x8, gl));
+    const int32_t gl_count = static_cast<int32_t>(MEM_W(0xC, gl));
+    int8_t rec_x = 0, rec_y = 0;
+    uint16_t rec_btn = 0;
+    if (is_guest(gl_base)) {
+        const gpr base = kseg0_gpr(gl_base + static_cast<uint32_t>(gl_idx) * 6u);
+        rec_x = int8_t(MEM_B(0, base));
+        rec_y = int8_t(MEM_B(1, base));
+        rec_btn = static_cast<uint16_t>(MEM_HU(2, base));
+    }
+
+    const float gamespeed = bits_f32(MEM_W(0, kseg0_gpr(0x8012C760u)));
+    const int32_t gfcnt = static_cast<int32_t>(MEM_W(0, kseg0_gpr(0x8012C764u)));
+    const uint64_t host_gfx = tooie_diag::gfx_ticks();
+
+    static bool s_have_t0 = false;
+    static std::chrono::steady_clock::time_point s_t0;
+    if (!s_have_t0) {
+        s_t0 = std::chrono::steady_clock::now();
+        s_have_t0 = true;
+    }
+    const auto wall_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - s_t0).count();
+
+    static int32_t s_prev_glidx = -1;
+    const int32_t gl_adv = (s_prev_glidx < 0) ? 0 : (gl_idx - s_prev_glidx);
+    s_prev_glidx = gl_idx;
+
+    float cx = 0, cy = 0, cz = 0, cam_yaw = 0;
+    const gpr cam_vp_sym = kseg0_gpr(0x8012D500u);
+    const uint32_t cam_vp_addr = static_cast<uint32_t>(MEM_W(0, cam_vp_sym));
+    if (is_guest(cam_vp_addr)) {
+        const gpr vp = kseg0_gpr(cam_vp_addr);
+        cx = bits_f32(MEM_W(0x0, vp));
+        cy = bits_f32(MEM_W(0x4, vp));
+        cz = bits_f32(MEM_W(0x8, vp));
+        const float m00 = bits_f32(MEM_W(0xA4 + 0x00, vp));
+        const float m02 = bits_f32(MEM_W(0xA4 + 0x08, vp));
+        cam_yaw = std::atan2(-m02, m00) * (180.0f / 3.14159265f);
+        if (cam_yaw < 0.0f) cam_yaw += 360.0f;
+    }
+
+    float dig_x = 0, dig_y = 0, dig_z = 0;
+    float act2_x = 0, act2_y = 0, act2_z = 0;
+    uint32_t act2_mid = 0, act2_sys = 0;
+    const gpr actors_vec_sym = kseg0_gpr(0x80136EE0u);
+    const uint32_t vec_addr = static_cast<uint32_t>(MEM_W(0, actors_vec_sym));
+    if (is_guest(vec_addr)) {
+        const gpr vec = kseg0_gpr(vec_addr);
+        const uint32_t elem_size = static_cast<uint32_t>(MEM_W(0x00, vec));
+        const uint32_t begin = static_cast<uint32_t>(MEM_W(0x04, vec));
+        const uint32_t end = static_cast<uint32_t>(MEM_W(0x08, vec));
+        if (elem_size == 0x9Cu && is_guest(begin) && is_guest(end) && end >= begin) {
+            const uint32_t count = (end - begin) / elem_size;
+            for (uint32_t i = 0; i < count && i < 64; ++i) {
+                const uint32_t act_addr = begin + i * 0x9Cu;
+                const gpr act = kseg0_gpr(act_addr);
+                const uint32_t idw = static_cast<uint32_t>(MEM_W(0x6C, act));
+                const uint32_t marker_id = idw & 0x1FFu;
+                if (marker_id == 337u) {
+                    dig_x = bits_f32(MEM_W(0x04, act));
+                    dig_y = bits_f32(MEM_W(0x08, act));
+                    dig_z = bits_f32(MEM_W(0x0C, act));
+                } else if (act2_mid == 0 && marker_id != 0 && marker_id != 1u) {
+                    act2_mid = marker_id;
+                    act2_sys = static_cast<uint32_t>(MEM_W(0x10, act));
+                    act2_x = bits_f32(MEM_W(0x04, act));
+                    act2_y = bits_f32(MEM_W(0x08, act));
+                    act2_z = bits_f32(MEM_W(0x0C, act));
+                }
+            }
+        }
+    }
+
+    const float velxz = std::sqrt(vx * vx + vz * vz);
+    std::fprintf(stderr,
+                 "[demo-sync] glidx=%d tick=%llu wall_ms=%lld gfx=%llu adv=%d "
+                 "pad=(%d,%d,%04x) remap=(%.2f,%.2f) bstick=(%.2f,%.2f,%.1f,%.2f) "
+                 "bs=%d pos=(%.2f,%.2f,%.2f) ppos=(%.2f,%.2f,%.2f) "
+                 "vel=(%.2f,%.2f,%.2f) velxz=%.2f tspd=%.1f "
+                 "yaw=%.2f ideal=%.2f phys_yaw=%.2f mult=%.4f accel=%.2f "
+                 "cam=(%.2f,%.2f,%.2f,%.1f) "
+                 "digger=(%.2f,%.2f,%.2f) act2=(%u,%08x,%.2f,%.2f,%.2f) "
+                 "gs=%.5f fc=%d cnt=%d map=%d\n",
+                 gl_idx, static_cast<unsigned long long>(tick), static_cast<long long>(wall_ms),
+                 static_cast<unsigned long long>(host_gfx), gl_adv,
+                 (int)rec_x, (int)rec_y, (unsigned)rec_btn, rmx, rmy,
+                 bstick_x, bstick_y, bstick_ang, bstick_dist,
+                 bs_id, px, py, pz, ppx, ppy, ppz,
+                 vx, vy, vz, velxz, tspd,
+                 yaw, yaw_ideal, phys_yaw, mult, accel,
+                 cx, cy, cz, cam_yaw,
+                 dig_x, dig_y, dig_z, act2_mid, act2_sys, act2_x, act2_y, act2_z,
+                 gamespeed, gfcnt, gl_count, map_v);
+    std::fflush(stderr);
+}
+
 namespace banjo {
 void register_boot_lookup_stubs() {
     // Prefer real ultramodern/libultra recomp hooks at Tooie VRAMs.

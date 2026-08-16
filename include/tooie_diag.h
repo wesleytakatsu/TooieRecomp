@@ -36,6 +36,7 @@ bool movement_enabled();
 bool input_enabled();
 bool frontend_enabled();
 bool demo_path_enabled();
+bool demo_sync_enabled();
 bool shot_enabled();
 bool forced_facing_enabled();
 

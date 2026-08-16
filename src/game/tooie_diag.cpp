@@ -25,6 +25,7 @@ std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_frontend_enabled{false};
 std::atomic<bool> g_direction_enabled{false};
 std::atomic<bool> g_demo_path_enabled{false};
+std::atomic<bool> g_demo_sync_enabled{false};
 std::atomic<bool> g_shot_enabled{false};
 std::atomic<bool> g_forced_facing_enabled{false};
 std::atomic<bool> g_gameplay_seen{false};
@@ -106,6 +107,12 @@ void ensure_init() {
     g_demo_path_enabled.store(demo != nullptr && demo[0] != '\0' && demo[0] != '0',
                               std::memory_order_relaxed);
     if (g_demo_path_enabled.load(std::memory_order_relaxed)) {
+        g_movement_enabled.store(true, std::memory_order_relaxed);
+    }
+    const char* sync = std::getenv("TOOIE_DIAG_DEMO_SYNC");
+    g_demo_sync_enabled.store(sync != nullptr && sync[0] != '\0' && sync[0] != '0',
+                              std::memory_order_relaxed);
+    if (g_demo_sync_enabled.load(std::memory_order_relaxed)) {
         g_movement_enabled.store(true, std::memory_order_relaxed);
     }
     const char* shot = std::getenv("TOOIE_DIAG_SHOT");
@@ -267,6 +274,11 @@ bool input_enabled() {
 bool demo_path_enabled() {
     ensure_init();
     return g_demo_path_enabled.load(std::memory_order_relaxed);
+}
+
+bool demo_sync_enabled() {
+    ensure_init();
+    return g_demo_sync_enabled.load(std::memory_order_relaxed);
 }
 
 bool shot_enabled() {

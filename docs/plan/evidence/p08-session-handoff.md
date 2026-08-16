@@ -17,6 +17,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
+- Gameplay Demo Motion Sync Diagnosis: [[p08-demo-full-motion-sync-diagnosis]].
+- Display & Effect Catalog: [[p08-display-effect-catalog]].
 - Title & File Select Validation: [[p08-title-file-select-validation]].
 - Render-submission fix: [[p08-render-submission-matrix-fix]].
 - Directional input diagnosis: [[p08-directional-input-movement-diagnosis]].

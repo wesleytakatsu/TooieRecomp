@@ -25,6 +25,9 @@ direction toward screen-right; WASD directions appear correct; neutral
 behavior remains normal. That closes the previously pending runtime gate
 for USER_BUG_A. Analog/gamepad is **not** marked validated.
 
+> [!NOTE]
+> For the complete 766-sample trajectory, cadence, kinematic segmentation, and camera follow lag analysis across the entire Wooded Hollow gameplay demo, see [[p08-demo-full-motion-sync-diagnosis]].
+
 Do **not** reopen the solved directional-collapse bug.
 
 ## 1. Selected clip

@@ -248,6 +248,7 @@ Evidência corrente:
 | [[../../plan/evidence/p08-session-handoff]] | **CURRENT:** handoff para chat zerado |
 | [[../../plan/evidence/p08-original-timing-4x3-baseline]] | **CURRENT:** P08-T03 original timing/4:3 baseline; BLOCKED pending clean live measurements |
 | [[../../plan/evidence/p08-display-effect-catalog]] | **CURRENT:** P08-T02 catálogo de display lists e efeitos gráficos |
+| [[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] | **CURRENT:** diagnóstico diferencial de sincronização e movimento da demo de gameplay |
 | [[../../plan/evidence/p08-attract-actor-loop-diagnosis]] | freeze mechanism slot7 / C2AB8 |
 | [[../../plan/evidence/p08-type4-transition-semantics-audit]] | type-4 complete, warp consumido |
 | [[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]] | timeline histórica |

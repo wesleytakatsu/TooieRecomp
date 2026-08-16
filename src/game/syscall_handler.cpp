@@ -27,8 +27,10 @@ extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx);
 extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80108C90(uint8_t* rdram, recomp_context* ctx);
-extern "C" void func_80108474(uint8_t* rdram, recomp_context* ctx);
-extern recomp_func_t* get_function(int32_t addr);
+extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick);
+extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick);
+extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick);
+extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx, uint32_t ovl, uint32_t ep, int leaving);
 extern "C" void baflameline_entrypoint_5(uint8_t* rdram, recomp_context* ctx);
 
 struct ActiveOverlayMapping {
@@ -811,7 +813,7 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     // The attract gameplay demo (mode==5) consumes one recorded-pad sample per
     // glrecord overlay dispatch (overlay 698 entrypoint 0). This is the TRUE
     // recorded-input consumer / guest logic tick for the demo walk.
-    if ((tooie_diag::demo_path_enabled() || tooie_diag::shot_enabled()) &&
+    if ((tooie_diag::demo_path_enabled() || tooie_diag::shot_enabled() || tooie_diag::demo_sync_enabled()) &&
         overlay_index == 698u && entry_index == 0u) {
         const uint64_t tick = tooie_diag::note_guest_logic_tick();
         if (tooie_diag::demo_path_enabled()) {
@@ -819,6 +821,9 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         }
         if (tooie_diag::shot_enabled()) {
             tooie_shot_tick(rdram, tick);
+        }
+        if (tooie_diag::demo_sync_enabled()) {
+            tooie_demo_sync_tick(rdram, tick);
         }
     }
     if (tooie_diag::shot_enabled()) {
