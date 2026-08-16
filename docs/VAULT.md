@@ -13,6 +13,7 @@
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
 - [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] — P08 — forced/cinematic actor facing diagnosis — USER_BUG_B one-actor: Wooded Hollow sucoaster `chdiggerground` reverse walk, heading 294.21° vs yaw 114.21° (Level B).
+- [[plan/evidence/p08-forced-cinematic-facing-independent-review]] — P08 — independent review: return contract and selected node discriminator remain UNKNOWN; historical Level B is CORRECTED/SUPERSEDED, no fix.
 - [[plan/evidence/p08-demo-movement-precision-diagnosis]] — P08 — demo movement precision diagnosis — Wooded Hollow first-straight 510 is original slope-scaled physics (`func_800EF04C` from `func_8009AE08`); post-physics writer REFUTED; FIRST_STRAIGHT_INTERNAL_FIDELITY PASS.
 - [[plan/evidence/p08-stick-angle-thunk-fix-correction]] — P08 — func_80013B70 review correction — Minimal semantic correction reproducing $at/$r1=0x43340000 delay slot on all y==0 paths.
 - [[plan/evidence/p08-stick-angle-thunk-fix]] — P08 — stick-angle secondary-entry fix — Native shared-tail override for empty generated func_80013B70; cardinals 0/90/180/270 and third-argument contract PASS.

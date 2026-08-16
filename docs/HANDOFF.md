@@ -35,6 +35,18 @@ Historical context:
 > Evidência: [[plan/evidence/p08-preemption-patch4-validation]].
 
 Handoff técnico: [[plan/evidence/p08-session-handoff]].
+
+## P08 forced-facing independent review (2026-08-16)
+
+The earlier Level B diagnosis of the Wooded Hollow `chdiggerground` return
+actor is **CORRECTED/SUPERSEDED** as a proven recompilation defect. The
+return state/animation and 180° logical-vs-travel observation are real, but
+the original return-facing contract and selected node index were not proven.
+The generated `func_8080264C` and `func_8010CD50` bodies remain faithful on
+the reviewed control flow; no fix was implemented.
+
+See [[plan/evidence/p08-forced-cinematic-facing-independent-review]].
+`USER_BUG_B_THIS_ACTOR=UNKNOWN`; `USER_BUG_B_GLOBAL=OPEN`; `ROOT_CAUSE_LEVEL=C`.
 ## NEXT
 
 1. ~~First straight & first later analog transition~~ **COMPLETE (2026-08-15)**

@@ -137,6 +137,23 @@ Repeated attempts with:
 - `TOOIE_DIAG_DIRECTION=1` (enables frontend + movement + input)
 Both produced the same result: mode=3 after confirm, no Spiral Mountain load.
 
+## Forced/cinematic scope correction
+
+The separate `chdiggerground` return-facing observation is now
+**CORRECTED/SUPERSEDED** as a proven recompilation defect. The independent
+review established a return state and exact logical/render direction sample,
+but not the original facing contract or the selected node index. Therefore:
+
+```text
+USER_BUG_B_THIS_ACTOR: UNKNOWN
+USER_BUG_B_GLOBAL:     OPEN
+ROOT_CAUSE_LEVEL:      C
+```
+
+See [[p08-forced-cinematic-facing-independent-review]]. This correction does
+not reopen the resolved player-direction diagnosis and does not refute other
+user-confirmed forced/cinematic mismatches.
+
 **This prevented the cardinal-direction dynamic trace.** Root-cause classification relies on static analysis of the generated recompiled output and the Tooie decomp source.
 
 ## 6. Root-cause classification

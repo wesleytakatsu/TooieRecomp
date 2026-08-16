@@ -39,9 +39,12 @@ first-straight ~510 is **original slope-scaled physics**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14) and
 the first later analog transition (`glidx = 74..91`) is **internally faithful**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15).
-USER_BUG_B is **DIAGNOSED_ONE_ACTOR** (Level B;
-[[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]]): Wooded Hollow
-sucoaster `chdiggerground` reverse walk faces 180° from travel.
+The earlier `USER_BUG_B` one-actor Level B classification is
+**CORRECTED/SUPERSEDED** by an independent review: Wooded Hollow sucoaster
+`chdiggerground` has a real return-state 180° observation, but its original
+return-facing contract and selected node index remain **UNKNOWN**. See
+[[../../plan/evidence/p08-forced-cinematic-facing-independent-review]].
+`USER_BUG_B_GLOBAL` remains **OPEN**; no fix is implemented.
 The historical verdict C and its narrow missing `$at` side-effect finding
 are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];

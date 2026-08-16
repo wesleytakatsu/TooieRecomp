@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; USER_BUG_B diagnosed on one sucoaster chdiggerground (Level B)."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; chdiggerground return-facing review remains semantically UNKNOWN (Level C)."
 status: evidence
 phase: P08
 updated: 2026-08-15
@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Active diagnosis: [[p08-forced-cinematic-facing-diagnosis]].
+- Active diagnosis: [[p08-forced-cinematic-facing-independent-review]].
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
@@ -79,15 +79,16 @@ velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
 arcsin evaluation, error vs original 0.0000°, error vs atan2 < 0.001°), camera-relative
 desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-scaled
 velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
-(USER_BUG_B) is **DIAGNOSED_ONE_ACTOR** (Level B;
-[[p08-forced-cinematic-facing-diagnosis]]): Wooded Hollow sucoaster
-`chdiggerground` `801c5d1c`/`801c5afc` reverse walk, heading 294.21° vs
-yaw/unk54 114.21°.
+(USER_BUG_B) is **REVIEWED_ONE_ACTOR** (Level C;
+[[p08-forced-cinematic-facing-independent-review]]): Wooded Hollow
+`chdiggerground` return state is observed, but the original facing contract
+and selected node discriminator remain UNKNOWN.
 
 Next steps in Phase P08:
 1. ~~First straight & first later analog transition~~ **COMPLETE**.
    Demo-path residual is `DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT`.
-2. Independent review of the USER_BUG_B facing defect before implementation.
+2. Independent review of USER_BUG_B is complete; do not implement a facing fix
+   until the original contract and selected node are proven.
 3. Analog/gamepad validation of USER_BUG_A.
 4. High-FPS transform tagging; window options (`P08-T07`).
 
@@ -110,9 +111,9 @@ DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog t
   glrecord cadence, deadzone remap, bastick distance, func_80013ABC table arcsin,
   quadrant correction, camera-relative yaw, yaw_update easing, and velocity integration.
   Later demo-path visual residual: DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
-USER_BUG_B:                          LEVEL B — sucoaster chdiggerground reverse
-  heading 294.21 vs yaw/unk54 114.21 (exact 180°). See
-  [[p08-forced-cinematic-facing-diagnosis]].
+USER_BUG_B:                          LEVEL C — return-facing contract and
+  selected node discriminator UNKNOWN. See
+  [[p08-forced-cinematic-facing-independent-review]].
 P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
 ```
 
@@ -144,9 +145,29 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-Independent review of the proven USER_BUG_B sucoaster facing defect
-([[p08-forced-cinematic-facing-diagnosis]]) before implementation.
+Independent review of the previously reported USER_BUG_B sucoaster facing
+observation is complete. The actor's original return-facing contract and
+selected node discriminator remain **UNKNOWN**; see
+[[p08-forced-cinematic-facing-independent-review]]. No implementation is
+authorized.
 Do not diagnose a second cinematic actor. Demo-path residual stays deferred.
+
+## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
+
+```text
+SELECTED_ACTOR:        Wooded Hollow chdiggerground return
+RETURN_STATE:          0x98bb1942
+RETURN_ANIMATION:      0xc3aa1065 -> 0xc3ab8000
+MOVEMENT_INTENTION:    UNKNOWN
+EXPECTED_FACING:       UNKNOWN
+NODE_DISCRIMINATOR:    NOT CAPTURED for selected call
+ROOT_CAUSE_LEVEL:      C
+USER_BUG_B_THIS_ACTOR: UNKNOWN
+USER_BUG_B_GLOBAL:     OPEN
+FIX_IMPLEMENTED:       NO
+```
+
+Evidence: [[p08-forced-cinematic-facing-independent-review]].
 
 ## FILES_TO_READ_NEXT
 

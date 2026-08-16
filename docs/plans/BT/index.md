@@ -88,7 +88,12 @@ verdict C is preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]].
 Current P08-T10
 synthetic confirm → mode=1 is **FAIL** (separate). Attract/cinematic facing
-is **OPEN_SEPARATE**. P08-T03 original timing/4:3 baseline is **VALIDATED**.
+is **OPEN_SEPARATE**. The historical one-actor Level B facing claim is
+**CORRECTED/SUPERSEDED** by
+[[../../plan/evidence/p08-forced-cinematic-facing-independent-review]]:
+the original return-facing contract and selected node discriminator remain
+**UNKNOWN**; no fix is implemented. P08-T03 original timing/4:3 baseline is
+**VALIDATED**.
 Evidência:
 [[../../plan/evidence/p08-demo-movement-precision-diagnosis]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix]],

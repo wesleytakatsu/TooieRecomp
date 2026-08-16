@@ -235,9 +235,11 @@ O trabalho só está concluído quando todos os critérios de
   clean-freeze type-4 snapshot (8/8 runs): type-4 completa, campos
   `0.9/3.5/2883` corrigidos para `+0x0C/+0x18/+0x10`, warp consumido; blocker
   downstream no mode-5/attract init.
-- [[evidence/p08-forced-cinematic-facing-diagnosis]] — **CURRENT:** USER_BUG_B
-  one-actor facing (Level B): sucoaster `chdiggerground` reverse walk,
-  heading 294.21° vs yaw/unk54 114.21°.
+- [[evidence/p08-forced-cinematic-facing-diagnosis]] — historical USER_BUG_B
+  one-actor facing evidence (Level B preserved historically).
+- [[evidence/p08-forced-cinematic-facing-independent-review]] — **CURRENT:**
+  original return-facing contract and selected node discriminator UNKNOWN;
+  historical Level B CORRECTED/SUPERSEDED; no fix.
 - [[evidence/p08-demo-movement-precision-diagnosis]] — recorded-pad demo path;
   first straight 510 is original slope-scaled physics; first analog
   transition `glidx 74..91` internally faithful; later residual deferred.

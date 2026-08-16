@@ -307,3 +307,12 @@ not facing evidence.
 Independent review of this facing defect before any implementation.
 If review wants Level A: watch `func_80802760` `$v0` and the
 `func_800F5A00` point on tick 56026 only.
+
+## 15. Independent review pointer / correction status
+
+**CORRECTED/SUPERSEDED (2026-08-16):** The Level B and `TOOIE_NATIVE`
+classification above is preserved as historical Grok evidence. The
+independent review did not establish the original return-facing contract and
+did not capture the selected actor's node index discriminator. See
+[[p08-forced-cinematic-facing-independent-review]]. No production fix was
+implemented.
