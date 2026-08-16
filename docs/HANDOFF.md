@@ -21,8 +21,12 @@ matrix fix is RESOLVED and VALIDATED** ([[plan/evidence/p08-render-submission-ma
 `func_800E44FC`, `func_800E4640`, and `func_800E4628` native overrides split
 the projection matrix submission into `LOAD P` followed by `MUL V_view`.
 **Title Screen / File Selection Input (P08-T10)** is **VALIDATED and COMPLETE**
-([[plan/evidence/p08-title-file-select-validation]]): autonomous synthetic input
-proves zero input divergence from intro -> file select -> slot navigation -> confirmation -> Spiral Mountain map load.
+for frontend input ([[plan/evidence/p08-title-file-select-validation]]):
+intro -> file select -> slot navigation -> `CONT_A` confirm is PASS.
+Post-confirm destination is `MAP_A1_CS_INTRO` (161) / `mode=3`. The
+"direct Spiral Mountain gameplay" claim is **CORRECTED/SUPERSEDED**.
+The later synthetic `mode=1` FAIL is **REFUTED** (sequencer never injects
+the START presses that skip the opening story cutscenes).
 **Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
 ([[plan/evidence/p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic,
 30 Hz animation, host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
@@ -86,9 +90,10 @@ this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
    `yaw_update` easing, velocity integration; `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`).
    Demo-path residual is DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
-3. Separately diagnose the file-select → Spiral Mountain regression
-   (CONT_A confirm still ends in mode=3, not mode=1). Do not use that flow
-   as a gameplay automation gate until it is fixed.
+3. File-select → live `mode=1` is **not** a current-HEAD frontend
+   regression (`CURRENT_T10_REGRESSION=REFUTED`). Confirm correctly
+   enters `MAP_A1_CS_INTRO` / `mode=3`. Later START skips are outside
+   the historical synthetic sequencer.
 4. USER_BUG_B `chdiggerground` actor contract **REFUTED** by original-MIPS
    case-11 review. Select a different concrete cinematic actor whose behavior
    is user-confirmed against original Banjo-Tooie; keep the global observation
@@ -121,7 +126,9 @@ RT64. PATCH 4 stays ON.
    ([[plan/evidence/p08-render-submission-matrix-fix]]). Characters and camera
    render upright and elevated; Wooded Hollow attract demo runs continuously for 75s.
 10. **Title Screen / File Selection Input VALIDATED (P08-T10 COMPLETE):**
-    Autonomous end-to-end synthetic input validation proves full flow with zero divergence
+    Frontend input through `CONT_A` confirm is PASS. Direct Spiral
+    Mountain / current `mode=1` regression claims are
+    **CORRECTED/SUPERSEDED** / **REFUTED**
     ([[plan/evidence/p08-title-file-select-validation]]).
 11. **Original timing / 4:3 baseline VALIDATED (P08-T03 COMPLETE):**
     60.0 Hz VI, 20/30 Hz logic, 30 Hz animation, host presentation decoupled, and 4:3 content aspect confirmed

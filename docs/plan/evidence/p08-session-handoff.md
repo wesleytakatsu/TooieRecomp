@@ -52,8 +52,15 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
   - Host matrix regression test `matrix_submission_test` PASS (`MAX_MATRIX_ERROR: 0.000000e+00`).
   - Unit tests `bcf28_helpers_test` and `core1_ra_wrappers_test` PASS.
 - **TITLE SCREEN / FILE-SELECTION VALIDATED (P08-T10 COMPLETE):**
-  - Synthetic input sequencer tested the entire flow: startup intro -> file select (`chgameselect`, overlay 205) -> slot navigation -> confirmation -> Spiral Mountain map load.
-  - Zero input divergence found. Game transitions cleanly to gameplay.
+  - Synthetic input sequencer tests startup intro -> file select
+    (`chgameselect`, overlay 205) -> slot navigation -> `CONT_A` confirm.
+  - Zero frontend input divergence. Post-confirm destination is
+    `MAP_A1_CS_INTRO` (161) / `mode=3`, not live Spiral Mountain.
+  - Overlay IDs 128/111/148 are `baeggcursor` / `baattach` / `bashoes`
+    (old `chspiralmountain` / `chbanjohouse` / `chjinjo` labels
+    **CORRECTED/SUPERSEDED**).
+  - Later synthetic `mode=1` FAIL is **REFUTED**: the sequencer does not
+    inject the later START presses that skip the opening story cutscenes.
 - **ORIGINAL 4:3 & TIMING BASELINE VALIDATED (P08-T03 COMPLETE):**
   - Gated live timing counters prove exact 60.000 Hz VI event rate, 20/30 Hz logic rate, 30 Hz skeletal animation rate, decoupled host presentation (~935 Hz), and 4:3 content aspect.
 - `RecompiledFuncs` é gerado — não editar.
@@ -103,7 +110,10 @@ BCF28_ROOT_CAUSE_PROVEN:             YES (Level A; ACCEPTED verdict B)
 80013A7C_FIX_STATUS:                 RESOLVED (Tooie-native strong symbols)
 ACTOR_ROTATION_EXPLAINS_POSE:        NO (Actor.rotation is upright)
 RENDER_SUBMISSION_FIX_STATUS:        RESOLVED (Level A; transform_hooks.cpp)
-FRONTEND_INPUT_VALIDATION:           PASS historically; current synthetic mode=1 FAIL
+FRONTEND_INPUT_VALIDATION:           PASS
+P08_T10_FRONTEND_INPUT:              PASS
+DIRECT_SPIRAL_MOUNTAIN_TRANSITION_CLAIM: CORRECTED/SUPERSEDED
+CURRENT_T10_REGRESSION:              REFUTED
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 STICK_ANGLE_13B70_FIX:               ACCEPTED (WASD runtime RESOLVED; analog PENDING)
@@ -118,7 +128,8 @@ USER_BUG_B:                          ACTOR REFUTED; GLOBAL OPEN
   handler is dispatch case 11 (L_80800A3C) which never writes unk54/yaw.
   Original case-11 contract PROVEN by original-MIPS comparison. See
   [[p08-forced-cinematic-facing-independent-review]].
-P08_T10_SYNTHETIC_FLOW_CURRENT:      FAIL (separate)
+P08_T10_SYNTHETIC_FLOW_CURRENT:      REFUTED as a current-HEAD regression;
+                                     sequencer never injects later START skips
 ```
 
 ## RESOLVED_DO_NOT_REOPEN

@@ -1,9 +1,9 @@
 ---
 title: "P08 — title screen / file-selection input validation"
-description: "Autonomous validation of Banjo-Tooie title screen and file-selection flow under synthetic input. Proven full transition sequence: startup intro -> file select -> slot navigation -> confirmation -> Spiral Mountain gameplay map transition with zero frontend input divergence."
+description: "Autonomous validation of Banjo-Tooie title screen and file-selection flow under synthetic input. Frontend input through CONT_A confirm is PASS. The later overlay names and 'direct Spiral Mountain gameplay' claim are CORRECTED/SUPERSEDED: confirm warps to MAP_A1_CS_INTRO (161) in mode=3. The later synthetic mode=1 FAIL is REFUTED — the sequencer does not inject the START presses that skip the opening story cutscenes."
 status: evidence
 phase: P08
-updated: 2026-08-14
+updated: 2026-08-16
 tags: [tooie-recomp, p08, input, frontend, title, file-select, validation]
 ---
 
@@ -18,8 +18,11 @@ START_REACHES_NEXT_STATE:                  YES (chgameselect loaded at t=22.02s)
 FILE_SELECT_VISIBLE:                       YES (overlay 205 active, mode=2)
 SLOT_NAVIGATION:                           PASS (STICK_LEFT and STICK_RIGHT consumed)
 CONFIRM_RESULT:                            PASS (CONT_A confirmed selection)
-GAME_START_TRANSITION:                     PASS (chgameselect unloaded; Spiral Mountain loaded)
-VALIDATION_STATUS:                         SUCCESS (P08-T10 COMPLETE)
+GAME_START_TRANSITION:                     PASS as frontend confirm (see §6)
+VALIDATION_STATUS:                         SUCCESS for frontend input (P08-T10)
+P08_T10_FRONTEND_INPUT:                    PASS
+DIRECT_SPIRAL_MOUNTAIN_TRANSITION_CLAIM:   CORRECTED/SUPERSEDED
+CURRENT_T10_REGRESSION:                    REFUTED
 ```
 
 ## 1. Summary of Results
@@ -32,9 +35,9 @@ The automated test executed the full end-to-end frontend sequence:
 3. **File Selection Menu Load**: Overlay 205 (`chgameselect`, section 804) loaded at `ram=0x80800000`, setting `mode=2`.
 4. **Slot Navigation**: `STICK_LEFT` (`x = -1.0f`) and `STICK_RIGHT` (`x = +1.0f`) delivered through `recompinput` and `func_8001608C` to `chgameselect_entrypoint_1` (tick).
 5. **Confirmation**: `CONT_A` (`0x8000`) injected at $t=26.03\text{s}$ to confirm file selection.
-6. **Gameplay Map Load**: `chgameselect` executed its destructor (`chgameselect_entrypoint_7`), unloaded cleanly, and dispatched map load into Spiral Mountain (`MAP_AF_SM_SPIRAL_MOUNTAIN`, overlays `chspiralmountain`, `chbanjohouse`, `chjinjo`, etc.).
+6. **Post-confirm map load**: `chgameselect` executed its destructor (`chgameselect_entrypoint_7`) and unloaded cleanly. The destination is **not** live Spiral Mountain gameplay. See §6.
 
-**Conclusion**: There is **no missing or broken frontend input behavior**. The user's manual observation is fully confirmed autonomously.
+**Conclusion**: There is **no missing or broken frontend input behavior** through file-select confirm. The later "direct Spiral Mountain / mode=1" wording is **CORRECTED/SUPERSEDED**.
 
 ---
 
@@ -44,7 +47,7 @@ The automated test executed the full end-to-end frontend sequence:
 TITLE_STATE_FUNCTION:                      func_80800014_chattract (overlay 208) / func_808005AC_chintroticker (overlay 419)
 FILE_SELECT_STATE_FUNCTION:                func_80805498_chgameselect / func_808027DC_chgameselect / func_80800AEC_chgameselect (overlay 205)
 INPUT_CONSUMER_FUNCTIONS:                  bakey_pressed (0x800DA298), bakey_held (0x800DA3B8), bakey_getStick (0x800DA540), func_8001608C (pad reader)
-STATE_TRANSITION_CHAIN:                    mode=3 (Intro) -> mode=2 (chgameselect) -> slot navigation -> CONT_A confirm -> chgameselect exit -> Spiral Mountain gameplay
+STATE_TRANSITION_CHAIN:                    mode=3 (Intro) -> mode=2 (chgameselect) -> slot navigation -> CONT_A confirm -> chgameselect exit -> mode=3 / MAP_A1_CS_INTRO (161) opening story. Live mode=1 requires later START skips that the synthetic sequencer does not inject.
 ```
 
 ### State Probe Variables
@@ -91,10 +94,12 @@ STATE_TRANSITION_CHAIN:                    mode=3 (Intro) -> mode=2 (chgameselec
 [tooie-fe] t=26.03s phase=8 (GAMESELECT_CONFIRM_A) ovl=725 injecting btn=8000 stick=(0.0,0.0)
 [tooie-fe] t=27.03s phase=9 (GAMESELECT_WAIT_START) ovl=725 injecting btn=0000 stick=(0.0,0.0)
 [tooie-fe] t=28.49s state_change ovl=chgameselect (205) ep=7 mode=2 map=0 warp=0
-[tooie] ovl_load: idx=128 (chspiralmountain) pkg=... -> ram=...
-[tooie] ovl_load: idx=111 (chbanjohouse) pkg=... -> ram=...
-[tooie] ovl_load: idx=148 (chjinjo) pkg=... -> ram=...
+[tooie] ovl_load: idx=128  historically mislabeled chspiralmountain; actual baeggcursor
+[tooie] ovl_load: idx=111  historically mislabeled chbanjohouse; actual baattach
+[tooie] ovl_load: idx=148  historically mislabeled chjinjo; actual bashoes
 ```
+
+Historical overlay names in this trace are **CORRECTED/SUPERSEDED** (see §6).
 
 ---
 
@@ -105,5 +110,36 @@ STATE_TRANSITION_CHAIN:                    mode=3 (Intro) -> mode=2 (chgameselec
 - [x] Synthetic input sequencer implemented at real input boundary.
 - [x] Title / File-Select guest states and functions identified and documented.
 - [x] Button bitfield contract documented.
-- [x] Autonomous end-to-end run completed: title screen $\to$ file select $\to$ slot navigation $\to$ confirm $\to$ gameplay loading transition.
+- [x] Autonomous run completed: title screen $\to$ file select $\to$ slot navigation $\to$ confirm. The post-confirm destination is MAP_A1_CS_INTRO (161) / mode=3, not live Spiral Mountain.
 - [x] No regressions introduced to runtime scheduler, matrix submission, or BCF28 binding.
+
+---
+
+## 6. Overlay identity and post-confirm destination (CORRECTED)
+
+Gemini 3.7 Flash differential (current HEAD vs historical `c3ad2e8`): both
+builds execute the **same** frontend transition after `CONT_A`.
+
+```text
+AFTER_CONT_A:
+  chgameselect:
+    warpVal  = 1
+    mapValue = 161 / MAP_A1_CS_INTRO
+  func_800A7D84:
+    func_800A76F4(3)
+    mode     = 3
+
+OVERLAY_IDENTITY (CORRECTED):
+  128 = baeggcursor     (old: chspiralmountain)
+  111 = baattach        (old: chbanjohouse)
+  148 = bashoes         (old: chjinjo)
+
+P08_T10_FRONTEND_INPUT:                  PASS
+DIRECT_SPIRAL_MOUNTAIN_TRANSITION_CLAIM: CORRECTED/SUPERSEDED
+CURRENT_T10_REGRESSION:                  REFUTED
+```
+
+The later synthetic observation that confirm "fails" to reach `mode=1` is
+**not** a current-HEAD frontend regression. The sequencer never injects the
+later `CONT_START` presses that skip the opening story cutscenes. `c3ad2e8`
+and current execute the same confirm path.

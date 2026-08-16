@@ -58,8 +58,12 @@ are preserved in
 [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]];
 host→N64 pad conversion
 remains bidirectional and is not reopened. Attract/cinematic facing is a
-separate bug. **P08-T10 was historically VALIDATED**, but the current
-synthetic file-select → mode=1 transition **FAIL**s (separate blocker).
+separate bug. **P08-T10 frontend input is VALIDATED / PASS**. The later
+"direct Spiral Mountain / synthetic confirm → mode=1 FAIL" wording is
+**CORRECTED/SUPERSEDED** / **REFUTED**
+([[../../plan/evidence/p08-title-file-select-validation]]): confirm
+warps to `MAP_A1_CS_INTRO` (161) / `mode=3`; the sequencer does not
+inject the later START presses that skip the opening story cutscenes.
 **P08-T03 is VALIDATED** ([[../../plan/evidence/p08-original-timing-4x3-baseline]]).
 
 Reconstrução do Scheduler/Driver e Preempção: A cadeia completa de despacho
@@ -144,9 +148,11 @@ Evidência corrente:
 - [ ] `P08-T08` Fallback/mensagem para driver/API incompatível.
 - [x] `P08-T09` Evidência visual: intro/Jiggy OK; **first demo visible & upright**
   (render submission matrix split resolved via `transform_hooks.cpp`).
-- [x] `P08-T10` Input title/file select validado historicamente
-  ([[../../plan/evidence/p08-title-file-select-validation]]). **Current HEAD
-  synthetic confirm → mode=1 is FAIL** (separate from the stick-angle fix).
+- [x] `P08-T10` Input title/file select VALIDATED
+  ([[../../plan/evidence/p08-title-file-select-validation]]).
+  `P08_T10_FRONTEND_INPUT=PASS`. Direct Spiral Mountain claim
+  **CORRECTED/SUPERSEDED**. Current synthetic `mode=1` FAIL
+  **REFUTED**.
 - [x] `P08-T11` Máquina de estados da abertura: type-4+warp OK; **C2AB8
   RESOLVED by PATCH 4** (CLASS A ON/OFF). Hybrid F' production ON for
   Tooie. **`func_800BCF28` RESOLVED and accepted** (verdict B).
@@ -160,10 +166,12 @@ Evidência corrente:
 
 - RT64 + Vulkan, auto-start, janela “Banjo-Tooie: Recompiled”.
 - Música inicial validada.
-- Input host equivalente ao BanjoRecomp. **P08-T10 VALIDATED / COMPLETE**:
-  intro -> file select -> slot navigation -> confirmation -> Spiral Mountain
-  PASS. The historical wording that title/file-select was not validated is
-  **CORRECTED/SUPERSEDED** by [[../../plan/evidence/p08-title-file-select-validation]].
+- Input host equivalente ao BanjoRecomp. **P08-T10 VALIDATED / COMPLETE**
+  for frontend input: intro -> file select -> slot navigation -> `CONT_A`
+  confirm PASS. Post-confirm destination is `MAP_A1_CS_INTRO` (161) /
+  `mode=3`. Direct Spiral Mountain and later synthetic `mode=1` FAIL
+  claims are **CORRECTED/SUPERSEDED** / **REFUTED**
+  ([[../../plan/evidence/p08-title-file-select-validation]]).
 - P08-T03 source contract and 4:3 guest dimensions are characterized, but the
   clean runtime baseline is **BLOCKED** by the active Expand/Clamp16x9 config
   and unavailable live display; [[../../plan/evidence/p08-original-timing-4x3-baseline]].
