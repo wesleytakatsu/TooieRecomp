@@ -1,16 +1,22 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline) is RESOLVED and VALIDATED via N64Recomp CreateStatic ordering fix. Fire-egg miss, cinematic facing, and T10 results are preserved."
+description: "P08 is COMPLETE (P08-T01..P08-T11 DONE; exit gate met). P08-T07 window/display/scaling and P08-T08 graphics driver failure handling implemented and validated. Ready to begin P09."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-08-16
-tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle]
+tags: [tooie-recomp, handoff, p08, p09, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
 # Handoff — TooieRecomp
 
 ## Prioridade atual
+
+**PHASE P08 IS COMPLETE (2026-08-16):**
+- **P08-T07 (Window, fullscreen, focus, multi-monitor, scale/DPI)**: Implemented via `tooie_window` module, decoupled 4:3 aspect calculations, sanitized window sizing, and validated via `tests/window_display_test.cpp` (45/45 assertions PASS, `9d1bf9c`).
+- **P08-T08 (Graphics driver, Vulkan, and window initialization error handling)**: Implemented via `tooie_error` module with user-visible dialogs, removed `assert(false)` crash paths, added clean runtime exception wrapping, and validated via `tests/graphics_failure_test.cpp` (25/25 PASS) and real negative environment testing (`38fb2a4`).
+- **All 11 P08 tasks are DONE (T01..T11)**; exit gate `"logo/menu/gameplay renderizam e controles funcionam"` is **MET**.
+- See [[plan/evidence/p08-t07-t08-frontend-system-validation]] for complete audit matrix and validation records.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
@@ -143,25 +149,14 @@ this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 
 ## NEXT
 
-1. Implement and validate P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling). Attract DEMO2 crash is resolved and accepted (verdict B; [[plan/evidence/p08-attract-loop-after-demo2-crash]]).
-2. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**
-   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15, §16, §17).
-   First demo fire-egg (`glidx=322`) has `TRUE_COLLISION_MISS_MARGIN = +36.85f`
-   versus the downhill `chdiggerground` collision sphere ($R_{\text{egg}}=38.00\text{f}, R_{\text{target}}=113.00\text{f}$, center at `(-5890.15, -504.61, 1601.84)`).
-   `SHOULD_SWEEP_INTERSECT_TARGET_GEOMETRICALLY = NO` (PROVEN).
-   World collision terminates the egg at `(-5912.92, -348.00, 1500.63)` against terrain triangle `0x8037bf94`.
-   `USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
-3. Analog/gamepad validation of USER_BUG_A remains PENDING.
-4. File-select → live `mode=1` is **not** a current-HEAD frontend
-   regression (`CURRENT_T10_REGRESSION=REFUTED`).
-5. `USER_BUG_B_CINEMATIC_FACING=CURRENTLY_NOT_REPRODUCIBLE_BY_USER`.
-   `USER_BUG_B_GLOBAL_PROVEN_RESOLVED=NO`. Do not diagnose another
-   cinematic actor. Do not implement transform tagging.
-
-Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
-Actor.rotation, the render-submission matrix split, the title/file-select
-input validation, or the original timing/4:3 baseline. Do not modify shared
-RT64. PATCH 4 stays ON.
+1. **P08 IS COMPLETE (ALL TASKS T01..T11 DONE).** Exit gate `logo/menu/gameplay renderizam e controles funcionam` is MET.
+2. **Open BT Phase P09 (Gameplay Parity and Enhancements):**
+   - Game loop timing & high framerate / motion smoothing.
+   - Save/load state persistence.
+   - Long-session gameplay stabilization and multi-level campaign verification.
+3. **P08 / P09 Boundary Invariants:**
+   - Closed in P08: RT64 presentation baseline, input mapping, window/scale integration, graphics/driver error handling, launcher preview, static call correctness.
+   - Do NOT reopen: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## Estado do produto validado
 

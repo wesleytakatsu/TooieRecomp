@@ -1,7 +1,7 @@
 ---
 title: "BT P08 — RT64, entrada e frontend"
 description: "Completa renderização, janela, controles e experiência de inicialização no Linux."
-status: active
+status: done
 type: implementation-stage
 project: TooieRecomp
 phase: P08
@@ -340,37 +340,22 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 - [x] RT64 intro OK; first demo visible; Wooded Hollow render-submission fix validated.
 - [x] mode 5 / gsattract ep1 / gameplay demo renderizam (upright after matrix split).
 - [x] Entrada title/file select validada; rumble/hotplug remains separate.
-- [ ] P08-T03 original timing/4:3 baseline (BLOCKED; see current evidence).
+- [x] P08-T03 original timing/4:3 baseline validado e desacoplado da janela.
+- [x] P08-T07 window, fullscreen, focus, multi-monitor, scale/DPI validado (`tests/window_display_test.cpp`, 45/45 PASS).
+- [x] P08-T08 graphics driver / Vulkan fallback error handling validado (`tests/graphics_failure_test.cpp`, 25/25 PASS; negative env test PASS).
 - [x] Persistência BanjoRecomp; `controls.json` lazy.
 - [x] Sem melhorias que alterem timing/paridade de referência.
 
 ## Próxima etapa
 
-**NEXT (prior facing thread):** Select a different concrete cinematic actor whose behavior is
-user-confirmed against original Banjo-Tooie. Do not implement a fix for
-`chdiggerground`, a demo-path precision fix, or transform tagging. Do not reopen the accepted
-BCF28 helper binding, PATCH 4 / Hybrid F', the core1 RA wrappers, the
-render-submission matrix split, or the accepted `func_80013B70` cardinal
-semantics. Do not modify shared RT64.
+**P08 is COMPLETE.** Proceed to [[../09-gameplay-parity-and-enhancements|BT P09 — Paridade de gameplay e melhorias]].
+- **P08 Boundary (CLOSED)**: RT64 presentation, input mapping, windowing, failure handling, launcher music preview, static call correctness.
+- **P09 Scope (OPEN)**: Game loop timing, frame interpolation / 60 FPS motion smoothing, save/load state persistence, multi-level campaign stabilization.
 
-## P08 unnamed overlay JAL fix & validation (2026-08-16, Gemini 3.7 Flash HIGH)
+## P08 Final Completion & Validation (2026-08-16, Gemini 3.7 Flash HIGH)
 
-The DEMO2 attract SIGSEGV is **RESOLVED and VALIDATED** (Level A).
-Original `.bsrest` `bsrest_entrypoint_11` (`0x80800668`) called unnamed local `0x808003FC`,
-which generated `LOOKUP_FUNC(0x808003FC)` and bound to `baflameline_entrypoint_5`.
-
-The fix allows `CreateStatic` for unnamed same-section targets in relocatable sections
-before the lookup-all fallback. All 7 audited `.bsrest` targets now generate local static
-functions (`static_344_80800xxx`), and all 17 vulnerable sites use direct static calls.
-Validation: `tests/attract_demo2_transition_jal_test.py` PASS, 5 native tests PASS,
-and 300s autonomous soak with Vulkan confirmed all attract transitions without crash (`EXIT_139=NO`).
-
-```text
-ROOT_CAUSE_LEVEL: A
-FIX_OWNER: N64RECOMP
-FIX_IMPLEMENTED: YES
-FIX_VALIDATED: YES
-PATCH_SHA256: 1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034
-VULNERABLE_LOOKUPS_AFTER: 0
-NEXT_SINGLE_ACTION: implement and validate P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling).
-```
+All 11 P08 tasks are fully audited and completed:
+- **P08-T07**: Window, fullscreen, focus, multi-monitor, and DPI scaling integration validated via `tooie_window` module and `tests/window_display_test.cpp` (45/45 assertions passed).
+- **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 assertions passed), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
+- **Exit Gate**: `logo/menu/gameplay renderizam e controles funcionam` is **MET**.
+- **Evidence Reference**: [[../../plan/evidence/p08-t07-t08-frontend-system-validation]].

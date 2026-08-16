@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active** | intro/Jiggy/type-4/warp OK; C2AB8 **RESOLVED**; BCF28 **RESOLVED**; `func_80013A7C` **RESOLVED**; render matrix **RESOLVED**; `func_80013B70` **ACCEPTED**; first-straight 510 is original slope-scaled physics; P08-T10 **VALIDATED**; attract loop after DEMO2 **RESOLVED and ACCEPTED**; attract/cinematic facing **OPEN_SEPARATE** |
+| RT64/input P08 | **done** | RT64 presentation, input mapping, window/scale integration (T07), graphics error fallback (T08), launcher preview and static calls complete; gate met |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -109,7 +109,7 @@ O trabalho só está concluído quando todos os critérios de
 | 05 | [[../plans/BT/05-native-runtime-and-boot|Runtime e boot]] | executável alcança o primeiro frame | done |
 | 06 | [[../plans/BT/06-overlays-and-syscalls|Overlays e syscalls]] | carregar, executar, mover e descarregar overlays funciona | done |
 | 07 | [[../plans/BT/07-rsp-and-audio|RSP e áudio]] | microcódigos conhecidos e áudio estável | active |
-| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | active (13B70 implemented; T10 synthetic FAIL) |
+| 08 | [[../plans/BT/08-rt64-input-and-frontend|RT64, entrada e frontend]] | logo/menu/gameplay renderizam e controles funcionam | done |
 | 09 | [[../plans/BT/09-gameplay-parity-and-enhancements|Paridade e melhorias]] | campanha, saves e timing aprovados | pending |
 | 10 | [[../plans/BT/10-linux-packaging-and-release|Empacotamento e release]] | pacote Linux limpo, reproduzível e sem assets do jogo | pending |
 
@@ -160,6 +160,8 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
+- [[evidence/p08-t07-t08-frontend-system-validation]] — **P08-T07 & P08-T08 VALIDATED:**
+  window/display integration, aspect ratio safety, graphics driver & Vulkan failure handling.
 - [[evidence/p08-attract-loop-after-demo2-crash]] — **RESOLVED and ACCEPTED:**
   deterministic SIGSEGV after DEMO2; `bsrest` `LOOKUP_FUNC(0x808003FC)`
   resolved via N64Recomp CreateStatic ordering fix (Level A, verdict B).

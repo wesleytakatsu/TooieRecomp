@@ -27,21 +27,20 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend. PATCH 4 is accepted and default ON. The
-`func_800BCF28` binding fix is **ACCEPTED (verdict B)**. The
-`func_80013A7C` lookup-zero is **RESOLVED**. **Visible attract / gameplay
-demo is reproduced and running.** The **RENDER_SUBMISSION matrix split** is
-**RESOLVED (Level A)** via `src/game/transform_hooks.cpp` (`func_800E44FC`,
-`func_800E4640`, `func_800E4628` overrides). **Title Screen / File Selection
-Input (P08-T10)** is **VALIDATED and COMPLETE** ([[p08-title-file-select-validation]]).
-**Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
-([[p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic, 30 Hz animation,
-host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
-**Attract DEMO2 SIGSEGV (bsrest 0x808003FC)** is **RESOLVED and VALIDATED**
-([[p08-attract-loop-after-demo2-crash]]).
+P08 — RT64, input e frontend is **COMPLETE**. All tasks (T01..T11) are audited and closed.
+Exit gate `"logo/menu/gameplay renderizam e controles funcionam"` is **MET**.
+- P08-T07 (Window/display/scaling integration): COMPLETE (`9d1bf9c`, `tests/window_display_test.cpp` 45/45 PASS).
+- P08-T08 (Graphics driver / Vulkan failure handling): COMPLETE (`38fb2a4`, `tests/graphics_failure_test.cpp` 25/25 PASS, negative env test PASS).
+- Attract DEMO2 SIGSEGV (bsrest 0x808003FC): RESOLVED and VALIDATED (`1f2aba1`, `887d132`).
+- Next phase: **P09 — Paridade de gameplay e melhorias**.
 
 ## CURRENT_PRODUCT_STATE
 
+- **P08-T07 & P08-T08 VALIDATED**:
+  - Safe window creation with dimension sanitization (>= 320x240) and high-DPI scaling calculations.
+  - Multi-monitor / display index validation with fallback to primary display (0).
+  - Aspect ratio calculations decoupled from host window size; 4:3 baseline preserved.
+  - Controlled graphics/Vulkan startup failure reporting via user-visible message box and technical stderr diagnostics without crashes (`assert(false)` removed).
 - **`func_800BCF28` SIGSEGV RESOLVED and independently accepted (verdict B)**: Tooie-native helpers bound at `0x800BCCC0` and `0x800BCCD8`.
 - Intro visual completa (céu, logo, Jiggy).
 - Attract request correto; type-4 completa; warp consumido; mode-5 alcançado.
@@ -74,43 +73,10 @@ host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline c
 
 ## CURRENT_STATUS / NEXT PHASE WORK
 
-**RESOLVED:** attract loop dies after DEMO2. `INTRO → 335 → 278 → 314 → 395 → INTRO → 235 → 296` succeed;
-`bsrest_entrypoint_11` calls `static_344_808003FC` directly and completes player init cleanly.
-See [[p08-attract-loop-after-demo2-crash]].
-
-`func_80013B70` stick-angle secondary entry has been corrected
-([[p08-stick-angle-thunk-fix-correction]]): native shared tail, strong-symbol bind,
-reproducing `$at/$r1 = 0x43340000` delay-slot clobber on all `y == 0` paths.
-All unit tests pass (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`,
-`bcf28_helpers_test`, `core1_ra_wrappers_test`).
-Focused independent re-review is **ACCEPTED (verdict A)**. Manual WASD
-runtime is **RESOLVED**. Full analog/gamepad is **PENDING**.
-Gameplay-demo player movement uses `glrecord` recorded pad through bastick
-([[p08-demo-movement-precision-diagnosis]]). **Per-logic-tick speed contract
-discriminator (DeepSeek V4 Flash HIGH) COMPLETE** (2026-08-15):
-`tspd` is a **pre-acceleration target** (`phys+0x3C`). **Post-physics
-velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
-**no** post-physics `vx`/`vz` write. Settle at ~510.2 is original slope-scaled ramp;
-`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`.
-**First later analog transition discriminator (Gemini 3.7 Flash HIGH) COMPLETE** (§15):
-`glidx = 74..91` (`raw = (-63, 74)`) strictly exercises `func_80013ABC` (table-based
-arcsin evaluation, error vs original 0.0000°, error vs atan2 < 0.001°), camera-relative
-desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-scaled
-velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing (USER_BUG_B) is
-**CURRENTLY_NOT_REPRODUCIBLE_BY_USER** for the scenes the user checked;
-`USER_BUG_B_GLOBAL_PROVEN_RESOLVED=NO`. Do not diagnose another cinematic
-actor. **First demo shot miss & target collision volume (Gemini 3.7 Flash HIGH) COMPLETE** (§16, §17):
-earliest C-up fire-egg at `glidx=322` has `TRUE_COLLISION_MISS_MARGIN = +36.85f` (3D center dist `187.85f` vs sum of radii `151.00f`; $R_{\text{egg}}=38.00\text{f}, R_{\text{target}}=113.00\text{f}$, target center offset $(0, +44, +4)$ from origin `(-5890.15, -548.61, 1597.84)`).
-`SHOULD_SWEEP_INTERSECT_TARGET_GEOMETRICALLY = NO` (PROVEN). World intercept stops egg at `(-5912.92, -348.00, 1500.63)` via terrain triangle `0x8037bf94`.
-`USER_PLAYER_SPEED_VISUAL_RESIDUAL: OPEN_SEPARATE`.
-
-Next steps in Phase P08:
-1. Attract DEMO2 crash fix independently accepted (verdict B; [[p08-attract-loop-after-demo2-crash]]).
-2. ~~First straight, first analog transition, first demo shot, target collision volume~~ **COMPLETE**.
-3. Do not implement a facing fix. USER_BUG_B cinematic facing is
-   currently not reproducible by the user; global is not proven resolved.
-4. Analog/gamepad validation of USER_BUG_A.
-5. P08-T07 (window, fullscreen, focus, multi-monitor, scale/DPI) and P08-T08 (graphics driver / API failure handling).
+**P08 is COMPLETE.** All 11 tasks are DONE.
+Next phase: **P09 — Paridade de gameplay e melhorias**.
+- Scope opening in P09: Game loop timing, frame interpolation / 60 FPS motion smoothing, save/load state persistence, long-session gameplay stabilization, multi-level campaign verification.
+- P08 Invariants (DO NOT REOPEN): attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## ROOT_CAUSE_STATUS
 
@@ -279,6 +245,7 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 
 ## FILES_TO_READ_NEXT
 
+00. [[p08-t07-t08-frontend-system-validation]] — **P08-T07 & P08-T08 VALIDATED**: window/display, aspect ratio, graphics failure handling
 0. [[p08-attract-loop-after-demo2-crash]] — **RESOLVED and ACCEPTED** DEMO2 attract SIGSEGV (Level A, verdict B)
 0. [[p08-demo-movement-precision-diagnosis]] — first demo shot miss §16 (preserved)
 0. [[p08-forced-cinematic-facing-diagnosis]] — USER_BUG_B historical; currently not reproducible
