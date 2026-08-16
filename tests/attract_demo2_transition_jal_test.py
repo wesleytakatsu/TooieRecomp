@@ -29,51 +29,27 @@ AUDITED_TARGETS = [
     0x808003FC,
 ]
 
-# Functions in .bsrest that call the audited targets (17 call sites)
-BSREST_CALLER_FUNCS = [
-    "bsrest_entrypoint_0",
-    "bsrest_entrypoint_1",
-    "bsrest_entrypoint_2",
-    "bsrest_entrypoint_3",
-    "bsrest_entrypoint_4",
-    "bsrest_entrypoint_5",
-    "bsrest_entrypoint_6",
-    "bsrest_entrypoint_7",
-    "bsrest_entrypoint_8",
-    "bsrest_entrypoint_9",
-    "bsrest_entrypoint_10",
-    "bsrest_entrypoint_11",
-    "bsrest_entrypoint_12",
-    "bsrest_entrypoint_13",
-    "bsrest_entrypoint_14",
-    "bsrest_entrypoint_15",
-    "bsrest_entrypoint_16",
-    "bsrest_entrypoint_17",
-    "bsrest_entrypoint_18",
-    "bsrest_entrypoint_19",
-    "bsrest_entrypoint_20",
-    "_bsrest_entrypoint_0",
-    "_bsrest_entrypoint_1",
-    "_bsrest_entrypoint_2",
-    "_bsrest_entrypoint_3",
-    "_bsrest_entrypoint_4",
-    "_bsrest_entrypoint_5",
-    "_bsrest_entrypoint_6",
-    "_bsrest_entrypoint_7",
-    "_bsrest_entrypoint_8",
-    "_bsrest_entrypoint_9",
-    "_bsrest_entrypoint_10",
-    "_bsrest_entrypoint_11",
-    "_bsrest_entrypoint_12",
-    "_bsrest_entrypoint_13",
-    "_bsrest_entrypoint_14",
-    "_bsrest_entrypoint_15",
-    "_bsrest_entrypoint_16",
-    "_bsrest_entrypoint_17",
-    "_bsrest_entrypoint_18",
-    "_bsrest_entrypoint_19",
-    "_bsrest_entrypoint_20",
-]
+# Original caller VRAM, target VRAM pairs selected by the 17-site audit.
+# The final entry is the unnamed same-section call inside 0x8080020C itself.
+EXPECTED_CALL_SITES = (
+    ("bsrest_entrypoint_6", 0x80800550, 0x8080032C),
+    ("bsrest_entrypoint_2", 0x8080048C, 0x8080032C),
+    ("bsrest_entrypoint_11", 0x80800668, 0x808003FC),
+    ("bsrest_entrypoint_11", 0x80800670, 0x8080003C),
+    ("bsrest_entrypoint_14", 0x80800700, 0x8080003C),
+    ("bsrest_entrypoint_1", 0x80800450, 0x8080020C),
+    ("bsrest_entrypoint_17", 0x80800810, 0x80800000),
+    ("bsrest_entrypoint_17", 0x80800818, 0x80800080),
+    ("bsrest_entrypoint_19", 0x808008B4, 0x808000E4),
+    ("bsrest_entrypoint_5", 0x80800514, 0x8080020C),
+    ("bsrest_entrypoint_9", 0x808005D8, 0x8080020C),
+    ("bsrest_entrypoint_9", 0x808005E0, 0x80800080),
+    ("bsrest_entrypoint_3", 0x808004C8, 0x808003FC),
+    ("bsrest_entrypoint_10", 0x80800608, 0x808000E4),
+    ("bsrest_entrypoint_10", 0x80800624, 0x8080032C),
+    ("bsrest_entrypoint_7", 0x8080058C, 0x808003FC),
+    ("static_344_8080020C", 0x80800308, 0x80800000),
+)
 
 
 def collect_functions() -> dict[str, tuple[pathlib.Path, str]]:
@@ -93,73 +69,117 @@ def collect_functions() -> dict[str, tuple[pathlib.Path, str]]:
     return func_map
 
 
+def collect_function_defs() -> list[tuple[str, pathlib.Path, str]]:
+    """Return every generated function definition without collapsing duplicate names."""
+    defs: list[tuple[str, pathlib.Path, str]] = []
+    func_sig_re = re.compile(r"RECOMP_FUNC void ([a-zA-Z0-9_]+)\(uint8_t\* rdram, recomp_context\* ctx\) \{")
+
+    for path in sorted(RF.glob("funcs_*.c")):
+        content = path.read_text(errors="replace")
+        matches = list(func_sig_re.finditer(content))
+        for i, match in enumerate(matches):
+            end_pos = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+            defs.append((match.group(1), path, content[match.start() : end_pos]))
+    return defs
+
+
 def main() -> int:
     if not RF.is_dir():
         print("FAIL: RecompiledFuncs/ directory is missing")
         return 1
 
     funcs = collect_functions()
+    function_defs = collect_function_defs()
     print(f"Loaded {len(funcs)} recompiled functions from {RF.name}/")
 
     failed = False
 
-    # A. Check bsrest callers for any LOOKUP_FUNC to the 7 targets
+    # A. Check every audited original call site and require its exact section-local target.
     vulnerable_lookups_before = 17
-    vulnerable_lookups_after = 0
     direct_static_calls_found = 0
+    wrong_static_calls = 0
+    missing_calls = 0
+    lookup_calls = 0
 
-    target_hex_strings = [f"0x{t:08X}" for t in AUDITED_TARGETS]
-    target_addr_suffixes = [f"{t:08X}" for t in AUDITED_TARGETS]
+    print(f"\nChecking {len(EXPECTED_CALL_SITES)} audited original JAL call sites:")
+    for caller_name, caller_vram, target in EXPECTED_CALL_SITES:
+        caller_hex = f"0x{caller_vram:08X}"
+        target_hex = f"0x{target:08X}"
+        target_name = f"static_344_{target:08X}"
+        comment = f"// {caller_hex}: jal         {target_hex}"
+        candidates = [item for item in function_defs if item[0] == caller_name]
+        matches = [item for item in candidates if comment in item[2]]
 
-    # Find all bsrest functions (including static bodies generated in bsrest)
-    bsrest_funcs: dict[str, tuple[pathlib.Path, str]] = {}
-    for name, (path, body) in funcs.items():
-        if name.startswith("bsrest_entrypoint_") or name.startswith("_bsrest_entrypoint_"):
-            bsrest_funcs[name] = (path, body)
-        elif name.startswith("static_") and any(suffix in name for suffix in target_addr_suffixes):
-            bsrest_funcs[name] = (path, body)
+        if not matches:
+            print(f"  MISSING: {caller_name} {caller_hex} -> {target_hex}")
+            missing_calls += 1
+            failed = True
+            continue
 
-    print(f"\nChecking {len(bsrest_funcs)} .bsrest functions for lookup vs direct calls:")
-    for name, (path, body) in sorted(bsrest_funcs.items()):
-        for t_hex, suffix in zip(target_hex_strings, target_addr_suffixes):
-            needle_lookup = f"LOOKUP_FUNC({t_hex})"
-            if needle_lookup in body:
-                print(f"  FAIL: {name} ({path.name}) uses {needle_lookup}")
-                vulnerable_lookups_after += 1
-                failed = True
+        _, path, body = matches[0]
+        call_start = body.index(comment)
+        call_window = body[call_start : call_start + 1200]
+        lookup = f"LOOKUP_FUNC({target_hex})" in call_window
+        direct = f"{target_name}(rdram, ctx);" in call_window
+        wrong = re.search(r"static_[0-9]+_808[0-9A-Fa-f]+\(rdram, ctx\);", call_window)
 
-            # Count direct static calls
-            if f"_{suffix}(" in body and not name.endswith(f"_{suffix}"):
-                direct_static_calls_found += 1
+        if lookup:
+            print(f"  LOOKUP_REMAINS: {caller_name} {caller_hex} -> {target_hex} ({path.name})")
+            lookup_calls += 1
+            failed = True
+        elif direct:
+            direct_static_calls_found += 1
+        elif wrong:
+            print(f"  WRONG_STATIC: {caller_name} {caller_hex} -> {target_hex} ({path.name})")
+            wrong_static_calls += 1
+            failed = True
+        else:
+            print(f"  MISSING_CALL: {caller_name} {caller_hex} -> {target_hex} ({path.name})")
+            missing_calls += 1
+            failed = True
 
+    vulnerable_lookups_after = sum(
+        1
+        for _, _, body in function_defs
+        for target in AUDITED_TARGETS
+        if f"LOOKUP_FUNC(0x{target:08X})" in body
+    )
     print(f"VULNERABLE_LOOKUPS_BEFORE: {vulnerable_lookups_before}")
     print(f"VULNERABLE_LOOKUPS_AFTER:  {vulnerable_lookups_after}")
     print(f"DIRECT_STATIC_CALLS_FOUND: {direct_static_calls_found}")
+    print(f"WRONG_STATIC_CALLS: {wrong_static_calls}")
+    print(f"CALLS_MISSING: {missing_calls}")
+    print(f"LOOKUP_CALLS_REMAINING: {lookup_calls}")
 
-    if vulnerable_lookups_after != 0:
-        print("FAIL: vulnerable lookups still remain")
+    if (
+        direct_static_calls_found != len(EXPECTED_CALL_SITES)
+        or wrong_static_calls != 0
+        or missing_calls != 0
+        or lookup_calls != 0
+        or vulnerable_lookups_after != 0
+    ):
+        print("FAIL: audited call-site mapping is incomplete or lookup-bound")
         return 1
 
-    # B & C. Check that generated local/static bodies exist for all 7 targets
-    print("\nChecking generated local/static bodies for all 7 targets:")
+    # B & C. Require exactly one generated helper in section 344 (.bsrest).
+    print("\nChecking generated .bsrest/static bodies for all 7 targets:")
     found_targets = 0
     for target in AUDITED_TARGETS:
-        target_suffix = f"{target:08X}"
-        matching_funcs = [name for name in funcs if name.endswith(f"_{target_suffix}")]
-        if not matching_funcs:
-            print(f"  FAIL: No generated static function found for target 0x{target_suffix}")
+        target_name = f"static_344_{target:08X}"
+        matching_defs = [item for item in function_defs if item[0] == target_name]
+        if len(matching_defs) != 1:
+            print(f"  FAIL: Expected exactly one {target_name} definition, found {len(matching_defs)}")
             failed = True
         else:
             found_targets += 1
-            print(f"  PASS: Target 0x{target_suffix} generated as: {matching_funcs}")
+            print(f"  PASS: 0x{target:08X} -> {target_name} ({matching_defs[0][1].name})")
 
     print(f"AUDITED_TARGETS_FOUND: {found_targets}/{len(AUDITED_TARGETS)}")
 
     # Semantic check for crash target 0x808003FC
-    target_3fc_funcs = [name for name in funcs if name.endswith("_808003FC")]
-    if target_3fc_funcs:
-        name_3fc = target_3fc_funcs[0]
-        path_3fc, body_3fc = funcs[name_3fc]
+    target_3fc_defs = [item for item in function_defs if item[0] == "static_344_808003FC"]
+    if len(target_3fc_defs) == 1:
+        name_3fc, path_3fc, body_3fc = target_3fc_defs[0]
         has_800a0c20 = "0x800A0C20" in body_3fc
         has_800a0d14 = "0x800A0D14" in body_3fc
         has_half_float_arg = "0X3F00" in body_3fc or "0x3F00" in body_3fc or "0x3f00" in body_3fc
