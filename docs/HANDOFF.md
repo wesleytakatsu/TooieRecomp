@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition (glidx 74..91) PASS; chdiggerground actor contract resolved/refuted by original MIPS; broader USER_BUG_B remains open; full controller still pending."
+description: "Estado global corrente do port: USER_BUG_A WASD runtime resolved; first-straight 510 and first analog transition PASS; first demo fire-egg at glidx 322 is a CLASS G collision-space miss (Level D); cinematic facing currently not reproducible by the user; T10 current regression REFUTED; full controller still pending."
 status: current
 type: handoff
 project: TooieRecomp
@@ -81,23 +81,18 @@ comparison proves that the 180° freeze is original return-leg behavior for
 this actor. No fix is authorized; the broader USER_BUG_B_GLOBAL remains OPEN.
 ## NEXT
 
-1. ~~First straight & first later analog transition~~ **COMPLETE (2026-08-15)**
-   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15):
-   first straight 510 is original downhill slope-scaled walk speed
-   (`FIRST_STRAIGHT_INTERNAL_FIDELITY = PASS`). First later analog transition
-   (`glidx = 74..91`, `(-63, 74)`) is internally faithful across all stages
-   (`func_80013ABC` table arcsin, bastick distance, camera-relative yaw,
-   `yaw_update` easing, velocity integration; `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`).
-   Demo-path residual is DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
+1. ~~First straight, first analog transition, first demo shot~~ **COMPLETE**
+   ([[plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15, §16).
+   First demo fire-egg (`glidx=322`) is a CLASS G collision-space miss
+   versus the downhill digger (`ROOT_CAUSE_LEVEL=D`). Do not implement a
+   fix. Remaining discriminator: original mole/world hit volume for this
+   shot only.
 2. Analog/gamepad validation of USER_BUG_A remains PENDING.
 3. File-select → live `mode=1` is **not** a current-HEAD frontend
-   regression (`CURRENT_T10_REGRESSION=REFUTED`). Confirm correctly
-   enters `MAP_A1_CS_INTRO` / `mode=3`. Later START skips are outside
-   the historical synthetic sequencer.
-4. USER_BUG_B `chdiggerground` actor contract **REFUTED** by original-MIPS
-   case-11 review. Select a different concrete cinematic actor whose behavior
-   is user-confirmed against original Banjo-Tooie; keep the global observation
-   OPEN. Do not implement transform tagging for this actor.
+   regression (`CURRENT_T10_REGRESSION=REFUTED`).
+4. `USER_BUG_B_CINEMATIC_FACING=CURRENTLY_NOT_REPRODUCIBLE_BY_USER`.
+   `USER_BUG_B_GLOBAL_PROVEN_RESOLVED=NO`. Do not diagnose another
+   cinematic actor. Do not implement transform tagging.
 
 Do not reopen BCF28, Hybrid F' / PATCH 1–4, the core1 RA wrappers,
 Actor.rotation, the render-submission matrix split, the title/file-select
@@ -196,8 +191,8 @@ Frame-sync, event-3, cothemedll, type-4 stall, warp non-consumption,
 
 ## Files to read
 
-0. [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] (**CURRENT** — USER_BUG_B one-actor facing)
-0a. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (demo path residual; first straight + first analog PASS)
+0. [[plan/evidence/p08-demo-movement-precision-diagnosis]] (**CURRENT** — first demo shot miss §16)
+0a. [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] (USER_BUG_B historical; currently not reproducible)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix]] (accepted stick-angle secondary-entry fix)
 0a. [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` blocker resolved)
 0aa. [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] (historical verdict C; blocker resolved)

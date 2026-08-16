@@ -25,6 +25,7 @@ std::atomic<bool> g_input_enabled{false};
 std::atomic<bool> g_frontend_enabled{false};
 std::atomic<bool> g_direction_enabled{false};
 std::atomic<bool> g_demo_path_enabled{false};
+std::atomic<bool> g_shot_enabled{false};
 std::atomic<bool> g_forced_facing_enabled{false};
 std::atomic<bool> g_gameplay_seen{false};
 std::atomic<bool> g_inited{false};
@@ -107,6 +108,9 @@ void ensure_init() {
     if (g_demo_path_enabled.load(std::memory_order_relaxed)) {
         g_movement_enabled.store(true, std::memory_order_relaxed);
     }
+    const char* shot = std::getenv("TOOIE_DIAG_SHOT");
+    g_shot_enabled.store(shot != nullptr && shot[0] != '\0' && shot[0] != '0',
+                         std::memory_order_relaxed);
     const char* facing = std::getenv("TOOIE_DIAG_FORCED_FACING");
     g_forced_facing_enabled.store(facing != nullptr && facing[0] != '\0' &&
                                       facing[0] != '0',
@@ -263,6 +267,11 @@ bool input_enabled() {
 bool demo_path_enabled() {
     ensure_init();
     return g_demo_path_enabled.load(std::memory_order_relaxed);
+}
+
+bool shot_enabled() {
+    ensure_init();
+    return g_shot_enabled.load(std::memory_order_relaxed);
 }
 
 bool forced_facing_enabled() {

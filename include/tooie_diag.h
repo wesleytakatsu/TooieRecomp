@@ -20,6 +20,10 @@
 // TOOIE_DIAG. It implies movement sampling and adds throttled func_80013B70
 // caller/RA logs plus player physics/goto fields for one attract clip.
 //
+// First demo egg-shot probe (P08): TOOIE_DIAG_SHOT=1 is independent of
+// TOOIE_DIAG. Compact per-logic-tick window around the first recorded C-up
+// fire in the Wooded Hollow gameplay demo. Does not change game behavior.
+//
 // Forced/cinematic facing probe (P08 USER_BUG_B): TOOIE_DIAG_FORCED_FACING=1
 // is independent of TOOIE_DIAG. Compact per-actor [facing] lines for scripted
 // movers (filtered; not a full actor dump). Also enables throttled 13B70 RA.
@@ -32,6 +36,7 @@ bool movement_enabled();
 bool input_enabled();
 bool frontend_enabled();
 bool demo_path_enabled();
+bool shot_enabled();
 bool forced_facing_enabled();
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
@@ -107,3 +112,6 @@ void note_movement_pipeline(uint8_t* rdram, const char* input_name);
 // Per-guest-logic-tick demo-path sampler. Called once per glrecord sample
 // consumption (overlay 698 ep 0) during the attract gameplay demo (mode==5).
 extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick);
+extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick);
+extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx,
+                                       uint32_t ovl, uint32_t ep, int leaving);

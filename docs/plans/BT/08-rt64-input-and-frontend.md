@@ -39,6 +39,12 @@ first-straight ~510 is **original slope-scaled physics**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14) and
 the first later analog transition (`glidx = 74..91`) is **internally faithful**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15).
+The first user-confirmed demo shot (`glidx = 322` fire-egg) is a
+**CLASS G** collision-space miss versus the downhill digger
+(`ROOT_CAUSE_LEVEL=D`;
+[[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §16).
+No fix is implemented. `USER_BUG_B_CINEMATIC_FACING` is
+**CURRENTLY_NOT_REPRODUCIBLE_BY_USER**.
 The earlier `USER_BUG_B` one-actor Level B classification is
 **CORRECTED/SUPERSEDED** by an independent review: original-MIPS case 11
 matches generated instruction-for-instruction, advances the return position,
@@ -198,7 +204,7 @@ Evidência corrente:
 | --- | --- |
 | [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | historical USER_BUG_B one-actor diagnosis; corrected/superseded |
 | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] | **CURRENT:** original-MIPS case-11 contract; chdiggerground actor REFUTED; global USER_BUG_B OPEN |
-| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first-straight 510 and first analog transition (glidx 74..91) are original faithful physics/math; PASS |
+| [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first straight + first analog PASS; first demo fire-egg glidx 322 CLASS G miss, Level D |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |

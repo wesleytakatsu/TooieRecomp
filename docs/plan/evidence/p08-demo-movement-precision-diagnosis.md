@@ -1,10 +1,10 @@
 ---
 title: "P08 — demo movement precision diagnosis"
-description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. First straight 510 is original slope-scaled physics (PASS). First later analog transition (glidx 74..91) is internally faithful across glrecord, remap, bastick, func_80013ABC, camera-relative desired yaw, yaw interpolation, and movement integration (PASS; Gemini 3.7 Flash HIGH)."
+description: "Narrow differential of the small residual gameplay-demo path error after the accepted func_80013B70 fix. First straight 510 is original slope-scaled physics (PASS). First later analog transition (glidx 74..91) is internally faithful (PASS). First user-confirmed demo shot: original HIT vs recomp MISS; earliest C-up fire-egg at glidx 322 misses the Wooded Hollow digger. PRIMARY_MISS_CLASS G. ROOT_CAUSE_LEVEL D."
 status: evidence
 phase: P08
-updated: 2026-08-15
-tags: [tooie-recomp, p08, attract, glrecord, bastick, demo-path, diagnosis, speed-contract, analog-transition]
+updated: 2026-08-16
+tags: [tooie-recomp, p08, attract, glrecord, bastick, demo-path, diagnosis, speed-contract, analog-transition, shot-miss]
 ---
 
 # P08 — DEMO MOVEMENT PRECISION DIAGNOSIS
@@ -907,3 +907,225 @@ TOOIE_BUILD:                       PASS (ninja: no work to do)
 ```
 
 STOP. No fix. No second analog-turn analysis. No USER_BUG_B. No transform tagging.
+
+---
+
+## 16. FIRST USER-CONFIRMED SHOT MISS — Grok 4.6 HIGH
+
+```text
+BASE_HEAD:                         876d299f8b61b5c5caed6a6b36ccf6180a54f124
+MODEL:                             Grok 4.6 HIGH
+MODE:                              ONE CONCRETE DYNAMIC DIFFERENTIAL ONLY
+USER_ORIGINAL_RESULT:              HIT
+RECOMP_RESULT:                     MISS
+FIX_IMPLEMENTED:                   NO
+USER_BUG_B_CINEMATIC_FACING:       CURRENTLY_NOT_REPRODUCIBLE_BY_USER
+USER_BUG_B_GLOBAL_PROVEN_RESOLVED: NO
+P08_T10_CURRENT_REGRESSION:        REFUTED
+```
+
+Do **not** invent original player/target/projectile XYZ. Original HIT is
+user visual ground truth only.
+
+### 16.1 Selected shot
+
+Same first Wooded Hollow `gsattract` gameplay demonstration (mode=5, map 0
+during the clip / MAP_14F later). Earliest recorded-pad fire, not a later
+shot.
+
+```text
+SHOT_GLRECORD_INDEX:               322
+SHOT_LOGIC_TICK:                   1663
+RAW_BUTTON_SAMPLE:                 stick=(-9,84) buttons=0x2008
+FIRE_BUTTON:                       BUTTON_C_UP (id 0x0C); pad bit 0x0008
+                                   held with CONT_Z 0x2000
+PLAYER_STATE:                      bs=4 at the C-up edge; bs=7 (CROUCH)
+                                   from glidx 324
+PROJECTILE_TYPE:                   fire egg (baeggsetup a1=2 → overlay 535
+                                   cheggfire)
+TARGET_ACTOR_TYPE:                 Wooded Hollow digger
+                                   (sys=0x80085C98, same id as facing
+                                   probe digger_g; mid bitfield 60)
+TARGET_ACTOR_POINTER:              0x801C5B74
+                                   (companion slot 0x801C6C84, sys=0x80085768)
+```
+
+Only C-up samples in the 766-sample clip are glidx 322–323. That is the
+first and only fire-egg press in this demonstration.
+
+### 16.2 Fire / spawn / flight (PROVEN this run)
+
+```text
+FIRE_INPUT_CONSUMER:               bainput_should_shoot_egg @ 0x80097C3C
+                                   bakey_pressed(BUTTON_C_UP) && func_8008D280
+FIRE_SAMPLE_CONSUMED_ONCE:         YES (one C-up edge; one v0=1)
+LOCAL_GLRECORD_CADENCE:            PASS (adv=1 on every window tick)
+PROJECTILE_SPAWN_FUNCTION:         baeggsetup_entrypoint_5 (overlay 126 ep 5)
+                                   @ overlay VRAM 0x8080042C
+PROJECTILE_INITIAL_VECTOR_FUNCTION: func_800EEB9C(yaw, 120) added to spawn
+                                   position; second func_800EEB9C(yaw, 800)
+                                   is flight speed; Y of the 800-vector is
+                                   zeroed (original MIPS swc1 $zero)
+PROJECTILE_UPDATE_FUNCTION:        sueggmove_entrypoint_9 →
+                                   func_8080012C_sueggmove /
+                                   func_80800000_sueggmove
+PROJECTILE_HIT_TEST_FUNCTION:      suegg_entrypoint_8 → suegg_entrypoint_9
+                                   → func_800CD820 (swept sphere, a3=38.0)
+                                   plus glhittable world test
+```
+
+Spawn is 12 logic ticks after the C-up edge (egghead anim ~0.47):
+
+```text
+PLAYER_POSITION_AT_FIRE:           (-4655.36, -422.81, 1113.75)
+PLAYER_SPEED_AT_FIRE:              velxz=505.64  tspd=500  yaw=296.76
+TARGET_POSITION_AT_FIRE:           (-5941.42, -551.92, 1593.19)
+PROJECTILE_SPAWN_POSITION:         (-4824.00, -348.00, 1171.00)  glidx=334
+PROJECTILE_INITIAL_VECTOR:         yaw≈286.81°, pitch=0 (Y vel zeroed)
+PROJECTILE_SPEED:                  800 world units / physics-dt
+                                   → 40.00 XZ per logic tick
+```
+
+Spawn reconstructs exactly as original `baeggsetup_entrypoint_5`:
+`player_pos + (0, 80, 0) + dir(yaw)*120`.
+
+`cheggfire_entrypoint_2` (the init actually called for this egghead
+type-2 shot) stores gravity `a1=0` via `sueggmove_entrypoint_6`.
+`cheggfire_entrypoint_1` (unused here) would store -2192. Flat flight is
+**original MIPS** for this entrypoint, not a missing-gravity recomp bug.
+
+Egg Y stays -348 until world-stop. Horizontal heading 286.85°.
+
+### 16.3 Closest approach (PROVEN)
+
+Target 0x801C5B74 vs egg 0x801C6DBC, interpolated between glidx 365–366:
+
+```text
+CLOSEST_APPROACH_DISTANCE:         223.57  (3D to mole origin)
+CLOSEST_APPROACH_XZ:               100.96
+CLOSEST_APPROACH_DY:               199.47  (egg higher)
+CLOSEST_GLIDX:                     365
+EGG_AT_CLOSEST:                    (-5912.55, -348.00, 1500.38)
+TARGET_AT_CLOSEST:                 (-5875.74, -547.47, 1594.39)
+TARGET_HIT_RADIUS_OR_VOLUME:       egg swept-sphere radius 38.0
+                                   (func_800CD820 a3 = 0x42180000)
+                                   mole self-radius UNKNOWN
+MISS_MARGIN:                       223.57 - 38.0 = 185.57 to mole origin
+                                   (3D). XZ-only margin vs egg 38:
+                                   100.96 - 38.0 = 62.96
+```
+
+`suegg_entrypoint_8` returned 0 on every flight tick. The egg then stops
+at (-5912, -348, 1500) from glidx 367 (world / glhittable intercept).
+No original runtime XYZ exists; do not invent one.
+
+### 16.4 One-tick / small-phase counterfactual
+
+Spawn is 12 ticks after fire, after the player has already stopped
+(`velxz≈2` at glidx 333). Shifting the fire-tick player pose by one
+logic tick does not move the spawn.
+
+```text
+PLAYER_POSITION_ONE_LOGIC_TICK_EARLIER: NO
+PLAYER_POSITION_ONE_LOGIC_TICK_LATER:   NO
+TARGET_POSITION_ONE_LOGIC_TICK_EARLIER: NO  (target is still idle/farther)
+TARGET_POSITION_ONE_LOGIC_TICK_LATER:   NO  (≈16 units; Y gap ~200 remains)
+HIT_FLIP_DELTA_POSITION:               ~186 3D toward mole origin, or
+                                       ~63 XZ if the unknown mole radius
+                                       is ignored and only egg r=38 counts;
+                                       or ~160+ downward if a tall
+                                       cylinder is assumed
+HIT_FLIP_DELTA_TIME:                   >1 logic tick (one tick cannot
+                                       close the measured gap)
+```
+
+A one-tick phase error does **not** flip MISS→HIT. That does **not**
+reopen the closed first-straight 510 result.
+
+### 16.5 Player phase at the shot (not "too fast")
+
+First-straight 510 remains **CLOSED** (original slope-scaled physics).
+
+From first real move (glidx 21, 1849.9, -166.4) to fire (glidx 322):
+
+```text
+PLAYER_PHASE_AT_SHOT:              glidx 21 → 322  (301 logic ticks)
+PLAYER_PATH_LENGTH_TO_SHOT:        6972.3 XZ
+PLAYER_AVG_SPEED_TO_SHOT:          23.09 XZ / logic tick
+                                   (turns + ramp + stop included)
+```
+
+No original-semantic speed discrepancy is claimed here.
+
+### 16.6 Cadence in this window
+
+```text
+FIRE_SAMPLE_CONSUMED_ONCE:         YES
+LOCAL_GLRECORD_CADENCE:            PASS
+PLAYER_UPDATE_TICKS:               1 per glidx (adv=1, n=60 in 306..365)
+TARGET_UPDATE_TICKS:               1 per glidx (same actor vector sample)
+PROJECTILE_UPDATE_TICKS:           1 per glidx once spawned (glidx 334+)
+```
+
+Global timing / 4:3 is not reopened.
+
+### 16.7 Classification
+
+```text
+PRIMARY_MISS_CLASS:                G
+FIRST_BAD_STAGE:                   collision (egg r=38 actor test never
+                                   accepts; world intercepts at the
+                                   downhill cliff lip)
+FIRST_BAD_FUNCTION:                none proven as a recomp defect
+FIRST_BAD_GUEST_PC:                none
+EXPECTED_SEMANTIC:                 user visual: original fire-egg hits
+                                   the downhill digger
+ACTUAL_SEMANTIC:                   recomp fire-egg flies original-flat
+                                   (cheggfire ep2 gravity=0), closest
+                                   223.6 to mole origin, suegg_ep8=0,
+                                   then stops in world at y=-348
+ROOT_CAUSE_LEVEL:                  D
+ROOT_CAUSE:                        first demo shot is characterized.
+                                   Input, spawn, yaw, 800-speed, and
+                                   zero-Y from cheggfire_entrypoint_2
+                                   match original MIPS. The miss is a
+                                   collision-space gap vs the downhill
+                                   digger (and a world stop ~100 XZ /
+                                   ~200 Y from that origin). Mole
+                                   self-radius and original world-mesh
+                                   hit at this lip are UNKNOWN without
+                                   an original runtime trace.
+FIX_OWNER_CANDIDATE:               none until a remaining discriminator
+                                   proves a recomp writer
+MINIMAL_FIX_FILES:                 none
+FIX_IMPLEMENTED:                   NO
+```
+
+Remaining discriminator (do not implement a fix): original-runtime or
+original collision-mesh capture of this same fire-egg vs the 0x80085C98
+digger — specifically whether original uses a taller/wider volume that
+would accept this trajectory, or whether original world collision lets
+the egg continue.
+
+### 16.8 Instrumentation retained
+
+```text
+TOOIE_DIAG_SHOT=1
+```
+
+Env-gated. Default off. Compact `[shot-fire]` / `[shot-tick]` /
+`[shot-act]` / `[shot-ovl]` / `[shot-input]` around the first C-up.
+Does not change production behavior when unset.
+
+### 16.9 Validation (this checkpoint)
+
+```text
+STICK_ANGLE_TEST:                  PASS
+MATRIX_SUBMISSION_TEST:            PASS
+INPUT_DIRECTION_TEST:              PASS
+BCF28_TEST:                        PASS
+CORE1_RA_TEST:                     PASS
+TOOIE_BUILD:                       PASS
+```
+
+STOP. No fix. No second projectile. No cinematic actor. No transform tagging.

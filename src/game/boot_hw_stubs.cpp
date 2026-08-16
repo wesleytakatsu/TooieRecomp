@@ -1455,6 +1455,214 @@ extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick) {
     s_prev_pz = pz;
 }
 
+// Compact first-shot window (TOOIE_DIAG_SHOT=1). Keyed by glrecord sample,
+// not host gfx. Dumps player + nearby actors around the first C-up fire.
+extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick) {
+    if (!tooie_diag::shot_enabled()) {
+        return;
+    }
+    const gpr plist = kseg0_gpr(0x80135490u);
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, plist));
+    if (ps_addr == 0) {
+        return;
+    }
+    const gpr ps = kseg0_gpr(ps_addr);
+    auto bits_f32 = [](int32_t bits) -> float {
+        float f = 0.0f;
+        const uint32_t u = static_cast<uint32_t>(bits);
+        std::memcpy(&f, &u, sizeof(f));
+        return f;
+    };
+    auto is_guest = [](uint32_t a) {
+        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+    };
+
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int map_v = int(MEM_H(0x10, kseg0_gpr(0x80127630u)));
+    if (mode_v != 5) {
+        return;
+    }
+
+    const uint32_t pos_addr = static_cast<uint32_t>(MEM_W(0xE4, ps));
+    const uint32_t yaw_addr = static_cast<uint32_t>(MEM_W(0xF8, ps));
+    const uint32_t phys_addr = static_cast<uint32_t>(MEM_W(0xC8, ps));
+    const uint32_t bs_addr = static_cast<uint32_t>(MEM_W(0x120, ps));
+    float px = 0, py = 0, pz = 0, yaw = 0, yaw_ideal = 0, vx = 0, vz = 0, tspd = 0;
+    int32_t bs_id = -1;
+    if (is_guest(pos_addr)) {
+        const gpr posp = kseg0_gpr(pos_addr);
+        px = bits_f32(MEM_W(0x0, posp));
+        py = bits_f32(MEM_W(0x4, posp));
+        pz = bits_f32(MEM_W(0x8, posp));
+    }
+    if (is_guest(yaw_addr)) {
+        const gpr yawp = kseg0_gpr(yaw_addr);
+        yaw = bits_f32(MEM_W(0x0, yawp));
+        yaw_ideal = bits_f32(MEM_W(0x4, yawp));
+    }
+    if (is_guest(phys_addr)) {
+        const gpr ph = kseg0_gpr(phys_addr);
+        vx = bits_f32(MEM_W(0x10, ph));
+        vz = bits_f32(MEM_W(0x18, ph));
+        tspd = bits_f32(MEM_W(0x3C, ph));
+    }
+    if (is_guest(bs_addr)) {
+        bs_id = static_cast<int32_t>(MEM_W(0, kseg0_gpr(bs_addr)));
+    }
+
+    const gpr gl = kseg0_gpr(0x8012D5B0u);
+    const uint32_t gl_base = static_cast<uint32_t>(MEM_W(0, gl));
+    const int32_t gl_idx = static_cast<int32_t>(MEM_W(0x8, gl));
+    const int32_t gl_count = static_cast<int32_t>(MEM_W(0xC, gl));
+    int8_t rec_x = 0, rec_y = 0;
+    uint16_t rec_btn = 0;
+    if (is_guest(gl_base)) {
+        const gpr base = kseg0_gpr(gl_base + static_cast<uint32_t>(gl_idx) * 6u);
+        rec_x = int8_t(MEM_B(0, base));
+        rec_y = int8_t(MEM_B(1, base));
+        rec_btn = static_cast<uint16_t>(MEM_HU(2, base));
+    }
+
+    static uint16_t s_prev_btn = 0;
+    static int32_t s_prev_glidx = -1;
+    static int32_t s_fire_glidx = -1;
+    static uint64_t s_fire_tick = 0;
+    static bool s_done = false;
+    static int s_after = 0;
+    if (s_done) {
+        return;
+    }
+
+    const bool cup_now = (rec_btn & 0x0008u) != 0;
+    const bool cup_prev = (s_prev_btn & 0x0008u) != 0;
+    const int32_t gl_adv = (s_prev_glidx < 0) ? 0 : (gl_idx - s_prev_glidx);
+    if (s_fire_glidx < 0 && cup_now && !cup_prev) {
+        s_fire_glidx = gl_idx;
+        s_fire_tick = tick;
+        std::fprintf(stderr,
+                     "[shot-fire] FIRST_CUP_EDGE tick=%llu glidx=%d adv=%d sample=(%d,%d,%04x) "
+                     "pos=(%.2f,%.2f,%.2f) velxz=%.2f yaw=%.2f ideal=%.2f tspd=%.1f bs=%d map=%d count=%d\n",
+                     static_cast<unsigned long long>(tick), gl_idx, gl_adv,
+                     (int)rec_x, (int)rec_y, (unsigned)rec_btn,
+                     px, py, pz, std::sqrt(vx * vx + vz * vz),
+                     yaw, yaw_ideal, tspd, bs_id, map_v, gl_count);
+    }
+
+    const bool in_window = (s_fire_glidx >= 0) && (gl_idx >= s_fire_glidx - 16) && (s_after <= 80);
+    // Also pre-arm 16 samples before the known first fire (glidx 322) so we
+    // capture the approach even before the edge is seen.
+    const bool pre_window = (s_fire_glidx < 0) && (gl_idx >= 306) && (gl_idx <= 360);
+    if (in_window || pre_window) {
+        std::fprintf(stderr,
+                     "[shot-tick] tick=%llu glidx=%d adv=%d btn=%04x stick=(%d,%d) "
+                     "pos=(%.2f,%.2f,%.2f) vel=(%.2f,%.2f) velxz=%.2f yaw=%.2f ideal=%.2f "
+                     "tspd=%.1f bs=%d map=%d\n",
+                     static_cast<unsigned long long>(tick), gl_idx, gl_adv, (unsigned)rec_btn,
+                     (int)rec_x, (int)rec_y, px, py, pz, vx, vz,
+                     std::sqrt(vx * vx + vz * vz), yaw, yaw_ideal, tspd, bs_id, map_v);
+
+        const gpr actors_vec_sym = kseg0_gpr(0x80136EE0u);
+        const uint32_t vec_addr = static_cast<uint32_t>(MEM_W(0, actors_vec_sym));
+        if (is_guest(vec_addr)) {
+            const gpr vec = kseg0_gpr(vec_addr);
+            const uint32_t elem_size = static_cast<uint32_t>(MEM_W(0x00, vec));
+            const uint32_t begin = static_cast<uint32_t>(MEM_W(0x04, vec));
+            const uint32_t end = static_cast<uint32_t>(MEM_W(0x08, vec));
+            if (elem_size == 0x9Cu && is_guest(begin) && is_guest(end) && end >= begin) {
+                const uint32_t count = (end - begin) / elem_size;
+                for (uint32_t i = 0; i < count && i < 64; ++i) {
+                    const uint32_t act_addr = begin + i * 0x9Cu;
+                    const gpr act = kseg0_gpr(act_addr);
+                    const float ax = bits_f32(MEM_W(0x04, act));
+                    const float ay = bits_f32(MEM_W(0x08, act));
+                    const float az = bits_f32(MEM_W(0x0C, act));
+                    const float dx = ax - px;
+                    const float dy = ay - py;
+                    const float dz = az - pz;
+                    const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+                    // After fire, dump every actor so the intended target is
+                    // not lost to a radius filter. Before fire, keep nearby.
+                    if (s_fire_glidx < 0 && dist > 1200.0f) {
+                        continue;
+                    }
+                    const float ry = bits_f32(MEM_W(0x48, act));
+                    const uint32_t sys = static_cast<uint32_t>(MEM_W(0x10, act));
+                    const uint32_t d0 = static_cast<uint32_t>(MEM_W(0x18, act));
+                    const uint32_t idw = static_cast<uint32_t>(MEM_W(0x6C, act));
+                    const uint32_t marker_id = idw & 0x1FFu;
+                    std::fprintf(stderr,
+                                 "[shot-act] tick=%llu glidx=%d i=%u act=%08x pos=(%.2f,%.2f,%.2f) "
+                                 "d=%.2f ry=%.1f sys=%08x d0=%08x mid=%u idw=%08x\n",
+                                 static_cast<unsigned long long>(tick), gl_idx, i, act_addr,
+                                 ax, ay, az, dist, ry, sys, d0, marker_id, idw);
+                }
+            }
+        }
+        if (s_fire_glidx >= 0 && gl_idx >= s_fire_glidx) {
+            ++s_after;
+            if (s_after > 80) {
+                s_done = true;
+                std::fprintf(stderr, "[shot-fire] WINDOW_DONE tick=%llu fire_tick=%llu fire_glidx=%d\n",
+                             static_cast<unsigned long long>(tick),
+                             static_cast<unsigned long long>(s_fire_tick), s_fire_glidx);
+            }
+        }
+    }
+
+    s_prev_btn = rec_btn;
+    s_prev_glidx = gl_idx;
+}
+
+extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
+                                       uint32_t ovl, uint32_t ep, int leaving) {
+    if (!tooie_diag::shot_enabled()) {
+        return;
+    }
+    auto* ctx = static_cast<recomp_context*>(ctx_void);
+    // baeggsetup=126, baeggaim=127, baeggcursor=128, baeggfire=129,
+    // cheggfire=535, cheggnormal=539, cheggsplode=552,
+    // sueggmisc=837, suegg=841, sueggmove=842
+    const bool interesting =
+        (ovl == 126u) || (ovl == 127u) || (ovl == 128u) || (ovl == 129u) ||
+        (ovl == 535u) || (ovl == 539u) || (ovl == 552u) ||
+        (ovl == 837u) || (ovl == 841u) || (ovl == 842u);
+    if (!interesting) {
+        return;
+    }
+    auto bits_f32 = [](int32_t bits) -> float {
+        float f = 0.0f;
+        const uint32_t u = static_cast<uint32_t>(bits);
+        std::memcpy(&f, &u, sizeof(f));
+        return f;
+    };
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    const uint32_t a2 = static_cast<uint32_t>(ctx->r6);
+    const uint32_t a3 = static_cast<uint32_t>(ctx->r7);
+    const bool hit_probe = leaving && (ovl == 841u || ovl == 842u || ovl == 837u) &&
+                           (ep == 3u || ep == 8u || ep == 9u || ep == 12u || ep == 13u ||
+                            ep == 14u || ep == 23u);
+    std::fprintf(stderr,
+                 "[shot-ovl] %s ovl=%u ep=%u a0=%08x a1=%08x a2=%08x/%.3f a3=%08x/%.3f v0=%08x%s\n",
+                 leaving ? "leave" : "enter", ovl, ep, a0, a1, a2, bits_f32(int32_t(a2)),
+                 a3, bits_f32(int32_t(a3)), static_cast<uint32_t>(ctx->r2),
+                 (hit_probe && ctx->r2 != 0) ? " HIT" : "");
+    // cheggnormal / egg actor: a0 is typically the actor.
+    if ((ovl == 539u || ovl == 535u || ovl == 552u) &&
+        (a0 >= 0x80000000u) && ((a0 + 0x80000000u) < 0x00800000u) && ((a0 & 3u) == 0u)) {
+        const gpr act = kseg0_gpr(a0);
+        const float ax = bits_f32(MEM_W(0x04, act));
+        const float ay = bits_f32(MEM_W(0x08, act));
+        const float az = bits_f32(MEM_W(0x0C, act));
+        const float ry = bits_f32(MEM_W(0x48, act));
+        const uint32_t idw = static_cast<uint32_t>(MEM_W(0x6C, act));
+        std::fprintf(stderr,
+                     "[shot-egg] %s ovl=%u ep=%u act=%08x pos=(%.2f,%.2f,%.2f) ry=%.2f mid=%u\n",
+                     leaving ? "leave" : "enter", ovl, ep, a0, ax, ay, az, ry, idw & 0x1FFu);
+    }
+    std::fflush(stderr);
+}
+
 namespace banjo {
 void register_boot_lookup_stubs() {
     // Prefer real ultramodern/libultra recomp hooks at Tooie VRAMs.
@@ -1493,6 +1701,14 @@ void register_boot_lookup_stubs() {
         [](uint8_t* rdram, recomp_context* ctx) {
             tooie_diag::note_animation_update();
             baanim_update(rdram, ctx);
+        });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80097C3C),
+        [](uint8_t* rdram, recomp_context* ctx) {
+            bainput_should_shoot_egg(rdram, ctx);
+            if (tooie_diag::shot_enabled() && ctx->r2 != 0) {
+                std::fprintf(stderr, "[shot-input] bainput_should_shoot_egg=1\n");
+                std::fflush(stderr);
+            }
         });
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);

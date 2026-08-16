@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; chdiggerground original return-facing contract resolved and this actor refuted as a recompilation bug."
+description: "Estado autossuficiente: USER_BUG_A WASD resolved; first-straight 510 and first analog transition PASS; first demo fire-egg at glidx 322 characterized as a collision-space miss (CLASS G, Level D); cinematic facing currently not reproducible by the user; T10 current regression REFUTED."
 status: evidence
 phase: P08
 updated: 2026-08-16
@@ -12,7 +12,7 @@ tags: [tooie-recomp, p08, handoff, intro, attract, preemption, patch4, bcf28, 80
 ## CURRENT_HEAD
 
 - Branch: `main`.
-- Active diagnosis: [[p08-forced-cinematic-facing-independent-review]].
+- Active diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 (first demo shot miss).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
 - Independent Review: [[p08-stick-angle-thunk-fix-rereview]] — **VERDICT A**; prior `$r1` delay-slot blocker resolved.
 - Stick-angle diagnosis: [[p08-player-direction-facing-diagnosis]].
@@ -85,19 +85,19 @@ velocity writer discriminator (Grok 4.6 HIGH) COMPLETE** (§14): there is
 `glidx = 74..91` (`raw = (-63, 74)`) strictly exercises `func_80013ABC` (table-based
 arcsin evaluation, error vs original 0.0000°, error vs atan2 < 0.001°), camera-relative
 desired yaw addition, `yaw_update` rotational easing, and `func_8009AE08` slope-scaled
-velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing
-(USER_BUG_B) is **REVIEWED_ONE_ACTOR** (actor REFUTED; global OPEN;
-[[p08-forced-cinematic-facing-independent-review]]): Wooded Hollow
-`chdiggerground` return state is observed; `func_80802760` discriminator is
-RESOLVED (returns node 0, `B_LIVE_NODE`, never -1). Original MIPS proves
-case 11 matches generated, advances position through the return route, and
-does not write `unk54`/yaw. The 180° freeze is original actor/state semantics.
+velocity integration. `SELECTED_TRANSITION_INTERNAL_FIDELITY = PASS`. Attract/cinematic facing (USER_BUG_B) is
+**CURRENTLY_NOT_REPRODUCIBLE_BY_USER** for the scenes the user checked;
+`USER_BUG_B_GLOBAL_PROVEN_RESOLVED=NO`. Do not diagnose another cinematic
+actor. **First demo shot miss (Grok 4.6 HIGH) COMPLETE** (§16): earliest
+C-up fire-egg at `glidx=322` is a CLASS G collision-space miss versus the
+downhill `0x80085C98` digger (closest 223.6 / egg r=38; `ROOT_CAUSE_LEVEL=D`).
 
 Next steps in Phase P08:
-1. ~~First straight & first later analog transition~~ **COMPLETE**.
-   Demo-path residual is `DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT`.
-2. Independent review of this actor is complete; do not implement a facing fix
-   for `chdiggerground`. The global USER_BUG_B observation remains OPEN.
+1. ~~First straight, first analog transition, first demo shot~~ **COMPLETE**.
+   Shot residual discriminator: original mole/world hit volume for this
+   fire-egg, not a new projectile.
+2. Do not implement a facing fix. USER_BUG_B cinematic facing is
+   currently not reproducible by the user; global is not proven resolved.
 3. Analog/gamepad validation of USER_BUG_A.
 4. High-FPS transform tagging; window options (`P08-T07`).
 
@@ -117,17 +117,12 @@ CURRENT_T10_REGRESSION:              REFUTED
 MATRIX_EQUIVALENCE_TEST:             PASS
 WOODED_HOLLOW_MODE5_VALIDATION:      PASS
 STICK_ANGLE_13B70_FIX:               ACCEPTED (WASD runtime RESOLVED; analog PENDING)
-DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog turn PASS
-  First straight 510 is original slope-scaled physics (func_800EF04C/func_8009AE08).
-  First later analog transition (glidx 74..91) is internally faithful across
-  glrecord cadence, deadzone remap, bastick distance, func_80013ABC table arcsin,
-  quadrant correction, camera-relative yaw, yaw_update easing, and velocity integration.
-  Later demo-path visual residual: DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT.
-USER_BUG_B:                          ACTOR REFUTED; GLOBAL OPEN
-  RESOLVED (returns node 0, B_LIVE_NODE; A_KEEP_OLD REFUTED); return-leg
-  handler is dispatch case 11 (L_80800A3C) which never writes unk54/yaw.
-  Original case-11 contract PROVEN by original-MIPS comparison. See
-  [[p08-forced-cinematic-facing-independent-review]].
+DEMO_PATH_RESIDUAL:                  LEVEL D — first straight & first analog PASS
+  First demo shot (glidx 322 fire-egg) PRIMARY_MISS_CLASS=G; ROOT_CAUSE_LEVEL=D.
+USER_BUG_B:                          CURRENTLY_NOT_REPRODUCIBLE_BY_USER
+  GLOBAL_PROVEN_RESOLVED=NO
+  Historical chdiggerground actor remains REFUTED
+  ([[p08-forced-cinematic-facing-independent-review]]).
 P08_T10_SYNTHETIC_FLOW_CURRENT:      REFUTED as a current-HEAD regression;
                                      sequencer never injects later START skips
 ```
@@ -160,11 +155,10 @@ Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
 
-The `chdiggerground` original contract is resolved and
-`USER_BUG_B_THIS_ACTOR=REFUTED`: original and generated case 11 both move the
-digger back without writing `unk54`/`rotation.y`. `USER_BUG_B_GLOBAL` remains
-OPEN. Select a different concrete user-confirmed cinematic actor next; do not
-implement a fix for this actor. Demo-path residual stays deferred.
+First demo shot miss is characterized (`PRIMARY_MISS_CLASS=G`,
+`ROOT_CAUSE_LEVEL=D`). Do not implement a fix. Remaining discriminator is
+the original mole/world hit volume for this fire-egg only.
+`USER_BUG_B_CINEMATIC_FACING=CURRENTLY_NOT_REPRODUCIBLE_BY_USER`.
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -212,8 +206,8 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 
 ## FILES_TO_READ_NEXT
 
-0. [[p08-forced-cinematic-facing-diagnosis]] — USER_BUG_B one-actor facing
-0. [[p08-demo-movement-precision-diagnosis]] — demo path residual (PASS / deferred)
+0. [[p08-demo-movement-precision-diagnosis]] — **CURRENT** first demo shot miss §16
+0. [[p08-forced-cinematic-facing-diagnosis]] — USER_BUG_B historical; currently not reproducible
 0a. [[p08-stick-angle-thunk-fix]] — stick-angle secondary-entry fix
 0a. [[p08-stick-angle-thunk-fix-rereview]] — verdict A; blocker resolved
 0aa. [[p08-stick-angle-thunk-fix-independent-review]] — historical verdict C
