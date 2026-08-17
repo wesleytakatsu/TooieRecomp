@@ -384,3 +384,35 @@ bounded correction: `WRITER_SET_COMPLETE=UNKNOWN`,
 dependency is proven. The next discriminator is the aligned selector and
 complete-width store trace for `D_80127708[index]+0x1C`. No production change
 is authorized.
+
+## P08 player-control camera divergence — RESOLVED to Level B (2026-08-17)
+
+The exact player-control camera discriminator
+([[plan/evidence/p08-demo-camera-control-divergence]]) is now PROVEN: the
+selector `ps+0x184` is `0` in **both** runtimes at every sample, the selected
+`D_80127708[0]` record is the same logical camera-control object, the camctrl
+store set is complete (`{0x800CA65C}` = `func_800CA628` only, no alias/block
+write), and the camctrl writer input first diverges at glidx 385
+(`-0.0676` deg). The camera delta maps 1:1 onto the ideal_yaw delta
+(`PLAYER_DRIFT_CHAIN_CONFIRMED=YES`).
+
+```text
+SELECTOR_MATCH:                 YES  (ps+0x184 == 0, both runtimes)
+TABLE_SLOT_MATCH:               YES  (D_80127708[0])
+CAMCTRL_WRITER_MATCH:           YES  (func_800CA628 / store 0x800CA65C)
+CAMCTRL_STORE_SET_COMPLETE:     YES  ({0x800CA65C} only)
+CAMCTRL_PRIMARY_WRITER_FUNCTION: func_800CA628 (caller func_8010FC38 / func_8010FE14)
+FIRST_INTERNAL_DIVERGENT_FIELD: camctrl +0x1C at glidx 385 (-0.0676 deg)
+CAMCTRL_WRITER_INPUT_DIFFERS:   YES  (glidx 385)
+GLIDX385_CLASS:                 FIRST_CAUSAL_CAMERA_STATE
+PRIMARY_CLASS:                  SAME_WRITER_DIFFERENT_INPUT
+                                (first divergent input = CONTROL_CAMERA_INPUT)
+ROOT_CAUSE_LEVEL:               B  (mechanism proven; selector/stick refuted;
+                                   internal causal input to func_800E1A58 remains)
+FIX_IMPLEMENTED:                NO
+```
+
+The exact writer and its input provenance are closed; the single remaining
+discriminator is the internal camera input inside `func_800E1A58` (the camera
+positioning step that produces the camctrl written by `func_800CA628`) that
+first diverges. No production change is authorized.

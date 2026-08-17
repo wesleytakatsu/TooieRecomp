@@ -231,3 +231,27 @@ tracing to `selected+0x1C`.
 
 `D_8012D500` remains a distinct display-camera object; its later departure does
 not prove a direct dependency from or to the player-control source.
+
+## Camera-control divergence — resolved (2026-08-17)
+
+The selector/store-set/internal-state discriminator was executed
+([[p08-demo-camera-control-divergence]]). The selector `ps+0x184` is **0 in
+both runtimes at every sample**, the selected `D_80127708[0]` record is the
+same logical camera-control object, the camctrl store set is complete
+(`{0x800CA65C}` = `func_800CA628` only, no alias/block write), and the
+camctrl writer input first diverges at glidx 385 (`-0.0676` deg). The camera
+delta maps 1:1 onto the ideal_yaw delta (`d_camctrl == d_ideal` to 0.0001),
+confirming the player drift chain.
+
+```text
+SELECTOR_MATCH:                 YES  (ps+0x184 == 0, both runtimes)
+TABLE_SLOT_MATCH:               YES  (D_80127708[0])
+CAMCTRL_WRITER_MATCH:           YES  (func_800CA628 / 0x800CA65C)
+CAMCTRL_STORE_SET_COMPLETE:     YES
+FIRST_INTERNAL_DIVERGENT_FIELD: camctrl +0x1C at glidx 385
+CAMCTRL_WRITER_INPUT_DIFFERS:   YES  (glidx 385, -0.0676 deg)
+GLIDX385_CLASS_REFINED:         FIRST_CAUSAL_CAMERA_STATE
+PLAYER_DRIFT_CHAIN_CONFIRMED:   YES
+ROOT_CAUSE_LEVEL:               B  (mechanism proven; internal causal input to
+                                   func_800E1A58 remains)
+```

@@ -203,7 +203,11 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
-Walk only the post-egg run/jump writer starting at the first phase-corrected split (~consumed_glidx 392, `bs=21` trot). Do not reopen first-straight 510, 13B70, matrix, or the capture-phase 25u lead.
+Walk the internal camera state inside `func_800E1A58` (the camera positioning
+step) to the first input/instruction that diverges before the camctrl write at
+glidx 385. Do not reopen the selector (`ps+0x184` == 0 both), the camctrl store
+set (`{0x800CA65C}`), the writer (`func_800CA628`), or the closed capture-phase
+movement evidence.
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -266,7 +270,8 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 3. [[p08-actor-camera-transform-discriminator]] — actor vs camera discriminator
 4. [[p08-visible-demo-movement-diagnosis]] — visible demo + movement diagnosis
 5. [[p08-core1-ra-wrapper-fix]] — RA-wrapper fix (resolved; do not reopen)
-6. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
+6. [[p08-demo-camera-control-divergence]] — player-control camera divergence (RESOLVED to Level B; selector match, writer match, camctrl diverges at 385)
+7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
 
@@ -401,3 +406,62 @@ bounded correction: `WRITER_SET_COMPLETE=UNKNOWN`,
 dependency is not proven. The next discriminator is the aligned selector and
 complete-width store trace for `D_80127708[index]+0x1C`. No production change
 is authorized.
+
+## P08 player-control camera divergence — RESOLVED to Level B (2026-08-17)
+
+The selector/store-set/internal-state discriminator was executed
+([[p08-demo-camera-control-divergence]]). The selector `ps+0x184` is **0 in
+both runtimes at every sample**; the selected `D_80127708[0]` record is the
+same logical camera-control object; the camctrl store set is complete
+(`{0x800CA65C}` = `func_800CA628` only, no alias/block write); the camctrl
+writer input first diverges at glidx 385 (`-0.0676` deg); the camera delta
+maps 1:1 onto the ideal_yaw delta.
+
+```text
+MUPEN_ENV_REUSED:               YES (/tmp/p08-m64p; core 6dca4c1, rice 038882d)
+PS_0X184_FIELD_SIZE:            4 bytes (s32; camera-control slot selector)
+PS_0X184_SEMANTIC:              index into D_80127708 (8-entry pointer table of
+                                player-control camera records)
+ORIGINAL_SELECTOR_SEQUENCE:     0 at every writer call (367..405)
+RECOMP_SELECTOR_SEQUENCE:       0 at every demo sample (1..480)
+SELECTOR_MATCH:                 YES
+D_80127708_KIND:                8-entry pointer table (.space 0x20, stride 4)
+TABLE_SLOT_MATCH:               YES (index 0 in both)
+SELECTED_RECORD_SEMANTIC_MATCH: YES (camera-control record; +0x1C = player yaw)
+CAMCTRL_PLUS_0X1C_SEMANTIC:     player-control camera angle consumed by
+                                bastick_getAngleRelativeToBanjo
+CAMCTRL_DIRECT_STORE_PCS_ORIGINAL: {0x800CA65C} (func_800CA628, swc1 $f6,0x14($v1))
+CAMCTRL_DIRECT_STORE_PCS_RECOMP:   func_800CA628 (same generated MIPS)
+CAMCTRL_STORE_SET_COMPLETE:     YES (all widths + overlap detection; only
+                                0x800CA65C touches selected+0x1C)
+ALIAS_OR_BLOCK_WRITE_RISK:      LOW (aligned8_memcpy overlaps ps+0x184 but never
+                                cam+0x1C)
+CAMCTRL_WRITER_MATCH:           YES
+CAMCTRL_PRIMARY_WRITER_PC:      0x800CA65C
+CAMCTRL_PRIMARY_WRITER_FUNCTION: func_800CA628 (0x800CA628)
+CAMCTRL_PRIMARY_WRITER_CALLER:  func_8010FC38 (JAL 0x8010FCD8) and
+                                func_8010FE14 (JAL 0x8010FE1C)
+EARLY_CAMERA_WRITER_CONTROL:    PASS (glidx 74..91; camctrl tracks <0.005 deg)
+FIRST_INTERNAL_CAMERA_EXACT_DIFFERENCE:   glidx 385 (camctrl +0x1C -0.0676 deg)
+FIRST_INTERNAL_CAMERA_MEANINGFUL_DIFFERENCE: glidx 385
+FIRST_INTERNAL_DIVERGENT_FIELD: camctrl (+0x1C); eye +0x00 in same write
+FIRST_INTERNAL_DIVERGENT_GLIDX: 385
+CAMCTRL_WRITER_INPUT_ALREADY_DIFFERS: YES
+FIRST_BAD_CAMERA_INPUT:         camctrl angle (src2[2] -> cam+0x1C)
+FIRST_BAD_CAMERA_INPUT_SOURCE:  func_800E1A58 (camera positioning) -> func_800CA628
+CONTROL_DISPLAY_CAMERA_RELATION: SHARED_UPSTREAM_STATE (no direct dependency
+                                proven; display departs 386)
+GLIDX385_CLASS:                 FIRST_CAUSAL_CAMERA_STATE
+PLAYER_DRIFT_CHAIN_CONFIRMED:   YES (d_camctrl == d_ideal to 0.0001)
+PRIMARY_CLASS:                  SAME_WRITER_DIFFERENT_INPUT
+                                (first divergent input = CONTROL_CAMERA_INPUT)
+FIRST_BAD_STAGE:                camctrl write at func_800CA628, glidx 385
+FIRST_BAD_FUNCTION:             func_800E1A58 output out2[2] feeding
+                                func_800CA628 (writer identical)
+FIRST_BAD_GUEST_PC:             0x800CA65C SAME in both; internal instruction in
+                                func_800E1A58 UNKNOWN
+ROOT_CAUSE_LEVEL:               B (mechanism proven; selector/stick refuted;
+                                internal causal input to func_800E1A58 remains)
+FIX_OWNER_CANDIDATE:            UNKNOWN (internal camera positioning state)
+FIX_IMPLEMENTED:                NO
+```

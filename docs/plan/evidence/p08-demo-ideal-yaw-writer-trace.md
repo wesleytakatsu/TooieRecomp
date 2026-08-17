@@ -304,3 +304,28 @@ EXACT_NEXT_DISCRIMINATOR:      aligned trace of (ps, ps+0x184,
                                 camera-control writer/state input
 FIX_IMPLEMENTED:               NO
 ```
+
+## Selector, store-set, and camera-state resolution (2026-08-17)
+
+The review's exact next discriminator was executed
+([[p08-demo-camera-control-divergence]]). Result:
+
+```text
+ORIGINAL_INDEX_MATCH_RECOMP:   YES  — selector ps+0x184 == 0 in both runtimes
+                                   at every sample (367..405 original,
+                                   1..480 recomp)
+CAMCTRL_STORE_SET_COMPLETE:    YES  — all store widths + overlap detection;
+                                   only 0x800CA65C (func_800CA628) touches
+                                   selected+0x1C
+CAMCTRL_WRITER_MATCH:          YES  — func_800CA628 (0x800CA628, store
+                                   0x800CA65C) identical in both runtimes;
+                                   caller func_8010FC38 / func_8010FE14
+FIRST_INTERNAL_DIVERGENT_FIELD: camctrl +0x1C at glidx 385 (-0.0676 deg);
+                                   eye +0x00 diverges in the same write
+GLIDX385_CLASS_REFINED:        FIRST_CAUSAL_CAMERA_STATE (first
+                                   player-consumed camera value; the internal
+                                   input inside func_800E1A58 that first
+                                   diverges remains)
+ROOT_CAUSE_LEVEL_REVIEW:       B  (mechanism proven; one internal causal input
+                                   to func_800E1A58 remains)
+```
