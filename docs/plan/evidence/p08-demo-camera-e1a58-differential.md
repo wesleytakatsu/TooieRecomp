@@ -181,12 +181,11 @@ STATE_WRITER:                           func_800CA628 via func_8010FE14
                                         (RA 0x8010FE24) during func_8010FC38
 ```
 
-The FE14 site inside `func_80110588` (mode-2 follow update) is
-`jal func_8010FE14` at `0x8011066C` with `a1 = s0+0x74`, `a2 = s0+0x80`
-(after vec3 copies). FC38 also has mode 3 (`ncfixposrot`) and mode 8
-(`ncpod`) FE14 callers. Mode word `*(ctrl+0x16)` was not dumped;
-`func_80110588` is the **INFERENCE** identity of the live mode callee.
-The FE14-during-FC38-before-CA8B4 order is **PROVEN**.
+The FE14 site inside `func_80110588` is `jal func_8010FE14` at `0x8011066C`.
+**CORRECTED/SUPERSEDED:** mode `*(ctrl+0x16)` / handler PC are now **PROVEN**
+as 2 / `0x80110588` on both runtimes
+([[p08-demo-camera-mode-producer-differential]]). FE14 `a1/a2` are stack
+copies of mode-object `+0x74/+0x80`, not those fields themselves.
 
 ## Instruction trace
 
@@ -234,9 +233,9 @@ FIRST_GAMEPLAY_MEANINGFUL_DIFFERENCE:  same 384/385 value; then grows
 ```text
 PRIMARY_CLASS:                R  (func_800E1A58 REFUTED as origin)
 FIRST_BAD_STAGE:              FE14/CA628 during func_8010FC38, before CA8B4
-FIRST_BAD_FUNCTION:           func_8010FE14 -> func_800CA628
-                              inputs computed by FC38 mode callee
-                              (func_80110588 INFERENCE)
+FIRST_BAD_FUNCTION:           CORRECTED/SUPERSEDED — see
+                              [[p08-demo-camera-mode-producer-differential]]
+                              (func_80110790 a1 already differs)
 FIRST_BAD_GUEST_PC:           0x800CA65C (same writer; different src2[1])
 ROOT_CAUSE_LEVEL:             R
 ROOT_CAUSE:                   E1A58 is a no-op on this path. The first

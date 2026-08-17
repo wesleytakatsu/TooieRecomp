@@ -412,9 +412,9 @@ ROOT_CAUSE_LEVEL:               R  (func_800E1A58 REFUTED;
 FIX_IMPLEMENTED:                NO
 ```
 
-**CORRECTED/SUPERSEDED (2026-08-17):** `func_800E1A58` is identity on this
-path (all 10 constraint slots type 1). The first meaningful camctrl is
-already `src2[1]` at the FE14/`func_800CA628` write during `func_8010FC38`,
-before CA8B4/E1A58 (consumed glidx 384 = prior aligned 385, −0.0675°).
-`cam+0x1C` is `out2[1]`, not `out2[2]`. Next: the FC38 mode-update helpers
-(likely `func_80110588` `+0x74/+0x80`). No production change is authorized.
+**CORRECTED/SUPERSEDED (2026-08-17):** `func_800E1A58` is identity.
+**Mode 2 / `func_80110588` is now PROVEN**
+([[plan/evidence/p08-demo-camera-mode-producer-differential]]). FE14 copies
+stack images of mode-object `+0x74/+0x80`. Last angle writer is setter
+`func_80110790`; its `a1[1]` already differs at consumed 384 (−0.0675°).
+Caller is a relocated overlay (RA `0x801D3E7C`). No production change.

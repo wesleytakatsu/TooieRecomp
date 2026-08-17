@@ -203,10 +203,11 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
-Trace the FC38 mode-update helpers that fill `src2[1]` for the FE14/CA628
-write (likely `func_80110588` writing mode-object `+0x74/+0x80`) at consumed
-glidx 384. `func_800E1A58` is REFUTED (identity). Do not reopen the selector,
-the camctrl store set, or E1A58. See [[p08-demo-camera-e1a58-differential]].
+Identify the relocated overlay that calls `func_80110790` (ORIGINAL RA
+`0x801D3E7C` at consumed 384) and trace who writes its `a1` stack vector
+(`0x80045638`) before the setter. Mode 2 / `func_80110588` is PROVEN.
+`func_80110790` is a copier; its `a1[1]` already differs (−0.0675°).
+Do not reopen E1A58 or FE14/CA628. See [[p08-demo-camera-mode-producer-differential]].
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -270,7 +271,8 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 4. [[p08-visible-demo-movement-diagnosis]] — visible demo + movement diagnosis
 5. [[p08-core1-ra-wrapper-fix]] — RA-wrapper fix (resolved; do not reopen)
 6. [[p08-demo-camera-control-divergence]] — player-control camera writer/selector (Level B closed)
-6a. [[p08-demo-camera-e1a58-differential]] — E1A58 REFUTED; first meaningful src2[1] is FE14/CA628 during FC38
+6a. [[p08-demo-camera-e1a58-differential]] — E1A58 REFUTED
+6b. [[p08-demo-camera-mode-producer-differential]] — mode 2 / func_80110588 PROVEN; 80110790 a1 already differs at 384
 7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
@@ -477,3 +479,9 @@ already `src2[1]` at the FE14/`func_800CA628` write during `func_8010FC38`,
 before CA8B4/E1A58 (consumed 384 = prior aligned 385, −0.0675°).
 `cam+0x1C` is `out2[1]`, not `out2[2]`. Call alignment 1/1/1/2 PASS. Early
 control PASS (`|Δ|≤0.0007°`). Level R. No production change.
+
+## P08 FC38 mode producer — Level B (2026-08-17)
+
+Mode 2 / `func_80110588` is **PROVEN**. `func_80110790` `a1[1]` already
+differs at consumed 384 (−0.0675°). Caller is a relocated overlay
+(RA `0x801D3E7C`). See [[p08-demo-camera-mode-producer-differential]].

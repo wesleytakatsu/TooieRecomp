@@ -252,8 +252,8 @@ FIRST_INTERNAL_DIVERGENT_FIELD: camctrl +0x1C at glidx 385
 CAMCTRL_WRITER_INPUT_DIFFERS:   YES  (glidx 385, -0.0676 deg)
 GLIDX385_CLASS_REFINED:         FIRST_CAUSAL_CAMERA_STATE
 PLAYER_DRIFT_CHAIN_CONFIRMED:   YES
-ROOT_CAUSE_LEVEL:               R  CORRECTED/SUPERSEDED by
-                                   [[p08-demo-camera-e1a58-differential]]
-                                   (E1A58 identity; first meaningful src2[1]
-                                   is FE14/CA628 during FC38)
+ROOT_CAUSE_LEVEL:               B  CORRECTED/SUPERSEDED by
+                                   [[p08-demo-camera-mode-producer-differential]]
+                                   (mode 2 / 80110588 PROVEN; 80110790 a1
+                                   already differs at 384)
 ```

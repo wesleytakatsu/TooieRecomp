@@ -104,7 +104,8 @@ Evidência corrente:
 - [[../../plan/evidence/p08-demo-post-egg-motion-divergence]] (**CURRENT:** post-egg run/jump split; writer walkback now resolved)
 - [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]] (**CURRENT:** exact ideal_yaw writer + input provenance; first divergent input = player-control camera)
 - [[../../plan/evidence/p08-demo-camera-control-divergence]] (**CURRENT:** player-control camera writer/selector closed)
-- [[../../plan/evidence/p08-demo-camera-e1a58-differential]] (**CURRENT:** E1A58 REFUTED; first meaningful src2[1] is FE14/CA628 during FC38)
+- [[../../plan/evidence/p08-demo-camera-e1a58-differential]] (E1A58 REFUTED)
+- [[../../plan/evidence/p08-demo-camera-mode-producer-differential]] (**CURRENT:** mode 2 / func_80110588 PROVEN; 80110790 a1 differs at 384)
 - [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS; original numeric now measured)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
@@ -227,7 +228,8 @@ Evidência corrente:
 | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first straight + first analog PASS; first demo fire-egg glidx 322 target collision volume resolved (TRUE_MISS_MARGIN = +36.85f, PROVEN NO HIT) |
 | [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]] | **CURRENT:** exact ideal_yaw writer (0x8009C930) + input provenance; first divergent input = player-control camera |
 | [[../../plan/evidence/p08-demo-camera-control-divergence]] | player-control camera writer/selector closed (Level B) |
-| [[../../plan/evidence/p08-demo-camera-e1a58-differential]] | **CURRENT:** E1A58 REFUTED (identity); first meaningful src2[1] is FE14/CA628 during FC38 at consumed 384 |
+| [[../../plan/evidence/p08-demo-camera-e1a58-differential]] | E1A58 REFUTED (identity) |
+| [[../../plan/evidence/p08-demo-camera-mode-producer-differential]] | **CURRENT:** mode 2 / func_80110588 PROVEN; 80110790 a1 already differs at consumed 384 |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -344,10 +346,10 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
    input already differs at glidx 385; first divergent input = player-control
    camera angle `D_80127708[*(ps+0x184)*4]+0x1C` (stick path REFUTED).
    **Player-control camera writer/selector closed** (2026-08-17).
-   **E1A58 REFUTED** ([[../../plan/evidence/p08-demo-camera-e1a58-differential]]):
-   identity on this path; first meaningful camctrl is FE14/CA628 `src2[1]`
-   during `func_8010FC38` at consumed 384 (prior aligned 385, −0.0675°).
-   Remaining discriminator: FC38 mode-update helpers (likely `func_80110588`).
+   **E1A58 REFUTED.** **Mode 2 / `func_80110588` PROVEN**
+   ([[../../plan/evidence/p08-demo-camera-mode-producer-differential]]).
+   `func_80110790` `a1[1]` already differs at consumed 384 (−0.0675°).
+   Remaining: name/trace the overlay that calls `func_80110790` (RA `0x801D3E7C`).
 3. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
    full controller is PENDING.
 4. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
@@ -462,7 +464,6 @@ ROOT_CAUSE_LEVEL:               R  (func_800E1A58 REFUTED;
 FIX_IMPLEMENTED:                NO
 ```
 
-**CORRECTED/SUPERSEDED:** `func_800E1A58` is identity. The first meaningful
-camctrl is already `src2[1]` at FE14/CA628 during `func_8010FC38`, before
-CA8B4/E1A58. Next: mode-update helpers (likely `func_80110588`). No
-production change is authorized.
+**CORRECTED/SUPERSEDED:** Mode 2 / `func_80110588` PROVEN. `func_80110790`
+is a copier whose `a1[1]` already differs at 384. Next: overlay caller
+`0x801D3E7C`. See [[../../plan/evidence/p08-demo-camera-mode-producer-differential]].
