@@ -340,3 +340,42 @@ The exact writer is the only remaining discriminator. The camera is downstream,
 the digger scan is UNKNOWN, and this split occurs after the first egg input was
 already consumed/fired; do not reopen the first shot or closed capture-phase
 movement evidence. Full table: [[plan/evidence/p08-demo-post-egg-motion-divergence]].
+
+## P08 ideal-yaw writer differential — RESOLVED (2026-08-17)
+
+The exact ideal_yaw writer and its input provenance are now PROVEN by a bounded
+original/Recomp store trace
+([[plan/evidence/p08-demo-ideal-yaw-writer-trace]]). The original
+Pure-Interpreter build was rediscovered at `/tmp/p08-m64p` (core `6dca4c1`,
+rice `038882d`) and rebuilt locally (no sudo) with a narrow store tracer;
+the Recomp writer was captured via a GDB breakpoint on `yaw_setIdeal`.
+
+```text
+ORIGINAL_IDEAL_WRITER_PCS:        {0x8009C930}  (yaw_setIdeal store)
+RECOMP_IDEAL_WRITER_PCS:          {0x8009C930}  (same generated function)
+WRITER_PC_MATCH:                  YES
+IDEAL_YAW_WRITER_FUNCTION:        yaw_setIdeal (0x8009C914)
+CALLER_FUNCTION:                  func_8009D088 (case 1; jal at 0x8009D0EC)
+WRITER_INPUT_ALREADY_DIFFERS:     YES — glidx 385 a1 = 99.3756 vs 99.3081
+RAW_PAD_MATCH:                    YES
+REMAP_MATCH:                      YES
+STICK_MAG_MATCH:                  YES
+STICK_ANGLE_MATCH:                YES (bang identical at every glidx)
+PLAYER_CONTROL_CAMERA_MATCH:      NO (first differs glidx 385)
+PLAYER_CONTROL_CAMERA_SOURCE:     D_80127708[*(ps+0x184)*4] + 0x1C
+SAME_AS_PREVIOUS_DISPLAY_CAMERA:  NO (display D_8012D500 departs at 386)
+CAMERA_DIVERGENCE_REL_TO_PLAYER:  UPSTREAM_OF_PLAYER (CORRECTED/SUPERSEDED
+                                  from AFTER_PLAYER for the control source)
+PRIMARY_CLASS:                    SAME_WRITER_DIFFERENT_INPUT
+                                  (first divergent input = CONTROL_CAMERA_INPUT)
+INITIAL_0P07_DELTA_CLASS:         CAUSAL_WRONG_VALUE (writer input differs)
+EARLY_TURN_STORE_TRACE_CONTROL:   PASS (glidx 74..91 delta 0.0000)
+ROOT_CAUSE_LEVEL:                 B (identical writer; stick path refuted;
+                                  camera-angle writer instruction remains)
+FIX_IMPLEMENTED:                  NO
+```
+
+The stick path (`bastick_update → func_80013B70`) is REFUTED as the first
+divergent input. The remaining discriminator is the camera-control computation
+that first writes the divergent player-control camera angle. No production
+change is authorized.

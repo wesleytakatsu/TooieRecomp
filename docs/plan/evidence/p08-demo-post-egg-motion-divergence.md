@@ -11,9 +11,11 @@ tags: [tooie-recomp, p08, measured-original, measured-recomp, post-egg, movement
 This is a narrow differential only. No production fix was implemented.
 
 ```text
-BASE_HEAD:                    ff0497583258a3c4aedf6fe86d7db86c015b8592
+BASE_HEAD:                    c82986ad8a558ae43e5285699e4132a96864fbfa
 PHASE_CORRECTED_ALIGNMENT:   MEASURED_ORIGINAL[N] vs MEASURED_RECOMP[N+1]
-ORIGINAL_TRACE:               REUSED /tmp/p08-original-wh1-clip.csv
+ORIGINAL_TRACE:               FRESH official mupen64plus 2.6.0 Pure Interpreter
+                              + instrumented Rice dump (store-tracer core rebuilt
+                              locally; no sudo); /tmp/p08-original-store-trace.csv
 RECOMP_TRACE:                 REPRODUCED at current HEAD, first Wooded Hollow run
 RECOMP_TRACE_ROWS:            793 first run; first 765 rows compared
 PAD_BYTES_MATCH:              765/765 at input glidx N
@@ -22,8 +24,10 @@ FIX_IMPLEMENTED:              NO
 
 The original capture remains the official mupen64plus 2.6.0 Pure Interpreter
 trace documented in the full-motion note (core `6dca4c1`, Rice `038882d`,
-ROM SHA-1 match). The user-local build itself was not rediscovered in this
-workspace; its provenance is accepted from the measured trace metadata.
+ROM SHA-1 match). The user-local source was rediscovered at `/tmp/p08-m64p`
+and the core/plugins were rebuilt locally (no sudo) with a narrow store tracer
+in `pure_interp.c` plus a camctrl extension in the Rice VI dump; both are
+diagnostic-only and live outside the TooieRecomp tree.
 
 ## Control and first split
 
@@ -139,38 +143,71 @@ substate/animation ID/animation phase: — for all rows (not sampled).
 The measured owner chain is:
 
 ```text
-identical pad[N] → bastick / input yaw path → ideal_yaw → phys_yaw/yaw
-→ velocity → position
+identical pad[N] → player-control camera angle → bastick / ideal_yaw writer
+→ ideal_yaw → phys_yaw/yaw → velocity → position
 ```
 
-The existing Recomp code and prior static evidence identify the relevant
-player path as `bastick_update → func_80013B70 → yaw_setIdeal`. The current
-retained runtime trace does not record guest stores. A GDB attempt against the
-PIE executable did not reach a usable watchpoint, and the local Pure Interpreter
-source/build was not present to add the requested original write logger.
+The exact runtime writer and its input are now PROVEN by the
+[[p08-demo-ideal-yaw-writer-trace|writer store trace]] (2026-08-17): the
+original Pure-Interpreter store tracer and the recomp GDB writer capture both
+hit `yaw_setIdeal` (store guest PC `0x8009C930`), and the value entering that
+writer **already differs at glidx 385**.
 
 ```text
-ORIGINAL_FIRST_WRITER_PC:       UNKNOWN
-RECOMP_FIRST_WRITER_PC:         UNKNOWN
-WRITER_PC_MATCH:                UNKNOWN
-FIRST_BAD_FUNCTION:             bastick_update / yaw_setIdeal path (candidate)
-FIRST_BAD_GUEST_PC:             UNKNOWN
-ROOT_CAUSE_LEVEL:               C
+ORIGINAL_IDEAL_WRITER_PCS:       {0x8009C930}  (yaw_setIdeal, entry 0x8009C914)
+RECOMP_IDEAL_WRITER_PCS:         {0x8009C930}  (same generated function)
+WRITER_PC_MATCH:                 YES
+IDEAL_YAW_WRITER_FUNCTION:       yaw_setIdeal (0x8009C914)
+IDEAL_YAW_STORE_PC:              0x8009C930  (swc1 $f0, 0x4($t7))
+CALLER_FUNCTION:                 func_8009D088 (dispatch case 1; jal at 0x8009D0EC,
+                                 RA 0x8009D0F4)
+WRITER_INPUT_ALREADY_DIFFERS:    YES — glidx 385 a1 = 99.3756 vs 99.3081 (-0.0675°)
+FIRST_DIVERGENT_WRITER_INPUT:    player-control camera angle
+                                 D_80127708[*(ps+0x184)*4] + 0x1C
+FIRST_UPSTREAM_DIVERGENT_GLIDX:  385
+ROOT_CAUSE_LEVEL:                B  (identical writer; first divergent input =
+                                 player-control camera angle; stick path refuted)
 ```
 
-This is sufficient to close the broad capture/state/physics hypotheses but not
-to claim a generator or production bug. No speed, dt, camera, collision, state,
-or generated-C change is authorized by this note.
+The stick path is NOT the first divergent input: pad, remap, bastick magnitude
+and bastick angle match exactly (e.g. `bang` = 315.7252° in both at glidx 385).
+The ideal_yaw writer computes `a1 = wrap(camctrl + bang + 90)`; `camctrl`
+(player-control camera angle) first differs at glidx 385. See the writer-trace
+note for the full per-glidx 382..392 table.
+
+```text
+RAW_PAD_MATCH:                   YES
+REMAP_MATCH:                     YES
+STICK_MAG_MATCH:                 YES
+STICK_ANGLE_MATCH:               YES
+PLAYER_CONTROL_CAMERA_MATCH:     NO (first differs glidx 385)
+PRE_WRAP_IDEAL_MATCH:            NO (first differs glidx 385)
+WRAP_RESULT_MATCH:               NO (first differs glidx 385)
+CAMERA_DIVERGENCE_RELATIVE_TO_PLAYER: UPSTREAM_OF_PLAYER  (player-control camera
+                                 feeds the writer; the DISPLAY camera field
+                                 D_8012D500, traced previously, departs at 386)
+```
+
+This is sufficient to close the broad capture/state/physics hypotheses and the
+`bastick_update → func_80013B70` stick-angle hypothesis. No speed, dt, camera,
+collision, state, or generated-C change is authorized by this note.
 
 ## Controls and residual relationship
 
-Camera yaw remains a downstream control: it begins to depart after the small
-player ideal-yaw/turn departure, not before the player path. The captured actor
-scan still reports digger `(0,0,0)` in both traces, so autonomous-actor parity is
-`UNKNOWN` rather than a false match.
+The player-control camera angle (`D_80127708[*(ps+0x184)*4] + 0x1C`) is an
+**upstream input** to the ideal-yaw writer and first diverges at glidx 385. The
+**display** camera (`D_8012D500`, the field previously traced) departs at
+glidx 386, after the player field — it is presentation/downstream, not the
+player-control source. This **CORRECTS/SUPERSEDES** the earlier
+`CAMERA_DIVERGENCE_RELATIVE_TO_PLAYER=AFTER_PLAYER` label for the player-control
+source. The captured actor scan still reports digger `(0,0,0)` in both traces,
+so autonomous-actor parity is `UNKNOWN` rather than a false match.
 
 ```text
-CAMERA_DIVERGENCE_RELATIVE_TO_PLAYER: AFTER_PLAYER
+CAMERA_DIVERGENCE_RELATIVE_TO_PLAYER: UPSTREAM_OF_PLAYER (player-control camera;
+                                   display camera D_8012D500 is AFTER_PLAYER)
+PLAYER_CONTROL_CAMERA_SOURCE:      D_80127708[*(ps+0x184)*4] + 0x1C
+SAME_AS_PREVIOUS_DISPLAY_CAMERA_FIELD: NO
 CONTROL_ACTOR_MATCH:                  UNKNOWN
 POST_EGG_SPLIT_AFTER_FIRST_SHOT:      YES
 CAN_CAUSE_FIRST_SHOT_MISS:             NO

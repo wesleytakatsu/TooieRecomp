@@ -101,6 +101,8 @@ Evidência corrente:
 - [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] (historical USER_BUG_B one-actor diagnosis; corrected/superseded)
 - [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] (**CURRENT:** original-MIPS case-11 contract; actor refuted, global open)
 - [[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] (**CURRENT:** MEASURED_ORIGINAL vs MEASURED_RECOMP; capture-phase + later run split)
+- [[../../plan/evidence/p08-demo-post-egg-motion-divergence]] (**CURRENT:** post-egg run/jump split; writer walkback now resolved)
+- [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]] (**CURRENT:** exact ideal_yaw writer + input provenance; first divergent input = player-control camera)
 - [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS; original numeric now measured)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
@@ -221,6 +223,7 @@ Evidência corrente:
 | [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | historical USER_BUG_B one-actor diagnosis; corrected/superseded |
 | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] | **CURRENT:** original-MIPS case-11 contract; chdiggerground actor REFUTED; global USER_BUG_B OPEN |
 | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first straight + first analog PASS; first demo fire-egg glidx 322 target collision volume resolved (TRUE_MISS_MARGIN = +36.85f, PROVEN NO HIT) |
+| [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]] | **CURRENT:** exact ideal_yaw writer (0x8009C930) + input provenance; first divergent input = player-control camera |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -332,8 +335,13 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
    remains OPEN for another user-confirmed cinematic actor.
 2. **Demo-path first straight and first later analog transition — PASS**
    ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15).
-   Later demo-path visual residual:
-   `DEFERRED_PENDING_SPECIFIC_VISUAL_SEGMENT`.
+   **Post-egg ideal_yaw writer RESOLVED** (2026-08-17): exact writer =
+   `yaw_setIdeal` store `0x8009C930` (identical in ORIGINAL and RECOMP); writer
+   input already differs at glidx 385; first divergent input = player-control
+   camera angle `D_80127708[*(ps+0x184)*4]+0x1C` (stick path REFUTED).
+   Remaining discriminator: the camera-control computation that first writes
+   that divergent angle.
+   ([[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]]).
 3. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
    full controller is PENDING.
 4. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
@@ -379,3 +387,34 @@ first exceeds 2 units at glidx 392 under `ORIGINAL[N] vs RECOMP[N+1]`. Pads are
 `765/765`, `bs=21`, `tspd=700`, and slope multiplier `1.0000` match at the
 persistent split. The exact writer PC is UNKNOWN; P08 stays active and P09 is
 not started. See [[../../plan/evidence/p08-demo-post-egg-motion-divergence]].
+
+**Ideal-yaw writer differential RESOLVED (2026-08-17):** a bounded original
+(rebuild of the local official Pure Interpreter with a store tracer) / Recomp
+(GDB writer capture) store trace proves the exact writer is identical and the
+writer input already differs at glidx 385.
+
+```text
+ORIGINAL_IDEAL_WRITER_PCS:        {0x8009C930}  (yaw_setIdeal store)
+RECOMP_IDEAL_WRITER_PCS:          {0x8009C930}  (same generated function)
+WRITER_PC_MATCH:                  YES
+IDEAL_YAW_WRITER_FUNCTION:        yaw_setIdeal (0x8009C914)
+CALLER_FUNCTION:                  func_8009D088 (case 1; jal at 0x8009D0EC)
+WRITER_INPUT_ALREADY_DIFFERS:     YES — glidx 385 a1 = 99.3756 vs 99.3081
+RAW_PAD_MATCH:                    YES
+REMAP_MATCH:                      YES
+STICK_MAG_MATCH:                  YES
+STICK_ANGLE_MATCH:                YES (bang identical at every glidx)
+PLAYER_CONTROL_CAMERA_MATCH:      NO (first differs glidx 385)
+PLAYER_CONTROL_CAMERA_SOURCE:     D_80127708[*(ps+0x184)*4] + 0x1C
+SAME_AS_PREVIOUS_DISPLAY_CAMERA:  NO (display D_8012D500 departs at 386)
+CAMERA_DIVERGENCE_REL_TO_PLAYER:  UPSTREAM_OF_PLAYER (CORRECTED/SUPERSEDED)
+PRIMARY_CLASS:                    SAME_WRITER_DIFFERENT_INPUT
+                                  (first divergent input = CONTROL_CAMERA_INPUT)
+ROOT_CAUSE_LEVEL:                 B
+FIX_IMPLEMENTED:                  NO
+```
+
+The stick path (`bastick_update → func_80013B70`) is REFUTED as the first
+divergent input. The remaining discriminator is the camera-control computation
+that first writes the divergent player-control camera angle. See
+[[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]].
