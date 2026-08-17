@@ -326,3 +326,31 @@ UNEXPECTED_SIGSEGV: NO
 FIX_IMPLEMENTED: YES
 FIX_VALIDATED: YES
 ```
+
+## P08 post-egg movement divergence — independent narrow differential (2026-08-17)
+
+The next discriminator was isolated without a production change. The fresh
+Recomp run used the same attract setup and the reused official original trace;
+input bytes matched `765/765`.
+
+```text
+PHASE_CORRECTED_ALIGNMENT:        ORIGINAL[N] vs RECOMP[N+1]
+FIRST_EXACT_DIFFERENCE:           glidx 385 ideal_yaw 99.38 vs 99.31
+FIRST_MEANINGFUL_DIFFERENCE:      glidx 392 position XZ error 2.997
+FIRST_BAD_FIELD:                  ideal_yaw
+STATE_SEQUENCE:                   bs21 and later bs8 match at persistent split
+TSPD/MULTIPLIER:                  700/700 and 1.0000/1.0000
+WRITER_PC:                        UNKNOWN on original and Recomp
+ROOT_CAUSE_LEVEL:                 C
+FIX_IMPLEMENTED:                  NO
+```
+
+This is a turn drift that grows into a jump-trajectory drift. The camera is
+downstream, the actor control scan is UNKNOWN, and the later split occurs after
+the already-fired first egg; the first shot miss remains closed. See
+[[p08-demo-post-egg-motion-divergence]].
+
+```text
+NEXT_SINGLE_ACTION: obtain a bounded original/Recomp guest-store trace for the
+                    ideal_yaw writer only; do not change production behavior.
+```

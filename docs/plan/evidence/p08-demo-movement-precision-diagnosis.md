@@ -1221,3 +1221,15 @@ TOOIE_BUILD:                       PASS
 ```
 
 STOP. Discriminator resolved. No fix.
+
+## 18. Post-egg divergence walkback (2026-08-17)
+
+The prior measured-original section is preserved. The new focused comparison
+does not reopen first-straight speed, `func_80013B70` cardinal contracts, pad
+identity, matrix submission, or the first shot. It isolates the first
+phase-corrected post-egg split at `ideal_yaw` glidx 385 and the first meaningful
+position error at glidx 392. State `bs=21`, `tspd=700`, and `mult=1.0000` match;
+the exact writer PC remains **UNKNOWN**, so this is Level C and not a fix gate.
+
+Full table, state sequence, writer boundary, and runtime reproduction details:
+[[p08-demo-post-egg-motion-divergence]].

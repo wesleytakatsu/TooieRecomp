@@ -312,3 +312,31 @@ PATCH_SHA256: 1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034
 VULNERABLE_LOOKUPS_AFTER: 0
 NEXT_SINGLE_ACTION: independent review of the generator fix if all acceptance gates pass; otherwise exactly the failing discriminator.
 ```
+
+## P08 post-egg motion divergence (2026-08-17, Grok 4.6 HIGH)
+
+The independent phase-corrected differential is now recorded. No production
+fix was made and P08 remains active.
+
+```text
+PHASE_CORRECTED_ALIGNMENT:        ORIGINAL[N] vs RECOMP[N+1]
+CONTROL_REGION:                  xz median 0.0224, yaw median 0.0000°
+PAD_MATCH_SELECTED_WINDOW:       765/765
+FIRST_EXACT_DIFFERENCE:           glidx 385 ideal_yaw (99.38 vs 99.31)
+FIRST_MEANINGFUL_DIVERGENCE:      glidx 392 position XZ 2.997 units
+FIRST_BAD_FIELD:                  ideal_yaw
+FIRST_BAD_STAGE:                  bastick / yaw-intention path
+STATE_SEQUENCE_DIFFERENCE:        only capture-boundary bs4 at 355; persistent
+                                  post-egg bs21 and jump bs8 sequence matches
+TSPD_MULTIPLIER:                  700/700; 1.0000/1.0000
+DRIFT_CLASS:                      TURN_DRIFT -> JUMP_TRAJECTORY_DRIFT
+ORIGINAL_FIRST_WRITER_PC:         UNKNOWN
+RECOMP_FIRST_WRITER_PC:           UNKNOWN
+ROOT_CAUSE_LEVEL:                 C
+FIX_IMPLEMENTED:                  NO
+```
+
+The exact writer is the only remaining discriminator. The camera is downstream,
+the digger scan is UNKNOWN, and this split occurs after the first egg input was
+already consumed/fired; do not reopen the first shot or closed capture-phase
+movement evidence. Full table: [[plan/evidence/p08-demo-post-egg-motion-divergence]].

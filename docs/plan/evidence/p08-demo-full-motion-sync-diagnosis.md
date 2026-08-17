@@ -344,3 +344,24 @@ FIX_IMPLEMENTED:                   NO
 ```
 
 Digger mid=337 was not recovered in either first-clip dump (positions 0,0,0). Actor identity by heap pointer remains forbidden; this is a scan-window gap, not a phase proof.
+
+## 10. Independent post-egg walkback (2026-08-17, Grok 4.6 HIGH)
+
+The fresh current-HEAD Recomp capture retained the same official original
+trace contract and 765/765 input bytes. Under the canonical `orig[N]` vs
+`recomp[N+1]` alignment, the first persistent numerical departure is:
+
+```text
+glidx 385: ideal_yaw 99.38° vs 99.31°
+glidx 386: phys_yaw begins to differ
+glidx 387: yaw differs
+glidx 388: speed differs
+glidx 392: XZ position error reaches 2.997 units
+```
+
+`bs=21`, `tspd=700`, and slope multiplier `1.0000` still match at the split;
+the later `bs=8` jump sequence also matches until the downstream transition
+boundary. This is a turn drift becoming a jump-trajectory drift. The exact
+guest writer PC was not captured, so the result remains **ROOT_CAUSE_LEVEL C**.
+See [[p08-demo-post-egg-motion-divergence]] for the complete narrow table and
+the explicit UNKNOWN writer boundary. No production fix.

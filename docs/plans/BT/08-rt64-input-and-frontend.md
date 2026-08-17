@@ -370,3 +370,12 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 - **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 PASS), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
 - **Canonical Tasks**: All 11 canonical tasks audited. T01, T03..T06, T08..T11 DONE; T02 PARTIAL; T07 IMPLEMENTED_MANUAL_VALIDATION_PENDING.
 - **Evidence Reference**: [[../../plan/evidence/p08-t07-t08-frontend-system-validation]].
+
+## P08 measured post-egg movement discriminator (2026-08-17)
+
+The current measured-original/recomp differential isolates a Level C residual,
+without production changes: `ideal_yaw` first differs at glidx 385 and position
+first exceeds 2 units at glidx 392 under `ORIGINAL[N] vs RECOMP[N+1]`. Pads are
+`765/765`, `bs=21`, `tspd=700`, and slope multiplier `1.0000` match at the
+persistent split. The exact writer PC is UNKNOWN; P08 stays active and P09 is
+not started. See [[../../plan/evidence/p08-demo-post-egg-motion-divergence]].
