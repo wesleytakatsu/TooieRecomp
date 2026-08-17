@@ -180,14 +180,17 @@ the display field).
 ## Delta classification
 
 ```text
-INITIAL_0P07_DELTA_CLASS: CAUSAL_WRONG_VALUE (writer input already differs at
-                         385; it is not accumulated downstream FPU noise in the
-                         writer — the writer input value itself differs)
+INITIAL_0P07_DELTA_CLASS: PROVEN_UPSTREAM_DIVERGENT_VALUE (writer input already
+                          differs at 385; it is not accumulated downstream FPU
+                          noise in the writer — the writer input value itself
+                          differs; an earlier camera selector/internal-state
+                          divergence is not excluded)
 ```
 
-The 0.07° appears first in the player-control camera angle feeding the writer.
-Its origin (camera-control computation) is the remaining discriminator; it is
-**not** in the stick path and **not** in `yaw_setIdeal` arithmetic.
+The 0.07° is the first **observed upstream value** in the player-control camera
+angle feeding the writer. Its origin (camera-control computation, selector, or
+internal state) is the remaining discriminator; it is **not** in the stick path
+and **not** in `yaw_setIdeal` arithmetic.
 
 ## Control run
 
@@ -226,4 +229,78 @@ Compact traces (not committed; kept under /tmp for reproduction):
 /tmp/p08-evidence-original-ideal-yaw-store-trace.csv   original store trace
 /tmp/p08-evidence-recomp-ideal-yaw-writer.log          recomp writer capture
 /tmp/p08-evidence-original-wooded-hollow.csv           original VI dump (+camctrl)
+```
+
+## Independent acceptance review — GPT-5.6 Luna (2026-08-17)
+
+The static review accepts the DeepSeek result **WITH CORRECTIONS**. No
+production behavior was changed.
+
+```text
+IDEAL_WRITER_PC_VERIFIED:       YES
+IDEAL_WRITER_FUNCTION_VERIFIED: YES — 0x8009C914..0x8009C940
+STORE_TARGET_IS_IDEAL_YAW:      YES — 0x8009C930 swc1 $f0, 0x4($t7)
+CALLER_VERIFIED:                YES — func_8009D088 jump-table case 1,
+                                      jal 0x8009D0EC, RA 0x8009D0F4
+WRITER_PC_MATCH:                YES — original and Recomp 0x8009C930
+WRITER_SET_COMPLETE:            UNKNOWN
+LIVE_POINTER_TRACKING_CORRECT:  YES
+OBJECT_ALIAS_RISK:              LOW — live pointer path is direct, but aliases
+                                      and untraced store widths are not excluded
+WRITER_EVENT_ALIGNMENT:         ORIGINAL consumed N/new vs RECOMP post N+1;
+                                matches at N=382..384 and diverges at N=385
+WRITER_ALIGNMENT_VERDICT:       PASS
+```
+
+The original MIPS/decomp and current generated function agree: `a1` is loaded
+into `$f12`, normalized by `func_800136E4`, and stored through
+`yaw_struct = *(ps+0xF8)` at `yaw_struct+0x4`. In case 1, the caller obtains
+`a1` from `bastick_getAngleRelativeToBanjo` and passes the same `ps` in `a0`.
+The observed inputs are in the identity range of the normalizer.
+
+The complete input chain is proven statically:
+
+```text
+func_8009D088
+  -> bastick_getAngleRelativeToBanjo (0x8009EEB8)
+  -> func_800A4C48 (0x800A4C50: index = *(ps+0x184))
+  -> func_800A93F8 (0x800A9408: D_80127708[index])
+  -> func_800CAF00 (0x800CAF0C: +0x1C; 0x800CAF18..20: +90.0f)
+  -> func_800136E4 (wrap)
+  -> yaw_setIdeal (0x8009C930)
+```
+
+`D_80127708` is an eight-entry, four-byte-stride pointer table (`.space 0x20`);
+`+0x1C` is proven to be the float field consumed as the control-angle term,
+but the full record type and its writer are not established. `ps+0x184` is an
+unnamed `s32` in `PlayerState` whose role here is the table selector. The
+committed writer artifacts do **not** record that selector or the selected
+pointer, so `ORIGINAL_INDEX_MATCH_RECOMP` is `UNKNOWN`; this limits the claim
+to a proven upstream divergent value, not a proven first causal state.
+
+The original tracer resolves the live yaw object on each store and observed
+only `0x8009C930` for ideal-yaw stores in the window. It intercepts `SW/SWC1/
+SD/SDC1`, however, and does not prove absence of `SB/SH`, DMA/memcpy, an
+arbitrary alias, a secondary entry, or a native overwrite. Therefore
+`WRITER_SET_COMPLETE=UNKNOWN` is a coverage limitation, not evidence against
+the observed writer.
+
+`D_8012D500` is a distinct display-camera object. The control-camera-to-player
+dependency is proven; no direct control-camera-to-display-camera dependency is
+proven, so `CAMERA_DEPENDENCY_DIRECTION=UNKNOWN` (the one-sample display lag is
+temporal evidence only). Internal camera state may also diverge before `+0x1C`
+first differs.
+
+```text
+STICK_PATH_REFUTED_AS_FIRST_CAUSE: YES
+CAMCTRL_INTERNAL_STATE_MAY_DIVERGE_EARLIER: YES
+GLIDX385_CLASS:                PROVEN_UPSTREAM_DIVERGENT_VALUE
+ROOT_CAUSE_LEVEL_REVIEW:       B
+REVIEW_VERDICT:                B — accepted with the corrections above
+EXACT_NEXT_DISCRIMINATOR:      aligned trace of (ps, ps+0x184,
+                                D_80127708[index], selected+0x1C) plus all
+                                store widths/PCs to selected+0x1C; if the
+                                selector matches, walk to the first internal
+                                camera-control writer/state input
+FIX_IMPLEMENTED:               NO
 ```

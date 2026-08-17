@@ -418,3 +418,11 @@ The stick path (`bastick_update → func_80013B70`) is REFUTED as the first
 divergent input. The remaining discriminator is the camera-control computation
 that first writes the divergent player-control camera angle. See
 [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]].
+
+Independent GPT-5.6 Luna review accepts this provenance **WITH CORRECTIONS**:
+the writer and formula are verified, but `WRITER_SET_COMPLETE` and
+`ORIGINAL_INDEX_MATCH_RECOMP` remain `UNKNOWN`, and no direct dependency
+between the player-control source and display camera is proven. The next
+single discriminator is an aligned `(ps, ps+0x184, D_80127708[index],
+selected+0x1C)` trace with all store widths/PCs to the selected `+0x1C` field.
+No production fix is authorized.

@@ -216,3 +216,18 @@ DRIFT_CLASS:                           TURN_DRIFT → JUMP_TRAJECTORY_DRIFT
 
 The first egg was already fired at glidx 322; the later movement split cannot
 cause that already-fired shot to miss. Egg collision remains closed.
+
+## Independent camera-provenance review — GPT-5.6 Luna (2026-08-17)
+
+The writer review accepts the camera-control provenance **WITH CORRECTIONS**.
+The same `yaw_setIdeal` store (`0x8009C930`) is confirmed in both runtimes and
+the aligned writer input differs at the corresponding glidx 385 event. The
+classification is therefore `PROVEN_UPSTREAM_DIVERGENT_VALUE`, not
+`PROVEN_FIRST_CAUSAL_VALUE`: the selector `ps+0x184`, the selected
+`D_80127708` pointer, and internal camera state were not recorded in the
+committed writer artifacts. The next discriminator is the aligned tuple
+`(ps, ps+0x184, D_80127708[index], selected+0x1C)` plus complete-width store
+tracing to `selected+0x1C`.
+
+`D_8012D500` remains a distinct display-camera object; its later departure does
+not prove a direct dependency from or to the player-control source.

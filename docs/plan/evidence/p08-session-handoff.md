@@ -385,7 +385,9 @@ CAMERA_DIVERGENCE_REL_TO_PLAYER:  UPSTREAM_OF_PLAYER (CORRECTED/SUPERSEDED
                                   from AFTER_PLAYER for the control source)
 PRIMARY_CLASS:                    SAME_WRITER_DIFFERENT_INPUT
                                   (first divergent input = CONTROL_CAMERA_INPUT)
-INITIAL_0P07_DELTA_CLASS:         CAUSAL_WRONG_VALUE (writer input differs)
+INITIAL_0P07_DELTA_CLASS:         PROVEN_UPSTREAM_DIVERGENT_VALUE (writer input
+                                   differs; earlier selector/internal camera
+                                   state is not excluded)
 EARLY_TURN_STORE_TRACE_CONTROL:   PASS (glidx 74..91 delta 0.0000)
 ROOT_CAUSE_LEVEL:                 B (identical writer; stick path refuted;
                                   camera-angle writer instruction remains)
@@ -393,6 +395,9 @@ FIX_IMPLEMENTED:                  NO
 ```
 
 The stick path (`bastick_update → func_80013B70`) is REFUTED as the first
-divergent input. The remaining discriminator is the camera-control computation
-that first writes the divergent player-control camera angle. No production
-change is authorized.
+divergent input. Independent review accepts the writer provenance with a
+bounded correction: `WRITER_SET_COMPLETE=UNKNOWN`,
+`ORIGINAL_INDEX_MATCH_RECOMP=UNKNOWN`, and the control/display-camera
+dependency is not proven. The next discriminator is the aligned selector and
+complete-width store trace for `D_80127708[index]+0x1C`. No production change
+is authorized.
