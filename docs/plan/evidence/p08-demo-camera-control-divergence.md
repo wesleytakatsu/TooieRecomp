@@ -318,3 +318,7 @@ the internal input inside `func_800E1A58` that first diverges.
 `func_800E1A58` is identity on this path (all constraint slots type 1);
 the first meaningful camctrl is already `src2[1]` at the FE14/CA628 write
 during `func_8010FC38`, before CA8B4/E1A58.
+The overlay computer is now **PROVEN** as `ncbapivot_entrypoint_3`
+([[p08-demo-camera-overlay-angle-producer]]): dest[1] =
+`func_80013B70(eye.x-tgt.x, eye.z-tgt.z)` with inputs already different
+at consumed 384.

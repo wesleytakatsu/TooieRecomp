@@ -1,6 +1,6 @@
 ---
 title: "P08 — func_800E1A58 camera pipeline differential"
-description: "Bounded original/Recomp function-level differential of the selected camera pipeline. func_800E1A58 is identity on both sides; the first meaningful camctrl is already present as FE14/CA628 src2[1] before CA8B4/E1A58."
+description: "Bounded original/Recomp function-level differential of the selected camera pipeline. func_800E1A58 is identity on both sides; the first meaningful camctrl is already present as FE14/CA628 src2[1] before CA8B4/E1A58. Overlay computer identified as ncbapivot_entrypoint_3."
 phase: P08
 status: evidence
 tags: [tooie-recomp, p08, measured-original, measured-recomp, camera, func_800E1A58, func_8010FC38, func_8010FE14, func_800CA628, func_80110588]
@@ -241,8 +241,9 @@ ROOT_CAUSE_LEVEL:             R
 ROOT_CAUSE:                   E1A58 is a no-op on this path. The first
                               meaningful camctrl is already in FE14/CA628
                               src2[1] during the FC38 mode update.
-FIX_OWNER_CANDIDATE:          UNKNOWN (next: helpers that write
-                              mode-object +0x74/+0x80 inside func_80110588)
+FIX_OWNER_CANDIDATE:          CORRECTED/SUPERSEDED — ncbapivot_entrypoint_3
+                              look-at inputs (see
+                              [[p08-demo-camera-overlay-angle-producer]])
 FIX_IMPLEMENTED:              NO
 ```
 

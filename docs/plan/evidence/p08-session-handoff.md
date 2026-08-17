@@ -3,7 +3,7 @@ title: "P08 — session handoff: attract demo e render submission"
 description: "Estado autossuficiente: DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline) is RESOLVED and VALIDATED via N64Recomp CreateStatic ordering fix. Fire-egg miss, cinematic facing, and T10 results are preserved."
 status: evidence
 phase: P08
-updated: 2026-08-16
+updated: 2026-08-17
 tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, baflameline, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input, stick-angle]
 ---
 
@@ -26,6 +26,8 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 - Discriminator: [[p08-actor-camera-transform-discriminator]].
 - Movement diagnosis: [[p08-visible-demo-movement-diagnosis]].
 - RA-wrapper fix: [[p08-core1-ra-wrapper-fix]].
+- Overlay angle producer: [[p08-demo-camera-overlay-angle-producer]]
+  (`ncbapivot_entrypoint_3` PROVEN).
 
 ## CURRENT_PHASE
 
@@ -483,5 +485,7 @@ control PASS (`|Δ|≤0.0007°`). Level R. No production change.
 ## P08 FC38 mode producer — Level B (2026-08-17)
 
 Mode 2 / `func_80110588` is **PROVEN**. `func_80110790` `a1[1]` already
-differs at consumed 384 (−0.0675°). Caller is a relocated overlay
-(RA `0x801D3E7C`). See [[p08-demo-camera-mode-producer-differential]].
+differs at consumed 384 (−0.0675°). Caller is **PROVEN** `ncbapivot`
+(781) / `ncbapivot_entrypoint_3` (RA offset `0x24C`). dest[1] =
+`func_80013B70(eye.x-tgt.x, eye.z-tgt.z)`; inputs already differ at 384.
+See [[p08-demo-camera-overlay-angle-producer]].

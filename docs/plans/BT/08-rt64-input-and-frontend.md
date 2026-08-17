@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-16
+updated: 2026-08-17
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -465,5 +465,8 @@ FIX_IMPLEMENTED:                NO
 ```
 
 **CORRECTED/SUPERSEDED:** Mode 2 / `func_80110588` PROVEN. `func_80110790`
-is a copier whose `a1[1]` already differs at 384. Next: overlay caller
-`0x801D3E7C`. See [[../../plan/evidence/p08-demo-camera-mode-producer-differential]].
+is a copier whose `a1[1]` already differs at 384. Overlay caller is
+**PROVEN** `ncbapivot_entrypoint_3` (idx 781, RA offset `0x24C`).
+dest[1] = `func_80013B70(eye.x-tgt.x, eye.z-tgt.z)`; look-at inputs
+already differ at 384. See
+[[../../plan/evidence/p08-demo-camera-overlay-angle-producer]].

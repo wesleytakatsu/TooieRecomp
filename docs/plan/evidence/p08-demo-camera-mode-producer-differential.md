@@ -163,12 +163,13 @@ ORIGINAL_PRODUCER_PC:         0x800EE804  (EE7F8 store of a1[1] -> obj+0x84)
 RECOMP_PRODUCER_PC:           same generated EE7F8 / func_80110790
 PRODUCER_PC_MATCH:            YES
 PRODUCER_FUNCTION:            func_80110790   # copier, not computer
-PRODUCER_CALLER:              relocated overlay
-                              ORIGINAL RA @384 = 0x801D3E7C
-                              (same logical site all frames; RA moves with
-                              overlay reload: 801d541c / 801d531c / 801d3e7c /
-                              801d38bc / …)
-                              exact nc-ba entrypoint name: UNKNOWN
+PRODUCER_CALLER:              ncbapivot_entrypoint_3
+                              (CORRECTED/SUPERSEDED — was UNKNOWN)
+                              idx=781  RA offset 0x24C
+                              ORIGINAL RA @384 this later run 0x801D3CDC
+                              (prior 0x801D3E7C is the same offset on a
+                              different heap placement)
+                              See [[p08-demo-camera-overlay-angle-producer]]
 ```
 
 `0x800EE804` / `0x800CA65C` are **FIRST_DIVERGENT_STORE_PC** only
@@ -223,16 +224,18 @@ FIRST_BAD_PC:                   none proven
 ```text
 PRIMARY_CLASS:                B
 FIRST_BAD_STAGE:              func_80110790 entry a1 (overlay-computed stack)
-FIRST_BAD_FUNCTION:           overlay caller of func_80110790
-                              (name UNKNOWN; RA 0x801D3E7C @384)
+FIRST_BAD_FUNCTION:           ncbapivot_entrypoint_3
+                              (CORRECTED/SUPERSEDED from unnamed overlay)
 ROOT_CAUSE_LEVEL:             B
 ROOT_CAUSE:                   Mode 2 / func_80110588 proven. FE14/CA628 only
                               copies stack images of mode_obj+0x74/+0x80.
                               Those fields are filled by setters 80110770/80110790.
                               At 384 the setter inputs already differ
-                              (−0.0675° and +6.2 eye.x). The computer is the
-                              overlay that calls 80110790.
-FIX_OWNER_CANDIDATE:          UNKNOWN (next: name and trace that overlay)
+                              (−0.0675° and +6.2 eye.x). The computer is
+                              ncbapivot_entrypoint_3 → func_800F18FC /
+                              func_80013B70; look-at inputs already differ.
+                              See [[p08-demo-camera-overlay-angle-producer]].
+FIX_OWNER_CANDIDATE:          func_80112E98 (eye) and/or *(obj+0x30)+4
 FIX_IMPLEMENTED:              NO
 ```
 

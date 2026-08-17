@@ -4,7 +4,7 @@ description: "P08 implementation substantially complete (Verdict B; P08 ACTIVE /
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-16
+updated: 2026-08-17
 tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
@@ -417,4 +417,8 @@ FIX_IMPLEMENTED:                NO
 ([[plan/evidence/p08-demo-camera-mode-producer-differential]]). FE14 copies
 stack images of mode-object `+0x74/+0x80`. Last angle writer is setter
 `func_80110790`; its `a1[1]` already differs at consumed 384 (−0.0675°).
-Caller is a relocated overlay (RA `0x801D3E7C`). No production change.
+Caller is **PROVEN** `ncbapivot` (781) / `ncbapivot_entrypoint_3`
+(RA offset `0x24C`; prior `0x801D3E7C` is the same site). dest[1] =
+`func_80013B70(eye.x-tgt.x, eye.z-tgt.z)`; look-at inputs already
+differ at 384 ([[plan/evidence/p08-demo-camera-overlay-angle-producer]]).
+No production change.
