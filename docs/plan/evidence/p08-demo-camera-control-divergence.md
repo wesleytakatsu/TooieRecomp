@@ -277,22 +277,16 @@ EARLY_CAMERA_WRITER_CONTROL:  PASS (glidx 74..91)
 PRIMARY_CLASS:                SAME_WRITER_DIFFERENT_INPUT
                               first divergent input = CONTROL_CAMERA_INPUT
 FIRST_BAD_STAGE:              camctrl (+0x1C) at the func_800CA628 write, glidx 385
-FIRST_BAD_FUNCTION:           func_800E1A58 (camera positioning) output out2[2]
-                              feeding func_800CA628; writer itself identical
-FIRST_BAD_GUEST_PC:           writer store 0x800CA65C is SAME in both; the
-                              internal camera instruction that first diverges
-                              inside func_800E1A58 is UNKNOWN
-ROOT_CAUSE_LEVEL:             B  (exact camera-control mechanism/writer proven;
-                              selector and stick path refuted; one internal
-                              causal input to func_800E1A58 remains)
-ROOT_CAUSE:                   same-writer/different-input at the player-control
-                              camera: func_800CA628 writes cam+0x1C from
-                              func_800E1A58's out2[2]; that input first differs
-                              at glidx 385 (-0.0676 deg) and drives ideal_yaw
-                              1:1, growing into the post-egg drift
-FIX_OWNER_CANDIDATE:          UNKNOWN (internal camera positioning state inside
-                              func_800E1A58; not selector, not stick, not yaw
-                              writer)
+FIRST_BAD_FUNCTION:           CORRECTED/SUPERSEDED — not func_800E1A58.
+                              See [[p08-demo-camera-e1a58-differential]]:
+                              E1A58 is identity; first meaningful src2[1] is
+                              already at FE14/CA628 during func_8010FC38
+FIRST_BAD_GUEST_PC:           writer store 0x800CA65C is SAME in both
+ROOT_CAUSE_LEVEL:             R  (func_800E1A58 REFUTED as origin; see
+                              [[p08-demo-camera-e1a58-differential]])
+ROOT_CAUSE:                   CORRECTED/SUPERSEDED: cam+0x1C is out2[1], not
+                              out2[2]; E1A58 does not produce the 385 value
+FIX_OWNER_CANDIDATE:          UNKNOWN (FC38 mode-update helpers; not E1A58)
 FIX_IMPLEMENTED:              NO
 ```
 
@@ -320,3 +314,7 @@ diverge before +0x1C (the +0x08 +0.05 offset is a constant sampling-phase
 artifact), and the selected camera-control record is a per-player camera-control
 object whose +0x1C is the player-control yaw. The remaining discriminator is
 the internal input inside `func_800E1A58` that first diverges.
+**CORRECTED/SUPERSEDED** by [[p08-demo-camera-e1a58-differential]]:
+`func_800E1A58` is identity on this path (all constraint slots type 1);
+the first meaningful camctrl is already `src2[1]` at the FE14/CA628 write
+during `func_8010FC38`, before CA8B4/E1A58.

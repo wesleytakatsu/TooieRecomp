@@ -103,7 +103,8 @@ Evidência corrente:
 - [[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] (**CURRENT:** MEASURED_ORIGINAL vs MEASURED_RECOMP; capture-phase + later run split)
 - [[../../plan/evidence/p08-demo-post-egg-motion-divergence]] (**CURRENT:** post-egg run/jump split; writer walkback now resolved)
 - [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]] (**CURRENT:** exact ideal_yaw writer + input provenance; first divergent input = player-control camera)
-- [[../../plan/evidence/p08-demo-camera-control-divergence]] (**CURRENT:** player-control camera divergence RESOLVED to Level B; selector match, writer match, camctrl diverges at 385)
+- [[../../plan/evidence/p08-demo-camera-control-divergence]] (**CURRENT:** player-control camera writer/selector closed)
+- [[../../plan/evidence/p08-demo-camera-e1a58-differential]] (**CURRENT:** E1A58 REFUTED; first meaningful src2[1] is FE14/CA628 during FC38)
 - [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] (gameplay-demo residual; first straight + first analog PASS; original numeric now measured)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix]] (implementation evidence; accepted by focused re-review)
 - [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] (**CURRENT REVIEW** — verdict A; `$r1` delay-slot blocker resolved)
@@ -225,7 +226,8 @@ Evidência corrente:
 | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] | **CURRENT:** original-MIPS case-11 contract; chdiggerground actor REFUTED; global USER_BUG_B OPEN |
 | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] | first straight + first analog PASS; first demo fire-egg glidx 322 target collision volume resolved (TRUE_MISS_MARGIN = +36.85f, PROVEN NO HIT) |
 | [[../../plan/evidence/p08-demo-ideal-yaw-writer-trace]] | **CURRENT:** exact ideal_yaw writer (0x8009C930) + input provenance; first divergent input = player-control camera |
-| [[../../plan/evidence/p08-demo-camera-control-divergence]] | **CURRENT:** player-control camera RESOLVED to Level B: selector ps+0x184 = 0 both, writer func_800CA628 (0x800CA65C), camctrl diverges at glidx 385, drift chain confirmed |
+| [[../../plan/evidence/p08-demo-camera-control-divergence]] | player-control camera writer/selector closed (Level B) |
+| [[../../plan/evidence/p08-demo-camera-e1a58-differential]] | **CURRENT:** E1A58 REFUTED (identity); first meaningful src2[1] is FE14/CA628 during FC38 at consumed 384 |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -341,12 +343,11 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
    `yaw_setIdeal` store `0x8009C930` (identical in ORIGINAL and RECOMP); writer
    input already differs at glidx 385; first divergent input = player-control
    camera angle `D_80127708[*(ps+0x184)*4]+0x1C` (stick path REFUTED).
-   **Player-control camera RESOLVED to Level B** (2026-08-17): selector
-   `ps+0x184 == 0` in both runtimes, writer `func_800CA628` (store
-   `0x800CA65C`), camctrl first diverges at glidx 385 (`-0.0676` deg), drift
-   chain confirmed. Remaining discriminator: the internal camera input inside
-   `func_800E1A58` that first diverges.
-   ([[../../plan/evidence/p08-demo-camera-control-divergence]]).
+   **Player-control camera writer/selector closed** (2026-08-17).
+   **E1A58 REFUTED** ([[../../plan/evidence/p08-demo-camera-e1a58-differential]]):
+   identity on this path; first meaningful camctrl is FE14/CA628 `src2[1]`
+   during `func_8010FC38` at consumed 384 (prior aligned 385, −0.0675°).
+   Remaining discriminator: FC38 mode-update helpers (likely `func_80110588`).
 3. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
    full controller is PENDING.
 4. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
@@ -456,11 +457,12 @@ GLIDX385_CLASS:                 FIRST_CAUSAL_CAMERA_STATE
 PLAYER_DRIFT_CHAIN_CONFIRMED:   YES
 PRIMARY_CLASS:                  SAME_WRITER_DIFFERENT_INPUT
                                 (first divergent input = CONTROL_CAMERA_INPUT)
-ROOT_CAUSE_LEVEL:               B  (mechanism proven; selector/stick refuted;
-                                   internal causal input to func_800E1A58 remains)
+ROOT_CAUSE_LEVEL:               R  (func_800E1A58 REFUTED;
+                                   [[../../plan/evidence/p08-demo-camera-e1a58-differential]])
 FIX_IMPLEMENTED:                NO
 ```
 
-The single remaining discriminator is the internal camera input inside
-`func_800E1A58` (the camera positioning step producing the camctrl) that first
-diverges. No production change is authorized.
+**CORRECTED/SUPERSEDED:** `func_800E1A58` is identity. The first meaningful
+camctrl is already `src2[1]` at FE14/CA628 during `func_8010FC38`, before
+CA8B4/E1A58. Next: mode-update helpers (likely `func_80110588`). No
+production change is authorized.

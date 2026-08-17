@@ -203,11 +203,10 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 Do not reopen these without new evidence.
 
 ## NEXT_SINGLE_ACTION
-Walk the internal camera state inside `func_800E1A58` (the camera positioning
-step) to the first input/instruction that diverges before the camctrl write at
-glidx 385. Do not reopen the selector (`ps+0x184` == 0 both), the camctrl store
-set (`{0x800CA65C}`), the writer (`func_800CA628`), or the closed capture-phase
-movement evidence.
+Trace the FC38 mode-update helpers that fill `src2[1]` for the FE14/CA628
+write (likely `func_80110588` writing mode-object `+0x74/+0x80`) at consumed
+glidx 384. `func_800E1A58` is REFUTED (identity). Do not reopen the selector,
+the camctrl store set, or E1A58. See [[p08-demo-camera-e1a58-differential]].
 
 ## P08 FORCED FACING INDEPENDENT REVIEW (2026-08-16)
 
@@ -270,7 +269,8 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 3. [[p08-actor-camera-transform-discriminator]] — actor vs camera discriminator
 4. [[p08-visible-demo-movement-diagnosis]] — visible demo + movement diagnosis
 5. [[p08-core1-ra-wrapper-fix]] — RA-wrapper fix (resolved; do not reopen)
-6. [[p08-demo-camera-control-divergence]] — player-control camera divergence (RESOLVED to Level B; selector match, writer match, camctrl diverges at 385)
+6. [[p08-demo-camera-control-divergence]] — player-control camera writer/selector (Level B closed)
+6a. [[p08-demo-camera-e1a58-differential]] — E1A58 REFUTED; first meaningful src2[1] is FE14/CA628 during FC38
 7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
@@ -447,8 +447,11 @@ FIRST_INTERNAL_CAMERA_MEANINGFUL_DIFFERENCE: glidx 385
 FIRST_INTERNAL_DIVERGENT_FIELD: camctrl (+0x1C); eye +0x00 in same write
 FIRST_INTERNAL_DIVERGENT_GLIDX: 385
 CAMCTRL_WRITER_INPUT_ALREADY_DIFFERS: YES
-FIRST_BAD_CAMERA_INPUT:         camctrl angle (src2[2] -> cam+0x1C)
-FIRST_BAD_CAMERA_INPUT_SOURCE:  func_800E1A58 (camera positioning) -> func_800CA628
+FIRST_BAD_CAMERA_INPUT:         camctrl angle (src2[1] -> cam+0x1C)
+                                CORRECTED/SUPERSEDED from src2[2]
+FIRST_BAD_CAMERA_INPUT_SOURCE:  CORRECTED/SUPERSEDED — FE14/CA628 during
+                                func_8010FC38, before CA8B4/E1A58
+                                ([[p08-demo-camera-e1a58-differential]])
 CONTROL_DISPLAY_CAMERA_RELATION: SHARED_UPSTREAM_STATE (no direct dependency
                                 proven; display departs 386)
 GLIDX385_CLASS:                 FIRST_CAUSAL_CAMERA_STATE
@@ -456,12 +459,21 @@ PLAYER_DRIFT_CHAIN_CONFIRMED:   YES (d_camctrl == d_ideal to 0.0001)
 PRIMARY_CLASS:                  SAME_WRITER_DIFFERENT_INPUT
                                 (first divergent input = CONTROL_CAMERA_INPUT)
 FIRST_BAD_STAGE:                camctrl write at func_800CA628, glidx 385
-FIRST_BAD_FUNCTION:             func_800E1A58 output out2[2] feeding
-                                func_800CA628 (writer identical)
-FIRST_BAD_GUEST_PC:             0x800CA65C SAME in both; internal instruction in
-                                func_800E1A58 UNKNOWN
-ROOT_CAUSE_LEVEL:               B (mechanism proven; selector/stick refuted;
-                                internal causal input to func_800E1A58 remains)
-FIX_OWNER_CANDIDATE:            UNKNOWN (internal camera positioning state)
+FIRST_BAD_FUNCTION:             CORRECTED/SUPERSEDED — not E1A58 (identity).
+                                FE14/CA628 during FC38 mode update
+FIRST_BAD_GUEST_PC:             0x800CA65C SAME in both; src2[1] already differs
+ROOT_CAUSE_LEVEL:               R (func_800E1A58 REFUTED;
+                                [[p08-demo-camera-e1a58-differential]])
+FIX_OWNER_CANDIDATE:            UNKNOWN (FC38 mode-update helpers)
 FIX_IMPLEMENTED:                NO
 ```
+
+## P08 func_800E1A58 differential — REFUTED (2026-08-17)
+
+Function-level original/Recomp pipeline at consumed 70..95 and 370..410
+([[p08-demo-camera-e1a58-differential]]). `func_800E1A58` is identity on both
+sides (all 10 constraint slots type 1). The first meaningful camctrl is
+already `src2[1]` at the FE14/`func_800CA628` write during `func_8010FC38`,
+before CA8B4/E1A58 (consumed 384 = prior aligned 385, −0.0675°).
+`cam+0x1C` is `out2[1]`, not `out2[2]`. Call alignment 1/1/1/2 PASS. Early
+control PASS (`|Δ|≤0.0007°`). Level R. No production change.

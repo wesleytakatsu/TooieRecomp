@@ -323,9 +323,8 @@ CAMCTRL_WRITER_MATCH:          YES  — func_800CA628 (0x800CA628, store
 FIRST_INTERNAL_DIVERGENT_FIELD: camctrl +0x1C at glidx 385 (-0.0676 deg);
                                    eye +0x00 diverges in the same write
 GLIDX385_CLASS_REFINED:        FIRST_CAUSAL_CAMERA_STATE (first
-                                   player-consumed camera value; the internal
-                                   input inside func_800E1A58 that first
-                                   diverges remains)
-ROOT_CAUSE_LEVEL_REVIEW:       B  (mechanism proven; one internal causal input
-                                   to func_800E1A58 remains)
+                                   player-consumed camera value)
+ROOT_CAUSE_LEVEL_REVIEW:       R  CORRECTED/SUPERSEDED by
+                                   [[p08-demo-camera-e1a58-differential]]
+                                   (E1A58 identity; FE14/CA628 src2[1] first)
 ```

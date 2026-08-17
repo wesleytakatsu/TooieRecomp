@@ -407,12 +407,14 @@ CAMCTRL_WRITER_INPUT_DIFFERS:   YES  (glidx 385)
 GLIDX385_CLASS:                 FIRST_CAUSAL_CAMERA_STATE
 PRIMARY_CLASS:                  SAME_WRITER_DIFFERENT_INPUT
                                 (first divergent input = CONTROL_CAMERA_INPUT)
-ROOT_CAUSE_LEVEL:               B  (mechanism proven; selector/stick refuted;
-                                   internal causal input to func_800E1A58 remains)
+ROOT_CAUSE_LEVEL:               R  (func_800E1A58 REFUTED;
+                                   [[plan/evidence/p08-demo-camera-e1a58-differential]])
 FIX_IMPLEMENTED:                NO
 ```
 
-The exact writer and its input provenance are closed; the single remaining
-discriminator is the internal camera input inside `func_800E1A58` (the camera
-positioning step that produces the camctrl written by `func_800CA628`) that
-first diverges. No production change is authorized.
+**CORRECTED/SUPERSEDED (2026-08-17):** `func_800E1A58` is identity on this
+path (all 10 constraint slots type 1). The first meaningful camctrl is
+already `src2[1]` at the FE14/`func_800CA628` write during `func_8010FC38`,
+before CA8B4/E1A58 (consumed glidx 384 = prior aligned 385, −0.0675°).
+`cam+0x1C` is `out2[1]`, not `out2[2]`. Next: the FC38 mode-update helpers
+(likely `func_80110588` `+0x74/+0x80`). No production change is authorized.
