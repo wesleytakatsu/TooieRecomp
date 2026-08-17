@@ -421,4 +421,8 @@ Caller is **PROVEN** `ncbapivot` (781) / `ncbapivot_entrypoint_3`
 (RA offset `0x24C`; prior `0x801D3E7C` is the same site). dest[1] =
 `func_80013B70(eye.x-tgt.x, eye.z-tgt.z)`; look-at inputs already
 differ at 384 ([[plan/evidence/p08-demo-camera-overlay-angle-producer]]).
+Exact 13B70 operands at that call: eye MATCH=NO (grows at 384),
+target MATCH=NO (stable background). Causal component is eye
+`obj+0x74`; last writer `func_80112E98`
+([[plan/evidence/p08-demo-camera-13b70-inputs]]).
 No production change.

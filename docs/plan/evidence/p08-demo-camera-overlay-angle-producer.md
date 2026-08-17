@@ -218,7 +218,13 @@ OVERLAY_PRODUCER_CONTROL:     PASS
 
 ```text
 ANGLE_COMPUTATION_INPUTS_MATCH_AT_384:  NO
+EYE_INPUT_MATCH:                        NO   (grows at 384; eye.x +6.198)
+TARGET_INPUT_MATCH:                     NO   (stable ~0.011/0.054 background)
+SHARED_384_CAUSAL_DEPENDENCY:           NO
+FIRST_DIFFERENT_INPUT_COMPONENT:        eye (mode_obj+0x74)
+FIRST_UPSTREAM_WRITER:                  func_80112E98
 INSTRUCTION_TRACE_REQUIRED:             NO
+See [[p08-demo-camera-13b70-inputs]].
 ```
 
 `func_800F18FC` reads **both** look-at endpoints:

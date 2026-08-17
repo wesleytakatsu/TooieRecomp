@@ -488,4 +488,7 @@ Mode 2 / `func_80110588` is **PROVEN**. `func_80110790` `a1[1]` already
 differs at consumed 384 (−0.0675°). Caller is **PROVEN** `ncbapivot`
 (781) / `ncbapivot_entrypoint_3` (RA offset `0x24C`). dest[1] =
 `func_80013B70(eye.x-tgt.x, eye.z-tgt.z)`; inputs already differ at 384.
-See [[p08-demo-camera-overlay-angle-producer]].
+See [[p08-demo-camera-overlay-angle-producer]] and
+[[p08-demo-camera-13b70-inputs]]: `EYE_INPUT_MATCH=NO` (grows at 384),
+`TARGET_INPUT_MATCH=NO` (stable background). Causal component is eye;
+last writer `func_80112E98`.

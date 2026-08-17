@@ -468,5 +468,7 @@ FIX_IMPLEMENTED:                NO
 is a copier whose `a1[1]` already differs at 384. Overlay caller is
 **PROVEN** `ncbapivot_entrypoint_3` (idx 781, RA offset `0x24C`).
 dest[1] = `func_80013B70(eye.x-tgt.x, eye.z-tgt.z)`; look-at inputs
-already differ at 384. See
-[[../../plan/evidence/p08-demo-camera-overlay-angle-producer]].
+already differ at 384. Exact 13B70 operands:
+`EYE_INPUT_MATCH=NO` (grows at 384), `TARGET_INPUT_MATCH=NO` (stable
+background). Causal component is eye; last writer `func_80112E98`.
+See [[../../plan/evidence/p08-demo-camera-13b70-inputs]].
