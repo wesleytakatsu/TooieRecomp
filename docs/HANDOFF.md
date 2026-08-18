@@ -52,15 +52,15 @@ the START presses that skip the opening story cutscenes).
 **Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
 ([[plan/evidence/p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic,
 30 Hz animation, host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
-**Gameplay Demo Motion Synchronization & ncbapivot Branch Predicate Proof (2026-08-17, MEASURED_ORIGINAL)**:
-- Full Wooded Hollow attract demo motion investigated under synchronized original-vs-recomp instrumentation ([[plan/evidence/p08-demo-camera-eye-producer-differential]], [[plan/evidence/p08-demo-ncbapivot-branch-predicate]]).
-- **PROVEN (CASE C / EPISTEMIC CORRECTION)**: The branch at `0x808001C0: beql $v0, $zero` is **NOT TAKEN** in both Original and Recomp at glidx 384 (`func_80111FD4` returns `v0 = 1` in both runtimes). The prior hypothesis that `0x808001C0` skipped the call is **CORRECTED/SUPERSEDED**.
-- In both runtimes, execution reaches `func_801138A0(mode_obj)`.
-- The exact causal predicate divergence occurs at `0x808001D0: beqz $v0, .L808001F8`:
-  - Original N64: `mode_obj->sub_28` has `half_0C = 4` and `half_0E = 4`. `func_801138A0` increments `half_0E` to `5`, returns **`v0 = 1`**, and calls `func_801138F4` -> 3rd `SET74`.
-  - Recomp: `mode_obj->sub_28` has `half_0C = 1` and `half_0E = 0`. Because `half_0C < 4`, `func_801138A0` resets `half_0E = 0`, returns **`v0 = 0`**, tests `func_80115580` distance thresholds (which return 0), and bypasses `func_801138F4`, omitting the 3rd `SET74`.
-- **First Divergent Predicate Producer**: `func_80113D30` (called by `func_80110588`), which populates `sub_28->half_0C` via 4 clearance raycast tests.
-- Early control glidx 70..95: **PASS (100% bit-exact branch outcomes and call counts)**. Level C (NO PRODUCTION FIX).
+**Gameplay Demo Motion Synchronization & Camera Clearance Ray Differential (2026-08-17, MEASURED_ORIGINAL)**:
+- Full Wooded Hollow attract demo motion investigated under synchronized original-vs-recomp instrumentation ([[plan/evidence/p08-demo-camera-eye-producer-differential]], [[plan/evidence/p08-demo-ncbapivot-branch-predicate]], [[plan/evidence/p08-demo-camera-clearance-rays]]).
+- **PROVEN (LEVEL A-CANDIDATE / SOL REVIEW REQUIRED)**:
+  - In `func_80113D30`, all four query inputs (`start`, `direction`, `destination`) are **NUMERICALLY EQUIVALENT** between Original and Recomp at glidx 384 (position Δ < 0.05, direction IEEE-754 bit patterns match to within 1 LSB).
+  - In Original N64, `func_800E8918` (raycast query via `func_800C4C34`) returns `0` (CLEAR) for all 4 queries, so all four clearance counters `word_3C[0..3]` exceed 4, yielding `half_0C = 4`.
+  - In Recomp, `func_800E8918` returns `1` (HIT / BLOCKED) for **Q1** and **Q2**, resetting their counters to `0` and resulting in `half_0C = 1`.
+  - First differing query: **Q1** (camera local RIGHT / +X raycast).
+  - Collision query function: `func_800C4C34` (called at `0x800E8998` in both Original and Recomp).
+  - Causal chain to missing 3rd `SET74`: **PROVEN**. Level A-Candidate (NO PRODUCTION FIX).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;

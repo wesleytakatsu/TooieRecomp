@@ -250,6 +250,9 @@ O trabalho só está concluído quando todos os critérios de
 - [[evidence/p08-demo-movement-precision-diagnosis]] — recorded-pad demo path;
   first straight 510 is original slope-scaled physics; first analog
   transition `glidx 74..91` internally faithful; later residual deferred.
+- [[evidence/p08-demo-camera-clearance-rays]] —
+  bounded four-query clearance differential for func_80113D30 at glidx 384;
+  proven Level A-Candidate (Q1/Q2 collision hit divergence in func_800C4C34 despite matching inputs).
 - [[evidence/p08-demo-ncbapivot-branch-predicate]] —
   bounded branch-predicate differential for ncbapivot at glidx 384; proven
   case C (C0 branch not taken both; gate divergence at 0x808001D0 via func_801138A0

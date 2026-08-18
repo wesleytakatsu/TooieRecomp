@@ -32,6 +32,9 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 - Bounded branch predicate differential: [[p08-demo-ncbapivot-branch-predicate]]
   (PROVEN Case C / Epistemic correction: branch 0x808001C0 not taken in both;
   gate divergence at 0x808001D0 via `func_801138A0` return value and `func_80113D30` clearance tests).
+- Four-query clearance differential: [[p08-demo-camera-clearance-rays]]
+  (PROVEN Level A-Candidate: queries Q0..Q3 numerically equivalent at glidx 384;
+  Original returns 0 [CLEAR] on all queries; Recomp returns 1 [HIT] on Q1 and Q2 in `func_800C4C34`).
 
 ## CURRENT_PHASE
 
