@@ -33,8 +33,10 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
   (PROVEN Case C / Epistemic correction: branch 0x808001C0 not taken in both;
   gate divergence at 0x808001D0 via `func_801138A0` return value and `func_80113D30` clearance tests).
 - Four-query clearance differential: [[p08-demo-camera-clearance-rays]]
-  (PROVEN Level A-Candidate: queries Q0..Q3 numerically equivalent at glidx 384;
-  Original returns 0 [CLEAR] on all queries; Recomp returns 1 [HIT] on Q1 and Q2 in `func_800C4C34`).
+  (**CORRECTED/SUPERSEDED** by [[p08-demo-camera-collision-sol-review]]:
+  the measured `func_800E8918` return divergence is real, but `func_800C4C34`
+  is projection/viewport clipping, not collision, and its direct `v0` was not
+  the value captured by the trace).
 
 ## CURRENT_PHASE
 
@@ -499,3 +501,19 @@ See [[p08-demo-camera-overlay-angle-producer]] and
 [[p08-demo-camera-13b70-inputs]]: `EYE_INPUT_MATCH=NO` (grows at 384),
 `TARGET_INPUT_MATCH=NO` (stable background). Causal component is eye;
 last writer `func_80112E98`.
+
+## P08 camera collision attribution — REFUTED (2026-08-18, GPT-5.6 Sol X-HIGH)
+
+Independent original-MIPS and generated-path review
+([[p08-demo-camera-collision-sol-review]]) proves that `func_800C4C34` is a
+camera-space projection and viewport/depth clipping helper. It has no
+broadphase, collision candidates, triangles, masks, or intersection helper.
+`func_800E8918` returns `lh selected_record+0x34`, not the direct `v0` from
+`func_800C4C34`; historical `q_hit_v0` / CLEAR / HIT labels are
+**CORRECTED/SUPERSEDED**. The counter-to-camera causal chain remains
+**PROVEN**. Q1 and Q2 already differ at the first measured relevant invocation,
+glidx 70; glidx 384 is the first visible effect. Root level `R`; no fix.
+
+`NEXT_SINGLE_ACTION`: trace the selected `func_800E8918` record identity and
+the first differing writer/input to its `+0x34` halfword, beginning with the
+candidate writer region in `func_800E82EC` (`0x800E851C..0x800E866C`).

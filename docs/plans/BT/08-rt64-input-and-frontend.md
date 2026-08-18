@@ -472,3 +472,20 @@ already differ at 384. Exact 13B70 operands:
 `EYE_INPUT_MATCH=NO` (grows at 384), `TARGET_INPUT_MATCH=NO` (stable
 background). Causal component is eye; last writer `func_80112E98`.
 See [[../../plan/evidence/p08-demo-camera-13b70-inputs]].
+
+## P08 camera collision attribution review (2026-08-18)
+
+**CORRECTED/SUPERSEDED:** independent original-MIPS review
+([[../../plan/evidence/p08-demo-camera-collision-sol-review]]) refutes the
+Level A-candidate collision attribution. `func_800C4C34` is a camera-space
+projection and viewport/depth clipping helper with no collision candidate or
+triangle traversal. `func_800E8918` returns a selected persistent projection
+record's `+0x34` halfword, not the direct helper `v0`; historical CLEAR/HIT
+labels were therefore incorrect. The downstream counter / `half_0C` /
+`func_801138A0` / third-`SET74` chain remains **PROVEN**. Q1 and Q2 differ at
+the first measured relevant invocation (glidx 70); glidx 384 is the first
+visible effect. Root level `R`; no production fix.
+
+Next single action: trace the selected `func_800E8918` record identity and the
+first writer/input divergence at `record+0x34`, beginning with
+`func_800E82EC`.

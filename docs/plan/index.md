@@ -252,7 +252,11 @@ O trabalho só está concluído quando todos os critérios de
   transition `glidx 74..91` internally faithful; later residual deferred.
 - [[evidence/p08-demo-camera-clearance-rays]] —
   bounded four-query clearance differential for func_80113D30 at glidx 384;
-  proven Level A-Candidate (Q1/Q2 collision hit divergence in func_800C4C34 despite matching inputs).
+  measured Q1/Q2 return divergence preserved, but collision interpretation
+  CORRECTED/SUPERSEDED by the independent Sol review.
+- [[evidence/p08-demo-camera-collision-sol-review]] — independent original-MIPS
+  arbitration: func_800C4C34 is projection/viewport clipping, not collision;
+  historical CLEAR/HIT labels refuted; root level R, no fix.
 - [[evidence/p08-demo-ncbapivot-branch-predicate]] —
   bounded branch-predicate differential for ncbapivot at glidx 384; proven
   case C (C0 branch not taken both; gate divergence at 0x808001D0 via func_801138A0

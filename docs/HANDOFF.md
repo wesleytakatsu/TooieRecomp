@@ -54,13 +54,13 @@ the START presses that skip the opening story cutscenes).
 30 Hz animation, host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
 **Gameplay Demo Motion Synchronization & Camera Clearance Ray Differential (2026-08-17, MEASURED_ORIGINAL)**:
 - Full Wooded Hollow attract demo motion investigated under synchronized original-vs-recomp instrumentation ([[plan/evidence/p08-demo-camera-eye-producer-differential]], [[plan/evidence/p08-demo-ncbapivot-branch-predicate]], [[plan/evidence/p08-demo-camera-clearance-rays]]).
-- **PROVEN (LEVEL A-CANDIDATE / SOL REVIEW REQUIRED)**:
+- **CORRECTED/SUPERSEDED (independent Sol review, 2026-08-18)**:
   - In `func_80113D30`, all four query inputs (`start`, `direction`, `destination`) are **NUMERICALLY EQUIVALENT** between Original and Recomp at glidx 384 (position Δ < 0.05, direction IEEE-754 bit patterns match to within 1 LSB).
-  - In Original N64, `func_800E8918` (raycast query via `func_800C4C34`) returns `0` (CLEAR) for all 4 queries, so all four clearance counters `word_3C[0..3]` exceed 4, yielding `half_0C = 4`.
-  - In Recomp, `func_800E8918` returns `1` (HIT / BLOCKED) for **Q1** and **Q2**, resetting their counters to `0` and resulting in `half_0C = 1`.
-  - First differing query: **Q1** (camera local RIGHT / +X raycast).
-  - Collision query function: `func_800C4C34` (called at `0x800E8998` in both Original and Recomp).
-  - Causal chain to missing 3rd `SET74`: **PROVEN**. Level A-Candidate (NO PRODUCTION FIX).
+  - In Original N64, `func_800E8918` returns `0` for all four selected records, so all four counters `word_3C[0..3]` exceed 4, yielding `half_0C = 4`; this return is projection state, not a collision result.
+  - In Recomp, `func_800E8918` returns nonzero projection state for **Q1** and **Q2**, resetting their counters to `0` and resulting in `half_0C = 1`.
+  - First differing directional sample: **Q1** (camera-local RIGHT / +X).
+  - `func_800C4C34` is a camera projection/viewport helper, not a collision query. `func_800E8918` returns `record+0x34`, not its direct `v0`.
+  - Causal chain to missing 3rd `SET74`: **PROVEN**. Collision attribution: **REFUTED**, root level `R` (NO PRODUCTION FIX).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -454,3 +454,18 @@ In Original N64, `ncbapivot` invokes `func_801138F4 -> func_80112E98` starting
 at glidx 384, writing the 3rd candidate vector to `mode_obj+0x74`. In Recomp,
 the branch condition in `ncbapivot` bypasses `func_801138F4` at glidx 384-385,
 leaving `mode_obj+0x74` at the 2nd SET74 vector and creating the 0.0645° yaw divergence.
+
+## P08 alleged camera collision differential — REFUTED (2026-08-18)
+
+Independent Sol arbitration ([[plan/evidence/p08-demo-camera-collision-sol-review]])
+verified the original MIPS at `0x800C4C34..0x800C4E54`. The routine performs
+camera-relative matrix transformation, perspective projection, depth
+classification, and viewport bounds/offset handling. It reads no collision
+world state and evaluates no candidates or triangles. The previous CLEAR/HIT
+labels also conflated `func_800E8918`'s final `lh record+0x34` with the internal
+`func_800C4C34` return. Q1/Q2 projection-state returns already differ at the
+first captured relevant invocation (glidx 70); 384 is only the first visible
+counter consequence. Root level `R`; no production fix.
+
+Next: dynamically match the selected projection record and trace the first
+writer/input divergence to `record+0x34`, starting at `func_800E82EC`.

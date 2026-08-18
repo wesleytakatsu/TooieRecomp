@@ -132,3 +132,12 @@
 - `git status --short`: clean of temporary code edits.
 - `git diff --check`: passes cleanly with 0 errors.
 - Unit regressions: 8/8 test suites passing (100%).
+
+## 6. Independent semantic correction (2026-08-18)
+
+The counter and branch-predicate chain above remains **PROVEN**. The earlier
+interpretation of the nonzero `func_800E8918` return as a collision HIT is
+**CORRECTED/SUPERSEDED**: `func_800C4C34` is a camera projection/viewport
+clipping helper, and `func_800E8918` returns a persistent record halfword at
+`+0x34`, not the direct helper `v0`. See
+[[p08-demo-camera-collision-sol-review]].
