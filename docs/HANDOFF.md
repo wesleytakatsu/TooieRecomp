@@ -52,8 +52,15 @@ the START presses that skip the opening story cutscenes).
 **Original 4:3 / Timing Baseline (P08-T03)** is **VALIDATED and COMPLETE**
 ([[plan/evidence/p08-original-timing-4x3-baseline]]): 60.0 Hz guest VI, 20/30 Hz logic,
 30 Hz animation, host decouple (~935 Hz), and 4:3 content aspect confirmed under clean baseline config.
-**Gameplay Demo Motion Synchronization (2026-08-16, MEASURED_ORIGINAL)**:
-Full 765-sample Wooded Hollow clip compared against official mupen64plus Pure Interpreter ([[plan/evidence/p08-demo-full-motion-sync-diagnosis]] §9). Pad identity 100%. Same-index ~25u player lead is one physics step (recomp dumps at glrecord consume; original at VI). After +1 shift, first walk / analog / shot-stop match. Prior 45.11° camera-lag mismatch **CORRECTED/SUPERSEDED** (aligned lag 36.77° both). Remaining discriminator: post-egg run/jump after ~392. Level C (NO FIX).
+**Gameplay Demo Motion Synchronization & ncbapivot Branch Predicate Proof (2026-08-17, MEASURED_ORIGINAL)**:
+- Full Wooded Hollow attract demo motion investigated under synchronized original-vs-recomp instrumentation ([[plan/evidence/p08-demo-camera-eye-producer-differential]], [[plan/evidence/p08-demo-ncbapivot-branch-predicate]]).
+- **PROVEN (CASE C / EPISTEMIC CORRECTION)**: The branch at `0x808001C0: beql $v0, $zero` is **NOT TAKEN** in both Original and Recomp at glidx 384 (`func_80111FD4` returns `v0 = 1` in both runtimes). The prior hypothesis that `0x808001C0` skipped the call is **CORRECTED/SUPERSEDED**.
+- In both runtimes, execution reaches `func_801138A0(mode_obj)`.
+- The exact causal predicate divergence occurs at `0x808001D0: beqz $v0, .L808001F8`:
+  - Original N64: `mode_obj->sub_28` has `half_0C = 4` and `half_0E = 4`. `func_801138A0` increments `half_0E` to `5`, returns **`v0 = 1`**, and calls `func_801138F4` -> 3rd `SET74`.
+  - Recomp: `mode_obj->sub_28` has `half_0C = 1` and `half_0E = 0`. Because `half_0C < 4`, `func_801138A0` resets `half_0E = 0`, returns **`v0 = 0`**, tests `func_80115580` distance thresholds (which return 0), and bypasses `func_801138F4`, omitting the 3rd `SET74`.
+- **First Divergent Predicate Producer**: `func_80113D30` (called by `func_80110588`), which populates `sub_28->half_0C` via 4 clearance raycast tests.
+- Early control glidx 70..95: **PASS (100% bit-exact branch outcomes and call counts)**. Level C (NO PRODUCTION FIX).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
@@ -426,3 +433,24 @@ target MATCH=NO (stable background). Causal component is eye
 `obj+0x74`; last writer `func_80112E98`
 ([[plan/evidence/p08-demo-camera-13b70-inputs]]).
 No production change.
+
+## P08 post-egg camera eye vector producer differential — PROVEN (2026-08-17)
+
+The exact causal mechanism creating the `mode_obj+0x74` eye vector divergence
+at glidx 384 is **PROVEN** ([[plan/evidence/p08-demo-camera-eye-producer-differential]]):
+
+```text
+FUNC_80112E98_ARITHMETIC_MATCH: YES (internal candidate generator is bit-faithful)
+DIVERGENCE_MECHANISM:           CAUSAL_INVOCATION_OMISSION_AT_384 (phase lag)
+ORIGINAL_N64_SET74_COUNT_384:   3 (1st: 80112094, 2nd: 801132F8, 3rd: 80113028)
+RECOMP_SET74_COUNT_384:         2 (1st: 80112094, 2nd: 801132F8; 3rd omitted)
+ORIGINAL_3RD_SET74_CANDIDATE:   (-4446.002930, -206.578674, 1266.833740)
+RECOMP_RETAINED_2ND_SET74:      (-4439.804688, -203.940430, 1272.204346)
+PROVEN_CALLER_TRIGGER:          ncbapivot_entrypoint_3 -> func_801138F4 -> func_80112E98
+FIX_IMPLEMENTED:                NO (zero production lines modified)
+```
+
+In Original N64, `ncbapivot` invokes `func_801138F4 -> func_80112E98` starting
+at glidx 384, writing the 3rd candidate vector to `mode_obj+0x74`. In Recomp,
+the branch condition in `ncbapivot` bypasses `func_801138F4` at glidx 384-385,
+leaving `mode_obj+0x74` at the 2nd SET74 vector and creating the 0.0645° yaw divergence.

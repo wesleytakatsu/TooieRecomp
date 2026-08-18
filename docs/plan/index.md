@@ -160,6 +160,8 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 corrente
 
+- [[evidence/p08-demo-camera-eye-producer-differential]] — **PROVEN (A & B RESOLVED):**
+  causal isolation of glidx 384 camera eye divergence; `ncbapivot` conditional invocation of `func_801138F4 -> func_80112E98` creates 3rd `SET74` in original N64, bypassed in Recomp.
 - [[evidence/p08-t07-t08-frontend-system-validation]] — **P08-T07 & P08-T08 VALIDATED:**
   window/display integration, aspect ratio safety, graphics driver & Vulkan failure handling.
 - [[evidence/p08-attract-loop-after-demo2-crash]] — **RESOLVED and ACCEPTED:**
@@ -248,6 +250,13 @@ O trabalho só está concluído quando todos os critérios de
 - [[evidence/p08-demo-movement-precision-diagnosis]] — recorded-pad demo path;
   first straight 510 is original slope-scaled physics; first analog
   transition `glidx 74..91` internally faithful; later residual deferred.
+- [[evidence/p08-demo-ncbapivot-branch-predicate]] —
+  bounded branch-predicate differential for ncbapivot at glidx 384; proven
+  case C (C0 branch not taken both; gate divergence at 0x808001D0 via func_801138A0
+  and func_80113D30 clearance tests).
+- [[evidence/p08-demo-camera-eye-producer-differential]] —
+  empirical producer differential for Wooded Hollow camera eye vector divergence
+  across glidx 380..388.
 - [[evidence/p08-session-handoff]] — estado autossuficiente e próximo single
   action para um novo chat.
 - [[evidence/p08-intro-to-demo-transition-diagnosis]] — timeline histórica;

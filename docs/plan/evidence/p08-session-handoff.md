@@ -28,6 +28,10 @@ tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, bafla
 - RA-wrapper fix: [[p08-core1-ra-wrapper-fix]].
 - Overlay angle producer: [[p08-demo-camera-overlay-angle-producer]]
   (`ncbapivot_entrypoint_3` PROVEN).
+- Camera eye producer differential: [[p08-demo-camera-eye-producer-differential]] (PROVEN).
+- Bounded branch predicate differential: [[p08-demo-ncbapivot-branch-predicate]]
+  (PROVEN Case C / Epistemic correction: branch 0x808001C0 not taken in both;
+  gate divergence at 0x808001D0 via `func_801138A0` return value and `func_80113D30` clearance tests).
 
 ## CURRENT_PHASE
 
