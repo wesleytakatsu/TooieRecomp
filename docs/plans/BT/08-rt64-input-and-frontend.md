@@ -489,3 +489,9 @@ visible effect. Root level `R`; no production fix.
 Next single action: trace the selected `func_800E8918` record identity and the
 first writer/input divergence at `record+0x34`, beginning with
 `func_800E82EC`.
+
+**RESOLVED (2026-08-19, B-INPUT PROVEN):** the `record+0x34` divergence is
+fully isolated — same writer `func_800E82EC` (mode==1), identical shared
+inputs, causally different classifier input `a3=v1[2]`
+([[../../plan/evidence/p08-demo-projection-record-34-differential]]).
+NO production fix. Original capture requires `--emumode 0` (Pure Interpreter).

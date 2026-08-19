@@ -62,6 +62,18 @@ the START presses that skip the opening story cutscenes).
   - `func_800C4C34` is a camera projection/viewport helper, not a collision query. `func_800E8918` returns `record+0x34`, not its direct `v0`.
   - Causal chain to missing 3rd `SET74`: **PROVEN**. Collision attribution: **REFUTED**, root level `R` (NO PRODUCTION FIX).
 
+**PROJECTION RECORD +0x34 DIFFERENTIAL — B-INPUT PROVEN (2026-08-19):** the
+`func_800E8918` return (`lh selected record +0x34`) already differs at the
+first relevant invocation (Q1 glidx 70: Original 0 vs Recomp 1; Q0 control 0/0
+PASS). Causal writer is `func_800E82EC` (mode==1) in both runtimes with
+identical shared inputs (`a0=trunc(rec+0)=176`, `a1=trunc(rec+4)=161`,
+`a2=v1[1]=0x3f820408`), but the classifier `func_800E81E0` receives a
+causally different `a3=v1[2]` (147.82677 vs 147.41731), yielding
+`f0(E81E0)=-73.34` vs `-1264.7` and flipping `+0x34` 0↔1
+([[plan/evidence/p08-demo-projection-record-34-differential]]).
+**NO production fix.** Required original run uses `--emumode 0` (Pure
+Interpreter) — the Cached Interpreter does not carry the `pure_interp.c` hooks.
+
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
 > `ULTRAMODERN_GUEST_PREEMPTION=0` rollback. Regen real (4298 safepoints).

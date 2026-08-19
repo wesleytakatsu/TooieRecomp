@@ -517,3 +517,39 @@ glidx 70; glidx 384 is the first visible effect. Root level `R`; no fix.
 `NEXT_SINGLE_ACTION`: trace the selected `func_800E8918` record identity and
 the first differing writer/input to its `+0x34` halfword, beginning with the
 candidate writer region in `func_800E82EC` (`0x800E851C..0x800E866C`).
+
+## P08 projection record +0x34 differential — B-INPUT PROVEN (2026-08-19)
+
+Full record-identity / store-provenance differential
+([[p08-demo-projection-record-34-differential]]). The `func_800E8918` return
+(`lh selected record+0x34`) already differs at the first relevant invocation
+(Q1 glidx 70: Original 0 vs Recomp 1; Q0 control 0 vs 0 — PASS). The causal
+writer is `func_800E82EC` (mode==1) in both runtimes, same logical record and
+identical shared inputs (`a0=trunc(rec+0)=176`, `a1=trunc(rec+4)=161`,
+`a2=v1[1]=0x3f820408`), but the classifier `func_800E81E0` receives a
+causally different `a3 = v1[2]` (147.82677 original vs 147.41731 recomp), so
+`f0(E81E0)` = -73.34 (orig) vs -1264.7 (recomp), flipping `f20 = rec+8 + f0`
+and hence `+0x34` = 0 vs 1.
+
+```text
+B-INPUT (PROVEN)             NO FIX
+E82EC same-writer:           YES
+E8918 final return:          0x800E8A10 lh v0, 0x34(s0)
+Q1 glidx70 rec+0x34:         ORIG 0 / RECOMP 1
+Q0 control:                  PASS (0/0)
+a3=v1[2] orig/recomp:        147.82677 / 147.41731
+f0(E81E0) orig/recomp:       -73.34 / -1264.7
+f20=rec+8+f0:                +947 / -244
+a3 source:                   D_8012D600+phi*60+sub*12+8 (E82EC first loop,
+                             func_800A8984/func_800CA6D4 direction vectors)
+MUPEN_REUSED:                YES (core 6dca4c1, rice 038882d; REQUIRED --emumode 0
+                             Pure Interpreter; Cached Interpreter does NOT carry the
+                             pure_interp hooks)
+ROM_MATCH:                   YES (af1a89e12b638b8d82cc4c085c8e01d4cba03fb3)
+FIX_IMPLEMENTED:             NO
+```
+
+`NEXT_SINGLE_ACTION`: do not reopen. The `a3` value is a camera/direction-vector
+component already differing marginally at glidx 71; hunting it further is an
+upstream camera-input trace (see upstream camera-divergence evidence), not a
+projection-record writer defect.
