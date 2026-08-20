@@ -10,7 +10,7 @@
 ## plan
 
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
-- [[plan/evidence/p09-user-observed-parity-residuals]] — P09 — User-Observed Parity Residuals & Attract Demo Baseline — Attract Demo 0 100% state parity, egg type & visual drift refutations, and P09 residual backlog.
+- [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):

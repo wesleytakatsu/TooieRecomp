@@ -1,14 +1,14 @@
 ---
 title: "BT P09 — Paridade de gameplay e melhorias"
 description: "Fecha campanha, saves e timing antes de habilitar widescreen, FPS alto e extensões."
-status: active
+status: pending
 type: implementation-stage
 project: TooieRecomp
 phase: P09
 order: 9
 depends_on: P08
 updated: 2026-08-20
-tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen, active]
+tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen]
 ---
 
 # BT P09 — Paridade de gameplay e melhorias
@@ -18,12 +18,14 @@ tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen, active]
 Comportamento funcional equivalente ao original em timing padrão, seguido por
 melhorias opcionais que não alteram gameplay.
 
-## Estado corrente (P09 Ativo — 2026-08-20)
+## Estado corrente (P09 Pendente — evidência pré-abertura, 2026-08-20)
 
-- **P08 Formalmente Concluído**: RT64, frontend, janelas, mensagens de erro e validação física de controle e display concluídas.
-- **P09 Aberto**: Linha de base de paridade de gameplay iniciada ([[../../plan/evidence/p09-user-observed-parity-residuals]]).
-- **Attract Demo 0 (Wooded Hollow)**: Paridade de 100% de estados e física contra o oracle de hardware `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE). Relatos de drift visual e disparo de Fire Egg em vez de Blue Egg foram investigados e esclarecidos (ambos disparam Blue Egg no hardware real).
-- **Backlog de Resíduos de Fidelidade**: Clicks periódicos de áudio (`P09-RES-04`), glitches gráficos pontuais (`P09-RES-03`), e culling de borda em widescreen (`P09-RES-05`, associado a `P09-T08`).
+- **P08 Formal**: `ACTIVE / MANUAL_VALIDATION_PENDING`; a observação positiva dos controles durante gameplay não prova o checklist físico completo, e não há confirmação física de display.
+- **P09 Formal**: `PENDING / NOT_FORMALLY_OPEN`.
+- **Evidência provisória**: [[../../plan/evidence/p09-user-observed-parity-residuals]] cobre apenas Demo 0 (Wooded Hollow) contra o oracle hardware-faithful `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE).
+- **Demo 0**: pad 765/765, trajetória limitada, paridade de behavior-state, Blue Egg no evento glidx 322 e resultado de Z-buffer/classifier são preservados. Atributos diretos de animação e render-state completo permanecem não medidos/parciais.
+- **Relatos globais**: Fire Egg permanece `USER_REPORTED_UNLOCATED`; drift visual permanece `USER_REPORTED / OPEN`. Demo 1, Demo 2 e Demo 3 estão `UNTESTED`.
+- **Backlog de Resíduos de Fidelidade**: `P09-RES-03` glitches gráficos (`USER_REPORTED / UNCATALOGUED`), `P09-RES-04` tic/tic de áudio (`USER_REPORTED / UNDIAGNOSED`) e `P09-RES-05` culling de borda widescreen (`USER_REPORTED`).
 
 ## Tarefas de paridade
 
@@ -51,4 +53,6 @@ melhorias opcionais que não alteram gameplay.
 
 ## Próxima etapa
 
-[[10-linux-packaging-and-release]]
+1. Completar a validação física formal de P08.
+2. Depois de abrir P09 formalmente, alinhar Demo 1, Demo 2 e Demo 3 contra `ANGRYLION_CONTROL`, identificar eventos de ovos/projéteis, medir animação/render-state direto e localizar o drift visual.
+3. Só então selecionar o próximo defeito entre áudio e gráficos.

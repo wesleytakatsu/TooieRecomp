@@ -32,10 +32,10 @@ A fonte BT ativa é o fork em `banjo-tooie-Recomp/`. O repositório original
 | 03 | [[03-recompiler-metadata]] | metadados consumíveis pelo N64Recomp | done |
 | 04 | [[04-static-recompilation]] | código recompilado compila | done |
 | 05 | [[05-native-runtime-and-boot]] | executável chega ao primeiro frame | done |
-| 06 | [[06-overlays-and-syscalls]] | código dinâmico funciona | done |
-| 07 | [[07-rsp-and-audio]] | tarefas RSP e áudio corretos | done |
-| 08 | [[08-rt64-input-and-frontend]] | renderização, entrada e UI integradas | done |
-| 09 | [[09-gameplay-parity-and-enhancements]] | campanha e timing aprovados | active |
+| 06 | [[06-overlays-and-syscalls]] | código dinâmico funciona | in_progress |
+| 07 | [[07-rsp-and-audio]] | tarefas RSP e áudio corretos | active (música inicial OK) |
+| 08 | [[08-rt64-input-and-frontend]] | renderização, entrada e UI integradas | active |
+| 09 | [[09-gameplay-parity-and-enhancements]] | campanha e timing aprovados | pending |
 | 10 | [[10-linux-packaging-and-release]] | release Linux reproduzível | pending |
 
 ## Convenções
@@ -131,3 +131,12 @@ Evidência:
 [[../../plan/evidence/p08-demo-zbuffer-oracle-sol-review]],
 [[../../plan/evidence/p08-session-handoff]]. Detalhe:
 [[08-rt64-input-and-frontend]].
+
+### Gate P08/P09 — evidence-scope correction (2026-08-20)
+
+- **P08**: `ACTIVE / MANUAL_VALIDATION_PENDING`. The user controller observation
+  is retained as `USER_REPORTED`; formal 15/15 gamepad and 14-item display
+  checklists are not proven.
+- **P09**: `PENDING / NOT_FORMALLY_OPEN`.
+- The Demo 0 parity result is `PROVISIONAL_PRE_P09_PARITY_EVIDENCE`; Demo 1,
+  Demo 2, and Demo 3 remain `UNTESTED`.

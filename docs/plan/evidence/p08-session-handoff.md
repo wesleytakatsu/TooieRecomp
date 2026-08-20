@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente P08: o oracle Angrylion RDP Plus + CXD4 LLE provou que o hardware renderiza Z em RDRAM (R-ORACLE) e que a trajetória de movimento pós-egg bate 100% com o Recomp (R-MOTION-ORACLE); zero divergências residuais na demo attract."
+description: "Estado autossuficiente P08: o oracle hardware-faithful Angrylion RDP Plus + CXD4 LLE sustenta o R-ORACLE e o R-MOTION-ORACLE no stream medido do Demo 0; a validação física formal permanece pendente."
 status: evidence
 phase: P08
 updated: 2026-08-20
@@ -40,11 +40,15 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend is **COMPLETE**.
+P08 — RT64, input e frontend is **ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B)**.
 Canonical tasks (T01..T11) audited:
-- T01..T11: **DONE**
-- Physical gamepad and display validation: **SIGNED OFF PASS** ([[p08-final-physical-validation]])
-- Next phase: **P09 is ACTIVE** ([[../../plans/BT/09-gameplay-parity-and-enhancements]]).
+- T01..T06, T08..T11: **DONE** (T02 display list and effect catalog completed; [[p08-display-effect-catalog]])
+- T07: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers verified via unit tests; physical multi-monitor and visual fullscreen validation pending)
+- P08-T08 (Graphics driver / Vulkan failure handling): **DONE** (`tooie_error` reporting, `assert(false)` removal, negative env test PASS).
+- Attract DEMO2 SIGSEGV (bsrest 0x808003FC): **RESOLVED and VALIDATED**.
+- User controller observation: **USER_REPORTED** — controls appear correct during live gameplay; the formal 15-item checklist is not proven.
+- Physical display confirmation: **NOT FOUND** in the available evidence; the formal 14-item display checklist remains pending.
+- Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gate is completed.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -607,9 +611,9 @@ Controlling evidence:
 - [[p08-final-physical-validation]] (**PENDING USER EXECUTION**)
 
 Summary of hardware oracle findings:
-1. **Z-Buffer Oracle (R-ORACLE):** Angrylion RDP Plus + CXD4 LLE confirmed that real N64 RDP populates live Z in RDRAM, clear value is `0xFFFC`, and `record+0x34` evaluates to `1` across all 25/25 aligned Q1 samples. The prior camera divergence was a Rice HLE reference artifact.
-2. **Post-Egg Motion Oracle (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under Angrylion. `camctrl` at glidx 385 matches within `+0.0030°` (delta `53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across the entire 765-frame demo is `< 0.89 units`, and behavior-state progression is 100% bit-identical (`0` state mismatches).
-3. **No Production Fix Required:** TooieRecomp's movement, camera control, physics, and rendering are faithful to real hardware.
+1. **Z-Buffer Oracle (R-ORACLE):** The hardware-faithful `ANGRYLION_CONTROL` run (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE) produced live Z in RDRAM, with clear value `0xFFFC`; `record+0x34` evaluates to `1` across all 25/25 aligned Q1 samples. This is an emulator oracle, not a physical N64 measurement. The prior camera divergence was a Rice HLE reference artifact.
+2. **Post-Egg Motion Oracle (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under `ANGRYLION_CONTROL`. `camctrl` at glidx 385 matches within `+0.0030°` (delta `53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across the entire 765-frame Demo 0 stream is `< 0.89 units`, and behavior-state progression is 100% bit-identical (`0` state mismatches).
+3. **No Production Fix Required for this measured stream:** Demo 0 movement, camera-control, and physics measurements are faithful to the hardware-faithful oracle. This does not close untested attract demos or the formal physical-display gate.
 4. **Current Phase & Remaining Gates:**
    - `CURRENT_PHASE`: **P08 ACTIVE / MANUAL_VALIDATION_PENDING**
    - `AUTOMATED_SCOPE`: **COMPLETE**

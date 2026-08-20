@@ -1,14 +1,14 @@
 ---
 title: "BT P08 — RT64, entrada e frontend"
 description: "Completa renderização, janela, controles e experiência de inicialização no Linux."
-status: complete
+status: active
 type: implementation-stage
 project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
 updated: 2026-08-20
-tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, complete]
+tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
 # BT P08 — RT64, entrada e frontend
@@ -392,15 +392,15 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 
 ## Próxima etapa
 
-**P08 is COMPLETE.**
+**P08 remains ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
 - **Implemented Scope**: RT64 presentation baseline, input mapping, window/scale integration, graphics/Vulkan error handling, launcher music preview, static call correctness, attract demo hardware-accurate motion sync.
-- **Physical Validation Signed Off**: Gamepad hardware verification and display verification passed ([[../../plan/evidence/p08-final-physical-validation]]).
-- **Next Stage**: [[09-gameplay-parity-and-enhancements]] (ACTIVE).
+- **Physical Validation Status**: User reported that controls appear correct during live gameplay (**USER_REPORTED**). The formal 15-item gamepad checklist and 14-item physical display checklist remain **PENDING** ([[../../plan/evidence/p08-final-physical-validation]]).
+- **Next Stage**: [[09-gameplay-parity-and-enhancements]] remains **PENDING / NOT_FORMALLY_OPEN** until the P08 manual gate is complete.
 - **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline, Angrylion Z-buffer oracle (R-ORACLE), Angrylion attract demo motion sync (R-MOTION-ORACLE).
 
 ## P08 Implementation Status (2026-08-20, Gemini 3.7 Flash HIGH)
 
-- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path. Physical validation signed off.
+- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path. Physical display validation remains pending; the available controller observation does not prove the checklist.
 - **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 PASS), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
 - **Canonical Tasks**: All 11 canonical tasks audited:
   - `P08-T01`: **DONE**
@@ -409,7 +409,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
   - `P08-T04`: **DONE**
   - `P08-T05`: **DONE**
   - `P08-T06`: **DONE**
-  - `P08-T07`: **DONE** ([[../../plan/evidence/p08-final-physical-validation]])
+  - `P08-T07`: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** ([[../../plan/evidence/p08-final-physical-validation]])
   - `P08-T08`: **DONE** ([[../../plan/evidence/p08-t07-t08-frontend-system-validation]])
   - `P08-T09`: **DONE** ([[../../plan/evidence/p08-render-submission-matrix-fix]])
   - `P08-T10`: **DONE** ([[../../plan/evidence/p08-title-file-select-validation]])

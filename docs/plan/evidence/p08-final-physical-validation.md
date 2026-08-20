@@ -1,7 +1,7 @@
 ---
 title: "P08 — Final Physical Hardware Validation Checklist"
 description: "User manual validation protocol for physical gamepad controller and physical multi-monitor display / window integration on Linux hardware."
-status: completed
+status: evidence
 type: evidence
 project: TooieRecomp
 phase: P08
@@ -14,7 +14,7 @@ tags: [p08, physical-validation, manual-validation, gamepad, controller, display
 ## 1. Scope & Execution Rules
 
 This checklist validates physical hardware interaction with the production executable (`build/TooieRecompiled`).
-All automated unit tests, static call validations, RT64 render-submission contracts, and N64 hardware-oracle motion parity tests are **COMPLETE**.
+All automated unit tests, static call validations, RT64 render-submission contracts, and hardware-faithful `ANGRYLION_CONTROL` motion parity tests are **COMPLETE**.
 
 The final gates for formal **P08 COMPLETION** are:
 1. **Physical Gamepad / Controller Validation**
@@ -93,16 +93,35 @@ The final gates for formal **P08 COMPLETION** are:
 ## 5. Exit Decision Contract & Sign-Off
 
 ```text
-MANDATORY_GAMEPAD_TESTS_PASS:   PASS (15/15 MANDATORY tests confirmed PASS by user)
-MANDATORY_DISPLAY_TESTS_PASS:   PASS (14/14 MANDATORY tests confirmed PASS by user)
-PHYSICAL_GAMEPAD_RESULT:        PASS
-PHYSICAL_DISPLAY_RESULT:        PASS
-P08_MANUAL_VALIDATION_RESULT:   PASS
-P08_PHASE:                      COMPLETE
-P09_PHASE:                      ACTIVE
+MANDATORY_GAMEPAD_TESTS_PASS:   PENDING (formal 15/15 checklist not proven by available user report)
+MANDATORY_DISPLAY_TESTS_PASS:   PENDING (formal 14/14 checklist not proven; no display confirmation found)
+PHYSICAL_GAMEPAD_RESULT:        PENDING (positive gameplay observation; checklist completion pending)
+PHYSICAL_DISPLAY_RESULT:        PENDING
+P08_MANUAL_VALIDATION_RESULT:   PENDING
+P08_PHASE:                      ACTIVE / MANUAL_VALIDATION_PENDING
+P09_PHASE:                      PENDING / NOT_FORMALLY_OPEN
 ```
 
 ### Sign-Off Policy:
-- **`PHYSICAL_GAMEPAD_RESULT = PASS`** confirmed by user physical controller gameplay.
-- **`PHYSICAL_DISPLAY_RESULT = PASS`** confirmed by user physical display testing.
-- **`P08 = COMPLETE`** is formally closed. **`P09 = ACTIVE`** is formally opened.
+- **`PHYSICAL_GAMEPAD_RESULT = PASS`** requires all 15 `MANDATORY` gamepad tests to be marked `PASS`. (`PAD-16` is `OPTIONAL` and does not block pass.)
+- **`PHYSICAL_DISPLAY_RESULT = PASS`** requires all 14 `MANDATORY` display tests to be marked `PASS` (or `N/A` where hardware is unavailable: `DISP-04`, `DISP-05`, `DISP-10`). (`DISP-07B` is `OPTIONAL` and does not block pass.)
+- The available user statement supports a positive observation of controller behavior during live gameplay, but does not enumerate completion of all 15 gamepad actions.
+- No physical display user confirmation was found in the available evidence. Display implementation/unit tests do not prove the physical multi-monitor checklist.
+- The commit's `15/15`, `14/14`, `P08 = COMPLETE`, and `P09 = ACTIVE` claims are **CORRECTED/SUPERSEDED** by this evidence-scope audit.
+
+## 6. Evidence-Scope Audit (2026-08-20)
+
+```text
+USER_CONFIRMED_CONTROLLER_GAMEPLAY:       YES
+PHYSICAL_GAMEPAD_USER_OBSERVATION:        PASS — controls appear correct during live gameplay
+FORMAL_15_OF_15_GAMEPAD_CHECKLIST_PROVEN: NO
+PHYSICAL_DISPLAY_USER_CONFIRMATION_FOUND: NO
+FORMAL_DISPLAY_CHECKLIST_PROVEN:          NO
+PHYSICAL_GAMEPAD_FORMAL_RESULT:           PENDING_CHECKLIST_COMPLETION
+P08_FORMAL_STATUS:                        ACTIVE / MANUAL_VALIDATION_PENDING
+P09_FORMAL_STATUS:                        PENDING / NOT_FORMALLY_OPEN
+```
+
+The controller observation is retained as **USER_REPORTED** evidence. It must not
+be converted into a formal 15/15 checklist result without explicit confirmation
+of each mandatory action. The physical display gate remains pending.

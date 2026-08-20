@@ -1,10 +1,10 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 implementation substantially complete (Verdict B; P08 ACTIVE / MANUAL_VALIDATION_PENDING). T07/T08 live integration reconciled and tested. Physical controller & multi-monitor validation pending."
+description: "P08 implementation substantially complete (Verdict B; P08 ACTIVE / MANUAL_VALIDATION_PENDING). T07/T08 live integration reconciled and tested. Formal physical controller checklist and multi-monitor validation pending."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-17
+updated: 2026-08-20
 tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
@@ -12,14 +12,14 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 
 ## Prioridade atual
 
-**PHASE P08 IS COMPLETE; PHASE P09 IS ACTIVE (2026-08-20):**
-- **P08 Canonical Task Audit**: All 11 tasks (`P08-T01`..`P08-T11`) **DONE**.
-- **Physical Validation Complete**: Gamepad hardware controls and display validation signed off by user ([[plan/evidence/p08-final-physical-validation]]).
-- **P09 Gameplay Parity Baseline**: Opened with Attract Demo 0 differential against `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE).
-  - User-observed egg type report (Fire Egg vs Blue Egg) investigated: refuted as historical labeling artifact (both original N64 hardware and RT64 fire Blue Egg `ACTOR_EGG_NORMAL` 0x88).
-  - User-observed visual drift report investigated: refuted against Angrylion oracle (trajectory error is sub-pixel noise $\le 0.88$ units across 765 frames).
-  - Fidelity backlog created for audio clicks, graphical glitches, and widescreen edge culling ([[plan/evidence/p09-user-observed-parity-residuals]]).
-- **Next Single Action**: Investigate next parity backlog items (`P09-RES-04` audio clicking / `P09-RES-03` graphical glitches).
+**PHASE P08 IS ACTIVE / MANUAL_VALIDATION_PENDING; PHASE P09 IS PENDING / NOT_FORMALLY_OPEN (2026-08-20):**
+- **P08 Implementation Scope**: RT64, frontend, window helpers, graphics/Vulkan diagnostics, and automated validation are substantially complete. The formal physical gate remains open.
+- **Controller Evidence**: User reported that controls appear correct during live gameplay (**USER_REPORTED**). This supports `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES`, but does not prove the formal 15/15 gamepad checklist.
+- **Display Evidence**: No physical display user confirmation was found; the formal 14-item display checklist remains `PENDING`.
+- **P09 Provisional Evidence**: [[plan/evidence/p09-user-observed-parity-residuals]] contains valid Demo 0-only differential results against `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE). It is `PROVISIONAL_PRE_P09_PARITY_EVIDENCE`, not a formal P09 opening.
+  - Demo 0 preserves 765/765 pad match, bounded trajectory error, behavior-state parity, Blue Egg parity at glidx 322, and the Angrylion Z-buffer/classifier result.
+  - The Fire Egg report is `USER_REPORTED_UNLOCATED / NOT_REPRODUCED_IN_DEMO0 / OPEN_OTHER_DEMOS`; the visual-drift report is `USER_REPORTED / OPEN`, with Demo 1..3 `UNTESTED`.
+- **Next Single Action**: Complete the remaining P08 physical validation checklist; after formal P09 opening, validate Demo 1, Demo 2, and Demo 3 before selecting audio/graphics work.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
@@ -495,9 +495,9 @@ writer/input divergence to `record+0x34`, starting at `func_800E82EC`.
 resolve the Z-buffer camera and post-egg motion differentials against the hardware-faithful oracle
 (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + mupen64plus-rsp-cxd4 LLE):
 
-1. **Z-Buffer (R-ORACLE):** Real N64 RDP renders live depth into RDRAM (`0x866D..0x8C11`), clear writes `0xFFFC`, and `record+0x34 = 1` across all 25/25 aligned Q1 samples, matching RT64.
-2. **Post-Egg Motion (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under Angrylion. `camctrl` at glidx 385 matches within `+0.0030°` (`53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across all 765 demo frames is `< 0.89 units`, and behavior states are 100% bit-identical (`0` mismatches).
-3. **Verdict:** TooieRecomp's movement, camera control, physics, and rendering are fully faithful to real N64 hardware. Zero production fixes needed.
+1. **Z-Buffer (R-ORACLE):** The hardware-faithful `ANGRYLION_CONTROL` run produced live depth in RDRAM (`0x866D..0x8C11`), clear writes `0xFFFC`, and `record+0x34 = 1` across all 25/25 aligned Q1 samples, matching RT64. This is an emulator oracle, not a physical N64 measurement.
+2. **Post-Egg Motion (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under `ANGRYLION_CONTROL`. `camctrl` at glidx 385 matches within `+0.0030°` (`53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across all 765 Demo 0 frames is `< 0.89 units`, and behavior states are 100% bit-identical (`0` mismatches).
+3. **Verdict:** Demo 0 movement, camera-control, and physics match the hardware-faithful oracle within the measured scope. Full render-state parity and global attract-demo fidelity remain open.
 4. **Current Status:** P08 automated implementation and evidence are COMPLETE. Physical gamepad + multi-monitor display validations remain PENDING. P09 is not formally opened.
 
 Next single action: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical hardware.

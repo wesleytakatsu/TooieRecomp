@@ -1,7 +1,7 @@
 ---
 title: "P09 — User-Observed Parity Residuals & Attract Demo Baseline"
-description: "Initial P09 baseline and differential evaluation of user-reported fidelity observations (attract demo visual drift, egg projectile type, graphical glitches, audio clicks, and widescreen culling)."
-status: current
+description: "Provisional pre-P09 Demo 0 differential evidence and scope audit for user-reported fidelity observations; Demo 1..3 remain untraced."
+status: evidence
 type: evidence
 project: TooieRecomp
 phase: P09
@@ -13,15 +13,23 @@ tags: [p09, parity, attract-demo, egg-type, visual-drift, angrylion, rt64, oracl
 
 ## 1. Executive Summary & Verdicts
 
-This document establishes the initial **P09 Gameplay Parity** baseline, formally opening **`P09`** following the confirmation of physical gamepad and display validation.
-It evaluates the five user-observed fidelity reports against the hardware-faithful oracle **`ANGRYLION_CONTROL`** (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + mupen64plus-rsp-cxd4 LLE) and **`RT64_CONTROL`** (TooieRecomp).
+This document records **PROVISIONAL_PRE_P09_PARITY_EVIDENCE**. It does not formally
+open `P09`: P08 physical validation remains `ACTIVE / MANUAL_VALIDATION_PENDING`.
+The committed dynamic evidence covers only Demo 0. It compares that stream against
+the hardware-faithful oracle **`ANGRYLION_CONTROL`** (Mupen64Plus Pure Interpreter
++ Angrylion RDP Plus + CXD4 LLE) and **`RT64_CONTROL`** (TooieRecomp).
 
 ```text
-P08_STATUS:                     COMPLETE
-P09_STATUS:                     ACTIVE
-FIRE_EGG_REPORT_VERDICT:        NOT_REPRODUCED_AGAINST_HARDWARE_ORACLE (Both runtimes fire Blue Egg)
-VISUAL_DRIFT_REPORT_VERDICT:    NOT_REPRODUCED_AGAINST_HARDWARE_ORACLE (Error is STABLE_NOISE <= 0.88 units)
-FIRST_PROVEN_P09_PARITY_DEFECT: NONE_IN_ATTRACT_DEMO_0 (Attract Demo 0 is in 100% state parity)
+P08_STATUS:                     ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                     PENDING / NOT_FORMALLY_OPEN
+DEMO0_DYNAMIC_PARITY_CAPTURE:   YES (765-frame Wooded Hollow stream)
+DEMO1_DYNAMIC_PARITY_CAPTURE:   NO
+DEMO2_DYNAMIC_PARITY_CAPTURE:   NO
+DEMO3_DYNAMIC_PARITY_CAPTURE:   NO
+FIRE_EGG_REPORT_STATUS:          USER_REPORTED_UNLOCATED / NOT_REPRODUCED_IN_DEMO0 / OPEN_OTHER_DEMOS
+DEMO0_PHYSICS_DRIFT_STATUS:     NOT_REPRODUCED_IN_DEMO0
+GLOBAL_VISUAL_DRIFT_STATUS:     OPEN / USER_REPORTED (Demo 1..3 UNTESTED)
+FIRST_PROVEN_DEMO0_FINDING:     Demo 0 input/physics/behavior parity; no global attract conclusion
 ```
 
 ---
@@ -38,7 +46,8 @@ Banjo-Tooie's attract loop (`gsattract`, overlay 417/556) cycles through four re
 | **Demo 3** | 244 (`0x0F4`) | JRL Area | 7 | 5 | Banjo & Kazooie / Sub | Jolly Roger's Lagoon demonstration |
 
 ```text
-FIRE_EGG_CANDIDATE_DEMO: Demo 0 (Wooded Hollow, glidx 322)
+FIRE_EGG_REPORT_LOCATION: USER_REPORTED_UNLOCATED
+DEMO0_EGG_EVENT_UNDER_TEST: Demo 0 (Wooded Hollow, glidx 322)
 ```
 
 ---
@@ -70,62 +79,90 @@ At `glidx = 320..324` in Wooded Hollow demo:
 REFERENCE_PROJECTILE_TYPE:      BLUE EGG (ACTOR_EGG_NORMAL / 0x88 / 136)
 RT64_PROJECTILE_TYPE:           BLUE EGG (ACTOR_EGG_NORMAL / 0x88 / 136)
 EGG_TYPE_DIVERGENCE_REPRODUCED: NO
-EGG_TYPE_USER_REPORT:           NOT_REPRODUCED_AGAINST_HARDWARE_ORACLE
+DEMO0_EGG_TYPE_PARITY:           PASS
+EGG_TYPE_USER_REPORT:            USER_REPORTED_UNLOCATED / OPEN_OTHER_DEMOS
 ```
 
-**Finding:** The historical belief that this demo shot was a "fire egg" was an informal label in earlier investigative notes. Real N64 hardware (`ANGRYLION_CONTROL`) and `RT64_CONTROL` both shoot a standard Blue Egg.
+**Finding:** Demo 0's captured shot is a Blue Egg in both `ANGRYLION_CONTROL`
+and `RT64_CONTROL`. The user's Fire Egg report did not identify a demo, so this
+finding is **NOT_REPRODUCED_IN_DEMO0** only; it does not refute the report globally
+or establish that the reported event was Demo 0.
 
 ---
 
 ## 4. Investigation of User-Observed Item 1: Gradual Visual Drift
 
-The three execution layers were evaluated across all 765 frames of the Wooded Hollow demo:
+The retained dynamic evidence covers all 765 frames of the Demo 0 Wooded Hollow
+stream for input, player motion, behavior state, and selected camera/matrix
+diagnostics. It does not provide a complete per-frame paired animation/render
+capture for every requested field.
 
 ```mermaid
 graph TD
-    P[1. PHYSICS_STATE] -->|Pass: max XZ err < 0.89u, 0 BS diffs| M[State Parity]
-    A[2. ANIMATION_STATE] -->|Pass: AnimCtrl phase & frames match| M
-    R[3. RENDER_STATE] -->|Pass: Upright separated projection/modelview| M
+    P[1. PHYSICS_STATE] -->|Demo 0: max XZ err < 0.89u, 0 BS diffs| M[Demo 0 Evidence]
+    A[2. ANIMATION_DIRECT_FIELDS] -->|Unknown: not sampled| M
+    R[3. RENDER_STATE] -->|Partial: targeted diagnostics only| M
 ```
 
 | Layer | Evaluated State | Metric / Parity Result | Status |
 |:---|:---|:---|:---:|
 | **Physics State** | Position $(X,Y,Z)$, velocity, yaw, ideal yaw, behavior state | Median XZ error = `0.0245 units`, Max XZ error = `0.8811 units`, 0 BS mismatches | **PASS** |
-| **Animation State** | `AnimCtrl` phase, timer, bone updates | Exact frame-by-frame state sequence (`bs1 -> bs4 -> bs7 -> bs20 -> bs22 -> bs21 -> bs22 -> bs8 -> bs16 -> bs2`) | **PASS** |
-| **Render State** | Camera eye, camera target, modelview matrix | Sub-0.005° angular parity; no cumulative drift | **PASS** |
+| **Animation State** | `AnimCtrl` phase, ID, timer, bone/root transform | Retained trace records behavior-state sequence only; direct animation ID/phase/timer/bone/root values were not captured | **UNKNOWN / NOT YET MEASURED** |
+| **Render State** | Camera eye, camera target, model/root transform, modelview matrix | Targeted camera/matrix diagnostics and qualitative upright rendering exist; no complete paired per-frame 765-row render-state capture | **PARTIAL** |
 
 ### Drift Growth Classification:
 - **Error Behavior**: **`STABLE_NOISE`** (sub-pixel floating point precision oscillation; no secular linear drift).
-- **`VISUAL_DRIFT_REPRODUCED`**: **`NO`** (refuted against `ANGRYLION_CONTROL`).
+- **`DEMO0_PHYSICS_DRIFT`**: **`NOT_REPRODUCED_IN_DEMO0`** against `ANGRYLION_CONTROL`.
+- **`GLOBAL_ATTRACT_VISUAL_DRIFT_REPORT`**: **`OPEN / USER_REPORTED`**.
+- **Demo 1..3**: **`UNTESTED`** for this report.
 
 ---
 
-## 5. P09 Parity Residuals Backlog
+## 5. Direct-Capture Scope Audit
+
+```text
+ANIMATION_ID_DIRECTLY_CAPTURED:        NO
+ANIMATION_PHASE_DIRECTLY_CAPTURED:    NO
+ANIMATION_TIMER_DIRECTLY_CAPTURED:    NO
+BONE_ROOT_TRANSFORM_DIRECTLY_CAPTURED: NO
+DEMO0_RENDER_STATE_DIRECTLY_COMPARED: PARTIAL
+```
+
+The retained motion probe explicitly records behavior-state sequence but says
+animation ID/phase were not emitted; it also does not provide direct animation
+timer or bone/root-transform values. The render evidence contains targeted
+camera/matrix diagnostics and qualitative upright rendering, not paired
+camera-eye, camera-target, model/root, and modelview values for every Demo 0
+frame. Therefore `ANIMATION_PARITY` is **UNKNOWN / NOT YET MEASURED** and
+`RENDER_PARITY` is **PARTIAL**, not complete per-frame parity.
+
+## 6. P09 Parity Residuals Backlog
 
 | Residual ID | Category | Description | Status | Target Phase/Task |
 |:---|:---:|:---|:---:|:---:|
-| **P09-RES-01** | Attract Parity | Automatic demo visual drift report | **NOT_REPRODUCED** (Proved stable under Angrylion) | P09-T04 (Closed for Demo 0) |
-| **P09-RES-02** | Attract Parity | Automatic demo egg projectile type report | **NOT_REPRODUCED** (Proved Blue Egg on N64 hardware) | P09-T04 (Closed for Demo 0) |
+| **P09-RES-01** | Attract Parity | Automatic demo visual drift report | **USER_REPORTED**; Demo 0 **NOT_REPRODUCED_IN_DEMO0**; Demo 1..3 **UNTESTED** | P09-T01 after formal P09 open |
+| **P09-RES-02** | Attract Parity | Possible wrong egg type / Fire Egg report | **USER_REPORTED**; Demo 0 Blue Egg parity **PASS**; reported event location **UNKNOWN**; Demo 1..3 **UNTESTED** | P09-T01 after formal P09 open |
 | **P09-RES-03** | Graphics | General in-game graphical glitches / edge artifacts | **USER_REPORTED / UNCATALOGUED** | P09-T01 / P09-T08 |
 | **P09-RES-04** | Audio | Periodic audio "tic/tic" clicking in audio output | **USER_REPORTED / UNDIAGNOSED** | P09-T04 |
 | **P09-RES-05** | Widescreen | Screen-edge and corner culling bounds in expanded aspect ratio | **USER_REPORTED** | P09-T08 |
 
 ---
 
-## 6. P09-T01 Initial Attract Demo Matrix
+## 7. P09-T01 Initial Attract Demo Matrix
 
 | Demo Clip | Map / Area | Reference Oracle | RT64 Status | Input Parity | Physics Parity | Animation Parity | Render Parity | Projectile Parity | Audio Parity | Known Issues |
 |:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
-| **Demo 0** | `MAP_14F` (Wooded Hollow) | `ANGRYLION` (PASS) | `PASS` | 765/765 (100%) | Max err < 0.89u (PASS) | 100% BS match (PASS) | Upright (PASS) | Blue Egg (PASS) | Background music OK | None in Demo 0 |
-| **Demo 1** | `MAP_EB` (Haunted Cavern) | Pending trace | Running | Pending | Pending | Pending | Upright | N/A | OK | None cataloged |
-| **Demo 2** | `MAP_11A` (Stomping Plains) | Pending trace | Running | Pending | Pending | Pending | Upright | N/A | OK | None cataloged |
-| **Demo 3** | `MAP_F4` (JRL) | Pending trace | Running | Pending | Pending | Pending | Upright | N/A | OK | None cataloged |
+| **Demo 0** | `MAP_14F` (Wooded Hollow) | `ANGRYLION_CONTROL` (PROVEN for captured stream) | `PASS` | 765/765 (100%) | Max err < 0.89u (PASS) | Behavior-state match (PASS); direct animation fields UNKNOWN | Partial render-state evidence | Blue Egg (PASS) | Not part of this capture | No Demo 0 physics drift reproduced |
+| **Demo 1** | `MAP_EB` (Witchyworld Haunted Cavern) | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | User reports remain open |
+| **Demo 2** | `MAP_11A` (Terrydactyland Stomping Plains) | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | User reports remain open |
+| **Demo 3** | `MAP_F4` (Jolly Roger's Lagoon) | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | `UNTESTED` | User reports remain open |
 
 ---
 
-## 7. Conclusion & Next Action
+## 8. Conclusion & Next Action
 
-- **P08** is formally **`COMPLETE`**.
-- **P09** is formally **`ACTIVE`**.
-- In Attract Demo 0 (Wooded Hollow), zero state, projectile, or visual drift defects exist against true N64 hardware.
-- The next step in P09 is to trace the remaining user-observed items: **`P09-RES-04`** (audio periodic tick) or **`P09-RES-03`** (graphical glitches).
+- **P08** remains formally **`ACTIVE / MANUAL_VALIDATION_PENDING`**.
+- **P09** remains **`PENDING / NOT_FORMALLY_OPEN`**.
+- Demo 0 retains valid provisional findings: 765/765 pad match, bounded player trajectory error, behavior-state parity, Blue Egg parity at glidx 322, and the Angrylion Z-buffer/classifier result.
+- The global Fire Egg and visual-drift reports remain **USER_REPORTED** until their affected demo/clip is identified and Demo 1..3 are traced.
+- After the P08 manual gate and formal P09 opening, the next attract task is to align Demo 1, Demo 2, and Demo 3 against `ANGRYLION_CONTROL`, identify every egg/projectile event, capture direct animation fields and root/model transforms, and locate any visual drift before selecting audio/graphics work.
