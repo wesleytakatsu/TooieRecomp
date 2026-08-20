@@ -13,6 +13,7 @@ tags: [p08, camera, projection, db, 8007bcc4, lifecycle, bwriter, differential, 
 - Model: DeepSeek V4 Flash HIGH
 - Base HEAD: `76078c3dcff929609e828027339d5d59db655add`
 - Upstream: [[p08-demo-1a0c0-state-differential]] (B-STATE at func_8001A0C0)
+- Downstream: [[p08-demo-db-target-writer]] (B-WRITER: RT64 Framebuffer::copyNativeToRAM depth writeback)
 
 ## 0. Verdict
 
@@ -163,9 +164,7 @@ ROOT_CAUSE: same logical DB object, same boot-zeroed region; original never
             that writes the cell (0xFFFE then incrementing), which
             func_8001A0C0(176,161) returns. First exact divergence = cell leaving 0.
 FIX_IMPLEMENTED: NO
-NEXT_SINGLE_ACTION: B-WRITER: identify the exact post-allocation writer(s) of guest
-            0x8014F800 in recomp (owner / producer of the incrementing value) via a
-            recomp-side target store-watch; do not fan out.
+NEXT_SINGLE_ACTION: writer identified (see [[p08-demo-db-target-writer]]).
 ```
 
 ## 9. Q0 control & multi-sample

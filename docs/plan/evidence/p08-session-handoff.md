@@ -576,8 +576,23 @@ after allocation (ALLOC_AFTER) but a **post-allocation writer** turns it to
 is a post-alloc writer present only in recomp (B-ALLOC/B-ALIAS/B-INIT REFUTED).
 
 ```text
-NEXT_SINGLE_ACTION: B-WRITER: identify the exact post-allocation writer(s) of
-                    guest 0x8014F800 in recomp (owner/producer of the
-                    incrementing value) via a recomp-side target store-watch.
-                    Do not reopen a3/v1[2] or treat E81E0 as Level A.
+NEXT_SINGLE_ACTION: writer identified (see [[p08-demo-db-target-writer]]).
+```
+
+## P08 projection DB / Z-buffer target writer identification — B-WRITER PROVEN (2026-08-20)
+
+[[p08-demo-db-target-writer]]. The exact Recomp writer to `D_8007BCC4 + 0x17FC0`
+(`0x8014F800`) is PROVEN:
+- `D_8007BCC4` (`0x80137840`, size `0x21D80` = 138,624 bytes) is the **304×228 16-bit N64 Z-Buffer (Depth Buffer)** (`304 * 228 * 2 = 138,624 = 0x21D80`).
+- Target `0x8014F800` is the Z-buffer pixel at screen coordinates $(X=176, Y=161)$.
+- `func_8001A0C0(176, 161)` is a Z-buffer depth query used by `func_800E81E0` for projection occlusion / visibility testing.
+- The Recomp writer is `RT64::Framebuffer::copyNativeToRAM` -> `RT64::NativeTarget::copyToRAM` (`memcpy`), performing GPU depth buffer writeback to RDRAM (`0x80137840..0x801595C0`).
+- Display list commands `gDPSetDepthImage(0x00137840)` and `gDPSetColorImage(0x00137840)` are emitted by `func_800E7BC8` and `func_800E7C28`.
+- First write value is `0xFFFE` (clear depth); subsequent values `0x83A4..0x8BFC` are rendered geometry depths.
+- Original Mupen64plus pure-interpreter control (Rice Video HLE) omitted depth writeback, leaving RDRAM at `0x0000`. On real N64 hardware and RT64, depth values populate `D_8007BCC4`.
+
+```text
+ROOT_CAUSE_LEVEL:   B-WRITER
+FIX_IMPLEMENTED:    NO
+NEXT_SINGLE_ACTION: evaluate occlusion / visibility classifier downstream handling of live depth buffer values vs unemulated zero baseline.
 ```
