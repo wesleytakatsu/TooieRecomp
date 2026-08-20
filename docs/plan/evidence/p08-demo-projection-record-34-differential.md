@@ -14,7 +14,16 @@ tags: [p08, camera, projection, record, differential, mips, evidence]
 - Base HEAD: `8a11a1ece2f9d8da29ed349c70617d098d1748b6`
 - Upstream arbitration: [[p08-demo-camera-collision-sol-review]] (REFUTED `func_800C4C34` collision reading)
 
-## 0. Verdict (provisional, V1 capture pending)
+## 0. Verdict
+
+**CORRECTED/SUPERSEDED heading (2026-08-20):** the provisional "V1 capture
+pending / classification C" wording below is historical. The original6 capture
+completed in §8 as **B-INPUT PROVEN** for the `+0x34` writer. The later
+direction-producer trace ([[p08-demo-projection-v1-direction-producer]]) then
+**CORRECTED/SUPERSEDED** the claim that classifier `a3=v1[2]` itself differs:
+those two bit patterns are consecutive phi banks on both runtimes.
+
+Canonical writer identity (unchanged):
 
 The `func_800E8918` final return `lh v0, 0x34(s0)` (selected persistent
 projection record) differs at the first relevant invocation:
@@ -210,3 +219,12 @@ identical `a0=176, a1=161, a2=1.015748` but a different `a3 = v1[2]`
 Remaining (mechanical): update session handoff + HANDOFF.md + BT plan, run the
 documented tests + `markdown_vault_audit`, revert the temporary tracer, and
 checkpoint commit.
+
+## 9. Direction-producer correction (2026-08-20)
+
+The `a3=v1[2]` inequality quoted in §5 (`0x4313D3A7` vs `0x43136AD5`) is
+**CORRECTED/SUPERSEDED** by [[p08-demo-projection-v1-direction-producer]].
+Joined by `e82ec_ord + phi + s3=0 + (a0,a1)=(176,161)`, Q1 `a3` is
+bit-identical 26/26. The two quoted values are phi=0 then phi=1 on **both**
+sides. Writer identity (`func_800E82EC` mode==1) is unchanged. No production
+fix.

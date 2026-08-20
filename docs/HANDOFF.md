@@ -74,6 +74,14 @@ causally different `a3=v1[2]` (147.82677 vs 147.41731), yielding
 **NO production fix.** Required original run uses `--emumode 0` (Pure
 Interpreter) — the Cached Interpreter does not carry the `pure_interp.c` hooks.
 
+**PROJECTION v1[2] DIRECTION PRODUCER — JOIN CORRECTED (2026-08-20):**
+`func_800A8984(s3)` → `func_800CA6D4(src+0xEC, src+0xF0)` → E82EC first-loop
+store `0x800E83D4` is the proven `a3=v1[2]` path. The quoted 147.82677 vs
+147.41731 pair is phi=0 then phi=1 on **both** runtimes; aligned Q1 `a3` is
+bit-identical 26/26 ([[plan/evidence/p08-demo-projection-v1-direction-producer]]).
+Previous a3 Original-vs-Recomp inequality: **CORRECTED/SUPERSEDED**. No
+production fix.
+
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;
 > `ULTRAMODERN_GUEST_PREEMPTION=0` rollback. Regen real (4298 safepoints).

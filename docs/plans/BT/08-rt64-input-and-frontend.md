@@ -495,3 +495,9 @@ fully isolated — same writer `func_800E82EC` (mode==1), identical shared
 inputs, causally different classifier input `a3=v1[2]`
 ([[../../plan/evidence/p08-demo-projection-record-34-differential]]).
 NO production fix. Original capture requires `--emumode 0` (Pure Interpreter).
+
+**CORRECTED/SUPERSEDED (2026-08-20):** the `a3=v1[2]` inequality itself is a
+phi ping-pong / glidx-join artifact
+([[../../plan/evidence/p08-demo-projection-v1-direction-producer]]). Aligned
+Q1 `a3` matches bit-identically. Writer identity is unchanged. No production
+fix.
