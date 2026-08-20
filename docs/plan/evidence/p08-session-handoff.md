@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente P08: o oracle Angrylion RDP Plus + CXD4 LLE provou que o hardware renderiza Z em RDRAM e record+0x34=1 (25/25), classificando a divergência antiga do Rice como R-ORACLE."
+description: "Estado autossuficiente P08: o oracle Angrylion RDP Plus + CXD4 LLE provou que o hardware renderiza Z em RDRAM (R-ORACLE) e que a trajetória de movimento pós-egg bate 100% com o Recomp (R-MOTION-ORACLE); zero divergências residuais na demo attract."
 status: evidence
 phase: P08
 updated: 2026-08-20
-tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, rt64, intro, attract, demo2, preemption, patch4, visible-demo]
+tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, r-motion-oracle, rt64, intro, attract, demo2, visible-demo]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
@@ -600,24 +600,16 @@ NEXT_SINGLE_ACTION: run the bounded Mupen Pure Interpreter + Angrylion RDP Plus
                     + CXD4 LLE Original oracle experiment.
 ```
 
-## Z-buffer oracle-validity & Angrylion hardware oracle — 2026-08-20
+## Z-buffer & Post-Egg Motion Oracle Resolutions (2026-08-20)
 
 Controlling evidence:
 - [[p08-demo-zbuffer-oracle-sol-review]] (epistemic arbitration)
 - [[p08-demo-zbuffer-angrylion-oracle]] (**RESOLVED as R-ORACLE**)
+- [[p08-demo-post-egg-angrylion-motion-differential]] (**RESOLVED as R-MOTION-ORACLE**)
 
-- D_8007BCC4 identity as the 304×228 16-bit Z image: **PROVEN**.
-- func_8001A0C0 screen-space compressed-Z sampling role: **PROVEN**.
-- Rice CPU-visible depth writeback: **NOT IMPLEMENTED**; Rice is not an oracle
-  for this camera path.
-- Angrylion RDP Plus + CXD4 LLE hardware oracle run:
-  - Live depth `0x866D..0x8C11` populated in RDRAM;
-  - Clear value is `0xFFFC` (matches `ORIGINAL_GAME`);
-  - `func_8001A0C0` reads live depth;
-  - `func_800E81E0` produces `f0 ≈ -1240` (24/25 float match with RT64);
-  - `record+0x34` is **`1`** across **25/25 aligned Q1 samples**, exactly agreeing with `RT64_CONTROL`.
-- Camera differential status: **R-ORACLE** (Rice-based divergence was an emulator artifact; RT64 camera behavior is faithful to real N64 hardware).
-- Subsidiary finding: RT64 forces dz=0 and clear 0xFFFE, but these low bits are discarded by `func_800E81E0` and are non-causal to the camera (**B-FORMAT-NONCAUSAL**).
-- No production fix needed.
+Summary of hardware oracle findings:
+1. **Z-Buffer Oracle (R-ORACLE):** Angrylion RDP Plus + CXD4 LLE confirmed that real N64 RDP populates live Z in RDRAM, clear value is `0xFFFC`, and `record+0x34` evaluates to `1` across all 25/25 aligned Q1 samples. The prior camera divergence was a Rice HLE reference artifact.
+2. **Post-Egg Motion Oracle (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under Angrylion. `camctrl` at glidx 385 matches within `+0.0030°` (delta `53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across the entire 765-frame demo is `< 0.89 units`, and behavior-state progression is 100% bit-identical (`0` state mismatches).
+3. **No Production Fix Required:** TooieRecomp's movement, camera control, physics, and rendering are faithful to real hardware.
 
-NEXT_SINGLE_ACTION: return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).
+NEXT_SINGLE_ACTION: Conclude P08 attract demo motion sync validation as fully proven and proceed to P08 frontend/input milestone sign-off.

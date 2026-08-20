@@ -253,7 +253,20 @@ CAMCTRL_WRITER_INPUT_DIFFERS:   YES  (glidx 385, -0.0676 deg)
 GLIDX385_CLASS_REFINED:         FIRST_CAUSAL_CAMERA_STATE
 PLAYER_DRIFT_CHAIN_CONFIRMED:   YES
 ROOT_CAUSE_LEVEL:               B  CORRECTED/SUPERSEDED by
-                                   [[p08-demo-camera-mode-producer-differential]]
-                                   (mode 2 / 80110588 PROVEN; 80110790 a1
-                                   already differs at 384)
+                                   [[p08-demo-post-egg-angrylion-motion-differential]]
+                                   (R-MOTION-ORACLE: Rice-based motion drift is REFUTED;
+                                   Angrylion hardware oracle shows complete parity)
 ```
+
+## Oracle Revalidation Resolution (2026-08-20)
+
+This entire historical motion divergence was revalidated against the accurate hardware oracle
+`ANGRYLION_CONTROL` in [[p08-demo-post-egg-angrylion-motion-differential]].
+
+Under `ANGRYLION_CONTROL`:
+- `camctrl` at glidx 385 is `53.5799°` vs RT64 `53.5829°` (delta `+0.0030°`; historical Rice `-0.0676°` delta is REFUTED);
+- `ideal_yaw` at glidx 385 is `102.59°` vs RT64 `102.59°` (delta `0.0000°`);
+- Position XZ error at glidx 392 is `0.0460 units` (historical `3.00 units` is REFUTED);
+- Position XZ error at glidx 408 is `0.0361 units` (historical `45.82 units` is REFUTED);
+- Maximum XZ error across the entire 765-frame demo is `0.8811 units` with 0 behavior-state mismatches;
+- The historical motion divergence is **CORRECTED/SUPERSEDED** as **`R-MOTION-ORACLE`** (an emulator artifact of Rice Video HLE).

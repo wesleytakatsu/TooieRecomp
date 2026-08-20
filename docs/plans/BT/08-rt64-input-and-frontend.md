@@ -233,6 +233,7 @@ Evidência corrente:
 | [[../../plan/evidence/p08-demo-db-target-writer]] | **CURRENT:** D_8007BCC4 304x228 Z-buffer target writer identification; RT64 copyNativeToRAM depth writeback (B-WRITER) |
 | [[../../plan/evidence/p08-demo-zbuffer-oracle-sol-review]] | independent Z-buffer oracle-validity review (C-ORACLE) |
 | [[../../plan/evidence/p08-demo-zbuffer-angrylion-oracle]] | **RESOLVED:** Angrylion RDP Plus + CXD4 LLE hardware oracle validation (R-ORACLE) |
+| [[../../plan/evidence/p08-demo-post-egg-angrylion-motion-differential]] | **RESOLVED:** post-egg motion revalidation under Angrylion oracle (R-MOTION-ORACLE) |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -524,4 +525,12 @@ the clear value is `0xFFFC`, and `record+0x34` evaluates to `1` across all 25/25
 aligned Q1 samples. The historical Rice-based camera divergence was an emulator artifact.
 Classified as **R-ORACLE**. No production fix is required.
 
-NEXT_SINGLE_ACTION: return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).
+**Post-egg motion revalidation (2026-08-20, R-MOTION-ORACLE):**
+[[../../plan/evidence/p08-demo-post-egg-angrylion-motion-differential]]. Revalidation
+of the entire 765-frame Wooded Hollow demo against Angrylion RDP Plus + CXD4 LLE proved
+that the historical motion divergence disappeared completely. `camctrl` at glidx 385
+matches within `+0.0030°`, `ideal_yaw` matches identically (`102.59°` vs `102.59°`),
+max XZ position error across all 765 frames is `< 0.89 units`, and behavior states are
+100% bit-identical. Classified as **R-MOTION-ORACLE**. No production fix is required.
+
+NEXT_SINGLE_ACTION: Conclude P08 attract demo motion sync validation as fully proven and proceed to P08 frontend/input milestone sign-off.

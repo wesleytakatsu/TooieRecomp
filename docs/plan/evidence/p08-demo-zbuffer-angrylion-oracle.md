@@ -269,7 +269,7 @@ NEXT_RECOMMENDED_MODEL:
 Gemini 3.7 Flash
 
 NEXT_SINGLE_ACTION:
-return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).
+return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392) (RESOLVED by [[p08-demo-post-egg-angrylion-motion-differential]] as R-MOTION-ORACLE).
 
 TESTS:
 window_display_test (38/38 PASS), graphics_failure_test (25/25 PASS), stick_angle_thunk_test (PASS), matrix_submission_test (PASS), input_direction_test (PASS), bcf28_helpers_test (PASS), core1_ra_wrappers_test (PASS), attract_demo2_transition_jal_test.py (PASS), TooieRecompiled rebuild (PASS).
@@ -284,10 +284,14 @@ PUSHED:
 YES
 
 NEW_HEAD:
-(this checkpoint)
+a0c26fa3547717414218d9d0465d353d063709fc
 
 WORKTREE:
 Clean
 
 === END HANDOFF ===
 ```
+
+## 11. Downstream Motion Revalidation
+
+Following the Z-buffer hardware oracle validation, the entire post-egg player motion sequence was revalidated in [[p08-demo-post-egg-angrylion-motion-differential]]. The historical post-egg motion drift disappeared completely (XZ error <= 0.88 units across all 765 frames of the demo, 0 behavior-state mismatches), confirming **`R-MOTION-ORACLE`**.

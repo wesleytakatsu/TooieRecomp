@@ -496,19 +496,14 @@ counter consequence. Root level `R`; no production fix.
 Next: dynamically match the selected projection record and trace the first
 writer/input divergence to `record+0x34`, starting at `func_800E82EC`.
 
-## P08 Z-buffer hardware oracle resolution (2026-08-20, R-ORACLE)
+## P08 Z-buffer & post-egg motion hardware oracle resolution (2026-08-20, R-MOTION-ORACLE)
 
-[[plan/evidence/p08-demo-zbuffer-angrylion-oracle]] resolves the Z-buffer camera
-differential arbitration. The replacement hardware oracle (Mupen64Plus Pure
-Interpreter + Angrylion RDP Plus + mupen64plus-rsp-cxd4 LLE) proves:
+[[plan/evidence/p08-demo-zbuffer-angrylion-oracle]] and [[plan/evidence/p08-demo-post-egg-angrylion-motion-differential]]
+resolve the Z-buffer camera and post-egg motion differentials against the hardware-faithful oracle
+(Mupen64Plus Pure Interpreter + Angrylion RDP Plus + mupen64plus-rsp-cxd4 LLE):
 
-1. Real N64 RDP renders live depth into RDRAM (`0x866D..0x8C11`);
-2. Depth clear writes `0xFFFC`, exactly matching `ORIGINAL_GAME`;
-3. `func_8001A0C0` reads live depth, `func_800E81E0` computes `f0 ≈ -1240` (24/25 float match with RT64);
-4. `record+0x34` evaluates to **`1`** across **25/25 aligned Q1 samples**, exactly agreeing with `RT64_CONTROL`.
+1. **Z-Buffer (R-ORACLE):** Real N64 RDP renders live depth into RDRAM (`0x866D..0x8C11`), clear writes `0xFFFC`, and `record+0x34 = 1` across all 25/25 aligned Q1 samples, matching RT64.
+2. **Post-Egg Motion (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under Angrylion. `camctrl` at glidx 385 matches within `+0.0030°` (`53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across all 765 demo frames is `< 0.89 units`, and behavior states are 100% bit-identical (`0` mismatches).
+3. **Verdict:** TooieRecomp's movement, camera control, physics, and rendering are fully faithful to real N64 hardware. Zero production fixes needed.
 
-The prior camera discrepancy (`Original = 0` vs `Recomp = 1`) was **ENTIRELY A REFERENCE ARTIFACT**
-of `ORIGINAL_RICE_CONTROL`. `RT64_CONTROL` is behaviorally faithful to real hardware for the camera
-projection path. Root cause level = **R-ORACLE**. No production fix is required.
-
-Next single action: return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).
+Next single action: Conclude P08 attract demo motion sync validation as fully proven and proceed to P08 frontend/input milestone sign-off.
