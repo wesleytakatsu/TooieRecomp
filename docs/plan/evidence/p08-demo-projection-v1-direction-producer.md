@@ -12,7 +12,8 @@ tags: [p08, camera, projection, v1, direction, ca6d4, a8984, differential, mips,
 - Date: 2026-08-20
 - Model: Grok 4.6 HIGH
 - Base HEAD: `7f769f70d1e29c794f893577527098266aa24112`
-- Upstream: [[p08-demo-projection-record-34-differential]] (`+0x34` writer / B-INPUT as previously joined)
+- Upstream: [[p08-demo-projection-record-34-differential]]
+- Downstream: [[p08-demo-projection-classifier-rejoin]] (`+0x34` real; B-STATE at `func_8001A0C0`)
 
 ## 0. Verdict
 

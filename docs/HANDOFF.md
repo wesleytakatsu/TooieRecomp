@@ -62,25 +62,18 @@ the START presses that skip the opening story cutscenes).
   - `func_800C4C34` is a camera projection/viewport helper, not a collision query. `func_800E8918` returns `record+0x34`, not its direct `v0`.
   - Causal chain to missing 3rd `SET74`: **PROVEN**. Collision attribution: **REFUTED**, root level `R` (NO PRODUCTION FIX).
 
-**PROJECTION RECORD +0x34 DIFFERENTIAL — B-INPUT PROVEN (2026-08-19):** the
-`func_800E8918` return (`lh selected record +0x34`) already differs at the
-first relevant invocation (Q1 glidx 70: Original 0 vs Recomp 1; Q0 control 0/0
-PASS). Causal writer is `func_800E82EC` (mode==1) in both runtimes with
-identical shared inputs (`a0=trunc(rec+0)=176`, `a1=trunc(rec+4)=161`,
-`a2=v1[1]=0x3f820408`), but the classifier `func_800E81E0` receives a
-causally different `a3=v1[2]` (147.82677 vs 147.41731), yielding
-`f0(E81E0)=-73.34` vs `-1264.7` and flipping `+0x34` 0↔1
-([[plan/evidence/p08-demo-projection-record-34-differential]]).
-**NO production fix.** Required original run uses `--emumode 0` (Pure
-Interpreter) — the Cached Interpreter does not carry the `pure_interp.c` hooks.
+**PROJECTION RECORD +0x34 — B-STATE (2026-08-20, canonical):** correctly
+joined Q1 `+0x34` is **real** (Original 0 vs Recomp 1, 25/25). Explicit
+classifier args `a0/a1/a2/a3` match. First difference is hidden
+`func_8001A0C0(176,161)` `v0` (Original 0 vs Recomp nonzero) inside
+`func_800E81E0` ([[plan/evidence/p08-demo-projection-classifier-rejoin]]).
+The 2026-08-19 **B-INPUT (`a3=v1[2]`)** wording is **CORRECTED/SUPERSEDED**.
+No production fix.
 
 **PROJECTION v1[2] DIRECTION PRODUCER — JOIN CORRECTED (2026-08-20):**
-`func_800A8984(s3)` → `func_800CA6D4(src+0xEC, src+0xF0)` → E82EC first-loop
-store `0x800E83D4` is the proven `a3=v1[2]` path. The quoted 147.82677 vs
-147.41731 pair is phi=0 then phi=1 on **both** runtimes; aligned Q1 `a3` is
-bit-identical 26/26 ([[plan/evidence/p08-demo-projection-v1-direction-producer]]).
-Previous a3 Original-vs-Recomp inequality: **CORRECTED/SUPERSEDED**. No
-production fix.
+aligned Q1 `a3` is bit-identical; `0x4313D3A7` vs `0x43136AD5` are consecutive
+stream values on **both** runtimes
+([[plan/evidence/p08-demo-projection-v1-direction-producer]]).
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;

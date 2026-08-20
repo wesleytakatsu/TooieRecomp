@@ -207,14 +207,9 @@ causal chain `E8918 return -> word_3C -> half_0C -> func_801138A0 -> third SET74
 
 ## 8. Completion
 
-**B-INPUT PROVEN.** The divergence is fully isolated and reproducible with a
-clean Pure-Interpreter original capture (`/tmp/p08-rec34-original6.csv`, glidx
-1..369) vs the recomp capture (`/tmp/p08-rec34-recomp5.csv`, glidx 1..1271).
-At the Q1 glidx-71 E82EC mode==1 write, the classifier `func_800E81E0` receives
-identical `a0=176, a1=161, a2=1.015748` but a different `a3 = v1[2]`
-(147.82677 original vs 147.41731 recomp), yielding `f0(E81E0) = -73.34` vs
-`-1264.7` and flipping `+0x34` from 0 (original, `f20=+947`) to 1 (recomp,
-`f20=-244`). Q0 control passes (0 vs 0).
+**HISTORICAL (CORRECTED/SUPERSEDED).** The 2026-08-19 “B-INPUT PROVEN / `a3`
+differs” completion is **not** current truth. The `+0x34` 0 vs 1 split is
+real under correct join, but `a3=v1[2]` matches; see §9–§10.
 
 Remaining (mechanical): update session handoff + HANDOFF.md + BT plan, run the
 documented tests + `markdown_vault_audit`, revert the temporary tracer, and
@@ -228,3 +223,9 @@ Joined by `e82ec_ord + phi + s3=0 + (a0,a1)=(176,161)`, Q1 `a3` is
 bit-identical 26/26. The two quoted values are phi=0 then phi=1 on **both**
 sides. Writer identity (`func_800E82EC` mode==1) is unchanged. No production
 fix.
+
+## 10. Classifier rejoin (2026-08-20)
+
+[[p08-demo-projection-classifier-rejoin]] **PROVEN:** Q1 `+0x34` 0 vs 1
+survives correct join. Canonical class **B-STATE** (`func_8001A0C0` `v0`).
+The §5 `FIRST_DIFFERENT_WRITER_INPUT: a3` line is **CORRECTED/SUPERSEDED**.

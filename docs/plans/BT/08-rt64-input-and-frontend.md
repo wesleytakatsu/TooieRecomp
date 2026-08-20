@@ -490,14 +490,11 @@ Next single action: trace the selected `func_800E8918` record identity and the
 first writer/input divergence at `record+0x34`, beginning with
 `func_800E82EC`.
 
-**RESOLVED (2026-08-19, B-INPUT PROVEN):** the `record+0x34` divergence is
-fully isolated — same writer `func_800E82EC` (mode==1), identical shared
-inputs, causally different classifier input `a3=v1[2]`
-([[../../plan/evidence/p08-demo-projection-record-34-differential]]).
-NO production fix. Original capture requires `--emumode 0` (Pure Interpreter).
+**CORRECTED/SUPERSEDED (2026-08-19 B-INPUT `a3=v1[2]`):** that inequality is a
+join artifact ([[../../plan/evidence/p08-demo-projection-v1-direction-producer]]).
 
-**CORRECTED/SUPERSEDED (2026-08-20):** the `a3=v1[2]` inequality itself is a
-phi ping-pong / glidx-join artifact
-([[../../plan/evidence/p08-demo-projection-v1-direction-producer]]). Aligned
-Q1 `a3` matches bit-identically. Writer identity is unchanged. No production
-fix.
+**CANONICAL (2026-08-20, B-STATE):** correctly joined Q1 `+0x34` 0 vs 1 is
+**real**. Explicit classifier args match; first difference is
+`func_8001A0C0` `v0` inside `func_800E81E0`
+([[../../plan/evidence/p08-demo-projection-classifier-rejoin]]).
+NO production fix.

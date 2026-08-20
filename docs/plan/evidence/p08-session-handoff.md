@@ -286,6 +286,7 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 6b. [[p08-demo-camera-mode-producer-differential]] — mode 2 / func_80110588 PROVEN; 80110790 a1 already differs at 384
 6c. [[p08-demo-projection-record-34-differential]] — +0x34 writer B-INPUT; a3 join later corrected
 6d. [[p08-demo-projection-v1-direction-producer]] — v1[2] producer; a3 inequality CORRECTED/SUPERSEDED
+6e. [[p08-demo-projection-classifier-rejoin]] — Q1 +0x34 real; B-STATE func_8001A0C0 v0
 7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE
@@ -551,21 +552,20 @@ ROM_MATCH:                   YES (af1a89e12b638b8d82cc4c085c8e01d4cba03fb3)
 FIX_IMPLEMENTED:             NO
 ```
 
-`NEXT_SINGLE_ACTION`: do not reopen. The `a3` value is a camera/direction-vector
-component already differing marginally at glidx 71; hunting it further is an
-upstream camera-input trace (see upstream camera-divergence evidence), not a
-projection-record writer defect.
-
 ## P08 projection v1[2] direction producer — join CORRECTED (2026-08-20)
 
-[[p08-demo-projection-v1-direction-producer]]. `func_800CA6D4` is a two-float
-copy of `src+0xEC`/`+0xF0`; `func_800A8984(s3)` supplies `src`. The previously
-cited Q1 `a3` pair `0x4313D3A7` vs `0x43136AD5` is consecutive phi banks on
-both runtimes. Aligned Q1 `a3` matches 26/26. Root level `R` for that
-inequality. `+0x34` writer identity is not reopened. No production fix.
+[[p08-demo-projection-v1-direction-producer]]. Aligned Q1 `a3` matches 26/26.
+The `0x4313D3A7` vs `0x43136AD5` pair is consecutive stream values on both
+runtimes. That inequality is **CORRECTED/SUPERSEDED**.
+
+## P08 projection classifier rejoin — B-STATE (2026-08-20)
+
+[[p08-demo-projection-classifier-rejoin]]. Q1 `+0x34` 0 vs 1 **survives**
+correct join (25/25). Explicit `a0–a3` match. First difference:
+`func_8001A0C0(176,161)` `v0` (Original 0 vs Recomp nonzero). E8918 selector 2
+returns 0 vs 1 (**PROVEN** continuity). Q0 selector 1 remains 0/0.
 
 ```text
-NEXT_SINGLE_ACTION: re-join record+0x34 / f0(E81E0) / rec+8 by e82ec_ord+phi
-                    (not raw glidx); do not treat 0x4313D3A7 vs 0x43136AD5 as
-                    an Original-vs-Recomp v1[2] split.
+NEXT_SINGLE_ACTION: trace only func_8001A0C0(a0=176,a1=161) for the aligned
+                    Q1 stream; do not reopen a3/v1[2] or treat E81E0 as Level A.
 ```
