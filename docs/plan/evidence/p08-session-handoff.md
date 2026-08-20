@@ -606,10 +606,18 @@ Controlling evidence:
 - [[p08-demo-zbuffer-oracle-sol-review]] (epistemic arbitration)
 - [[p08-demo-zbuffer-angrylion-oracle]] (**RESOLVED as R-ORACLE**)
 - [[p08-demo-post-egg-angrylion-motion-differential]] (**RESOLVED as R-MOTION-ORACLE**)
+- [[p08-final-physical-validation]] (**PENDING USER EXECUTION**)
 
 Summary of hardware oracle findings:
 1. **Z-Buffer Oracle (R-ORACLE):** Angrylion RDP Plus + CXD4 LLE confirmed that real N64 RDP populates live Z in RDRAM, clear value is `0xFFFC`, and `record+0x34` evaluates to `1` across all 25/25 aligned Q1 samples. The prior camera divergence was a Rice HLE reference artifact.
 2. **Post-Egg Motion Oracle (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under Angrylion. `camctrl` at glidx 385 matches within `+0.0030°` (delta `53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across the entire 765-frame demo is `< 0.89 units`, and behavior-state progression is 100% bit-identical (`0` state mismatches).
 3. **No Production Fix Required:** TooieRecomp's movement, camera control, physics, and rendering are faithful to real hardware.
+4. **Current Phase & Remaining Gates:**
+   - `CURRENT_PHASE`: **P08 ACTIVE / MANUAL_VALIDATION_PENDING**
+   - `AUTOMATED_SCOPE`: **COMPLETE**
+   - `P09_FORMALLY_OPEN`: **NO**
+   - `CURRENT_BLOCKERS`:
+     - `PHYSICAL_GAMEPAD_VALIDATION`
+     - `PHYSICAL_MULTI_MONITOR_DISPLAY_VALIDATION`
 
-NEXT_SINGLE_ACTION: Conclude P08 attract demo motion sync validation as fully proven and proceed to P08 frontend/input milestone sign-off.
+NEXT_SINGLE_ACTION: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical desktop hardware.

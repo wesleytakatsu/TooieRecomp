@@ -505,5 +505,6 @@ resolve the Z-buffer camera and post-egg motion differentials against the hardwa
 1. **Z-Buffer (R-ORACLE):** Real N64 RDP renders live depth into RDRAM (`0x866D..0x8C11`), clear writes `0xFFFC`, and `record+0x34 = 1` across all 25/25 aligned Q1 samples, matching RT64.
 2. **Post-Egg Motion (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under Angrylion. `camctrl` at glidx 385 matches within `+0.0030°` (`53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across all 765 demo frames is `< 0.89 units`, and behavior states are 100% bit-identical (`0` mismatches).
 3. **Verdict:** TooieRecomp's movement, camera control, physics, and rendering are fully faithful to real N64 hardware. Zero production fixes needed.
+4. **Current Status:** P08 automated implementation and evidence are COMPLETE. Physical gamepad + multi-monitor display validations remain PENDING. P09 is not formally opened.
 
-Next single action: Conclude P08 attract demo motion sync validation as fully proven and proceed to P08 frontend/input milestone sign-off.
+Next single action: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical hardware.

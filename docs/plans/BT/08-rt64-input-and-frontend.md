@@ -44,13 +44,17 @@ first-straight ~510 is **original slope-scaled physics**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14) and
 the first later analog transition (`glidx = 74..91`) is **internally faithful**
 ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15).
-**MEASURED_ORIGINAL vs MEASURED_RECOMP (2026-08-16):** official mupen64plus
-Pure Interpreter, ROM SHA-1 match, pad 100% on consumed 1..765
-([[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] §9). Same-index
-~25u lead is capture-point phase (one physics step). First straight and
-first analog **MATCH** after +1 shift. Shot `glidx=322` position **MATCH**.
-The historical 45.11° camera-lag mismatch is **CORRECTED/SUPERSEDED**.
-Remaining discriminator is the post-egg run/jump after ~392. Level C, no fix.
+**MEASURED_ORIGINAL vs MEASURED_RECOMP (2026-08-16 / 2026-08-20):**
+Hardware-faithful oracle validation (`ANGRYLION_CONTROL` = Mupen64Plus Pure
+Interpreter + Angrylion RDP Plus + cxd4 LLE) proves: pad 100% on consumed
+1..765, pre-egg control PASS, shot `glidx=322` position MATCH, camera angle
+and ideal_yaw MATCH within sub-pixel float precision (delta +0.0030°),
+maximum position XZ error across all 765 frames is < 0.89 units, and behavior
+states are 100% bit-identical (0 state mismatches). The historical Rice
+camctrl divergence at 385, ideal_yaw divergence, and post-egg motion drift
+are **CORRECTED/SUPERSEDED** as **`R-MOTION-ORACLE`** (reference artifacts of
+Rice Video HLE). See [[../../plan/evidence/p08-demo-post-egg-angrylion-motion-differential]].
+Zero gameplay-meaningful motion divergence remains. Level R; no production fix.
 The first user-confirmed demo shot (`glidx = 322` fire-egg) remains a
 **CLASS G** collision-space miss versus the downhill digger in the earlier
 recomp-only study
@@ -198,25 +202,35 @@ Evidência corrente:
   `mode=3`. Direct Spiral Mountain and later synthetic `mode=1` FAIL
   claims are **CORRECTED/SUPERSEDED** / **REFUTED**
   ([[../../plan/evidence/p08-title-file-select-validation]]).
-- P08-T03 source contract and 4:3 guest dimensions are characterized, but the
-  clean runtime baseline is **BLOCKED** by the active Expand/Clamp16x9 config
-  and unavailable live display; [[../../plan/evidence/p08-original-timing-4x3-baseline]].
+- **P08-T03 VALIDATED / COMPLETE**: Source-level NTSC timing contract and
+  4:3 guest dimensions are established and validated in
+  [[../../plan/evidence/p08-original-timing-4x3-baseline]]. 60Hz VI, 20/30Hz logic,
+  30Hz animation, and host presentation decoupling are confirmed.
 
-### Blockers históricos fechados
+### Blockers históricos fechados / DO-NOT-REOPEN
 
-- data relocation overlays / `LOOKUP_FUNC(0)`;
-- actor manager / D6E54 false lead;
-- resident overlay / gcsection;
-- scheduler queue / `No threads left` (sem nova prova);
-- IPL3 integrity gate;
-- R_MIPS_26 / do_dma;
-- type-4 incomplete e warp não consumido (clean freeze);
-- `func_80026500` como PC do hang;
-- `func_800A907C → func_8001EE34` como driver do objeto (refutado);
-- `func_800BCF28` binding / null dereference (resolvido e aceito, verdict B:
-  [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]]);
-- `func_80013A7C` LOOKUP_FUNC(0) / core1 RA wrappers (resolvido:
-  [[../../plan/evidence/p08-core1-ra-wrapper-fix]]).
+| Item / Tópico | Classificação Canônica | Evidência de Fechamento |
+|:---|:---|:---|
+| **Attract DEMO2 crash / same-section .bsrest** | **RESOLVED (Level A, verdict B)** | [[../../plan/evidence/p08-attract-loop-after-demo2-crash]] |
+| **N64Recomp CreateStatic generator fix** | **RESOLVED (Level A)** | `patches/runtime/n64recomp-tooie.patch` |
+| **Render-submission matrix split** | **RESOLVED (Level A)** | [[../../plan/evidence/p08-render-submission-matrix-fix]] |
+| **BCF28 helper binding / null dereference** | **RESOLVED (Level A, verdict B)** | [[../../plan/evidence/p08-bcf28-binding-fix-independent-review]] |
+| **Core1 RA wrappers / LOOKUP_FUNC(0)** | **RESOLVED (Level A)** | [[../../plan/evidence/p08-core1-ra-wrapper-fix]] |
+| **PATCH 4 / guest preemption** | **RESOLVED (CLASS A / verdict B)** | [[../../plan/evidence/p08-preemption-patch4-clean-build-independent-review]] |
+| **P08-T03 original timing / 4:3 baseline** | **RESOLVED (Level A)** | [[../../plan/evidence/p08-original-timing-4x3-baseline]] |
+| **P08-T10 title & file-select input** | **RESOLVED (Level A)** | [[../../plan/evidence/p08-title-file-select-validation]] |
+| **func_80013B70 stick angle thunk** | **RESOLVED (verdict A)** | [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]] |
+| **First-straight ~510 slope-scaled physics** | **RESOLVED (Level A)** | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14 |
+| **First analog transition (glidx 74..91)** | **RESOLVED (Level A)** | [[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §15 |
+| **Rice Z-buffer differential** | **REFUTED / REFERENCE_ARTIFACT (R-ORACLE)** | [[../../plan/evidence/p08-demo-zbuffer-angrylion-oracle]] |
+| **Projection record +0x34 Rice differential** | **REFUTED / REFERENCE_ARTIFACT (R-ORACLE)** | [[../../plan/evidence/p08-demo-zbuffer-angrylion-oracle]] |
+| **Post-egg gl385/gl392 motion drift** | **REFUTED / REFERENCE_ARTIFACT (R-MOTION-ORACLE)** | [[../../plan/evidence/p08-demo-post-egg-angrylion-motion-differential]] |
+| **Collision/raycast interpretation of func_800C4C34** | **REFUTED (viewport/depth clipping helper)** | [[../../plan/evidence/p08-demo-camera-collision-sol-review]] |
+| **func_800E1A58 camera differential** | **REFUTED (identity)** | [[../../plan/evidence/p08-demo-camera-e1a58-differential]] |
+| **Z-buffer camera classifier attribution** | **RESOLVED (R-ORACLE)** | [[../../plan/evidence/p08-demo-zbuffer-angrylion-oracle]] |
+| **Historical Rice camctrl -> ideal_yaw -> motion chain** | **REFUTED / REFERENCE_ARTIFACT (R-MOTION-ORACLE)** | [[../../plan/evidence/p08-demo-post-egg-angrylion-motion-differential]] |
+| **USER_BUG_B `chdiggerground` actor-specific defect** | **REFUTED (original MIPS case 11 contract)** | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] |
+| **USER_BUG_B_GLOBAL (cinematic facing)** | **OPEN / CURRENTLY_NOT_REPRODUCIBLE_BY_USER** | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] |
 
 ## Evidências P08
 
@@ -343,21 +357,20 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
    The original case-11 return path advances position while preserving
    `Actor.rotation.y` / `unk54`; no fix is authorized. `USER_BUG_B_GLOBAL`
    remains OPEN for another user-confirmed cinematic actor.
-2. **Demo-path first straight and first later analog transition — PASS**
-   ([[../../plan/evidence/p08-demo-movement-precision-diagnosis]] §14, §15).
-   **Post-egg ideal_yaw writer RESOLVED** (2026-08-17): exact writer =
-   `yaw_setIdeal` store `0x8009C930` (identical in ORIGINAL and RECOMP); writer
-   input already differs at glidx 385; first divergent input = player-control
-   camera angle `D_80127708[*(ps+0x184)*4]+0x1C` (stick path REFUTED).
-   **Player-control camera writer/selector closed** (2026-08-17).
-   **E1A58 REFUTED.** **Mode 2 / `func_80110588` PROVEN**
-   ([[../../plan/evidence/p08-demo-camera-mode-producer-differential]]).
-   `func_80110790` `a1[1]` already differs at consumed 384 (−0.0675°).
-   Remaining: name/trace the overlay that calls `func_80110790` (RA `0x801D3E7C`).
-3. **Analog/gamepad validation of USER_BUG_A** — WASD runtime is RESOLVED;
-   full controller is PENDING.
-4. **Fix file-select → Spiral Mountain transition** — mode=1 not reached on
-   current HEAD (regression from P08-T10 validated state).
+2. **Demo-path attract demo movement & camera — RESOLVED (2026-08-20, R-MOTION-ORACLE)**
+   ([[../../plan/evidence/p08-demo-post-egg-angrylion-motion-differential]]).
+   Hardware oracle (Angrylion RDP Plus + CXD4 LLE) confirms complete parity
+   across all 765 demo frames (XZ max error < 0.89 units, 0 behavior-state
+   mismatches). Historical Rice camctrl/motion drift is REFUTED as an emulator
+   artifact.
+3. **Physical Hardware Validation (P08 Gates)** — Manual user execution of
+   gamepad and multi-monitor display checklists in
+   [[../../plan/evidence/p08-final-physical-validation]] remains PENDING.
+4. **File-select confirm transition — RESOLVED / REFUTED**
+   ([[../../plan/evidence/p08-title-file-select-validation]]). Post-confirm destination
+   is `MAP_A1_CS_INTRO` (161) / `mode=3` (opening story cutscenes). The synthetic
+   `mode=1` regression claim was refuted as the sequencer did not inject the START
+   skips that bypass opening story cutscenes.
 5. Generic non-RA JR safepoints, Timer/PI approximations — deferred.
 6. Origem do objeto `table[2]` (intro/attract/handoff) — permanece UNKNOWN;
    PATCH 4 direct word-zero label is INFERENCE.
@@ -380,16 +393,27 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 ## Próxima etapa
 
 **P08 remains ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
-- **Implemented Scope**: RT64 presentation baseline, input mapping, window/scale integration, graphics/Vulkan error handling, launcher music preview, static call correctness.
-- **Pending Before P09 Formal Open**: Physical gamepad hardware verification and live multi-monitor physical display verification.
-- **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline.
+- **Implemented Scope**: RT64 presentation baseline, input mapping, window/scale integration, graphics/Vulkan error handling, launcher music preview, static call correctness, attract demo hardware-accurate motion sync.
+- **Pending Before P09 Formal Open**: Physical gamepad hardware verification and live multi-monitor physical display verification ([[../../plan/evidence/p08-final-physical-validation]]).
+- **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline, Angrylion Z-buffer oracle (R-ORACLE), Angrylion attract demo motion sync (R-MOTION-ORACLE).
 
-## P08 Implementation Status (2026-08-16, Gemini 3.7 Flash HIGH)
+## P08 Implementation Status (2026-08-20, Gemini 3.7 Flash HIGH)
 
-- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path.
+- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path. Manual physical multi-monitor validation pending.
 - **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 PASS), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
-- **Canonical Tasks**: All 11 canonical tasks audited. T01, T03..T06, T08..T11 DONE; T02 PARTIAL; T07 IMPLEMENTED_MANUAL_VALIDATION_PENDING.
-- **Evidence Reference**: [[../../plan/evidence/p08-t07-t08-frontend-system-validation]].
+- **Canonical Tasks**: All 11 canonical tasks audited:
+  - `P08-T01`: **DONE**
+  - `P08-T02`: **DONE** ([[../../plan/evidence/p08-display-effect-catalog]])
+  - `P08-T03`: **DONE** ([[../../plan/evidence/p08-original-timing-4x3-baseline]])
+  - `P08-T04`: **DONE**
+  - `P08-T05`: **DONE**
+  - `P08-T06`: **DONE**
+  - `P08-T07`: **IMPLEMENTED_MANUAL_VALIDATION_PENDING**
+  - `P08-T08`: **DONE** ([[../../plan/evidence/p08-t07-t08-frontend-system-validation]])
+  - `P08-T09`: **DONE** ([[../../plan/evidence/p08-render-submission-matrix-fix]])
+  - `P08-T10`: **DONE** ([[../../plan/evidence/p08-title-file-select-validation]])
+  - `P08-T11`: **DONE** ([[../../plan/evidence/p08-attract-loop-after-demo2-crash]])
+- **Evidence Reference**: [[../../plan/evidence/p08-t07-t08-frontend-system-validation]], [[../../plan/evidence/p08-final-physical-validation]].
 
 ## P08 measured post-egg movement discriminator (2026-08-17)
 
