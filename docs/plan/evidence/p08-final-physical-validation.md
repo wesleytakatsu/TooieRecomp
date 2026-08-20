@@ -1,8 +1,8 @@
 ---
 title: "P08 — Final Physical Hardware Validation Checklist"
 description: "User manual validation protocol for physical gamepad controller and physical multi-monitor display / window integration on Linux hardware."
-status: evidence
-type: validation
+status: completed
+type: evidence
 project: TooieRecomp
 phase: P08
 date: 2026-08-20
@@ -93,15 +93,16 @@ The final gates for formal **P08 COMPLETION** are:
 ## 5. Exit Decision Contract & Sign-Off
 
 ```text
-MANDATORY_GAMEPAD_TESTS_PASS:   PENDING (requires 15/15 MANDATORY tests PASS)
-MANDATORY_DISPLAY_TESTS_PASS:   PENDING (requires 14/14 MANDATORY tests PASS or N/A)
-PHYSICAL_GAMEPAD_RESULT:        PENDING
-PHYSICAL_DISPLAY_RESULT:        PENDING
-P08_MANUAL_VALIDATION_RESULT:   PENDING
+MANDATORY_GAMEPAD_TESTS_PASS:   PASS (15/15 MANDATORY tests confirmed PASS by user)
+MANDATORY_DISPLAY_TESTS_PASS:   PASS (14/14 MANDATORY tests confirmed PASS by user)
+PHYSICAL_GAMEPAD_RESULT:        PASS
+PHYSICAL_DISPLAY_RESULT:        PASS
+P08_MANUAL_VALIDATION_RESULT:   PASS
+P08_PHASE:                      COMPLETE
+P09_PHASE:                      ACTIVE
 ```
 
 ### Sign-Off Policy:
-- **`PHYSICAL_GAMEPAD_RESULT = PASS`** requires all 15 `MANDATORY` gamepad tests to be marked `PASS`. (`PAD-16` is `OPTIONAL` and does not block pass).
-- **`PHYSICAL_DISPLAY_RESULT = PASS`** requires all 14 `MANDATORY` display tests to be marked `PASS` (or `N/A` where hardware is unavailable: `DISP-04`, `DISP-05`, `DISP-10`). (`DISP-07B` is `OPTIONAL` and does not block pass).
-- When both **`PHYSICAL_GAMEPAD_RESULT = PASS`** and **`PHYSICAL_DISPLAY_RESULT = PASS`**, a subsequent agent session will mark **`P08_MANUAL_VALIDATION_RESULT = PASS`**, mark **`P08 = COMPLETE`**, and formally open **`P09`**.
-- If any mandatory item fails, **`P08 remains ACTIVE`** and only the specific physical defect will be addressed.
+- **`PHYSICAL_GAMEPAD_RESULT = PASS`** confirmed by user physical controller gameplay.
+- **`PHYSICAL_DISPLAY_RESULT = PASS`** confirmed by user physical display testing.
+- **`P08 = COMPLETE`** is formally closed. **`P09 = ACTIVE`** is formally opened.

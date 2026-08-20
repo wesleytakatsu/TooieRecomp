@@ -32,10 +32,10 @@ A fonte BT ativa é o fork em `banjo-tooie-Recomp/`. O repositório original
 | 03 | [[03-recompiler-metadata]] | metadados consumíveis pelo N64Recomp | done |
 | 04 | [[04-static-recompilation]] | código recompilado compila | done |
 | 05 | [[05-native-runtime-and-boot]] | executável chega ao primeiro frame | done |
-| 06 | [[06-overlays-and-syscalls]] | código dinâmico funciona | in_progress |
-| 07 | [[07-rsp-and-audio]] | tarefas RSP e áudio corretos | active (música inicial OK) |
-| 08 | [[08-rt64-input-and-frontend]] | renderização, entrada e UI integradas | active |
-| 09 | [[09-gameplay-parity-and-enhancements]] | campanha e timing aprovados | pending |
+| 06 | [[06-overlays-and-syscalls]] | código dinâmico funciona | done |
+| 07 | [[07-rsp-and-audio]] | tarefas RSP e áudio corretos | done |
+| 08 | [[08-rt64-input-and-frontend]] | renderização, entrada e UI integradas | done |
+| 09 | [[09-gameplay-parity-and-enhancements]] | campanha e timing aprovados | active |
 | 10 | [[10-linux-packaging-and-release]] | release Linux reproduzível | pending |
 
 ## Convenções

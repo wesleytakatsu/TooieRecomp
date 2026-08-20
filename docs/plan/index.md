@@ -158,8 +158,10 @@ O trabalho só está concluído quando todos os critérios de
 - Baseline P00: [[baseline-manifest]]
 - Registro anterior, agora supersedido: [[../roadmap/tooie-recomp]]
 
-## Evidência P08 corrente
+## Evidência P08 / P09 corrente
 
+- [[evidence/p09-user-observed-parity-residuals]] — **P09 ATTRACT BASELINE & RESIDUAL BACKLOG:**
+  Attract Demo 0 100% state parity against `ANGRYLION_CONTROL`; Fire Egg vs Blue Egg report refuted (both runtimes fire Blue Egg `0x88`); visual drift refuted (stable noise <= 0.88u); P09 parity backlog created.
 - [[evidence/p08-demo-camera-eye-producer-differential]] — **PROVEN (A & B RESOLVED):**
   causal isolation of glidx 384 camera eye divergence; `ncbapivot` conditional invocation of `func_801138F4 -> func_80112E98` creates 3rd `SET74` in original N64, bypassed in Recomp.
 - [[evidence/p08-t07-t08-frontend-system-validation]] — **P08-T07 & P08-T08 VALIDATED:**

@@ -1,13 +1,14 @@
 ---
 title: "BT P09 — Paridade de gameplay e melhorias"
 description: "Fecha campanha, saves e timing antes de habilitar widescreen, FPS alto e extensões."
-status: pending
+status: active
 type: implementation-stage
 project: TooieRecomp
 phase: P09
 order: 9
 depends_on: P08
-tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen]
+updated: 2026-08-20
+tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen, active]
 ---
 
 # BT P09 — Paridade de gameplay e melhorias
@@ -16,6 +17,13 @@ tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen]
 
 Comportamento funcional equivalente ao original em timing padrão, seguido por
 melhorias opcionais que não alteram gameplay.
+
+## Estado corrente (P09 Ativo — 2026-08-20)
+
+- **P08 Formalmente Concluído**: RT64, frontend, janelas, mensagens de erro e validação física de controle e display concluídas.
+- **P09 Aberto**: Linha de base de paridade de gameplay iniciada ([[../../plan/evidence/p09-user-observed-parity-residuals]]).
+- **Attract Demo 0 (Wooded Hollow)**: Paridade de 100% de estados e física contra o oracle de hardware `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE). Relatos de drift visual e disparo de Fire Egg em vez de Blue Egg foram investigados e esclarecidos (ambos disparam Blue Egg no hardware real).
+- **Backlog de Resíduos de Fidelidade**: Clicks periódicos de áudio (`P09-RES-04`), glitches gráficos pontuais (`P09-RES-03`), e culling de borda em widescreen (`P09-RES-05`, associado a `P09-T08`).
 
 ## Tarefas de paridade
 

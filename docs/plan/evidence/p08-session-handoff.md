@@ -40,13 +40,11 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 ## CURRENT_PHASE
 
-P08 — RT64, input e frontend is **ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B)**.
+P08 — RT64, input e frontend is **COMPLETE**.
 Canonical tasks (T01..T11) audited:
-- T01..T06, T08..T11: **DONE** (T02 display list and effect catalog completed; [[p08-display-effect-catalog]])
-- T07: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers verified via unit tests; fullscreen/focus/display handling operational on reference SDL/RT64 path; physical multi-monitor and visual fullscreen validation pending)
-- P08-T08 (Graphics driver / Vulkan failure handling): **DONE** (`tooie_error` reporting, `assert(false)` removal, negative env test PASS).
-- Attract DEMO2 SIGSEGV (bsrest 0x808003FC): RESOLVED and VALIDATED (`1f2aba1`, `887d132`).
-- Next phase: **P09 remains PENDING** until manual hardware validation is completed.
+- T01..T11: **DONE**
+- Physical gamepad and display validation: **SIGNED OFF PASS** ([[p08-final-physical-validation]])
+- Next phase: **P09 is ACTIVE** ([[../../plans/BT/09-gameplay-parity-and-enhancements]]).
 
 ## CURRENT_PRODUCT_STATE
 

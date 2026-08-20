@@ -12,21 +12,14 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 
 ## Prioridade atual
 
-**PHASE P08 IMPLEMENTATION STATUS (Verdict B — ACTIVE / MANUAL_VALIDATION_PENDING, 2026-08-16):**
-- **Canonical Task Audit**:
-  - `P08-T01` (RT64 / Vulkan): **DONE**
-  - `P08-T02` (Catalogar display lists/efeitos; scheduler DP/VI): **DONE** ([[plan/evidence/p08-display-effect-catalog]])
-  - `P08-T03` (4:3 e timing originais): **DONE**
-  - `P08-T04` (Path SDL/RecompFrontend): **DONE**
-  - `P08-T05` (Defaults/persistência): **DONE**
-  - `P08-T06` (Esconder launcher no auto-start): **DONE**
-  - `P08-T07` (Janela, fullscreen, foco, multi-monitor, escalas): **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers active and tested, reference SDL/RT64 path handles fullscreen/focus/display, physical hardware display validation pending).
-  - `P08-T08` (Fallback/mensagem para driver/API incompatível): **DONE** (`tooie_error` reporting active, `assert(false)` eliminated, negative tests passing).
-  - `P08-T09` (Evidência visual intro/first demo): **DONE**
-  - `P08-T10` (Input title/file select): **DONE**
-  - `P08-T11` (Máquina de estados / C2AB8 / BCF28 / RA wrappers / matrix split): **DONE**
-- **Pending for Formal Gate Sign-off**: Physical gamepad hardware verification on physical controller devices and live multi-monitor physical migration. Do NOT open P09 yet.
-- See [[plan/evidence/p08-t07-t08-frontend-system-validation]] for complete canonical audit matrix.
+**PHASE P08 IS COMPLETE; PHASE P09 IS ACTIVE (2026-08-20):**
+- **P08 Canonical Task Audit**: All 11 tasks (`P08-T01`..`P08-T11`) **DONE**.
+- **Physical Validation Complete**: Gamepad hardware controls and display validation signed off by user ([[plan/evidence/p08-final-physical-validation]]).
+- **P09 Gameplay Parity Baseline**: Opened with Attract Demo 0 differential against `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE).
+  - User-observed egg type report (Fire Egg vs Blue Egg) investigated: refuted as historical labeling artifact (both original N64 hardware and RT64 fire Blue Egg `ACTOR_EGG_NORMAL` 0x88).
+  - User-observed visual drift report investigated: refuted against Angrylion oracle (trajectory error is sub-pixel noise $\le 0.88$ units across 765 frames).
+  - Fidelity backlog created for audio clicks, graphical glitches, and widescreen edge culling ([[plan/evidence/p09-user-observed-parity-residuals]]).
+- **Next Single Action**: Investigate next parity backlog items (`P09-RES-04` audio clicking / `P09-RES-03` graphical glitches).
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
