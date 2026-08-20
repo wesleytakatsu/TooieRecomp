@@ -164,5 +164,13 @@ implements” with a narrower result:
 - RT64's depth conversion supplies dz = 0 and is not bit-exact N64 Z memory.
 - The live RT64 high-Z values remain a strong candidate, not a hardware proof.
 
-The current camera root level is C-ORACLE; B-FORMAT is a proven subsidiary
-RT64 finding whose camera causality is not established.
+The current camera root level is C-ORACLE (RESOLVED by [[p08-demo-zbuffer-angrylion-oracle]] as R-ORACLE); B-FORMAT is a proven subsidiary
+RT64 finding whose camera causality is refuted.
+
+## 9. Oracle Arbitration Resolution
+
+The replacement oracle run in [[p08-demo-zbuffer-angrylion-oracle]] confirmed with Angrylion RDP Plus + CXD4 LLE that:
+- Real N64 RDP populates RDRAM depth `0x866D..0x8C11` at this target;
+- Clear word is `0xFFFC` on hardware;
+- `record+0x34` evaluates to `1` across all 25/25 aligned Q1 samples on hardware;
+- `RT64_CONTROL` is behaviorally faithful to real hardware for the camera path, and the prior divergence was an artifact of `ORIGINAL_RICE_CONTROL`.

@@ -231,6 +231,8 @@ Evidência corrente:
 | [[../../plan/evidence/p08-demo-camera-e1a58-differential]] | E1A58 REFUTED (identity) |
 | [[../../plan/evidence/p08-demo-camera-mode-producer-differential]] | **CURRENT:** mode 2 / func_80110588 PROVEN; 80110790 a1 already differs at consumed 384 |
 | [[../../plan/evidence/p08-demo-db-target-writer]] | **CURRENT:** D_8007BCC4 304x228 Z-buffer target writer identification; RT64 copyNativeToRAM depth writeback (B-WRITER) |
+| [[../../plan/evidence/p08-demo-zbuffer-oracle-sol-review]] | independent Z-buffer oracle-validity review (C-ORACLE) |
+| [[../../plan/evidence/p08-demo-zbuffer-angrylion-oracle]] | **RESOLVED:** Angrylion RDP Plus + CXD4 LLE hardware oracle validation (R-ORACLE) |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix]] | implementation evidence; accepted by focused re-review |
 | [[../../plan/evidence/p08-stick-angle-thunk-fix-independent-review]] | **CURRENT REVIEW:** verdict C; missing `$r1` delay-slot side effect |
 | [[../../plan/evidence/p08-player-direction-facing-diagnosis]] | Level A empty 13B70 diagnosis; fix implemented |
@@ -513,9 +515,13 @@ B-WRITER is **CORRECTED/SUPERSEDED by C-ORACLE**. NO production fix.
 
 Independent arbitration: [[../../plan/evidence/p08-demo-zbuffer-oracle-sol-review]].
 D_8007BCC4 and func_8001A0C0 roles are proven. Rice is not a valid
-CPU-visible-Z oracle. RT64 address, extent, and FullSync-before-interrupt order
-are valid, but exact format is not: dz is forced to zero and clear 0xFFFE
-differs from ORIGINAL_GAME's 0xFFFC fill word. Old camera status: **MIXED**.
+CPU-visible-Z oracle.
 
-NEXT_SINGLE_ACTION: run the bounded Pure Interpreter + Angrylion RDP Plus +
-CXD4 LLE Original oracle experiment specified by the independent review.
+**Z-buffer hardware oracle validation (2026-08-20, R-ORACLE):**
+[[../../plan/evidence/p08-demo-zbuffer-angrylion-oracle]]. The hardware-accurate
+Angrylion RDP Plus + CXD4 LLE oracle proved that real N64 RDP populates live Z in RDRAM,
+the clear value is `0xFFFC`, and `record+0x34` evaluates to `1` across all 25/25
+aligned Q1 samples. The historical Rice-based camera divergence was an emulator artifact.
+Classified as **R-ORACLE**. No production fix is required.
+
+NEXT_SINGLE_ACTION: return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).

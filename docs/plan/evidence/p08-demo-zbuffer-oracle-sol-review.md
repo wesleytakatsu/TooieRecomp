@@ -486,7 +486,16 @@ WORKTREE:
 Expected clean after checkpoint.
 
 NEXT_SINGLE_ACTION:
-run the bounded hardware-faithful Original oracle experiment specified above.
+run the bounded hardware-faithful Original oracle experiment specified above (RESOLVED by [[p08-demo-zbuffer-angrylion-oracle]]).
 
 === END HANDOFF ===
 ~~~
+
+## 16. Downstream Resolution
+
+The bounded replacement oracle experiment was executed in [[p08-demo-zbuffer-angrylion-oracle]].
+Angrylion RDP Plus + CXD4 LLE confirmed that on hardware:
+- RDP renders live Z into guest RDRAM;
+- Clear value is `0xFFFC`;
+- Downstream classifier `record+0x34` evaluates to `1` across all 25/25 aligned Q1 samples;
+- The prior camera divergence is classified as **R-ORACLE** (reference artifact of Rice Video).

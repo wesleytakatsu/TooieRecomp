@@ -496,23 +496,19 @@ counter consequence. Root level `R`; no production fix.
 Next: dynamically match the selected projection record and trace the first
 writer/input divergence to `record+0x34`, starting at `func_800E82EC`.
 
-## P08 Z-buffer oracle correction — 2026-08-20
+## P08 Z-buffer hardware oracle resolution (2026-08-20, R-ORACLE)
 
-[[plan/evidence/p08-demo-zbuffer-oracle-sol-review]] supersedes the prior next
-step and all unqualified “Original never writes” statements for D_8007BCC4.
+[[plan/evidence/p08-demo-zbuffer-angrylion-oracle]] resolves the Z-buffer camera
+differential arbitration. The replacement hardware oracle (Mupen64Plus Pure
+Interpreter + Angrylion RDP Plus + mupen64plus-rsp-cxd4 LLE) proves:
 
-The object is proven to be the ORIGINAL_GAME 304×228 16-bit RDP Z image and
-func_8001A0C0 is proven to decode/sample its compressed depth for the
-projection visibility path. ORIGINAL_RICE_CONTROL is not a valid oracle:
-Rice renders host depth but does not write N64-encoded depth to guest RDRAM.
+1. Real N64 RDP renders live depth into RDRAM (`0x866D..0x8C11`);
+2. Depth clear writes `0xFFFC`, exactly matching `ORIGINAL_GAME`;
+3. `func_8001A0C0` reads live depth, `func_800E81E0` computes `f0 ≈ -1240` (24/25 float match with RT64);
+4. `record+0x34` evaluates to **`1`** across **25/25 aligned Q1 samples**, exactly agreeing with `RT64_CONTROL`.
 
-RT64 writes the correct guest address/extent before the DP interrupt at
-FullSync, but exact hardware fidelity is refuted: its shader forces dz to zero,
-and measured clear 0xFFFE differs from the game's emitted 0xFFFC fill word.
-The previous camera result is therefore **MIXED**, root level **C-ORACLE**,
-with a subsidiary non-causal **B-FORMAT** finding. No fix was implemented.
+The prior camera discrepancy (`Original = 0` vs `Recomp = 1`) was **ENTIRELY A REFERENCE ARTIFACT**
+of `ORIGINAL_RICE_CONTROL`. `RT64_CONTROL` is behaviorally faithful to real hardware for the camera
+projection path. Root cause level = **R-ORACLE**. No production fix is required.
 
-Next single action: run the bounded Mupen64Plus Pure Interpreter + Angrylion
-RDP Plus reference/native mode + mupen64plus-rsp-cxd4 LLE experiment specified
-in the controlling evidence, using the same ROM SHA-1, demo/Q1 alignment, and
-requested state fields.
+Next single action: return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).

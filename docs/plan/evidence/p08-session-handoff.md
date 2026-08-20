@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente P08: a arbitragem atual prova D_8007BCC4 como Z image, invalida Rice-zero como oracle e exige um run Angrylion Plus + CXD4 LLE; correções anteriores permanecem preservadas."
+description: "Estado autossuficiente P08: o oracle Angrylion RDP Plus + CXD4 LLE provou que o hardware renderiza Z em RDRAM e record+0x34=1 (25/25), classificando a divergência antiga do Rice como R-ORACLE."
 status: evidence
 phase: P08
 updated: 2026-08-20
-tags: [tooie-recomp, p08, handoff, zbuffer, oracle, rice, rt64, angrylion, intro, attract, demo2, preemption, patch4, visible-demo]
+tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, rt64, intro, attract, demo2, preemption, patch4, visible-demo]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
@@ -600,21 +600,24 @@ NEXT_SINGLE_ACTION: run the bounded Mupen Pure Interpreter + Angrylion RDP Plus
                     + CXD4 LLE Original oracle experiment.
 ```
 
-## Z-buffer oracle-validity override — 2026-08-20
+## Z-buffer oracle-validity & Angrylion hardware oracle — 2026-08-20
 
-Current controlling evidence:
-[[p08-demo-zbuffer-oracle-sol-review]].
+Controlling evidence:
+- [[p08-demo-zbuffer-oracle-sol-review]] (epistemic arbitration)
+- [[p08-demo-zbuffer-angrylion-oracle]] (**RESOLVED as R-ORACLE**)
 
 - D_8007BCC4 identity as the 304×228 16-bit Z image: **PROVEN**.
 - func_8001A0C0 screen-space compressed-Z sampling role: **PROVEN**.
 - Rice CPU-visible depth writeback: **NOT IMPLEMENTED**; Rice is not an oracle
   for this camera path.
-- RT64 destination/size/FullSync ordering: **VALID**.
-- RT64 exact N64 format: **REFUTED**; dz is forced to zero and measured 0xFFFE
-  clear disagrees with ORIGINAL_GAME's 0xFFFC fill word.
-- Old camera differential: **MIXED**. Rice-zero is a reference artifact; RT64
-  camera correctness remains unresolved until the replacement oracle run.
+- Angrylion RDP Plus + CXD4 LLE hardware oracle run:
+  - Live depth `0x866D..0x8C11` populated in RDRAM;
+  - Clear value is `0xFFFC` (matches `ORIGINAL_GAME`);
+  - `func_8001A0C0` reads live depth;
+  - `func_800E81E0` produces `f0 ≈ -1240` (24/25 float match with RT64);
+  - `record+0x34` is **`1`** across **25/25 aligned Q1 samples**, exactly agreeing with `RT64_CONTROL`.
+- Camera differential status: **R-ORACLE** (Rice-based divergence was an emulator artifact; RT64 camera behavior is faithful to real N64 hardware).
+- Subsidiary finding: RT64 forces dz=0 and clear 0xFFFE, but these low bits are discarded by `func_800E81E0` and are non-causal to the camera (**B-FORMAT-NONCAUSAL**).
+- No production fix needed.
 
-Do not trace downstream against Rice zero and do not implement a production
-fix. The single next action is the exact bounded experiment in section 13 of
-the controlling evidence.
+NEXT_SINGLE_ACTION: return to the next P08 residual motion discriminator (post-egg movement at ~glidx 392).
