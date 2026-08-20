@@ -16,6 +16,8 @@ tags: [p08, camera, projection, classifier, rejoin, e81e0, plus34, evidence]
 - Downstream: [[p08-demo-1a0c0-state-differential]] (B-STATE: hidden table
   `D_8007BCC4` input differs; Original `func_8001A0C0` v0 = 0 constant vs
   Recomp nonzero incrementing)
+- Downstream2: [[p08-demo-db-8007bcc4-lifecycle]] (B-WRITER: base/alloc/init match;
+  a post-allocation writer modifies the recomp Q1 cell only)
 
 ## 0. Verdict
 

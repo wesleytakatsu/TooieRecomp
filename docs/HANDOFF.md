@@ -75,13 +75,16 @@ aligned Q1 `a3` is bit-identical; `0x4313D3A7` vs `0x43136AD5` are consecutive
 stream values on **both** runtimes
 ([[plan/evidence/p08-demo-projection-v1-direction-producer]]).
 
-**func_8001A0C0 STATE — B-STATE (2026-08-20):**
-[[plan/evidence/p08-demo-1a0c0-state-differential]]. `func_8001A0C0` is a
-pure leaf `v0 = *(u16*)(D_8007BCC4 + 608*a1 + 2*a0)`. Original runtime base
-`D_8007BCC4 = 0x80137840` (constant), Q1 cell `0x0000` (25/25); Recomp
-returns **incrementing nonzero** (0x8660..0x8BFC) at the same fixed index.
-First real aligned discriminator = hidden table input (mis-sourced in recomp).
-NO production fix.
+**func_8001A0C0 STATE — B-STATE → B-WRITER (2026-08-20):**
+[[plan/evidence/p08-demo-1a0c0-state-differential]],
+[[plan/evidence/p08-demo-db-8007bcc4-lifecycle]]. `func_8001A0C0` is a pure
+leaf `v0 = *(u16*)(D_8007BCC4 + 608*a1 + 2*a0)`. Original runtime base
+`D_8007BCC4 = 0x80137840` (constant), Q1 cell `0x0000` (25/25). The DB
+lifecycle capture shows allocation chain, base, effective address (0x8014F800),
+and allocation-time cell content all **match** both runtimes; the original
+boot-bzeros the DB and never writes the target cell again, while recomp gets a
+**post-allocation writer** that changes the cell (0xFFFE then 0x8660..0x8BFC).
+So B-ALLOC / B-ALIAS / B-INIT are REFUTED; class = **B-WRITER**. NO production fix.
 
 Historical context:
 > **PATCH 4 (2026-08-13):** Tooie-scoped startup ON;

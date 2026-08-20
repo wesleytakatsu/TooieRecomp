@@ -499,10 +499,15 @@ join artifact ([[../../plan/evidence/p08-demo-projection-v1-direction-producer]]
 ([[../../plan/evidence/p08-demo-projection-classifier-rejoin]]).
 NO production fix.
 
-**func_8001A0C0 STATE (2026-08-20, B-STATE):**
-[[../../plan/evidence/p08-demo-1a0c0-state-differential]]. `func_8001A0C0`
+**func_8001A0C0 STATE (2026-08-20, B-STATE → B-WRITER):**
+[[../../plan/evidence/p08-demo-1a0c0-state-differential]],
+[[../../plan/evidence/p08-demo-db-8007bcc4-lifecycle]]. `func_8001A0C0`
 is a pure leaf `*(u16*)(D_8007BCC4 + 608*a1 + 2*a0)`. Original base
-`D_8007BCC4 = 0x80137840` (constant), Q1 cell `0` (25/25). Recomp returns
-**incrementing nonzero** (0x8660..0x8BFC) at the same fixed index, i.e. the
-hidden DB table input is mis-sourced in recomp. NO production fix.
-NEXT_SINGLE_ACTION: trace the recomp writer of `D_8007BCC4` / its table.
+`D_8007BCC4 = 0x80137840` (constant), Q1 cell `0` (25/25). The DB lifecycle
+differential shows allocation chain, base, effective address (0x8014F800), and
+allocation-time cell content all **match** both runtimes; original boot-bzeros
+the DB and never writes the target cell again, while recomp gets a
+**post-allocation writer** (cell 0xFFFE then 0x8660..0x8BFC). So
+B-ALLOC/B-ALIAS/B-INIT REFUTED; class **B-WRITER**. NO production fix.
+NEXT_SINGLE_ACTION: identify the exact post-alloc writer of guest 0x8014F800
+in recomp via a recomp-side target store-watch.

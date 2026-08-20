@@ -13,6 +13,8 @@ tags: [p08, camera, projection, classifier, 1a0c0, e81e0, bstate, differential, 
 - Model: Grok 4.6 HIGH
 - Base HEAD: `95a6c3915f8b9b73544c4c9e031fed65fa8370d8`
 - Upstream: [[p08-demo-projection-classifier-rejoin]] (B-STATE at `func_8001A0C0`)
+- Downstream: [[p08-demo-db-8007bcc4-lifecycle]] (B-WRITER: allocation/base/init match;
+  a post-allocation writer modifies the recomp Q1 cell only)
 
 ## 0. Verdict
 
