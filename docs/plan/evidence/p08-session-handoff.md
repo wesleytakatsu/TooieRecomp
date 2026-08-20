@@ -564,8 +564,17 @@ runtimes. That inequality is **CORRECTED/SUPERSEDED**.
 correct join (25/25). Explicit `a0–a3` match. First difference:
 `func_8001A0C0(176,161)` `v0` (Original 0 vs Recomp nonzero). E8918 selector 2
 returns 0 vs 1 (**PROVEN** continuity). Q0 selector 1 remains 0/0.
+**B-STATE (2026-08-20)** [[p08-demo-1a0c0-state-differential]]:
+`func_8001A0C0` is a pure leaf `v0 = *(u16*)(D_8007BCC4 + 608*a1 + 2*a0)`.
+Original runtime base `D_8007BCC4 = 0x80137840` (constant), cell `0x0000`
+(25/25). Recomp returns **incrementing nonzero** (0x8660..0x8BFC) at the same
+fixed index — impossible for a static table, so the recomp hidden base/table
+input is mis-sourced (misrelocated / misinitialized / aliasing live memory).
+First discriminator = hidden table read, not func_8001A0C0 execution.
 
 ```text
-NEXT_SINGLE_ACTION: trace only func_8001A0C0(a0=176,a1=161) for the aligned
-                    Q1 stream; do not reopen a3/v1[2] or treat E81E0 as Level A.
+NEXT_SINGLE_ACTION: B-STATE: trace only the recomp writer/source that produces
+                    D_8007BCC4 / its table content (recomp func_8001A080 /
+                    func_8001A018 allocation and writes into the 0x21D80-byte
+                    DB region). Do not reopen a3/v1[2] or treat E81E0 as Level A.
 ```

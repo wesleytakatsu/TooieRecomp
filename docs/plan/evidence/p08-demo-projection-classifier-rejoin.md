@@ -13,6 +13,9 @@ tags: [p08, camera, projection, classifier, rejoin, e81e0, plus34, evidence]
 - Model: Grok 4.6 HIGH
 - Base HEAD: `2fe9e37773b0a8b93604b21aaf2925fcf0f2f2d6`
 - Upstream: [[p08-demo-projection-v1-direction-producer]] (`a3=v1[2]` join artifact)
+- Downstream: [[p08-demo-1a0c0-state-differential]] (B-STATE: hidden table
+  `D_8007BCC4` input differs; Original `func_8001A0C0` v0 = 0 constant vs
+  Recomp nonzero incrementing)
 
 ## 0. Verdict
 
