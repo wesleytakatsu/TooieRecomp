@@ -495,3 +495,24 @@ counter consequence. Root level `R`; no production fix.
 
 Next: dynamically match the selected projection record and trace the first
 writer/input divergence to `record+0x34`, starting at `func_800E82EC`.
+
+## P08 Z-buffer oracle correction — 2026-08-20
+
+[[plan/evidence/p08-demo-zbuffer-oracle-sol-review]] supersedes the prior next
+step and all unqualified “Original never writes” statements for D_8007BCC4.
+
+The object is proven to be the ORIGINAL_GAME 304×228 16-bit RDP Z image and
+func_8001A0C0 is proven to decode/sample its compressed depth for the
+projection visibility path. ORIGINAL_RICE_CONTROL is not a valid oracle:
+Rice renders host depth but does not write N64-encoded depth to guest RDRAM.
+
+RT64 writes the correct guest address/extent before the DP interrupt at
+FullSync, but exact hardware fidelity is refuted: its shader forces dz to zero,
+and measured clear 0xFFFE differs from the game's emitted 0xFFFC fill word.
+The previous camera result is therefore **MIXED**, root level **C-ORACLE**,
+with a subsidiary non-causal **B-FORMAT** finding. No fix was implemented.
+
+Next single action: run the bounded Mupen64Plus Pure Interpreter + Angrylion
+RDP Plus reference/native mode + mupen64plus-rsp-cxd4 LLE experiment specified
+in the controlling evidence, using the same ROM SHA-1, demo/Q1 alignment, and
+requested state fields.

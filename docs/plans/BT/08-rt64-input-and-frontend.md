@@ -506,9 +506,16 @@ NO production fix.
 is a pure leaf `*(u16*)(D_8007BCC4 + 608*a1 + 2*a0)`. Original base
 `D_8007BCC4 = 0x80137840` (constant), Q1 cell `0` (25/25). The DB lifecycle
 differential shows allocation chain, base, effective address (0x8014F800), and
-allocation-time cell content all **match** both runtimes; original boot-bzeros
-the DB and never writes the target cell again, while recomp gets a
-**post-allocation writer** (cell 0xFFFE then 0x8660..0x8BFC). So
-B-ALLOC/B-ALIAS/B-INIT REFUTED; class **B-WRITER**. NO production fix.
-NEXT_SINGLE_ACTION: identify the exact post-alloc writer of guest 0x8014F800
-in recomp via a recomp-side target store-watch.
+allocation-time cell content all **match** both controls. The Rice control
+boot-bzeros the DB but never copies rendered depth to it; RT64 writes 0xFFFE
+then 0x8660..0x8BFC. B-ALLOC/B-ALIAS/B-INIT remain refuted, while historical
+B-WRITER is **CORRECTED/SUPERSEDED by C-ORACLE**. NO production fix.
+
+Independent arbitration: [[../../plan/evidence/p08-demo-zbuffer-oracle-sol-review]].
+D_8007BCC4 and func_8001A0C0 roles are proven. Rice is not a valid
+CPU-visible-Z oracle. RT64 address, extent, and FullSync-before-interrupt order
+are valid, but exact format is not: dz is forced to zero and clear 0xFFFE
+differs from ORIGINAL_GAME's 0xFFFC fill word. Old camera status: **MIXED**.
+
+NEXT_SINGLE_ACTION: run the bounded Pure Interpreter + Angrylion RDP Plus +
+CXD4 LLE Original oracle experiment specified by the independent review.

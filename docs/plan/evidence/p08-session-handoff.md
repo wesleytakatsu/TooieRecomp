@@ -1,10 +1,10 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente: DEMO2 attract-loop SIGSEGV (bsrest 0x808003FC → baflameline) is RESOLVED and VALIDATED via N64Recomp CreateStatic ordering fix. Fire-egg miss, cinematic facing, and T10 results are preserved."
+description: "Estado autossuficiente P08: a arbitragem atual prova D_8007BCC4 como Z image, invalida Rice-zero como oracle e exige um run Angrylion Plus + CXD4 LLE; correções anteriores permanecem preservadas."
 status: evidence
 phase: P08
-updated: 2026-08-17
-tags: [tooie-recomp, p08, handoff, intro, attract, demo2, sigsegv, bsrest, baflameline, preemption, patch4, bcf28, 80013a7c, visible-demo, transform-hooks, matrix-fix, input, stick-angle]
+updated: 2026-08-20
+tags: [tooie-recomp, p08, handoff, zbuffer, oracle, rice, rt64, angrylion, intro, attract, demo2, preemption, patch4, visible-demo]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
@@ -562,21 +562,21 @@ runtimes. That inequality is **CORRECTED/SUPERSEDED**.
 
 [[p08-demo-projection-classifier-rejoin]]. Q1 `+0x34` 0 vs 1 **survives**
 correct join (25/25). Explicit `a0–a3` match. First difference:
-`func_8001A0C0(176,161)` `v0` (Original 0 vs Recomp nonzero). E8918 selector 2
+`func_8001A0C0(176,161)` `v0` (Rice control 0 vs RT64 nonzero). E8918 selector 2
 returns 0 vs 1 (**PROVEN** continuity). Q0 selector 1 remains 0/0.
 **B-STATE + B-WRITER (2026-08-20)** [[p08-demo-1a0c0-state-differential]],
 [[p08-demo-db-8007bcc4-lifecycle]]: `func_8001A0C0` is a pure leaf
 `v0 = *(u16*)(D_8007BCC4 + 608*a1 + 2*a0)`. Allocation chain, base
 (`D_8007BCC4 = 0x80137840` both runtimes), effective address
 (`0x8014F800` both), and allocation-time cell (0 in both) all **match**.
-Original boot-bzeros the region once and never writes the target cell again
-(store-watch: 1 write, the boot bzero, value 0). Recomp's cell is 0 right
-after allocation (ALLOC_AFTER) but a **post-allocation writer** turns it to
-0xFFFE then incrementing values (0x83A4..0x8BFC) by Q1 — so the discriminator
-is a post-alloc writer present only in recomp (B-ALLOC/B-ALIAS/B-INIT REFUTED).
+ORIGINAL_RICE_CONTROL boot-bzeros the region once and never copies rendered Z
+back to the target (store-watch: 1 write, the boot bzero, value 0). RT64's cell
+is 0 right after allocation (ALLOC_AFTER), then copyback turns it to 0xFFFE and
+live values (0x83A4..0x8BFC) by Q1. This proves a renderer-control difference,
+not a real-N64 defect (B-ALLOC/B-ALIAS/B-INIT remain refuted).
 
 ```text
-NEXT_SINGLE_ACTION: writer identified (see [[p08-demo-db-target-writer]]).
+NEXT_SINGLE_ACTION: superseded by the hardware-faithful Original oracle run.
 ```
 
 ## P08 projection DB / Z-buffer target writer identification — B-WRITER PROVEN (2026-08-20)
@@ -589,10 +589,32 @@ NEXT_SINGLE_ACTION: writer identified (see [[p08-demo-db-target-writer]]).
 - The Recomp writer is `RT64::Framebuffer::copyNativeToRAM` -> `RT64::NativeTarget::copyToRAM` (`memcpy`), performing GPU depth buffer writeback to RDRAM (`0x80137840..0x801595C0`).
 - Display list commands `gDPSetDepthImage(0x00137840)` and `gDPSetColorImage(0x00137840)` are emitted by `func_800E7BC8` and `func_800E7C28`.
 - First write value is `0xFFFE` (clear depth); subsequent values `0x83A4..0x8BFC` are rendered geometry depths.
-- Original Mupen64plus pure-interpreter control (Rice Video HLE) omitted depth writeback, leaving RDRAM at `0x0000`. On real N64 hardware and RT64, depth values populate `D_8007BCC4`.
+- ORIGINAL_RICE_CONTROL omitted depth writeback and left RDRAM at 0x0000.
+  REAL_N64_EXPECTATION is a populated RDRAM Z image after proper RDP and cache
+  synchronization. RT64 populates it, but its exact format is not bit-exact.
 
 ```text
-ROOT_CAUSE_LEVEL:   B-WRITER
+ROOT_CAUSE_LEVEL:   C-ORACLE
 FIX_IMPLEMENTED:    NO
-NEXT_SINGLE_ACTION: evaluate occlusion / visibility classifier downstream handling of live depth buffer values vs unemulated zero baseline.
+NEXT_SINGLE_ACTION: run the bounded Mupen Pure Interpreter + Angrylion RDP Plus
+                    + CXD4 LLE Original oracle experiment.
 ```
+
+## Z-buffer oracle-validity override — 2026-08-20
+
+Current controlling evidence:
+[[p08-demo-zbuffer-oracle-sol-review]].
+
+- D_8007BCC4 identity as the 304×228 16-bit Z image: **PROVEN**.
+- func_8001A0C0 screen-space compressed-Z sampling role: **PROVEN**.
+- Rice CPU-visible depth writeback: **NOT IMPLEMENTED**; Rice is not an oracle
+  for this camera path.
+- RT64 destination/size/FullSync ordering: **VALID**.
+- RT64 exact N64 format: **REFUTED**; dz is forced to zero and measured 0xFFFE
+  clear disagrees with ORIGINAL_GAME's 0xFFFC fill word.
+- Old camera differential: **MIXED**. Rice-zero is a reference artifact; RT64
+  camera correctness remains unresolved until the replacement oracle run.
+
+Do not trace downstream against Rice zero and do not implement a production
+fix. The single next action is the exact bounded experiment in section 13 of
+the controlling evidence.

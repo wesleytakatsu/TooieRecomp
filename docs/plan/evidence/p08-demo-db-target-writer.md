@@ -1,6 +1,6 @@
 ---
 title: "P08 — D_8007BCC4 projection DB / Z-buffer target writer identification"
-description: "Identification of the exact Recomp post-boot writer modifying D_8007BCC4 + 0x17FC0 (guest 0x8014F800). The writer is RT64::Framebuffer::copyNativeToRAM / NativeTarget::copyToRAM (memcpy) performing RDP depth-buffer writeback for the 304x228 16-bit Z-buffer allocated at D_8007BCC4. Original Mupen64plus HLE control lacked depth writeback."
+description: "Identification of the RT64 writer modifying D_8007BCC4 + 0x17FC0. Independent oracle review proves the object is the 304x228 Z image and Rice omits RDRAM depth writeback, while correcting the prior claim of exact RT64 fidelity: format/clear bits are not hardware-exact."
 status: current
 type: evidence
 project: TooieRecomp
@@ -27,7 +27,7 @@ tags: [p08, camera, projection, db, 8007bcc4, zbuffer, depth, rt64, copynativeto
    - **Operation:** Block copy (`memcpy`) of the native GPU depth target back to RDRAM at `&RDRAM[depthFb->addressStart]` (`0x80137840`, length `0x21D80`).
    - **Initial Written Value:** `0xFFFE` (cleared far-depth value).
    - **Subsequent Values:** `0x83A4`, `0x865C`..`0x8BFC` (live 16-bit depth buffer values rendered by the GPU for Wooded Hollow geometry at screen pixel $(176, 161)$).
-5. **Original Control Differential:** In the original Mupen64plus pure-interpreter run, the HLE video plugin (Rice Video) does not perform software depth buffer writeback to RDRAM, leaving `0x8014F800` at `0x0000` (the boot `_bzero` value). On real N64 hardware and in RT64 with depth writeback, the RDP rasterizer populates `D_8007BCC4` with live depth values.
+5. **Rice Control Differential:** In the Mupen64plus pure-interpreter run, Rice Video HLE does not perform depth-buffer writeback to RDRAM, leaving 0x8014F800 at 0x0000 (the boot _bzero value). REAL_N64_EXPECTATION is that the RDP updates its RDRAM Z image, subject to FullSync and CPU cache coherency. RT64 does populate the allocation, but its exact encoded values are not a proven hardware oracle.
 
 NO production fix.
 
@@ -142,13 +142,27 @@ TARGET_OFFSET_WITHIN_BLOCK: 0x17FC0
 ## 7. Root Cause Classification
 
 ```text
-ROOT_CAUSE_LEVEL:       B-WRITER
-ROOT_CAUSE:             The D_8007BCC4 allocation (0x21D80 bytes) is the game's 304x228 16-bit
-                        Z-buffer. Recomp's RT64 graphics engine accurately implements RDP depth
-                        buffer writeback to RDRAM via RT64::Framebuffer::copyNativeToRAM, writing
-                        rendered GPU depth values (0xFFFE clear, 0x83A4..0x8BFC geometry depth)
-                        to RDRAM. The original control used in prior sessions (Mupen64plus with
-                        Rice Video HLE) omitted software depth buffer writeback, leaving the target
-                        cell at 0x0000.
+ROOT_CAUSE_LEVEL:       CORRECTED/SUPERSEDED by C-ORACLE
+ROOT_CAUSE:             D_8007BCC4 is the game's 304x228 16-bit Z image. Rice Video HLE omits
+                        CPU-visible RDRAM depth writeback, so its zero is not an Original-game
+                        oracle. RT64 writes the correct range at FullSync, but 0xFFFE disagrees
+                        with the game's 0xFFFC clear word and RT64 forces dz=0. A new accurate
+                        Original renderer run is required before classifying the camera result.
 FIX_IMPLEMENTED:        NO (Zero production lines modified)
 ```
+
+## 8. Independent oracle-validity correction
+
+[[p08-demo-zbuffer-oracle-sol-review]] independently proves the object and
+consumer identity while superseding the former phrase “RT64 accurately
+implements” with a narrower result:
+
+- RT64 writeback reason, address, size, and FullSync-before-interrupt order are
+  valid.
+- Rice's lack of copyback makes ORIGINAL_RICE_CONTROL invalid for this query.
+- ORIGINAL_GAME emits clear word 0xFFFC; RT64 was measured at 0xFFFE.
+- RT64's depth conversion supplies dz = 0 and is not bit-exact N64 Z memory.
+- The live RT64 high-Z values remain a strong candidate, not a hardware proof.
+
+The current camera root level is C-ORACLE; B-FORMAT is a proven subsidiary
+RT64 finding whose camera causality is not established.

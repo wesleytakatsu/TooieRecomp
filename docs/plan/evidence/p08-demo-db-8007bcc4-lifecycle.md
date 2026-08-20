@@ -1,6 +1,6 @@
 ---
 title: "P08 — D_8007BCC4 DB lifecycle / Q1 target cell differential"
-description: "Bounded heap-object identity/initializer/writer differential of the D_8007BCC4 projection DB and Q1 cell at +0x17FC0 (guest 0x8014F800). Allocation, base, effective addr, and allocation-time content all match; divergence is a post-allocation writer present in recomp only (original cell never written after boot). B-WRITER."
+description: "Bounded lifecycle differential of the D_8007BCC4 Z image and Q1 cell. Allocation/base/initial content match; the Rice control remains zero because Rice omits RDRAM depth copyback, while RT64 writes live depth. Hardware arbitration now requires a new accurate Original oracle."
 status: current
 type: evidence
 project: TooieRecomp
@@ -20,13 +20,14 @@ tags: [p08, camera, projection, db, 8007bcc4, lifecycle, bwriter, differential, 
 **B-WRITER.** The projection DB base `D_8007BCC4` and the Q1 target cell at
 `D_8007BCC4 + 0x17FC0 = 0x8014F800` were traced from allocation through the
 aligned Q1 classifier use in both runtimes. **Allocation, base pointer, effective
-address, and allocation-time cell content all match.** Original boot-bzeros the
-region once and never writes the target cell again (store-watch: exactly one write,
+   address, and allocation-time cell content all match.** The Rice control boot-bzeros the
+   region once and never materializes rendered depth there (store-watch: exactly one write,
 the boot bzero, value 0). Recomp's cell is 0 right after allocation (ALLOC_AFTER
 = 0x0000) but a **post-allocation writer** turns it to 0xFFFE (E82EC ord 2) and then
 to growing/incrementing values (0x83A4..0x8BFC, ~+0x3C/update) by the Q1 window.
-The first exact divergence is the Q1 target cell content leaving 0 while the
-original never leaves 0. NO production fix.
+The first exact differential is the Q1 target cell content leaving 0 in RT64
+while the Rice control never leaves 0. This does not establish a real-N64
+differential. NO production fix.
 
 ## 0.1 Corrections to prior wording
 
@@ -35,13 +36,16 @@ original never leaves 0. NO production fix.
   this runtime capture for the base/address/allocation-time content:
   **B-ALLOC and B-ALIAS dismissed** (base and effective address identical and
   stable), **B-INIT dismissed** (recomp cell is 0 right after allocation).
-- Pinned class: **B-WRITER** (a post-allocation writer modifies the recomp cell;
-  the original cell is never written after the boot bzero).
+- Historical class: **B-WRITER** (a post-allocation RT64 writer modifies the
+  cell; the Rice control has no corresponding RDRAM depth copyback).
+- Current class: **C-ORACLE**, per
+  [[p08-demo-zbuffer-oracle-sol-review]]. Rice zero is not a valid rendered-Z
+  oracle and exact RT64 depth encoding is not hardware-faithful.
 - Ad-hoc wording "impossible for a properly populated static table" in the prior
   doc is **CORRECTED/SUPERSEDED** here: this is a runtime-populated heap DB, so
   changing content is legitimate; the discriminating fact is the **absence of that
-  writer on the original side**, not mere variation.
-- The measured Original-0 / Recomp-incrementing evidence is preserved.
+  writer in ORIGINAL_RICE_CONTROL**, not mere variation.
+- The measured Rice-0 / RT64-incrementing evidence is preserved.
 
 ## 1. Environment
 
@@ -115,16 +119,16 @@ RECOMP_EFFECTIVE_TARGET_ADDRESS_STABLE: YES (0x8014F800 across all reads)
 RECOMP_TARGET_CELL_CONTENT_CHANGES:     YES
 ```
 
-At a **fixed** guest address 0x8014F800, recomp cell content changes with E82EC
-ordinal while the original cell is constant 0. Mechanism = stable pointer + live
-writer, not a moving base/address.
+At a **fixed** guest address 0x8014F800, the RT64 cell content changes with
+E82EC ordinal while the Rice-control cell is constant 0. Mechanism = stable
+pointer + renderer copyback difference, not a moving base/address.
 
 ## 7. Writer onset (first exact divergence)
 
 Recomp E82EC_IN cell reads at 0x8014F800 (base 0x80137840):
 
 ```text
-ord  1: 0x0000     (matches original 0)
+ord  1: 0x0000     (matches Rice control 0)
 ord  2: 0xFFFE     <- first nonzero (post-allocation writer)
 ord  8: 0xFFFE
 ord   1065: 0x83A4
@@ -135,14 +139,14 @@ ord   1094: 0x8BFC  (Q1 last aligned sample)
 ord   1882: 0x7CBC
 ```
 
-Original E82EC / A0C0 reads at 0x8014F800: **0x0000 constant** throughout; the only
+Rice-control E82EC / A0C0 reads at 0x8014F800: **0x0000 constant** throughout; the only
 write to that address is the boot bzero (store-watch = 1 row: `1,0x8002D71C,
 0x8014F800,0x00000000,4`).
 
 ```text
 FIRST_DB_CELL_STATE_DIVERGENCE_BOUNDARY: between allocation (both 0) and E82EC ord 2,
-            where recomp cell leaves 0 while original never leaves 0
-ORIGINAL_TARGET_WRITES: one observed overlapping write, boot bzero at PC
+            where RT64 leaves 0 while the Rice control remains 0
+ORIGINAL_RICE_CONTROL_TARGET_WRITES: one observed overlapping write, boot bzero at PC
             0x8002D71C, effective address 0x8014F800, width 4, value 0.
 RECOMP_TARGET_WRITES: exact instruction-level store set NOT_CAPTURED; the bounded
             snapshot trace proves a post-allocation mutation, and the exact store
@@ -158,10 +162,10 @@ TARGET_CHANGED_WITHOUT_GUEST_STORE: UNKNOWN (state change observed; the recomp
 ```text
 REFUTED: B-ALLOC (base identical), B-ALIAS (effective addr identical),
          B-INIT (cell identical 0 at allocation)
-ROOT_CAUSE_LEVEL: B-WRITER
-ROOT_CAUSE: same logical DB object, same boot-zeroed region; original never
-            writes the target cell afterward. Recomp has a post-allocation writer
-            that writes the cell (0xFFFE then incrementing), which
+ROOT_CAUSE_LEVEL: CORRECTED/SUPERSEDED by C-ORACLE
+ROOT_CAUSE: same logical Z-image object and same boot-zeroed region; Rice never
+            performs rendered-depth copyback. RT64 writes 0xFFFE then live values,
+            but exact N64 format is refuted and a new Original oracle is required.
             func_8001A0C0(176,161) returns. First exact divergence = cell leaving 0.
 FIX_IMPLEMENTED: NO
 NEXT_SINGLE_ACTION: writer identified (see [[p08-demo-db-target-writer]]).
@@ -210,3 +214,19 @@ MECHANISM_REPRODUCES_Q1_STREAM: YES (cell content changes each aligned sample in
   VULKAN=0`: exit 0; final installed core SHA-1
   `1086cf749e521ce759ab91be2eecd3fe8c59f632`; temporary-hook strings absent.
 - `git diff --check`: PASS; repository-local wikilink check: 270 checked, PASS.
+
+## 13. Oracle-validity correction
+
+The store-watch remains valid evidence about **ORIGINAL_RICE_CONTROL**, not
+REAL_N64_EXPECTATION. The independent review
+[[p08-demo-zbuffer-oracle-sol-review]] establishes:
+
+- D_8007BCC4 is proven to be the game's RDP Z image.
+- Real RDP depth writes target RDRAM and can become CPU-readable after required
+  synchronization/cache conditions.
+- Rice has no CPU-visible Z writeback path.
+- RT64's target ownership and writeback order are valid, but 0xFFFE does not
+  match the game's emitted 0xFFFC clear word and RT64 does not preserve dz.
+
+All unqualified “Original never writes” wording in this historical lifecycle
+must be read as “the Rice-based control never writes/copies back rendered Z.”

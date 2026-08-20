@@ -264,6 +264,9 @@ O trabalho só está concluído quando todos os critérios de
 - [[evidence/p08-demo-camera-eye-producer-differential]] —
   empirical producer differential for Wooded Hollow camera eye vector divergence
   across glidx 380..388.
+- [[evidence/p08-demo-zbuffer-oracle-sol-review]] — **CURRENT:** independent
+  oracle arbitration; Rice-zero invalid for CPU-visible rendered Z, RT64 exact
+  format refuted, root C-ORACLE; Angrylion Plus + CXD4 LLE run next.
 - [[evidence/p08-session-handoff]] — estado autossuficiente e próximo single
   action para um novo chat.
 - [[evidence/p08-intro-to-demo-transition-diagnosis]] — timeline histórica;

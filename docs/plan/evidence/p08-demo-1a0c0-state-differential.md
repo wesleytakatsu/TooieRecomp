@@ -1,6 +1,6 @@
 ---
 title: "P08 — func_8001A0C0 (176,161) state differential"
-description: "Trace-only differential of the first real aligned Original-vs-Recomp state difference: func_8001A0C0(176,161) returns ORIGINAL 0 vs RECOMP nonzero packed value inside func_800E81E0. Root: hidden table input D_8007BCC4 (a heap-allocated 0x21D80-byte DB) differs. B-STATE."
+description: "Historical Rice-vs-RT64 state differential at func_8001A0C0(176,161). The measured zero/live split is preserved, but independent review proves D_8007BCC4 is the Z image and Rice is not a valid rendered-depth oracle. C-ORACLE."
 status: current
 type: evidence
 project: TooieRecomp
@@ -13,7 +13,8 @@ tags: [p08, camera, projection, classifier, 1a0c0, e81e0, bstate, differential, 
 - Model: Grok 4.6 HIGH
 - Base HEAD: `95a6c3915f8b9b73544c4c9e031fed65fa8370d8`
 - Upstream: [[p08-demo-projection-classifier-rejoin]] (B-STATE at `func_8001A0C0`)
-- Downstream: [[p08-demo-db-8007bcc4-lifecycle]], [[p08-demo-db-target-writer]] (B-WRITER: D_8007BCC4 is 304x228 Z-buffer; writer is RT64 Framebuffer::copyNativeToRAM depth writeback)
+- Downstream: [[p08-demo-db-8007bcc4-lifecycle]], [[p08-demo-db-target-writer]],
+  [[p08-demo-zbuffer-oracle-sol-review]] (current C-ORACLE arbitration)
 
 ## 0. Verdict
 
@@ -30,8 +31,8 @@ beyond a single indexed halfword load** of a hidden heap table; the only
 possible differing input is the hidden global/base/table memory. On Q1:
 
 ```text
-ORIGINAL  v0 = 0x00000000        (all 25 aligned samples)
-RECOMP    v0 = 0x00008660..0x00008BFC  (nonzero, varying, ~+0x3C/sample)
+ORIGINAL_RICE_CONTROL v0 = 0x00000000        (all 25 aligned samples)
+RT64_CONTROL          v0 = 0x00008660..0x00008BFC  (nonzero, varying)
 ```
 
 Original runtime base `D_8007BCC4 = 0x80137840` (constant across all 388
@@ -105,12 +106,12 @@ ONEA0C0_PURE_TWO_ARG_FUNCTION: NO
 HIDDEN INPUTS:    D_8007BCC4 base + table content
 ```
 
-## 4. D_8007BCC4 base — original runtime
+## 4. D_8007BCC4 base — Rice control
 
 ```text
-ORIGINAL D_8007BCC4 = 0x80137840   (constant; all 388 func_8001A0C0 calls)
-ORIGINAL READ ADDR   = 0x8014F800  (0x80137840 + 0x17FC0)
-ORIGINAL CELL (u16)  = 0x0000      (all 25 Q1 samples)
+ORIGINAL_RICE_CONTROL D_8007BCC4 = 0x80137840
+ORIGINAL_RICE_CONTROL READ ADDR  = 0x8014F800
+ORIGINAL_RICE_CONTROL CELL (u16) = 0x0000 (all 25 Q1 samples)
 ```
 
 `func_8001A080` -> `func_8001A018(0x21D80)` -> `heap_alloc` allocates the
@@ -123,7 +124,7 @@ Read is at `+0x17FC0` = 98240 bytes into the DB.
 DIRECT_LOAD_COUNT:        2 (lw base, lhu cell)
 DIRECT_LOAD_SET_MATCH:    NO
 FIRST_DIFFERENT_DIRECT_LOAD: u16 table cell at base+0x17FC0
-                            (Original 0x0000 vs Recomp 0x00008660..)
+                            (Rice 0x0000 vs RT64 0x00008660..)
 ```
 
 ## 6. RECOMP RETURN PATTERN (fixed index, incrementing value)
@@ -137,10 +138,9 @@ Recomp A0C0_RET stored (v0) across 25 aligned Q1 samples, same
 0x8A10,0x8A4C,0x8A8C,0x8AC8,0x8B04,0x8B40,0x8B80,0x8BBC,0x8BFC
 ```
 
-Deltas vary around +0x3C (60) per Q1 sample. A constant index of a properly
-populated static table must return a **constant**; the recomp returns
-incrementing values, so the recomp hidden base/table input is **not** the
-original static DB (misrelocated / misinitialized / aliasing live memory).
+Deltas vary around +0x3C (60) per Q1 sample. The former “static table” and
+misrelocation interpretation is **CORRECTED/SUPERSEDED**: this allocation is a
+live RDP Z image, so changing values are expected after rendering.
 
 ## 7. Classification
 
@@ -156,18 +156,15 @@ FIRST_DIFFERENT_DIRECT_LOAD:        u16 at [D_8007BCC4 + 0x17FC0]
 ONEA0C0_INDIRECT_OBJECTS:           1 (heap DB at D_8007BCC4, 0x21D80)
 INDIRECT_OBJECT_IDENTITY_MATCH:     Original base 0x80137840 const; recomp
                                     base cell live/incrementing
-ROOT_CAUSE_LEVEL:                   B-STATE
+ROOT_CAUSE_LEVEL:                   CORRECTED/SUPERSEDED by C-ORACLE
 ROOT_CAUSE:                         func_8001A0C0 returns a u16 from hidden
                                     heap DB base D_8007BCC4 at off 608*a1+2*a0.
-                                    Explicit a0/a1 match 25/25; Original cell=0
-                                    constant, Recomp incrementing nonzero at
-                                    same index. Hidden global/table input
-                                    differs -> first divergence is the hidden
-                                    table read, not 1A0C0 execution.
-NEXT_SINGLE_ACTION:                 trace only the exact writer/source that
-                                    produces D_8007BCC4 / its table content in
-                                    the recomp (recomp init func_8001A080 /
-                                    8001A018 allocation and writes into the DB).
+                                    Explicit a0/a1 match 25/25; Rice cell=0
+                                    while RT64 has live Z at the same index.
+                                    Rice omits guest RDRAM depth copyback and
+                                    cannot arbitrate the real camera result.
+NEXT_SINGLE_ACTION:                 run the bounded Angrylion Plus + CXD4 LLE
+                                    Original oracle experiment.
 FIX_IMPLEMENTED:                    NO
 ```
 

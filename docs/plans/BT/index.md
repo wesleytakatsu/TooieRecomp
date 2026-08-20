@@ -128,5 +128,6 @@ Evidência:
 [[../../plan/evidence/p08-slot7-scheduled-event-validation]],
 [[../../plan/evidence/p08-slot7-scheduled-event-driver]],
 [[../../plan/evidence/p08-slot7-object-lifecycle-arbitration]],
+[[../../plan/evidence/p08-demo-zbuffer-oracle-sol-review]],
 [[../../plan/evidence/p08-session-handoff]]. Detalhe:
 [[08-rt64-input-and-frontend]].
