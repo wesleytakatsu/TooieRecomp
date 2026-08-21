@@ -43,12 +43,14 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 P08 — RT64, input e frontend is **ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B)**.
 Canonical tasks (T01..T11) audited:
 - T01..T06, T08..T11: **DONE** (T02 display list and effect catalog completed; [[p08-display-effect-catalog]])
-- T07: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers verified via unit tests; physical multi-monitor and visual fullscreen validation pending)
+- T07: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (`tooie_window` helpers verified via unit tests; physical display validation `PASS` by user confirmation; formal physical gamepad validation `PENDING_HARDWARE_UNAVAILABLE`)
 - P08-T08 (Graphics driver / Vulkan failure handling): **DONE** (`tooie_error` reporting, `assert(false)` removal, negative env test PASS).
 - Attract DEMO2 SIGSEGV (bsrest 0x808003FC): **RESOLVED and VALIDATED**.
-- User controller observation: **USER_REPORTED** — controls appear correct during live gameplay; the formal 15-item checklist is not proven.
-- Physical display confirmation: **NOT FOUND** in the available evidence; the formal 14-item display checklist remains pending.
-- Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gate is completed.
+- User physical display confirmation: **PASS** — all 14 mandatory display/window tests passed user validation.
+- User physical gamepad status: **PENDING_HARDWARE_UNAVAILABLE** — no gamepad hardware currently available for formal 15/15 checklist execution (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained).
+- Only remaining formal P08 gate: **PHYSICAL_GAMEPAD_VALIDATION**.
+- Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
+- Provisional pre-P09 parity evidence: Attract Demos 0..3 validated against hardware-faithful `ANGRYLION_CONTROL` oracle (100% pad match, bounded physics error <0.89u, animation telemetry captured, no Fire Egg or visual drift defect in attract set).
 
 ## CURRENT_PRODUCT_STATE
 
@@ -93,9 +95,9 @@ Canonical tasks (T01..T11) audited:
 
 **P08 Status: ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
 - Implementation is substantially complete with all automated tests passing.
-- Pending items before formal P08 exit gate close and P09 open:
-  1. Manual physical controller testing across varied hardware (USB/Bluetooth N64/Xbox/PS gamepad).
-  2. Live physical multi-monitor display migration and desktop fullscreen transition verification.
+- Physical display validation: **PASS** (user confirmed all 14 mandatory display tests).
+- Remaining P08 exit gate before formal P09 open:
+  1. Manual physical controller testing on real gamepad hardware (`PENDING_HARDWARE_UNAVAILABLE`).
 - P08 Invariants (DO NOT REOPEN): attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline. Do not modify shared RT64. PATCH 4 stays ON.
 
 ## ROOT_CAUSE_STATUS

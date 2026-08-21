@@ -363,9 +363,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
    across all 765 demo frames (XZ max error < 0.89 units, 0 behavior-state
    mismatches). Historical Rice camctrl/motion drift is REFUTED as an emulator
    artifact.
-3. **Physical Hardware Validation (P08 Gates)** — Manual user execution of
-   gamepad and multi-monitor display checklists in
-   [[../../plan/evidence/p08-final-physical-validation]] remains PENDING.
+3. **Physical Hardware Validation (P08 Gates)** — Physical display validation is **PASS** (`FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`, 14/14 mandatory items passed). Physical gamepad checklist is **PENDING_HARDWARE_UNAVAILABLE** due to temporary hardware unavailability (`PHYSICAL_GAMEPAD_RESULT: PENDING_HARDWARE_UNAVAILABLE`, `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained). The only remaining formal P08 gate is `PHYSICAL_GAMEPAD_VALIDATION`.
 4. **File-select confirm transition — RESOLVED / REFUTED**
    ([[../../plan/evidence/p08-title-file-select-validation]]). Post-confirm destination
    is `MAP_A1_CS_INTRO` (161) / `mode=3` (opening story cutscenes). The synthetic
@@ -385,7 +383,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 - [x] mode 5 / gsattract ep1 / gameplay demo renderizam (upright after matrix split).
 - [x] Entrada title/file select validada; rumble/hotplug remains separate.
 - [x] P08-T03 original timing/4:3 baseline validado e desacoplado da janela.
-- [x] P08-T07 window, fullscreen, focus, multi-monitor, scale/DPI helpers implemented (`tests/window_display_test.cpp`, 38/38 PASS; manual physical display validation pending).
+- [x] P08-T07 window, fullscreen, focus, multi-monitor, scale/DPI helpers implemented (`tests/window_display_test.cpp`, 38/38 PASS; physical display validation PASS by user confirmation; physical gamepad validation pending hardware availability).
 - [x] P08-T08 graphics driver / Vulkan fallback error handling validado (`tests/graphics_failure_test.cpp`, 25/25 PASS; negative env test PASS).
 - [x] Persistência BanjoRecomp; `controls.json` lazy.
 - [x] Sem melhorias que alterem timing/paridade de referência.
@@ -394,13 +392,14 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 
 **P08 remains ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
 - **Implemented Scope**: RT64 presentation baseline, input mapping, window/scale integration, graphics/Vulkan error handling, launcher music preview, static call correctness, attract demo hardware-accurate motion sync.
-- **Physical Validation Status**: User reported that controls appear correct during live gameplay (**USER_REPORTED**). The formal 15-item gamepad checklist and 14-item physical display checklist remain **PENDING** ([[../../plan/evidence/p08-final-physical-validation]]).
-- **Next Stage**: [[09-gameplay-parity-and-enhancements]] remains **PENDING / NOT_FORMALLY_OPEN** until the P08 manual gate is complete.
+- **Physical Validation Status**: Physical display checklist is **PASS** (`FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`, 14/14 mandatory items passed). Physical gamepad checklist is **PENDING_HARDWARE_UNAVAILABLE** (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained). The only remaining formal P08 gate is `PHYSICAL_GAMEPAD_VALIDATION`.
+- **Provisional Pre-P09 Evidence**: Attract Demos 0..3 validated against hardware-faithful `ANGRYLION_CONTROL` oracle (100% pad match, bounded physics error <0.89u, animation telemetry captured, no Fire Egg or visual drift defect in attract set).
+- **Next Stage**: [[09-gameplay-parity-and-enhancements]] remains **PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is complete.
 - **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline, Angrylion Z-buffer oracle (R-ORACLE), Angrylion attract demo motion sync (R-MOTION-ORACLE).
 
-## P08 Implementation Status (2026-08-20, Gemini 3.7 Flash HIGH)
+## P08 Implementation Status (2026-08-21, Gemini 3.7 Flash HIGH)
 
-- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path. Physical display validation remains pending; the available controller observation does not prove the checklist.
+- **P08-T07**: Window sanitization, aspect ratio contracts, and display validation helpers implemented via `tooie_window` module and verified via `tests/window_display_test.cpp` (38/38 PASS). Fullscreen/focus/event handling verified on reference SDL/RT64 path. Physical display validation is **PASS** by explicit user confirmation. Physical gamepad validation remains **PENDING_HARDWARE_UNAVAILABLE**.
 - **P08-T08**: Graphics driver, Vulkan, and window initialization error handling validated via `tooie_error` module, `tests/graphics_failure_test.cpp` (25/25 PASS), and negative environment tests (`VK_ICD_FILENAMES=/nonexistent.json` exits code 1 with clean diagnostics and no crash).
 - **Canonical Tasks**: All 11 canonical tasks audited:
   - `P08-T01`: **DONE**
@@ -409,7 +408,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
   - `P08-T04`: **DONE**
   - `P08-T05`: **DONE**
   - `P08-T06`: **DONE**
-  - `P08-T07`: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** ([[../../plan/evidence/p08-final-physical-validation]])
+  - `P08-T07`: **IMPLEMENTED_MANUAL_VALIDATION_PENDING** (Display PASS; Gamepad PENDING_HARDWARE_UNAVAILABLE; [[../../plan/evidence/p08-final-physical-validation]])
   - `P08-T08`: **DONE** ([[../../plan/evidence/p08-t07-t08-frontend-system-validation]])
   - `P08-T09`: **DONE** ([[../../plan/evidence/p08-render-submission-matrix-fix]])
   - `P08-T10`: **DONE** ([[../../plan/evidence/p08-title-file-select-validation]])

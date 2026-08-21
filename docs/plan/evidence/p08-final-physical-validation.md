@@ -49,21 +49,21 @@ The final gates for formal **P08 COMPLETION** are:
 
 | Test ID | Category | Action | Expected Result | Result (PASS/FAIL/N/A) | Notes |
 |:---|:---:|:---|:---|:---:|:---|
-| **PAD-01** | `MANDATORY` | Connect controller before launch and run `./build/TooieRecompiled` | Controller is detected and operational immediately in game menus and gameplay | `PENDING` | |
-| **PAD-02** | `MANDATORY` | Title screen navigation | Press `START` on gamepad -> advances from Intro/Title to File Selection | `PENDING` | |
-| **PAD-03** | `MANDATORY` | File-select menu navigation | Analog Stick Left / Right or D-Pad moves between file slots cleanly | `PENDING` | |
-| **PAD-04** | `MANDATORY` | Confirm file selection | Press `A` button on gamepad -> selects file slot and starts intro/gameplay transition | `PENDING` | |
-| **PAD-05** | `MANDATORY` | Cancel / Back buttons | Press `B` button in menus where applicable -> cancels / returns | `PENDING` | |
-| **PAD-06** | `MANDATORY` | Analog Stick: Cardinal Directions | Tilt Stick UP, DOWN, LEFT, RIGHT -> player moves in exact requested direction | `PENDING` | |
-| **PAD-07** | `MANDATORY` | Analog Stick: Diagonals | Tilt Stick NE, NW, SE, SW -> all four diagonal directions produce expected diagonal movement without cardinal bias, dead directions, inversion, or right-only behavior | `PENDING` | |
-| **PAD-08** | `MANDATORY` | Analog Stick: Low Magnitude | Tilt Stick slightly (~20-40%) -> player walks slowly (proper analog scaling) | `PENDING` | |
-| **PAD-09** | `MANDATORY` | Analog Stick: Full Deflection | Tilt Stick fully (100%) -> player runs at full speed without artificial clamping or asymmetry (informational: `tspd ≈ 700` in running state) | `PENDING` | |
-| **PAD-10** | `MANDATORY` | Circular Stick Movement | Rotate Analog Stick in smooth 360° circles -> continuous, fluid facing rotation without snapping | `PENDING` | |
-| **PAD-11** | `MANDATORY` | Directional Symmetry (No Right-Only Bias) | Player turns left, up, and down as freely and symmetrically as right (verifies `func_80013B70` fix) | `PENDING` | |
-| **PAD-12** | `MANDATORY` | Axis Orientation | UP moves forward/up, DOWN moves backward/down, LEFT moves left, RIGHT moves right (no inverted axes) | `PENDING` | |
-| **PAD-13** | `MANDATORY` | Stick Neutral / Release | Releasing stick returns host/N64 input to neutral (0,0); player does not continue receiving directional input or drift indefinitely (normal ORIGINAL_GAME deceleration is expected) | `PENDING` | |
-| **PAD-14** | `MANDATORY` | Keyboard / Pad Coexistence | While controller is plugged in, keyboard keys (WASD / Space / Enter) also operate without conflict | `PENDING` | |
-| **PAD-15** | `MANDATORY` | Focus Loss / Regain Input Safety | Alt-Tab away while holding stick, then return -> game releases held input; no stuck directional inputs | `PENDING` | |
+| **PAD-01** | `MANDATORY` | Connect controller before launch and run `./build/TooieRecompiled` | Controller is detected and operational immediately in game menus and gameplay | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-02** | `MANDATORY` | Title screen navigation | Press `START` on gamepad -> advances from Intro/Title to File Selection | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-03** | `MANDATORY` | File-select menu navigation | Analog Stick Left / Right or D-Pad moves between file slots cleanly | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-04** | `MANDATORY` | Confirm file selection | Press `A` button on gamepad -> selects file slot and starts intro/gameplay transition | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-05** | `MANDATORY` | Cancel / Back buttons | Press `B` button in menus where applicable -> cancels / returns | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-06** | `MANDATORY` | Analog Stick: Cardinal Directions | Tilt Stick UP, DOWN, LEFT, RIGHT -> player moves in exact requested direction | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-07** | `MANDATORY` | Analog Stick: Diagonals | Tilt Stick NE, NW, SE, SW -> all four diagonal directions produce expected diagonal movement without cardinal bias, dead directions, inversion, or right-only behavior | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-08** | `MANDATORY` | Analog Stick: Low Magnitude | Tilt Stick slightly (~20-40%) -> player walks slowly (proper analog scaling) | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-09** | `MANDATORY` | Analog Stick: Full Deflection | Tilt Stick fully (100%) -> player runs at full speed without artificial clamping or asymmetry (informational: `tspd ≈ 700` in running state) | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-10** | `MANDATORY` | Circular Stick Movement | Rotate Analog Stick in smooth 360° circles -> continuous, fluid facing rotation without snapping | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-11** | `MANDATORY` | Directional Symmetry (No Right-Only Bias) | Player turns left, up, and down as freely and symmetrically as right (verifies `func_80013B70` fix) | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-12** | `MANDATORY` | Axis Orientation | UP moves forward/up, DOWN moves backward/down, LEFT moves left, RIGHT moves right (no inverted axes) | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-13** | `MANDATORY` | Stick Neutral / Release | Releasing stick returns host/N64 input to neutral (0,0); player does not continue receiving directional input or drift indefinitely (normal ORIGINAL_GAME deceleration is expected) | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-14** | `MANDATORY` | Keyboard / Pad Coexistence | While controller is plugged in, keyboard keys (WASD / Space / Enter) also operate without conflict | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
+| **PAD-15** | `MANDATORY` | Focus Loss / Regain Input Safety | Alt-Tab away while holding stick, then return -> game releases held input; no stuck directional inputs | `PENDING_HARDWARE_UNAVAILABLE` | Hardware unavailable |
 | **PAD-16** | `OPTIONAL` | Hotplug Detection | Disconnect and reconnect gamepad during runtime -> game resumes controller input | `OPTIONAL` | RecompFrontend / SDL default |
 
 ---
@@ -72,56 +72,62 @@ The final gates for formal **P08 COMPLETION** are:
 
 | Test ID | Category | Action | Expected Result | Result (PASS/FAIL/N/A) | Notes |
 |:---|:---:|:---|:---|:---:|:---|
-| **DISP-01** | `MANDATORY` | Initial window launch | Window appears centered and correctly sized with title `"Banjo-Tooie: Recompiled"` | `PENDING` | |
-| **DISP-02** | `MANDATORY` | Primary display rendering | Game presents a valid rendered image without black/stale surface, crash, or broken swapchain (compositor VSync/tearing behavior is informational) | `PENDING` | |
-| **DISP-03** | `MANDATORY` | Window dragging | Drag window across desktop -> rendering continues smoothly without crash or deadlock | `PENDING` | |
-| **DISP-04** | `MANDATORY` | Multi-monitor move | Drag window from Primary to Secondary monitor -> swapchain adapts cleanly (`N/A` if single monitor) | `PENDING` | `N/A` allowed if single monitor |
-| **DISP-05** | `MANDATORY` | High-DPI / Display scaling | Window renders with crisp high-DPI scaling on fractional/scaled displays (`N/A` if standard 100% DPI only) | `PENDING` | `N/A` allowed if standard DPI |
-| **DISP-06** | `MANDATORY` | Window resizing | Resize window borders -> viewport scales cleanly while preserving aspect ratio contract | `PENDING` | |
-| **DISP-07A** | `MANDATORY` | 4:3 Baseline Aspect Ratio | Game renders in correct 4:3 proportion with proper pillarboxing; no distorted geometry | `PENDING` | Baseline fidelity contract |
-| **DISP-07B** | `OPTIONAL` | 16:9 Widescreen Expansion | If 16:9 widescreen is enabled in config, horizontal FOV expands cleanly without breaking UI | `OPTIONAL` | Optional enhancement |
-| **DISP-08** | `MANDATORY` | Fullscreen toggle: Enter | Press `Alt+Enter` (or configure Fullscreen) -> transitions cleanly to fullscreen | `PENDING` | |
-| **DISP-09** | `MANDATORY` | Fullscreen toggle: Exit | Press `Alt+Enter` again -> cleanly returns to windowed mode without corruption | `PENDING` | |
-| **DISP-10** | `MANDATORY` | Fullscreen target monitor | In multi-monitor setup, fullscreen activates on the monitor currently holding the window (`N/A` if single monitor) | `PENDING` | `N/A` allowed if single monitor |
-| **DISP-11** | `MANDATORY` | Focus loss (Alt-Tab) | Alt-Tab out of game -> desktop remains responsive, game does not crash or hang | `PENDING` | |
-| **DISP-12** | `MANDATORY` | Focus regain | Switch back to game window -> graphics and audio resume immediately | `PENDING` | |
-| **DISP-13** | `MANDATORY` | Minimize and restore | Minimize window to taskbar, then restore -> rendering resumes normally | `PENDING` | |
-| **DISP-14** | `MANDATORY` | Clean exit | Close window (`Alt+F4` or window close button) -> clean process termination (code 0) without hangs | `PENDING` | |
+| **DISP-01** | `MANDATORY` | Initial window launch | Window appears centered and correctly sized with title `"Banjo-Tooie: Recompiled"` | `PASS` | User confirmed |
+| **DISP-02** | `MANDATORY` | Primary display rendering | Game presents a valid rendered image without black/stale surface, crash, or broken swapchain (compositor VSync/tearing behavior is informational) | `PASS` | User confirmed |
+| **DISP-03** | `MANDATORY` | Window dragging | Drag window across desktop -> rendering continues smoothly without crash or deadlock | `PASS` | User confirmed |
+| **DISP-04** | `MANDATORY` | Multi-monitor move | Drag window from Primary to Secondary monitor -> swapchain adapts cleanly (`N/A` if single monitor) | `PASS` | User confirmed |
+| **DISP-05** | `MANDATORY` | High-DPI / Display scaling | Window renders with crisp high-DPI scaling on fractional/scaled displays (`N/A` if standard 100% DPI only) | `PASS` | User confirmed |
+| **DISP-06** | `MANDATORY` | Window resizing | Resize window borders -> viewport scales cleanly while preserving aspect ratio contract | `PASS` | User confirmed |
+| **DISP-07A** | `MANDATORY` | 4:3 Baseline Aspect Ratio | Game renders in correct 4:3 proportion with proper pillarboxing; no distorted geometry | `PASS` | User confirmed baseline fidelity |
+| **DISP-07B** | `OPTIONAL` | 16:9 Widescreen Expansion | If 16:9 widescreen is enabled in config, horizontal FOV expands cleanly without breaking UI | `USER_REPORTED PASS` | Optional enhancement |
+| **DISP-08** | `MANDATORY` | Fullscreen toggle: Enter | Press `Alt+Enter` (or configure Fullscreen) -> transitions cleanly to fullscreen | `PASS` | User confirmed |
+| **DISP-09** | `MANDATORY` | Fullscreen toggle: Exit | Press `Alt+Enter` again -> cleanly returns to windowed mode without corruption | `PASS` | User confirmed |
+| **DISP-10** | `MANDATORY` | Fullscreen target monitor | In multi-monitor setup, fullscreen activates on the monitor currently holding the window (`N/A` if single monitor) | `PASS` | User confirmed |
+| **DISP-11** | `MANDATORY` | Focus loss (Alt-Tab) | Alt-Tab out of game -> desktop remains responsive, game does not crash or hang | `PASS` | User confirmed |
+| **DISP-12** | `MANDATORY` | Focus regain | Switch back to game window -> graphics and audio resume immediately | `PASS` | User confirmed |
+| **DISP-13** | `MANDATORY` | Minimize and restore | Minimize window to taskbar, then restore -> rendering resumes normally | `PASS` | User confirmed |
+| **DISP-14** | `MANDATORY` | Clean exit | Close window (`Alt+F4` or window close button) -> clean process termination (code 0) without hangs | `PASS` | User confirmed |
 
 ---
 
 ## 5. Exit Decision Contract & Sign-Off
 
 ```text
-MANDATORY_GAMEPAD_TESTS_PASS:   PENDING (formal 15/15 checklist not proven by available user report)
-MANDATORY_DISPLAY_TESTS_PASS:   PENDING (formal 14/14 checklist not proven; no display confirmation found)
-PHYSICAL_GAMEPAD_RESULT:        PENDING (positive gameplay observation; checklist completion pending)
-PHYSICAL_DISPLAY_RESULT:        PENDING
-P08_MANUAL_VALIDATION_RESULT:   PENDING
+MANDATORY_DISPLAY_TESTS_PASS:   PASS
+PHYSICAL_DISPLAY_RESULT:        PASS
+FORMAL_DISPLAY_CHECKLIST_PROVEN: YES
+GAMEPAD_HARDWARE_AVAILABLE:      NO
+FORMAL_15_OF_15_GAMEPAD_CHECKLIST_PROVEN: NO
+PHYSICAL_GAMEPAD_RESULT:        PENDING_HARDWARE_UNAVAILABLE
+P08_MANUAL_VALIDATION_RESULT:   PENDING_GAMEPAD_ONLY
 P08_PHASE:                      ACTIVE / MANUAL_VALIDATION_PENDING
 P09_PHASE:                      PENDING / NOT_FORMALLY_OPEN
+ONLY_REMAINING_P08_GATE:        PHYSICAL_GAMEPAD_VALIDATION
 ```
 
 ### Sign-Off Policy:
-- **`PHYSICAL_GAMEPAD_RESULT = PASS`** requires all 15 `MANDATORY` gamepad tests to be marked `PASS`. (`PAD-16` is `OPTIONAL` and does not block pass.)
-- **`PHYSICAL_DISPLAY_RESULT = PASS`** requires all 14 `MANDATORY` display tests to be marked `PASS` (or `N/A` where hardware is unavailable: `DISP-04`, `DISP-05`, `DISP-10`). (`DISP-07B` is `OPTIONAL` and does not block pass.)
-- The available user statement supports a positive observation of controller behavior during live gameplay, but does not enumerate completion of all 15 gamepad actions.
-- No physical display user confirmation was found in the available evidence. Display implementation/unit tests do not prove the physical multi-monitor checklist.
-- The commit's `15/15`, `14/14`, `P08 = COMPLETE`, and `P09 = ACTIVE` claims are **CORRECTED/SUPERSEDED** by this evidence-scope audit.
+- **`PHYSICAL_DISPLAY_RESULT = PASS`**: All 14 mandatory physical display items passed user manual testing.
+- **`PHYSICAL_GAMEPAD_RESULT = PENDING_HARDWARE_UNAVAILABLE`**: Physical controller hardware is temporarily unavailable for formal 15/15 checklist execution. Prior user-confirmed gameplay observation remains recorded (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES`).
+- **`P08_MANUAL_VALIDATION_RESULT = PENDING_GAMEPAD_ONLY`**: The physical display gate is closed (PASS); the physical gamepad gate is pending hardware availability.
+- P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING** and P09 remains **PENDING / NOT_FORMALLY_OPEN**.
 
-## 6. Evidence-Scope Audit (2026-08-20)
+## 6. Evidence-Scope Audit (2026-08-21)
 
 ```text
 USER_CONFIRMED_CONTROLLER_GAMEPLAY:       YES
 PHYSICAL_GAMEPAD_USER_OBSERVATION:        PASS — controls appear correct during live gameplay
+PHYSICAL_DISPLAY_USER_CONFIRMATION_FOUND: YES — user confirmed all mandatory display/window tests passed
 FORMAL_15_OF_15_GAMEPAD_CHECKLIST_PROVEN: NO
-PHYSICAL_DISPLAY_USER_CONFIRMATION_FOUND: NO
-FORMAL_DISPLAY_CHECKLIST_PROVEN:          NO
-PHYSICAL_GAMEPAD_FORMAL_RESULT:           PENDING_CHECKLIST_COMPLETION
+FORMAL_DISPLAY_CHECKLIST_PROVEN:          YES
+MANDATORY_DISPLAY_TESTS_PASS:             PASS
+PHYSICAL_DISPLAY_RESULT:                  PASS
+GAMEPAD_HARDWARE_AVAILABLE:               NO
+PHYSICAL_GAMEPAD_FORMAL_RESULT:           PENDING_HARDWARE_UNAVAILABLE
+P08_MANUAL_VALIDATION_RESULT:             PENDING_GAMEPAD_ONLY
 P08_FORMAL_STATUS:                        ACTIVE / MANUAL_VALIDATION_PENDING
 P09_FORMAL_STATUS:                        PENDING / NOT_FORMALLY_OPEN
+ONLY_REMAINING_P08_GATE:                  PHYSICAL_GAMEPAD_VALIDATION
 ```
 
-The controller observation is retained as **USER_REPORTED** evidence. It must not
-be converted into a formal 15/15 checklist result without explicit confirmation
-of each mandatory action. The physical display gate remains pending.
+The physical display gate is formally proven PASS based on explicit user confirmation.
+The physical gamepad gate remains PENDING_HARDWARE_UNAVAILABLE until physical controller hardware is connected to run the formal 15-item checklist. P09 is not formally open.

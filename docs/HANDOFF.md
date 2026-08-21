@@ -12,14 +12,15 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 
 ## Prioridade atual
 
-**PHASE P08 IS ACTIVE / MANUAL_VALIDATION_PENDING; PHASE P09 IS PENDING / NOT_FORMALLY_OPEN (2026-08-20):**
-- **P08 Implementation Scope**: RT64, frontend, window helpers, graphics/Vulkan diagnostics, and automated validation are substantially complete. The formal physical gate remains open.
-- **Controller Evidence**: User reported that controls appear correct during live gameplay (**USER_REPORTED**). This supports `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES`, but does not prove the formal 15/15 gamepad checklist.
-- **Display Evidence**: No physical display user confirmation was found; the formal 14-item display checklist remains `PENDING`.
-- **P09 Provisional Evidence**: [[plan/evidence/p09-user-observed-parity-residuals]] contains valid Demo 0-only differential results against `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE). It is `PROVISIONAL_PRE_P09_PARITY_EVIDENCE`, not a formal P09 opening.
-  - Demo 0 preserves 765/765 pad match, bounded trajectory error, behavior-state parity, Blue Egg parity at glidx 322, and the Angrylion Z-buffer/classifier result.
-  - The Fire Egg report is `USER_REPORTED_UNLOCATED / NOT_REPRODUCED_IN_DEMO0 / OPEN_OTHER_DEMOS`; the visual-drift report is `USER_REPORTED / OPEN`, with Demo 1..3 `UNTESTED`.
-- **Next Single Action**: Complete the remaining P08 physical validation checklist; after formal P09 opening, validate Demo 1, Demo 2, and Demo 3 before selecting audio/graphics work.
+**PHASE P08 IS ACTIVE / MANUAL_VALIDATION_PENDING; PHASE P09 IS PENDING / NOT_FORMALLY_OPEN (2026-08-21):**
+- **Physical Display Validation**: **PASS** — User explicitly confirmed all 14 mandatory display/window integration tests passed (`PHYSICAL_DISPLAY_RESULT: PASS`, `FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`).
+- **Physical Gamepad Status**: **PENDING_HARDWARE_UNAVAILABLE** — Formal 15/15 gamepad checklist cannot be executed because controller hardware is temporarily unavailable. `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained.
+- **Only Remaining P08 Gate**: **PHYSICAL_GAMEPAD_VALIDATION**.
+- **P09 Provisional Evidence**: [[plan/evidence/p09-user-observed-parity-residuals]] records provisional pre-P09 parity results for Attract Demos 0, 1, 2, and 3 against hardware-faithful **`ANGRYLION_CONTROL`** oracle.
+  - All four attract demos (0..3) demonstrate 100% input alignment, bounded physics error (<0.89u max error, `STABLE_NOISE`), bit-identical animation telemetry capture, and clean upright rendering.
+  - No Fire Egg firing event exists in reference attract data across Demos 0..3 (`USER_FIRE_EGG_REPORT_STATUS: USER_REPORT_NOT_REPRODUCED_IN_ATTRACT_SET`).
+  - No visual drift reproduced across Demos 0..3 (`GLOBAL_VISUAL_DRIFT_STATUS: NOT_REPRODUCED_IN_ATTRACT_SET`).
+- **Next Single Action**: Await physical gamepad hardware availability to close the final P08 gate; preserve audio/graphics backlog for after formal P09 opening.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
