@@ -30,6 +30,7 @@ extern "C" void func_80108C90(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick);
 extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick);
 extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx);
+extern "C" void tooie_ud4_ncbapivot_ep3_leave(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick);
 extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx, uint32_t ovl, uint32_t ep, int leaving);
 extern "C" void baflameline_entrypoint_5(uint8_t* rdram, recomp_context* ctx);
@@ -910,6 +911,10 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
     }
 
     func(rdram, ctx);
+
+    if (tooie_diag::attract_enabled() && overlay_index == 781u && entry_index == 3u) {
+        tooie_ud4_ncbapivot_ep3_leave(rdram, ctx);
+    }
 
     // The attract gameplay demo (mode==5) consumes one recorded-pad sample per
     // glrecord overlay dispatch (overlay 698 entrypoint 0). This is the TRUE

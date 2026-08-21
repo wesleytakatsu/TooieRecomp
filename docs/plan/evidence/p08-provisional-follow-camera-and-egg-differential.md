@@ -333,7 +333,7 @@ Temporary Tooie diagnostics are env-gated (`TOOIE_DIAG_ATTRACT` implies SHOT + D
 
 Egg investigation stopped at the first proven egg-state difference (enum / spawn overlay). No production fix.
 
-Follow-camera **visible** first split remains `camctrl` at USER_DEMO_4 demo-sync glidx 41 (0.085°). **Bit-level** first difference is glidx 1 CA8B4/ncbapivot output (init MATCH; CA8B4 is an identity copier). Canonical seed: [[p08-user-demo4-ca8b4-first-seed]]. Writer of camctrl remains `func_800CA628` ([[p08-user-demo4-follow-camera-first-discriminator]]). Do not reopen Rice Z-buffer. Do not formally open P09.
+Follow-camera **visible** first split remains `camctrl` at USER_DEMO_4 demo-sync glidx 41 (0.085°). **Bit-level** first difference is live eye `node+0x74` at first `ncbapivot_entrypoint_3` **enter** (selected record still warp-in MATCH; CA8B4 is an identity copier). Canonical: [[p08-user-demo4-ncbapivot-first-instruction]]. Writer of camctrl remains `func_800CA628` ([[p08-user-demo4-follow-camera-first-discriminator]]). Do not reopen Rice Z-buffer. Do not formally open P09.
 
 ```text
 NEXT_SINGLE_ACTION: capture complete ncbapivot_entrypoint_3 inputs/FPU on USER_DEMO_4 glidx 1; no fix

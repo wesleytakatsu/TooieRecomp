@@ -51,9 +51,13 @@ WALK_START_FIRST_NEW_EXTERNAL_INPUT_DIFFERENCE: NONE (CA8B4 reads only
                                         the camera record; player pos
                                         MATCH through glidx 40)
 
-FIRST_DIFFERING_INPUT_PRODUCER:         ncbapivot_entrypoint_3 first tick
+FIRST_DIFFERING_INPUT_PRODUCER:         node+0x74 already differs at first
+                                        ncbapivot ep3 enter
+                                        ([[p08-user-demo4-ncbapivot-first-instruction]])
 A_CANDIDATE:                            NO (CA8B4)
-ROOT_CLASS:                             B-CAMERA-RECURRENT-SEED
+ROOT_CLASS:                             B-CAMERA-RECURRENT-SEED for CA8B4;
+                                        ncbapivot tick itself is
+                                        B-NCBAPIVOT-INPUT
 FIX_IMPLEMENTED:                        NO
 EGG_PARITY_DEFECT:                      PROVEN_BUT_DEFERRED
 ```
@@ -236,8 +240,10 @@ Player position remains bit-identical through dump glidx 40. The large walk-star
 ## 9. Classification of the three “first difference” layers
 
 ```text
-BIT_LEVEL_FIRST_DIFFERENCE:          glidx 1 CA8B4/ncbapivot output
-                                     (eye 4–7 ULP, camctrl 2 ULP)
+BIT_LEVEL_FIRST_DIFFERENCE:          node+0x74 at first ncbapivot ep3 enter
+                                     (eye 4–7 ULP already in live eye;
+                                     CA8B4 output is a later copy)
+                                     see [[p08-user-demo4-ncbapivot-first-instruction]]
 VISIBLE/MEANINGFUL_FIRST_DIFFERENCE: demo-sync glidx 41 / dump glidx 40
                                      (0.085° camctrl; eye Δ ~2)
                                      last 0.001° display match = glidx 38
@@ -259,16 +265,18 @@ EVIDENCE:    Init record + player pos/yaw are bit-identical at first
              recurrent camera state differs. Walk start does not introduce
              a new CA8B4 external input.
 A_CANDIDATE (CA8B4):     NO
-A_CANDIDATE (ncbapivot): NOT_PROVEN — player + CA8B4-relevant prior
-             record match, but ncbapivot's full executed read set was
-             not captured this session.
+A_CANDIDATE (ncbapivot): NO — CORRECTED/SUPERSEDED by
+             [[p08-user-demo4-ncbapivot-first-instruction]].
+             Rec + player match at ep3 enter, but live eye
+             node+0x74 / dest +0x80 already differ (7/4/2 ULP).
+             CASE A / B-NCBAPIVOT-INPUT.
 ```
 
 Do not implement a fix. Do not reopen `func_800CA628`, `func_800E1A58`, Rice Z-buffer, old gl385, `func_80013B70`, or C4C34. Egg remains `PROVEN_BUT_DEFERRED`.
 
-Next bounded action is a complete first-tick `ncbapivot_entrypoint_3` input capture (same init + player, which of its callees first emit the 7/4/2 ULP). Recommend **GPT-5.6 Terra** for that MIPS/FPU review. Do **not** recommend Sol.
+The glidx-1 ncbapivot **output** is a preserve of `node+0x74`. First bit-level difference is that field **at ep3 enter**. Next: join `func_80110770` / `func_80110790` before this tick. Recommend **Grok 4.6 High**. Do **not** recommend Sol or Terra until same-input/different-output is proven.
 
 ```text
-NEXT_SINGLE_ACTION: capture complete ncbapivot_entrypoint_3 inputs/FPU on USER_DEMO_4 glidx 1; no fix
-NEXT_RECOMMENDED_MODEL: GPT-5.6 Terra
+NEXT_SINGLE_ACTION: capture func_80110770/func_80110790 on USER_DEMO_4 before first ncbapivot ep3; no fix
+NEXT_RECOMMENDED_MODEL: Grok 4.6 High
 ```

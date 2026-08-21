@@ -9,7 +9,8 @@
 
 ## plan
 
-- [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Bit-level first follow-camera difference at glidx 1 (`ncbapivot` output; init MATCH; CA8B4 identity copier).
+- [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Live eye `node+0x74` already differs at ep3 enter (`B-NCBAPIVOT-INPUT`).
+- [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Rec init MATCH; CA8B4 identity copier; seed is `node+0x74` at ncbapivot enter.
 - [[plan/evidence/p08-user-demo4-follow-camera-first-discriminator]] — P08 — USER_DEMO_4 follow-camera CA628 writer/input discriminator — CA628 stores src2[1] at +0x1C; first window sample already differs at glidx 36.
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
 - [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.

@@ -125,7 +125,7 @@ OUTPUT vs INPUT:                    CA628 output bit-identical to src2[1] both o
 
 `func_800CA8B4(dst_record, out_eye, out_src2)` leave vectors equal the following CA628 inputs. Producer of the differing CA628 input is **CA8B4**, reading the selected camera record `a0`.
 
-Idle follow slew (glidx 1-35) was **not** dumped in this CA628 session. The later CA8B4 seed trace **PROVES** the ULP already exists at glidx 1 (`ncbapivot_entrypoint_3` first tick). Canonical: [[p08-user-demo4-ca8b4-first-seed]]. `glidx 36` is **not** the root.
+Idle follow slew (glidx 1-35) was **not** dumped in this CA628 session. The later CA8B4 seed trace **PROVES** the ULP already exists at glidx 1. The ncbapivot first-tick join **CORRECTED/SUPERSEDED** that seed as ep3 **output**: live eye `node+0x74` already differs at ep3 **enter**. Canonical: [[p08-user-demo4-ncbapivot-first-instruction]], [[p08-user-demo4-ca8b4-first-seed]]. `glidx 36` is **not** the root.
 
 ---
 
@@ -170,7 +170,7 @@ Egg FIRE-vs-BLUE remains **PROVEN_BUT_DEFERRED**. Fire is after this camera spli
 
 ## 8. Next single action
 
-CA8B4 first-seed trace is **DONE**: [[p08-user-demo4-ca8b4-first-seed]]. Bit-level first difference is glidx 1 (`ncbapivot` output). No production fix. Do not open P09. Do not recommend Sol.
+CA8B4 first-seed trace is **DONE**: [[p08-user-demo4-ca8b4-first-seed]]. Ncbapivot first-tick join is **DONE**: [[p08-user-demo4-ncbapivot-first-instruction]] (`B-NCBAPIVOT-INPUT`, `node+0x74` at enter). No production fix. Do not open P09. Do not recommend Sol.
 
 ```text
 NEXT_SINGLE_ACTION: capture complete ncbapivot_entrypoint_3 inputs/FPU on USER_DEMO_4 glidx 1; no fix
