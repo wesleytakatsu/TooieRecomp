@@ -136,3 +136,6 @@ This evidence is diagnostic-only. Do not reopen `round.w.s`, camera feedback,
 generated recompiler output, or the egg path. The next bounded action is to
 capture the missing RT64 FCSR bits and the executed read provenance around the
 `800137AC` inputs; no semantic fix is authorized by this result.
+
+For a clean rerun by another agent, use the operational checklist in
+[[p08-walkstart-reproduction-runbook]].

@@ -16,7 +16,7 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 - Agent workspace: open CLI/IDE in **TooieRecomp/**. MCP/vault configs are in-repo ([[../../MARKDOWN_VAULT_TOOLS]]). Sibling `BanjoRecomp` + cart ROM remain for CMake/oracle only.
 - Provisional Player & AI Speed Parity Baseline: [[p08-provisional-player-ai-speed-parity]] (`PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`, `USER_DEMO4_CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`, `HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
 - Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
-- USER_DEMO_4 post-ROUND.W.S full-state discriminator: [[p08-user-demo4-post-round-full-state-discriminator]] (idle CA8B4/CA628 glidx 1..38 MATCH; first remaining bit difference = dump glidx 39 `ncbapivot_entrypoint_3` output; player pos/yaw/ideal MATCH; `A_CANDIDATE=YES`).
+- USER_DEMO_4 post-ROUND.W.S full-state discriminator: [[p08-user-demo4-post-round-full-state-discriminator]] (idle CA8B4/CA628 glidx 1..38 MATCH; first remaining bit difference = dump glidx 39 `ncbapivot_entrypoint_3` output; player pos/yaw/ideal MATCH; fresh child trace leaves `A_CANDIDATE=NOT_PROVEN`).
 - USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] (pre-fix glidx-1 ULP **CORRECTED/SUPERSEDED** by ROUND.W.S).
 - USER_DEMO_4 ncbapivot first tick: [[p08-user-demo4-ncbapivot-first-instruction]] (pre-fix n74 DIFF; **POST-FIX bind n74 MATCH**).
 - USER_DEMO_4 live-eye writer: [[p08-user-demo4-live-eye-writer]] (node init MATCH; `80110770`/`800EE7F8` faithful; first bit write is ordinal 2 on the mode=2 bind ncbapivot tick).
@@ -672,6 +672,9 @@ Summary of hardware oracle findings:
      - `PHYSICAL_MULTI_MONITOR_DISPLAY_VALIDATION`
 
 NEXT_SINGLE_ACTION: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical desktop hardware.
+
+For repeatable USER_DEMO_4 walkstart captures, use
+[[p08-walkstart-reproduction-runbook]] before starting a new diagnostic run.
 
 ## Attract user-numbering and USER_DEMO_4 egg defect (2026-08-21)
 

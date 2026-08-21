@@ -408,6 +408,8 @@ This remains diagnosis-only. Keep `round.w.s`, camera feedback, generated
 recompiler output, and egg changes closed; the next discriminator is the
 missing RT64 FCSR and executed-read provenance around `800137AC`.
 
+Reproduction checklist for other agents: [[plan/evidence/p08-walkstart-reproduction-runbook]].
+
 ## P08 ideal-yaw writer differential — RESOLVED (2026-08-17)
 
 The exact ideal_yaw writer and its input provenance are now PROVEN by a bounded
