@@ -96,6 +96,141 @@ static inline int p08_ud4_window(struct r4300_core* r4300, int* glidx_out)
     return (mode == 5 && sub == 4 && glidx >= 0 && glidx <= 42);
 }
 
+static inline int p08_guest(uint32_t a);
+static inline void p08_ud4_dump_vec3(struct r4300_core* r4300, FILE* fp, const char* tag, uint32_t addr);
+static inline void p08_ud4_dump_node(struct r4300_core* r4300, FILE* fp, uint32_t node);
+static inline void p08_ud4_dump_reads(struct r4300_core* r4300, FILE* fp, uint32_t rec);
+static inline uint32_t p08_ud4_sel_rec(struct r4300_core* r4300);
+
+static int s_p08_set74_n = 0;
+static int s_p08_set80_n = 0;
+static uint32_t s_p08_set74_node = 0;
+static uint32_t s_p08_set74_src = 0;
+static uint32_t s_p08_set80_node = 0;
+static uint32_t s_p08_set80_src = 0;
+static uint32_t s_p08_108a0_node = 0;
+static uint32_t s_p08_ffb0_a1 = 0;
+static uint32_t s_p08_ffb0_a2 = 0;
+
+static int s_p08_seen_haunted = 0;
+
+static inline int p08_ud4_writer_window(struct r4300_core* r4300, int* glidx_out)
+{
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int glidx = (post > 0u) ? (int)post - 1 : 0;
+    if (glidx_out) {
+        *glidx_out = glidx;
+    }
+    if (map == 235 || (mode == 5 && sub == 4)) {
+        s_p08_seen_haunted = 1;
+    }
+    return s_p08_seen_haunted;
+}
+
+static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
+{
+    int glidx = 0;
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    if (!p08_ud4_writer_window(r4300, &glidx)) {
+        return;
+    }
+    FILE* fp = p08_ud4_fp();
+    if (!fp) {
+        return;
+    }
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    const uint32_t a1 = (uint32_t)regs[5];
+    const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t ra = (uint32_t)regs[31];
+    const uint32_t seq = ++s_p08_ud4_seq;
+    if (pc == 0x80110770u) {
+        s_p08_set74_n += 1;
+        s_p08_set74_node = a0;
+        s_p08_set74_src = a1;
+        fprintf(fp,
+                "[ud4-set74] enter ord=%d seq=%u ra=%08x node=%08x src=%08x"
+                " glidx=%d mode=%d map=%d stage=%d sub=%d",
+                s_p08_set74_n, seq, ra, a0, a1, glidx, mode, map, stage, sub);
+        p08_ud4_dump_vec3(r4300, fp, "dest_before", a0 + 0x74u);
+        p08_ud4_dump_vec3(r4300, fp, "src", a1);
+        p08_ud4_dump_node(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80110780u) {
+        fprintf(fp, "[ud4-set74] leave ord=%d seq=%u node=%08x",
+                s_p08_set74_n, seq, s_p08_set74_node);
+        p08_ud4_dump_vec3(r4300, fp, "dest_after", s_p08_set74_node + 0x74u);
+        p08_ud4_dump_vec3(r4300, fp, "src", s_p08_set74_src);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80110790u) {
+        s_p08_set80_n += 1;
+        s_p08_set80_node = a0;
+        s_p08_set80_src = a1;
+        fprintf(fp,
+                "[ud4-set80] enter ord=%d seq=%u ra=%08x node=%08x src=%08x"
+                " glidx=%d mode=%d map=%d stage=%d sub=%d",
+                s_p08_set80_n, seq, ra, a0, a1, glidx, mode, map, stage, sub);
+        p08_ud4_dump_vec3(r4300, fp, "dest_before", a0 + 0x80u);
+        p08_ud4_dump_vec3(r4300, fp, "src", a1);
+        fprintf(fp, "\n");
+    } else if (pc == 0x801107A0u) {
+        fprintf(fp, "[ud4-set80] leave ord=%d seq=%u node=%08x",
+                s_p08_set80_n, seq, s_p08_set80_node);
+        p08_ud4_dump_vec3(r4300, fp, "dest_after", s_p08_set80_node + 0x80u);
+        p08_ud4_dump_vec3(r4300, fp, "src", s_p08_set80_src);
+        fprintf(fp, "\n");
+    } else if (pc == 0x801108A0u) {
+        uint32_t rec64 = 0;
+        s_p08_108a0_node = a0;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x64u, &rec64);
+        }
+        fprintf(fp, "[ud4-108a0] enter seq=%u ra=%08x node=%08x rec64=%08x"
+                    " glidx=%d mode=%d map=%d stage=%d sub=%d",
+                seq, ra, a0, rec64, glidx, mode, map, stage, sub);
+        p08_ud4_dump_node(r4300, fp, a0);
+        p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
+        fprintf(fp, "\n");
+    } else if (pc == 0x80110920u) {
+        fprintf(fp, "[ud4-108a0] leave seq=%u node=%08x", seq, s_p08_108a0_node);
+        p08_ud4_dump_node(r4300, fp, s_p08_108a0_node);
+        fprintf(fp, "\n");
+    } else if (pc == 0x8010FFB0u) {
+        uint32_t rec = 0;
+        s_p08_ffb0_a1 = a1;
+        s_p08_ffb0_a2 = a2;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0, &rec);
+        }
+        fprintf(fp, "[ud4-ffb0] enter seq=%u ra=%08x a0=%08x rec=%08x a1=%08x a2=%08x"
+                    " glidx=%d mode=%d map=%d",
+                seq, ra, a0, rec, a1, a2, glidx, mode, map);
+        p08_ud4_dump_reads(r4300, fp, rec);
+        p08_ud4_dump_vec3(r4300, fp, "a1_pre", a1);
+        p08_ud4_dump_vec3(r4300, fp, "a2_pre", a2);
+        fprintf(fp, "\n");
+    } else if (pc == 0x8010FFC0u) {
+        fprintf(fp, "[ud4-ffb0] leave seq=%u a1=%08x a2=%08x", seq, s_p08_ffb0_a1, s_p08_ffb0_a2);
+        p08_ud4_dump_vec3(r4300, fp, "a1_post", s_p08_ffb0_a1);
+        p08_ud4_dump_vec3(r4300, fp, "a2_post", s_p08_ffb0_a2);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80089470u || pc == 0x80089478u || pc == 0x80089480u ||
+               pc == 0x80089488u) {
+        const unsigned ep = (unsigned)((pc - 0x80089470u) / 8u);
+        fprintf(fp, "[ud4-np-stub] enter seq=%u pc=%08x ep=%u ra=%08x a0=%08x"
+                    " glidx=%d mode=%d map=%d stage=%d sub=%d",
+                seq, pc, ep, ra, a0, glidx, mode, map, stage, sub);
+        p08_ud4_dump_node(r4300, fp, a0);
+        p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
+        fprintf(fp, "\n");
+    }
+    fflush(fp);
+}
+
 static inline void p08_ud4_vec(struct r4300_core* r4300, uint32_t addr, float* x, float* y, float* z, uint32_t* zbits)
 {
     uint32_t wx = 0, wy = 0, wz = 0;

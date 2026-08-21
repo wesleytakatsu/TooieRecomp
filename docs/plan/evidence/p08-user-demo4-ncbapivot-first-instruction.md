@@ -55,9 +55,8 @@ ROOT_CLASS:                        B-NCBAPIVOT-INPUT
 FIRST_DIFFERING_INPUT:             camera node +0x74 (and +0x80 y)
 WRITER_PC:                         0x80110778 (func_80110770 → 800EE7F8 a0=node+0x74)
                                    0x80110798 (func_80110790 → 800EE7F8 a0=node+0x80)
-PRODUCER_FUNCTION:                 func_80110770 / func_80110790
-                                   (the pre-glidx-1 CALL of those setters is
-                                   not yet captured)
+PRODUCER_FUNCTION:                 func_80110770 during mode=2 glidx=0
+                                   ncbapivot (see [[p08-user-demo4-live-eye-writer]])
 FIX_IMPLEMENTED:                   NO
 EGG_PARITY_DEFECT:                 PROVEN_BUT_DEFERRED
 ```
@@ -222,7 +221,7 @@ node+0x74 writer:  func_80110770  PC 80110778
 node+0x80 writer:  func_80110790  PC 80110798
 ```
 
-The **call** of those setters that first wrote the differing bits is **before** this windowed ep3. It was not captured here (`TOOIE_UD4_FIRST_TICK` stops at ep3 leave). Next bounded action is that pre-glidx-1 setter join on USER_DEMO_4 (warp / camera create / any earlier `80110770`). Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, 13B70, or C4C34.
+The **call** of those setters that first wrote the differing bits is **before** this windowed ep3. Captured in [[p08-user-demo4-live-eye-writer]]: last writer before this enter is `func_80110770` ordinal 2 during the **mode=2 glidx=0** bind ncbapivot tick; `800EE7F8` is a faithful copier of an already-different computed `sp+0x48` eye. Node init / `801108A0` MATCH. Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, 13B70, or C4C34.
 
 ---
 

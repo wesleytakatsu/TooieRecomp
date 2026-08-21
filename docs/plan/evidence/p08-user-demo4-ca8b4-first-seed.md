@@ -51,9 +51,10 @@ WALK_START_FIRST_NEW_EXTERNAL_INPUT_DIFFERENCE: NONE (CA8B4 reads only
                                         the camera record; player pos
                                         MATCH through glidx 40)
 
-FIRST_DIFFERING_INPUT_PRODUCER:         node+0x74 already differs at first
-                                        ncbapivot ep3 enter
-                                        ([[p08-user-demo4-ncbapivot-first-instruction]])
+FIRST_DIFFERING_INPUT_PRODUCER:         node+0x74 already differs at glidx-1
+                                        ncbapivot enter; last writer is
+                                        80110770 ordinal 2 on the mode=2
+                                        bind tick ([[p08-user-demo4-live-eye-writer]])
 A_CANDIDATE:                            NO (CA8B4)
 ROOT_CLASS:                             B-CAMERA-RECURRENT-SEED for CA8B4;
                                         ncbapivot tick itself is

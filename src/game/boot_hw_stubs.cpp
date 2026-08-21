@@ -2002,6 +2002,40 @@ static int s_ud4_np_active = 0;
 static int s_ud4_np_glidx = -1;
 static uint32_t s_ud4_np_node = 0;
 static int s_ud4_np_call_n = 0;
+static int s_ud4_in_set74 = 0;
+static int s_ud4_in_set80 = 0;
+static int s_ud4_set74_n = 0;
+static int s_ud4_set80_n = 0;
+static int s_ud4_seen_haunted = 0;
+
+static int tooie_ud4_first_tick_env();
+
+static bool tooie_ud4_haunted(uint8_t* rdram, int* glidx_out) {
+    if (!tooie_diag::attract_enabled()) {
+        return false;
+    }
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int map_v = int(MEM_H(0x10, kseg0_gpr(0x80127630u)));
+    const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    const int32_t post_glidx = static_cast<int32_t>(MEM_W(0x8, kseg0_gpr(0x8012D5B0u)));
+    const int32_t glidx = (post_glidx > 0) ? (post_glidx - 1) : 0;
+    if (glidx_out) {
+        *glidx_out = int(glidx);
+    }
+    if (map_v == 235 || (mode_v == 5 && sub_v == 4)) {
+        s_ud4_seen_haunted = 1;
+    }
+    // Latch through the mode=3 warp-in → mode=2 node bind → mode=5 first
+    // ncbapivot ep3 interval. map_v is 0 during that bind.
+    return s_ud4_seen_haunted != 0;
+}
+
+static bool tooie_ud4_writer_window(uint8_t* rdram, int* glidx_out) {
+    return tooie_ud4_first_tick_env() && tooie_ud4_haunted(rdram, glidx_out);
+}
+
+static void tooie_ud4_np_call(const char* name, uint32_t addr, uint8_t* rdram,
+                             recomp_context* ctx, int entering);
 
 static void tooie_ud4_dump_vec3(uint8_t* rdram, FILE* fp, const char* tag, uint32_t addr) {
     if (!tooie_is_guest(addr)) {
@@ -2040,6 +2074,183 @@ static void tooie_ud4_dump_node_fields(uint8_t* rdram, FILE* fp, uint32_t node) 
     if (tooie_is_guest(p30)) {
         tooie_ud4_dump_vec3(rdram, fp, "tgt", p30 + 0x4u);
     }
+}
+
+static void tooie_ud4_dump_mode(uint8_t* rdram, FILE* fp, int glidx) {
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int map_v = int(MEM_H(0x10, kseg0_gpr(0x80127630u)));
+    const int stage_v = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    fprintf(fp, " glidx=%d mode=%d map=%d stage=%d sub=%d", glidx, mode_v, map_v, stage_v, sub_v);
+}
+
+static void tooie_wrap_func_80110770(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx) || (s_ud4_np_active != 0);
+    const uint32_t node = static_cast<uint32_t>(ctx->r4);
+    const uint32_t src = static_cast<uint32_t>(ctx->r5);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    int ord = 0;
+    if (win) {
+        ord = ++s_ud4_set74_n;
+        fprintf(stderr,
+                "[ud4-set74] enter ord=%d seq=%u ra=%08x node=%08x src=%08x",
+                ord, tooie_ud4_seq(), ra, node, src);
+        tooie_ud4_dump_mode(rdram, stderr, glidx);
+        tooie_ud4_dump_vec3(rdram, stderr, "dest_before", node + 0x74u);
+        tooie_ud4_dump_vec3(rdram, stderr, "src", src);
+        tooie_ud4_dump_node_fields(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    s_ud4_in_set74 += 1;
+    func_80110770(rdram, ctx);
+    s_ud4_in_set74 -= 1;
+    if (win) {
+        fprintf(stderr, "[ud4-set74] leave ord=%d seq=%u node=%08x", ord, tooie_ud4_seq(), node);
+        tooie_ud4_dump_vec3(rdram, stderr, "dest_after", node + 0x74u);
+        tooie_ud4_dump_vec3(rdram, stderr, "src", src);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_80110790(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx) || (s_ud4_np_active != 0);
+    const uint32_t node = static_cast<uint32_t>(ctx->r4);
+    const uint32_t src = static_cast<uint32_t>(ctx->r5);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    int ord = 0;
+    if (win) {
+        ord = ++s_ud4_set80_n;
+        fprintf(stderr,
+                "[ud4-set80] enter ord=%d seq=%u ra=%08x node=%08x src=%08x",
+                ord, tooie_ud4_seq(), ra, node, src);
+        tooie_ud4_dump_mode(rdram, stderr, glidx);
+        tooie_ud4_dump_vec3(rdram, stderr, "dest_before", node + 0x80u);
+        tooie_ud4_dump_vec3(rdram, stderr, "src", src);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    s_ud4_in_set80 += 1;
+    tooie_ud4_np_call("80110790", 0x80110790u, rdram, ctx, 1);
+    func_80110790(rdram, ctx);
+    tooie_ud4_np_call("80110790", 0x80110790u, rdram, ctx, 0);
+    s_ud4_in_set80 -= 1;
+    if (win) {
+        fprintf(stderr, "[ud4-set80] leave ord=%d seq=%u node=%08x", ord, tooie_ud4_seq(), node);
+        tooie_ud4_dump_vec3(rdram, stderr, "dest_after", node + 0x80u);
+        tooie_ud4_dump_vec3(rdram, stderr, "src", src);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_800EE7F8(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool writer = (s_ud4_in_set74 || s_ud4_in_set80) &&
+                        (tooie_ud4_writer_window(rdram, &glidx) || (s_ud4_np_active != 0));
+    const uint32_t dst = static_cast<uint32_t>(ctx->r4);
+    const uint32_t src = static_cast<uint32_t>(ctx->r5);
+    if (writer) {
+        fprintf(stderr,
+                "[ud4-ee7f8] enter seq=%u ra=%08x dst=%08x src=%08x set74=%d set80=%d",
+                tooie_ud4_seq(), static_cast<uint32_t>(ctx->r31), dst, src,
+                s_ud4_in_set74, s_ud4_in_set80);
+        tooie_ud4_dump_vec3(rdram, stderr, "dst_pre", dst);
+        tooie_ud4_dump_vec3(rdram, stderr, "src", src);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    tooie_ud4_np_call("800EE7F8", 0x800EE7F8u, rdram, ctx, 1);
+    func_800EE7F8(rdram, ctx);
+    tooie_ud4_np_call("800EE7F8", 0x800EE7F8u, rdram, ctx, 0);
+    if (writer) {
+        fprintf(stderr, "[ud4-ee7f8] leave seq=%u dst=%08x", tooie_ud4_seq(), dst);
+        tooie_ud4_dump_vec3(rdram, stderr, "dst_post", dst);
+        tooie_ud4_dump_vec3(rdram, stderr, "src", src);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_801108A0(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    const uint32_t node = static_cast<uint32_t>(ctx->r4);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    uint32_t rec64 = 0;
+    if (win) {
+        if (tooie_is_guest(node)) {
+            rec64 = static_cast<uint32_t>(MEM_W(0x64, kseg0_gpr(node)));
+        }
+        fprintf(stderr,
+                "[ud4-108a0] enter seq=%u ra=%08x node=%08x rec64=%08x",
+                tooie_ud4_seq(), ra, node, rec64);
+        tooie_ud4_dump_mode(rdram, stderr, glidx);
+        tooie_ud4_dump_node_fields(rdram, stderr, node);
+        tooie_ud4_dump_ca8b4_reads(rdram, stderr, tooie_ud4_sel_rec(rdram));
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    func_801108A0(rdram, ctx);
+    if (win) {
+        fprintf(stderr, "[ud4-108a0] leave seq=%u node=%08x", tooie_ud4_seq(), node);
+        tooie_ud4_dump_node_fields(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_8010FFB0(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    const uint32_t a2 = static_cast<uint32_t>(ctx->r6);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    uint32_t rec = 0;
+    if (win) {
+        if (tooie_is_guest(a0)) {
+            rec = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(a0)));
+        }
+        fprintf(stderr,
+                "[ud4-ffb0] enter seq=%u ra=%08x a0=%08x rec=%08x a1=%08x a2=%08x",
+                tooie_ud4_seq(), ra, a0, rec, a1, a2);
+        tooie_ud4_dump_mode(rdram, stderr, glidx);
+        tooie_ud4_dump_ca8b4_reads(rdram, stderr, rec);
+        tooie_ud4_dump_vec3(rdram, stderr, "a1_pre", a1);
+        tooie_ud4_dump_vec3(rdram, stderr, "a2_pre", a2);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    func_8010FFB0(rdram, ctx);
+    if (win) {
+        fprintf(stderr, "[ud4-ffb0] leave seq=%u a1=%08x a2=%08x", tooie_ud4_seq(), a1, a2);
+        tooie_ud4_dump_vec3(rdram, stderr, "a1_post", a1);
+        tooie_ud4_dump_vec3(rdram, stderr, "a2_post", a2);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+extern "C" void tooie_ud4_cam_ovl(uint8_t* rdram, recomp_context* ctx, uint32_t ovl,
+                                 uint32_t ep, int leaving) {
+    int glidx = -1;
+    if (!tooie_ud4_writer_window(rdram, &glidx)) {
+        return;
+    }
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    fprintf(stderr,
+            "[ud4-cam-ovl] %s seq=%u ovl=%u ep=%u ra=%08x a0=%08x",
+            leaving ? "leave" : "enter", tooie_ud4_seq(), ovl, ep,
+            static_cast<uint32_t>(ctx->r31), a0);
+    tooie_ud4_dump_mode(rdram, stderr, glidx);
+    tooie_ud4_dump_node_fields(rdram, stderr, a0);
+    tooie_ud4_dump_ca8b4_reads(rdram, stderr, tooie_ud4_sel_rec(rdram));
+    fprintf(stderr, "\n");
+    fflush(stderr);
 }
 
 static void tooie_ud4_np_call(const char* name, uint32_t addr, uint8_t* rdram,
@@ -2081,7 +2292,6 @@ TOOIE_UD4_WRAP(func_8011607C, 0x8011607Cu, "8011607C")
 TOOIE_UD4_WRAP(func_80113978, 0x80113978u, "80113978")
 TOOIE_UD4_WRAP(func_80112524, 0x80112524u, "80112524")
 TOOIE_UD4_WRAP(func_801107F0, 0x801107F0u, "801107F0")
-TOOIE_UD4_WRAP(func_800EE7F8, 0x800EE7F8u, "800EE7F8")
 TOOIE_UD4_WRAP(func_800EFB24, 0x800EFB24u, "800EFB24")
 TOOIE_UD4_WRAP(func_800EEF94, 0x800EEF94u, "800EEF94")
 TOOIE_UD4_WRAP(func_800F1A88, 0x800F1A88u, "800F1A88")
@@ -2097,7 +2307,6 @@ TOOIE_UD4_WRAP(func_801138F4, 0x801138F4u, "801138F4")
 TOOIE_UD4_WRAP(func_80110F44, 0x80110F44u, "80110F44")
 TOOIE_UD4_WRAP(func_80115580, 0x80115580u, "80115580")
 TOOIE_UD4_WRAP(func_80110A68, 0x80110A68u, "80110A68")
-TOOIE_UD4_WRAP(func_80110790, 0x80110790u, "80110790")
 TOOIE_UD4_WRAP(func_80111310, 0x80111310u, "80111310")
 TOOIE_UD4_WRAP(func_800A516C, 0x800A516Cu, "800A516C")
 
@@ -2461,6 +2670,9 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80113978), tooie_wrap_func_80113978);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112524), tooie_wrap_func_80112524);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801107F0), tooie_wrap_func_801107F0);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110770), tooie_wrap_func_80110770);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801108A0), tooie_wrap_func_801108A0);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010FFB0), tooie_wrap_func_8010FFB0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EE7F8), tooie_wrap_func_800EE7F8);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFB24), tooie_wrap_func_800EFB24);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEF94), tooie_wrap_func_800EEF94);
