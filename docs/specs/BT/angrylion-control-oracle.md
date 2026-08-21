@@ -98,21 +98,30 @@ tools/oracle/angrylion-control/scripts/status.sh
 `build.sh` is a no-op when the binaries already exist. Pass `--force` to rebuild.
 Core flags: `OSD=0 VULKAN=0 NO_ASM=1` (OSD=0 avoids a GLU host dependency).
 
-Run the attract / USER_DEMO_4 oracle (needs `DISPLAY`):
+Playable Angrylion test (SDL audio, needs `DISPLAY`):
+
+```sh
+./run-tooie-angrylion-rdp.sh
+./run-tooie-angrylion-rdp.sh --measure    # dummy audio, capture/soak
+```
+
+Low-level oracle launcher (dummy audio by default):
 
 ```sh
 tools/oracle/angrylion-control/run.sh
-# extra mupen flags:
+TOOIE_ANGRYLION_AUDIO=sdl tools/oracle/angrylion-control/run.sh
 tools/oracle/angrylion-control/run.sh --set 'Video-AngrylionPlus[ViVsync]=False'
 ```
 
 Cartridge path: `TOOIE_CART_Z64`, else
 `TooieRecomp/../Banjo-Tooie (USA).z64`. SHA-1 is checked before launch.
 
-TooieRecomp side (unchanged):
+TooieRecomp / RT64 side:
 
 ```sh
-TOOIE_DIAG_ATTRACT=1 TOOIE_AUTO_START=1 ./build/TooieRecompiled
+./run-tooie.sh                # launcher
+./run-tooie.sh -a             # auto-start
+./run-tooie.sh -A             # attract diagnostics (TOOIE_DIAG_ATTRACT=1)
 ```
 
 Join captures by `stage` / `sub` / consumed glrecord index / pad bytes, not
@@ -136,7 +145,8 @@ From `cfg/mupen64plus.cfg` after `run.sh` substitution:
 R4300Emulator = 0
 VideoPlugin   = work/lle/angrylion-rdp-plus/build/mupen64plus-video-angrylion-plus.so
 RspPlugin     = work/lle/mupen64plus-rsp-cxd4/projects/unix/mupen64plus-rsp-cxd4-sse2.so
-AudioPlugin   = dummy
+AudioPlugin   = dummy (tools/oracle/angrylion-control/run.sh default)
+                         sdl via ./run-tooie-angrylion-rdp.sh / TOOIE_ANGRYLION_AUDIO=sdl
 [rsp-cxd4] DisplayListToGraphicsPlugin = False
 [Video-AngrylionPlus] Parallel=True NumWorkers=0 ViMode=0 DpCompat=0
 ```

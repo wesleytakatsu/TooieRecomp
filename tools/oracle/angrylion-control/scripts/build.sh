@@ -49,7 +49,7 @@ cmake --build "$ANGRYLION_SRC/build" -j"$(nproc)"
 make -C "$CXD4_SRC/projects/unix" all APIDIR="$API" -j"$(nproc)"
 
 mkdir -p "$PLUGIN_DIR"
-ln -sfn "$PREFIX/lib/mupen64plus/mupen64plus-audio-sdl.so" "$PLUGIN_DIR/mupen64plus-audio-sdl.so"
+ln -sfn "$AUDIO_SO" "$PLUGIN_DIR/mupen64plus-audio-sdl.so"
 ln -sfn "$INPUT_SO" "$PLUGIN_DIR/mupen64plus-input-sdl.so"
 ln -sfn "$RSP_SO" "$PLUGIN_DIR/mupen64plus-rsp-cxd4-sse2.so"
 ln -sfn "$GFX_SO" "$PLUGIN_DIR/mupen64plus-video-angrylion-plus.so"

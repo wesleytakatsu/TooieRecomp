@@ -27,6 +27,7 @@ MUPEN_BIN="$PREFIX/bin/mupen64plus"
 CORE_LIB="$PREFIX/lib/libmupen64plus.so.2"
 SHARE_DIR="$PREFIX/share/mupen64plus"
 INPUT_SO="$PREFIX/lib/mupen64plus/mupen64plus-input-sdl.so"
+AUDIO_SO="$PREFIX/lib/mupen64plus/mupen64plus-audio-sdl.so"
 GFX_SO="$ANGRYLION_SRC/build/mupen64plus-video-angrylion-plus.so"
 RSP_SO="$CXD4_SRC/projects/unix/mupen64plus-rsp-cxd4-sse2.so"
 PLUGIN_DIR="$WORK_LLE/plugins"
@@ -34,5 +35,5 @@ PLUGIN_DIR="$WORK_LLE/plugins"
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
 oracle_paths_ok() {
-    [[ -x "$MUPEN_BIN" && -e "$CORE_LIB" && -f "$GFX_SO" && -f "$RSP_SO" && -f "$INPUT_SO" ]]
+    [[ -x "$MUPEN_BIN" && -e "$CORE_LIB" && -f "$GFX_SO" && -f "$RSP_SO" && -f "$INPUT_SO" && -f "$AUDIO_SO" ]]
 }

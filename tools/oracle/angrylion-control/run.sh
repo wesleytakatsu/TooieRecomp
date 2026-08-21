@@ -5,6 +5,22 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(cd "$(dirname "$0")" && pwd)/scripts/common.sh"
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    cat <<'USAGE'
+Usage: tools/oracle/angrylion-control/run.sh [mupen64plus args]
+
+Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE (ANGRYLION_CONTROL).
+Does not start TooieRecompiled. Interactive wrapper:
+
+  ./run-tooie-angrylion-rdp.sh
+
+Environment:
+  TOOIE_CART_Z64            cartridge .z64/.n64
+  TOOIE_ANGRYLION_AUDIO     dummy (default here) or sdl
+USAGE
+    exit 0
+fi
+
 oracle_paths_ok || fail "ANGRYLION_CONTROL is not built. See docs/specs/BT/angrylion-control-oracle.md"
 
 resolve_rom() {
@@ -38,10 +54,18 @@ sed \
     -e "s|@ORACLE_RSP@|$RSP_SO|g" \
     "$CFG_TEMPLATE" > "$CFG_RUNTIME"
 
+AUDIO_MODE="${TOOIE_ANGRYLION_AUDIO:-dummy}"
+case "$AUDIO_MODE" in
+    dummy) AUDIO_PLUGIN="dummy" ;;
+    sdl|audio) AUDIO_PLUGIN="$AUDIO_SO" ;;
+    *) fail "TOOIE_ANGRYLION_AUDIO must be dummy or sdl (got $AUDIO_MODE)" ;;
+esac
+
 echo "ANGRYLION_CONTROL"
 echo "  ui:     $MUPEN_BIN"
 echo "  gfx:    $GFX_SO"
 echo "  rsp:    $RSP_SO"
+echo "  audio:  $AUDIO_MODE"
 echo "  cpu:    Pure Interpreter (--emumode 0)"
 echo "  rom:    $ROM"
 echo "  sha1:   $HAVE_SHA1"
@@ -54,11 +78,9 @@ exec "$MUPEN_BIN" \
     --plugindir "$PLUGIN_DIR" \
     --gfx "$GFX_SO" \
     --rsp "$RSP_SO" \
-    --audio dummy \
+    --audio "$AUDIO_PLUGIN" \
     --input "$INPUT_SO" \
     --emumode 0 \
-    --windowed \
-    --resolution 640x480 \
     --nosaveoptions \
     "$@" \
     "$ROM"
