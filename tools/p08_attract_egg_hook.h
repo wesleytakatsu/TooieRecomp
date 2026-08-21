@@ -71,6 +71,7 @@ static int s_p08_np_child_sp = 0;
 static int s_p08_np_call_n = 0;
 static int s_p08_np_insn = 0;
 static uint32_t s_p08_np_ovl_base = 0;
+static uint32_t s_p08_np_frame = 0;
 static int s_p08_np_last_fpu = 0;
 static int s_p08_np_last_fd = 0;
 static uint32_t s_p08_np_last_fpu_pc = 0;
@@ -101,6 +102,8 @@ static inline void p08_ud4_dump_vec3(struct r4300_core* r4300, FILE* fp, const c
 static inline void p08_ud4_dump_node(struct r4300_core* r4300, FILE* fp, uint32_t node);
 static inline void p08_ud4_dump_reads(struct r4300_core* r4300, FILE* fp, uint32_t rec);
 static inline uint32_t p08_ud4_sel_rec(struct r4300_core* r4300);
+static inline void p08_ud4_dump_player(struct r4300_core* r4300, FILE* fp);
+static inline uint32_t p08_fpr_bits(struct r4300_core* r4300, int i);
 
 static int s_p08_set74_n = 0;
 static int s_p08_set80_n = 0;
@@ -146,6 +149,7 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
     const uint32_t a0 = (uint32_t)regs[4];
     const uint32_t a1 = (uint32_t)regs[5];
     const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t a3 = (uint32_t)regs[7];
     const uint32_t ra = (uint32_t)regs[31];
     const uint32_t seq = ++s_p08_ud4_seq;
     if (pc == 0x80110770u) {
@@ -226,7 +230,34 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
                 seq, pc, ep, ra, a0, glidx, mode, map, stage, sub);
         p08_ud4_dump_node(r4300, fp, a0);
         p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
+        p08_ud4_dump_player(r4300, fp);
         fprintf(fp, "\n");
+        if (pc == 0x80089488u && !s_p08_np_trace) {
+            const int first = (s_p08_ncbapivot_n++ == 0) ? 1 : 0;
+            fprintf(fp,
+                    "[ud4-ncbapivot] enter seq=%u glidx=%d first=%d ra=%08x a0=%08x pc=%08x "
+                    "a1=%08x a2=%08x a3=%08x sp=%08x frame=%08x f0=%08x f12=%08x fcr31=%08x",
+                    seq, glidx, first, ra, a0, pc, a1, a2, a3,
+                    (uint32_t)regs[29], (uint32_t)regs[29] - 0x78u,
+                    p08_fpr_bits(r4300, 0), p08_fpr_bits(r4300, 12), r4300->cp1.fcr31);
+            p08_ud4_dump_node(r4300, fp, a0);
+            p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
+            p08_ud4_dump_player(r4300, fp);
+            fprintf(fp, "\n");
+            if (first) {
+                s_p08_np_trace = 1;
+                s_p08_np_node = a0;
+                s_p08_np_glidx = glidx;
+                s_p08_np_ret = ra;
+                s_p08_np_frame = (uint32_t)regs[29] - 0x78u;
+                s_p08_np_call_n = 0;
+                s_p08_np_insn = 0;
+                s_p08_np_ovl_base = 0;
+                s_p08_np_child_sp = 0;
+                fprintf(fp, "[ud4-ncbapivot] TRACE_ON ret=%08x frame=%08x bind_tick=1\n",
+                        s_p08_np_ret, s_p08_np_frame);
+            }
+        }
     }
     fflush(fp);
 }
@@ -350,13 +381,71 @@ static inline void p08_ud4_dump_node(struct r4300_core* r4300, FILE* fp, uint32_
     if (p08_guest(p4)) {
         (void)r4300_read_aligned_word(r4300, p4 + 0x2Cu, &w2e);
     }
-    fprintf(fp, " node=%08x +4=%08x +28=%08x +30=%08x +5c=%08x *5c=%08x +4.2e=%04x",
-            node, p4, p28, p30, p5c, p5c0, (unsigned)((w2e >> 16) & 0xFFFFu));
+    uint32_t p14 = 0, p3c = 0, p4c = 0, p60 = 0;
+    (void)r4300_read_aligned_word(r4300, node + 0x14u, &p14);
+    (void)r4300_read_aligned_word(r4300, node + 0x3Cu, &p3c);
+    (void)r4300_read_aligned_word(r4300, node + 0x4Cu, &p4c);
+    (void)r4300_read_aligned_word(r4300, node + 0x60u, &p60);
+    fprintf(fp, " node=%08x +4=%08x +14=%08x +28=%08x +30=%08x +3c=%08x +4c=%08x +5c=%08x +60=%08x *5c=%08x +4.2e=%04x",
+            node, p4, p14, p28, p30, p3c, p4c, p5c, p60, p5c0, (unsigned)((w2e >> 16) & 0xFFFFu));
     p08_ud4_dump_vec3(r4300, fp, "n74", node + 0x74u);
     p08_ud4_dump_vec3(r4300, fp, "n80", node + 0x80u);
     if (p08_guest(p30)) {
         p08_ud4_dump_vec3(r4300, fp, "tgt", p30 + 0x4u);
     }
+    if (p08_guest(p14)) {
+        uint32_t c = 0, d = 0;
+        (void)r4300_read_aligned_word(r4300, p14 + 0xCu, &c);
+        (void)r4300_read_aligned_word(r4300, p14 + 0x10u, &d);
+        fprintf(fp, " p14c=%08x p14_10=%08x", c, d);
+    }
+    if (p08_guest(p3c)) {
+        uint32_t w0 = 0, w4 = 0, w8 = 0, w10 = 0, w1c = 0;
+        (void)r4300_read_aligned_word(r4300, p3c + 0u, &w0);
+        (void)r4300_read_aligned_word(r4300, p3c + 4u, &w4);
+        (void)r4300_read_aligned_word(r4300, p3c + 8u, &w8);
+        (void)r4300_read_aligned_word(r4300, p3c + 0x10u, &w10);
+        (void)r4300_read_aligned_word(r4300, p3c + 0x1Cu, &w1c);
+        fprintf(fp, " p3c0=%08x p3c4=%08x p3c8=%08x p3c10=%02x p3c11=%02x p3c12=%02x p3c1c=%02x",
+                w0, w4, w8,
+                (unsigned)((w10 >> 24) & 0xFFu),
+                (unsigned)((w10 >> 16) & 0xFFu),
+                (unsigned)((w10 >> 8) & 0xFFu),
+                (unsigned)((w1c >> 24) & 0xFFu));
+    }
+    if (p08_guest(p4c)) {
+        uint32_t c = 0;
+        (void)r4300_read_aligned_word(r4300, p4c + 0xCu, &c);
+        fprintf(fp, " p4cC=%08x", c);
+    }
+    if (p08_guest(p60)) {
+        uint32_t w0 = 0, w4 = 0, w8 = 0;
+        (void)r4300_read_aligned_word(r4300, p60 + 0u, &w0);
+        (void)r4300_read_aligned_word(r4300, p60 + 4u, &w4);
+        (void)r4300_read_aligned_word(r4300, p60 + 8u, &w8);
+        fprintf(fp, " p60_0=%08x p60_4=%08x p60_8=%08x", w0, w4, w8);
+    }
+}
+
+static inline void p08_ud4_dump_np_frame(struct r4300_core* r4300, FILE* fp)
+{
+    uint32_t w38 = 0, w3c = 0, w40 = 0, w44 = 0;
+    if (!p08_guest(s_p08_np_frame)) {
+        fprintf(fp, " frame=none");
+        return;
+    }
+    (void)r4300_read_aligned_word(r4300, s_p08_np_frame + 0x38u, &w38);
+    (void)r4300_read_aligned_word(r4300, s_p08_np_frame + 0x3Cu, &w3c);
+    (void)r4300_read_aligned_word(r4300, s_p08_np_frame + 0x40u, &w40);
+    (void)r4300_read_aligned_word(r4300, s_p08_np_frame + 0x44u, &w44);
+    fprintf(fp, " frame=%08x sp38=%08x sp3c=%08x sp40=%08x sp44=%08x",
+            s_p08_np_frame, w38, w3c, w40, w44);
+    p08_ud4_dump_vec3(r4300, fp, "sp28", s_p08_np_frame + 0x28u);
+    p08_ud4_dump_vec3(r4300, fp, "sp34", s_p08_np_frame + 0x34u);
+    p08_ud4_dump_vec3(r4300, fp, "sp48", s_p08_np_frame + 0x48u);
+    p08_ud4_dump_vec3(r4300, fp, "sp54", s_p08_np_frame + 0x54u);
+    p08_ud4_dump_vec3(r4300, fp, "sp60", s_p08_np_frame + 0x60u);
+    p08_ud4_dump_vec3(r4300, fp, "sp6c", s_p08_np_frame + 0x6Cu);
 }
 
 static inline const char* p08_np_child_name(uint32_t pc)
@@ -376,6 +465,15 @@ static inline const char* p08_np_child_name(uint32_t pc)
     case 0x801125E8u: return "801125E8";
     case 0x800EEBF0u: return "800EEBF0";
     case 0x800EE780u: return "800EE780";
+    case 0x800EFD24u: return "800EFD24";
+    case 0x800EF214u: return "800EF214";
+    case 0x80013B70u: return "80013B70";
+    case 0x80013B7Cu: return "80013B7C";
+    case 0x800137ACu: return "800137AC";
+    case 0x800137C4u: return "800137C4";
+    case 0x800137F4u: return "800137F4";
+    case 0x80013788u: return "80013788";
+    case 0x80013818u: return "80013818";
     case 0x80111FD4u: return "80111FD4";
     case 0x801138A0u: return "801138A0";
     case 0x801138F4u: return "801138F4";
@@ -410,6 +508,7 @@ static inline void p08_ud4_np_call_line(struct r4300_core* r4300, FILE* fp, cons
     p08_ud4_dump_vec3(r4300, fp, "va0", a0);
     p08_ud4_dump_vec3(r4300, fp, "va1", a1);
     p08_ud4_dump_vec3(r4300, fp, "va2", a2);
+    p08_ud4_dump_np_frame(r4300, fp);
     p08_ud4_dump_node(r4300, fp, s_p08_np_node);
     p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
     fprintf(fp, "\n");
@@ -442,6 +541,7 @@ static inline void p08_ud4_np_tick(struct r4300_core* r4300, uint32_t pc, uint32
                 ++s_p08_ud4_seq, s_p08_np_glidx, (uint32_t)regs[2],
                 p08_fpr_bits(r4300, 0), r4300->cp1.fcr31, s_p08_np_insn,
                 s_p08_np_ovl_base);
+        p08_ud4_dump_np_frame(r4300, fp);
         p08_ud4_dump_node(r4300, fp, s_p08_np_node);
         p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
         p08_ud4_dump_player(r4300, fp);
@@ -481,6 +581,19 @@ static inline void p08_ud4_np_tick(struct r4300_core* r4300, uint32_t pc, uint32
     }
 
     if (((op >> 26) & 0x3Fu) == 17u) {
+        const int arith =
+            (pc >= 0x800EFB24u && pc <= 0x800EFB54u) ||
+            (pc >= 0x800EEF94u && pc <= 0x800EEFD0u) ||
+            (pc >= 0x800F1A88u && pc <= 0x800F1AF8u) ||
+            (pc >= 0x80013B70u && pc <= 0x80013C80u) ||
+            (pc >= 0x80013700u && pc <= 0x80013A80u) ||
+            (pc >= 0x800EE780u && pc <= 0x800EE7B0u) ||
+            (pc >= 0x800EEBF0u && pc <= 0x800EEC2Cu) ||
+            (pc >= 0x800EF214u && pc <= 0x800EF29Cu) ||
+            (pc >= 0x800EFD24u && pc <= 0x800EFD80u);
+        if (!arith) {
+            return;
+        }
         const int fs = (int)((op >> 11) & 0x1Fu);
         const int ft = (int)((op >> 16) & 0x1Fu);
         const int fd = (int)((op >> 6) & 0x1Fu);
@@ -608,15 +721,7 @@ static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
         p08_ud4_dump_reads(r4300, fp, rec);
         p08_ud4_dump_player(r4300, fp);
         fprintf(fp, "\n");
-        if (first && glidx == 1 && !s_p08_np_trace) {
-            s_p08_np_trace = 1;
-            s_p08_np_ret = ra;
-            s_p08_np_call_n = 0;
-            s_p08_np_insn = 0;
-            s_p08_np_ovl_base = 0;
-            s_p08_np_child_sp = 0;
-            fprintf(fp, "[ud4-ncbapivot] TRACE_ON ret=%08x\n", s_p08_np_ret);
-        }
+        /* Bind-tick TRACE_ON is armed from p08_ud4_writer at the first 80089488. */
     }
     fflush(fp);
 }

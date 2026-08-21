@@ -212,4 +212,4 @@ P09_STATUS:            PENDING_NOT_FORMALLY_OPEN
 
 Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, old gl385/gl392, `func_80013B70`, or C4C34. Do not treat glidx-1 ncbapivot arithmetic as the first producer: that tick's `n74` is already the ordinal-2 copy.
 
-Next bounded action: instruction join of **first** `ncbapivot_entrypoint_3` (mode=2 glidx=0), where enter `n74`/target MATCH and the computed `sp+0x48` eye is the first bit difference. No production fix.
+Bind-tick join is in [[p08-user-demo4-bind-tick-follow-eye]]: enter MATCH; first A-candidate is `func_800137F4`/`func_80013818` yaw sincos (`006d5329` vs `006d5328`). No production fix.

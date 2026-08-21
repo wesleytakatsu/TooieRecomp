@@ -221,7 +221,7 @@ node+0x74 writer:  func_80110770  PC 80110778
 node+0x80 writer:  func_80110790  PC 80110798
 ```
 
-The **call** of those setters that first wrote the differing bits is **before** this windowed ep3. Captured in [[p08-user-demo4-live-eye-writer]]: last writer before this enter is `func_80110770` ordinal 2 during the **mode=2 glidx=0** bind ncbapivot tick; `800EE7F8` is a faithful copier of an already-different computed `sp+0x48` eye. Node init / `801108A0` MATCH. Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, 13B70, or C4C34.
+The **call** of those setters that first wrote the differing bits is **before** this windowed ep3. Captured in [[p08-user-demo4-live-eye-writer]]: last writer before this enter is `func_80110770` ordinal 2 during the **mode=2 glidx=0** bind ncbapivot tick; `800EE7F8` is a faithful copier of an already-different computed `sp+0x48` eye. Node init / `801108A0` MATCH. Bind-tick arithmetic: [[p08-user-demo4-bind-tick-follow-eye]] (`800137F4`/`80013818` A-candidate). Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, 13B70, or C4C34.
 
 ---
 

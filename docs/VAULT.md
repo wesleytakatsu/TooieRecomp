@@ -9,6 +9,7 @@
 
 ## plan
 
+- [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]] — P08 — USER_DEMO_4 bind-tick follow-eye — Enter MATCH; first A-candidate is `800137F4`/`80013818` yaw sincos (idx `006d5329` vs `006d5328`).
 - [[plan/evidence/p08-user-demo4-live-eye-writer]] — P08 — USER_DEMO_4 live-eye writer — Last `node+0x74` writer before glidx-1 enter is faithful `80110770` of an already-different computed eye from the mode=2 bind ncbapivot tick.
 - [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Live eye `node+0x74` already differs at glidx-1 ep3 enter (`B-NCBAPIVOT-INPUT`).
 - [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Rec init MATCH; CA8B4 identity copier; seed is `node+0x74` at ncbapivot enter.

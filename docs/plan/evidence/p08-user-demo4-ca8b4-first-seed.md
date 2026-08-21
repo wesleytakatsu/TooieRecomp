@@ -54,11 +54,15 @@ WALK_START_FIRST_NEW_EXTERNAL_INPUT_DIFFERENCE: NONE (CA8B4 reads only
 FIRST_DIFFERING_INPUT_PRODUCER:         node+0x74 already differs at glidx-1
                                         ncbapivot enter; last writer is
                                         80110770 ordinal 2 on the mode=2
-                                        bind tick ([[p08-user-demo4-live-eye-writer]])
-A_CANDIDATE:                            NO (CA8B4)
+                                        bind tick ([[p08-user-demo4-live-eye-writer]]).
+                                        Bind-tick producer of that source:
+                                        [[p08-user-demo4-bind-tick-follow-eye]]
+                                        (`800137F4`/`80013818` A-candidate)
+A_CANDIDATE:                            NO (CA8B4); YES at 800137F4/80013818
 ROOT_CLASS:                             B-CAMERA-RECURRENT-SEED for CA8B4;
-                                        ncbapivot tick itself is
-                                        B-NCBAPIVOT-INPUT
+                                        ncbapivot glidx-1 enter is
+                                        B-NCBAPIVOT-INPUT; bind-tick yaw
+                                        sincos is A-CANDIDATE-HELPER
 FIX_IMPLEMENTED:                        NO
 EGG_PARITY_DEFECT:                      PROVEN_BUT_DEFERRED
 ```
