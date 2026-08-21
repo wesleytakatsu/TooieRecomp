@@ -27,6 +27,11 @@
 // Forced/cinematic facing probe (P08 USER_BUG_B): TOOIE_DIAG_FORCED_FACING=1
 // is independent of TOOIE_DIAG. Compact per-actor [facing] lines for scripted
 // movers (filtered; not a full actor dump). Also enables throttled 13B70 RA.
+//
+// Attract cycle / follow-camera / egg-type probe (P08 provisional):
+// TOOIE_DIAG_ATTRACT=1 is independent of TOOIE_DIAG. Implies SHOT + DEMO_SYNC.
+// Dumps gsattract D_808003D0, user-demo ordinals, egg spawn type, and
+// follow-camera fields. Does not change game behavior.
 
 namespace tooie_diag {
 
@@ -39,6 +44,7 @@ bool demo_path_enabled();
 bool demo_sync_enabled();
 bool shot_enabled();
 bool forced_facing_enabled();
+bool attract_enabled();
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
 void note_syscall_return(uint32_t ovl, uint32_t ep);

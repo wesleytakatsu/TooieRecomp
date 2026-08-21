@@ -358,15 +358,54 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         if (changed || rest_jal) {
             const char* tag = "other";
             if (map_v == 335) {
-                tag = "T1_WH";
+                tag = "MAP_335_WOODED_HOLLOW";
             } else if (map_v == 278) {
-                tag = "T2_TDL";
+                tag = "MAP_278_TDL_INSIDE_MOUNTAIN";
             } else if (map_v == 314) {
-                tag = "T3_CCL";
+                tag = "MAP_314_CCL_CENTRAL_CAVERN";
             } else if (map_v == 395) {
-                tag = "T_CSINTRO";
+                tag = "MAP_395_CS_STARTUP_INTRO";
+            } else if (map_v == 235) {
+                tag = "MAP_235_WW_HAUNTED_CAVERN";
+            } else if (map_v == 296) {
+                tag = "MAP_296";
+            } else if (map_v == 185) {
+                tag = "MAP_185_MT";
+            } else if (map_v == 282) {
+                tag = "MAP_282_TDL_STOMPING_PLAINS";
+            } else if (map_v == 264) {
+                tag = "MAP_264";
+            } else if (map_v == 230) {
+                tag = "MAP_230";
+            } else if (map_v == 244) {
+                tag = "MAP_244_JRL";
+            } else if (map_v == 276) {
+                tag = "MAP_276";
+            } else if (map_v == 423) {
+                tag = "MAP_423";
             } else if (mode_v == 3 && map_v == 0) {
                 tag = "T_INTRO";
+            }
+            static int s_user_demo = 0;
+            static int s_intro_occ = 0;
+            static bool s_in_intro_block = true;
+            static uint32_t s_last_demo_key = 0xffffffffu;
+            const bool is_title_intro = (mode_v == 3 && map_v == 0);
+            const bool is_cs_intro = (map_v == 395);
+            const bool is_intro = is_title_intro || is_cs_intro;
+            const bool is_gameplay = (mode_v == 5 && map_v != 0 && map_v != 395);
+            if (is_intro) {
+                if (!s_in_intro_block) {
+                    ++s_intro_occ;
+                    s_in_intro_block = true;
+                }
+            } else if (is_gameplay) {
+                const uint32_t demo_key = (stage_v << 16) | (sub_v << 8) | uint32_t(map_v & 0xff);
+                if (demo_key != s_last_demo_key) {
+                    ++s_user_demo;
+                    s_last_demo_key = demo_key;
+                    s_in_intro_block = false;
+                }
             }
             recomp_func_t* looked = rest_jal ? get_function(static_cast<int32_t>(0x808003FC)) : nullptr;
             const bool is_flameline =
@@ -374,20 +413,78 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
             std::fprintf(stderr,
                          "[tooie-xition] %s ovl=%u ep=%u mode=%d map=%d entr=%d warp=%u "
                          "stage=%u sub=%u attr=%u/%u/%u/%u a0=%08x a1=%08x "
-                         "lookup808003FC=%p flameline=%d\n",
+                         "lookup808003FC=%p flameline=%d user_demo=%d intro_occ=%d "
+                         "gameplay=%d\n",
                          tag, overlay_index, entry_index, mode_v, map_v, entr_v, warp_v,
                          stage_v, sub_v,
                          attr0, uint32_t(MEM_BU(0x1, attr)),
                          uint32_t(MEM_BU(0x2, attr)), uint32_t(MEM_BU(0x3, attr)),
                          static_cast<uint32_t>(ctx->r4), static_cast<uint32_t>(ctx->r5),
                          reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(looked)),
-                         int(is_flameline));
+                         int(is_flameline), s_user_demo, s_intro_occ, int(is_gameplay));
             std::fflush(stderr);
             s_xm = mode_v;
             s_xp = map_v;
             s_xw = warp_v;
             s_xs = stage_v;
             s_xu = sub_v;
+        }
+
+        if (tooie_diag::attract_enabled() && overlay_index == 731u) {
+            static bool s_dumped_table = false;
+            if (!s_dumped_table) {
+                s_dumped_table = true;
+                std::fprintf(stderr, "[attract-table] D_808003D0 6-byte records:\n");
+                for (int i = 0; i < 32; ++i) {
+                    const uint32_t rec = 0x808003D0u + uint32_t(i) * 6u;
+                    const gpr rp = static_cast<gpr>(static_cast<int32_t>(rec));
+                    const int map_id = int(MEM_H(0, rp));
+                    const int entrance = int(MEM_BU(2, rp));
+                    const int flags = int(MEM_BU(3, rp));
+                    const int extra = int(MEM_HU(4, rp));
+                    std::fprintf(stderr,
+                                 "[attract-table] i=%02d map=%d (0x%04x) entr=%d flags=%02x extra=%04x\n",
+                                 i, map_id, map_id & 0xffff, entrance, flags, extra);
+                }
+                std::fprintf(stderr, "[attract-table] D_80800490 12-byte stage records:\n");
+                for (int i = 0; i < 2; ++i) {
+                    const uint32_t rec = 0x80800490u + uint32_t(i) * 12u;
+                    const gpr rp = static_cast<gpr>(static_cast<int32_t>(rec));
+                    std::fprintf(stderr,
+                                 "[attract-table] stage=%d h0=%04x b2=%02x ptr=%08x flags=%02x\n",
+                                 i, int(MEM_HU(0, rp)), int(MEM_BU(2, rp)),
+                                 uint32_t(MEM_W(4, rp)), int(MEM_BU(8, rp)));
+                }
+                std::fflush(stderr);
+            }
+        }
+
+        if (tooie_diag::attract_enabled() &&
+            overlay_index >= 774u && overlay_index <= 791u) {
+            static uint32_t s_last_cam_ovl = 0xffffffffu;
+            static uint32_t s_last_cam_ep = 0xffffffffu;
+            if (overlay_index != s_last_cam_ovl || entry_index != s_last_cam_ep) {
+                const char* cam_name = "ncba?";
+                switch (overlay_index) {
+                case 774: cam_name = "ncbafixpos"; break;
+                case 775: cam_name = "ncbadolly"; break;
+                case 776: cam_name = "ncbaspline"; break;
+                case 777: cam_name = "ncba1p"; break;
+                case 780: cam_name = "ncbawaypoint"; break;
+                case 781: cam_name = "ncbapivot"; break;
+                case 782: cam_name = "ncbatarget"; break;
+                case 789: cam_name = "ncbasub"; break;
+                default: break;
+                }
+                std::fprintf(stderr,
+                             "[cam-ovl] enter ovl=%u ep=%u name=%s mode=%d map=%d\n",
+                             overlay_index, entry_index, cam_name,
+                             int(MEM_H(0x2, static_cast<gpr>(static_cast<int32_t>(0x80127630u)))),
+                             int(MEM_H(0x10, static_cast<gpr>(static_cast<int32_t>(0x80127630u)))));
+                std::fflush(stderr);
+                s_last_cam_ovl = overlay_index;
+                s_last_cam_ep = entry_index;
+            }
         }
     }
 

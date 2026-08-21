@@ -1625,11 +1625,12 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
     }
     auto* ctx = static_cast<recomp_context*>(ctx_void);
     // baeggsetup=126, baeggaim=127, baeggcursor=128, baeggfire=129,
-    // cheggfire=535, cheggnormal=539, cheggsplode=552,
+    // cheggclockwork=534, cheggfire=535, chegggolden=536, chegggrenade=537,
+    // cheggice=538, cheggnormal=539, cheggproximity=540, cheggsplode=552,
     // sueggmisc=837, suegg=841, sueggmove=842
     const bool interesting =
         (ovl == 126u) || (ovl == 127u) || (ovl == 128u) || (ovl == 129u) ||
-        (ovl == 535u) || (ovl == 539u) || (ovl == 552u) ||
+        (ovl >= 534u && ovl <= 540u) || (ovl == 552u) ||
         (ovl == 837u) || (ovl == 841u) || (ovl == 842u);
     if (!interesting) {
         return;
@@ -1647,23 +1648,64 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
     const bool hit_probe = leaving && (ovl == 841u || ovl == 842u || ovl == 837u) &&
                            (ep == 3u || ep == 8u || ep == 9u || ep == 12u || ep == 13u ||
                             ep == 14u || ep == 23u);
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int map_v = int(MEM_H(0x10, kseg0_gpr(0x80127630u)));
+    const int stage_v = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    int32_t egg_slot = -1;
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
+    if ((ps_addr >= 0x80000000u) && ((ps_addr + 0x80000000u) < 0x00800000u) && ((ps_addr & 3u) == 0u)) {
+        egg_slot = static_cast<int32_t>(MEM_W(0x64, kseg0_gpr(ps_addr)));
+    }
+    const uint32_t egg_tbl = 0x80117E20u;
+    const int egg_enum = (egg_slot >= 0 && egg_slot < 8)
+                             ? int(MEM_BU(egg_slot, kseg0_gpr(egg_tbl)))
+                             : -1;
+    const char* egg_name = "?";
+    switch (egg_enum) {
+    case 1: egg_name = "BLUE"; break;
+    case 2: egg_name = "FIRE"; break;
+    case 3: egg_name = "GRENADE"; break;
+    case 4: egg_name = "CLOCKWORK"; break;
+    case 5: egg_name = "ICE"; break;
+    case 6: egg_name = "GOLDEN"; break;
+    case 7: egg_name = "PROXIMITY"; break;
+    default: break;
+    }
     std::fprintf(stderr,
-                 "[shot-ovl] %s ovl=%u ep=%u a0=%08x a1=%08x a2=%08x/%.3f a3=%08x/%.3f v0=%08x%s\n",
+                 "[shot-ovl] %s ovl=%u ep=%u a0=%08x a1=%08x a2=%08x/%.3f a3=%08x/%.3f v0=%08x%s "
+                 "mode=%d map=%d stage=%d sub=%d egg_slot=%d egg_enum=%d egg=%s\n",
                  leaving ? "leave" : "enter", ovl, ep, a0, a1, a2, bits_f32(int32_t(a2)),
                  a3, bits_f32(int32_t(a3)), static_cast<uint32_t>(ctx->r2),
-                 (hit_probe && ctx->r2 != 0) ? " HIT" : "");
-    // cheggnormal / egg actor: a0 is typically the actor.
-    if ((ovl == 539u || ovl == 535u || ovl == 552u) &&
-        (a0 >= 0x80000000u) && ((a0 + 0x80000000u) < 0x00800000u) && ((a0 & 3u) == 0u)) {
-        const gpr act = kseg0_gpr(a0);
-        const float ax = bits_f32(MEM_W(0x04, act));
-        const float ay = bits_f32(MEM_W(0x08, act));
-        const float az = bits_f32(MEM_W(0x0C, act));
-        const float ry = bits_f32(MEM_W(0x48, act));
-        const uint32_t idw = static_cast<uint32_t>(MEM_W(0x6C, act));
-        std::fprintf(stderr,
-                     "[shot-egg] %s ovl=%u ep=%u act=%08x pos=(%.2f,%.2f,%.2f) ry=%.2f mid=%u\n",
-                     leaving ? "leave" : "enter", ovl, ep, a0, ax, ay, az, ry, idw & 0x1FFu);
+                 (hit_probe && ctx->r2 != 0) ? " HIT" : "",
+                 mode_v, map_v, stage_v, sub_v, egg_slot, egg_enum, egg_name);
+    // projectile actor overlays: a0 is typically the actor.
+    if ((ovl >= 534u && ovl <= 540u) || ovl == 552u) {
+        if ((a0 >= 0x80000000u) && ((a0 + 0x80000000u) < 0x00800000u) && ((a0 & 3u) == 0u)) {
+            const gpr act = kseg0_gpr(a0);
+            const float ax = bits_f32(MEM_W(0x04, act));
+            const float ay = bits_f32(MEM_W(0x08, act));
+            const float az = bits_f32(MEM_W(0x0C, act));
+            const float ry = bits_f32(MEM_W(0x48, act));
+            const uint32_t idw = static_cast<uint32_t>(MEM_W(0x6C, act));
+            const char* spawn_name = "?";
+            switch (ovl) {
+            case 534: spawn_name = "cheggclockwork"; break;
+            case 535: spawn_name = "cheggfire"; break;
+            case 536: spawn_name = "chegggolden"; break;
+            case 537: spawn_name = "chegggrenade"; break;
+            case 538: spawn_name = "cheggice"; break;
+            case 539: spawn_name = "cheggnormal"; break;
+            case 540: spawn_name = "cheggproximity"; break;
+            case 552: spawn_name = "cheggsplode"; break;
+            default: break;
+            }
+            std::fprintf(stderr,
+                         "[shot-egg] %s ovl=%u ep=%u name=%s act=%08x pos=(%.2f,%.2f,%.2f) "
+                         "ry=%.2f mid=%u actor_id=%u egg_slot=%d egg=%s map=%d sub=%d\n",
+                         leaving ? "leave" : "enter", ovl, ep, spawn_name, a0, ax, ay, az, ry,
+                         idw & 0x1FFu, idw & 0x1FFu, egg_slot, egg_name, map_v, sub_v);
+        }
     }
     std::fflush(stderr);
 }
@@ -1828,13 +1870,37 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
     }
 
     const float velxz = std::sqrt(vx * vx + vz * vz);
+
+    const int stage_v = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    int32_t egg_slot = -1;
+    int egg_enum = -1;
+    egg_slot = static_cast<int32_t>(MEM_W(0x64, ps));
+    if (egg_slot >= 0 && egg_slot < 8) {
+        egg_enum = int(MEM_BU(egg_slot, kseg0_gpr(0x80117E20u)));
+    }
+    int32_t cam_sel = -1;
+    float camctrl = 0.0f;
+    int cam_mode = -1;
+    cam_sel = static_cast<int32_t>(MEM_W(0x184, ps));
+    if (cam_sel >= 0 && cam_sel < 8) {
+        const uint32_t rec_addr =
+            static_cast<uint32_t>(MEM_W(cam_sel * 4, kseg0_gpr(0x80127708u)));
+        if (is_guest(rec_addr)) {
+            const gpr rec = kseg0_gpr(rec_addr);
+            camctrl = bits_f32(MEM_W(0x1C, rec));
+            cam_mode = int(MEM_H(0x16, rec));
+        }
+    }
+
     std::fprintf(stderr,
                  "[demo-sync] glidx=%d post=%d tick=%llu wall_ms=%lld gfx=%llu adv=%d "
                  "pad=(%d,%d,%04x) remap=(%.2f,%.2f) bstick=(%.2f,%.2f,%.1f,%.2f) "
                  "bs=%d pos=(%.2f,%.2f,%.2f) ppos=(%.2f,%.2f,%.2f) "
                  "vel=(%.2f,%.2f,%.2f) velxz=%.2f tspd=%.1f "
                  "yaw=%.2f ideal=%.2f phys_yaw=%.2f mult=%.4f accel=%.2f "
-                 "cam=(%.2f,%.2f,%.2f,%.1f) "
+                 "cam=(%.2f,%.2f,%.2f,%.1f) camctrl=%.4f cammode=%d sel=%d "
+                 "egg_slot=%d egg_enum=%d stage=%d sub=%d "
                  "digger=(%.2f,%.2f,%.2f) act2=(%u,%08x,%.2f,%.2f,%.2f) "
                  "gs=%.5f fc=%d cnt=%d map=%d\n",
                  consumed_glidx, post_glidx, static_cast<unsigned long long>(tick), static_cast<long long>(wall_ms),
@@ -1844,7 +1910,8 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
                  bs_id, px, py, pz, ppx, ppy, ppz,
                  vx, vy, vz, velxz, tspd,
                  yaw, yaw_ideal, phys_yaw, mult, accel,
-                 cx, cy, cz, cam_yaw,
+                 cx, cy, cz, cam_yaw, camctrl, cam_mode, cam_sel,
+                 egg_slot, egg_enum, stage_v, sub_v,
                  dig_x, dig_y, dig_z, act2_mid, act2_sys, act2_x, act2_y, act2_z,
                  gamespeed, gfcnt, gl_count, map_v);
     std::fflush(stderr);

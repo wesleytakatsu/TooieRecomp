@@ -28,6 +28,7 @@ std::atomic<bool> g_demo_path_enabled{false};
 std::atomic<bool> g_demo_sync_enabled{false};
 std::atomic<bool> g_shot_enabled{false};
 std::atomic<bool> g_forced_facing_enabled{false};
+std::atomic<bool> g_attract_enabled{false};
 std::atomic<bool> g_gameplay_seen{false};
 std::atomic<bool> g_inited{false};
 std::atomic<uint32_t> g_host_x_bits{0};
@@ -118,6 +119,14 @@ void ensure_init() {
     const char* shot = std::getenv("TOOIE_DIAG_SHOT");
     g_shot_enabled.store(shot != nullptr && shot[0] != '\0' && shot[0] != '0',
                          std::memory_order_relaxed);
+    const char* attract = std::getenv("TOOIE_DIAG_ATTRACT");
+    g_attract_enabled.store(attract != nullptr && attract[0] != '\0' && attract[0] != '0',
+                            std::memory_order_relaxed);
+    if (g_attract_enabled.load(std::memory_order_relaxed)) {
+        g_shot_enabled.store(true, std::memory_order_relaxed);
+        g_demo_sync_enabled.store(true, std::memory_order_relaxed);
+        g_movement_enabled.store(true, std::memory_order_relaxed);
+    }
     const char* facing = std::getenv("TOOIE_DIAG_FORCED_FACING");
     g_forced_facing_enabled.store(facing != nullptr && facing[0] != '\0' &&
                                       facing[0] != '0',
@@ -229,6 +238,12 @@ void ensure_init() {
                      "[facing] enabled (filtered scripted-actor heading vs yaw)\n");
         std::fflush(stderr);
     }
+    if (g_attract_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[attract] enabled (implies SHOT+DEMO_SYNC; table dump + "
+                     "user-demo ordinals + egg/camera fields)\n");
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -284,6 +299,11 @@ bool demo_sync_enabled() {
 bool shot_enabled() {
     ensure_init();
     return g_shot_enabled.load(std::memory_order_relaxed);
+}
+
+bool attract_enabled() {
+    ensure_init();
+    return g_attract_enabled.load(std::memory_order_relaxed);
 }
 
 bool forced_facing_enabled() {

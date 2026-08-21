@@ -11,6 +11,24 @@ tags: [p09, parity, attract-demo, egg-type, visual-drift, angrylion, rt64, oracl
 
 # P09 — User-Observed Parity Residuals & Attract Demo Baseline
 
+**CORRECTED/SUPERSEDED (2026-08-21):** user gameplay-demo numbering is
+**continuous across intro/music blocks**, not this zero-based Demo 0..3 table.
+`USER_DEMO_4` is Haunted Cavern (map 235, `stage=0 sub=4`), not "Demo 3".
+Canonical reconstruction and the proven egg defect:
+[[p08-provisional-follow-camera-and-egg-differential]].
+
+The following b042865 complete-attract conclusions are **DISPUTED** /
+**CORRECTED/SUPERSEDED** and must not be reused as cycle-closed proof:
+
+```text
+REFERENCE_FIRE_EGG_EVENT_FOUND = NO          -> CORRECTED (FIRE in USER_DEMO_1; FIRE vs BLUE in USER_DEMO_4)
+GLOBAL_VISUAL_DRIFT_STATUS = NOT_REPRODUCED_IN_ATTRACT_SET  -> DISPUTED
+REAL_PARITY_DEFECT_FOUND = NO                -> CORRECTED (EGG_PARITY_DEFECT: PROVEN)
+```
+
+Retained Demo 0..3 measurements below may still apply to those **exact clips**
+if later re-proven; they are **not** the complete attract set.
+
 ## 1. Executive Summary & Verdicts
 
 This document records **PROVISIONAL_PRE_P09_PARITY_EVIDENCE**. It does not formally
@@ -154,8 +172,8 @@ Animation telemetry, physics trajectories, and model/root transforms for all fou
 
 | Residual ID | Category | Description | Status | Target Phase/Task |
 |:---|:---:|:---|:---:|:---:|
-| **P09-RES-01** | Attract Parity | Automatic demo visual drift report | **USER_REPORTED**; Attract Set (Demos 0..3) **NOT_REPRODUCED_IN_ATTRACT_SET** | P09-T01 after formal P09 open |
-| **P09-RES-02** | Attract Parity | Possible wrong egg type / Fire Egg report | **USER_REPORTED**; Attract Set (Demos 0..3) **USER_REPORT_NOT_REPRODUCED_IN_ATTRACT_SET** | P09-T01 after formal P09 open |
+| **P09-RES-01** | Attract Parity | Automatic demo visual drift report | **USER_REPORTED** on RT64; **USER_CONFIRMED PASS** on Angrylion nightly; numeric USER_DEMO_4 follow-camera **UNKNOWN** | P09-T01 after formal P09 open |
+| **P09-RES-02** | Attract Parity | Wrong egg type (FIRE vs BLUE) | **PROVEN** on USER_DEMO_4: Angrylion FIRE / RT64 BLUE ([[p08-provisional-follow-camera-and-egg-differential]]) | P08 residual / P09-T01 |
 | **P09-RES-03** | Graphics | General in-game graphical glitches / edge artifacts | **USER_REPORTED / UNCATALOGUED** | P09-T01 / P09-T08 |
 | **P09-RES-04** | Audio | Periodic audio "tic/tic" clicking in audio output | **USER_REPORTED / UNDIAGNOSED** | P09-T04 |
 | **P09-RES-05** | Widescreen | Screen-edge and corner culling bounds in expanded aspect ratio | **USER_REPORTED** | P09-T08 |
@@ -180,3 +198,4 @@ Animation telemetry, physics trajectories, and model/root transforms for all fou
 - All four attract demos (Demos 0..3) demonstrate 100% input alignment, bounded physics trajectory errors, bit-identical animation telemetry, and clean upright rendering against `ANGRYLION_CONTROL`.
 - Neither Fire Egg firing nor visual drift reproduced within the measured attract demo set (Demos 0..3).
 - **Next Single Action**: Await physical gamepad hardware availability to close the final P08 gate; preserve audio/graphics backlog for after formal P09 opening.
+- **Egg / attract (2026-08-21)**: `EGG_PARITY_DEFECT: PROVEN` on USER_DEMO_4. See [[p08-provisional-follow-camera-and-egg-differential]].

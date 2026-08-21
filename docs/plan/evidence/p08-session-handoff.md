@@ -3,7 +3,7 @@ title: "P08 — session handoff: attract demo e render submission"
 description: "Estado autossuficiente P08: o oracle hardware-faithful Angrylion RDP Plus + CXD4 LLE sustenta o R-ORACLE e o R-MOTION-ORACLE no stream medido do Demo 0; a validação física formal permanece pendente."
 status: evidence
 phase: P08
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, r-motion-oracle, rt64, intro, attract, demo2, visible-demo]
 ---
 
@@ -12,6 +12,7 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 ## CURRENT_HEAD
 
 - Branch: `main`.
+- Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
 - Active Fix Evidence: [[p08-attract-loop-after-demo2-crash]] (**RESOLVED and VALIDATED**).
 - Preserved diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
@@ -50,7 +51,7 @@ Canonical tasks (T01..T11) audited:
 - User physical gamepad status: **PENDING_HARDWARE_UNAVAILABLE** — no gamepad hardware currently available for formal 15/15 checklist execution (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained).
 - Only remaining formal P08 gate: **PHYSICAL_GAMEPAD_VALIDATION**.
 - Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
-- Provisional pre-P09 parity evidence: Attract Demos 0..3 validated against hardware-faithful `ANGRYLION_CONTROL` oracle (100% pad match, bounded physics error <0.89u, animation telemetry captured, no Fire Egg or visual drift defect in attract set).
+- Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` on USER_DEMO_4; Demo 0..3 is not the complete attract cycle).
 
 ## CURRENT_PRODUCT_STATE
 
@@ -625,3 +626,29 @@ Summary of hardware oracle findings:
      - `PHYSICAL_MULTI_MONITOR_DISPLAY_VALIDATION`
 
 NEXT_SINGLE_ACTION: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical desktop hardware.
+
+## Attract user-numbering and USER_DEMO_4 egg defect (2026-08-21)
+
+Canonical: [[p08-provisional-follow-camera-and-egg-differential]].
+
+The user numbers attract gameplay continuously across intro/music blocks.
+`USER_DEMO_4` is map 235 Haunted Cavern (`stage=0 sub=4`) after the first
+intro return, not zero-based Demo 3. Syscall spawn: Angrylion `cheggfire` 535
+vs RT64 `cheggnormal` 539. `EGG_PARITY_DEFECT: PROVEN`. User confirmed this
+Angrylion RDP Plus nightly-build run was visually correct for fire egg and
+for the previously-broken demo behavior.
+
+b042865 complete-attract claims (`REFERENCE_FIRE_EGG_EVENT_FOUND=NO`,
+`GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET`,
+`REAL_PARITY_DEFECT_FOUND=NO`) are **DISPUTED** / **CORRECTED/SUPERSEDED**.
+Demo 0 Wooded Hollow R-MOTION-ORACLE measurements are retained for **that
+clip only**. Follow-camera numeric differential on USER_DEMO_4 remains
+**UNKNOWN**. P09 is **NOT_FORMALLY_OPEN**. No production fix.
+
+```text
+EGG_PARITY_DEFECT:              PROVEN
+ANGRYLION_NIGHTLY_VISUAL:       USER_CONFIRMED PASS
+FULL_ATTRACT_SEQUENCE_REPEAT_PROVEN: NO
+FIX_IMPLEMENTED:                NO
+NEXT_SINGLE_ACTION:             trace USER_DEMO_4 selected-egg state (a1 / owner) at first fire
+```

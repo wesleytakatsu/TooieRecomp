@@ -4,7 +4,7 @@ description: "P08 implementation substantially complete (Verdict B; P08 ACTIVE /
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
@@ -16,15 +16,15 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 - **Physical Display Validation**: **PASS** — User explicitly confirmed all 14 mandatory display/window integration tests passed (`PHYSICAL_DISPLAY_RESULT: PASS`, `FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`).
 - **Physical Gamepad Status**: **PENDING_HARDWARE_UNAVAILABLE** — Formal 15/15 gamepad checklist cannot be executed because controller hardware is temporarily unavailable. `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained.
 - **Only Remaining P08 Gate**: **PHYSICAL_GAMEPAD_VALIDATION**.
-- **P09 Provisional Evidence**: [[plan/evidence/p09-user-observed-parity-residuals]] records provisional pre-P09 parity results for Attract Demos 0, 1, 2, and 3 against hardware-faithful **`ANGRYLION_CONTROL`** oracle.
-  - All four attract demos (0..3) demonstrate 100% input alignment, bounded physics error (<0.89u max error, `STABLE_NOISE`), bit-identical animation telemetry capture, and clean upright rendering.
-  - No Fire Egg firing event exists in reference attract data across Demos 0..3 (`USER_FIRE_EGG_REPORT_STATUS: USER_REPORT_NOT_REPRODUCED_IN_ATTRACT_SET`).
-  - No visual drift reproduced across Demos 0..3 (`GLOBAL_VISUAL_DRIFT_STATUS: NOT_REPRODUCED_IN_ATTRACT_SET`).
-- **Next Single Action**: Await physical gamepad hardware availability to close the final P08 gate; preserve audio/graphics backlog for after formal P09 opening.
+- **Attract numbering / egg discriminator (2026-08-21)**: user demos are **continuous across intro blocks**, not zero-based Demo 0..3. Canonical evidence: [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]].
+  - `USER_DEMO_4` = first gameplay after the first return to intro/music = map **235 Haunted Cavern** (`stage=0 sub=4`), **not** "Demo 3".
+  - `EGG_PARITY_DEFECT: PROVEN` — Angrylion fires **FIRE** (`cheggfire` 535); RT64 fires **BLUE** (`cheggnormal` 539). User confirmed Angrylion RDP Plus nightly-build visual PASS for fire egg and for the previously-broken demo behavior.
+  - b042865 claims `REFERENCE_FIRE_EGG_EVENT_FOUND=NO`, `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET`, `REAL_PARITY_DEFECT_FOUND=NO` are **DISPUTED** / **CORRECTED/SUPERSEDED**. Demo 0..3 is an incomplete attract slice.
+- **Next Single Action**: trace USER_DEMO_4 selected-egg state (`baeggsetup` `a1` / owner) at first fire; Angrylion FIRE vs RT64 BLUE. Do not hunt other egg scenes. P09 remains **NOT_FORMALLY_OPEN**.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
-after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Mayahem 235 → JRL 296`
-succeed cleanly. `bsrest_entrypoint_11` calls `static_344_808003FC` directly without
+after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`
+succeed cleanly (historical soak labeled 235 as Mayahem; that map-name is **CORRECTED/SUPERSEDED** to WW Haunted Cavern). `bsrest_entrypoint_11` calls `static_344_808003FC` directly without
 LOOKUP_FUNC collision. Level A fix validated across unit tests, static contract, and 300s soak.
 See [[plan/evidence/p08-attract-loop-after-demo2-crash]].
 
