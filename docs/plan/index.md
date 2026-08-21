@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; USER_DEMO_4 ROUND.W.S bind-tick proven (`CAMERA_COMPLETE_FIX: NO`); dump glidx 39 walking ncbapivot residual remains; manual validation pending |
+| RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; USER_DEMO_4 ROUND.W.S bind-tick proven (`CAMERA_COMPLETE_FIX: NO`); dump glidx 39 walking ncbapivot residual remains; `ANGRYLION_CONTROL` in `tools/oracle/angrylion-control/` ([[../specs/BT/angrylion-control-oracle]]); manual validation pending |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e

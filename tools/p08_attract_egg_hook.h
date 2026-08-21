@@ -6,7 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Temporary ANGRYLION_CONTROL USER_DEMO_4 egg + follow-camera probe. Logging only. */
+/* Temporary ANGRYLION_CONTROL USER_DEMO_4 egg + follow-camera probe. Logging only.
+ * Copied into Mupen pure_interp by tools/oracle/angrylion-control/scripts/build.sh.
+ * See docs/specs/BT/angrylion-control-oracle.md. */
 
 static FILE* s_p08_egg_log = NULL;
 static FILE* s_p08_motion = NULL;

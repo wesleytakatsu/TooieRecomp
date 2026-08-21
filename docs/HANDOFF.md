@@ -24,6 +24,7 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
   - `EGG_PARITY_DEFECT` remains **PROVEN**: Angrylion **FIRE** (`cheggfire` 535); RT64 **BLUE** (`cheggnormal` 539). Independent of ROUND.W.S: **YES**. Independent of remaining camera/demo split: **UNKNOWN**. No egg fix.
   - b042865 `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET` is **CORRECTED/SUPERSEDED** for USER_DEMO_4. Demo 0..3 remains an incomplete attract slice.
 - **ROUND.W.S checkpoint (2026-08-21)**: `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`). `ROUND_W_S_ROOT_CAUSE: PROVEN`. `ORIGINAL_BIND_TICK_DISCRIMINATOR: RESOLVED`. `ROUND_W_S_BIND_AND_IDLE_CAMERA_EFFECT: FIXED`. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`. `ROUND_W_S_SPECIAL_VALUE_CONTRACT: PARTIAL`. Evidence: [[plan/evidence/p08-user-demo4-sincos-semantics-fix]].
+- **ANGRYLION_CONTROL location (2026-08-21)**: relocated from `/tmp/p08-m64p` + `/tmp/p08-m64p-lle` into `tools/oracle/angrylion-control/` (`work/` gitignored). Run `tools/oracle/angrylion-control/run.sh`. Spec: [[specs/BT/angrylion-control-oracle]]. Angrylion remains measurement-only; TooieRecomp stays RT64.
 - **Next Single Action**: Instruction-join `ncbapivot_entrypoint_3` at dump glidx 39 (first walking-player follow tick). Do not reopen bind-tick `round.w.s`. P09 remains **NOT_FORMALLY_OPEN**.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV

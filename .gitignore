@@ -48,3 +48,7 @@ docs/**/*.png
 docs/**/*.txt
 docs/**/*.bin
 docs/**/*.sample.log
+
+# ANGRYLION_CONTROL local prefix/src. Tracked: pins, patch, cfg template, scripts.
+# Relocated from /tmp/p08-m64p and /tmp/p08-m64p-lle; never vendor ROM or .so.
+tools/oracle/angrylion-control/work/

@@ -11,7 +11,8 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 ## CURRENT_HEAD
 
-- Branch: `main` @ `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`).
+- Branch: `main` @ `6adc571155d01f1b7d37885eef06d8e7e5cf7b46`. ROUND.W.S fix is `5854872c79a7cab1c9395ddcd173cece449ffe11`.
+- ANGRYLION_CONTROL tree: `tools/oracle/angrylion-control/` (relocated from `/tmp/p08-m64p*`; [[../../specs/BT/angrylion-control-oracle]]). Run `tools/oracle/angrylion-control/run.sh`. TooieRecomp stays RT64.
 - Provisional Player & AI Speed Parity Baseline: [[p08-provisional-player-ai-speed-parity]] (`PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`, `USER_DEMO4_CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`, `HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
 - Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
 - USER_DEMO_4 post-ROUND.W.S full-state discriminator: [[p08-user-demo4-post-round-full-state-discriminator]] (idle CA8B4/CA628 glidx 1..38 MATCH; first remaining bit difference = dump glidx 39 `ncbapivot_entrypoint_3` output; player pos/yaw/ideal MATCH; `A_CANDIDATE=YES`).

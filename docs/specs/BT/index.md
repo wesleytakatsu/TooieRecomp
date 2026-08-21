@@ -36,6 +36,7 @@ At the verified baseline, `origin` is
 - [Input e controles](input.md) — contrato compartilhado com BanjoRecomp; attract/demo também consome `glrecord` no pad guest.
 - [Compression](compression.md) — cartridge/overlay deflate + CRC scaffold.
 - [Tools](tools.md) — C++ tooling for decompression / compression / overlays.
+- [ANGRYLION_CONTROL oracle](angrylion-control-oracle.md) — pinned Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE for TooieRecomp measurement (not the RT64 renderer).
 - [Sources](sources.md) — `src/` tree layout and decompilation style.
 - [Matching](matching.md) — per-function decomp/matching workflow.
 - [CI](ci.md) — GitHub Actions build + progress upload.

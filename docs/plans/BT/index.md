@@ -103,6 +103,8 @@ Remaining first difference is dump glidx 39 walking-player `ncbapivot`
 ([[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]]).
 P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING**; P09 remains
 **PENDING / NOT_FORMALLY_OPEN**.
+`ANGRYLION_CONTROL` lives in `tools/oracle/angrylion-control/`
+([[../../specs/BT/angrylion-control-oracle]]); TooieRecomp stays RT64.
 Evidência:
 [[../../plan/evidence/p08-user-demo4-sincos-semantics-fix]],
 [[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]],

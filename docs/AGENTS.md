@@ -46,6 +46,7 @@ Depois, marque o checkbox, atualize o `status` da fase quando aplicável e rode
 - Reutilização BK: [[specs/BK/reuse-contract]]
 - Prontidão BT: [[specs/BT/recomp-readiness]]
 - ROM de entrada: SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`
+- Oráculo de medição `ANGRYLION_CONTROL`: [[specs/BT/angrylion-control-oracle]] (`tools/oracle/angrylion-control/run.sh`). Angrylion não substitui o RT64.
 
 ## Contrato de continuidade entre agentes
 

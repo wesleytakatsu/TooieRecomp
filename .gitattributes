@@ -1,0 +1,2 @@
+# Unified diffs of tab-indented C trip git diff --check (space-before-tab on context lines).
+tools/oracle/angrylion-control/patches/*.patch -whitespace

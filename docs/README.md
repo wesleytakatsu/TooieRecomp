@@ -25,6 +25,8 @@ Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [Banjo Tooie Decomp — specs](specs/BT/index.md) — fork local de Wesley Takatsu do decomp do Mr-Wiseguy
   (setup, splat, build, símbolos/relocs, overlays, syscalls, compressão,
   tools, sources, matching, CI).
+- [ANGRYLION_CONTROL oracle](specs/BT/angrylion-control-oracle.md) — Mupen + Angrylion RDP Plus + CXD4 LLE
+  para medição P08; o executável TooieRecomp continua no RT64.
 
 ## Roadmap
 

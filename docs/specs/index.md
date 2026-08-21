@@ -46,6 +46,7 @@ adapt, and extend for Tooie.
 - [Syscalls](BT/syscalls.md) — overlay dispatch via syscall table
 - [Compression](BT/compression.md) — cartridge/overlay deflate + CRC
 - [Tools](BT/tools.md) — C++/Python tooling
+- [ANGRYLION_CONTROL oracle](BT/angrylion-control-oracle.md) — Mupen + Angrylion RDP Plus + CXD4 LLE measurement oracle (TooieRecomp stays RT64)
 - [Sources](BT/sources.md) — `src/` tree layout
 - [Matching](BT/matching.md) — decomp/matching workflow
 - [CI](BT/ci.md) — CI build + progress
