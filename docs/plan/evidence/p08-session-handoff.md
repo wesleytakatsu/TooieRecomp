@@ -11,12 +11,13 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 ## CURRENT_HEAD
 
-- Branch: `main` @ `6adc571155d01f1b7d37885eef06d8e7e5cf7b46`. ROUND.W.S fix is `5854872c79a7cab1c9395ddcd173cece449ffe11`.
+- Branch: `main` @ `f1fdfefb3346e16bc813c106f0947c0d60aa228c` (walkstart capture). ROUND.W.S fix is `5854872c79a7cab1c9395ddcd173cece449ffe11`.
 - ANGRYLION_CONTROL tree: `tools/oracle/angrylion-control/` (relocated from `/tmp/p08-m64p*`; [[../../specs/BT/angrylion-control-oracle]]). Playable: `./run-tooie-angrylion-rdp.sh`. RT64: `./run-tooie.sh`. TooieRecomp stays RT64.
 - Agent workspace: open CLI/IDE in **TooieRecomp/**. MCP/vault configs are in-repo ([[../../MARKDOWN_VAULT_TOOLS]]). Sibling `BanjoRecomp` + cart ROM remain for CMake/oracle only.
 - Provisional Player & AI Speed Parity Baseline: [[p08-provisional-player-ai-speed-parity]] (`PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`, `USER_DEMO4_CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`, `HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
 - Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
-- USER_DEMO_4 post-ROUND.W.S full-state discriminator: [[p08-user-demo4-post-round-full-state-discriminator]] (idle CA8B4/CA628 glidx 1..38 MATCH; first remaining bit difference = dump glidx 39 `ncbapivot_entrypoint_3` output; player pos/yaw/ideal MATCH; fresh child trace leaves `A_CANDIDATE=NOT_PROVEN`).
+- USER_DEMO_4 post-ROUND.W.S full-state discriminator: [[p08-user-demo4-post-round-full-state-discriminator]] (idle CA8B4/CA628 glidx 1..38 MATCH; first remaining bit difference = dump glidx 39 `ncbapivot_entrypoint_3` output; player pos/yaw/ideal MATCH).
+- USER_DEMO_4 walkstart ncbapivot join: [[p08-user-demo4-walkstart-ncbapivot-discriminator]] (`800137AC` a2/f14 **CORRECTED/SUPERSEDED**; first split is `80112C5C` on `p60_8` 0 vs 5; `ROOT_CLASS=B-NCBAPIVOT-CONTROL-INPUT`).
 - USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] (pre-fix glidx-1 ULP **CORRECTED/SUPERSEDED** by ROUND.W.S).
 - USER_DEMO_4 ncbapivot first tick: [[p08-user-demo4-ncbapivot-first-instruction]] (pre-fix n74 DIFF; **POST-FIX bind n74 MATCH**).
 - USER_DEMO_4 live-eye writer: [[p08-user-demo4-live-eye-writer]] (node init MATCH; `80110770`/`800EE7F8` faithful; first bit write is ordinal 2 on the mode=2 bind ncbapivot tick).
@@ -60,7 +61,7 @@ Canonical tasks (T01..T11) audited:
 - Only remaining formal P08 gate: **PHYSICAL_GAMEPAD_VALIDATION**.
 - Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
 - Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` and USER_DEMO_4 follow-camera **REPRODUCED**; Demo 0..3 is not the complete attract cycle).
-- USER_DEMO_4 post-ROUND.W.S full-state join: [[p08-user-demo4-post-round-full-state-discriminator]] — idle follow-cam glidx 1..38 bit-identical; first remaining bit difference is dump glidx 39 ncbapivot output with matching player inputs. Demo-sync still prints 0.0853° @41 then feedback accumulation. Egg remains BLUE vs FIRE; independence from remaining camera is **UNKNOWN**. ROUND.W.S architectural fix is committed as `5854872c79a7cab1c9395ddcd173cece449ffe11` (`CAMERA_COMPLETE_FIX: NO`, `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`). `glidx 36` / pre-fix glidx-1 seed are **CORRECTED/SUPERSEDED**.
+- USER_DEMO_4 post-ROUND.W.S full-state join: [[p08-user-demo4-post-round-full-state-discriminator]] — idle follow-cam glidx 1..38 bit-identical. Walkstart join [[p08-user-demo4-walkstart-ncbapivot-discriminator]]: first remaining split is glidx 39 `80112C3C` jumptable on `*(node+0x60)+8` (0 vs 5 at ncbapivot enter; player pos/yaw/ideal MATCH). Demo-sync still prints 0.0853° @41 then feedback accumulation. Egg remains BLUE vs FIRE; independence from remaining camera is **UNKNOWN**. ROUND.W.S architectural fix is committed as `5854872c79a7cab1c9395ddcd173cece449ffe11` (`CAMERA_COMPLETE_FIX: NO`, `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`). `glidx 36` / pre-fix glidx-1 seed are **CORRECTED/SUPERSEDED**. `800137AC` a2/f14 as first live input is **CORRECTED/SUPERSEDED**.
 
 ## CURRENT_PRODUCT_STATE
 

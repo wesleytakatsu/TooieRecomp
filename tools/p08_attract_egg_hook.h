@@ -483,6 +483,8 @@ static inline const char* p08_np_child_name(uint32_t pc)
     case 0x80115358u: return "80115358";
     case 0x80115750u: return "80115750";
     case 0x80112C3Cu: return "80112C3C";
+    case 0x800F1738u: return "800F1738";
+    case 0x800F1DCCu: return "800F1DCC";
     case 0x801125E8u: return "801125E8";
     case 0x800EEBF0u: return "800EEBF0";
     case 0x800EE780u: return "800EE780";
@@ -526,6 +528,19 @@ static inline void p08_ud4_np_call_line(struct r4300_core* r4300, FILE* fp, cons
             p08_fpr_bits(r4300, 0), p08_fpr_bits(r4300, 2),
             p08_fpr_bits(r4300, 12), p08_fpr_bits(r4300, 14),
             r4300->cp1.fcr31);
+    if (pc == 0x80112C3Cu && phase[0] == 'e' && p08_guest(s_p08_np_node)) {
+        uint32_t p60 = 0, w0 = 0, w4 = 0, w8 = 0;
+        (void)r4300_read_aligned_word(r4300, s_p08_np_node + 0x60u, &p60);
+        if (p08_guest(p60)) {
+            (void)r4300_read_aligned_word(r4300, p60 + 0u, &w0);
+            (void)r4300_read_aligned_word(r4300, p60 + 4u, &w4);
+            (void)r4300_read_aligned_word(r4300, p60 + 8u, &w8);
+            uint32_t t7 = w8 - 1u;
+            fprintf(fp,
+                    " 80112C3C_sel p60=%08x p60_0=%08x p60_4=%08x p60_8=%08x t7=%08x sltiu5=%d",
+                    p60, w0, w4, w8, t7, t7 < 5u ? 1 : 0);
+        }
+    }
     p08_ud4_dump_vec3(r4300, fp, "va0", a0);
     p08_ud4_dump_vec3(r4300, fp, "va1", a1);
     p08_ud4_dump_vec3(r4300, fp, "va2", a2);

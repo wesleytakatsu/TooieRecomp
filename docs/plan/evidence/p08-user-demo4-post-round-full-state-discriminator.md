@@ -317,18 +317,18 @@ ideal-yaw, `f0`, and `f12`). The outputs differ (`f0=43a958bd` RT64 versus
 However, RT64's trace exposes only `rm=0`/`mips3=0`, not complete FCSR bits;
 the oracle reports `fcr31=01000800` at enter and `01800800` at leave.
 
-The earliest observed executed child-input difference is `800137AC` enter:
-RT64 `a2=439a589e`, `f14=41aa94a2`; oracle `a2=439a7fd5`, `f14=439a054e`.
-The child-call order then diverges at event 60, and the oracle executes one
-additional nested `80013818`. Consequently the result is not a proof of
-same-complete-inputs/different-output and does not authorize a fix.
+The previously reported `800137AC` `a2`/`f14` child-input difference is
+**CORRECTED/SUPERSEDED**. Those entry values are dead in `func_800137AC`.
+The first proven split inside this ncbapivot is `80112C3C` `0x80112C5C`
+(`p60_8` 0 vs 5 already at ncbapivot enter). See
+[[p08-user-demo4-walkstart-ncbapivot-discriminator]].
 
 ```text
-NCBAPIVOT_WALK_READ_SET_COMPLETE:       NO (RT64 FCSR/FPR provenance incomplete)
-FIRST_EXECUTED_READ_DIFFERENCE:         NOT_PROVEN; earliest observed child-input difference 800137AC enter (a2/f14)
+NCBAPIVOT_WALK_READ_SET_COMPLETE:       NO (guest FCR31 unemulated on RT64)
+FIRST_EXECUTED_READ_DIFFERENCE:         PROVEN 80112C5C jumptable on p60_8 (0 vs 5)
 SAME_INPUTS_DIFFERENT_NCBAPIVOT_OUTPUT: NO / NOT_PROVEN
-ROOT_CLASS:                             B-NCBAPIVOT-WALKSTART-FIRST-EXECUTED-INPUT
-ROOT_CAUSE_LEVEL:                       NOT_PROVEN
+ROOT_CLASS:                             B-NCBAPIVOT-CONTROL-INPUT
+ROOT_CAUSE_LEVEL:                       PROVEN for this ncbapivot split; p60 writer outside it
 FIX_IMPLEMENTED:                        NO
 ```
 

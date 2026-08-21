@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 bind-tick round.w.s and idle follow-cam glidx 1..38 now match ANGRYLION_CONTROL; dump glidx 39 ncbapivot output and BLUE-vs-FIRE egg remain. Only formal P08 gate is PHYSICAL_GAMEPAD_VALIDATION."
+description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 bind-tick round.w.s and idle follow-cam glidx 1..38 now match ANGRYLION_CONTROL; dump glidx 39 first split is 80112C3C on p60_8 (0 vs 5). BLUE-vs-FIRE egg remains. Only formal P08 gate is PHYSICAL_GAMEPAD_VALIDATION."
 status: current
 type: handoff
 project: TooieRecomp
@@ -26,7 +26,7 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 - **ROUND.W.S checkpoint (2026-08-21)**: `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`). `ROUND_W_S_ROOT_CAUSE: PROVEN`. `ORIGINAL_BIND_TICK_DISCRIMINATOR: RESOLVED`. `ROUND_W_S_BIND_AND_IDLE_CAMERA_EFFECT: FIXED`. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`. `ROUND_W_S_SPECIAL_VALUE_CONTRACT: PARTIAL`. Evidence: [[plan/evidence/p08-user-demo4-sincos-semantics-fix]].
 - **Agent workspace (2026-08-21)**: open CLI/IDE in **TooieRecomp/**. MCP configs live here and bind markdown-vault to `docs/` ([[MARKDOWN_VAULT_TOOLS]]). Do not start agents at `N64-Recomp/`. `BanjoRecomp` and the cart ROM remain siblings for CMake/oracle only.
 - **ANGRYLION_CONTROL location (2026-08-21)**: `tools/oracle/angrylion-control/` (`work/` gitignored). Playable test: `./run-tooie-angrylion-rdp.sh`. RT64 port: `./run-tooie.sh`. Spec: [[specs/BT/angrylion-control-oracle]]. Angrylion remains measurement-only; TooieRecomp stays RT64.
-- **Next Single Action**: Instruction-join `ncbapivot_entrypoint_3` at dump glidx 39 (first walking-player follow tick). Do not reopen bind-tick `round.w.s`. P09 remains **NOT_FORMALLY_OPEN**.
+- **Next Single Action**: Find the writer of camera `node+0x60` object words `+0/+4/+8` between dump glidx 38 ncbapivot leave and glidx 39 ncbapivot enter (`p60_8` 0 vs 5). That integer is the first proven `80112C3C` jumptable input. Do not reopen bind-tick `round.w.s`. P09 remains **NOT_FORMALLY_OPEN**.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`
@@ -383,30 +383,40 @@ Angrylion oracle used real `DISPLAY=:0` with the AMD RX 580 RADV path and a
 oracle produced the paired glidx 39 trace and motion CSV. Pad/glrecord joining
 is exact for glidx 38..42, including target glidx 39.
 
-The glidx 39 ncbapivot entry payload matches after pointer relocation, but the
-output differs. This is not a completed instruction join: RT64 diagnostics do
-not expose full FCSR bits (`rm=0`, `mips3=0` only), while oracle FCSR is
-`01000800` at enter and `01800800` at leave. The earliest observed child input
-divergence is `800137AC` enter (`a2/f14`: RT64 `439a589e/41aa94a2`; oracle
-`439a7fd5/439a054e`), followed by a call-stack order difference and one extra
-oracle `80013818` invocation.
+The glidx 39 ncbapivot entry payload matches after pointer relocation for
+`n74`/`n80`/`tgt`/pos/yaw/ideal, but **`*(node+0x60)+8` does not**: RT64 `0`,
+oracle `5`. That word is already different at ncbapivot enter. `80112C3C`
+`sltiu`/`beq` at `0x80112C5C` therefore takes opposite paths (skip jumptable vs
+case 4 → `800F1738`).
+
+The previously reported `800137AC` `a2`/`f14` difference is
+**CORRECTED/SUPERSEDED**: both are dead at that stub (`f14` overwritten from
+`0x800416C8`; `a2` unused). Post-overwrite `80013818` enter `f12`/`f14` MATCH.
+The extra oracle `80013818` is an alignment artifact of host `func_800137F4`
+calling `func_80013818` without `LOOKUP_FUNC`. Guest FCR31 is not stored in
+`recomp_context`; the `80112C5C` split is integer and does not read FCSR.
 
 ```text
 P08: ACTIVE / MANUAL_VALIDATION_PENDING
 P09: PENDING / NOT_FORMALLY_OPEN
-NCBAPIVOT_WALK_READ_SET_COMPLETE: NO
-FIRST_EXECUTED_READ_DIFFERENCE:    NOT_PROVEN; earliest observed 800137AC enter child-input difference
-SAME_INPUTS_DIFFERENT_OUTPUT:      NO / NOT_PROVEN
-ROOT_CLASS:                        B-NCBAPIVOT-WALKSTART-FIRST-EXECUTED-INPUT
-ROOT_CAUSE_LEVEL:                  NOT_PROVEN
+CALL_TREE_STRUCTURALLY_ALIGNED:    YES through 800137AC enter
+EXTRA_80013818_ORACLE_CALL:        ALIGNMENT_ARTIFACT
+800137AC_A2_USED_BY_CHILD:         NO
+800137AC_F14_USED_BY_CHILD:        NO
+RT64_FULL_FCSR_CAPTURED:           NO (UNEMULATED)
+FCSR_DIFFERENCE_CAUSALLY_READ:     NO
+FIRST_PROVEN_DISCRIMINATOR:        p60_8 0 vs 5 at glidx 39 ncbapivot enter; 80112C5C
+ROOT_CLASS:                        B-NCBAPIVOT-CONTROL-INPUT
+ROOT_CAUSE_LEVEL:                  PROVEN for this ncbapivot split; p60 writer outside it
 FIX_IMPLEMENTED:                   NO
-RT64_LOG:                           /tmp/p08-rt64-display-glidx39-r2.log
-ORACLE_LOG:                         /tmp/p08-angrylion-ud4-cam.log + /tmp/p08-angrylion-user_demo4.csv
+RT64_LOG:                          /tmp/p08-rt64-display-glidx39-r2.log
+ORACLE_LOG:                        /tmp/p08-angrylion-ud4-cam.log + /tmp/p08-angrylion-user_demo4.csv
 ```
 
 This remains diagnosis-only. Keep `round.w.s`, camera feedback, generated
-recompiler output, and egg changes closed; the next discriminator is the
-missing RT64 FCSR and executed-read provenance around `800137AC`.
+recompiler output, and egg changes closed. Next: writer of `node+0x60` between
+glidx 38 leave and glidx 39 enter. Canonical:
+[[plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]].
 
 Reproduction checklist for other agents: [[plan/evidence/p08-walkstart-reproduction-runbook]].
 

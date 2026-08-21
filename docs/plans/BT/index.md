@@ -100,7 +100,8 @@ checkpointed (`5854872c79a7cab1c9395ddcd173cece449ffe11`;
 idle follow-cam glidx 1..38 match ANGRYLION_CONTROL.
 `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`.
 Remaining first difference is dump glidx 39 walking-player `ncbapivot`
-([[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]]).
+jumptable `80112C3C` on `*(node+0x60)+8` (0 vs 5;
+[[../../plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]]).
 P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING**; P09 remains
 **PENDING / NOT_FORMALLY_OPEN**.
 `ANGRYLION_CONTROL` lives in `tools/oracle/angrylion-control/`
@@ -108,6 +109,7 @@ P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING**; P09 remains
 Evidência:
 [[../../plan/evidence/p08-user-demo4-sincos-semantics-fix]],
 [[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]],
+[[../../plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]],
 [[../../plan/evidence/p08-demo-movement-precision-diagnosis]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]],

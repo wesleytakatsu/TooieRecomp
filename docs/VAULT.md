@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. ROUND.W.S bind-tick proven (`5854872`); dump glidx 39 walking ncbapivot residual remains; egg FIRE vs BLUE.
+- [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. ROUND.W.S bind-tick proven (`5854872`); dump glidx 39 `80112C3C`/`p60_8` residual remains; egg FIRE vs BLUE.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Vault = `TooieRecomp/docs`. Configs de MCP/IDE no TooieRecomp (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`). Abrir agentes neste repositório, não em `N64-Recomp/`.
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [[specs/BT/angrylion-control-oracle]] — ANGRYLION_CONTROL — Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE pinned under `tools/oracle/angrylion-control/` (measurement only; TooieRecomp stays RT64).
@@ -13,6 +13,7 @@
 - [[plan/evidence/p08-provisional-player-ai-speed-parity]] — P08 — Provisional Player and AI Movement Speed Parity Baseline — Player scalar speed and AI actor speed magnitude proven against ANGRYLION_CONTROL in measured windows; animation cadence is not full animation-state parity.
 - [[plan/evidence/p08-user-demo4-sincos-semantics-fix]] — P08 — USER_DEMO_4 sincos MIPS round.w.s semantics fix — nearest-even ROUND.W.S; bind-tick discriminator RESOLVED; `CAMERA_COMPLETE_FIX: NO`.
 - [[plan/evidence/p08-user-demo4-post-round-full-state-discriminator]] — P08 — USER_DEMO_4 post-ROUND.W.S full-state discriminator — idle follow-cam 1..38 MATCH; first remaining bit difference is dump glidx 39 walking ncbapivot.
+- [[plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]] — P08 — USER_DEMO_4 walkstart ncbapivot discriminator — `800137AC` a2/f14 CORRECTED/SUPERSEDED; first split is `80112C5C` on `p60_8` 0 vs 5.
 - [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]] — P08 — USER_DEMO_4 bind-tick follow-eye — Pre-fix A-candidate `800137F4`/`80013818`; POST-FIX MATCH `006d5328`.
 - [[plan/evidence/p08-user-demo4-live-eye-writer]] — P08 — USER_DEMO_4 live-eye writer — Last `node+0x74` writer before glidx-1 enter is faithful `80110770`; computed source is upstream ROUND.W.S.
 - [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Pre-fix n74 DIFF is CORRECTED/SUPERSEDED; POST-FIX bind n74 MATCH; remaining dump glidx 39.

@@ -2318,6 +2318,43 @@ extern "C" void tooie_ud4_cam_ovl(uint8_t* rdram, recomp_context* ctx, uint32_t 
     fflush(stderr);
 }
 
+// Guest FCR31 is not stored in recomp_context. Host fegetround maps to MIPS RM;
+// mips3_float_mode is CP1 FR, not FCSR.FS; C/Enable/Cause/FS are unemulated.
+static void tooie_ud4_dump_fcsr(recomp_context* ctx, FILE* fp) {
+    uint32_t mips_rm = 0xFFu;
+    switch (fegetround()) {
+    case FE_TONEAREST: mips_rm = 0; break;
+    case FE_TOWARDZERO: mips_rm = 1; break;
+    case FE_UPWARD: mips_rm = 2; break;
+    case FE_DOWNWARD: mips_rm = 3; break;
+    default: break;
+    }
+    fprintf(fp,
+            " fcr31=UNEMULATED rm=%d mips_rm=%u mips3=%u status=%08x",
+            fegetround(), mips_rm, unsigned(ctx->mips3_float_mode),
+            static_cast<uint32_t>(ctx->status_reg));
+}
+
+static void tooie_ud4_dump_80112c3c_sel(uint8_t* rdram, FILE* fp) {
+    if (!tooie_is_guest(s_ud4_np_node)) {
+        return;
+    }
+    const uint32_t p60 = static_cast<uint32_t>(MEM_W(0x60, kseg0_gpr(s_ud4_np_node)));
+    if (!tooie_is_guest(p60)) {
+        fprintf(fp, " 80112C3C_sel p60=none");
+        return;
+    }
+    const gpr p = kseg0_gpr(p60);
+    const uint32_t w8 = static_cast<uint32_t>(MEM_W(0x8, p));
+    const uint32_t t7 = w8 - 1u;
+    fprintf(fp,
+            " 80112C3C_sel p60=%08x p60_0=%08x p60_4=%08x p60_8=%08x t7=%08x sltiu5=%d",
+            p60,
+            static_cast<uint32_t>(MEM_W(0x0, p)),
+            static_cast<uint32_t>(MEM_W(0x4, p)),
+            w8, t7, t7 < 5u ? 1 : 0);
+}
+
 static void tooie_ud4_np_call(const char* name, uint32_t addr, uint8_t* rdram,
                              recomp_context* ctx, int entering) {
     if (!s_ud4_np_active) {
@@ -2331,12 +2368,15 @@ static void tooie_ud4_np_call(const char* name, uint32_t addr, uint8_t* rdram,
     fprintf(stderr,
             "[ud4-np-call] %s n=%d name=%s pc=%08x glidx=%d ra=%08x "
             "a0=%08x a1=%08x a2=%08x a3=%08x v0=%08x "
-            "f0=%08x f2=%08x f12=%08x f14=%08x rm=%d",
+            "f0=%08x f2=%08x f12=%08x f14=%08x",
             entering ? "enter" : "leave", n, name, addr, s_ud4_np_glidx,
             static_cast<uint32_t>(ctx->r31), a0, a1, a2, a3,
             static_cast<uint32_t>(ctx->r2),
-            ctx->f0.u32l, ctx->f2.u32l, ctx->f12.u32l, ctx->f14.u32l,
-            fegetround());
+            ctx->f0.u32l, ctx->f2.u32l, ctx->f12.u32l, ctx->f14.u32l);
+    tooie_ud4_dump_fcsr(ctx, stderr);
+    if (entering && addr == 0x80112C3Cu) {
+        tooie_ud4_dump_80112c3c_sel(rdram, stderr);
+    }
     tooie_ud4_dump_vec3(rdram, stderr, "va0", a0);
     tooie_ud4_dump_vec3(rdram, stderr, "va1", a1);
     tooie_ud4_dump_vec3(rdram, stderr, "va2", a2);
@@ -2364,6 +2404,8 @@ TOOIE_UD4_WRAP(func_800F1A88, 0x800F1A88u, "800F1A88")
 TOOIE_UD4_WRAP(func_80115358, 0x80115358u, "80115358")
 TOOIE_UD4_WRAP(func_80115750, 0x80115750u, "80115750")
 TOOIE_UD4_WRAP(func_80112C3C, 0x80112C3Cu, "80112C3C")
+TOOIE_UD4_WRAP(func_800F1738, 0x800F1738u, "800F1738")
+TOOIE_UD4_WRAP(func_800F1DCC, 0x800F1DCCu, "800F1DCC")
 TOOIE_UD4_WRAP(func_801125E8, 0x801125E8u, "801125E8")
 TOOIE_UD4_WRAP(func_800EEBF0, 0x800EEBF0u, "800EEBF0")
 TOOIE_UD4_WRAP(func_800EE780, 0x800EE780u, "800EE780")
@@ -2427,12 +2469,12 @@ extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx) {
     s_ud4_np_active = first || tooie_ud4_walkstart_env() ? 1 : 0;
     fprintf(stderr,
             "[ud4-ncbapivot] enter seq=%u glidx=%d first=%d ra=%08x a0=%08x "
-            "a1=%08x a2=%08x a3=%08x sp=%08x frame=%08x f0=%08x f12=%08x rm=%d mips3=%u",
+            "a1=%08x a2=%08x a3=%08x sp=%08x frame=%08x f0=%08x f12=%08x",
             tooie_ud4_seq(), glidx, first, static_cast<uint32_t>(ctx->r31), a0,
             static_cast<uint32_t>(ctx->r5), static_cast<uint32_t>(ctx->r6),
             static_cast<uint32_t>(ctx->r7), sp, s_ud4_np_frame,
-            ctx->f0.u32l, ctx->f12.u32l, fegetround(),
-            unsigned(ctx->mips3_float_mode));
+            ctx->f0.u32l, ctx->f12.u32l);
+    tooie_ud4_dump_fcsr(ctx, stderr);
     tooie_ud4_dump_mode(rdram, stderr, glidx);
     tooie_ud4_dump_node_fields(rdram, stderr, a0);
     tooie_ud4_dump_ca8b4_reads(rdram, stderr, tooie_ud4_sel_rec(rdram));
@@ -2447,9 +2489,10 @@ extern "C" void tooie_ud4_ncbapivot_ep3_leave(uint8_t* rdram, recomp_context* ct
     }
     int glidx = s_ud4_np_glidx;
     fprintf(stderr,
-            "[ud4-ncbapivot] leave seq=%u glidx=%d active=%d v0=%08x f0=%08x rm=%d",
+            "[ud4-ncbapivot] leave seq=%u glidx=%d active=%d v0=%08x f0=%08x",
             tooie_ud4_seq(), glidx, s_ud4_np_active, static_cast<uint32_t>(ctx->r2),
-            ctx->f0.u32l, fegetround());
+            ctx->f0.u32l);
+    tooie_ud4_dump_fcsr(ctx, stderr);
     tooie_ud4_dump_np_frame(rdram, stderr);
     tooie_ud4_dump_node_fields(rdram, stderr, s_ud4_np_node);
     tooie_ud4_dump_ca8b4_reads(rdram, stderr, tooie_ud4_sel_rec(rdram));
@@ -2770,6 +2813,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115358), tooie_wrap_func_80115358);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115750), tooie_wrap_func_80115750);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112C3C), tooie_wrap_func_80112C3C);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F1738), tooie_wrap_func_800F1738);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F1DCC), tooie_wrap_func_800F1DCC);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801125E8), tooie_wrap_func_801125E8);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEBF0), tooie_wrap_func_800EEBF0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EE780), tooie_wrap_func_800EE780);
