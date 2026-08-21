@@ -1710,6 +1710,235 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
     std::fflush(stderr);
 }
 
+// USER_DEMO_4 follow-camera window (TOOIE_DIAG_ATTRACT=1): prove camctrl writer
+// and capture CA628 inputs at glidx 36..50. Logging only.
+static bool tooie_ud4_cam_window(uint8_t* rdram, int* glidx_out) {
+    if (!tooie_diag::attract_enabled()) {
+        return false;
+    }
+    const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
+    const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    if (mode_v != 5 || sub_v != 4) {
+        return false;
+    }
+    const int32_t post_glidx = static_cast<int32_t>(MEM_W(0x8, kseg0_gpr(0x8012D5B0u)));
+    const int32_t glidx = (post_glidx > 0) ? (post_glidx - 1) : 0;
+    if (glidx_out) {
+        *glidx_out = int(glidx);
+    }
+    return glidx >= 36 && glidx <= 50;
+}
+
+static float tooie_bits_f32(int32_t bits) {
+    float f = 0.0f;
+    const uint32_t u = static_cast<uint32_t>(bits);
+    std::memcpy(&f, &u, sizeof(f));
+    return f;
+}
+
+static bool tooie_is_guest(uint32_t a) {
+    return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+}
+
+static uint32_t tooie_ud4_seq() {
+    static uint32_t s = 0;
+    return ++s;
+}
+
+static void tooie_ud4_dump_player(uint8_t* rdram, FILE* fp) {
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
+    if (!tooie_is_guest(ps_addr)) {
+        fprintf(fp, " player=none");
+        return;
+    }
+    const gpr ps = kseg0_gpr(ps_addr);
+    const uint32_t pos_addr = static_cast<uint32_t>(MEM_W(0xE4, ps));
+    const uint32_t yaw_addr = static_cast<uint32_t>(MEM_W(0xF8, ps));
+    const int32_t sel = static_cast<int32_t>(MEM_W(0x184, ps));
+    float px = 0, py = 0, pz = 0, yaw = 0, ideal = 0;
+    if (tooie_is_guest(pos_addr)) {
+        const gpr posp = kseg0_gpr(pos_addr);
+        px = tooie_bits_f32(MEM_W(0x0, posp));
+        py = tooie_bits_f32(MEM_W(0x4, posp));
+        pz = tooie_bits_f32(MEM_W(0x8, posp));
+    }
+    if (tooie_is_guest(yaw_addr)) {
+        const gpr yawp = kseg0_gpr(yaw_addr);
+        yaw = tooie_bits_f32(MEM_W(0x0, yawp));
+        ideal = tooie_bits_f32(MEM_W(0x4, yawp));
+    }
+    fprintf(fp, " sel=%d pos=(%.6f,%.6f,%.6f) yaw=%.6f ideal=%.6f", sel, px, py, pz, yaw, ideal);
+}
+
+extern "C" void func_800CA628(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_8010FC38(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_8010FE14(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800CA8B4(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800E1A58(uint8_t* rdram, recomp_context* ctx);
+extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
+
+static void tooie_wrap_ca628(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_cam_window(rdram, &glidx);
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    const uint32_t a2 = static_cast<uint32_t>(ctx->r6);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    float src0 = 0, src1 = 0, src2 = 0, s20 = 0, s21 = 0, s22 = 0;
+    if (win && tooie_is_guest(a1) && tooie_is_guest(a2)) {
+        src0 = tooie_bits_f32(MEM_W(0, kseg0_gpr(a1)));
+        src1 = tooie_bits_f32(MEM_W(4, kseg0_gpr(a1)));
+        src2 = tooie_bits_f32(MEM_W(8, kseg0_gpr(a1)));
+        s20 = tooie_bits_f32(MEM_W(0, kseg0_gpr(a2)));
+        s21 = tooie_bits_f32(MEM_W(4, kseg0_gpr(a2)));
+        s22 = tooie_bits_f32(MEM_W(8, kseg0_gpr(a2)));
+        fprintf(stderr,
+                "[ud4-ca628] enter seq=%u glidx=%d ra=%08x dst=%08x src=%08x src2=%08x "
+                "eye=(%.6f,%.6f,%.6f) src2=(%.6f,%.6f,%.6f) src2_1_bits=%08x src2_2_bits=%08x",
+                tooie_ud4_seq(), glidx, ra, a0, a1, a2, src0, src1, src2, s20, s21, s22,
+                static_cast<uint32_t>(MEM_W(4, kseg0_gpr(a2))),
+                static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a2))));
+        tooie_ud4_dump_player(rdram, stderr);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    func_800CA628(rdram, ctx);
+    if (win && tooie_is_guest(a0)) {
+        const gpr dst = kseg0_gpr(a0);
+        const uint32_t stored = static_cast<uint32_t>(MEM_W(0x1C, dst));
+        fprintf(stderr,
+                "[ud4-ca628] leave seq=%u glidx=%d dst=%08x stored_1c=%.6f bits=%08x "
+                "eye_dst=(%.6f,%.6f,%.6f)\n",
+                tooie_ud4_seq(), glidx, a0, tooie_bits_f32(int32_t(stored)), stored,
+                tooie_bits_f32(MEM_W(0, dst)), tooie_bits_f32(MEM_W(4, dst)),
+                tooie_bits_f32(MEM_W(8, dst)));
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_8010fc38(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    if (tooie_ud4_cam_window(rdram, &glidx)) {
+        const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+        uint32_t rec = 0, p8 = 0;
+        int16_t h14 = -1;
+        if (tooie_is_guest(a0)) {
+            rec = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(a0)));
+            p8 = static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a0)));
+            h14 = static_cast<int16_t>(MEM_H(0x14, kseg0_gpr(a0)));
+        }
+        fprintf(stderr,
+                "[ud4-fc38] enter seq=%u glidx=%d ra=%08x node=%08x rec=%08x p8=%08x h14=%d\n",
+                tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31), a0, rec, p8, int(h14));
+        fflush(stderr);
+    }
+    func_8010FC38(rdram, ctx);
+}
+
+static void tooie_wrap_8010fe14(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    if (tooie_ud4_cam_window(rdram, &glidx)) {
+        fprintf(stderr, "[ud4-fe14] enter seq=%u glidx=%d ra=%08x a0=%08x\n",
+                tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31),
+                static_cast<uint32_t>(ctx->r4));
+        fflush(stderr);
+    }
+    func_8010FE14(rdram, ctx);
+}
+
+static void tooie_wrap_ca8b4(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_cam_window(rdram, &glidx);
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    const uint32_t a2 = static_cast<uint32_t>(ctx->r6);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    if (win) {
+        fprintf(stderr, "[ud4-ca8b4] enter seq=%u glidx=%d ra=%08x a0=%08x out1=%08x out2=%08x\n",
+                tooie_ud4_seq(), glidx, ra, a0, a1, a2);
+        fflush(stderr);
+    }
+    func_800CA8B4(rdram, ctx);
+    if (win && tooie_is_guest(a1) && tooie_is_guest(a2)) {
+        fprintf(stderr,
+                "[ud4-ca8b4] leave seq=%u glidx=%d out1=(%.6f,%.6f,%.6f) out2=(%.6f,%.6f,%.6f) "
+                "out2_2_bits=%08x\n",
+                tooie_ud4_seq(), glidx,
+                tooie_bits_f32(MEM_W(0, kseg0_gpr(a1))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a1))),
+                tooie_bits_f32(MEM_W(8, kseg0_gpr(a1))),
+                tooie_bits_f32(MEM_W(0, kseg0_gpr(a2))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a2))),
+                tooie_bits_f32(MEM_W(8, kseg0_gpr(a2))),
+                static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a2))));
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_e1a58(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_cam_window(rdram, &glidx);
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    if (win && tooie_is_guest(a0) && tooie_is_guest(a1)) {
+        fprintf(stderr,
+                "[ud4-e1a58] enter seq=%u glidx=%d ra=%08x a0=%08x a1=%08x "
+                "v0=(%.6f,%.6f,%.6f) v1=(%.6f,%.6f,%.6f) v1_2_bits=%08x\n",
+                tooie_ud4_seq(), glidx, ra, a0, a1,
+                tooie_bits_f32(MEM_W(0, kseg0_gpr(a0))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a0))),
+                tooie_bits_f32(MEM_W(8, kseg0_gpr(a0))),
+                tooie_bits_f32(MEM_W(0, kseg0_gpr(a1))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a1))),
+                tooie_bits_f32(MEM_W(8, kseg0_gpr(a1))),
+                static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a1))));
+        fflush(stderr);
+    }
+    func_800E1A58(rdram, ctx);
+    if (win && tooie_is_guest(a0) && tooie_is_guest(a1)) {
+        fprintf(stderr,
+                "[ud4-e1a58] leave seq=%u glidx=%d v0=(%.6f,%.6f,%.6f) v1=(%.6f,%.6f,%.6f) "
+                "v1_2_bits=%08x\n",
+                tooie_ud4_seq(), glidx,
+                tooie_bits_f32(MEM_W(0, kseg0_gpr(a0))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a0))),
+                tooie_bits_f32(MEM_W(8, kseg0_gpr(a0))),
+                tooie_bits_f32(MEM_W(0, kseg0_gpr(a1))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a1))),
+                tooie_bits_f32(MEM_W(8, kseg0_gpr(a1))),
+                static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a1))));
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_yaw_set_ideal(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    if (tooie_ud4_cam_window(rdram, &glidx)) {
+        fprintf(stderr, "[ud4-yawideal] enter seq=%u glidx=%d ra=%08x a0=%08x a1=%.6f bits=%08x\n",
+                tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31),
+                static_cast<uint32_t>(ctx->r4), tooie_bits_f32(int32_t(ctx->r5)),
+                static_cast<uint32_t>(ctx->r5));
+        fflush(stderr);
+    }
+    yaw_setIdeal(rdram, ctx);
+}
+
+extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    if (!tooie_ud4_cam_window(rdram, &glidx)) {
+        return;
+    }
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    uint32_t p5c = 0, p5c0 = 0;
+    if (tooie_is_guest(a0)) {
+        p5c = static_cast<uint32_t>(MEM_W(0x5C, kseg0_gpr(a0)));
+        if (tooie_is_guest(p5c)) {
+            p5c0 = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(p5c)));
+        }
+    }
+    fprintf(stderr,
+            "[ud4-ncbapivot] enter seq=%u glidx=%d ra=%08x a0=%08x +5c=%08x *5c=%08x",
+            tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31), a0, p5c, p5c0);
+    tooie_ud4_dump_player(rdram, stderr);
+    fprintf(stderr, "\n");
+    fflush(stderr);
+}
+
 // Full Wooded Hollow gameplay demo synchronization diagnostic (TOOIE_DIAG_DEMO_SYNC=1).
 // Emits one line per glrecord dispatch across the entire demo run.
 extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
@@ -1890,6 +2119,23 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
             const gpr rec = kseg0_gpr(rec_addr);
             camctrl = bits_f32(MEM_W(0x1C, rec));
             cam_mode = int(MEM_H(0x16, rec));
+            if (tooie_diag::attract_enabled() && stage_v == 0 && sub_v == 4 &&
+                consumed_glidx >= 36 && consumed_glidx <= 50) {
+                std::fprintf(stderr,
+                             "[ud4-rec] glidx=%d rec=%08x eye=(%.6f,%.6f,%.6f) "
+                             "d=(%.6f,%.6f,%.6f) camctrl=%.6f bits=%08x "
+                             "p20=(%.6f,%.6f,%.6f) p2c=(%.6f,%.6f,%.6f)\n",
+                             consumed_glidx, rec_addr,
+                             bits_f32(MEM_W(0x00, rec)), bits_f32(MEM_W(0x04, rec)),
+                             bits_f32(MEM_W(0x08, rec)),
+                             bits_f32(MEM_W(0x0C, rec)), bits_f32(MEM_W(0x10, rec)),
+                             bits_f32(MEM_W(0x14, rec)), camctrl,
+                             static_cast<uint32_t>(MEM_W(0x1C, rec)),
+                             bits_f32(MEM_W(0x20, rec)), bits_f32(MEM_W(0x24, rec)),
+                             bits_f32(MEM_W(0x28, rec)),
+                             bits_f32(MEM_W(0x2C, rec)), bits_f32(MEM_W(0x30, rec)),
+                             bits_f32(MEM_W(0x34, rec)));
+            }
         }
     }
 
@@ -1964,6 +2210,18 @@ void register_boot_lookup_stubs() {
                 std::fflush(stderr);
             }
         });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CA628),
+                                          tooie_wrap_ca628);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010FC38),
+                                          tooie_wrap_8010fc38);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010FE14),
+                                          tooie_wrap_8010fe14);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CA8B4),
+                                          tooie_wrap_ca8b4);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E1A58),
+                                          tooie_wrap_e1a58);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009C914),
+                                          tooie_wrap_yaw_set_ideal);
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }

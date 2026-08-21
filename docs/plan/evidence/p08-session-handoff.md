@@ -651,8 +651,10 @@ production fix.
 EGG_PARITY_DEFECT:              PROVEN
 CAMERA_DIVERGENCE_REPRODUCED:   YES
 PLAYER_TRAJECTORY_DIVERGENCE_REPRODUCED: YES
+CAMCTRL_WRITER:                 func_800CA628 CONFIRMED (USER_DEMO_4); stores src2[1]
+CA628_INPUTS_AT_GLIDX_36:       ALREADY_DIFFER (eye ULP + src2[1] 1-2 ULP); producer func_800CA8B4
 ANGRYLION_NIGHTLY_VISUAL:       USER_CONFIRMED PASS
 FULL_ATTRACT_SEQUENCE_REPEAT_PROVEN: NO
 FIX_IMPLEMENTED:                NO
-NEXT_SINGLE_ACTION:             isolate USER_DEMO_4 camctrl input to func_800CA628 at glidx 40-41; no fix
+NEXT_SINGLE_ACTION:             dump USER_DEMO_4 CA8B4/camera-record eye+camctrl for glidx 1-35 idle slew; no fix
 ```

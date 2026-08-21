@@ -48,6 +48,111 @@ static inline void p08_read_attract(struct r4300_core* r4300, int* mode, int* ma
     *post = w_post;
 }
 
+static FILE* s_p08_ud4 = NULL;
+static uint32_t s_p08_ud4_seq = 0;
+static uint32_t s_p08_ca628_dst = 0;
+
+static inline FILE* p08_ud4_fp(void)
+{
+    if (!s_p08_ud4) {
+        s_p08_ud4 = fopen("/tmp/p08-angrylion-ud4-cam.log", "a");
+    }
+    return s_p08_ud4;
+}
+
+static inline int p08_ud4_window(struct r4300_core* r4300, int* glidx_out)
+{
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int glidx = (post > 0u) ? (int)post - 1 : 0;
+    if (glidx_out) {
+        *glidx_out = glidx;
+    }
+    return (mode == 5 && sub == 4 && glidx >= 36 && glidx <= 50);
+}
+
+static inline void p08_ud4_vec(struct r4300_core* r4300, uint32_t addr, float* x, float* y, float* z, uint32_t* zbits)
+{
+    uint32_t wx = 0, wy = 0, wz = 0;
+    if ((addr >= 0x80000000u) && ((addr + 0x80000000u) < 0x00800000u) && ((addr & 3u) == 0u)) {
+        (void)r4300_read_aligned_word(r4300, addr + 0u, &wx);
+        (void)r4300_read_aligned_word(r4300, addr + 4u, &wy);
+        (void)r4300_read_aligned_word(r4300, addr + 8u, &wz);
+    }
+    *x = p08_f32(wx); *y = p08_f32(wy); *z = p08_f32(wz);
+    if (zbits) {
+        *zbits = wz;
+    }
+}
+
+static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
+{
+    int glidx = 0;
+    if (!p08_ud4_window(r4300, &glidx)) {
+        return;
+    }
+    FILE* fp = p08_ud4_fp();
+    if (!fp) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    const uint32_t a1 = (uint32_t)regs[5];
+    const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t ra = (uint32_t)regs[31];
+    const uint32_t seq = ++s_p08_ud4_seq;
+    if (pc == 0x800CA628u) {
+        float x,y,z,s0,s1,s2; uint32_t zb = 0, zb1 = 0;
+        uint32_t w1 = 0;
+        s_p08_ca628_dst = a0;
+        p08_ud4_vec(r4300, a1, &x, &y, &z, NULL);
+        p08_ud4_vec(r4300, a2, &s0, &s1, &s2, &zb);
+        (void)r4300_read_aligned_word(r4300, a2 + 4u, &w1);
+        zb1 = w1;
+        fprintf(fp,
+                "[ud4-ca628] enter seq=%u glidx=%d ra=%08x dst=%08x src=%08x src2=%08x "
+                "eye=(%.6f,%.6f,%.6f) src2=(%.6f,%.6f,%.6f) src2_1_bits=%08x src2_2_bits=%08x\n",
+                seq, glidx, ra, a0, a1, a2, x, y, z, s0, s1, s2, zb1, zb);
+    } else if (pc == 0x800CA65Cu) {
+        const uint32_t v1 = (uint32_t)regs[3];
+        const uint32_t store_addr = v1 + 0x14u;
+        fprintf(fp, "[ud4-store] seq=%u glidx=%d pc=800CA65C v1=%08x store=%08x dst=%08x dst_plus_1c=%08x\n",
+                seq, glidx, v1, store_addr, s_p08_ca628_dst, s_p08_ca628_dst + 0x1Cu);
+    } else if (pc == 0x800CA660u) {
+        uint32_t stored = 0;
+        if (s_p08_ca628_dst >= 0x80000000u) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ca628_dst + 0x1Cu, &stored);
+        }
+        fprintf(fp, "[ud4-ca628] leave seq=%u glidx=%d dst=%08x stored_1c=%.6f bits=%08x\n",
+                seq, glidx, s_p08_ca628_dst, p08_f32(stored), stored);
+    } else if (pc == 0x8010FC38u) {
+        uint32_t rec = 0;
+        if ((a0 >= 0x80000000u) && ((a0 & 3u) == 0u)) {
+            (void)r4300_read_aligned_word(r4300, a0, &rec);
+        }
+        fprintf(fp, "[ud4-fc38] enter seq=%u glidx=%d ra=%08x node=%08x rec=%08x\n",
+                seq, glidx, ra, a0, rec);
+    } else if (pc == 0x8010FE14u) {
+        fprintf(fp, "[ud4-fe14] enter seq=%u glidx=%d ra=%08x a0=%08x\n", seq, glidx, ra, a0);
+    } else if (pc == 0x800CA8B4u) {
+        fprintf(fp, "[ud4-ca8b4] enter seq=%u glidx=%d ra=%08x a0=%08x out1=%08x out2=%08x\n",
+                seq, glidx, ra, a0, a1, a2);
+    } else if (pc == 0x800E1A58u) {
+        float x,y,z,s0,s1,s2; uint32_t zb = 0;
+        p08_ud4_vec(r4300, a0, &x, &y, &z, NULL);
+        p08_ud4_vec(r4300, a1, &s0, &s1, &s2, &zb);
+        fprintf(fp,
+                "[ud4-e1a58] enter seq=%u glidx=%d ra=%08x a0=%08x a1=%08x "
+                "v0=(%.6f,%.6f,%.6f) v1=(%.6f,%.6f,%.6f) v1_2_bits=%08x\n",
+                seq, glidx, ra, a0, a1, x, y, z, s0, s1, s2, zb);
+    } else if (pc == 0x80089488u) {
+        fprintf(fp, "[ud4-ncbapivot] stub seq=%u glidx=%d ra=%08x a0=%08x a1=%08x\n",
+                seq, glidx, ra, a0, a1);
+    }
+    fflush(fp);
+}
+
 static inline void p08_dump_egg_fields(struct r4300_core* r4300, FILE* fp, uint32_t obj)
 {
     uint32_t w64 = 0, wtbl = 0, wmid = 0;
