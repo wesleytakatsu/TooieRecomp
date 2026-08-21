@@ -18,21 +18,42 @@ USER_NUMBERING:                 CONTINUOUS_ACROSS_INTRO_BLOCKS (not zero-based D
 USER_DEMO_4:                    FIRST gameplay scene after first return to intro/music following USER_DEMO_1..3
 USER_DEMO_4_MAP:                235 / 0x0EB / MAP_EB_WW_HAUNTED_CAVERN entrance 5
 USER_DEMO_4_INTERNAL_SUB:       stage=0 sub=4
+USER_DEMO4_SEMANTIC_JOIN:       PASS
 
 USER_DEMO_1_RT64_PROJECTILE:    cheggfire overlay 535   (baeggsetup a1=2 FIRE)
 USER_DEMO_1_ANGRYLION_PROJECTILE: cheggfire overlay 535
-USER_DEMO_4_RT64_SELECTED_EGG:  BLUE (baeggsetup a1=1)
-USER_DEMO_4_RT64_PROJECTILE:    cheggnormal overlay 539
-USER_DEMO_4_REFERENCE_EGG_EVENT_FOUND: YES
-USER_DEMO_4_REFERENCE_SELECTED_EGG: FIRE (spawn overlay 535; baeggsetup a1 not captured)
-USER_DEMO_4_REFERENCE_PROJECTILE: cheggfire overlay 535
-USER_DEMO_4_EGG_PARITY:         FAIL
-EGG_PARITY_DEFECT:              PROVEN
+USER_DEMO4_RT64_SELECTED_EGG:   1 / BLUE
+USER_DEMO4_RT64_EGG_ENUM:       1
+USER_DEMO4_RT64_SPAWN:          cheggnormal overlay 539
+USER_DEMO4_RT64_ACTOR_ID:       overlay-implied BLUE; packed +0x6C at spawn enter untrusted
+USER_DEMO4_REFERENCE_SELECTED_EGG: 2 / FIRE
+USER_DEMO4_REFERENCE_EGG_ENUM:  2 (INFERENCE from spawn overlay 535; baeggsetup ep5 a1 not visible as a syscall on N64)
+USER_DEMO4_REFERENCE_SPAWN:     cheggfire overlay 535
+USER_DEMO4_REFERENCE_ACTOR_ID:  overlay-implied FIRE; packed +0x6C at spawn enter untrusted
+REFERENCE_EVENT_FOUND:          YES
+EGG_PARITY_DEFECT:              PROVEN   (Case A: REFERENCE=FIRE, RT64=BLUE)
+FIRST_EGG_STATE_DIFFERENCE:     egg enum / projectile overlay at first fire (1/539 vs 2/535). Inventory D_80117E20=01020403 MATCHES both oracles. ps+0x64 slot untrusted. Equipped enum at clip start NOT captured.
+FIRST_EGG_DIVERGENT_STORE_OR_WRITER: baeggsetup_entrypoint_5 (VRAM off +0x42C): sb a1 -> *(s0+0x70)+0x24 then func_80086D30(0x80084A58, *(s0+0x184))
 
-FOLLOW_CAMERA_USER_DEMO_4:      RT64 uses ncbapivot (follow) mixed with scripted cameras
-FOLLOW_CAMERA_PARITY_NUMERIC:   UNKNOWN (no pad-aligned Angrylion camera stream this session)
+FOLLOW_CAMERA_MODE:             ncbapivot (overlay 781)
+FOLLOW_CAMERA_OBJECT:           D_80127708[ps+0x184]  (sel=0 this clip)
+FOLLOW_CAMERA_UPDATE_FUNCTION:  ncbapivot_entrypoint_3
+PLAYER_MOVEMENT_CAMERA_SOURCE:  selected camera record +0x1C (camctrl); historically written by func_800CA628
+PAD_STREAM_MATCH:               YES (877/877 joined glidx, 100%)
+FIRST_FOLLOW_CAMERA_NUMERIC_DIFFERENCE: glidx 41 camctrl 306.0417 vs 306.1269 (0.085 deg); eye Δ 2.01
+FIRST_FOLLOW_CAMERA_PERSISTENT_DIFFERENCE: glidx 43 camctrl Δ 1.29 deg (3 consecutive samples over 0.05)
+FIRST_CAMERA_USED_FOR_MOVEMENT_DIFFERENCE: glidx 41 camctrl
+FIRST_IDEAL_YAW_DIFFERENCE:     glidx 42 (0.087 deg same-index)
+FIRST_PHYS_YAW_DIFFERENCE:      glidx 39 same-index is 1-sample yaw_setIdeal vs glrecord phase; after AN[n]~RT[n+1] pos align, phys/pos stay together until ~43-47
+FIRST_PLAYER_POSITION_PERSISTENT_DIFFERENCE: ~glidx 47 under +1 physics alignment (pos Δ>2); same-index already 19u at 41
+CAMERA_DIVERGENCE_REPRODUCED:   YES
+CAMERA_DIVERGENCE_GROWTH:       FEEDBACK_ACCUMULATION (camctrl 0.085° @41 → 12° @50 → 113° @100; eye 2 → 181 → 818; xz 19 → 27 → 829)
+PLAYER_TRAJECTORY_DIVERGENCE_REPRODUCED: YES
+CAMERA_PRECEDES_PLAYER_DIVERGENCE: YES (after 1-sample physics correction: camctrl @41 before persistent pos @47)
+SCRIPTED_CAMERA_PARITY:         UNKNOWN_NUMERIC (no Angrylion mode-3 CSV). Warp-in uses ncpod 783 / ncpoducam 785, not ncbapivot. User visual PASS on Angrylion nightly. Idle-to-walk camctrl identical at glidx 38 (303.985).
+
 ANGRYLION_NIGHTLY_VISUAL:       USER_CONFIRMED PASS (fire egg AND previously-broken demo behavior)
-b042865_PHYSICS_PASS_AS_REFUTATION: DISPUTED (cannot refute USER_DEMO_4 follow-camera until that clip is mapped and compared)
+b042865_PHYSICS_PASS_AS_REFUTATION: DISPUTED (Demo 0 Wooded Hollow R-MOTION-ORACLE does not cover USER_DEMO_4)
 
 FULL_ATTRACT_GAMEPLAY_SCENE_COUNT: 12 per D_808003D0 pointer (INFERENCE from static 6-byte table; 8 measured live)
 FULL_ATTRACT_SEQUENCE_REPEAT_PROVEN: NO
@@ -161,58 +182,119 @@ RT64: `baeggsetup` ep5 `a1=2` then `cheggfire` ep2. Angrylion: `cheggfire` ep2. 
 
 ### USER_DEMO_4 (sub=4, Haunted Cavern) — primary discriminator
 
-RT64 (TOOIE_DIAG_SHOT via ATTRACT):
+Semantic join (do not use wall-clock):
 
 ```text
-baeggsetup ep5 a1=00000001 BLUE   (repeated)
-cheggnormal ovl=539 ep=2          (repeated projectile spawns)
+USER_DEMO4_SEMANTIC_JOIN: PASS
+  ordinal=4  map=235 Haunted Cavern  stage=0 sub=4
+  start pad=(2,2,0x0000) pos=(-84,0,-1855) yaw=108 camctrl=30  (both oracles)
+  C-up landmark glidx=176 pad=(10,78,0x2008)  (both oracles; player already diverged)
+  PAD_STREAM_MATCH: 877/877 at same glidx (100%)
 ```
 
-Angrylion (Pure Interpreter syscall hook, `tools/p08_attract_egg_hook.h`):
+RT64 (TOOIE_DIAG_SHOT via ATTRACT; 455s soak reused, not rerun):
 
 ```text
-[egg-sys] ovl=731 ep=0 ... sub=4
-[egg-sys] ovl=126 ep=10 ... sub=4
-[egg-sys] ovl=535 ep=2 ... sub=4    << cheggfire, repeated
+baeggsetup ep8 a1=00000001
+baeggsetup ep5 a1=00000001 BLUE a2=80 a3=120
+cheggnormal ovl=539 ep=2 act=80345908
+```
+
+Angrylion (Pure Interpreter; `tools/p08_attract_egg_hook.h` + yaw_setIdeal `0x8009C914` motion + `func_80086D30` spawn dispatcher):
+
+```text
+ovl=126 ep=10 ... sub=4 post=179
+func_80086D30 a0=80084A58 ... sub=4 post=188
+ovl=535 ep=2 cheggfire ... sub=4 post=188   (repeated; never 539 on this clip)
+egg_tbl D_80117E20 = 01020403 at boot and at fire (MATCH vs RT64)
+baeggsetup ep5 a1: not a separate N64 syscall (overlay already resident; PC 0x8080042C missed because overlay 126 is relocated off 0x80800000)
 ```
 
 ```text
-USER_DEMO_4_REFERENCE_EGG_EVENT_FOUND: YES
-USER_DEMO_4_REFERENCE_SELECTED_EGG:    FIRE
-USER_DEMO_4_REFERENCE_PROJECTILE:      cheggfire / overlay 535
-USER_DEMO_4_RT64_SELECTED_EGG:         BLUE
-USER_DEMO_4_RT64_PROJECTILE:           cheggnormal / overlay 539
-USER_DEMO_4_EGG_PARITY:                FAIL
-EGG_PARITY_DEFECT:                     PROVEN
+USER_DEMO4_REFERENCE_EGG_EVENT_FOUND: YES
+USER_DEMO4_REFERENCE_SELECTED_EGG:    FIRE
+USER_DEMO4_REFERENCE_EGG_ENUM:        2
+USER_DEMO4_REFERENCE_SPAWN:           cheggfire
+USER_DEMO4_REFERENCE_ACTOR_ID:        overlay-implied FIRE (packed +0x6C at ep2 enter is float garbage)
+USER_DEMO4_RT64_SELECTED_EGG:         BLUE
+USER_DEMO4_RT64_EGG_ENUM:             1
+USER_DEMO4_RT64_SPAWN:                cheggnormal
+USER_DEMO4_RT64_ACTOR_ID:             overlay-implied BLUE (packed +0x6C untrusted)
+EGG_PARITY_DEFECT:                    PROVEN
+ROOT_CAUSE_LEVEL:                     B (gameplay selected-egg / spawn overlay; not a render-only color)
 ```
 
-No other egg events were pursued after this discriminator, per task scope.
+Ordered egg-state check (stop at first proven difference; no fix):
 
-`PlayerState+0x64` via `D_80135490[0]` dumped garbage in RT64; do not use that field from this probe. Spawn overlay + `baeggsetup` `a1` are the measured selectors.
+1. attract/demo init inventory `D_80117E20=01020403`: **MATCH**
+2. selected slot `ps+0x64`: **UNTRUSTED** (garbage in RT64 probe)
+3. egg enum at first fire: **DIFFERS** (RT64 `a1=1` BLUE vs reference spawn 535 FIRE)
+4. egg-cycle: not reached
+5. projectile dispatch: **DIFFERS** (`func_80086D30` → overlay 539 vs 535)
+6. spawned actor overlay: **DIFFERS** (`cheggnormal` vs `cheggfire`)
+
+```text
+FIRST_EGG_STATE_DIFFERENCE:          egg enum / spawn overlay at first fire (1/539 vs 2/535)
+FIRST_EGG_DIVERGENT_STORE_OR_WRITER: baeggsetup_entrypoint_5 sb a1, 0x24(*(s0+0x70)); jal func_80086D30
+```
+
+Equipped enum at USER_DEMO_4 glidx 1 was **not** captured. Pad including C-up matches, so the fire button is the same recorded sample; the selected type at that sample differs. Whether the equipped egg was already BLUE at clip start on RT64 remains **UNKNOWN**. Camera/player already diverged at glidx 41, before C-up at 176, so a downstream world-state effect is not ruled out. Egg investigation **stops** here per task.
+
+`PlayerState+0x64` via `D_80135490[0]` dumped garbage in RT64; do not use that field from this probe.
 
 ---
 
 ## 6. Follow camera (USER_DEMO_4)
 
-RT64 USER_DEMO_4 camera overlays after Haunted Cavern arrival include `ncbapivot` (follow), plus scripted `ncbaspline` / `ncbadolly` / `ncbafixpos` / `ncba1p`. Recorded C-up (`0x2008`) begins around glidx 176.
-
-RT64 `camctrl` (ps selector `D_80127708[sel]+0x1C`) moves from ~307° early in the clip to ~331° at glidx 1011; player XZ travels from `(-84, -1855)` to `(611, -2365)`. `cammode` at `+0x16` in this probe is **untrusted** (wild s16 values).
+Follow path (distinct from scripted / display / Rice Z-buffer):
 
 ```text
-FOLLOW_CAMERA_DIFFERENTIAL:     UNKNOWN (numeric)
-CAMERA_FIRST_THEN_YAW_THEN_POS: UNKNOWN
-ANGRYLION_CAMERA_STREAM:        NOT_CAPTURED_THIS_SESSION
-ANGRYLION_NIGHTLY_VISUAL:       USER_CONFIRMED PASS
+FOLLOW_CAMERA_MODE:            ncbapivot overlay 781
+FOLLOW_CAMERA_OBJECT:          D_80127708[sel]  sel=0
+FOLLOW_CAMERA_UPDATE_FUNCTION: ncbapivot_entrypoint_3  (stub 0x80089488; RA 0x8011061C)
+PLAYER_MOVEMENT_CAMERA_SOURCE: camctrl at selected camera +0x1C
+                               (Demo 0 writer: func_800CA628; not re-traced this session)
 ```
 
-The user confirmed that **this Angrylion RDP Plus nightly-build run** showed correct behavior for **both**:
+Warp-in / predetermined cameras on this map use `ncpod` 783 and `ncpoducam` 785 during mode=3. Overlay enters in the Haunted window also include `ncbaspline` / `ncbadolly` / `ncbafixpos` / `ncba1p`. Those are **not** the accumulating gameplay follow path.
 
-- fire egg instead of blue egg;
-- the demo behavior that was broken in TooieRecomp.
+Capture: RT64 `[demo-sync]` at glrecord (1011 samples). Angrylion `yaw_setIdeal` `0x8009C914` when `post_glidx` changes (878 samples; idle glidx 1-37 omitted because yaw_setIdeal does not run while `bs=0`). Join by same glidx; pad 877/877.
 
-That is `USER_CONFIRMED` visual PASS on `ANGRYLION_CONTROL`. Combined with the syscall spawn (`535` vs `539`), egg type is **PROVEN**. The broken-demo / follow-camera visual is **USER_CONFIRMED** on Angrylion vs **USER_REPORTED** on RT64; the pad-aligned first-difference chain remains **UNKNOWN**.
+Sampling note (PROVEN, same as Demo 0): Angrylion position/phys_yaw at yaw_setIdeal is one physics step ahead of RT64 glrecord (`AN[n].pos == RT[n+1].pos` through glidx 42, Δ<0.02). camctrl is same-index aligned (bit-identical 303.985 at glidx 38).
 
-b042865 "physics PASS" on a four-row Demo 0..3 table does **not** refute the user's accumulating follow-camera report on USER_DEMO_4.
+Causal chain (same recorded PAD):
+
+| layer | first difference |
+|---|---|
+| PAD | none (877/877) |
+| camctrl (movement camera) | glidx 41, 0.085 deg |
+| follow eye | glidx 41, Δ 2.01 |
+| ideal_yaw | glidx 42, 0.087 deg |
+| phys_yaw / xz (after +1 align) | persistent ~glidx 47 |
+| player xz (same index) | glidx 39 (1-sample phase) then grows |
+
+```text
+PAD_STREAM_MATCH:                          YES
+FIRST_FOLLOW_CAMERA_NUMERIC_DIFFERENCE:    glidx 41 camctrl 0.085 deg
+FIRST_FOLLOW_CAMERA_PERSISTENT_DIFFERENCE: glidx 43 camctrl 1.29 deg
+FIRST_CAMERA_USED_FOR_MOVEMENT_DIFFERENCE: glidx 41 camctrl
+FIRST_IDEAL_YAW_DIFFERENCE:                glidx 42
+FIRST_PHYS_YAW_DIFFERENCE:                 glidx 39 same-index (phase); ~43 after +1
+FIRST_PLAYER_POSITION_PERSISTENT_DIFFERENCE: ~glidx 47 (+1 align)
+CAMERA_YAW_ERROR_GROWTH:   0.00@38  0.085@41  12.0@50  112.7@100  113.8@176
+CAMERA_EYE_ERROR_GROWTH:   0@38  2.0@41  181@50  818@100  1124@176
+PLAYER_XZ_ERROR_GROWTH:    0@38  19@41  27@50  829@100  2120@176
+MOVEMENT_ANGLE_ERROR_GROWTH: ideal 0@38  0.087@42  10.8@50  111@100
+GROWTH_CLASS:              FEEDBACK_ACCUMULATION
+CAMERA_DIVERGENCE_REPRODUCED: YES
+PLAYER_TRAJECTORY_DIVERGENCE_REPRODUCED: YES
+CAMERA_PRECEDES_PLAYER_DIVERGENCE: YES
+SCRIPTED_CAMERA_PARITY:    UNKNOWN_NUMERIC; user visual PASS on Angrylion nightly;
+                           warp-in ncpod/ncpoducam distinct from ncbapivot;
+                           camctrl identical at walk-start glidx 38
+```
+
+This is **not** the Demo 0 Wooded Hollow R-MOTION-ORACLE result and does **not** reopen Rice Z-buffer artifacts. No camera constants were tuned. No production fix.
 
 ---
 
@@ -228,7 +310,7 @@ ROM_SHA1:     af1a89e12b638b8d82cc4c085c8e01d4cba03fb3
 CPU_MODE:     PURE_INTERPRETER
 ```
 
-Temporary Tooie diagnostics are env-gated (`TOOIE_DIAG_ATTRACT` implies SHOT + DEMO_SYNC). Angrylion hook lives in the local mupen core plus `tools/p08_attract_egg_hook.h`. No production behavior change. Generated C was not edited.
+Temporary Tooie diagnostics are env-gated (`TOOIE_DIAG_ATTRACT` implies SHOT + DEMO_SYNC). Angrylion hook lives in the local mupen core plus `tools/p08_attract_egg_hook.h` (syscall + `yaw_setIdeal` `0x8009C914` + `func_80086D30`). No production behavior change. Generated C was not edited. The 455s RT64 soak was **not** rerun; USER_DEMO_4 CSV was parsed from `/tmp/p08-attract-rt64/stderr.log`.
 
 ---
 
@@ -240,17 +322,19 @@ Temporary Tooie diagnostics are env-gated (`TOOIE_DIAG_ATTRACT` implies SHOT + D
 | Demo 0..3 table = complete attract set | **DISPUTED** / incomplete slice |
 | REFERENCE_FIRE_EGG_EVENT_FOUND = NO | **CORRECTED/SUPERSEDED** (FIRE in USER_DEMO_1 both oracles; FIRE vs BLUE in USER_DEMO_4) |
 | REAL_PARITY_DEFECT_FOUND = NO | **CORRECTED/SUPERSEDED** (`EGG_PARITY_DEFECT: PROVEN`) |
-| GLOBAL_VISUAL_DRIFT_STATUS = NOT_REPRODUCED_IN_ATTRACT_SET | **DISPUTED** (USER_CONFIRMED Angrylion PASS vs RT64 broken-demo report; numeric follow-camera still UNKNOWN) |
+| GLOBAL_VISUAL_DRIFT_STATUS = NOT_REPRODUCED_IN_ATTRACT_SET | **CORRECTED/SUPERSEDED** (USER_DEMO_4 follow-camera + player trajectory **REPRODUCED**; FEEDBACK_ACCUMULATION) |
 | p09 Demo 0 projectile = BLUE | **CORRECTED/SUPERSEDED** (FIRE) |
-| p09 Demo 1 / Haunted = no firing | **CORRECTED/SUPERSEDED** (USER_DEMO_4 fires; types disagree) |
+| p09 Demo 1 / Haunted = no firing | **REFUTED** (`HAUNTED_CAVERN_NO_FIRE_EVENT`) |
 | overlay 417/556 = gsattract | **CORRECTED/SUPERSEDED** (overlay **731** `.gsattract`) |
 
 ---
 
 ## 9. Next single action
 
-Locate the **first egg-state difference** on USER_DEMO_4 (`baeggsetup` `a1` / selected egg before spawn) that makes Angrylion enter overlay 535 and RT64 enter overlay 539. Do not hunt other egg scenes. Follow-camera pad-aligned dump remains residual **UNKNOWN**.
+Egg investigation stopped at the first proven egg-state difference (enum / spawn overlay). No production fix.
+
+Follow-camera first split is `camctrl` at USER_DEMO_4 glidx 41. Do not reopen Rice Z-buffer. Do not formally open P09.
 
 ```text
-NEXT_SINGLE_ACTION: trace USER_DEMO_4 selected-egg state (a1 / owner) at first fire; Angrylion FIRE vs RT64 BLUE
+NEXT_SINGLE_ACTION: isolate USER_DEMO_4 camctrl input to func_800CA628 at glidx 40-41 (first follow-camera split); no fix
 ```

@@ -51,7 +51,7 @@ Canonical tasks (T01..T11) audited:
 - User physical gamepad status: **PENDING_HARDWARE_UNAVAILABLE** — no gamepad hardware currently available for formal 15/15 checklist execution (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained).
 - Only remaining formal P08 gate: **PHYSICAL_GAMEPAD_VALIDATION**.
 - Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
-- Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` on USER_DEMO_4; Demo 0..3 is not the complete attract cycle).
+- Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` and USER_DEMO_4 follow-camera **REPRODUCED**; Demo 0..3 is not the complete attract cycle).
 
 ## CURRENT_PRODUCT_STATE
 
@@ -641,14 +641,18 @@ for the previously-broken demo behavior.
 b042865 complete-attract claims (`REFERENCE_FIRE_EGG_EVENT_FOUND=NO`,
 `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET`,
 `REAL_PARITY_DEFECT_FOUND=NO`) are **DISPUTED** / **CORRECTED/SUPERSEDED**.
-Demo 0 Wooded Hollow R-MOTION-ORACLE measurements are retained for **that
-clip only**. Follow-camera numeric differential on USER_DEMO_4 remains
-**UNKNOWN**. P09 is **NOT_FORMALLY_OPEN**. No production fix.
+`HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. Demo 0 Wooded Hollow
+R-MOTION-ORACLE measurements are retained for **that clip only**. USER_DEMO_4
+follow-camera + player trajectory are **REPRODUCED** (pad 877/877, camctrl
+split glidx 41, FEEDBACK_ACCUMULATION). P09 is **NOT_FORMALLY_OPEN**. No
+production fix.
 
 ```text
 EGG_PARITY_DEFECT:              PROVEN
+CAMERA_DIVERGENCE_REPRODUCED:   YES
+PLAYER_TRAJECTORY_DIVERGENCE_REPRODUCED: YES
 ANGRYLION_NIGHTLY_VISUAL:       USER_CONFIRMED PASS
 FULL_ATTRACT_SEQUENCE_REPEAT_PROVEN: NO
 FIX_IMPLEMENTED:                NO
-NEXT_SINGLE_ACTION:             trace USER_DEMO_4 selected-egg state (a1 / owner) at first fire
+NEXT_SINGLE_ACTION:             isolate USER_DEMO_4 camctrl input to func_800CA628 at glidx 40-41; no fix
 ```

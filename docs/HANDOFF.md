@@ -19,8 +19,9 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 - **Attract numbering / egg discriminator (2026-08-21)**: user demos are **continuous across intro blocks**, not zero-based Demo 0..3. Canonical evidence: [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]].
   - `USER_DEMO_4` = first gameplay after the first return to intro/music = map **235 Haunted Cavern** (`stage=0 sub=4`), **not** "Demo 3".
   - `EGG_PARITY_DEFECT: PROVEN` — Angrylion fires **FIRE** (`cheggfire` 535); RT64 fires **BLUE** (`cheggnormal` 539). User confirmed Angrylion RDP Plus nightly-build visual PASS for fire egg and for the previously-broken demo behavior.
-  - b042865 claims `REFERENCE_FIRE_EGG_EVENT_FOUND=NO`, `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET`, `REAL_PARITY_DEFECT_FOUND=NO` are **DISPUTED** / **CORRECTED/SUPERSEDED**. Demo 0..3 is an incomplete attract slice.
-- **Next Single Action**: trace USER_DEMO_4 selected-egg state (`baeggsetup` `a1` / owner) at first fire; Angrylion FIRE vs RT64 BLUE. Do not hunt other egg scenes. P09 remains **NOT_FORMALLY_OPEN**.
+  - Follow-camera on USER_DEMO_4 is **REPRODUCED**: pad 877/877 match, `camctrl` first split at glidx 41 (0.085°), then FEEDBACK_ACCUMULATION of camera and player trajectory. Warp-in uses `ncpod`/`ncpoducam`, not `ncbapivot`.
+  - b042865 `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET` is **CORRECTED/SUPERSEDED** for USER_DEMO_4. Demo 0..3 remains an incomplete attract slice.
+- **Next Single Action**: isolate USER_DEMO_4 `camctrl` input to `func_800CA628` at glidx 40-41 (first follow-camera split). No production fix. P09 remains **NOT_FORMALLY_OPEN**.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`
