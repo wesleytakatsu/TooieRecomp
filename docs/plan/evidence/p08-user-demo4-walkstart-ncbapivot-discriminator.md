@@ -187,6 +187,19 @@ DEAD_ENTRY_VALUES:                     a2, entry f14
 sides. `a2` is used by `800EF214` only after `800137AC`/`800137C4`, as `f12` of
 `800137F4`.
 
+## Writer provenance update (2026-08-21)
+
+The formerly unresolved producer is now statically bounded: `80110588` calls
+`80112A84`, which calls the exact store helper `80112D08`; that helper stores
+`a1` into `*(node+0x60)+8`. The RT64 walkstart capture reaches this path at
+`glidx=39`: RT64 records `a1=0` with `p60+0xC=0`, while the oracle records
+`a1=5` with `p60+0xC=1` and post-store `p60+8=5`. The writer-input join is
+closed as B-P60-WRITER-INPUT. See [[p08-user-demo4-p60-writer-provenance]] for
+the static table, dispatch coverage, exact commands, and classification rules.
+
+This supersedes only the sentence saying the writer was unknown; it does not
+promote the result to an A-candidate and does not authorize a fix.
+
 ### First control-flow difference: 80112C3C jumptable
 
 First non-pointer child-output difference is `80112C3C` leave. Enter values
@@ -254,7 +267,7 @@ cause of the split.
 
 ```text
 FIRST_PROVEN_DISCRIMINATOR:            node+0x60 object word +8 at glidx 39 ncbapivot enter (0 vs 5); 80112C5C uses it
-ROOT_CLASS:                            B-NCBAPIVOT-CONTROL-INPUT
+ROOT_CLASS:                            B-P60-WRITER-INPUT
 A_CANDIDATE:                           NOT_PROVEN
 ROOT_CAUSE_LEVEL:                      PROVEN for the first split inside this ncbapivot; p60 writer is outside it
 FIX_IMPLEMENTED:                       NO
@@ -266,10 +279,9 @@ P08_STATUS:                            ACTIVE / MANUAL_VALIDATION_PENDING
 P09_STATUS:                            PENDING / NOT_FORMALLY_OPEN
 ```
 
-The producer of `*(node+0x60)+8` is **not** inside this glidx 39 ncbapivot:
-glidx 38 leave is `p60_8=0` on both; glidx 39 enter already differs. Next
-bounded action is that writer between those two ncbapivot calls. No semantic
-fix.
+The producer of `*(node+0x60)+8` is outside this glidx 39 ncbapivot and is now
+proven as `80112A84 → 80112D08`. RT64 supplies `a1=0` from `p60+0xC=0`; the
+oracle supplies `a1=5` from `p60+0xC=1`. No semantic fix.
 
 For a clean rerun by another agent, use the operational checklist in
 [[p08-walkstart-reproduction-runbook]].

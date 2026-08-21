@@ -554,3 +554,12 @@ resolve the Z-buffer camera and post-egg motion differentials against the hardwa
 4. **Current Status:** P08 automated implementation and evidence are COMPLETE. Physical gamepad + multi-monitor display validations remain PENDING. P09 is not formally opened.
 
 Next single action: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical hardware.
+
+## Current P08 residual: USER_DEMO_4 p60 writer provenance
+
+The `glidx=39` camera split is now statically bounded to `80110588 → 80112A84
+→ 80112D08`; RT64 records `a1=0`/`p60+0xC=0` while the oracle reads
+`p60+8=5`; the oracle writer input is `a1=5`/`p60+0xC=1`. This closes
+B-P60-WRITER-INPUT; no fix is authorized. See
+[[plan/evidence/p08-user-demo4-p60-writer-provenance]] and
+[[plan/evidence/p08-walkstart-reproduction-runbook]].

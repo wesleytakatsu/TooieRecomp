@@ -62,6 +62,7 @@ Canonical tasks (T01..T11) audited:
 - Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
 - Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` and USER_DEMO_4 follow-camera **REPRODUCED**; Demo 0..3 is not the complete attract cycle).
 - USER_DEMO_4 post-ROUND.W.S full-state join: [[p08-user-demo4-post-round-full-state-discriminator]] — idle follow-cam glidx 1..38 bit-identical. Walkstart join [[p08-user-demo4-walkstart-ncbapivot-discriminator]]: first remaining split is glidx 39 `80112C3C` jumptable on `*(node+0x60)+8` (0 vs 5 at ncbapivot enter; player pos/yaw/ideal MATCH). Demo-sync still prints 0.0853° @41 then feedback accumulation. Egg remains BLUE vs FIRE; independence from remaining camera is **UNKNOWN**. ROUND.W.S architectural fix is committed as `5854872c79a7cab1c9395ddcd173cece449ffe11` (`CAMERA_COMPLETE_FIX: NO`, `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`). `glidx 36` / pre-fix glidx-1 seed are **CORRECTED/SUPERSEDED**. `800137AC` a2/f14 as first live input is **CORRECTED/SUPERSEDED**.
+- The glidx-39 p60 producer is now bounded and joined as **B-P60-WRITER-INPUT**: RT64 `80112A84 → 80112D08` supplies `a1=0` from `p60+0xC=0`; the oracle supplies `a1=5` from `p60+0xC=1`. See [[p08-user-demo4-p60-writer-provenance]]. No production fix is authorized.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -733,3 +734,12 @@ Independent parity check of movement speed magnitude, timing, animation rate, an
    - `FIX_IMPLEMENTED: NO`
    - `P08_STATUS: ACTIVE_MANUAL_VALIDATION_PENDING`
    - `P09_STATUS: PENDING_NOT_FORMALLY_OPEN`
+
+## USER_DEMO_4 p60 writer provenance — 2026-08-21
+
+The next residual is now statically bounded to `80110588 → 80112A84 →
+80112D08`: `80112D08` stores `a1` into `p60+8`, and RT64 captures `a1=0` with
+`p60+0xC=0` at `glidx=39`; the oracle captures `a1=5` with `p60+0xC=1` and
+post-store `p60+8=5`. This closes B-P60-WRITER-INPUT. Continue from
+[[p08-user-demo4-p60-writer-provenance]] and the paired-run checklist in
+[[p08-walkstart-reproduction-runbook]]. No fix.

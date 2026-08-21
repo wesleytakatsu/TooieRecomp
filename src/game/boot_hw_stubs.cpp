@@ -1838,6 +1838,8 @@ extern "C" void func_8010FC38(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8010FE14(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800CA8B4(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800E1A58(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80112A84(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80112D08(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
 
 static void tooie_wrap_ca628(uint8_t* rdram, recomp_context* ctx) {
@@ -2121,6 +2123,33 @@ static void tooie_ud4_dump_node_fields(uint8_t* rdram, FILE* fp, uint32_t node) 
     }
 }
 
+static void tooie_ud4_dump_p60_object(uint8_t* rdram, FILE* fp, uint32_t node) {
+    if (!tooie_is_guest(node)) {
+        fprintf(fp, " p60=none");
+        return;
+    }
+    const uint32_t p60 = static_cast<uint32_t>(MEM_W(0x60, kseg0_gpr(node)));
+    if (!tooie_is_guest(p60)) {
+        fprintf(fp, " p60=%08x object=none", p60);
+        return;
+    }
+    const gpr p = kseg0_gpr(p60);
+    fprintf(fp,
+            " p60=%08x p60_0=%08x p60_4=%08x p60_8=%08x p60_c=%04x p60_e=%04x"
+            " p60_10=%08x p60_14=%08x p60_18=%08x p60_1c=%08x p60_20=%08x",
+            p60,
+            static_cast<uint32_t>(MEM_W(0x00, p)),
+            static_cast<uint32_t>(MEM_W(0x04, p)),
+            static_cast<uint32_t>(MEM_W(0x08, p)),
+            static_cast<uint32_t>(MEM_HU(0x0C, p)),
+            static_cast<uint32_t>(MEM_HU(0x0E, p)),
+            static_cast<uint32_t>(MEM_W(0x10, p)),
+            static_cast<uint32_t>(MEM_W(0x14, p)),
+            static_cast<uint32_t>(MEM_W(0x18, p)),
+            static_cast<uint32_t>(MEM_W(0x1C, p)),
+            static_cast<uint32_t>(MEM_W(0x20, p)));
+}
+
 static void tooie_ud4_dump_np_frame(uint8_t* rdram, FILE* fp) {
     if (!tooie_is_guest(s_ud4_np_frame)) {
         fprintf(fp, " frame=none");
@@ -2263,6 +2292,55 @@ static void tooie_wrap_func_801108A0(uint8_t* rdram, recomp_context* ctx) {
     if (win) {
         fprintf(stderr, "[ud4-108a0] leave seq=%u node=%08x", tooie_ud4_seq(), node);
         tooie_ud4_dump_node_fields(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_80112D08(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    const uint32_t node = static_cast<uint32_t>(ctx->r4);
+    if (win) {
+        fprintf(stderr,
+                "[ud4-p60-write] enter seq=%u glidx=%d pc=80112D08 ra=%08x"
+                " node=%08x a1=%08x a2=%08x a3=%08x",
+                tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31), node,
+                static_cast<uint32_t>(ctx->r5), static_cast<uint32_t>(ctx->r6),
+                static_cast<uint32_t>(ctx->r7));
+        tooie_ud4_dump_p60_object(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    func_80112D08(rdram, ctx);
+    if (win) {
+        fprintf(stderr,
+                "[ud4-p60-write] leave seq=%u glidx=%d pc=80112D08 node=%08x",
+                tooie_ud4_seq(), glidx, node);
+        tooie_ud4_dump_p60_object(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_80112A84(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    const uint32_t node = static_cast<uint32_t>(ctx->r4);
+    if (win) {
+        fprintf(stderr,
+                "[ud4-p60-writer] enter seq=%u glidx=%d pc=80112A84 ra=%08x node=%08x",
+                tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31), node);
+        tooie_ud4_dump_p60_object(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    func_80112A84(rdram, ctx);
+    if (win) {
+        fprintf(stderr,
+                "[ud4-p60-writer] leave seq=%u glidx=%d pc=80112A84 node=%08x",
+                tooie_ud4_seq(), glidx, node);
+        tooie_ud4_dump_p60_object(rdram, stderr, node);
         fprintf(stderr, "\n");
         fflush(stderr);
     }
@@ -2805,6 +2883,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801107F0), tooie_wrap_func_801107F0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110770), tooie_wrap_func_80110770);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801108A0), tooie_wrap_func_801108A0);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112A84), tooie_wrap_func_80112A84);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112D08), tooie_wrap_func_80112D08);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010FFB0), tooie_wrap_func_8010FFB0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EE7F8), tooie_wrap_func_800EE7F8);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFB24), tooie_wrap_func_800EFB24);

@@ -10,7 +10,7 @@ index db5a596f..42ddc067 100644
  
  #ifdef DBG
  #include "debugger/dbg_debugger.h"
-@@ -168,6 +169,31 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -168,6 +169,33 @@ void InterpretOpcode(struct r4300_core* r4300)
  	if (op_address == NULL)
  		return;
  	uint32_t op = *op_address;
@@ -29,7 +29,9 @@ index db5a596f..42ddc067 100644
 +		    pcnow == 0x80800098u) {
 +			p08_ud4_cam(r4300, pcnow);
 +		}
-+		if (pcnow == 0x80110770u || pcnow == 0x80110780u ||
++		if (pcnow == 0x80112A84u || pcnow == 0x80112D08u ||
++		    pcnow == 0x80112D28u || pcnow == 0x80112C34u ||
++		    pcnow == 0x80110770u || pcnow == 0x80110780u ||
 +		    pcnow == 0x80110790u || pcnow == 0x801107A0u ||
 +		    pcnow == 0x801108A0u || pcnow == 0x80110920u ||
 +		    pcnow == 0x8010FFB0u || pcnow == 0x8010FFC0u ||
@@ -42,7 +44,7 @@ index db5a596f..42ddc067 100644
  
  	switch ((op >> 26) & 0x3F) {
  	case 0: /* SPECIAL prefix */
-@@ -203,7 +229,10 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -203,7 +233,10 @@ void InterpretOpcode(struct r4300_core* r4300)
  			 * using this as a reference for a JIT, do check Rd == 0 in it. */
  			JALR(r4300, op);
  			break;

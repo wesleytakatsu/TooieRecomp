@@ -122,6 +122,7 @@ static inline void p08_ud4_dump_node(struct r4300_core* r4300, FILE* fp, uint32_
 static inline void p08_ud4_dump_reads(struct r4300_core* r4300, FILE* fp, uint32_t rec);
 static inline uint32_t p08_ud4_sel_rec(struct r4300_core* r4300);
 static inline void p08_ud4_dump_player(struct r4300_core* r4300, FILE* fp);
+static inline void p08_ud4_dump_p60_object(struct r4300_core* r4300, FILE* fp, uint32_t node);
 static inline uint32_t p08_fpr_bits(struct r4300_core* r4300, int i);
 
 static int s_p08_set74_n = 0;
@@ -171,7 +172,30 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
     const uint32_t a3 = (uint32_t)regs[7];
     const uint32_t ra = (uint32_t)regs[31];
     const uint32_t seq = ++s_p08_ud4_seq;
-    if (pc == 0x80110770u) {
+    if (pc == 0x80112A84u) {
+        fprintf(fp,
+                "[ud4-p60-writer] enter seq=%u glidx=%d pc=80112A84 ra=%08x node=%08x",
+                seq, glidx, ra, a0);
+        p08_ud4_dump_p60_object(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80112D08u) {
+        fprintf(fp,
+                "[ud4-p60-write] enter seq=%u glidx=%d pc=80112D08 ra=%08x"
+                " node=%08x a1=%08x a2=%08x a3=%08x",
+                seq, glidx, ra, a0, a1, a2, a3);
+        p08_ud4_dump_p60_object(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80112D28u) {
+        fprintf(fp, "[ud4-p60-write] after-store seq=%u glidx=%d pc=80112D28 node=%08x",
+                seq, glidx, a0);
+        p08_ud4_dump_p60_object(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80112C34u) {
+        fprintf(fp, "[ud4-p60-writer] leave seq=%u glidx=%d pc=80112C34 node=%08x",
+                seq, glidx, a0);
+        p08_ud4_dump_p60_object(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80110770u) {
         s_p08_set74_n += 1;
         s_p08_set74_node = a0;
         s_p08_set74_src = a1;
@@ -446,6 +470,36 @@ static inline void p08_ud4_dump_node(struct r4300_core* r4300, FILE* fp, uint32_
         (void)r4300_read_aligned_word(r4300, p60 + 8u, &w8);
         fprintf(fp, " p60_0=%08x p60_4=%08x p60_8=%08x", w0, w4, w8);
     }
+}
+
+static inline void p08_ud4_dump_p60_object(struct r4300_core* r4300, FILE* fp, uint32_t node)
+{
+    if (!p08_guest(node)) {
+        fprintf(fp, " p60=none");
+        return;
+    }
+    uint32_t p60 = 0;
+    (void)r4300_read_aligned_word(r4300, node + 0x60u, &p60);
+    if (!p08_guest(p60)) {
+        fprintf(fp, " p60=%08x object=none", p60);
+        return;
+    }
+    uint32_t w0 = 0, w4 = 0, w8 = 0, wc = 0;
+    uint32_t w10 = 0, w14 = 0, w18 = 0, w1c = 0, w20 = 0;
+    (void)r4300_read_aligned_word(r4300, p60 + 0x00u, &w0);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x04u, &w4);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x08u, &w8);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x0Cu, &wc);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x10u, &w10);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x14u, &w14);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x18u, &w18);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x1Cu, &w1c);
+    (void)r4300_read_aligned_word(r4300, p60 + 0x20u, &w20);
+    fprintf(fp,
+            " p60=%08x p60_0=%08x p60_4=%08x p60_8=%08x p60_c=%04x p60_e=%04x"
+            " p60_10=%08x p60_14=%08x p60_18=%08x p60_1c=%08x p60_20=%08x",
+            p60, w0, w4, w8, (unsigned)(wc >> 16), (unsigned)(wc & 0xFFFFu),
+            w10, w14, w18, w1c, w20);
 }
 
 static inline void p08_ud4_dump_np_frame(struct r4300_core* r4300, FILE* fp)

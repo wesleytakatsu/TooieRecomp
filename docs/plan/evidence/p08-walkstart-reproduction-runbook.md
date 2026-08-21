@@ -71,6 +71,13 @@ oracle launcher checks the ROM SHA-1 and refuses a missing or wrong cartridge.
 Set `TOOIE_CART_Z64=/absolute/path/to/Banjo-Tooie-USA-Rev0.z64` when the ROM is
 not in the location documented by `run.sh`.
 
+For the p60 provenance capture, `build.sh --force` must finish with
+`build done`. The patch dispatches the writer hook at `80112A84`, `80112D08`,
+`80112D28`, and `80112C34`; if the oracle has `p60+8=5` at ncbapivot but no
+`[ud4-p60-*]` lines, stop and repair/reapply that dispatch coverage before
+interpreting the result. A missing marker is instrumentation coverage failure,
+not proof that the writer did not execute.
+
 ## 4. Start the paired capture
 
 Use two terminals (or two independently monitored sessions). Do not join by
@@ -112,6 +119,7 @@ The target is reached when all of the following are true:
 RT64:    stage=0/sub=4 and ncbapivot enter+leave for glidx 36..42
 Oracle:  stage=0/sub=4, TRACE_ON and leave for target glidx 39
 Join:    at least glidx 39..42 have matching consumed glrecord + pad bytes
+P60:     both logs contain 80112A84/80112D08 enter+after-store at glidx 39
 ```
 
 Inspect without assuming a line-count or time match:
@@ -123,6 +131,8 @@ rg -n 'TRACE_ON|\[ud4-ncbapivot\] leave' \
   /tmp/p08-angrylion-ud4-cam.log | tail -20
 rg -n '(^|,)39(,|$)|(^|,)40(,|$)|(^|,)41(,|$)|(^|,)42(,|$)' \
   /tmp/p08-angrylion-user_demo4.csv | head
+rg -n '\[ud4-p60-(writer|write)\].*glidx=39' \
+  /tmp/p08-rt64-display-glidx39-rerun.log /tmp/p08-angrylion-ud4-cam.log
 ```
 
 After the markers appear, stop each exact emulator PID with `TERM` rather
