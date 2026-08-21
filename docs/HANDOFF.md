@@ -374,6 +374,40 @@ the digger scan is UNKNOWN, and this split occurs after the first egg input was
 already consumed/fired; do not reopen the first shot or closed capture-phase
 movement evidence. Full table: [[plan/evidence/p08-demo-post-egg-motion-divergence]].
 
+## P08 USER_DEMO_4 walkstart ncbapivot fresh join (2026-08-21)
+
+The requested hardware-faithful diagnostic capture completed. RT64 and the
+Angrylion oracle used real `DISPLAY=:0` with the AMD RX 580 RADV path and a
+720-second bound; the only new gate was `TOOIE_UD4_WALKSTART=1`. RT64 reached
+`stage=0/sub=4` with seven ncbapivot entries/leaves (glidx 36..42), and the
+oracle produced the paired glidx 39 trace and motion CSV. Pad/glrecord joining
+is exact for glidx 38..42, including target glidx 39.
+
+The glidx 39 ncbapivot entry payload matches after pointer relocation, but the
+output differs. This is not a completed instruction join: RT64 diagnostics do
+not expose full FCSR bits (`rm=0`, `mips3=0` only), while oracle FCSR is
+`01000800` at enter and `01800800` at leave. The earliest observed child input
+divergence is `800137AC` enter (`a2/f14`: RT64 `439a589e/41aa94a2`; oracle
+`439a7fd5/439a054e`), followed by a call-stack order difference and one extra
+oracle `80013818` invocation.
+
+```text
+P08: ACTIVE / MANUAL_VALIDATION_PENDING
+P09: PENDING / NOT_FORMALLY_OPEN
+NCBAPIVOT_WALK_READ_SET_COMPLETE: NO
+FIRST_EXECUTED_READ_DIFFERENCE:    NOT_PROVEN; earliest observed 800137AC enter child-input difference
+SAME_INPUTS_DIFFERENT_OUTPUT:      NO / NOT_PROVEN
+ROOT_CLASS:                        B-NCBAPIVOT-WALKSTART-FIRST-EXECUTED-INPUT
+ROOT_CAUSE_LEVEL:                  NOT_PROVEN
+FIX_IMPLEMENTED:                   NO
+RT64_LOG:                           /tmp/p08-rt64-display-glidx39-r2.log
+ORACLE_LOG:                         /tmp/p08-angrylion-ud4-cam.log + /tmp/p08-angrylion-user_demo4.csv
+```
+
+This remains diagnosis-only. Keep `round.w.s`, camera feedback, generated
+recompiler output, and egg changes closed; the next discriminator is the
+missing RT64 FCSR and executed-read provenance around `800137AC`.
+
 ## P08 ideal-yaw writer differential — RESOLVED (2026-08-17)
 
 The exact ideal_yaw writer and its input provenance are now PROVEN by a bounded

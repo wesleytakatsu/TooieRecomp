@@ -78,6 +78,23 @@ static int s_p08_np_last_fpu = 0;
 static int s_p08_np_last_fd = 0;
 static uint32_t s_p08_np_last_fpu_pc = 0;
 static uint32_t s_p08_np_last_fpu_op = 0;
+static int s_p08_np_stop = 0;
+
+static inline int p08_env_enabled(const char* name)
+{
+    const char* raw = getenv(name);
+    return raw != NULL && raw[0] != '\0' && raw[0] != '0';
+}
+
+static inline int p08_ud4_first_tick_env(void)
+{
+    return p08_env_enabled("TOOIE_UD4_FIRST_TICK");
+}
+
+static inline int p08_ud4_walkstart_env(void)
+{
+    return p08_env_enabled("TOOIE_UD4_WALKSTART");
+}
 
 static inline FILE* p08_ud4_fp(void)
 {
@@ -236,6 +253,7 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
         fprintf(fp, "\n");
         if (pc == 0x80089488u && !s_p08_np_trace) {
             const int first = (s_p08_ncbapivot_n++ == 0) ? 1 : 0;
+            const int walkstart = p08_ud4_walkstart_env() && glidx == 39;
             fprintf(fp,
                     "[ud4-ncbapivot] enter seq=%u glidx=%d first=%d ra=%08x a0=%08x pc=%08x "
                     "a1=%08x a2=%08x a3=%08x sp=%08x frame=%08x f0=%08x f12=%08x fcr31=%08x",
@@ -246,8 +264,9 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
             p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
             p08_ud4_dump_player(r4300, fp);
             fprintf(fp, "\n");
-            if (first) {
+            if ((p08_ud4_first_tick_env() && first) || walkstart) {
                 s_p08_np_trace = 1;
+                s_p08_np_stop = p08_ud4_first_tick_env() ? 1 : 0;
                 s_p08_np_node = a0;
                 s_p08_np_glidx = glidx;
                 s_p08_np_ret = ra;
@@ -256,8 +275,8 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
                 s_p08_np_insn = 0;
                 s_p08_np_ovl_base = 0;
                 s_p08_np_child_sp = 0;
-                fprintf(fp, "[ud4-ncbapivot] TRACE_ON ret=%08x frame=%08x bind_tick=1\n",
-                        s_p08_np_ret, s_p08_np_frame);
+                fprintf(fp, "[ud4-ncbapivot] TRACE_ON ret=%08x frame=%08x bind_tick=%d stop=%d\n",
+                        s_p08_np_ret, s_p08_np_frame, first, s_p08_np_stop);
             }
         }
     }
@@ -539,18 +558,23 @@ static inline void p08_ud4_np_tick(struct r4300_core* r4300, uint32_t pc, uint32
     if (pc == s_p08_np_ret) {
         fprintf(fp,
                 "[ud4-ncbapivot] leave seq=%u glidx=%d active=1 v0=%08x f0=%08x "
-                "fcr31=%08x insn=%d ovl_base=%08x",
+                "fcr31=%08x insn=%d ovl_base=%08x stop=%d",
                 ++s_p08_ud4_seq, s_p08_np_glidx, (uint32_t)regs[2],
                 p08_fpr_bits(r4300, 0), r4300->cp1.fcr31, s_p08_np_insn,
-                s_p08_np_ovl_base);
+                s_p08_np_ovl_base, s_p08_np_stop);
         p08_ud4_dump_np_frame(r4300, fp);
         p08_ud4_dump_node(r4300, fp, s_p08_np_node);
         p08_ud4_dump_reads(r4300, fp, p08_ud4_sel_rec(r4300));
         p08_ud4_dump_player(r4300, fp);
-        fprintf(fp, "\n[ud4-ncbapivot] FIRST_TICK_STOP after glidx=%d\n", s_p08_np_glidx);
-        fflush(fp);
+        if (s_p08_np_stop) {
+            fprintf(fp, "\n[ud4-ncbapivot] FIRST_TICK_STOP after glidx=%d\n", s_p08_np_glidx);
+            fflush(fp);
+        }
         s_p08_np_trace = 0;
-        exit(0);
+        s_p08_np_child_sp = 0;
+        if (s_p08_np_stop) {
+            exit(0);
+        }
     }
 
     if (s_p08_np_child_sp > 0 && pc == s_p08_np_child_ra[s_p08_np_child_sp - 1]) {
@@ -723,7 +747,20 @@ static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
         p08_ud4_dump_reads(r4300, fp, rec);
         p08_ud4_dump_player(r4300, fp);
         fprintf(fp, "\n");
-        /* Bind-tick TRACE_ON is armed from p08_ud4_writer at the first 80089488. */
+        if (p08_ud4_walkstart_env() && glidx == 39 && !s_p08_np_trace) {
+            s_p08_np_trace = 1;
+            s_p08_np_stop = 0;
+            s_p08_np_node = a0;
+            s_p08_np_glidx = glidx;
+            s_p08_np_ret = ra;
+            s_p08_np_frame = (uint32_t)regs[29] - 0x78u;
+            s_p08_np_call_n = 0;
+            s_p08_np_insn = 0;
+            s_p08_np_ovl_base = 0;
+            s_p08_np_child_sp = 0;
+            fprintf(fp, "[ud4-ncbapivot] TRACE_ON ret=%08x frame=%08x bind_tick=0 stop=0\n",
+                    s_p08_np_ret, s_p08_np_frame);
+        }
     }
     fflush(fp);
 }

@@ -595,6 +595,41 @@ not a real-N64 defect (B-ALLOC/B-ALIAS/B-INIT remain refuted).
 NEXT_SINGLE_ACTION: superseded by the hardware-faithful Original oracle run.
 ```
 
+## Fresh USER_DEMO_4 walkstart ncbapivot join (2026-08-21)
+
+The bounded real-display capture is now complete. RT64 and the Angrylion
+oracle ran on `DISPLAY=:0` with RADV RX 580 (720 s timeout), using only the
+diagnostic `TOOIE_UD4_WALKSTART=1` gate. RT64 reached `stage=0/sub=4` and
+captured seven ncbapivot entries/leaves for glidx 36..42; the oracle reached
+the same sub-window and produced the glidx 39 trace plus the motion CSV.
+Joining by consumed glrecord and pad bytes gives exact agreement for glidx
+38..42 (including glidx 39 `-48,-46,0001`).
+
+At glidx 39, the entry read values match after pointer relocation (node+0x74,
+node+0x80, tgt, selected record, vectors, position, yaw, ideal-yaw, f0/f12),
+but the output differs. This does **not** close a same-complete-inputs/FPU
+join: RT64 exposes only `rm=0`/`mips3=0`, while the oracle exposes FCSR
+`01000800` at enter and `01800800` at leave. The earliest observed child-input
+divergence is `800137AC` enter (`a2/f14`: RT64 `439a589e/41aa94a2`, oracle
+`439a7fd5/439a054e`); call-stack order diverges immediately afterward.
+
+```text
+P08_STATUS:                        ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                        PENDING / NOT_FORMALLY_OPEN
+NCBAPIVOT_WALK_READ_SET_COMPLETE: NO (RT64 FCSR/FPR provenance incomplete)
+FIRST_EXECUTED_READ_DIFFERENCE:    NOT_PROVEN; earliest observed child-input difference 800137AC enter
+SAME_INPUTS_DIFFERENT_OUTPUT:      NO / NOT_PROVEN
+ROOT_CLASS:                        B-NCBAPIVOT-WALKSTART-FIRST-EXECUTED-INPUT
+ROOT_CAUSE_LEVEL:                  NOT_PROVEN
+FIX_IMPLEMENTED:                   NO
+RT64_ARTIFACT:                     /tmp/p08-rt64-display-glidx39-r2.log
+ORACLE_ARTIFACTS:                  /tmp/p08-angrylion-ud4-cam.log, /tmp/p08-angrylion-user_demo4.csv
+```
+
+This remains diagnosis-only. Do not reopen `round.w.s`, generated output,
+camera feedback, or the egg path. The next bounded discriminator is missing
+RT64 FCSR/read provenance around the `800137AC` inputs.
+
 ## P08 projection DB / Z-buffer target writer identification — B-WRITER PROVEN (2026-08-20)
 
 [[p08-demo-db-target-writer]]. The exact Recomp writer to `D_8007BCC4 + 0x17FC0`

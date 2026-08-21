@@ -2010,6 +2010,7 @@ static int s_ud4_set80_n = 0;
 static int s_ud4_seen_haunted = 0;
 
 static int tooie_ud4_first_tick_env();
+static int tooie_ud4_walkstart_env();
 
 static bool tooie_ud4_haunted(uint8_t* rdram, int* glidx_out) {
     if (!tooie_diag::attract_enabled()) {
@@ -2032,7 +2033,19 @@ static bool tooie_ud4_haunted(uint8_t* rdram, int* glidx_out) {
 }
 
 static bool tooie_ud4_writer_window(uint8_t* rdram, int* glidx_out) {
-    return tooie_ud4_first_tick_env() && tooie_ud4_haunted(rdram, glidx_out);
+    const bool first_tick = tooie_ud4_first_tick_env() != 0;
+    const bool walkstart = tooie_ud4_walkstart_env() != 0;
+    if (!first_tick && !walkstart) {
+        return false;
+    }
+    if (!tooie_ud4_haunted(rdram, glidx_out)) {
+        return false;
+    }
+    if (walkstart) {
+        const int glidx = glidx_out ? *glidx_out : -1;
+        return glidx >= 36 && glidx <= 42;
+    }
+    return true;
 }
 
 static void tooie_ud4_np_call(const char* name, uint32_t addr, uint8_t* rdram,
@@ -2388,6 +2401,15 @@ static int tooie_ud4_first_tick_env() {
     return s;
 }
 
+static int tooie_ud4_walkstart_env() {
+    static int s = -1;
+    if (s < 0) {
+        const char* raw = std::getenv("TOOIE_UD4_WALKSTART");
+        s = (raw != nullptr && raw[0] != '\0' && raw[0] != '0') ? 1 : 0;
+    }
+    return s;
+}
+
 extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx) {
     int glidx = -1;
     if (!tooie_ud4_writer_window(rdram, &glidx)) {
@@ -2402,7 +2424,7 @@ extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx) {
     s_ud4_np_frame = sp - 0x78u;
     s_ud4_np_call_n = 0;
     // First ncbapivot_entrypoint_3 in the haunted latch is the mode=2 glidx=0 bind tick.
-    s_ud4_np_active = first ? 1 : 0;
+    s_ud4_np_active = first || tooie_ud4_walkstart_env() ? 1 : 0;
     fprintf(stderr,
             "[ud4-ncbapivot] enter seq=%u glidx=%d first=%d ra=%08x a0=%08x "
             "a1=%08x a2=%08x a3=%08x sp=%08x frame=%08x f0=%08x f12=%08x rm=%d mips3=%u",
@@ -2436,6 +2458,7 @@ extern "C" void tooie_ud4_ncbapivot_ep3_leave(uint8_t* rdram, recomp_context* ct
     fflush(stderr);
     const int was_active = s_ud4_np_active;
     s_ud4_np_active = 0;
+    s_ud4_np_glidx = -1;
     if (was_active && tooie_ud4_first_tick_env()) {
         fprintf(stderr, "[ud4-ncbapivot] FIRST_TICK_STOP after glidx=%d\n", glidx);
         fflush(stderr);

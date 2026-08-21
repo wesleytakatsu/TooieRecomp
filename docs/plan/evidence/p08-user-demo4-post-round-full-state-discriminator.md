@@ -36,9 +36,9 @@ FIRST_GAMEPLAY_CAUSAL_DIFFERENCE: that ncbapivot output; demo-sync prints it as
 
 FIRST_DIVERGENCE_PRODUCER:       ncbapivot_entrypoint_3 (overlay 781 ep 3)
 CA628_CA8B4_ROLE:                identity copy of already-different record
-A_CANDIDATE:                     YES  (captured inputs MATCH; complete
-                                 ncbapivot executed read set this tick
-                                 not dumped on RT64 — FIRST_TICK gate)
+A_CANDIDATE:                     NOT_PROVEN (entry payload matches, but the
+                                 fresh child trace diverges at 800137AC and
+                                 RT64 full FCSR/read provenance is incomplete)
 FIX_IMPLEMENTED:                 NO (diagnosis only; ROUND.W.S preserved)
 ```
 
@@ -291,16 +291,46 @@ Dump-phase: Angrylion motion CSV is later in the frame than RT `demo-sync`. Came
 
 Earliest causally relevant difference: **ncbapivot_entrypoint_3 output at dump glidx 39**.
 
-Captured inputs MATCH (previous follow record, player pos, yaw, ideal). Complete executed read set (node+0x74/+0x80, tgt, globals, FPRs) is **not** on the RT64 postfix log. Same-inputs/different-FPU is therefore **not fully closed**, but it is the live A-candidate.
+Captured inputs MATCH (previous follow record, player pos, yaw, ideal). Complete executed read set (node+0x74/+0x80, tgt, globals, FPRs) is **not** on the RT64 postfix log. Same-inputs/different-FPU was therefore **not fully closed** in the historical postfix run; the fresh child trace below leaves the A-candidate **not proven**.
 
 ```text
 ROOT_CLASS:     B-NCBAPIVOT-WALKSTART-OUTPUT
-                (A-CANDIDATE for instruction join; not a new demo/player/anim/speed bug)
-A_CANDIDATE:    YES
+                (historical A-candidate; fresh instruction join is not proven)
+A_CANDIDATE:    NOT_PROVEN
 NEXT_MODEL:     GPT-5.6 Terra
 ```
 
 Do **not** use Sol. Do **not** reopen bind-tick `round.w.s`. A new half-even at this later angle would already be covered by the global mapping; remaining split after that mapping is a **different** event.
+
+## Fresh paired walkstart instruction join (2026-08-21)
+
+The real-display capture completed the requested bounded window. RT64 recorded
+seven `ncbapivot_entrypoint_3` entries/leaves for glidx 36..42; the oracle
+reached the same `stage=0/sub=4` window. Joining by consumed glrecord and pad
+bytes gives exact pad agreement for glidx 38..42, including the target glidx
+39 (`-48,-46,0001`).
+
+At glidx 39, the entry payloads match after pointer relocation (`node+0x74`,
+`node+0x80`, `tgt`, selected record, eye/source vectors, position, yaw,
+ideal-yaw, `f0`, and `f12`). The outputs differ (`f0=43a958bd` RT64 versus
+`43a9580d` oracle; corresponding `node+0x74.x` and `node+0x80.x` differ).
+However, RT64's trace exposes only `rm=0`/`mips3=0`, not complete FCSR bits;
+the oracle reports `fcr31=01000800` at enter and `01800800` at leave.
+
+The earliest observed executed child-input difference is `800137AC` enter:
+RT64 `a2=439a589e`, `f14=41aa94a2`; oracle `a2=439a7fd5`, `f14=439a054e`.
+The child-call order then diverges at event 60, and the oracle executes one
+additional nested `80013818`. Consequently the result is not a proof of
+same-complete-inputs/different-output and does not authorize a fix.
+
+```text
+NCBAPIVOT_WALK_READ_SET_COMPLETE:       NO (RT64 FCSR/FPR provenance incomplete)
+FIRST_EXECUTED_READ_DIFFERENCE:         NOT_PROVEN; earliest observed child-input difference 800137AC enter (a2/f14)
+SAME_INPUTS_DIFFERENT_NCBAPIVOT_OUTPUT: NO / NOT_PROVEN
+ROOT_CLASS:                             B-NCBAPIVOT-WALKSTART-FIRST-EXECUTED-INPUT
+ROOT_CAUSE_LEVEL:                       NOT_PROVEN
+FIX_IMPLEMENTED:                        NO
+```
 
 ---
 
