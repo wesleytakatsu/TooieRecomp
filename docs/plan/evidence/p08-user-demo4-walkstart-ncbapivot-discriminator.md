@@ -61,9 +61,9 @@ CAMERA_FEEDBACK_ACCUMULATION:      STILL_PRESENT
 EGG_PARITY_DEFECT:                 PROVEN (inherited P08 evidence)
 EGG_INDEPENDENT_FROM_REMAINING_CAMERA_STATE: UNKNOWN
 PLAYER_SPEED_EVIDENCE_SCOPE_CORRECTED: YES (inherited P08 evidence)
-COMMIT:                            PENDING
-PUSHED:                            PENDING
-NEW_HEAD:                          PENDING
+COMMIT:                            3e9c799 (evidence checkpoint)
+PUSHED:                            YES (origin/main)
+NEW_HEAD:                          3e9c799
 ```
 
 The canonical wrapper run still terminated in the runtime scheduler before the
