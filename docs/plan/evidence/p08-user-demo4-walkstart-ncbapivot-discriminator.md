@@ -63,7 +63,7 @@ EGG_INDEPENDENT_FROM_REMAINING_CAMERA_STATE: UNKNOWN
 PLAYER_SPEED_EVIDENCE_SCOPE_CORRECTED: YES (inherited P08 evidence)
 COMMIT:                            3e9c799 (evidence checkpoint)
 PUSHED:                            YES (origin/main)
-NEW_HEAD:                          e2761d3
+NEW_HEAD:                          origin/main (verified at handoff)
 ```
 
 The canonical wrapper run still terminated in the runtime scheduler before the
