@@ -75,5 +75,5 @@ apply_one_patch \
     "$N64RECOMP" \
     "$PATCH_DIR/n64recomp-tooie.patch" \
     "2b6f05688de2abc7d86da5b4a89b84c2c6acbabe" \
-    "1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034" \
+    "adf97c9dfe20220143939ca1aa8728afc14a4eff957e35d8d2352ef027b98dc7" \
     "generator jal+safepoints"

@@ -69,6 +69,11 @@ target_compile_options(RecompiledFuncs PRIVATE
     -Wno-implicit-function-declaration
     -falign-functions=16
 )
+# Existing generated sources use lround* for MIPS ROUND.{W,L}.{S,D}.  Map those
+# calls at this target boundary until regeneration emits ROUND_* directly.
+target_compile_definitions(RecompiledFuncs PRIVATE
+    RECOMP_MIPS_ROUND_COMPAT=1
+)
 target_include_directories(RecompiledFuncs PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/RecompiledFuncs
@@ -326,6 +331,21 @@ target_compile_options(matrix_submission_test PRIVATE
     -Wno-unused-parameter
 )
 set_target_properties(matrix_submission_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# MIPS ROUND.{W,L}.{S,D}: nearest-even must not inherit C lround* ties-away semantics.
+add_executable(mips_rounding_test
+    ${CMAKE_SOURCE_DIR}/tests/mips_rounding_test.cpp
+)
+target_include_directories(mips_rounding_test PRIVATE
+    ${N64MR}/N64Recomp/include
+)
+target_compile_definitions(mips_rounding_test PRIVATE
+    RECOMP_MIPS_ROUND_COMPAT=1
+)
+target_compile_options(mips_rounding_test PRIVATE
+    -UNDEBUG
+)
+set_target_properties(mips_rounding_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # P08 directional-input harness: real convert_to_n64_range + signed-byte + scale identity.
 # Compile the runtime converter source directly so the test does not reimplement

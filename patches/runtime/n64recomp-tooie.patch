@@ -30,6 +30,27 @@ index 61e1ff5..8084727 100644
  #include <fstream>
  #include <unordered_map>
  #include <cmath>
+@@ -830,4 +830,3 @@ void N64Recomp::LiveGenerator::process_binary_op(const BinaryOp& op, const Instr
+-// TODO these four operations should use banker's rounding, but roundeven is C23 so it's unavailable here.
+ int32_t do_round_w_s(float num) {
+-    return lroundf(num);
++    return recomp_round_w_s(num);
+ }
+@@ -835,3 +834,3 @@ int32_t do_round_w_d(double num) {
+ int32_t do_round_w_d(double num) {
+-    return lround(num);
++    return recomp_round_w_d(num);
+ }
+@@ -839,3 +838,3 @@ int64_t do_round_l_s(float num) {
+ int64_t do_round_l_s(float num) {
+-    return llroundf(num);
++    return recomp_round_l_s(num);
+ }
+@@ -843,3 +842,3 @@ int64_t do_round_l_d(double num) {
+ int64_t do_round_l_d(double num) {
+-    return llround(num);
++    return recomp_round_l_d(num);
+ }
 @@ -1933,6 +1934,20 @@ void N64Recomp::LiveGenerator::emit_pause_self() const {
      sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS1V(P), SLJIT_IMM, sljit_sw(inputs.pause_self));
  }
@@ -766,7 +787,72 @@ index 73f3e73..4ba7853 100644
  #include <math.h>
  #include <fenv.h>
  #include <assert.h>
-@@ -468,6 +469,9 @@ void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int32_t instruc
+@@ -361,4 +361,61 @@ static inline void set_cop1_cs(uint32_t val) {
+-
+-#define DEFAULT_ROUNDING_MODE 0
+-
++
++// MIPS ROUND.{W,L}.{S,D} is fixed round-to-nearest with ties to even; it does
++// not use the FCSR rounding mode. C's lround* instead breaks ties away from
++// zero, so keep this separate from the FCSR-aware CVT helpers below.
++static inline float recomp_round_to_nearest_even_s(float val) {
++    float lower = floorf(val);
++    float fraction = val - lower;
++    return lower + (fraction > 0.5f || (fraction == 0.5f && fmodf(lower, 2.0f) != 0.0f));
++}
++
++static inline double recomp_round_to_nearest_even_d(double val) {
++    double lower = floor(val);
++    double fraction = val - lower;
++    return lower + (fraction > 0.5 || (fraction == 0.5 && fmod(lower, 2.0) != 0.0));
++}
++
++// ROUND.W invalid inputs default to 2^31 - 1 when Invalid Operation is masked.
++// The generated runtime does not yet model FCSR exception flags or enabled traps,
++// so these helpers provide only that non-trapping destination-register result.
++static inline int32_t recomp_round_w_s(float val) {
++    float rounded = recomp_round_to_nearest_even_s(val);
++    return isfinite(rounded) && rounded >= -2147483648.0f && rounded < 2147483648.0f
++        ? (int32_t)rounded : INT32_MAX;
++}
++
++static inline int32_t recomp_round_w_d(double val) {
++    double rounded = recomp_round_to_nearest_even_d(val);
++    return isfinite(rounded) && rounded >= -2147483648.0 && rounded < 2147483648.0
++        ? (int32_t)rounded : INT32_MAX;
++}
++
++// ROUND.L uses the analogous non-trapping default, 2^63 - 1.
++static inline int64_t recomp_round_l_s(float val) {
++    float rounded = recomp_round_to_nearest_even_s(val);
++    return isfinite(rounded) && rounded >= -9223372036854775808.0f && rounded < 9223372036854775808.0f
++        ? (int64_t)rounded : INT64_MAX;
++}
++
++static inline int64_t recomp_round_l_d(double val) {
++    double rounded = recomp_round_to_nearest_even_d(val);
++    return isfinite(rounded) && rounded >= -9223372036854775808.0 && rounded < 9223372036854775808.0
++        ? (int64_t)rounded : INT64_MAX;
++}
++
++#define ROUND_W_S(val) recomp_round_w_s(val)
++#define ROUND_W_D(val) recomp_round_w_d(val)
++#define ROUND_L_S(val) recomp_round_l_s(val)
++#define ROUND_L_D(val) recomp_round_l_d(val)
++
++// Compatibility for checked-in generated C that predates ROUND_*. Define this
++// only after <math.h> has declared the standard functions.
++#ifdef RECOMP_MIPS_ROUND_COMPAT
++#define lroundf recomp_round_w_s
++#define lround recomp_round_w_d
++#define llroundf recomp_round_l_s
++#define llround recomp_round_l_d
++#endif
++
++#define DEFAULT_ROUNDING_MODE 0
++
+ static inline int32_t do_cvt_w_s(float val) {
+@@ -468,6 +526,9 @@ void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int32_t instruc
  
  void pause_self(uint8_t *rdram);
  
@@ -821,6 +907,27 @@ diff --git a/src/cgenerator.cpp b/src/cgenerator.cpp
 index 94f85c5..4a5e876 100644
 --- a/src/cgenerator.cpp
 +++ b/src/cgenerator.cpp
+@@ -304,4 +303,3 @@ void N64Recomp::CGenerator::get_operand_string(Operand operand, UnaryOpType oper
+-        // TODO these four operations should use banker's rounding, but roundeven is C23 so it's unavailable here.
+         case UnaryOpType::RoundWFromS:
+-            operand_string = "lroundf(" + operand_string + ")";
++            operand_string = "ROUND_W_S(" + operand_string + ")";
+             break;
+@@ -308,3 +307,3 @@ void N64Recomp::CGenerator::get_operand_string(Operand operand, UnaryOpType oper
+         case UnaryOpType::RoundWFromD:
+-            operand_string = "lround(" + operand_string + ")";
++            operand_string = "ROUND_W_D(" + operand_string + ")";
+             break;
+@@ -311,3 +310,3 @@ void N64Recomp::CGenerator::get_operand_string(Operand operand, UnaryOpType oper
+         case UnaryOpType::RoundLFromS:
+-            operand_string = "llroundf(" + operand_string + ")";
++            operand_string = "ROUND_L_S(" + operand_string + ")";
+             break;
+@@ -314,3 +313,3 @@ void N64Recomp::CGenerator::get_operand_string(Operand operand, UnaryOpType oper
+         case UnaryOpType::RoundLFromD:
+-            operand_string = "llround(" + operand_string + ")";
++            operand_string = "ROUND_L_D(" + operand_string + ")";
+             break;
 @@ -554,6 +554,11 @@ void N64Recomp::CGenerator::emit_pause_self() const {
      fmt::print(output_file, "pause_self(rdram);\n");
  }
