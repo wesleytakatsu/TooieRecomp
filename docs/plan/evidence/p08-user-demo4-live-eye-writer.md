@@ -1,6 +1,6 @@
 ---
 title: "P08 — USER_DEMO_4 pre-ncbapivot live-eye writer discriminator"
-description: "Last writer of follow-camera node+0x74 before USER_DEMO_4 glidx-1 ncbapivot enter. Node init MATCH. func_80110770 / func_800EE7F8 are faithful copiers. First bit difference is the computed source vector of set74 ordinal 2 during the mode=2 bind ncbapivot tick."
+description: "Last writer of follow-camera node+0x74 before USER_DEMO_4 glidx-1 ncbapivot enter. The copiers remain faithful; their computed source-vector split is resolved upstream to the func_80013818 MIPS round.w.s semantic fix."
 status: current
 type: evidence
 project: TooieRecomp

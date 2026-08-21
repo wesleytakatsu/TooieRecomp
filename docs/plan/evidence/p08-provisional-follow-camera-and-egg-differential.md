@@ -1,6 +1,6 @@
 ---
 title: "P08 — Attract cycle reconstruction and USER_DEMO_4 egg/camera differential"
-description: "User-continuous attract numbering, one incomplete-but-measured attract slice, and the proven USER_DEMO_4 FIRE-vs-BLUE egg parity defect against ANGRYLION_CONTROL."
+description: "User-continuous attract numbering, one incomplete-but-measured attract slice, and the proven USER_DEMO_4 FIRE-vs-BLUE egg parity defect against ANGRYLION_CONTROL. Bind-tick round.w.s now matches; glidx-41 camctrl recurrence remains."
 status: current
 type: evidence
 project: TooieRecomp
@@ -40,7 +40,9 @@ FOLLOW_CAMERA_OBJECT:           D_80127708[ps+0x184]  (sel=0 this clip)
 FOLLOW_CAMERA_UPDATE_FUNCTION:  ncbapivot_entrypoint_3
 PLAYER_MOVEMENT_CAMERA_SOURCE:  selected camera record +0x1C (camctrl); historically written by func_800CA628
 PAD_STREAM_MATCH:               YES (877/877 joined glidx, 100%)
-FIRST_FOLLOW_CAMERA_NUMERIC_DIFFERENCE: glidx 41 camctrl 306.0417 vs 306.1269 (0.085 deg); eye Δ 2.01
+FIRST_FOLLOW_CAMERA_BIT_DIFFERENCE_POST_ROUND_W_S: dump glidx 39 ncbapivot output (idle 1..38 MATCH)
+FIRST_FOLLOW_CAMERA_NUMERIC_DIFFERENCE: demo-sync glidx 41 camctrl 306.0417 vs 306.1269 (0.085 deg); eye Δ 2.01
+  (pre-fix glidx-1 CA8B4 ULP is CORRECTED/SUPERSEDED; see [[p08-user-demo4-post-round-full-state-discriminator]])
 FIRST_FOLLOW_CAMERA_PERSISTENT_DIFFERENCE: glidx 43 camctrl Δ 1.29 deg (3 consecutive samples over 0.05)
 FIRST_CAMERA_USED_FOR_MOVEMENT_DIFFERENCE: glidx 41 camctrl
 FIRST_IDEAL_YAW_DIFFERENCE:     glidx 42 (0.087 deg same-index)
@@ -60,7 +62,9 @@ FULL_ATTRACT_SEQUENCE_REPEAT_PROVEN: NO
 
 P08_STATUS:                     ACTIVE / MANUAL_VALIDATION_PENDING
 P09_STATUS:                     PENDING / NOT_FORMALLY_OPEN
-FIX_IMPLEMENTED:                NO
+FIX_IMPLEMENTED:                YES (bind-tick round.w.s only; camera recurrence and egg remain)
+CAMERA_FEEDBACK_ACCUMULATION:   STILL_PRESENT
+EGG_DEFECT_CLASS:               PROVEN; independent of ROUND.W.S YES; independent of remaining camera UNKNOWN
 ```
 
 b042865 claims now **DISPUTED** / **CORRECTED/SUPERSEDED** as complete-attract conclusions:

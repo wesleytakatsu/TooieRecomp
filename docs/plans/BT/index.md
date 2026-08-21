@@ -94,7 +94,18 @@ is **OPEN_SEPARATE**. The historical one-actor Level B facing claim is
 the original return-facing contract and selected node discriminator remain
 **UNKNOWN**; no fix is implemented. P08-T03 original timing/4:3 baseline is
 **VALIDATED**.
+**P08 USER_DEMO_4 (2026-08-21):** MIPS `round.w.s` nearest-even is
+checkpointed (`5854872c79a7cab1c9395ddcd173cece449ffe11`;
+[[../../plan/evidence/p08-user-demo4-sincos-semantics-fix]]). Bind-tick and
+idle follow-cam glidx 1..38 match ANGRYLION_CONTROL.
+`CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`.
+Remaining first difference is dump glidx 39 walking-player `ncbapivot`
+([[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]]).
+P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING**; P09 remains
+**PENDING / NOT_FORMALLY_OPEN**.
 Evidência:
+[[../../plan/evidence/p08-user-demo4-sincos-semantics-fix]],
+[[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]],
 [[../../plan/evidence/p08-demo-movement-precision-diagnosis]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix]],
 [[../../plan/evidence/p08-stick-angle-thunk-fix-rereview]],

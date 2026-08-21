@@ -1,6 +1,6 @@
 ---
 title: "P08 — USER_DEMO_4 CA8B4 first seed / recurrence discriminator"
-description: "ANGRYLION_CONTROL vs RT64_CONTROL bit-level CA8B4 join on USER_DEMO_4 glidx 1..42. CA8B4 is an identity copier. Initialization matches. First ncbapivot tick produces the ULP seed; walk start amplifies it without a new CA8B4 external input."
+description: "ANGRYLION_CONTROL vs RT64_CONTROL bit-level CA8B4 join on USER_DEMO_4 glidx 1..42. CA8B4 remains an identity copier; the ULP seed is now attributed to the upstream func_80013818 round.w.s ties-to-even defect."
 status: current
 type: evidence
 project: TooieRecomp
@@ -25,8 +25,14 @@ INITIAL_CAMERA_FIELD_WRITER:            pre-ncbapivot default
                                         src2=c1f00000,41f00000,00000000
                                         (-30, +30, 0); both oracles
 
-FIRST_CA8B4_INPUT_BIT_DIFFERENCE_GLIDX: 1
-FIRST_CA8B4_INPUT_BIT_DIFFERENCE:       eye[0] 7 ULP, eye[2] 4 ULP,
+POST_ROUND_W_S_CORRECTION (2026-08-21): CA8B4 first-enter glidx 1..38 is now
+**bit-identical** vs ANGRYLION_CONTROL (eye_in/src2_in/pos/yaw/ideal).
+This glidx-1 ULP seed is **CORRECTED/SUPERSEDED**. Remaining first bit
+difference is dump glidx 39 ncbapivot output
+([[p08-user-demo4-post-round-full-state-discriminator]]).
+
+PRE_FIX_FIRST_CA8B4_INPUT_BIT_DIFFERENCE_GLIDX: 1
+PRE_FIX_FIRST_CA8B4_INPUT_BIT_DIFFERENCE:       eye[0] 7 ULP, eye[2] 4 ULP,
                                         src2[1]/camctrl 2 ULP
 FIRST_CA8B4_OUTPUT_BIT_DIFFERENCE_GLIDX: 1 (identity copy of those inputs)
 FIRST_CAMERA_RECORD_BIT_DIFFERENCE_GLIDX: 1 (after first ncbapivot)

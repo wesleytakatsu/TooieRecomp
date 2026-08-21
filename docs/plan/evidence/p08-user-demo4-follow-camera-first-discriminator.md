@@ -1,6 +1,6 @@
 ---
 title: "P08 — USER_DEMO_4 follow-camera first discriminator (camctrl glidx 41)"
-description: "ANGRYLION_CONTROL vs RT64_CONTROL proof that func_800CA628 writes selected+0x1C on USER_DEMO_4, stores src2[1], and already receives a non-bit-identical eye/src2 from func_800CA8B4 at glidx 36."
+description: "ANGRYLION_CONTROL vs RT64_CONTROL proof that func_800CA628 writes selected+0x1C on USER_DEMO_4. Idle CA8B4/CA628 glidx 1..38 are now bit-identical after ROUND.W.S; remaining first difference is dump glidx 39 ncbapivot output."
 status: current
 type: evidence
 project: TooieRecomp
@@ -21,8 +21,14 @@ CA628_CONFIRMED:                YES
 CA628_SEMANTIC_JOIN:            PASS
 CAMCTRL_SOURCE_WORD:            src2[1]  (src2[2] is 0.0 this clip; historical "src2[2]" is CORRECTED/SUPERSEDED for 0-based indexing)
 
-LAST_MATCHING_CAMCTRL_GLIDX:    38 at printed 0.001°  (303.985); bits already 1-2 ULP off from glidx 36
-FIRST_DIFFERENT_CAMCTRL_GLIDX:  41 at prior demo-sync 0.085° == this CA628 dump glidx 40
+POST_ROUND_W_S_CORRECTION (2026-08-21): idle CA8B4/CA628 glidx 1..38 are now
+**bit-identical**. The pre-fix glidx-1 / glidx-36 ULP seed is
+**CORRECTED/SUPERSEDED**. Canonical remaining discriminator:
+[[p08-user-demo4-post-round-full-state-discriminator]]
+(dump glidx 39 ncbapivot output; player pos/yaw/ideal MATCH).
+
+LAST_MATCHING_CAMCTRL_GLIDX:    dump 38 bits 43980d52 MATCH (was "printed 0.001° only" pre-fix)
+FIRST_DIFFERENT_CAMCTRL_GLIDX:  dump 39 (demo-sync printed split remains 41 at 0.0853°)
 
 FIRST_CA628_DIFFERENT_INPUT:    src2[1] and eye src[0]/src[2] at first window sample
 FIRST_CA628_DIFFERENT_INPUT_GLIDX: 36  (window sample; NOT first in clip)
@@ -32,7 +38,9 @@ TRUE_FIRST_CA8B4_INPUT_BIT_DIFFERENCE_GLIDX: 1
 func_800E1A58:                  identity (enter==leave) both oracles in this window; not the discriminator
 
 PLAYER_POSITION_BEFORE_CAM_SPLIT_MATCH: YES (spawn -84,0,-1855 through dump glidx 38)
-CAMERA_INTERNAL_STATE_BEFORE_SPLIT_MATCH: NO (eye Δ 0.00065 already at glidx 36)
+CAMERA_INTERNAL_STATE_BEFORE_SPLIT_MATCH: YES through dump glidx 38 after ROUND.W.S;
+                                          first remaining split is dump glidx 39
+                                          (pre-fix glidx-36 ULP CORRECTED/SUPERSEDED)
 CAMERA_TARGET_BEFORE_SPLIT_MATCH: YES if target = player; NO if target = follow-cam eye
 
 NCBAPIVOT_FIRST_DIFFERENT_READ: CA8B4-produced eye / src2 (not ncbapivot +0x5C; *+0x5C = 0 both)

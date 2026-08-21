@@ -3,18 +3,20 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — USER_BUG_A WASD resolved; first-straight 510 and first analog PASS; USER_BUG_B diagnosed on one sucoaster chdiggerground (Level B).
+- [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. ROUND.W.S bind-tick proven (`5854872`); dump glidx 39 walking ncbapivot residual remains; egg FIRE vs BLUE.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
 ## plan
 
-- [[plan/evidence/p08-provisional-player-ai-speed-parity]] — P08 — Provisional Player and AI Movement Speed Parity Baseline — Player scalar speed and AI actor speed magnitude and animation rate parity proven against ANGRYLION_CONTROL.
-- [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]] — P08 — USER_DEMO_4 bind-tick follow-eye — Enter MATCH; first A-candidate is `800137F4`/`80013818` yaw sincos (idx `006d5329` vs `006d5328`).
-- [[plan/evidence/p08-user-demo4-live-eye-writer]] — P08 — USER_DEMO_4 live-eye writer — Last `node+0x74` writer before glidx-1 enter is faithful `80110770` of an already-different computed eye from the mode=2 bind ncbapivot tick.
-- [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Live eye `node+0x74` already differs at glidx-1 ep3 enter (`B-NCBAPIVOT-INPUT`).
-- [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Rec init MATCH; CA8B4 identity copier; seed is `node+0x74` at ncbapivot enter.
-- [[plan/evidence/p08-user-demo4-follow-camera-first-discriminator]] — P08 — USER_DEMO_4 follow-camera CA628 writer/input discriminator — CA628 stores src2[1] at +0x1C; first window sample already differs at glidx 36.
+- [[plan/evidence/p08-provisional-player-ai-speed-parity]] — P08 — Provisional Player and AI Movement Speed Parity Baseline — Player scalar speed and AI actor speed magnitude proven against ANGRYLION_CONTROL in measured windows; animation cadence is not full animation-state parity.
+- [[plan/evidence/p08-user-demo4-sincos-semantics-fix]] — P08 — USER_DEMO_4 sincos MIPS round.w.s semantics fix — nearest-even ROUND.W.S; bind-tick discriminator RESOLVED; `CAMERA_COMPLETE_FIX: NO`.
+- [[plan/evidence/p08-user-demo4-post-round-full-state-discriminator]] — P08 — USER_DEMO_4 post-ROUND.W.S full-state discriminator — idle follow-cam 1..38 MATCH; first remaining bit difference is dump glidx 39 walking ncbapivot.
+- [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]] — P08 — USER_DEMO_4 bind-tick follow-eye — Pre-fix A-candidate `800137F4`/`80013818`; POST-FIX MATCH `006d5328`.
+- [[plan/evidence/p08-user-demo4-live-eye-writer]] — P08 — USER_DEMO_4 live-eye writer — Last `node+0x74` writer before glidx-1 enter is faithful `80110770`; computed source is upstream ROUND.W.S.
+- [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Pre-fix n74 DIFF is CORRECTED/SUPERSEDED; POST-FIX bind n74 MATCH; remaining dump glidx 39.
+- [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Rec init MATCH; CA8B4 identity; glidx-1 ULP seed CORRECTED/SUPERSEDED after ROUND.W.S.
+- [[plan/evidence/p08-user-demo4-follow-camera-first-discriminator]] — P08 — USER_DEMO_4 follow-camera CA628 writer/input discriminator — CA628 stores src2[1] at +0x1C; idle 1..38 MATCH after ROUND.W.S.
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
 - [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.

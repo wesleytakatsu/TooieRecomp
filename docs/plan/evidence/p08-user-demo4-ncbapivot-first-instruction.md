@@ -1,6 +1,6 @@
 ---
 title: "P08 — USER_DEMO_4 ncbapivot first-tick instruction discriminator"
-description: "ANGRYLION_CONTROL vs RT64_CONTROL join of ncbapivot_entrypoint_3 on USER_DEMO_4 glidx 1. Complete entry inputs do not match: node+0x74 / +0x80 already differ before the first instruction. CASE A / B-NCBAPIVOT-INPUT. No production fix."
+description: "ANGRYLION_CONTROL vs RT64_CONTROL join of ncbapivot_entrypoint_3 on USER_DEMO_4 glidx 1. Pre-fix B-NCBAPIVOT input is CORRECTED/SUPERSEDED by ROUND.W.S; post-fix bind-tick n74 MATCH. Remaining discriminator is dump glidx 39 walking ncbapivot."
 status: current
 type: evidence
 project: TooieRecomp
@@ -31,7 +31,10 @@ FPR_ENTRY_INPUTS_MATCH:            YES at first=1 enter (f0=45e72cee f12=4338d84
 FCSR_MATCH:                        rounding nearest both (RT fegetround=0;
                                    AN fcr31 bits[1:0]=00). Extra AN fcr31
                                    0x01000800 is not treated as the discriminator.
-OTHER_NCBAPIVOT_STATE_MATCH:       NO
+OTHER_NCBAPIVOT_STATE_MATCH:       NO (PRE-FIX). POST-FIX bind-tick n74 MATCH
+                                   (c43efa3b,43c49665,c4a6b798). Remaining
+                                   discriminator is dump glidx 39
+                                   ([[p08-user-demo4-post-round-full-state-discriminator]]).
 
 FIRST_ENTRY_INPUT_DIFFERENCE:      node+0x74 (live eye) and node+0x80 (dest)
   n74 x  RT c43efa34  AN c43efa3b  7 ULP

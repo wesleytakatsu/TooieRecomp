@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 implementation substantially complete (Verdict B; P08 ACTIVE / MANUAL_VALIDATION_PENDING). T07/T08 live integration reconciled and tested. Formal physical controller checklist and multi-monitor validation pending."
+description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 bind-tick round.w.s and idle follow-cam glidx 1..38 now match ANGRYLION_CONTROL; dump glidx 39 ncbapivot output and BLUE-vs-FIRE egg remain. Only formal P08 gate is PHYSICAL_GAMEPAD_VALIDATION."
 status: current
 type: handoff
 project: TooieRecomp
@@ -20,9 +20,11 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 - **Attract numbering / egg discriminator (2026-08-21)**: user demos are **continuous across intro blocks**, not zero-based Demo 0..3. Canonical evidence: [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]].
   - `USER_DEMO_4` = first gameplay after the first return to intro/music = map **235 Haunted Cavern** (`stage=0 sub=4`), **not** "Demo 3".
   - `EGG_PARITY_DEFECT: PROVEN` — Angrylion fires **FIRE** (`cheggfire` 535); RT64 fires **BLUE** (`cheggnormal` 539). User confirmed Angrylion RDP Plus nightly-build visual PASS for fire egg and for the previously-broken demo behavior.
-  - Follow-camera on USER_DEMO_4 is **REPRODUCED**: pad 877/877 match. **Bit-level** first difference is bind-tick yaw sincos `func_800137F4`/`func_80013818` (`006d5329` vs `006d5328`) that produces `sp+0x48`, then faithfully copied to `node+0x74`. Glidx-1 enter already carries that seed. **Visible** 0.085° `camctrl` split remains demo-sync glidx 41 (FEEDBACK_ACCUMULATION). Warp-in uses `ncpod`/`ncpoducam`. Canonical: [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]].
+  - Follow-camera on USER_DEMO_4 is **REPRODUCED**: pad 877/877 match. Bind-tick yaw sincos is now **POST-FIX MATCH** vs ANGRYLION_CONTROL (`006d5328` / `bf4b29cc` / `sp+0x48`=`node+0x74`=`c43efa3b,43c49665,c4a6b798`). Idle CA8B4/CA628 glidx 1..38 is now **bit-identical**. First remaining bit difference is dump glidx 39 `ncbapivot_entrypoint_3` output (player pos/yaw/ideal MATCH). Demo-sync still prints 0.0853° @41 → 12.0481° @50 → 112.6789° @100. Canonical: [[plan/evidence/p08-user-demo4-post-round-full-state-discriminator]].
+  - `EGG_PARITY_DEFECT` remains **PROVEN**: Angrylion **FIRE** (`cheggfire` 535); RT64 **BLUE** (`cheggnormal` 539). Independent of ROUND.W.S: **YES**. Independent of remaining camera/demo split: **UNKNOWN**. No egg fix.
   - b042865 `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET` is **CORRECTED/SUPERSEDED** for USER_DEMO_4. Demo 0..3 remains an incomplete attract slice.
-- **Next Single Action**: GPT-5.6 Terra instruction-join of `func_80013818` on the USER_DEMO_4 bind-tick yaw invocation (`f12=4399bcf1`). No production fix. P09 remains **NOT_FORMALLY_OPEN**.
+- **ROUND.W.S checkpoint (2026-08-21)**: `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`). `ROUND_W_S_ROOT_CAUSE: PROVEN`. `ORIGINAL_BIND_TICK_DISCRIMINATOR: RESOLVED`. `ROUND_W_S_BIND_AND_IDLE_CAMERA_EFFECT: FIXED`. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`. `ROUND_W_S_SPECIAL_VALUE_CONTRACT: PARTIAL`. Evidence: [[plan/evidence/p08-user-demo4-sincos-semantics-fix]].
+- **Next Single Action**: Instruction-join `ncbapivot_entrypoint_3` at dump glidx 39 (first walking-player follow tick). Do not reopen bind-tick `round.w.s`. P09 remains **NOT_FORMALLY_OPEN**.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`

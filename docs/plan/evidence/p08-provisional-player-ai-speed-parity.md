@@ -25,13 +25,17 @@ PLAYER_DIRECTION_PARITY:            PASS (USER_DEMO_1 & USER_DEMO_2) / FAIL (USE
 USER_DEMO4_SPEED_MAGNITUDE_MATCH:   YES (0.0017..2.87 u/s before collision, sub-0.5% slope variation)
 USER_DEMO4_DIRECTION_MATCH:         NO (Diverges from glidx 41 due to follow camera 0.085° split)
 USER_DEMO4_CLASSIFICATION:          CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY
+                                        (post-ROUND.W.S: first camera bit split is
+                                        dump glidx 39 ncbapivot, not idle ULP;
+                                        [[p08-user-demo4-post-round-full-state-discriminator]])
 
 PLAYER_PHYSICS_DT_MATCH:            YES (0.050000 s physics integration; 0.033333 s logic input step)
 PLAYER_PHYSICS_UPDATE_COUNT_MATCH:  YES (1:1 advance per consumed glrecord sample; 0 double/skip)
-PLAYER_ANIMATION_RATE_MATCH:        YES (30.0 Hz animation cadence, frame advance 1:1)
+PLAYER_ANIMATION_RATE_MATCH:        YES (30.0 Hz cadence in measured windows ONLY;
+                                        cadence is NOT full animation-state parity)
 
 AI_ACTOR_SPEED_PARITY:              PASS (100% agreement on measured autonomous and path-following actors)
-AI_ACTOR_ANIMATION_RATE_MATCH:      YES (30.0 Hz update cadence)
+AI_ACTOR_ANIMATION_RATE_MATCH:      YES (30.0 Hz cadence only; not full AI anim-state parity)
 
 FIRST_PROVEN_SPEED_DEFECT:          NONE (Scalar movement physics, speed interpolation, and dt match original N64)
 ROOT_CAUSE_LEVEL:                   R-MOTION-ORACLE (Direction defect in USER_DEMO_4 is camera-induced, NOT player speed)
@@ -89,7 +93,7 @@ Three deterministic movement windows were measured and evaluated:
 - **Input:** Initial idle `(2,2)` transitioning to analog run `(-60, -64)`
 - **Behavior State:** `bs=0` (Idle) -> `bs=1` -> `bs=3` (Walk/Run)
 - **Physics Target:** `tspd = 500.0`
-- **Camera State:** Mode 2 `ncbapivot` follow-camera (first divergence at glidx 41)
+- **Camera State:** Mode 2 `ncbapivot` follow-camera (post-ROUND.W.S first bit split is dump glidx 39; demo-sync still prints 0.085° at 41)
 
 ### Window C: USER_DEMO_1 (Wooded Hollow, map 335, sub=0) — Post-Egg Sustained Run and Jump
 - **Range:** `glidx 380..460` (81 samples)

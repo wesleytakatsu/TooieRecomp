@@ -93,7 +93,9 @@ REGRESSION_TEST:                       PASS (mips_rounding_test; -UNDEBUG)
 CUMULATIVE_PATCH_CLEAN_APPLY:          PASS (base 2b6f05688de2abc7d86da5b4a89b84c2c6acbabe; --whitespace=error)
 N64RECOMP_RELEVANT_TESTS:              PASS (PreemptionSafepointTest 75/0)
 TOOIERECOMP_BUILD:                     PASS
-COMMIT:                                architectural checkpoint (CAMERA_COMPLETE_FIX=NO)
+COMMIT:                                5854872c79a7cab1c9395ddcd173cece449ffe11
+                                       (`fix: preserve MIPS round.w.s semantics`;
+                                        CAMERA_COMPLETE_FIX=NO)
 ```
 
 The cumulative patch was reconstructed from the clean registered base plus all

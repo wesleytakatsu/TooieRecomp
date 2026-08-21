@@ -1,6 +1,6 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente P08: o oracle hardware-faithful Angrylion RDP Plus + CXD4 LLE sustenta o R-ORACLE e o R-MOTION-ORACLE no stream medido do Demo 0; a validação física formal permanece pendente."
+description: "Estado autossuficiente P08: o oracle Angrylion RDP Plus + CXD4 LLE sustenta o R-ORACLE e o R-MOTION-ORACLE; USER_DEMO_4 bind-tick round.w.s e idle follow-cam 1..38 agora casam com o oracle; a primeira diferença restante é ncbapivot no dump glidx 39."
 status: evidence
 phase: P08
 updated: 2026-08-21
@@ -11,13 +11,14 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 ## CURRENT_HEAD
 
-- Branch: `main`.
+- Branch: `main` @ `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`).
 - Provisional Player & AI Speed Parity Baseline: [[p08-provisional-player-ai-speed-parity]] (`PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`, `USER_DEMO4_CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`, `HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
 - Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
-- USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] (glidx 1; rec init MATCH; CA8B4 identity; `B-CAMERA-RECURRENT-SEED`).
-- USER_DEMO_4 ncbapivot first tick: [[p08-user-demo4-ncbapivot-first-instruction]] (`node+0x74`/`+0x80` already differ at glidx-1 ep3 enter; `B-NCBAPIVOT-INPUT`).
+- USER_DEMO_4 post-ROUND.W.S full-state discriminator: [[p08-user-demo4-post-round-full-state-discriminator]] (idle CA8B4/CA628 glidx 1..38 MATCH; first remaining bit difference = dump glidx 39 `ncbapivot_entrypoint_3` output; player pos/yaw/ideal MATCH; `A_CANDIDATE=YES`).
+- USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] (pre-fix glidx-1 ULP **CORRECTED/SUPERSEDED** by ROUND.W.S).
+- USER_DEMO_4 ncbapivot first tick: [[p08-user-demo4-ncbapivot-first-instruction]] (pre-fix n74 DIFF; **POST-FIX bind n74 MATCH**).
 - USER_DEMO_4 live-eye writer: [[p08-user-demo4-live-eye-writer]] (node init MATCH; `80110770`/`800EE7F8` faithful; first bit write is ordinal 2 on the mode=2 bind ncbapivot tick).
-- USER_DEMO_4 bind-tick follow-eye: [[p08-user-demo4-bind-tick-follow-eye]] (enter MATCH; `A-CANDIDATE-HELPER` `800137F4`/`80013818` yaw sincos, idx `006d5329` vs `006d5328`).
+- USER_DEMO_4 bind-tick follow-eye: [[p08-user-demo4-bind-tick-follow-eye]] (pre-fix A-CANDIDATE `006d5329` vs `006d5328`; **POST-FIX MATCH** `006d5328`). Live replay: [[p08-user-demo4-sincos-semantics-fix]].
 - Active Fix Evidence: [[p08-attract-loop-after-demo2-crash]] (**RESOLVED and VALIDATED**).
 - Preserved diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
@@ -57,7 +58,7 @@ Canonical tasks (T01..T11) audited:
 - Only remaining formal P08 gate: **PHYSICAL_GAMEPAD_VALIDATION**.
 - Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
 - Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` and USER_DEMO_4 follow-camera **REPRODUCED**; Demo 0..3 is not the complete attract cycle).
-- USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] — rec init MATCH, CA8B4 identity. First bit difference is live `node+0x74` at glidx-1 ncbapivot **enter**. Last writer of that seed: `func_80110770` ordinal 2 on the mode=2 bind tick ([[p08-user-demo4-live-eye-writer]]). Bind-tick producer: [[p08-user-demo4-bind-tick-follow-eye]] (`A-CANDIDATE-HELPER`). `glidx 36` is not the root. Next: GPT-5.6 Terra join of `func_80013818` yaw. No fix.
+- USER_DEMO_4 post-ROUND.W.S full-state join: [[p08-user-demo4-post-round-full-state-discriminator]] — idle follow-cam glidx 1..38 bit-identical; first remaining bit difference is dump glidx 39 ncbapivot output with matching player inputs. Demo-sync still prints 0.0853° @41 then feedback accumulation. Egg remains BLUE vs FIRE; independence from remaining camera is **UNKNOWN**. ROUND.W.S architectural fix is committed as `5854872c79a7cab1c9395ddcd173cece449ffe11` (`CAMERA_COMPLETE_FIX: NO`, `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`). `glidx 36` / pre-fix glidx-1 seed are **CORRECTED/SUPERSEDED**.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -330,14 +331,14 @@ JAL sites call them directly without `LOOKUP_FUNC`.
 **Validation:**
 - `tests/attract_demo2_transition_jal_test.py`: **PASS** (17 lookups -> 0, 7/7 bodies present, semantics match original MIPS).
 - Generator unit test in `PreemptionSafepointTest` (`test_jal_resolution_policy`): **PASS** (75/75 assertions).
-- All native unit tests (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`, `bcf28_helpers_test`, `core1_ra_wrappers_test`): **PASS**.
+- All native unit tests (`stick_angle_thunk_test`, `matrix_submission_test`, `input_direction_test`, `bcf28_helpers_test`, `core1_ra_wrappers_test`, `mips_rounding_test`): **PASS**.
 - Full 300s autonomous attract soak with Vulkan: **PASS** (completed transitions `INTRO → 335 Wooded Hollow → 278 TDL → 314 CCL → 395 CS Intro → INTRO → 235 Mayahem → 296 JRL`, `EXIT_139=NO`, `UNEXPECTED_SIGSEGV=NO`).
 
 ```text
 ROOT_CAUSE_LEVEL: A
 FIX_OWNER: N64RECOMP
 CREATESTATIC_ORDERING_FIX: IMPLEMENTED in patches/runtime/n64recomp-tooie.patch
-PATCH_SHA256: 1f2ce7c0d9708df1024a332c1a162049158e368a4e86b747740bb1ccb4236034
+PATCH_SHA256: adf97c9dfe20220143939ca1aa8728afc14a4eff957e35d8d2352ef027b98dc7
 VULNERABLE_LOOKUPS_BEFORE: 17
 VULNERABLE_LOOKUPS_AFTER: 0
 GENERATED_LOCAL_BODIES: 7/7

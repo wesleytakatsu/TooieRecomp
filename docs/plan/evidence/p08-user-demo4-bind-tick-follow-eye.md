@@ -1,6 +1,6 @@
 ---
 title: "P08 — USER_DEMO_4 bind-tick computed follow-eye discriminator"
-description: "Instruction/call join of the first ncbapivot_entrypoint_3 (mode=2 glidx=0). Entry inputs MATCH. First same-input/different-output helper is func_800137F4 → func_80013818 sincos of yaw 4399bcf1. Table index 006d5329 vs 006d5328. A-CANDIDATE-HELPER. No production fix."
+description: "Instruction/call join of the first ncbapivot_entrypoint_3 (mode=2 glidx=0). The sincos index split is now classified as MIPS round.w.s ties-to-even, with a reusable N64Recomp/runtime correction documented in p08-user-demo4-sincos-semantics-fix."
 status: current
 type: evidence
 project: TooieRecomp
@@ -58,13 +58,21 @@ SP48_Z_FIRST_DIVERGENCE:             800EF214 mul.s 0x800EF280 using 13788 cos
 
 FIRST_PROVEN_CAUSAL_DIFFERENCE:      800137F4/80013818 yaw sincos table index
                                      006d5329 vs 006d5328 (8 ULP on sin)
-ROOT_CLASS:                          A-CANDIDATE-HELPER
+ROOT_CLASS:                          A-CANDIDATE-HELPER (pre-fix)
 A_CANDIDATE:                         YES
 A_CANDIDATE_FUNCTION:                func_80013818 via func_800137F4
-A_CANDIDATE_PC:                      0x80013848 (trunc.w.s); helper entry 0x800137F4
-FIX_IMPLEMENTED:                     NO
-EGG_PARITY_DEFECT:                   PROVEN_BUT_DEFERRED
-NEXT_RECOMMENDED_MODEL:              GPT-5.6 Terra
+A_CANDIDATE_PC:                      0x80013848 (round.w.s); helper entry 0x800137F4
+FIX_IMPLEMENTED:                     YES (MIPS round.w.s ties-to-even; see p08-user-demo4-sincos-semantics-fix)
+POST_FIX_BIND_TICK_OUTPUTS_MATCH:    YES (idx 006d5328, sin bf4b29cc, sp48/n74 c43efa3b,43c49665,c4a6b798)
+IDLE_FOLLOW_CAM_BIT_IDENTITY_GLIDX_1_38: YES after this fix (CA8B4/CA628)
+CAMERA_FEEDBACK_ACCUMULATION:        STILL_PRESENT
+FIRST_REMAINING_BIT_DIFFERENCE:      dump glidx 39 ncbapivot_entrypoint_3 output
+                                     (player pos/yaw/ideal MATCH; see
+                                     [[p08-user-demo4-post-round-full-state-discriminator]])
+EGG_PARITY_DEFECT:                   PROVEN (FIRE vs BLUE)
+EGG_INDEPENDENT_FROM_ROUND_W_S:      YES
+EGG_INDEPENDENT_FROM_REMAINING_CAMERA_STATE: UNKNOWN
+NEXT_SINGLE_ACTION:                  instruction-join ncbapivot_entrypoint_3 at dump glidx 39; do not reopen round.w.s
 ```
 
 Pitch sincos (`800137AC` / first `80013818`) is bit-identical. `func_80013B70` / `func_80013B7C` MATCH this tick — do not reopen them. `800EFB24`, `sqrtf`, `800EE780` are faithful. `800EE7F8` remains a faithful copier.
@@ -235,12 +243,27 @@ Do not normalize 4–8 ULP.
 ## 8. Closed / deferred
 
 ```text
-EGG_PARITY_DEFECT:     PROVEN_BUT_DEFERRED
-FIX_IMPLEMENTED:       NO
+EGG_PARITY_DEFECT:     INDEPENDENT_PROVEN_PARITY_DEFECT
+FIX_IMPLEMENTED:       YES (bind-tick round.w.s only)
 P08_STATUS:            ACTIVE_MANUAL_VALIDATION_PENDING
 P09_STATUS:            PENDING_NOT_FORMALLY_OPEN
 ```
 
-Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, old gl385/gl392, `func_80013B70` (MATCH this tick), or C4C34. Do not treat `800EE780` / `800EFB24` / `800EE7F8` as A-candidates.
+Do not reopen CA8B4, CA628, E1A58, Rice Z-buffer, old gl385/gl392, `func_80013B70` (MATCH this tick), or C4C34. Do not treat `800EE780` / `800EFB24` / `800EE7F8` as A-candidates. Do not reopen `round.w.s` ties-to-even: the bind-tick yaw invocation now matches ANGRYLION_CONTROL.
 
-Next bounded action: GPT-5.6 Terra instruction-join of `func_80013818` on this yaw invocation (`f12=4399bcf1`), comparing generated `MUL_S`/`trunc` vs Angrylion `mul.s`/`trunc.w.s` at `0x80013844`/`0x80013848`. No production fix.
+## 9. Post-fix live replay (2026-08-21)
+
+`TOOIE_UD4_FIRST_TICK=1` on DISPLAY=:0 / RADV POLARIS10. Bind-tick leave now matches Angrylion bit-for-bit:
+
+```text
+POST_FIX_TABLE_INDEX_MATCH: YES  006d5328 / 006d5328
+POST_FIX_SIN_BITS_MATCH:    YES  bf4b29cc / bf4b29cc
+POST_FIX_SP48_MATCH:        YES  c43efa3b,43c49665,c4a6b798
+POST_FIX_NODE74_MATCH:      YES  c43efa3b,43c49665,c4a6b798
+```
+
+Full USER_DEMO_4 pad 877/877. First remaining demo-sync split is still glidx 41 `camctrl` 306.0416 vs 306.1269 (0.0853°), then 12.0481° @50 and 112.6789° @100. That recurrence is **STILL_PRESENT**; the bind-tick seed is no longer the live discriminator. RT64 egg remains `cheggnormal` 539 BLUE against Angrylion `cheggfire` 535 FIRE.
+
+ROUND.W.S architectural checkpoint: `5854872c79a7cab1c9395ddcd173cece449ffe11`. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`.
+
+Next bounded action: instruction-join the first walking-player `ncbapivot` at dump glidx 39. Do not reopen `round.w.s`.
