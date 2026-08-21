@@ -4,7 +4,7 @@
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
 - [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. ROUND.W.S bind-tick proven (`5854872`); dump glidx 39 walking ncbapivot residual remains; egg FIRE vs BLUE.
-- [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Este vault usa as tools do MCP `markdown-vault` (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
+- [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Vault = `TooieRecomp/docs`. Configs de MCP/IDE no TooieRecomp (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`). Abrir agentes neste repositório, não em `N64-Recomp/`.
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [[specs/BT/angrylion-control-oracle]] — ANGRYLION_CONTROL — Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE pinned under `tools/oracle/angrylion-control/` (measurement only; TooieRecomp stays RT64).
 

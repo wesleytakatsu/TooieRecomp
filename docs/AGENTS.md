@@ -9,6 +9,20 @@ tags: [agents, workflow, tooierecomp, rules]
 
 # Regras para agentes — TooieRecomp
 
+## Workspace
+
+Abra o CLI/IDE em `TooieRecomp/` (este repositório git). Não use
+`N64-Recomp/` como raiz do agente: as configs de MCP/vault agora vivem
+aqui (`docs/MARKDOWN_VAULT_TOOLS.md`).
+
+Irmãos no disco, fora deste git, que o **build** ainda usa:
+
+- `../BanjoRecomp` — RT64, N64ModernRuntime, assets (`CMakeLists.txt` `BK_ROOT`)
+- `../Banjo-Tooie (USA).z64` — cartucho do oráculo Angrylion (`TOOIE_CART_Z64`)
+- `../banjo-tooie-Recomp` — decomp; não é o executável Tooie
+
+Não copie `.venv` do pai. Não trate `BanjoRecomp` como o jogo.
+
 ## Ordem de leitura
 
 1. Leia [[plan/index|o plano mestre]].

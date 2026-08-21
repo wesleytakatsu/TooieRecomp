@@ -4,6 +4,15 @@ This file applies to the entire repository unless a deeper `AGENTS.md` overrides
 
 The detailed project workflow lives in [`docs/AGENTS.md`](docs/AGENTS.md). Read and obey that file before making technical changes.
 
+## Workspace root
+
+Start CLI and IDE agents in **this directory** (`TooieRecomp/`). Project MCP
+configs (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`,
+`.agents/mcp_config.json`) bind markdown-vault to `docs/`. Do not open
+`N64-Recomp/` as the workspace. Sibling checkouts (`BanjoRecomp`, ROM,
+`banjo-tooie-Recomp`) stay next to this folder for CMake and the Angrylion
+oracle; they are not this git repository.
+
 ## Required read order
 
 Before changing code, build logic, patches, plans, or specs:

@@ -2,13 +2,41 @@
 title: "Guia de uso do MCP markdown-vault"
 status: "current"
 area: "root"
-updated: 2026-08-08
+updated: 2026-08-21
 ---
 
 # Guia de uso do MCP markdown-vault
 
 Este vault usa as tools do MCP `markdown-vault`
 (`/home/wesley/projetos/markdown-vault-mcp-standalone`).
+
+## Workspace e configs do projeto
+
+Inicie Grok, Claude, Codex, OpenCode e VS Code em **`TooieRecomp/`**, não em
+`N64-Recomp/`. O vault é só `docs/`.
+
+| Cliente | Config no TooieRecomp |
+| --- | --- |
+| Grok / Claude Code | `.mcp.json` |
+| Codex | `.codex/config.toml` |
+| OpenCode | `opencode.json` |
+| VS Code | `.vscode/mcp.json` |
+| outros agentes | `.agents/mcp_config.json` |
+
+Todos apontam:
+
+```text
+cwd:                 TooieRecomp/docs
+MARKDOWN_VAULT_PATH: TooieRecomp/docs
+```
+
+O servidor Node continua fora do repo
+(`markdown-vault-mcp-standalone`). Cópias antigas no pai `N64-Recomp/`
+(`cwd` no monorepo) ficam só para sessões velhas; não as edite.
+
+`BanjoRecomp/`, `banjo-tooie-Recomp/` e a ROM NTSC-U continuam **irmãos**
+do TooieRecomp no disco (CMake, `assets`, patches, oráculo). Não entram no
+vault nem no git do Tooie.
 
 ## list_files
 

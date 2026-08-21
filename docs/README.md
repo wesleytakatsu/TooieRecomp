@@ -14,7 +14,7 @@ Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
 - [VAULT (índice hierárquico)](VAULT.md)
 - [Regras para agentes](AGENTS.md)
-- [Markdown Vault MCP (guia de uso)](MARKDOWN_VAULT_TOOLS.md)
+- [Markdown Vault MCP (guia de uso)](MARKDOWN_VAULT_TOOLS.md) — workspace = TooieRecomp; vault = `docs/`
 - [Specifications (hub)](specs/index.md)
 
 ## Especificações por projeto

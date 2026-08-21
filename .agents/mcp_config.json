@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "markdown-vault": {
+      "command": "/usr/bin/node",
+      "args": [
+        "/home/wesley/projetos/markdown-vault-mcp-standalone/dist/index.js"
+      ],
+      "cwd": "/home/wesley/projetos/N64-Recomp/TooieRecomp/docs",
+      "env": {
+        "MARKDOWN_VAULT_PATH": "/home/wesley/projetos/N64-Recomp/TooieRecomp/docs"
+      }
+    }
+  }
+}

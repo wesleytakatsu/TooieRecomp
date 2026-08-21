@@ -32,6 +32,8 @@ build-cmake/
 .idea/
 *.user
 *.suo
+.claude/settings.local.json
+.opencode/node_modules/
 
 # Python
 __pycache__/
