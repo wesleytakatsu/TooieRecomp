@@ -9,6 +9,7 @@
 
 ## plan
 
+- [[plan/evidence/p08-provisional-player-ai-speed-parity]] — P08 — Provisional Player and AI Movement Speed Parity Baseline — Player scalar speed and AI actor speed magnitude and animation rate parity proven against ANGRYLION_CONTROL.
 - [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]] — P08 — USER_DEMO_4 bind-tick follow-eye — Enter MATCH; first A-candidate is `800137F4`/`80013818` yaw sincos (idx `006d5329` vs `006d5328`).
 - [[plan/evidence/p08-user-demo4-live-eye-writer]] — P08 — USER_DEMO_4 live-eye writer — Last `node+0x74` writer before glidx-1 enter is faithful `80110770` of an already-different computed eye from the mode=2 bind ncbapivot tick.
 - [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Live eye `node+0x74` already differs at glidx-1 ep3 enter (`B-NCBAPIVOT-INPUT`).

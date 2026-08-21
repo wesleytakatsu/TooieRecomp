@@ -12,6 +12,7 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 ## CURRENT_HEAD
 
 - Branch: `main`.
+- Provisional Player & AI Speed Parity Baseline: [[p08-provisional-player-ai-speed-parity]] (`PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`, `USER_DEMO4_CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`, `HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
 - Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
 - USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] (glidx 1; rec init MATCH; CA8B4 identity; `B-CAMERA-RECURRENT-SEED`).
 - USER_DEMO_4 ncbapivot first tick: [[p08-user-demo4-ncbapivot-first-instruction]] (`node+0x74`/`+0x80` already differ at glidx-1 ep3 enter; `B-NCBAPIVOT-INPUT`).
@@ -665,3 +666,28 @@ FULL_ATTRACT_SEQUENCE_REPEAT_PROVEN: NO
 FIX_IMPLEMENTED:                NO
 NEXT_SINGLE_ACTION:             dump USER_DEMO_4 CA8B4/camera-record eye+camctrl for glidx 1-35 idle slew; no fix
 ```
+
+## Provisional Player & AI Movement Speed Parity Baseline (2026-08-21)
+
+Canonical: [[p08-provisional-player-ai-speed-parity]].
+
+Independent parity check of movement speed magnitude, timing, animation rate, and trajectory across `ANGRYLION_CONTROL` (Mupen64Plus Pure Interpreter + Angrylion RDP Plus + CXD4 LLE) and `RT64_CONTROL` (TooieRecomp):
+
+1. **Player Scalar Speed Parity:** **PASS**
+   - Window A (`USER_DEMO_1` First Straight glidx 20..70): `tspd = 500.0`, `velxz = 510.2442 u/s` both runtimes (speed error = `0.000018 u/s`, direction error = `0.000204°`). Downhill slope scale `1.019454` confirmed original N64 behavior (`HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
+   - Window C (`USER_DEMO_1` Post-Egg glidx 380..460): `tspd = 620.0`, peak run `velxz = 673.5218 u/s` (speed error = `0.000564 u/s`, direction error = `0.005849°`).
+   - Window B (`USER_DEMO_4` Haunted Cavern transition glidx 38..60): speed magnitude `sqrt(vx² + vz²)` matches within `0.0017..2.87 u/s` (sub-0.5% slope variation), while direction diverges due to the proven follow-camera defect (`CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`).
+2. **AI Actor Speed Parity:** **PASS**
+   - `chdiggerground` (Marker 337 / ovl 219+220): 100% exact route speed match (`0.0000 u/s` error).
+   - Autonomous Patrol Baddie (Marker 2 / `sys 0x80086E60`): constant 15.8114 u/s waypoint patrol (`0.0000 u/s` error).
+   - `chjinjo` (Marker 148): stationary idle and vertical hop parity (`0.0000 u/s` horizontal error).
+3. **Timing and Physics dt:** **PASS**
+   - Logic tick rate: 30.000 Hz (`1:1` advance per consumed glrecord sample).
+   - Physics dt: `0.050000 s` during baphysics integration; `0.033333 s` input step.
+   - Animation update frequency: 30.0 Hz.
+4. **Classification & Status:**
+   - `FIRST_PROVEN_SPEED_DEFECT: NONE`
+   - `ROOT_CLASS: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`
+   - `FIX_IMPLEMENTED: NO`
+   - `P08_STATUS: ACTIVE_MANUAL_VALIDATION_PENDING`
+   - `P09_STATUS: PENDING_NOT_FORMALLY_OPEN`
