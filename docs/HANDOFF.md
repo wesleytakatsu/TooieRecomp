@@ -19,9 +19,9 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 - **Attract numbering / egg discriminator (2026-08-21)**: user demos are **continuous across intro blocks**, not zero-based Demo 0..3. Canonical evidence: [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]].
   - `USER_DEMO_4` = first gameplay after the first return to intro/music = map **235 Haunted Cavern** (`stage=0 sub=4`), **not** "Demo 3".
   - `EGG_PARITY_DEFECT: PROVEN` — Angrylion fires **FIRE** (`cheggfire` 535); RT64 fires **BLUE** (`cheggnormal` 539). User confirmed Angrylion RDP Plus nightly-build visual PASS for fire egg and for the previously-broken demo behavior.
-  - Follow-camera on USER_DEMO_4 is **REPRODUCED**: pad 877/877 match, `camctrl` first split at glidx 41 (0.085°), then FEEDBACK_ACCUMULATION of camera and player trajectory. Warp-in uses `ncpod`/`ncpoducam`, not `ncbapivot`.
+  - Follow-camera on USER_DEMO_4 is **REPRODUCED**: pad 877/877 match. **Bit-level** first difference is glidx 1 (`ncbapivot` first-tick output; init MATCH; CA8B4 identity copier). **Visible** 0.085° `camctrl` split remains demo-sync glidx 41 (FEEDBACK_ACCUMULATION). Warp-in uses `ncpod`/`ncpoducam`. Canonical: [[plan/evidence/p08-user-demo4-ca8b4-first-seed]].
   - b042865 `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET` is **CORRECTED/SUPERSEDED** for USER_DEMO_4. Demo 0..3 remains an incomplete attract slice.
-- **Next Single Action**: dump USER_DEMO_4 `func_800CA8B4` / camera-record eye+camctrl for glidx 1-35 idle slew (first ULP origin). `func_800CA628` is a faithful copier; first window sample already differs. No production fix. P09 remains **NOT_FORMALLY_OPEN**.
+- **Next Single Action**: capture complete `ncbapivot_entrypoint_3` inputs/FPU on USER_DEMO_4 glidx 1. No production fix. P09 remains **NOT_FORMALLY_OPEN**.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`

@@ -13,6 +13,7 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 - Branch: `main`.
 - Attract user-numbering / USER_DEMO_4 egg defect: [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN`).
+- USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] (glidx 1 ncbapivot output; init MATCH; CA8B4 identity; `B-CAMERA-RECURRENT-SEED`).
 - Active Fix Evidence: [[p08-attract-loop-after-demo2-crash]] (**RESOLVED and VALIDATED**).
 - Preserved diagnosis: [[p08-demo-movement-precision-diagnosis]] §16 & §17 (first demo shot miss & target collision volume resolved).
 - Active Fix Evidence: [[p08-stick-angle-thunk-fix]].
@@ -52,6 +53,7 @@ Canonical tasks (T01..T11) audited:
 - Only remaining formal P08 gate: **PHYSICAL_GAMEPAD_VALIDATION**.
 - Next phase: **P09 remains PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is completed.
 - Provisional pre-P09 parity evidence: **CORRECTED/SUPERSEDED** by [[p08-provisional-follow-camera-and-egg-differential]] (`EGG_PARITY_DEFECT: PROVEN` and USER_DEMO_4 follow-camera **REPRODUCED**; Demo 0..3 is not the complete attract cycle).
+- USER_DEMO_4 CA8B4 first seed: [[p08-user-demo4-ca8b4-first-seed]] — init MATCH, CA8B4 identity, first bit difference at glidx 1 from `ncbapivot_entrypoint_3`. `glidx 36` is not the root. Next: complete ncbapivot glidx-1 input/FPU capture. No fix.
 
 ## CURRENT_PRODUCT_STATE
 
@@ -292,6 +294,7 @@ DEEPSEEK_DISCRIMINATOR_PUSHED: YES
 6c. [[p08-demo-projection-record-34-differential]] — +0x34 writer B-INPUT; a3 join later corrected
 6d. [[p08-demo-projection-v1-direction-producer]] — v1[2] producer; a3 inequality CORRECTED/SUPERSEDED
 6e. [[p08-demo-projection-classifier-rejoin]] — Q1 +0x34 real; B-STATE func_8001A0C0 v0
+6f. [[p08-user-demo4-ca8b4-first-seed]] — USER_DEMO_4 glidx-1 ncbapivot seed
 7. `docs/HANDOFF.md`, `docs/plans/BT/08-rt64-input-and-frontend.md`
 
 ## CHECKPOINT SCOPE

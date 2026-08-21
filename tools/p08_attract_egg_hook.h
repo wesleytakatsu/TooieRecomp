@@ -51,6 +51,14 @@ static inline void p08_read_attract(struct r4300_core* r4300, int* mode, int* ma
 static FILE* s_p08_ud4 = NULL;
 static uint32_t s_p08_ud4_seq = 0;
 static uint32_t s_p08_ca628_dst = 0;
+static uint32_t s_p08_ca8b4_a0 = 0;
+static uint32_t s_p08_ca8b4_a1 = 0;
+static uint32_t s_p08_ca8b4_a2 = 0;
+static int s_p08_ca8b4_glidx = -1;
+static int s_p08_ca8b4_ord = 0;
+static int s_p08_ca8b4_last_glidx = -1;
+static int s_p08_ca8b4_n = 0;
+static int s_p08_ncbapivot_n = 0;
 
 static inline FILE* p08_ud4_fp(void)
 {
@@ -69,7 +77,7 @@ static inline int p08_ud4_window(struct r4300_core* r4300, int* glidx_out)
     if (glidx_out) {
         *glidx_out = glidx;
     }
-    return (mode == 5 && sub == 4 && glidx >= 36 && glidx <= 50);
+    return (mode == 5 && sub == 4 && glidx >= 0 && glidx <= 42);
 }
 
 static inline void p08_ud4_vec(struct r4300_core* r4300, uint32_t addr, float* x, float* y, float* z, uint32_t* zbits)
@@ -86,6 +94,72 @@ static inline void p08_ud4_vec(struct r4300_core* r4300, uint32_t addr, float* x
     }
 }
 
+static inline int p08_guest(uint32_t a)
+{
+    return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+}
+
+static inline void p08_ud4_dump_reads(struct r4300_core* r4300, FILE* fp, uint32_t rec)
+{
+    uint32_t e0 = 0, e1 = 0, e2 = 0, s0 = 0, s1 = 0, s2 = 0;
+    if (p08_guest(rec)) {
+        (void)r4300_read_aligned_word(r4300, rec + 0x00u, &e0);
+        (void)r4300_read_aligned_word(r4300, rec + 0x04u, &e1);
+        (void)r4300_read_aligned_word(r4300, rec + 0x08u, &e2);
+        (void)r4300_read_aligned_word(r4300, rec + 0x18u, &s0);
+        (void)r4300_read_aligned_word(r4300, rec + 0x1Cu, &s1);
+        (void)r4300_read_aligned_word(r4300, rec + 0x20u, &s2);
+    }
+    fprintf(fp,
+            " rec=%08x eye_in=%08x,%08x,%08x src2_in=%08x,%08x,%08x "
+            "eye=(%.6f,%.6f,%.6f) src2=(%.6f,%.6f,%.6f)",
+            rec, e0, e1, e2, s0, s1, s2,
+            p08_f32(e0), p08_f32(e1), p08_f32(e2), p08_f32(s0), p08_f32(s1), p08_f32(s2));
+}
+
+static inline uint32_t p08_ud4_sel_rec(struct r4300_core* r4300)
+{
+    uint32_t ps = 0, selw = 0, rec = 0;
+    (void)r4300_read_aligned_word(r4300, 0x80135490u, &ps);
+    if (!p08_guest(ps)) {
+        return 0;
+    }
+    (void)r4300_read_aligned_word(r4300, ps + 0x184u, &selw);
+    if ((int32_t)selw < 0 || (int32_t)selw >= 8) {
+        return 0;
+    }
+    (void)r4300_read_aligned_word(r4300, 0x80127708u + selw * 4u, &rec);
+    return p08_guest(rec) ? rec : 0;
+}
+
+static inline void p08_ud4_dump_player(struct r4300_core* r4300, FILE* fp)
+{
+    uint32_t ps = 0, posp = 0, yawp = 0, selw = 0;
+    uint32_t pxb = 0, pyb = 0, pzb = 0, yawb = 0, idb = 0;
+    (void)r4300_read_aligned_word(r4300, 0x80135490u, &ps);
+    if (!p08_guest(ps)) {
+        fprintf(fp, " player=none");
+        return;
+    }
+    (void)r4300_read_aligned_word(r4300, ps + 0xE4u, &posp);
+    (void)r4300_read_aligned_word(r4300, ps + 0xF8u, &yawp);
+    (void)r4300_read_aligned_word(r4300, ps + 0x184u, &selw);
+    if (p08_guest(posp)) {
+        (void)r4300_read_aligned_word(r4300, posp + 0u, &pxb);
+        (void)r4300_read_aligned_word(r4300, posp + 4u, &pyb);
+        (void)r4300_read_aligned_word(r4300, posp + 8u, &pzb);
+    }
+    if (p08_guest(yawp)) {
+        (void)r4300_read_aligned_word(r4300, yawp + 0u, &yawb);
+        (void)r4300_read_aligned_word(r4300, yawp + 4u, &idb);
+    }
+    fprintf(fp,
+            " sel=%d pos=(%.6f,%.6f,%.6f) pos_bits=%08x,%08x,%08x "
+            "yaw=%.6f ideal=%.6f yaw_bits=%08x ideal_bits=%08x",
+            (int32_t)selw, p08_f32(pxb), p08_f32(pyb), p08_f32(pzb), pxb, pyb, pzb,
+            p08_f32(yawb), p08_f32(idb), yawb, idb);
+}
+
 static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
 {
     int glidx = 0;
@@ -100,6 +174,7 @@ static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
     const uint32_t a0 = (uint32_t)regs[4];
     const uint32_t a1 = (uint32_t)regs[5];
     const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t a3 = (uint32_t)regs[7];
     const uint32_t ra = (uint32_t)regs[31];
     const uint32_t seq = ++s_p08_ud4_seq;
     if (pc == 0x800CA628u) {
@@ -136,8 +211,42 @@ static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
     } else if (pc == 0x8010FE14u) {
         fprintf(fp, "[ud4-fe14] enter seq=%u glidx=%d ra=%08x a0=%08x\n", seq, glidx, ra, a0);
     } else if (pc == 0x800CA8B4u) {
-        fprintf(fp, "[ud4-ca8b4] enter seq=%u glidx=%d ra=%08x a0=%08x out1=%08x out2=%08x\n",
-                seq, glidx, ra, a0, a1, a2);
+        if (glidx != s_p08_ca8b4_last_glidx) {
+            s_p08_ca8b4_last_glidx = glidx;
+            s_p08_ca8b4_ord = 0;
+        }
+        s_p08_ca8b4_ord += 1;
+        s_p08_ca8b4_a0 = a0;
+        s_p08_ca8b4_a1 = a1;
+        s_p08_ca8b4_a2 = a2;
+        s_p08_ca8b4_glidx = glidx;
+        {
+            const int first = (s_p08_ca8b4_n++ == 0) ? 1 : 0;
+            fprintf(fp,
+                    "[ud4-ca8b4] enter seq=%u glidx=%d ord=%d first=%d ra=%08x "
+                    "a0=%08x a1=%08x a2=%08x a3=%08x",
+                    seq, glidx, s_p08_ca8b4_ord, first, ra, a0, a1, a2, a3);
+            p08_ud4_dump_reads(r4300, fp, a0);
+            p08_ud4_dump_player(r4300, fp);
+            fprintf(fp, "\n");
+        }
+    } else if (pc == 0x800CA8ECu) {
+        uint32_t e0 = 0, e1 = 0, e2 = 0, s0 = 0, s1 = 0, s2 = 0;
+        if (p08_guest(s_p08_ca8b4_a1)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ca8b4_a1 + 0u, &e0);
+            (void)r4300_read_aligned_word(r4300, s_p08_ca8b4_a1 + 4u, &e1);
+            (void)r4300_read_aligned_word(r4300, s_p08_ca8b4_a1 + 8u, &e2);
+        }
+        if (p08_guest(s_p08_ca8b4_a2)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ca8b4_a2 + 0u, &s0);
+            (void)r4300_read_aligned_word(r4300, s_p08_ca8b4_a2 + 4u, &s1);
+            (void)r4300_read_aligned_word(r4300, s_p08_ca8b4_a2 + 8u, &s2);
+        }
+        fprintf(fp,
+                "[ud4-ca8b4] leave seq=%u glidx=%d ord=%d eye_out=%08x,%08x,%08x "
+                "src2_out=%08x,%08x,%08x eye=(%.6f,%.6f,%.6f) src2=(%.6f,%.6f,%.6f)\n",
+                seq, s_p08_ca8b4_glidx, s_p08_ca8b4_ord, e0, e1, e2, s0, s1, s2,
+                p08_f32(e0), p08_f32(e1), p08_f32(e2), p08_f32(s0), p08_f32(s1), p08_f32(s2));
     } else if (pc == 0x800E1A58u) {
         float x,y,z,s0,s1,s2; uint32_t zb = 0;
         p08_ud4_vec(r4300, a0, &x, &y, &z, NULL);
@@ -146,9 +255,15 @@ static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
                 "[ud4-e1a58] enter seq=%u glidx=%d ra=%08x a0=%08x a1=%08x "
                 "v0=(%.6f,%.6f,%.6f) v1=(%.6f,%.6f,%.6f) v1_2_bits=%08x\n",
                 seq, glidx, ra, a0, a1, x, y, z, s0, s1, s2, zb);
-    } else if (pc == 0x80089488u) {
-        fprintf(fp, "[ud4-ncbapivot] stub seq=%u glidx=%d ra=%08x a0=%08x a1=%08x\n",
-                seq, glidx, ra, a0, a1);
+    } else if (pc == 0x80089488u || pc == 0x80800098u) {
+        const int first = (s_p08_ncbapivot_n++ == 0) ? 1 : 0;
+        const uint32_t rec = p08_ud4_sel_rec(r4300);
+        fprintf(fp,
+                "[ud4-ncbapivot] enter seq=%u glidx=%d first=%d ra=%08x a0=%08x pc=%08x",
+                seq, glidx, first, ra, a0, pc);
+        p08_ud4_dump_reads(r4300, fp, rec);
+        p08_ud4_dump_player(r4300, fp);
+        fprintf(fp, "\n");
     }
     fflush(fp);
 }

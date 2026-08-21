@@ -1710,8 +1710,8 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
     std::fflush(stderr);
 }
 
-// USER_DEMO_4 follow-camera window (TOOIE_DIAG_ATTRACT=1): prove camctrl writer
-// and capture CA628 inputs at glidx 36..50. Logging only.
+// USER_DEMO_4 follow-camera window (TOOIE_DIAG_ATTRACT=1): CA8B4 first-seed
+// recurrence trace at glidx 0..42 (idle slew + walk start). Logging only.
 static bool tooie_ud4_cam_window(uint8_t* rdram, int* glidx_out) {
     if (!tooie_diag::attract_enabled()) {
         return false;
@@ -1726,7 +1726,7 @@ static bool tooie_ud4_cam_window(uint8_t* rdram, int* glidx_out) {
     if (glidx_out) {
         *glidx_out = int(glidx);
     }
-    return glidx >= 36 && glidx <= 50;
+    return glidx >= 0 && glidx <= 42;
 }
 
 static float tooie_bits_f32(int32_t bits) {
@@ -1767,7 +1767,68 @@ static void tooie_ud4_dump_player(uint8_t* rdram, FILE* fp) {
         yaw = tooie_bits_f32(MEM_W(0x0, yawp));
         ideal = tooie_bits_f32(MEM_W(0x4, yawp));
     }
-    fprintf(fp, " sel=%d pos=(%.6f,%.6f,%.6f) yaw=%.6f ideal=%.6f", sel, px, py, pz, yaw, ideal);
+    uint32_t pxb = 0, pyb = 0, pzb = 0, yawb = 0, idb = 0;
+    if (tooie_is_guest(pos_addr)) {
+        const gpr posp = kseg0_gpr(pos_addr);
+        pxb = static_cast<uint32_t>(MEM_W(0x0, posp));
+        pyb = static_cast<uint32_t>(MEM_W(0x4, posp));
+        pzb = static_cast<uint32_t>(MEM_W(0x8, posp));
+    }
+    if (tooie_is_guest(yaw_addr)) {
+        const gpr yawp = kseg0_gpr(yaw_addr);
+        yawb = static_cast<uint32_t>(MEM_W(0x0, yawp));
+        idb = static_cast<uint32_t>(MEM_W(0x4, yawp));
+    }
+    fprintf(fp,
+            " sel=%d pos=(%.6f,%.6f,%.6f) pos_bits=%08x,%08x,%08x "
+            "yaw=%.6f ideal=%.6f yaw_bits=%08x ideal_bits=%08x",
+            sel, px, py, pz, pxb, pyb, pzb, yaw, ideal, yawb, idb);
+}
+
+static uint32_t tooie_ud4_sel_rec(uint8_t* rdram) {
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
+    if (!tooie_is_guest(ps_addr)) {
+        return 0;
+    }
+    const int32_t sel = static_cast<int32_t>(MEM_W(0x184, kseg0_gpr(ps_addr)));
+    if (sel < 0 || sel >= 8) {
+        return 0;
+    }
+    const uint32_t rec =
+        static_cast<uint32_t>(MEM_W(sel * 4, kseg0_gpr(0x80127708u)));
+    return tooie_is_guest(rec) ? rec : 0;
+}
+
+// CA8B4 executed reads: record[+0x00,+0x04,+0x08] eye and [+0x18,+0x1C,+0x20] src2.
+static void tooie_ud4_dump_ca8b4_reads(uint8_t* rdram, FILE* fp, uint32_t rec) {
+    if (!tooie_is_guest(rec)) {
+        fprintf(fp, " rec=none");
+        return;
+    }
+    const gpr p = kseg0_gpr(rec);
+    const uint32_t e0 = static_cast<uint32_t>(MEM_W(0x00, p));
+    const uint32_t e1 = static_cast<uint32_t>(MEM_W(0x04, p));
+    const uint32_t e2 = static_cast<uint32_t>(MEM_W(0x08, p));
+    const uint32_t s0 = static_cast<uint32_t>(MEM_W(0x18, p));
+    const uint32_t s1 = static_cast<uint32_t>(MEM_W(0x1C, p));
+    const uint32_t s2 = static_cast<uint32_t>(MEM_W(0x20, p));
+    fprintf(fp,
+            " rec=%08x eye_in=%08x,%08x,%08x src2_in=%08x,%08x,%08x "
+            "eye=(%.6f,%.6f,%.6f) src2=(%.6f,%.6f,%.6f)",
+            rec, e0, e1, e2, s0, s1, s2,
+            tooie_bits_f32(int32_t(e0)), tooie_bits_f32(int32_t(e1)),
+            tooie_bits_f32(int32_t(e2)), tooie_bits_f32(int32_t(s0)),
+            tooie_bits_f32(int32_t(s1)), tooie_bits_f32(int32_t(s2)));
+}
+
+static int tooie_ud4_ca8b4_ord(int glidx) {
+    static int last = -1;
+    static int ord = 0;
+    if (glidx != last) {
+        last = glidx;
+        ord = 0;
+    }
+    return ++ord;
 }
 
 extern "C" void func_800CA628(uint8_t* rdram, recomp_context* ctx);
@@ -1852,23 +1913,40 @@ static void tooie_wrap_ca8b4(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
     const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
     const uint32_t a2 = static_cast<uint32_t>(ctx->r6);
+    const uint32_t a3 = static_cast<uint32_t>(ctx->r7);
     const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    int ord = 0;
     if (win) {
-        fprintf(stderr, "[ud4-ca8b4] enter seq=%u glidx=%d ra=%08x a0=%08x out1=%08x out2=%08x\n",
-                tooie_ud4_seq(), glidx, ra, a0, a1, a2);
+        static int s_ca8b4_n = 0;
+        const int first = (s_ca8b4_n++ == 0) ? 1 : 0;
+        ord = tooie_ud4_ca8b4_ord(glidx);
+        fprintf(stderr,
+                "[ud4-ca8b4] enter seq=%u glidx=%d ord=%d first=%d ra=%08x "
+                "a0=%08x a1=%08x a2=%08x a3=%08x f4=%08x f6=%08x",
+                tooie_ud4_seq(), glidx, ord, first, ra, a0, a1, a2, a3,
+                ctx->f4.u32l, ctx->f6.u32l);
+        tooie_ud4_dump_ca8b4_reads(rdram, stderr, a0);
+        tooie_ud4_dump_player(rdram, stderr);
+        fprintf(stderr, "\n");
         fflush(stderr);
     }
     func_800CA8B4(rdram, ctx);
     if (win && tooie_is_guest(a1) && tooie_is_guest(a2)) {
+        const uint32_t e0 = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(a1)));
+        const uint32_t e1 = static_cast<uint32_t>(MEM_W(4, kseg0_gpr(a1)));
+        const uint32_t e2 = static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a1)));
+        const uint32_t s0 = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(a2)));
+        const uint32_t s1 = static_cast<uint32_t>(MEM_W(4, kseg0_gpr(a2)));
+        const uint32_t s2 = static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a2)));
         fprintf(stderr,
-                "[ud4-ca8b4] leave seq=%u glidx=%d out1=(%.6f,%.6f,%.6f) out2=(%.6f,%.6f,%.6f) "
-                "out2_2_bits=%08x\n",
-                tooie_ud4_seq(), glidx,
-                tooie_bits_f32(MEM_W(0, kseg0_gpr(a1))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a1))),
-                tooie_bits_f32(MEM_W(8, kseg0_gpr(a1))),
-                tooie_bits_f32(MEM_W(0, kseg0_gpr(a2))), tooie_bits_f32(MEM_W(4, kseg0_gpr(a2))),
-                tooie_bits_f32(MEM_W(8, kseg0_gpr(a2))),
-                static_cast<uint32_t>(MEM_W(8, kseg0_gpr(a2))));
+                "[ud4-ca8b4] leave seq=%u glidx=%d ord=%d eye_out=%08x,%08x,%08x "
+                "src2_out=%08x,%08x,%08x eye=(%.6f,%.6f,%.6f) src2=(%.6f,%.6f,%.6f) "
+                "f4=%08x f6=%08x\n",
+                tooie_ud4_seq(), glidx, ord, e0, e1, e2, s0, s1, s2,
+                tooie_bits_f32(int32_t(e0)), tooie_bits_f32(int32_t(e1)),
+                tooie_bits_f32(int32_t(e2)), tooie_bits_f32(int32_t(s0)),
+                tooie_bits_f32(int32_t(s1)), tooie_bits_f32(int32_t(s2)),
+                ctx->f4.u32l, ctx->f6.u32l);
         fflush(stderr);
     }
 }
@@ -1923,6 +2001,8 @@ extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx) {
     if (!tooie_ud4_cam_window(rdram, &glidx)) {
         return;
     }
+    static int s_ncbapivot_n = 0;
+    const int first = (s_ncbapivot_n++ == 0) ? 1 : 0;
     const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
     uint32_t p5c = 0, p5c0 = 0;
     if (tooie_is_guest(a0)) {
@@ -1931,9 +2011,11 @@ extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx) {
             p5c0 = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(p5c)));
         }
     }
+    const uint32_t rec = tooie_ud4_sel_rec(rdram);
     fprintf(stderr,
-            "[ud4-ncbapivot] enter seq=%u glidx=%d ra=%08x a0=%08x +5c=%08x *5c=%08x",
-            tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31), a0, p5c, p5c0);
+            "[ud4-ncbapivot] enter seq=%u glidx=%d first=%d ra=%08x a0=%08x +5c=%08x *5c=%08x",
+            tooie_ud4_seq(), glidx, first, static_cast<uint32_t>(ctx->r31), a0, p5c, p5c0);
+    tooie_ud4_dump_ca8b4_reads(rdram, stderr, rec);
     tooie_ud4_dump_player(rdram, stderr);
     fprintf(stderr, "\n");
     fflush(stderr);
@@ -2120,17 +2202,24 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
             camctrl = bits_f32(MEM_W(0x1C, rec));
             cam_mode = int(MEM_H(0x16, rec));
             if (tooie_diag::attract_enabled() && stage_v == 0 && sub_v == 4 &&
-                consumed_glidx >= 36 && consumed_glidx <= 50) {
+                consumed_glidx >= 0 && consumed_glidx <= 42) {
                 std::fprintf(stderr,
                              "[ud4-rec] glidx=%d rec=%08x eye=(%.6f,%.6f,%.6f) "
-                             "d=(%.6f,%.6f,%.6f) camctrl=%.6f bits=%08x "
+                             "eye_bits=%08x,%08x,%08x d=(%.6f,%.6f,%.6f) "
+                             "camctrl=%.6f bits=%08x src2_in=%08x,%08x,%08x "
                              "p20=(%.6f,%.6f,%.6f) p2c=(%.6f,%.6f,%.6f)\n",
                              consumed_glidx, rec_addr,
                              bits_f32(MEM_W(0x00, rec)), bits_f32(MEM_W(0x04, rec)),
                              bits_f32(MEM_W(0x08, rec)),
+                             static_cast<uint32_t>(MEM_W(0x00, rec)),
+                             static_cast<uint32_t>(MEM_W(0x04, rec)),
+                             static_cast<uint32_t>(MEM_W(0x08, rec)),
                              bits_f32(MEM_W(0x0C, rec)), bits_f32(MEM_W(0x10, rec)),
                              bits_f32(MEM_W(0x14, rec)), camctrl,
                              static_cast<uint32_t>(MEM_W(0x1C, rec)),
+                             static_cast<uint32_t>(MEM_W(0x18, rec)),
+                             static_cast<uint32_t>(MEM_W(0x1C, rec)),
+                             static_cast<uint32_t>(MEM_W(0x20, rec)),
                              bits_f32(MEM_W(0x20, rec)), bits_f32(MEM_W(0x24, rec)),
                              bits_f32(MEM_W(0x28, rec)),
                              bits_f32(MEM_W(0x2C, rec)), bits_f32(MEM_W(0x30, rec)),

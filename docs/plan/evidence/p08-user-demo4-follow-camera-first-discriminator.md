@@ -25,8 +25,10 @@ LAST_MATCHING_CAMCTRL_GLIDX:    38 at printed 0.001°  (303.985); bits already 1
 FIRST_DIFFERENT_CAMCTRL_GLIDX:  41 at prior demo-sync 0.085° == this CA628 dump glidx 40
 
 FIRST_CA628_DIFFERENT_INPUT:    src2[1] and eye src[0]/src[2] at first window sample
-FIRST_CA628_DIFFERENT_INPUT_GLIDX: 36
+FIRST_CA628_DIFFERENT_INPUT_GLIDX: 36  (window sample; NOT first in clip)
 FIRST_CA628_DIFFERENT_INPUT_PRODUCER: func_800CA8B4
+TRUE_FIRST_CA8B4_INPUT_BIT_DIFFERENCE_GLIDX: 1
+  (see [[p08-user-demo4-ca8b4-first-seed]])
 func_800E1A58:                  identity (enter==leave) both oracles in this window; not the discriminator
 
 PLAYER_POSITION_BEFORE_CAM_SPLIT_MATCH: YES (spawn -84,0,-1855 through dump glidx 38)
@@ -123,7 +125,7 @@ OUTPUT vs INPUT:                    CA628 output bit-identical to src2[1] both o
 
 `func_800CA8B4(dst_record, out_eye, out_src2)` leave vectors equal the following CA628 inputs. Producer of the differing CA628 input is **CA8B4**, reading the selected camera record `a0`.
 
-Idle follow slew (glidx 1-35) was **not** dumped this session. The eye ULP at glidx 36 almost certainly originates there. That is the next bounded trace, not a fix.
+Idle follow slew (glidx 1-35) was **not** dumped in this CA628 session. The later CA8B4 seed trace **PROVES** the ULP already exists at glidx 1 (`ncbapivot_entrypoint_3` first tick). Canonical: [[p08-user-demo4-ca8b4-first-seed]]. `glidx 36` is **not** the root.
 
 ---
 
@@ -168,8 +170,8 @@ Egg FIRE-vs-BLUE remains **PROVEN_BUT_DEFERRED**. Fire is after this camera spli
 
 ## 8. Next single action
 
-Dump `func_800CA8B4` and selected-record eye/+0x1C for USER_DEMO_4 **glidx 1-35** (idle follow slew) to find the first ULP. No production fix. Do not open P09. Do not recommend Sol.
+CA8B4 first-seed trace is **DONE**: [[p08-user-demo4-ca8b4-first-seed]]. Bit-level first difference is glidx 1 (`ncbapivot` output). No production fix. Do not open P09. Do not recommend Sol.
 
 ```text
-NEXT_SINGLE_ACTION: dump USER_DEMO_4 CA8B4/camera-record eye+camctrl for glidx 1-35 idle slew; no fix
+NEXT_SINGLE_ACTION: capture complete ncbapivot_entrypoint_3 inputs/FPU on USER_DEMO_4 glidx 1; no fix
 ```
