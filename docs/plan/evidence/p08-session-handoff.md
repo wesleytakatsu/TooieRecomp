@@ -735,11 +735,13 @@ Independent parity check of movement speed magnitude, timing, animation rate, an
    - `P08_STATUS: ACTIVE_MANUAL_VALIDATION_PENDING`
    - `P09_STATUS: PENDING_NOT_FORMALLY_OPEN`
 
-## USER_DEMO_4 p60 writer provenance — 2026-08-21
+## USER_DEMO_4 p60+0xC first-writer discriminator (2026-08-21)
 
-The next residual is now statically bounded to `80110588 → 80112A84 →
-80112D08`: `80112D08` stores `a1` into `p60+8`, and RT64 captures `a1=0` with
-`p60+0xC=0` at `glidx=39`; the oracle captures `a1=5` with `p60+0xC=1` and
-post-store `p60+8=5`. This closes B-P60-WRITER-INPUT. Continue from
-[[p08-user-demo4-p60-writer-provenance]] and the paired-run checklist in
-[[p08-walkstart-reproduction-runbook]]. No fix.
+Canonical: [[p08-user-demo4-p60-control-writer]].
+
+The first reason why `p60+0xC` diverges (`RT64 = 0` vs `Oracle = 1` before glidx 39) is proven:
+1. **Root Discriminator**: `0x800979D8` (`__bainput_func_800979D8`), a static internal helper in `bainput.c` that checks `bakey_held(self, button_id)` for C-buttons, was bound in `boot_hw_stubs.cpp` to `lookup_gap_stub<0x800979D8>` returning `v0 = 0`.
+2. **Missing Write in RT64**: On `glidx=38`, the demo controller inputs hold C-Right. In Oracle, `__bainput_func_800979D8` returns 1 -> `bainput_should_rotate_camera_right` (0x80097B94) returns 1 -> `func_800A4854` calls `func_80110EFC(node, 1)` -> `func_80110E00` -> `func_801111D0` -> `func_80112D90`, storing `p60+0xC = 1` and `p60+0xE = 2`. In RT64, the gap stub returns 0, so the entire camera rotation write chain is skipped (`MISSING_WRITE`).
+3. **Downstream Divergence at glidx 39**: In Oracle, `80112A84` reads `p60+0xC == 1` and sets `a1 = 5` for `80112D08`, storing `p60+8 = 5`, leading to transition pivot in `ncbapivot` (0x80112C3C). In RT64, `p60+0xC == 0`, so `80112A84` sets `a1 = 0` and `80112D08` stores `p60+8 = 0`, skipping transition pivot.
+4. **Prior State**: 100% byte-matched player movement, positions, yaw, demo script ticks, and animation states across glidx 0..38.
+5. **Status**: No production fix applied (worktree clean, diagnosis complete).

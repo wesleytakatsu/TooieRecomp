@@ -25,8 +25,13 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
   - b042865 `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET` is **CORRECTED/SUPERSEDED** for USER_DEMO_4. Demo 0..3 remains an incomplete attract slice.
 - **ROUND.W.S checkpoint (2026-08-21)**: `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`). `ROUND_W_S_ROOT_CAUSE: PROVEN`. `ORIGINAL_BIND_TICK_DISCRIMINATOR: RESOLVED`. `ROUND_W_S_BIND_AND_IDLE_CAMERA_EFFECT: FIXED`. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`. `ROUND_W_S_SPECIAL_VALUE_CONTRACT: PARTIAL`. Evidence: [[plan/evidence/p08-user-demo4-sincos-semantics-fix]].
 - **Agent workspace (2026-08-21)**: open CLI/IDE in **TooieRecomp/**. MCP configs live here and bind markdown-vault to `docs/` ([[MARKDOWN_VAULT_TOOLS]]). Do not start agents at `N64-Recomp/`. `BanjoRecomp` and the cart ROM remain siblings for CMake/oracle only.
-- **ANGRYLION_CONTROL location (2026-08-21)**: `tools/oracle/angrylion-control/` (`work/` gitignored). Playable test: `./run-tooie-angrylion-rdp.sh`. RT64 port: `./run-tooie.sh`. Spec: [[specs/BT/angrylion-control-oracle]]. Angrylion remains measurement-only; TooieRecomp stays RT64.
-- **Next Single Action**: Find the writer of camera `node+0x60` object words `+0/+4/+8` between dump glidx 38 ncbapivot leave and glidx 39 ncbapivot enter (`p60_8` 0 vs 5). That integer is the first proven `80112C3C` jumptable input. Do not reopen bind-tick `round.w.s`. P09 remains **NOT_FORMALLY_OPEN**.
+- **USER_DEMO_4 `p60+0xC` first-writer discriminator (2026-08-21)**: [[plan/evidence/p08-user-demo4-p60-control-writer]].
+  - Root discriminator: `0x800979D8` (`__bainput_func_800979D8`), an internal static helper in `bainput.c` that checks `bakey_held(self, button_id)` for C-buttons, was bound in `boot_hw_stubs.cpp` to `lookup_gap_stub<0x800979D8>` returning `v0 = 0`.
+  - Divergence mechanism: `MISSING_WRITE` in RT64. On `glidx=38`, the demo script holds C-Right. Oracle executes `__bainput_func_800979D8` -> `bainput_should_rotate_camera_right` -> `func_800A4854` -> `func_80110EFC(node, 1)` -> `func_80110E00` -> `func_801111D0` -> `func_80112D90`, storing `p60+0xC = 1` and `p60+0xE = 2`. RT64 skips the entire call tree because `0x800979D8` returned `0`.
+  - Downstream at `glidx=39`: `func_80112A84` checks `p60+0xC`. Oracle has `1` and writes `p60+8 = 5` via `func_80112D08`, triggering transition pivot in `ncbapivot`; RT64 has `0` and writes `p60+8 = 0`.
+  - Prior state: 100% byte-matched player movement, positions, yaw, demo script ticks, and animation states across glidx 0..38.
+- **Next Single Action**: When authorized for implementation, implement / recompile `__bainput_func_800979D8` at `0x800979D8` to replace the zero-return gap stub, and verify paired RT64 vs Angrylion parity through USER_DEMO_4. P09 remains **NOT_FORMALLY_OPEN**.
+
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`
