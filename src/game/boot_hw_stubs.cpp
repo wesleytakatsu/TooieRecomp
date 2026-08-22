@@ -56,6 +56,16 @@ extern "C" void load_overlays(uint32_t rom, int32_t ram_addr, uint32_t size);
 extern "C" void unload_overlays(int32_t ram_addr, uint32_t size);
 extern "C" void func_80013818(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80013ABC(uint8_t* rdram, recomp_context* ctx);
+extern "C" void bakey_held(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800BCE84(uint8_t* rdram, recomp_context* ctx);
+extern "C" void bainput_isEnabled(uint8_t* rdram, recomp_context* ctx);
+extern "C" void bainput_enable(uint8_t* rdram, recomp_context* ctx);
+extern "C" void bainput_should_rotate_camera_right(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800A4338(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80110EFC(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80110E00(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_801111D0(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_80112D90(uint8_t* rdram, recomp_context* ctx);
 
 // Declared in syscall_handler.cpp
 extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr);
@@ -236,13 +246,63 @@ static void lookup_gap_stub(uint8_t* rdram, recomp_context* ctx) {
     ctx->r2 = 0;
 }
 
+static bool tooie_is_guest(uint32_t a);
+static bool tooie_ud4_writer_window(uint8_t* rdram, int* glidx_out);
+
+// 0x800979D8 is a real static bainput helper. It has no public decomp symbol,
+// but generated callers must observe its stateful contract.
+static void tooie_bainput_func_800979D8(uint8_t* rdram, recomp_context* ctx) {
+    const auto sign_extend_guest = [](int32_t value) -> gpr {
+        return static_cast<gpr>(static_cast<int64_t>(value));
+    };
+    const gpr self = sign_extend_guest(static_cast<int32_t>(ctx->r4));
+    const uint32_t button_id = static_cast<uint32_t>(ctx->r5);
+    const uint32_t input_id = static_cast<uint32_t>(ctx->r6);
+    
+
+    // The original helper delegates the input-state query to bakey_held
+    // (0x800919F4).  In particular, prev_state[id] == 0 is not the
+    // not-held result: it is the condition that reaches the live
+    // ButtonState.pressed query in func_800BCE84.
+    ctx->r4 = self;
+    ctx->r5 = static_cast<gpr>(button_id);
+    bakey_held(rdram, ctx);
+    const bool held = ctx->r2 != 0;
+
+    // bainput_isEnabled returns the enabled mask, not a boolean.  The
+    // original uses that exact value as its return (1 << input_id).
+    ctx->r4 = self;
+    ctx->r5 = static_cast<gpr>(input_id);
+    bainput_isEnabled(rdram, ctx);
+    const gpr enabled = ctx->r2;
+
+    if (held) {
+        if (enabled == 0) {
+            ctx->r4 = self;
+            ctx->r5 = static_cast<gpr>(input_id);
+            ctx->r6 = 0;
+            bainput_enable(rdram, ctx);
+        }
+
+        ctx->r4 = self;
+        ctx->r5 = static_cast<gpr>(input_id);
+        bainput_isEnabled(rdram, ctx);
+        return;
+    }
+
+    ctx->r4 = self;
+    ctx->r5 = static_cast<gpr>(input_id);
+    ctx->r6 = 1;
+    bainput_enable(rdram, ctx);
+    ctx->r2 = 0;
+}
+
 // Truly unknown / not yet implemented helpers (not standard libultra).
 static constexpr int32_t kLookupGapAddrs[] = {
     static_cast<int32_t>(0x80001998),
     static_cast<int32_t>(0x80031178),
     static_cast<int32_t>(0x80036670),
     static_cast<int32_t>(0x80036728),
-    static_cast<int32_t>(0x800979D8),
 };
 
 static recomp_func_t* const kLookupGapFuncs[] = {
@@ -250,7 +310,6 @@ static recomp_func_t* const kLookupGapFuncs[] = {
     lookup_gap_stub<static_cast<int32_t>(0x80031178)>,
     lookup_gap_stub<static_cast<int32_t>(0x80036670)>,
     lookup_gap_stub<static_cast<int32_t>(0x80036728)>,
-    lookup_gap_stub<static_cast<int32_t>(0x800979D8)>,
 };
 
 // Host libultra implementations (librecomp). Declared so the linker pulls them in
@@ -2378,6 +2437,93 @@ static void tooie_wrap_func_8010FFB0(uint8_t* rdram, recomp_context* ctx) {
     }
 }
 
+static void tooie_wrap_bainput_should_rotate_camera_right(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    const uint32_t self = static_cast<uint32_t>(ctx->r4);
+    if (win) {
+        fprintf(stderr, "[ud4-cam-chain] enter 80097B94 (rotate_camera_right) glidx=%d self=%08x\n",
+                glidx, self);
+        fflush(stderr);
+    }
+    bainput_should_rotate_camera_right(rdram, ctx);
+    if (win) {
+        fprintf(stderr, "[ud4-cam-chain] leave 80097B94 (rotate_camera_right) glidx=%d v0=%08x\n",
+                glidx, static_cast<uint32_t>(ctx->r2));
+        fflush(stderr);
+    }
+}
+
+static void tooie_wrap_func_800A4338(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    if (win) {
+        fprintf(stderr, "[ud4-cam-chain] enter 800A4338 glidx=%d a0=%08x a1=%08x a2=%08x\n",
+                glidx, static_cast<uint32_t>(ctx->r4), static_cast<uint32_t>(ctx->r5), static_cast<uint32_t>(ctx->r6));
+        fflush(stderr);
+    }
+    func_800A4338(rdram, ctx);
+}
+
+static void tooie_wrap_func_80110EFC(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    if (win) {
+        fprintf(stderr, "[ud4-cam-chain] enter 80110EFC glidx=%d node=%08x a1=%08x\n",
+                glidx, static_cast<uint32_t>(ctx->r4), static_cast<uint32_t>(ctx->r5));
+        fflush(stderr);
+    }
+    func_80110EFC(rdram, ctx);
+}
+
+static void tooie_wrap_func_80110E00(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    if (win) {
+        fprintf(stderr, "[ud4-cam-chain] enter 80110E00 glidx=%d node=%08x a1=%08x\n",
+                glidx, static_cast<uint32_t>(ctx->r4), static_cast<uint32_t>(ctx->r5));
+        fflush(stderr);
+    }
+    func_80110E00(rdram, ctx);
+}
+
+static void tooie_wrap_func_801111D0(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    if (win) {
+        float f12 = ctx->f12.fl;
+        fprintf(stderr, "[ud4-cam-chain] enter 801111D0 glidx=%d node=%08x a1=%.4f (bits=%08x)\n",
+                glidx, static_cast<uint32_t>(ctx->r4), f12, ctx->f12.u32l);
+        fflush(stderr);
+    }
+    func_801111D0(rdram, ctx);
+}
+
+static void tooie_wrap_func_80112D90(uint8_t* rdram, recomp_context* ctx) {
+    int glidx = -1;
+    const bool win = tooie_ud4_writer_window(rdram, &glidx);
+    const uint32_t node = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a3 = static_cast<uint32_t>(ctx->r7);
+    if (win) {
+        fprintf(stderr,
+                "[ud4-p60-writer-2d90] enter seq=%u glidx=%d pc=80112D90 ra=%08x node=%08x a1=%.4f a2=%.4f a3=%u",
+                tooie_ud4_seq(), glidx, static_cast<uint32_t>(ctx->r31), node,
+                ctx->f12.fl, ctx->f14.fl, a3);
+        tooie_ud4_dump_p60_object(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+    func_80112D90(rdram, ctx);
+    if (win) {
+        fprintf(stderr,
+                "[ud4-p60-writer-2d90] leave seq=%u glidx=%d pc=80112D90 node=%08x",
+                tooie_ud4_seq(), glidx, node);
+        tooie_ud4_dump_p60_object(rdram, stderr, node);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+}
+
 extern "C" void tooie_ud4_cam_ovl(uint8_t* rdram, recomp_context* ctx, uint32_t ovl,
                                  uint32_t ep, int leaving) {
     int glidx = -1;
@@ -2794,6 +2940,23 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
         }
     }
 
+    int16_t anim_id = -1;
+    float anim_timer = 0.0f, anim_dur = 0.0f, anim_phase = 0.0f;
+    uint8_t anim_type = 0, anim_flags = 0;
+    const uint32_t anim_p = static_cast<uint32_t>(MEM_W(0x04, ps));
+    if (is_guest(anim_p)) {
+        const uint32_t anctrl_p = static_cast<uint32_t>(MEM_W(0x00, kseg0_gpr(anim_p)));
+        if (is_guest(anctrl_p)) {
+            const gpr ac = kseg0_gpr(anctrl_p);
+            anim_dur = bits_f32(MEM_W(0x0C, ac));
+            anim_timer = bits_f32(MEM_W(0x2C, ac));
+            anim_type = static_cast<uint8_t>(MEM_BU(0x1A, ac));
+            anim_flags = static_cast<uint8_t>(MEM_BU(0x1B, ac));
+            anim_id = static_cast<int16_t>(MEM_H(0x34, ac));
+            anim_phase = (anim_dur > 0.0f) ? (anim_timer / anim_dur) : 0.0f;
+        }
+    }
+
     std::fprintf(stderr,
                  "[demo-sync] glidx=%d post=%d tick=%llu wall_ms=%lld gfx=%llu adv=%d "
                  "pad=(%d,%d,%04x) remap=(%.2f,%.2f) bstick=(%.2f,%.2f,%.1f,%.2f) "
@@ -2801,6 +2964,7 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
                  "vel=(%.2f,%.2f,%.2f) velxz=%.2f tspd=%.1f "
                  "yaw=%.2f ideal=%.2f phys_yaw=%.2f mult=%.4f accel=%.2f "
                  "cam=(%.2f,%.2f,%.2f,%.1f) camctrl=%.4f cammode=%d sel=%d "
+                 "anim=(%d,%.3f,%.3f,%d,0x%02x,%.3f) "
                  "egg_slot=%d egg_enum=%d stage=%d sub=%d "
                  "digger=(%.2f,%.2f,%.2f) act2=(%u,%08x,%.2f,%.2f,%.2f) "
                  "gs=%.5f fc=%d cnt=%d map=%d\n",
@@ -2812,6 +2976,7 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
                  vx, vy, vz, velxz, tspd,
                  yaw, yaw_ideal, phys_yaw, mult, accel,
                  cx, cy, cz, cam_yaw, camctrl, cam_mode, cam_sel,
+                 anim_id, anim_timer, anim_dur, int(anim_type), unsigned(anim_flags), anim_phase,
                  egg_slot, egg_enum, stage_v, sub_v,
                  dig_x, dig_y, dig_z, act2_mid, act2_sys, act2_x, act2_y, act2_z,
                  gamespeed, gfcnt, gl_count, map_v);
@@ -2917,6 +3082,13 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80111310), tooie_wrap_func_80111310);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800A516C), tooie_wrap_func_800A516C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8002DCA0), tooie_wrap_sqrtf);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800979D8), tooie_bainput_func_800979D8);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80097B94), tooie_wrap_bainput_should_rotate_camera_right);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800A4338), tooie_wrap_func_800A4338);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110EFC), tooie_wrap_func_80110EFC);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110E00), tooie_wrap_func_80110E00);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801111D0), tooie_wrap_func_801111D0);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112D90), tooie_wrap_func_80112D90);
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }

@@ -4,7 +4,8 @@
 // 2. get_function(0x800BCCD8) != lookup_gap_stub
 // 3. 0x800BCCC0 computes exact MIPS semantics: v0 = a0 + a1 * 56 + 0x24
 // 4. 0x800BCCD8 computes exact MIPS semantics: v0 = a0 + MEM_BU(4, a0) * 56 + 0x24
-// 5. Remaining gap stubs (0x80001998, 0x80031178, 0x80036670, 0x80036728, 0x800979D8) remain bound to no-op gap stubs (v0 = 0).
+// 5. Remaining gap stubs (0x80001998, 0x80031178, 0x80036670, 0x80036728)
+// remain bound to no-op gap stubs; 0x800979D8 has its real helper contract.
 
 #include <cassert>
 #include <cstdint>
@@ -30,13 +31,17 @@ extern "C" void osPfsInit_recomp(uint8_t* rdram, recomp_context* ctx) {
     if (ctx) ctx->r2 = 0;
 }
 
+extern "C" void bakey_held(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800BCE84(uint8_t* rdram, recomp_context* ctx);
+
 static inline gpr kseg0_gpr(uint32_t addr) {
-    return static_cast<gpr>(static_cast<int32_t>(addr));
+    return static_cast<gpr>(static_cast<int64_t>(static_cast<int32_t>(addr)));
 }
 
 int main() {
     std::printf("[bcf28_test] registering lookup stubs...\n");
     banjo::register_boot_lookup_stubs();
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCE84), func_800BCE84);
 
     // 8 MiB simulated RDRAM buffer for memory reads
     std::vector<uint8_t> rdram_buffer(8 * 1024 * 1024, 0);
@@ -133,8 +138,97 @@ int main() {
     }
     std::printf("[bcf28_test] PASS: 0x800BCCD8 representative cases passed\n");
 
-    // 4. Verify remaining gap stubs still write v0 = 0
-    recomp_func_t* gap_funcs[] = {f_gap1998, f_gap31178, f_gap36670, f_gap36728, f_gap979d8};
+    // 4. Verify the real 0x800979D8 contract through its production mapping.
+    assert(f_gap979d8 != f_gap1998);
+    const uint32_t self_addr = 0x80100000u;
+    const uint32_t key_addr = 0x80100100u;
+    const uint32_t input_addr = 0x80100200u;
+    const uint32_t button_state_addr = 0x80100300u;
+    const uint32_t stack_addr = 0x80110000u;
+    MEM_W(0x40, kseg0_gpr(self_addr)) = kseg0_gpr(key_addr);
+    MEM_W(0xA4, kseg0_gpr(self_addr)) = kseg0_gpr(input_addr);
+    MEM_W(0, kseg0_gpr(key_addr)) = kseg0_gpr(button_state_addr);
+    MEM_BU(0x18 + 13, kseg0_gpr(key_addr)) = 0;
+    MEM_BU(0x8 + 13, kseg0_gpr(button_state_addr)) = 0;
+    MEM_W(0x24 + (13 * 4), kseg0_gpr(button_state_addr)) = 0;
+
+    // Verify bakey_held itself: prev_state suppresses the live query.
+    MEM_BU(0x18 + 13, kseg0_gpr(key_addr)) = 1;
+    recomp_context helper_ctx{};
+    helper_ctx.r29 = kseg0_gpr(stack_addr);
+    helper_ctx.r4 = kseg0_gpr(self_addr);
+    helper_ctx.r5 = 13;
+    bakey_held(rdram, &helper_ctx);
+    assert(helper_ctx.r2 == 0);
+
+    // prev_state == 0 reaches ButtonState.pressed via 800BCE84.
+    MEM_BU(0x18 + 13, kseg0_gpr(key_addr)) = 0;
+    MEM_W(0x24 + (13 * 4), kseg0_gpr(button_state_addr)) = 1;
+    helper_ctx = {};
+    helper_ctx.r29 = kseg0_gpr(stack_addr);
+    helper_ctx.r4 = kseg0_gpr(self_addr);
+    helper_ctx.r5 = 13;
+    bakey_held(rdram, &helper_ctx);
+    assert(helper_ctx.r2 == 1);
+
+    auto call_helper = [&](uint32_t button_id, uint32_t input_id) {
+        recomp_context ctx{};
+        ctx.r29 = kseg0_gpr(stack_addr);
+        ctx.r4 = kseg0_gpr(self_addr);
+        ctx.r5 = button_id;
+        ctx.r6 = input_id;
+        f_gap979d8(rdram, &ctx);
+        return ctx;
+    };
+
+    // Case 1: prev_state suppresses the held path; a2=1 is enabled.
+    MEM_BU(0x18 + 13, kseg0_gpr(key_addr)) = 1;
+    MEM_W(0, kseg0_gpr(input_addr)) = 0;
+    MEM_W(4, kseg0_gpr(input_addr)) = 0xA5A5A5A5u;
+    helper_ctx = call_helper(13, 1);
+    assert(helper_ctx.r2 == 0);
+    assert(static_cast<uint32_t>(MEM_W(0, kseg0_gpr(input_addr))) == (1u << 1));
+    assert(static_cast<uint32_t>(MEM_W(4, kseg0_gpr(input_addr))) == 0xA5A5A5A5u);
+
+    // Case 2: prev_state == 0 and live ButtonState is inactive.
+    MEM_BU(0x18 + 13, kseg0_gpr(key_addr)) = 0;
+    MEM_W(0x24 + (13 * 4), kseg0_gpr(button_state_addr)) = 0;
+    MEM_W(0, kseg0_gpr(input_addr)) = 0;
+    helper_ctx = call_helper(13, 1);
+    assert(helper_ctx.r2 == 0);
+    assert(static_cast<uint32_t>(MEM_W(0, kseg0_gpr(input_addr))) == (1u << 1));
+
+    // Case 3/6: active input with __enabled initially clear then set.
+    MEM_W(0x24 + (13 * 4), kseg0_gpr(button_state_addr)) = 1;
+    MEM_W(0, kseg0_gpr(input_addr)) = 0;
+    helper_ctx = call_helper(13, 1);
+    assert(helper_ctx.r2 == 0);
+    assert(static_cast<uint32_t>(MEM_W(0, kseg0_gpr(input_addr))) == 0);
+    MEM_W(0, kseg0_gpr(input_addr)) = (1u << 1);
+    helper_ctx = call_helper(13, 1);
+    assert(static_cast<uint32_t>(helper_ctx.r2) == (1u << 1));
+    assert(static_cast<uint32_t>(MEM_W(0, kseg0_gpr(input_addr))) == (1u << 1));
+
+    // Case 4: a2=0 uses bit 0, not the button id or a boolean return.
+    MEM_W(0, kseg0_gpr(input_addr)) = 0;
+    helper_ctx = call_helper(13, 0);
+    assert(helper_ctx.r2 == 0);
+    assert(static_cast<uint32_t>(MEM_W(0, kseg0_gpr(input_addr))) == 1u);
+    MEM_W(0, kseg0_gpr(input_addr)) = 1u;
+    helper_ctx = call_helper(13, 0);
+    assert(static_cast<uint32_t>(helper_ctx.r2) == 1u);
+
+    // Case 7: generic non-C-Right button id uses its own prev/live slot.
+    MEM_BU(0x18 + 10, kseg0_gpr(key_addr)) = 0;
+    MEM_BU(0x8 + 10, kseg0_gpr(button_state_addr)) = 0;
+    MEM_W(0x24 + (10 * 4), kseg0_gpr(button_state_addr)) = 1;
+    MEM_W(0, kseg0_gpr(input_addr)) = (1u << 3);
+    helper_ctx = call_helper(10, 3);
+    assert(static_cast<uint32_t>(helper_ctx.r2) == (1u << 3));
+    std::printf("[bcf28_test] PASS: 0x800979D8 full bakey_held/enabled contract passed\n");
+
+    // 5. Verify remaining gap stubs still write v0 = 0.
+    recomp_func_t* gap_funcs[] = {f_gap1998, f_gap31178, f_gap36670, f_gap36728};
     for (size_t i = 0; i < sizeof(gap_funcs) / sizeof(gap_funcs[0]); ++i) {
         recomp_context ctx{};
         ctx.r2 = 0xDEADBEEF12345678ull;
@@ -144,7 +238,7 @@ int main() {
             return 1;
         }
     }
-    std::printf("[bcf28_test] PASS: All 5 remaining gap stubs correctly return v0 = 0\n");
+    std::printf("[bcf28_test] PASS: All 4 remaining gap stubs correctly return v0 = 0\n");
 
     std::printf("[bcf28_test] ALL TESTS PASSED SUCCESSFULLY.\n");
     std::fflush(stdout);

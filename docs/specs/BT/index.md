@@ -37,6 +37,7 @@ At the verified baseline, `origin` is
 - [Compression](compression.md) — cartridge/overlay deflate + CRC scaffold.
 - [Tools](tools.md) — C++ tooling for decompression / compression / overlays.
 - [ANGRYLION_CONTROL oracle](angrylion-control-oracle.md) — pinned Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE for TooieRecomp measurement (not the RT64 renderer).
+- [P08 `0x800979D8` evidence](../../plan/evidence/p08-user-demo4-800979d8-independent-review) — helper contract and bounded BCE84/P60/ncbapivot join PASS. Global attract movement remains open; residual register: [p08-attract-movement-residuals](../../plan/evidence/p08-attract-movement-residuals).
 - [Sources](sources.md) — `src/` tree layout and decompilation style.
 - [Matching](matching.md) — per-function decomp/matching workflow.
 - [CI](ci.md) — GitHub Actions build + progress upload.
@@ -55,3 +56,12 @@ This repo produces exactly the raw material a `N64Recomp` recompiler needs:
 See [TooieRecomp roadmap](../../roadmap/tooie-recomp.md) (histórico) and
 implementation stage [[../../plans/BT/06-overlays-and-syscalls]] for the
 current native syscall dispatch.
+
+## Stable input-helper contract
+
+Known real game helpers must not be silently replaced by generic zero-return
+lookup gap stubs. In particular, `0x800979D8` is a real stateful helper: it
+delegates held-state evaluation to `bakey_held`, uses the live
+`0x800BCE84`/ring-selected word when `prev_state[button] == 0`, applies the
+logical-input enable gate, and returns the enabled logical-input mask. This is
+a stable contract; USER_DEMO-specific captures belong in evidence, not here.
