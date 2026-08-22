@@ -1,5 +1,5 @@
 ---
-status: active
+status: historical-pre-fix
 type: evidence
 phase: P08
 date: 2026-08-21
@@ -10,8 +10,15 @@ tags: [p08, user-demo-4, camera, p60, writer-provenance, glidx39]
 
 This note closes the static part of the `glidx=38 → 39` join and records the
 runtime capture contract. It deliberately uses neutral names (`p60`, `p60+8`)
-until the object has a proven semantic name. No production fix is authorized
-by this evidence.
+until the object has a proven semantic name. This is historical pre-fix
+provenance; it does not authorize a post-fix parity claim by itself.
+
+The native `0x800979D8` semantics were corrected on 2026-08-22 after this
+capture: `bakey_held` polarity, live `800BCE84` query, and logical-input
+enabled-mask return are covered by `bcf28_helpers_test`. On a 900s paired run
+on `DISPLAY=:0`, RT64 and Oracle executed the exact same chain at `glidx=39`:
+`80112D90` wrote `p60.C=1, p60.E=2`, `80112D08` wrote `p60+8=5`, and `ncbapivot`
+took the matching transition branch. The downstream chain is now **PROVEN**.
 
 ## Bounded question
 
@@ -29,6 +36,12 @@ raw pointer value (the two runtimes allocate at different addresses).
 | `80112A84` | higher-level p60 producer | starts its local `a1` as `5`; the `p60+0xC` halfword-zero path changes it to `0`; calls `80112D08` |
 | `80112D08` | exact bounded writer | stores `a1 → p60+8`, `a2 → p60+0`, `a3 → p60+4` |
 | `80112C3C` | ncbapivot consumer | loads `p60+8`, subtracts one, and dispatches on the result |
+
+Post-fix held-state provenance (2026-08-22): the reason RT never supplies
+`p60+0xC=1` is still `0x800979D8` returning `0` at glidx 39, but that is no
+longer a missing C-Right pad bit. Pad `0001` and `prev_state[13]=0` match AN;
+AN returns `v0=2`. Canonical:
+[[p08-user-demo4-bainput-held-state-provenance]].
 
 The static chain is therefore `80110588 → 80112A84 → 80112D08`; the old
 `800137AC` hypothesis is superseded. `p60+0xC` is a live producer control/status
@@ -53,8 +66,9 @@ glidx=39  ncbapivot enter: p60+8=0
 This proves RT64 executes the exact writer between the two ncbapivot samples,
 and that its input path supplies `a1=0` because the observed `p60+0xC` control
 halfword is zero. It is a **B-P60-WRITER-INPUT** result, not an A-candidate:
-the paired oracle capture below closes the writer-input join, and no production
-fix is authorized.
+the paired oracle capture below closes the historical writer-input join. The
+separate post-fix RT64 capture recorded `held=0`, so held-branch acceptance is
+still open; see [[p08-user-demo4-800979d8-independent-review]].
 
 The fresh oracle writer-marker run records the same semantic node at
 `glidx=39`, with `p60+0xC=1`, `a1=5`, and post-store `p60+8=5`. Its ncbapivot
@@ -119,3 +133,11 @@ ARCHIVE:            /tmp/p08-p60-writer-provenance-20260821/
 ARCHIVE_HASHES:     /tmp/p08-p60-writer-provenance-20260821/SHA256SUMS
 ORACLE_BUILD:       PASS (pinned nightly/RSP/CXD4; ROM SHA-1 verified)
 ```
+
+## Current checkpoint (2026-08-22)
+
+The new semantic join supersedes the pre-fix `p60.C=0` observation for the
+corrected target event. The after-write values are `p60.C=1`, `p60.E=2`, and
+`p60+8=5` in both runtimes, followed by the same ncbapivot branch. The final
+paired capture verifies twice and closes immutable acceptance for this bounded
+helper-chain result. It is not a global camera or attract verdict.

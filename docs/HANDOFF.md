@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 bind-tick round.w.s and idle follow-cam glidx 1..38 now match ANGRYLION_CONTROL; dump glidx 39 first split is 80112C3C on p60_8 (0 vs 5). BLUE-vs-FIRE egg remains. Only formal P08 gate is PHYSICAL_GAMEPAD_VALIDATION."
+description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 idle follow-cam glidx 1..38 match ANGRYLION_CONTROL; glidx 39 first remaining split is native 0x800979D8 return (pad 0001 MATCH). BLUE-vs-FIRE egg remains. Formal P08 gates: PHYSICAL_GAMEPAD_VALIDATION plus 0x800979D8 dynamic acceptance."
 status: current
 type: handoff
 project: TooieRecomp
@@ -15,8 +15,9 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
 **PHASE P08 IS ACTIVE / MANUAL_VALIDATION_PENDING; PHASE P09 IS PENDING / NOT_FORMALLY_OPEN (2026-08-21):**
 - **Physical Display Validation**: **PASS** — User explicitly confirmed all 14 mandatory display/window integration tests passed (`PHYSICAL_DISPLAY_RESULT: PASS`, `FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`).
 - **Physical Gamepad Status**: **PENDING_HARDWARE_UNAVAILABLE** — Formal 15/15 gamepad checklist cannot be executed because controller hardware is temporarily unavailable. `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained.
-- **Only Remaining P08 Gate**: **PHYSICAL_GAMEPAD_VALIDATION**.
-- **Player & AI Movement Speed Parity Baseline (2026-08-21)**: [[plan/evidence/p08-provisional-player-ai-speed-parity]]. `PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`. Speed magnitude matches within sub-pixel floating point bounds across straight walk (`510.2442 u/s`), trot run (`673.5218 u/s`), jump (`690.0 u/s`), and AI actors (`chdiggerground` path, `subaddie` patrol). USER_DEMO_4 speed magnitude matches (`0.0017..2.87 u/s`), proving `CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY` (the observed trajectory split is downstream of follow-camera direction, NOT scalar speed). Historical downhill ~510 speed is `PROVEN_CLEAN` against original N64 hardware.
+- **Open P08 Gates**: **PHYSICAL_GAMEPAD_VALIDATION** plus the bounded
+  `0x800979D8` held-input/downstream dynamic acceptance gate.
+- **Player & AI Movement Speed Parity Baseline (2026-08-21)**: [[plan/evidence/p08-provisional-player-ai-speed-parity]]. `PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS` **within the measured windows only**; `AI_GLOBAL_PARITY: NOT_PROVEN`. Speed magnitude matches within sub-pixel floating point bounds across straight walk (`510.2442 u/s`), trot run (`673.5218 u/s`), jump (`690.0 u/s`), and sampled AI actors (`chdiggerground` path, `subaddie` patrol). USER_DEMO_4 speed magnitude matches (`0.0017..2.87 u/s`), supporting `CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY` for that bounded sample. Historical downhill ~510 speed is `PROVEN_CLEAN` against original N64 hardware.
 - **Attract numbering / egg discriminator (2026-08-21)**: user demos are **continuous across intro blocks**, not zero-based Demo 0..3. Canonical evidence: [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]].
   - `USER_DEMO_4` = first gameplay after the first return to intro/music = map **235 Haunted Cavern** (`stage=0 sub=4`), **not** "Demo 3".
   - `EGG_PARITY_DEFECT: PROVEN` — Angrylion fires **FIRE** (`cheggfire` 535); RT64 fires **BLUE** (`cheggnormal` 539). User confirmed Angrylion RDP Plus nightly-build visual PASS for fire egg and for the previously-broken demo behavior.
@@ -25,13 +26,18 @@ tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, bafla
   - b042865 `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. `GLOBAL_VISUAL_DRIFT_STATUS=NOT_REPRODUCED_IN_ATTRACT_SET` is **CORRECTED/SUPERSEDED** for USER_DEMO_4. Demo 0..3 remains an incomplete attract slice.
 - **ROUND.W.S checkpoint (2026-08-21)**: `5854872c79a7cab1c9395ddcd173cece449ffe11` (`fix: preserve MIPS round.w.s semantics`). `ROUND_W_S_ROOT_CAUSE: PROVEN`. `ORIGINAL_BIND_TICK_DISCRIMINATOR: RESOLVED`. `ROUND_W_S_BIND_AND_IDLE_CAMERA_EFFECT: FIXED`. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`. `ROUND_W_S_SPECIAL_VALUE_CONTRACT: PARTIAL`. Evidence: [[plan/evidence/p08-user-demo4-sincos-semantics-fix]].
 - **Agent workspace (2026-08-21)**: open CLI/IDE in **TooieRecomp/**. MCP configs live here and bind markdown-vault to `docs/` ([[MARKDOWN_VAULT_TOOLS]]). Do not start agents at `N64-Recomp/`. `BanjoRecomp` and the cart ROM remain siblings for CMake/oracle only.
-- **USER_DEMO_4 `p60+0xC` first-writer discriminator (2026-08-21)**: [[plan/evidence/p08-user-demo4-p60-control-writer]].
-  - Root discriminator: `0x800979D8` (`__bainput_func_800979D8`), an internal static helper in `bainput.c` that checks `bakey_held(self, button_id)` for C-buttons, was bound in `boot_hw_stubs.cpp` to `lookup_gap_stub<0x800979D8>` returning `v0 = 0`.
-  - Divergence mechanism: `MISSING_WRITE` in RT64. On `glidx=38`, the demo script holds C-Right. Oracle executes `__bainput_func_800979D8` -> `bainput_should_rotate_camera_right` -> `func_800A4854` -> `func_80110EFC(node, 1)` -> `func_80110E00` -> `func_801111D0` -> `func_80112D90`, storing `p60+0xC = 1` and `p60+0xE = 2`. RT64 skips the entire call tree because `0x800979D8` returned `0`.
-  - Downstream at `glidx=39`: `func_80112A84` checks `p60+0xC`. Oracle has `1` and writes `p60+8 = 5` via `func_80112D08`, triggering transition pivot in `ncbapivot`; RT64 has `0` and writes `p60+8 = 0`.
-  - Prior state: 100% byte-matched player movement, positions, yaw, demo script ticks, and animation states across glidx 0..38.
-- **Next Single Action**: When authorized for implementation, implement / recompile `__bainput_func_800979D8` at `0x800979D8` to replace the zero-return gap stub, and verify paired RT64 vs Angrylion parity through USER_DEMO_4. P09 remains **NOT_FORMALLY_OPEN**.
-
+- **USER_DEMO_4 `0x800979D8` bainput fix & dynamic validation (2026-08-22)**: [[plan/evidence/p08-user-demo4-800979d8-postfix-validation]], [[plan/evidence/p08-user-demo4-800979d8-independent-review]], [[plan/evidence/p08-user-demo4-bainput-held-state-provenance]].
+  - Root fix: `0x800979D8` (`tooie_bainput_func_800979D8`) implemented in `src/game/boot_hw_stubs.cpp`. Unit tests in `tests/bcf28_helpers_test.cpp` PASS.
+  - Held-state provenance & dynamic validation: raw pad `(-48,-46,0001)` **MATCH**. AN and RT `prev_state[13]` are both `0`. Both execute `bakey_held` -> `0x800BCE84` (held=1), both return `v0=2` (`1 << input_id` from enabled mask), both execute the camera rotate-right chain `80097B94 -> 80110EFC -> 80110E00 -> 801111D0 -> 80112D90`, write `p60.C=1, p60.E=2`, set `p60+8=5` at `80112D08`, and take the matching `ncbapivot` transition branch.
+  - Camera parity: `CAMCTRL_DELTA_41 = 0.0000°`, `CAMCTRL_DELTA_50 = 0.0000°`, `CAMCTRL_DELTA_100 = 0.0000°`. Accumulation drift is **RESOLVED**.
+  - Egg parity: `USER_DEMO_4` fires `cheggfire` (535 FIRE) matching Angrylion Oracle (`cheggfire` 535).
+  - Dynamic acceptance: instruction-level `0x800BCE84` live-input join is now
+    **PROVEN** ([[plan/evidence/p08-user-demo4-bce84-live-input-join]]). The old
+    RT `bs_pressed=0` probe read ring 0 (`obj+0x58`), not `unk8[13]` ring 1
+    (`obj+0x90`, word `0x115`, LSB 1). Immutable recapture
+    `/tmp/p08-979d8-final-20260822T070735Z/` (`SHA256SUMS` PASS twice).
+    Worktree dirty; P08 **ACTIVE / MANUAL_VALIDATION_PENDING**; P09
+    **NOT_FORMALLY_OPEN**; no commit/push.
 
 **ATTRACT DEMO2 CRASH RESOLVED (2026-08-16):** deterministic attract-loop SIGSEGV
 after DEMO2 is RESOLVED and VALIDATED. `INTRO → Wooded Hollow 335 → TDL 278 → CCL 314 → CS Intro 395 → INTRO → Haunted Cavern 235 → MAP_296`
@@ -556,15 +562,54 @@ resolve the Z-buffer camera and post-egg motion differentials against the hardwa
 1. **Z-Buffer (R-ORACLE):** The hardware-faithful `ANGRYLION_CONTROL` run produced live depth in RDRAM (`0x866D..0x8C11`), clear writes `0xFFFC`, and `record+0x34 = 1` across all 25/25 aligned Q1 samples, matching RT64. This is an emulator oracle, not a physical N64 measurement.
 2. **Post-Egg Motion (R-MOTION-ORACLE):** The historical motion drift (which reached 58 units under Rice) disappeared completely under `ANGRYLION_CONTROL`. `camctrl` at glidx 385 matches within `+0.0030°` (`53.5799°` vs `53.5829°`), `ideal_yaw` matches identically (`102.59°` vs `102.59°`), maximum XZ error across all 765 Demo 0 frames is `< 0.89 units`, and behavior states are 100% bit-identical (`0` mismatches).
 3. **Verdict:** Demo 0 movement, camera-control, and physics match the hardware-faithful oracle within the measured scope. Full render-state parity and global attract-demo fidelity remain open.
-4. **Current Status:** P08 automated implementation and evidence are COMPLETE. Physical gamepad + multi-monitor display validations remain PENDING. P09 is not formally opened.
+4. **Current Status:** P08 remains active. Physical gamepad validation and the held-input/downstream dynamic acceptance for `0x800979D8` remain pending. P09 is not formally opened.
 
 Next single action: user executes docs/plan/evidence/p08-final-physical-validation.md checklist on physical hardware.
 
 ## Current P08 residual: USER_DEMO_4 p60 writer provenance
 
 The `glidx=39` camera split is now statically bounded to `80110588 → 80112A84
-→ 80112D08`; RT64 records `a1=0`/`p60+0xC=0` while the oracle reads
-`p60+8=5`; the oracle writer input is `a1=5`/`p60+0xC=1`. This closes
-B-P60-WRITER-INPUT; no fix is authorized. See
+→ 80112D08`; historical RT64 records `a1=0`/`p60+0xC=0` while the oracle
+reads `p60+8=5`; the oracle writer input is `a1=5`/`p60+0xC=1`. This closes
+B-P60-WRITER-INPUT for the historical capture. The native helper semantics
+are now corrected locally, but downstream acceptance is still open. See
 [[plan/evidence/p08-user-demo4-p60-writer-provenance]] and
 [[plan/evidence/p08-walkstart-reproduction-runbook]].
+
+## 0x800979D8 independent review (2026-08-22)
+
+[[plan/evidence/p08-user-demo4-800979d8-independent-review]] independently
+verified the original guest bodies: `0x800979D8` is a real static bainput
+helper, not a zero-valued placeholder. Its correct contract calls
+`bakey_held`, uses `800BCE84` when `prev_state[id]==0`, and returns the
+logical-input enabled mask. The corrected Tooie mapping is registered and the
+full focused test passes. Paired held-state provenance
+([[plan/evidence/p08-user-demo4-bainput-held-state-provenance]]) shows the
+first remaining split in the old capture is **inside** that mapping at glidx
+39: matching pad `0001` and matching `prev_state[13]=0`, AN return `2` vs RT
+`0`. Probe `held=` is `prev_state`, not `bakey_held`. Instruction-level
+`0x800BCE84` join ([[plan/evidence/p08-user-demo4-bce84-live-input-join]])
+now proves the live source word `0x115` / mask `1` on both runtimes; the
+old `bs_pressed=0` probe is **CORRECTED/SUPERSEDED**. The joined event also
+matches `bakey_held=1`, `0x800979D8=2`, `p60.C/E/+8=1/2/5`, and ncbapivot.
+The helper chain is **PROVEN in bounded scope**; do not promote this to global
+attract parity. User Demo 1 and Demo 5 movement residuals remain open; see
+[[plan/evidence/p08-attract-movement-residuals]].
+
+```text
+P08_STATUS:                         ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                         PENDING / NOT_FORMALLY_OPEN
+NEXT_SINGLE_ACTION:                 trace USER_DEMO_5 to first movement/state divergence
+FIX_COMMIT:                         BLOCKED — recorded log hashes do not match current files
+```
+
+## Final immutable checkpoint (2026-08-22T07:07Z)
+
+The fresh paired capture `/tmp/p08-979d8-final-20260822T070735Z/` passes
+`sha256sum -c SHA256SUMS` twice. The target join is stage 0/sub 4, glidx 39,
+pad `(-48,-46,0001)`, button 13, ordinal 8; BCE84 ring-1 raw `0x115` and
+return 1, `bakey_held=1`, `0x800979D8=2`, and p60 C/E/+8 `1/2/5` match in the
+bounded ncbapivot chain. Task-specific BCE84/979D8 probes are removed;
+reusable diagnostics remain env-gated. Tests/build/diff/generated-source
+gates pass. Demo 1/5 movement residuals stay open; this checkpoint does not
+start Demo 5.

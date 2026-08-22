@@ -13,6 +13,11 @@ tags: [p08, user-demo-4, full-state, discriminator, ncbapivot, camctrl, round-w-
 
 ## 1. Verdict
 
+This document is the bounded post-ROUND.W.S camera baseline, not proof of the
+later `0x800979D8` held-input fix. The separate post-fix helper capture records
+`held=0`, return `0`, and `p60+8=0`; its downstream acceptance remains open.
+See [[p08-user-demo4-800979d8-independent-review]].
+
 ```text
 ROUND_W_S_ROOT_CAUSE:                              A / PROVEN
 ROUND_W_S_FIX_VALIDATED_AT_ORIGINAL_DISCRIMINATOR: YES

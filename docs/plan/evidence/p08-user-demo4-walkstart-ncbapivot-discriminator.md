@@ -23,6 +23,13 @@ RT64.
 
 ## Current proven state
 
+The `0` versus `5` values below are the canonical pre-fix/post-ROUND.W.S
+discriminator. Post-fix, `0x800979D8` still returns `0` on RT at glidx 39,
+but AN returns `2` with the same `prev_state[13]=0` and pad `0001`. That is
+not a missing raw C-Right bit. See
+[[p08-user-demo4-bainput-held-state-provenance]] and
+[[p08-user-demo4-800979d8-independent-review]].
+
 - `5854872c79a7cab1c9395ddcd173cece449ffe11` closes the bind-tick
   `round.w.s` semantic defect. It must not be reopened.
 - Idle CA8B4/CA628 data through `glidx 38` is bit-identical against the pinned
@@ -33,6 +40,12 @@ RT64.
 - The existing postfix capture does not contain every read/FPR/stack value
   consumed before that output. Therefore it cannot establish a
   same-input/different-output instruction join.
+
+The 2026-08-22 semantic correction of `0x800979D8` is validated both statically/unit-tested
+and dynamically accepted. A 900-second paired capture on `DISPLAY=:0` reached `stage=0/sub=4`
+glidx 39: RT64 and Angrylion Oracle both execute `800979D8 -> v0=2`, write `p60.C=1, p60.E=2`,
+store `p60+8 = 5`, and take the identical `ncbapivot` transition branch, achieving bit-identical
+camera alignment and restoring `cheggfire 535 FIRE` egg behavior.
 
 ## Historical blocked run (superseded by fresh capture below)
 
@@ -285,3 +298,14 @@ oracle supplies `a1=5` from `p60+0xC=1`. No semantic fix.
 
 For a clean rerun by another agent, use the operational checklist in
 [[p08-walkstart-reproduction-runbook]].
+
+## Current checkpoint (2026-08-22)
+
+The later BCE84 raw join supersedes the provisional “RT still returns 0” line:
+at the semantic target both runtimes select ring 1, load `0x115`, return
+`0x800979D8=2`, write `p60.C/E=1/2`, store `p60+8=5`, and reach the same
+ncbapivot branch. The ncbapivot read-set remains incomplete for global movement
+analysis; the final paired capture now verifies twice, so immutable checkpoint
+acceptance is closed for this bounded event.
+User-observed Demo 1 and Demo 5 residuals are registered in
+[[p08-attract-movement-residuals]].

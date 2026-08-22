@@ -745,3 +745,143 @@ The first reason why `p60+0xC` diverges (`RT64 = 0` vs `Oracle = 1` before glidx
 3. **Downstream Divergence at glidx 39**: In Oracle, `80112A84` reads `p60+0xC == 1` and sets `a1 = 5` for `80112D08`, storing `p60+8 = 5`, leading to transition pivot in `ncbapivot` (0x80112C3C). In RT64, `p60+0xC == 0`, so `80112A84` sets `a1 = 0` and `80112D08` stores `p60+8 = 0`, skipping transition pivot.
 4. **Prior State**: 100% byte-matched player movement, positions, yaw, demo script ticks, and animation states across glidx 0..38.
 5. **Status**: No production fix applied (worktree clean, diagnosis complete).
+
+## Independent 0x800979D8 review and dynamic validation (2026-08-22)
+
+The original ELF disassembly independently confirms that `0x800979D8` is a
+real static helper. Its contract is stateful: `bakey_held(self, button_id)`,
+logical-input enable gating via `a2`, and `BaInput.__enabled` bit updates. A
+generic native mapping replaced the gap stub in
+[[p08-user-demo4-800979d8-independent-review]].
+
+`BAINPUT_HELPER_TESTS: PASS`; the four unrelated zero-return gaps remain
+unchanged.
+
+The post-fix runtime artifact is deliberately bounded; see
+[[p08-user-demo4-800979d8-postfix-validation]]:
+- Helper runtime: called at glidx 38–39, but `held=0` and return `0`; held-branch parity is **NOT_PROVEN**.
+- Downstream `p60`: captured RT64 has `p60.C=0`, `a1=0`, and `p60+8=0`; P60 parity is **NOT_RECONCILED**.
+- Movement/animation: sampled and bounded only; complete state parity is **NOT_PROVEN**.
+- Egg Event: USER_DEMO_4 remains RT64 BLUE (`cheggnormal`/539) versus AN FIRE (`cheggfire`/535).
+- Attract soak and memory behavior: **NOT_RUN / NOT_EVALUATED** for this fix.
+- Worktree: implementation and focused test are local and uncommitted. P08 remains `ACTIVE / MANUAL_VALIDATION_PENDING`; P09 remains `PENDING / NOT_FORMALLY_OPEN`.
+
+## USER_DEMO_4 0x800BCE84 live-input join (2026-08-22)
+
+Canonical: [[p08-user-demo4-bce84-live-input-join]].
+
+Exact guest `lw` at `0x800BCEAC` on USER_DEMO_4 glidx 39 C-Right (`ord=8`,
+pad `(-48,-46,0001)`): both runtimes load `0x00000115` from
+`obj + unk8[13]*56 + 0x24 + 13*4` (`ring=1`, offset `+0x90`), mask/return 1.
+Old `bs_pressed=0` was ring 0 (`+0x58`) — **CORRECTED/SUPERSEDED**.
+`LIVE_INPUT_EQUIVALENCE: PROVEN`. No commit.
+
+## USER_DEMO_4 BaInput held-state provenance (2026-08-22)
+
+Canonical: [[p08-user-demo4-bainput-held-state-provenance]].
+
+Raw pad `(-48,-46,0001)` at glidx 39 **MATCH**. Diagnostic `held=` is
+`prev_state[13]` and is `0` on both runtimes. AN `0x800979D8` returns `2`
+and writes `p60.C=1/E=2/+8=5`; RT returns `0`. Gemini “pad 0001 == held
+C-Right” is **CORRECTED/SUPERSEDED**. First discriminator is the native
+helper (`ROOT_CLASS=A-CANDIDATE-HELPER`). Pending `0x800979D8` mapping is
+preserved; no production edit; no commit.
+
+```text
+INPUT_DIVERGENCE_LAYER:        LOOKUP_GAP (native 0x800979D8 replacement)
+FIRST_DIFFERENT_PC:            0x800979D8
+NEXT_SINGLE_ACTION:            GPT-5.6 Luna x-high independent semantic
+                               review of bakey_held polarity / v0=2 vs 0x2000
+```
+
+## Semantic arbitration update (2026-08-22)
+
+The native mapping is now corrected, dirty, and uncommitted. `bakey_held`
+uses the proven `prev_state` polarity and reaches `800BCE84` when that byte is
+zero; `0x800979D8` returns the logical-input enabled mask (`a2=1` → `2`). The
+full helper branch test passes. A fresh 180-second paired attempt was
+incomplete (RT64 reached glidx 39 only in `stage=0/sub=0`; oracle did not reach
+the joinable `stage=0/sub=4` target), so after-write p60 and ncbapivot parity
+remain **NOT_CAPTURED / NOT_PROVEN**. P08/P09 statuses are unchanged and no
+commit/push is authorized.
+
+## Raw audit of reported paired capture (2026-08-22)
+
+The reported `/tmp/p08-walkstart-20260822-021445/` artifacts exist and their
+five reported hashes match. The target pad and downstream chain are present,
+but the causal gate is not: RT64's raw `ud4-bainput-979d8-detail` target line
+records `bs_pressed=0 bs_pressed_bit0=0`, while the oracle log has no equivalent
+live `ButtonState.pressed` field. The reported 900-second duration is also not
+supported by the RT64 `wall_ms` range (about 255 s); the real environment is
+Linux Mint 22.2/kernel `6.8.0-138-generic` with RX 580 RADV. Bounded camera and
+trajectory matches remain useful observations, but `800979D8_DYNAMIC_ROOT_CHAIN`
+is **NOT_PROVEN**, memory leak status is **NOT_EVALUATED**, and no commit/push is
+authorized. Temporary probes remain untouched because the final acceptance gate
+did not pass.
+
+## Final BCE84 checkpoint and residual register (2026-08-22)
+
+The prior raw-audit paragraph is superseded by the second BCE84 capture. Its
+hashes match the recorded `SHA256SUMS`, including `/tmp/p08-angrylion-ud4-cam.log`.
+At stage 0/sub 4/glidx 39, pad `(-48,-46,0001)`, button 13, ordinal 8:
+
+```text
+800BCE84:       RT addr=8034c460 ring=1 raw=00000115 mask=1
+                AN addr=80342760 ring=1 raw=00000115 mask=1
+BAKEY_HELD:     RT=1 AN=1
+979D8_RETURN:   RT=2 AN=2
+P60_AFTER:      C=1 E=2 +8=5 on both
+NCBAPIVOT:      matching branch
+```
+
+The old `bs_pressed=0` probe is **CORRECTED/SUPERSEDED** because it read ring
+0. `800979D8_DYNAMIC_ROOT_CHAIN` is now **PROVEN for this bounded event**;
+global attract parity is not. The exact BCE84/979D8 production probes were
+removed; env-gated chain/state diagnostics remain for the next investigation.
+
+Manual residuals are preserved in [[p08-attract-movement-residuals]]:
+USER_DEMO_1 and USER_DEMO_5 are reproduced by the user; Demos 2, 3, and 6 only
+appear correct manually; Demo 4 is supported by bounded paired evidence. The
+Talon-Trot/locomotion-transition explanation remains an **INFERENCE / USER-
+OBSERVED CORRELATION**. P08 stays `ACTIVE / MANUAL_VALIDATION_PENDING`; P09 is
+`PENDING / NOT_FORMALLY_OPEN`.
+
+## Artifact-integrity correction (2026-08-22)
+
+The preceding “hashes match” statement is **CORRECTED/SUPERSEDED**. The
+registered `SHA256SUMS` values versus current files are:
+
+```text
+FILE                              REGISTERED   CURRENT
+p08-rt64-bce84-join.log          0c11c0f4...  9cdf01ae...
+p08-angrylion-ud4-cam.log       47626f98...  ecc74dc1...
+p08-angrylion-bce84-join.log    c58c55ff...  bf1af28d...
+oracle-target-excerpt.log        3c56f5ee...  3c56f5ee...  MATCH
+rt64-target-excerpt.log          0cb43009...  0cb43009...  MATCH
+```
+
+The current logs were modified at 03:24, after `SHA256SUMS` and excerpts at
+03:19. Their target lines still show the corrected ring-1 join and downstream
+values, so semantic content is **OBSERVED**, but the immutable capture gate is
+**BLOCKED**. No commit/push is authorized. Next action: produce a fresh
+bounded paired capture that writes final logs and `SHA256SUMS` atomically.
+
+## Immutable recapture (2026-08-22T07:07Z)
+
+Fresh directory `/tmp/p08-979d8-final-20260822T070735Z/`. Writers were stopped
+before rename; `SHA256SUMS` was generated after final names + excerpts;
+`sha256sum -c` **PASS** twice; artifacts then `chmod a-w`. Joined USER_DEMO_4
+values match the prior semantic capture (`BCE84=0x115/1`, `bakey=1`,
+`979D8=2`, `p60 C/E/+8=1/2/5`). `FINAL_ARTIFACT_INTEGRITY: PASS`.
+`800979D8_DYNAMIC_ROOT_CHAIN: PROVEN` for this bounded event. No Demo 5 /
+Talon Trot work. No commit/push.
+
+## Final immutable checkpoint (2026-08-22T07:07Z)
+
+`/tmp/p08-979d8-final-20260822T070735Z/SHA256SUMS` passes twice. The paired
+target join is stage 0/sub 4, glidx 39, pad `(-48,-46,0001)`, button 13,
+ordinal 8; BCE84 ring-1 raw `0x115`/return 1, `bakey_held=1`,
+`0x800979D8=2`, and p60 C/E/+8 `1/2/5` match at the bounded ncbapivot event.
+Temporary task-specific BCE84/979D8 probes are cleaned; reusable diagnostics
+remain. Tests, build, diff check, and generated-source check pass. P08 remains
+`ACTIVE / MANUAL_VALIDATION_PENDING`; Demo 1/5 movement residuals remain open.

@@ -154,7 +154,7 @@ POST_CAMERA_FIX_RT64_EGG:          BLUE (cheggnormal 539)
 EGG_PARITY_DEFECT:                 PROVEN
 EGG_INDEPENDENT_FROM_ROUND_W_S:    YES
 EGG_INDEPENDENT_FROM_REMAINING_CAMERA_STATE: UNKNOWN
-ATTRACT_SOAK:                      PASS (~460s demo-sync / 540s process; timeout stop; sub 0..11 including map 395; no SIGSEGV)
+ATTRACT_SOAK:                      PASS for this ROUND.W.S baseline (~460s demo-sync / 540s process; timeout stop; sub 0..11 including map 395; no SIGSEGV); not a `0x800979D8` post-fix soak or global memory-leak result
 CRASH:                             NO
 NEW_VISIBLE_REGRESSION:            NOT_INSPECTED (unattended soak)
 ```

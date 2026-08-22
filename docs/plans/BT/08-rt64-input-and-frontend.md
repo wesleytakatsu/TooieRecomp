@@ -234,8 +234,21 @@ Evidência corrente:
 
 ## Evidências P08
 
+### Revisão independente 0x800979D8 (2026-08-22)
+
+[[../../plan/evidence/p08-user-demo4-800979d8-independent-review]] confirma
+por disassembly do ELF original que o helper `0x800979D8` é lógica real de
+`bainput`. O mapeamento Tooie está registrado e o teste focalizado passa.
+[[../../plan/evidence/p08-user-demo4-bainput-held-state-provenance]] junta o
+evento C-Right glidx 39: pad `0001` e `prev_state[13]=0` **MATCH**; AN
+retorna `v0=2` e grava `p60.C=1/E=2/+8=5`; RT retorna `0`. Probe `held=` é
+`prev_state`, não `bakey_held`. Gemini “pad 0001 == held C-Right” é
+**CORRECTED/SUPERSEDED**. `ROOT_CLASS=A-CANDIDATE-HELPER`. Sem edição de
+produção; mapping pendente preservado.
+
 | evidência | estado/finalidade |
 | --- | --- |
+| [[../../plan/evidence/p08-user-demo4-bainput-held-state-provenance]] | **CURRENT:** USER_DEMO_4 C-Right pad MATCH; first split is native `0x800979D8` return 0 vs 2 (`A-CANDIDATE-HELPER`) |
 | [[../../plan/evidence/p08-attract-loop-after-demo2-crash]] | **RESOLVED and ACCEPTED:** DEMO2 attract SIGSEGV; bsrest 0x808003FC resolved via CreateStatic (Level A, verdict B) |
 | [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | historical USER_BUG_B one-actor diagnosis; corrected/superseded |
 | [[../../plan/evidence/p08-forced-cinematic-facing-independent-review]] | **CURRENT:** original-MIPS case-11 contract; chdiggerground actor REFUTED; global USER_BUG_B OPEN |
@@ -363,7 +376,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
    across all 765 demo frames (XZ max error < 0.89 units, 0 behavior-state
    mismatches). Historical Rice camctrl/motion drift is REFUTED as an emulator
    artifact.
-3. **Physical Hardware Validation (P08 Gates)** — Physical display validation is **PASS** (`FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`, 14/14 mandatory items passed). Physical gamepad checklist is **PENDING_HARDWARE_UNAVAILABLE** due to temporary hardware unavailability (`PHYSICAL_GAMEPAD_RESULT: PENDING_HARDWARE_UNAVAILABLE`, `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained). The only remaining formal P08 gate is `PHYSICAL_GAMEPAD_VALIDATION`.
+3. **P08 acceptance gates** — Physical display validation is **PASS** (`FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`, 14/14 mandatory items passed). Physical gamepad checklist is **PENDING_HARDWARE_UNAVAILABLE** due to temporary hardware unavailability (`PHYSICAL_GAMEPAD_RESULT: PENDING_HARDWARE_UNAVAILABLE`, `USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained). The `0x800979D8` held-input/P60 downstream gate is also **NOT_PROVEN**; see the adversarial review.
 4. **File-select confirm transition — RESOLVED / REFUTED**
    ([[../../plan/evidence/p08-title-file-select-validation]]). Post-confirm destination
    is `MAP_A1_CS_INTRO` (161) / `mode=3` (opening story cutscenes). The synthetic
@@ -392,7 +405,7 @@ NEXT_SINGLE_ACTION:                         return to the next P08 residual
 
 **P08 remains ACTIVE (MANUAL_VALIDATION_PENDING under Verdict B).**
 - **Implemented Scope**: RT64 presentation baseline, input mapping, window/scale integration, graphics/Vulkan error handling, launcher music preview, static call correctness, attract demo hardware-accurate motion sync.
-- **Physical Validation Status**: Physical display checklist is **PASS** (`FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`, 14/14 mandatory items passed). Physical gamepad checklist is **PENDING_HARDWARE_UNAVAILABLE** (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained). The only remaining formal P08 gate is `PHYSICAL_GAMEPAD_VALIDATION`.
+- **Physical Validation Status**: Physical display checklist is **PASS** (`FORMAL_DISPLAY_CHECKLIST_PROVEN: YES`, 14/14 mandatory items passed). Physical gamepad checklist is **PENDING_HARDWARE_UNAVAILABLE** (`USER_CONFIRMED_CONTROLLER_GAMEPLAY: YES` retained). The held-input/P60 dynamic gate for `0x800979D8` is also **NOT_PROVEN**.
 - **Provisional Pre-P09 Evidence**: **CORRECTED/SUPERSEDED**. User-continuous attract numbering, `EGG_PARITY_DEFECT: PROVEN`. Independent of ROUND.W.S: **YES**. Independent of remaining camera/demo split: **UNKNOWN**. USER_DEMO_4 follow-camera **REPRODUCED**. Bind-tick yaw `round.w.s` is POST-FIX MATCH vs ANGRYLION_CONTROL (`5854872c79a7cab1c9395ddcd173cece449ffe11`; [[../../plan/evidence/p08-user-demo4-sincos-semantics-fix]]). Idle follow-cam glidx 1..38 is bit-identical. `CAMERA_COMPLETE_FIX: NO`. `CAMERA_FEEDBACK_ACCUMULATION: STILL_PRESENT`. Remaining first difference is dump glidx 39 walking-player `ncbapivot` jumptable `80112C3C` on `*(node+0x60)+8` (0 vs 5 at enter; [[../../plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]]). `HAUNTED_CAVERN_NO_FIRE_EVENT` is **REFUTED**. P09 remains **PENDING / NOT_FORMALLY_OPEN**.
 - **Next Stage**: [[09-gameplay-parity-and-enhancements]] remains **PENDING / NOT_FORMALLY_OPEN** until the P08 manual gamepad gate is complete.
 - **P08 / P09 Invariants (Protected)**: attract DEMO2 crash, bsrest 0x808003FC, N64Recomp CreateStatic fix, first-straight ~510, fire-egg miss, cinematic facing, stick-angle 13B70, render-submission matrix, BCF28, core1 RA wrappers, PATCH 4 / preemption, P08-T10, original timing/4:3 baseline, Angrylion Z-buffer oracle (R-ORACLE), Angrylion attract demo motion sync (R-MOTION-ORACLE). Oracle checkout/run: [[../../specs/BT/angrylion-control-oracle]] (`tools/oracle/angrylion-control/run.sh`).
@@ -558,3 +571,18 @@ max XZ position error across all 765 frames is `< 0.89 units`, and behavior stat
 100% bit-identical. Classified as **R-MOTION-ORACLE**. No production fix is required.
 
 NEXT_SINGLE_ACTION: Conclude P08 attract demo motion sync validation as fully proven and proceed to P08 frontend/input milestone sign-off.
+
+## `0x800979D8` semantic correction (2026-08-22)
+
+The native helper is now generic and reuses the generated `bakey_held`,
+`bainput_isEnabled`, and `bainput_enable` implementations. Its proven static
+contract is `prev_state` suppressor/live `800BCE84` query, logical-input
+`__enabled` gating via `a2`, and enabled-mask return (`a2=1` → `2`). The full
+branch test passes. Instruction-level USER_DEMO_4 `0x800BCE84` live-input join
+is **PROVEN** ([[../../plan/evidence/p08-user-demo4-bce84-live-input-join]]);
+the bounded `0x800979D8 → P60 → ncbapivot` chain matches in current log
+content, and the final paired capture at `/tmp/p08-979d8-final-20260822T070735Z`
+passes its SHA256 manifest twice. Global attract parity remains open because USER_DEMO_1
+and USER_DEMO_5 have user-reproduced movement residuals. P08 stays
+`ACTIVE / MANUAL_VALIDATION_PENDING` and P09 stays
+`PENDING / NOT_FORMALLY_OPEN`.

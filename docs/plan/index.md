@@ -79,7 +79,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Runtime P05 | **done** | `TooieRecompiled` linka RT64; launcher/Vulkan OK; frame de jogo → P06 |
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
-| RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; USER_DEMO_4 ROUND.W.S bind-tick proven (`CAMERA_COMPLETE_FIX: NO`); dump glidx 39 walking ncbapivot residual remains; `ANGRYLION_CONTROL` in `tools/oracle/angrylion-control/` ([[../specs/BT/angrylion-control-oracle]]); manual validation pending |
+| RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; USER_DEMO_4 `0x800979D8 → BCE84 → P60 → ncbapivot` helper chain proven in bounded paired scope; USER_DEMO_1/5 movement residuals remain open; `ANGRYLION_CONTROL` in `tools/oracle/angrylion-control/` ([[../specs/BT/angrylion-control-oracle]]); manual validation pending |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
 locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
@@ -159,6 +159,19 @@ O trabalho só está concluído quando todos os critérios de
 - Registro anterior, agora supersedido: [[../roadmap/tooie-recomp]]
 
 ## Evidência P08 / P09 corrente
+
+- [[evidence/p08-user-demo4-800979d8-independent-review]] — **CURRENT:**
+  helper contract, exact BCE84 ring-1 raw join, focused test, and bounded P60/
+  ncbapivot chain match in content. The immutable log-hash gate is blocked;
+  global attract parity is not claimed.
+- [[evidence/p08-user-demo4-bainput-held-state-provenance]] — **CURRENT:**
+  USER_DEMO_4 glidx 39 pad `0001` MATCH; ring-1 BCE84 word `0x115`,
+  `bakey_held=1`, `0x800979D8=2`, and P60 after-write values match. Gemini
+  pad-equals-held claim is CORRECTED/SUPERSEDED.
+
+- [[evidence/p08-attract-movement-residuals]] — **CURRENT:** user-reproduced
+  USER_DEMO_1 and USER_DEMO_5 movement residuals; Talon-Trot/locomotion link is
+  an inference only. Next target is Demo 5 first divergence.
 
 - [[evidence/p09-user-observed-parity-residuals]] — **PROVISIONAL_PRE_P09_PARITY_EVIDENCE:**
   Demo 0 only: 765/765 input, bounded physics/behavior evidence, Blue Egg parity at

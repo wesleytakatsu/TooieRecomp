@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. ROUND.W.S bind-tick proven (`5854872`); dump glidx 39 `80112C3C`/`p60_8` residual remains; egg FIRE vs BLUE.
+- [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. The immutable `/tmp/p08-979d8-final-20260822T070735Z` capture verifies twice; the bounded `0x800979D8 → BCE84 → P60 → ncbapivot` chain is proven for USER_DEMO_4, while USER_DEMO_1/5 movement residuals remain open.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Vault = `TooieRecomp/docs`. Configs de MCP/IDE no TooieRecomp (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`). Abrir agentes neste repositório, não em `N64-Recomp/`.
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [[specs/BT/angrylion-control-oracle]] — ANGRYLION_CONTROL — Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE pinned under `tools/oracle/angrylion-control/` (measurement only; TooieRecomp stays RT64).
@@ -19,6 +19,12 @@
 - [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Pre-fix n74 DIFF is CORRECTED/SUPERSEDED; POST-FIX bind n74 MATCH; remaining dump glidx 39.
 - [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Rec init MATCH; CA8B4 identity; glidx-1 ULP seed CORRECTED/SUPERSEDED after ROUND.W.S.
 - [[plan/evidence/p08-user-demo4-follow-camera-first-discriminator]] — P08 — USER_DEMO_4 follow-camera CA628 writer/input discriminator — CA628 stores src2[1] at +0x1C; idle 1..38 MATCH after ROUND.W.S.
+- [[plan/evidence/p08-user-demo4-bce84-live-input-join]] — P08 — instruction-level `0x800BCE84` live-input join; `BCE84_SOURCE_FIELD=0x115` MATCH; old `bs_pressed` ring-0 probe CORRECTED/SUPERSEDED.
+- [[plan/evidence/p08-user-demo4-800979d8-independent-review]] — P08 — adversarial review of the `0x800979D8` bainput contract; focused test and bounded BCE84/P60/ncbapivot runtime content match, immutable hash gate blocked.
+
+- [[plan/evidence/p08-user-demo4-800979d8-postfix-validation]] — P08 — corrected post-fix validation; exact ring-1 BCE84 source and bounded helper/P60 chain match, no global parity claim.
+- [[plan/evidence/p08-user-demo4-bainput-held-state-provenance]] — P08 — USER_DEMO_4 C-Right raw-pad → BaInput held-state; final BCE84 join PROVEN in bounded scope.
+- [[plan/evidence/p08-attract-movement-residuals]] — P08 — user-reproduced USER_DEMO_1 and USER_DEMO_5 movement residuals; Demo 5 is next first-divergence target.
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
 - [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.

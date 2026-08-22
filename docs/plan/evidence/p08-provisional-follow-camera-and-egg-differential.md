@@ -342,3 +342,10 @@ Follow-camera **visible** first split remains `camctrl` at USER_DEMO_4 demo-sync
 ```text
 NEXT_SINGLE_ACTION: GPT-5.6 Terra instruction-join func_80013818 yaw invocation; no fix
 ```
+
+## Current checkpoint boundary (2026-08-22)
+
+USER_DEMO_4 follow-camera feedback is **RESOLVED in the validated helper-event
+scope**, and FIRE/535 is **OBSERVED in both paired artifacts**; egg causality
+and global camera parity remain bounded/unknown. This does not close the
+attract set: USER_DEMO_1 and USER_DEMO_5 movement residuals remain open.

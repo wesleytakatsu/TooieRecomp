@@ -10,7 +10,7 @@ index db5a596f..42ddc067 100644
  
  #ifdef DBG
  #include "debugger/dbg_debugger.h"
-@@ -168,6 +169,33 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -168,6 +169,45 @@ void InterpretOpcode(struct r4300_core* r4300)
  	if (op_address == NULL)
  		return;
  	uint32_t op = *op_address;
@@ -36,15 +36,26 @@ index db5a596f..42ddc067 100644
 +		    pcnow == 0x801108A0u || pcnow == 0x80110920u ||
 +		    pcnow == 0x8010FFB0u || pcnow == 0x8010FFC0u ||
 +		    pcnow == 0x80089470u || pcnow == 0x80089478u ||
-+		    pcnow == 0x80089480u || pcnow == 0x80089488u) {
++		    pcnow == 0x80089480u || pcnow == 0x80089488u ||
++		    pcnow == 0x800979D8u || pcnow == 0x80097A48u ||
++		    pcnow == 0x80097B94u || pcnow == 0x80097BB4u ||
++		    pcnow == 0x800A4338u || pcnow == 0x80110EFCu ||
++		    pcnow == 0x80110E00u || pcnow == 0x801111D0u ||
++		    pcnow == 0x80112D90u || pcnow == 0x80112E4Cu) {
 +			p08_ud4_writer(r4300, pcnow);
++		}
++		if (pcnow == 0x800979D8u || pcnow == 0x800919F4u ||
++		    pcnow == 0x80091A18u || pcnow == 0x80091A20u ||
++		    pcnow == 0x800BCE84u || pcnow == 0x800BCEACu ||
++		    pcnow == 0x800BCEB8u) {
++			p08_ud4_bce84(r4300, pcnow);
 +		}
 +		p08_ud4_np_tick(r4300, pcnow, op);
 +	}
  
  	switch ((op >> 26) & 0x3F) {
  	case 0: /* SPECIAL prefix */
-@@ -203,7 +233,10 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -203,7 +240,10 @@ void InterpretOpcode(struct r4300_core* r4300)
  			 * using this as a reference for a JIT, do check Rd == 0 in it. */
  			JALR(r4300, op);
  			break;

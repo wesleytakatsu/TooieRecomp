@@ -34,8 +34,9 @@ PLAYER_PHYSICS_UPDATE_COUNT_MATCH:  YES (1:1 advance per consumed glrecord sampl
 PLAYER_ANIMATION_RATE_MATCH:        YES (30.0 Hz cadence in measured windows ONLY;
                                         cadence is NOT full animation-state parity)
 
-AI_ACTOR_SPEED_PARITY:              PASS (100% agreement on measured autonomous and path-following actors)
+AI_ACTOR_SPEED_PARITY:              PASS (measured windows only; not a global AI claim)
 AI_ACTOR_ANIMATION_RATE_MATCH:      YES (30.0 Hz cadence only; not full AI anim-state parity)
+AI_GLOBAL_PARITY:                   NOT_PROVEN
 
 FIRST_PROVEN_SPEED_DEFECT:          NONE (Scalar movement physics, speed interpolation, and dt match original N64)
 ROOT_CAUSE_LEVEL:                   R-MOTION-ORACLE (Direction defect in USER_DEMO_4 is camera-induced, NOT player speed)
@@ -178,6 +179,10 @@ PLAYER_PHYSICS_UPDATE_COUNT_MATCH: YES
 ---
 
 ## 6. AI-Controlled Actor Catalog
+
+The following PASS rows are sample-window results for the listed actors and
+markers only. They do not establish global AI behavior, combat, collision,
+animation-state, or all-attract-demo parity.
 
 Four representative AI-controlled moving actors across the measured attract demos were selected to evaluate autonomous movement systems:
 
@@ -342,3 +347,10 @@ PENDING_NOT_FORMALLY_OPEN
 
 === END SUMMARY ===
 ```
+
+## Current residual boundary (2026-08-22)
+
+The measured speed windows remain bounded evidence only. Manual observation now
+records open movement residuals in USER_DEMO_1 and USER_DEMO_5; do not promote
+the sampled speed parity to global attract, movement, or animation parity.
+See [[p08-attract-movement-residuals]].

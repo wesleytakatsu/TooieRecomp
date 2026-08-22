@@ -136,6 +136,147 @@ static uint32_t s_p08_ffb0_a1 = 0;
 static uint32_t s_p08_ffb0_a2 = 0;
 
 static int s_p08_seen_haunted = 0;
+static inline int p08_ud4_writer_window(struct r4300_core* r4300, int* glidx_out);
+
+static uint32_t s_p08_979d8_ord = 0;
+static uint32_t s_p08_bce84_obj = 0;
+static uint32_t s_p08_bce84_btn = 0;
+static uint32_t s_p08_bakey_prev = 0;
+static uint32_t s_p08_bakey_key = 0;
+static uint32_t s_p08_bakey_executed = 0;
+
+static inline uint32_t p08_read_u8(struct r4300_core* r4300, uint32_t addr)
+{
+    uint32_t w = 0;
+    (void)r4300_read_aligned_word(r4300, addr & ~3u, &w);
+    const uint32_t shift = (3u - (addr & 3u)) * 8u;
+    return (w >> shift) & 0xFFu;
+}
+
+static inline void p08_ud4_read_consumed_pad(struct r4300_core* r4300, int glidx,
+                                            int* pad_x, int* pad_y, unsigned* pad_btn)
+{
+    uint32_t gl_base_w = 0;
+    *pad_x = 0;
+    *pad_y = 0;
+    *pad_btn = 0;
+    (void)r4300_read_aligned_word(r4300, 0x8012D5B0u, &gl_base_w);
+    if ((gl_base_w < 0x80000000u) || ((gl_base_w + 0x80000000u) >= 0x00800000u)) {
+        return;
+    }
+    const uint32_t sample = gl_base_w + (uint32_t)(glidx < 0 ? 0 : glidx) * 6u;
+    uint32_t w0 = 0, w1 = 0;
+    (void)r4300_read_aligned_word(r4300, sample & ~3u, &w0);
+    (void)r4300_read_aligned_word(r4300, (sample + 4u) & ~3u, &w1);
+    uint8_t b[8];
+    b[0] = (uint8_t)(w0 >> 24); b[1] = (uint8_t)(w0 >> 16);
+    b[2] = (uint8_t)(w0 >> 8);  b[3] = (uint8_t)w0;
+    b[4] = (uint8_t)(w1 >> 24); b[5] = (uint8_t)(w1 >> 16);
+    b[6] = (uint8_t)(w1 >> 8);  b[7] = (uint8_t)w1;
+    const int off = (int)(sample & 3u);
+    *pad_x = (int)(int8_t)b[off];
+    *pad_y = (int)(int8_t)b[off + 1];
+    *pad_btn = ((unsigned)b[off + 2] << 8) | (unsigned)b[off + 3];
+}
+
+static inline void p08_ud4_bce84(struct r4300_core* r4300, uint32_t pc)
+{
+    int glidx = 0;
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    if (!p08_ud4_writer_window(r4300, &glidx)) {
+        return;
+    }
+    if (glidx < 36 || glidx > 42) {
+        return;
+    }
+    FILE* fp = p08_ud4_fp();
+    if (!fp) {
+        return;
+    }
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    const uint32_t a1 = (uint32_t)regs[5];
+    const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t v0 = (uint32_t)regs[2];
+    const uint32_t ra = (uint32_t)regs[31];
+    int pad_x = 0, pad_y = 0;
+    unsigned pad_btn = 0;
+    p08_ud4_read_consumed_pad(r4300, glidx, &pad_x, &pad_y, &pad_btn);
+    if (pc == 0x800979D8u) {
+        uint32_t key = 0;
+        (void)r4300_read_aligned_word(r4300, a0 + 0x40u, &key);
+        s_p08_979d8_ord += 1;
+        s_p08_bakey_key = key;
+        fprintf(fp,
+                "[ud4-bainput-979d8-join] runtime=AN ord=%u stage=%d sub=%d glidx=%d "
+                "pad=(%d,%d,%04x) btn=%u in_id=%u self=%08x key=%08x\n",
+                s_p08_979d8_ord, stage, sub, glidx, pad_x, pad_y, pad_btn, a1, a2, a0, key);
+    } else if (pc == 0x800919F4u) {
+        uint32_t key = 0;
+        (void)r4300_read_aligned_word(r4300, a0 + 0x40u, &key);
+        s_p08_bakey_key = key;
+        s_p08_bakey_prev = 0;
+        s_p08_bakey_executed = 0;
+        if (p08_guest(key)) {
+            s_p08_bakey_prev = p08_read_u8(r4300, key + 0x18u + a1);
+        }
+        fprintf(fp,
+                "[ud4-bakey-held] runtime=AN enter stage=%d sub=%d glidx=%d "
+                "pad=(%d,%d,%04x) btn=%u self=%08x key=%08x prev_state=%u ra=%08x 979d8_ord=%u\n",
+                stage, sub, glidx, pad_x, pad_y, pad_btn, a1, a0, key, s_p08_bakey_prev, ra,
+                s_p08_979d8_ord);
+    } else if (pc == 0x80091A18u) {
+        uint32_t obj = 0;
+        s_p08_bakey_executed = 1;
+        (void)r4300_read_aligned_word(r4300, v0, &obj);
+        fprintf(fp,
+                "[ud4-bakey-held] runtime=AN jal_bce84 glidx=%d btn=%u prev_state=%u key=%08x obj=%08x\n",
+                glidx, a1, s_p08_bakey_prev, v0, obj);
+    } else if (pc == 0x80091A20u) {
+        fprintf(fp,
+                "[ud4-bakey-held] runtime=AN leave glidx=%d executed=%u prev_state=%u ret=%08x\n",
+                glidx, s_p08_bakey_executed, s_p08_bakey_prev, v0);
+    } else if (pc == 0x800BCE84u) {
+        s_p08_bce84_obj = a0;
+        s_p08_bce84_btn = a1;
+        fprintf(fp,
+                "[ud4-bce84] runtime=AN enter stage=%d sub=%d glidx=%d pad=(%d,%d,%04x) "
+                "btn=%u obj=%08x key=%08x load_pc=800BCE84 ra=%08x 979d8_ord=%u\n",
+                stage, sub, glidx, pad_x, pad_y, pad_btn, a1, a0, s_p08_bakey_key, ra,
+                s_p08_979d8_ord);
+    } else if (pc == 0x800BCEACu) {
+        const uint32_t t0 = (uint32_t)regs[8];
+        const uint32_t t8 = (uint32_t)regs[24];
+        uint32_t loaded = 0;
+        uint32_t ring = 0;
+        uint32_t old_probe = 0;
+        if (p08_guest(s_p08_bce84_obj)) {
+            ring = p08_read_u8(r4300, s_p08_bce84_obj + 8u + s_p08_bce84_btn);
+            (void)r4300_read_aligned_word(r4300, s_p08_bce84_obj + 0x24u + (s_p08_bce84_btn * 4u),
+                                          &old_probe);
+        }
+        if (p08_guest(t0)) {
+            (void)r4300_read_aligned_word(r4300, t0, &loaded);
+        }
+        fprintf(fp,
+                "[ud4-bce84] runtime=AN stage=%d sub=%d glidx=%d pad=(%d,%d,%04x) btn=%u "
+                "obj=%08x key=%08x load_pc=800BCEAC addr=%08x ring=%u t8=%u "
+                "raw=%08x loaded=%08x masked=%u ra=%08x 979d8_ord=%u "
+                "old_probe_word=%08x old_probe_bit0=%u\n",
+                stage, sub, glidx, pad_x, pad_y, pad_btn, s_p08_bce84_btn,
+                s_p08_bce84_obj, s_p08_bakey_key, t0, ring, t8,
+                loaded, loaded, loaded & 1u, ra, s_p08_979d8_ord,
+                old_probe, old_probe & 1u);
+    } else if (pc == 0x800BCEB8u) {
+        const uint32_t t1 = (uint32_t)regs[9];
+        fprintf(fp,
+                "[ud4-bce84] runtime=AN leave glidx=%d btn=%u loaded=%08x masked=%u ret_pending=%08x\n",
+                glidx, s_p08_bce84_btn, v0, t1 & 1u, t1);
+    }
+    fflush(fp);
+}
 
 static inline int p08_ud4_writer_window(struct r4300_core* r4300, int* glidx_out)
 {
@@ -192,6 +333,56 @@ static inline void p08_ud4_writer(struct r4300_core* r4300, uint32_t pc)
         fprintf(fp, "\n");
     } else if (pc == 0x80112C34u) {
         fprintf(fp, "[ud4-p60-writer] leave seq=%u glidx=%d pc=80112C34 node=%08x",
+                seq, glidx, a0);
+        p08_ud4_dump_p60_object(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x800979D8u) {
+        uint32_t key = 0, input = 0;
+        (void)r4300_read_aligned_word(r4300, a0 + 0x40u, &key);
+        (void)r4300_read_aligned_word(r4300, a0 + 0xA4u, &input);
+        uint32_t held_w = 0, in0 = 0, in4 = 0;
+        if (p08_guest(key)) {
+            (void)r4300_read_aligned_word(r4300, key + 0x18u + (a1 & ~3u), &held_w);
+        }
+        if (p08_guest(input)) {
+            (void)r4300_read_aligned_word(r4300, input + 0u, &in0);
+            (void)r4300_read_aligned_word(r4300, input + 4u, &in4);
+        }
+        const uint32_t shift = (3u - ((0x18u + a1) & 3u)) * 8u;
+        const uint32_t held = (held_w >> shift) & 0xFFu;
+        fprintf(fp,
+                "[ud4-bainput-979d8] enter glidx=%d self=%08x btn=%u in_id=%u key=%08x inp=%08x held=%u\n",
+                glidx, a0, a1, a2, key, input, held);
+    } else if (pc == 0x80097A48u) {
+        fprintf(fp, "[ud4-bainput-979d8] leave glidx=%d v0=%08x\n",
+                glidx, (uint32_t)regs[2]);
+    } else if (pc == 0x80097B94u) {
+        fprintf(fp, "[ud4-cam-chain] enter 80097B94 (rotate_camera_right) glidx=%d self=%08x\n",
+                glidx, a0);
+    } else if (pc == 0x80097BB4u) {
+        fprintf(fp, "[ud4-cam-chain] leave 80097B94 (rotate_camera_right) glidx=%d v0=%08x\n",
+                glidx, (uint32_t)regs[2]);
+    } else if (pc == 0x800A4338u) {
+        fprintf(fp, "[ud4-cam-chain] enter 800A4338 glidx=%d a0=%08x a1=%08x a2=%08x\n",
+                glidx, a0, a1, a2);
+    } else if (pc == 0x80110EFCu) {
+        fprintf(fp, "[ud4-cam-chain] enter 80110EFC glidx=%d node=%08x a1=%08x\n",
+                glidx, a0, a1);
+    } else if (pc == 0x80110E00u) {
+        fprintf(fp, "[ud4-cam-chain] enter 80110E00 glidx=%d node=%08x a1=%08x\n",
+                glidx, a0, a1);
+    } else if (pc == 0x801111D0u) {
+        fprintf(fp, "[ud4-cam-chain] enter 801111D0 glidx=%d node=%08x a1=%.4f (bits=%08x)\n",
+                glidx, a0, p08_f32(a1), a1);
+    } else if (pc == 0x80112D90u) {
+        fprintf(fp,
+                "[ud4-p60-writer-2d90] enter seq=%u glidx=%d pc=80112D90 ra=%08x node=%08x a1=%.4f a2=%.4f a3=%u",
+                seq, glidx, ra, a0, p08_f32(a1), p08_f32(a2), a3);
+        p08_ud4_dump_p60_object(r4300, fp, a0);
+        fprintf(fp, "\n");
+    } else if (pc == 0x80112E4Cu) {
+        fprintf(fp,
+                "[ud4-p60-writer-2d90] leave seq=%u glidx=%d pc=80112D90 node=%08x",
                 seq, glidx, a0);
         p08_ud4_dump_p60_object(r4300, fp, a0);
         fprintf(fp, "\n");
@@ -1004,13 +1195,47 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
         (void)r4300_read_aligned_word(r4300, cam_w + 8, &z);
         cx = p08_f32(x); cy = p08_f32(y); cz = p08_f32(z);
     }
+    int16_t anim_id = -1;
+    float anim_timer = 0.0f, anim_dur = 0.0f, anim_phase = 0.0f;
+    uint8_t anim_type = 0, anim_flags = 0;
+    if ((ps_w >= 0x80000000u) && ((ps_w + 0x80000000u) < 0x00800000u)) {
+        uint32_t anim_p = 0;
+        (void)r4300_read_aligned_word(r4300, ps_w + 0x04u, &anim_p);
+        if (anim_p >= 0x80000000u && ((anim_p + 0x80000000u) < 0x00800000u)) {
+            uint32_t anctrl_p = 0;
+            (void)r4300_read_aligned_word(r4300, anim_p + 0x00u, &anctrl_p);
+            if (anctrl_p >= 0x80000000u && ((anctrl_p + 0x80000000u) < 0x00800000u)) {
+                uint32_t w_dur = 0, w_flags = 0, w_timer = 0, w_id = 0;
+                (void)r4300_read_aligned_word(r4300, anctrl_p + 0x0Cu, &w_dur);
+                (void)r4300_read_aligned_word(r4300, anctrl_p + 0x18u, &w_flags);
+                (void)r4300_read_aligned_word(r4300, anctrl_p + 0x2Cu, &w_timer);
+                (void)r4300_read_aligned_word(r4300, anctrl_p + 0x34u, &w_id);
+                anim_dur = p08_f32(w_dur);
+                anim_timer = p08_f32(w_timer);
+                anim_type = (uint8_t)((w_flags >> 8) & 0xFFu);
+                anim_flags = (uint8_t)(w_flags & 0xFFu);
+                anim_id = (int16_t)(w_id >> 16);
+                anim_phase = (anim_dur > 0.0f) ? (anim_timer / anim_dur) : 0.0f;
+            }
+        }
+    }
     (void)rec_w;
     fprintf(s_p08_motion,
             "%d,%d,%u,%d,%d,0x%04x,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,"
-            "%.4f,%.4f,%.4f,%.4f,%d\n",
+            "%.4f,%.4f,%.4f,%.4f,%d,%d,%.4f,%.4f,%u,%u,%.4f\n",
             sub, glidx, post, pad_x, pad_y, pad_btn, bs, px, py, pz, vx, vy, vz,
-            yaw, ideal, phys, cx, cy, cz, camctrl, sel);
+            yaw, ideal, phys, cx, cy, cz, camctrl, sel,
+            (int)anim_id, anim_timer, anim_dur, (unsigned)anim_type, (unsigned)anim_flags, anim_phase);
     fflush(s_p08_motion);
+
+    fprintf(stderr,
+            "[demo-sync] glidx=%d post=%u pad=(%d,%d,%04x) bs=%d pos=(%.2f,%.2f,%.2f) "
+            "vel=(%.2f,%.2f,%.2f) yaw=%.2f ideal=%.2f phys_yaw=%.2f cam=(%.2f,%.2f,%.2f) "
+            "camctrl=%.4f sel=%d anim=(%d,%.3f,%.3f,%d,0x%02x,%.3f) sub=%d\n",
+            glidx, post, pad_x, pad_y, pad_btn, bs, px, py, pz,
+            vx, vy, vz, yaw, ideal, phys, cx, cy, cz,
+            camctrl, sel, (int)anim_id, anim_timer, anim_dur, (int)anim_type, (unsigned)anim_flags, anim_phase, sub);
+    fflush(stderr);
 }
 
 static inline void p08_attract_egg_on_syscall(struct r4300_core* r4300, uint32_t op)

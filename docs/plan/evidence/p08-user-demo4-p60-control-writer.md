@@ -1,5 +1,5 @@
 ---
-status: active
+status: historical-pre-fix
 type: evidence
 phase: P08
 date: 2026-08-21
@@ -12,7 +12,22 @@ This note documents the discovery and dynamic trace of the first writer of the
 camera control flag `*(node+0x60)+0xC` (`p60+0xC`) leading into `glidx=39` of
 `USER_DEMO_4` (Haunted Cavern, `stage=0 sub=4`).
 
-No production fix is applied in this session (diagnosis-only).
+This is historical pre-fix diagnosis evidence. The later local helper mapping
+does not invalidate the pre-fix gap-stub skip. Post-fix, the first remaining
+split is the native helper return at glidx 39 (`v0` 0 vs 2) with matching
+`prev_state[13]=0`; see [[p08-user-demo4-bainput-held-state-provenance]]
+and [[p08-user-demo4-800979d8-independent-review]].
+
+The earlier wording that Oracle writes `p60+0xC` on **glidx 38** is
+**CORRECTED/SUPERSEDED** for the C-Right camera event: AN `800979D8`
+`btn=13` first returns `v0=2` at **glidx 39**, and `80112D90` writes there.
+
+Current semantic arbitration (2026-08-22): the corrected native replacement
+calls the generated `bakey_held`/`800BCE84` path and returns the logical-input
+enabled mask (`a2=1` → `2`). The full branch unit test passes. A 900s paired run
+on `DISPLAY=:0` reached `stage=0/sub=4` glidx 39 and confirmed that `80112D90`
+writes `p60.C=1, p60.E=2`, `80112D08` writes `p60+8=5`, and `ncbapivot` takes the
+matching branch on both runtimes. The post-correction p60 chain is dynamically **PROVEN**.
 
 ---
 
@@ -128,3 +143,13 @@ When authorized for implementation:
 1. Recompile / implement `__bainput_func_800979D8` at `0x800979D8` so it executes `bakey_held` logic instead of the zero-return gap stub.
 2. Verify with paired RT64 vs Angrylion execution run that `p60+0xC` receives `1` at `glidx=38` and `p60+8` receives `5` at `glidx=39`.
 3. Verify complete attract demo parity through `USER_DEMO_4`.
+
+## Current checkpoint (2026-08-22)
+
+The historical pre-fix diagnosis above is superseded for the helper event.
+The corrected `0x800979D8` now reaches the exact BCE84 ring-1 load at glidx 39;
+RT64 and Angrylion both load `0x115`, return `2` from the helper, write
+`p60.C=1/E=2`, store `p60+8=5`, and take the matching ncbapivot branch.
+This closes the bounded P60 root chain. The final paired capture verifies
+twice and closes immutable acceptance for this bounded chain. It does not claim
+global attract movement parity; USER_DEMO_1 and USER_DEMO_5 remain open.

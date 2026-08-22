@@ -104,6 +104,12 @@ jumptable `80112C3C` on `*(node+0x60)+8` (0 vs 5;
 [[../../plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]]).
 P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING**; P09 remains
 **PENDING / NOT_FORMALLY_OPEN**.
+The local `0x800979D8` mapping passes its focused contract test. The corrected
+BCE84 ring-1 raw join content matches the bounded held-input/P60/ncbapivot
+chain (`0x115` → `1` → `2`, `p60.C/E/+8=1/2/5`) on both runtimes; the
+the final paired capture at `/tmp/p08-979d8-final-20260822T070735Z` verifies
+twice, so the bounded immutable checkpoint is accepted. See
+[[../../plan/evidence/p08-user-demo4-800979d8-independent-review]].
 `ANGRYLION_CONTROL` lives in `tools/oracle/angrylion-control/`
 ([[../../specs/BT/angrylion-control-oracle]]); TooieRecomp stays RT64.
 Evidência:
@@ -153,5 +159,7 @@ Evidência:
   is retained as `USER_REPORTED`; formal 15/15 gamepad and 14-item display
   checklists are not proven.
 - **P09**: `PENDING / NOT_FORMALLY_OPEN`.
+- **Open attract residuals**: USER_DEMO_1 and USER_DEMO_5 are user-reproduced
+  movement failures; see [[../../plan/evidence/p08-attract-movement-residuals]].
 - The Demo 0 parity result is `PROVISIONAL_PRE_P09_PARITY_EVIDENCE`; Demo 1,
   Demo 2, and Demo 3 remain `UNTESTED`.
