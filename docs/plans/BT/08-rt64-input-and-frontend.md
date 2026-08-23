@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-20
+updated: 2026-08-23
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -582,7 +582,75 @@ branch test passes. Instruction-level USER_DEMO_4 `0x800BCE84` live-input join
 is **PROVEN** ([[../../plan/evidence/p08-user-demo4-bce84-live-input-join]]);
 the bounded `0x800979D8 → P60 → ncbapivot` chain matches in current log
 content, and the final paired capture at `/tmp/p08-979d8-final-20260822T070735Z`
-passes its SHA256 manifest twice. Global attract parity remains open because USER_DEMO_1
-and USER_DEMO_5 have user-reproduced movement residuals. P08 stays
-`ACTIVE / MANUAL_VALIDATION_PENDING` and P09 stays
+passes its SHA256 manifest twice. Global attract parity remains open.
+USER_DEMO_5 ice-scene mapping and Talon Trot identity are **PROVEN**.
+`bs_setState(22)` at glidx 34 is now **MATCH** on both runtimes; the earlier
+698 `bs_cur` 20 vs 22 split is **CORRECTED/SUPERSEDED** as sample-phase
+([[../../plan/evidence/p08-user-demo5-locomotion-first-divergence]] §14).
+The shared `baphysics_set_target_horizontal_velocity` writer is
+`0x8009B9B0` (store `0x8009B9BC`, physics `player+0xC8+0x3C`); RT64's
+glidx-35 write is sampled at glidx 36 while AN samples it at glidx 35.
+This does not prove a one-tick locomotion delay. The first real post-22
+movement discriminator is `func_800CAF00` at glidx 34: stick MATCH, camera
+`+0x1C` DIFF, desired yaw DIFF (`B-CAMERA-DERIVED-DIRECTION`;
+[[../../plan/evidence/p08-user-demo5-locomotion-first-divergence]] §16).
+Static overlay PCs remain partial when the Oracle has no relocation map.
+USER_DEMO_1 still has a user-reproduced residual and uses the same `bsbtrot`
+overlay and the same resident direction / `+0x1C` path.
+P08 stays `ACTIVE / MANUAL_VALIDATION_PENDING` and P09 stays
 `PENDING / NOT_FORMALLY_OPEN`.
+
+## USER_DEMO_5 camera-heading producer boundary (2026-08-22)
+
+The independent review confirms the camera-derived direction discriminator,
+with the first camera-field semantic split corrected to glidx 25 in the
+`yaw_ctrl` event stream (last match glidx 24). The field is not consumed under
+`ytype=2`; it is consumed at glidx 34 by `func_800CAF00` after state22/ytype1.
+
+Static formula: `func_800A4C48(player)` selects
+`D_80127708[*(player+0x184)]`; `func_800CAF00` computes normalized
+`record[+0x1C] + stick_angle + 90°`. The first active event has matched
+processed stick fields and mismatched camera bits/yaw, while target speed
+matches. Dynamic writer join proves `func_800CA628` / store `0x800CA65C`
+executes and is CASE B: `src2[1]` already differs at glidx 24 ord 9 on the
+`func_8010FE14` path; CA8B4 is not the first-write producer
+([[../../plan/evidence/p08-user-demo5-locomotion-first-divergence]] §17).
+
+Keep this as diagnosis only. Immutable writer capture
+`/tmp/p08-demo5-camera1c-writer-20260822T211941Z/` passes SHA256 twice.
+FE14 is a thin `a0`-dereference/adaptor into CA628, not a heading calculator.
+The selected `src2[1]` is a caller stack value (`0x8004567C`) copied by
+`func_800EE7F8`/`0x800EE804` from `s0+0x80`. The new `s0+0x80` audit identifies
+`func_80110790` as that downstream setter. Its upstream `func_80110A68` is
+only an output-vector adaptor; `800A516C -> 800F18FC` calculates from
+`sp+0x6C` and `s0+0x74`, with no smoothing or feedback read of
+`s0+0x80`/`+0x8C`. The immutable paired capture proves the target matches at
+glidx 24 while the eye is the first differing `80110A68` input; its output
+follows the eye. The first observed setter is `func_80111FD4` callsite
+`0x8011208C`. Current boundary is
+`B-80111F70-INPUT / B-80111DB0-INPUT`: `8011106C` copies zero `s0+0x8C`,
+`800EF04C` adds that zero, and the first inner split is `*a1` at
+`0x80045620` (`800EFB24` `a1-a2` length vs 0.01 at `0x80111DEC`). Capture
+`/tmp/p08-demo5-eye-inner-firstdiff-20260823T033246Z/` SHA256 PASS twice.
+No production change.
+
+## USER_DEMO_5 inner translation branch boundary (2026-08-23)
+
+Immutable capture /tmp/p08-demo5-eye-inner-firstdiff-20260823T033246Z/
+historically passed SHA256 twice before the interruption; the directory is now
+absent, so a fresh recheck is NOT_RECHECKABLE. The branch is confirmed at
+0x80111DEC: c.lt.s compares
+0.01f (0x3c23d70a) with the 800EEF94 length; bc1fl skips 800EF174 when false.
+The first final input is the stack local a1=sp+0x48 (0x80045620) in
+ncbapivot, written immediately by 800EE780 @ 0x808001AC from sp+0x28/sp+0x54.
+80111A98/80111ABC are not active-path producers. Complete source-operand join
+is pending; current diagnostic boundary is
+B-800EE780-INPUT-SOURCE-UNRESOLVED. No production change.
+
+## USER_DEMO_5 func_800EE780 operand provenance (2026-08-23)
+
+Recapture `/tmp/p08-demo5-ee780-source-20260823T053510Z/` SHA256 PASS twice.
+Previous inner `/tmp` artifact is LOST / NOT_RECHECKABLE. `800EE780` is an
+elementwise add. At glidx 24 `sp+0x28` MATCH and `sp+0x54` X/Z DIFF; producer
+`800EEBF0` already has a different `src_dir` Y. Diagnostic boundary
+`B-800EEBF0-INPUT`. No production change.

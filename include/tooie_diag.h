@@ -32,6 +32,10 @@
 // TOOIE_DIAG_ATTRACT=1 is independent of TOOIE_DIAG. Implies SHOT + DEMO_SYNC.
 // Dumps gsattract D_808003D0, user-demo ordinals, egg spawn type, and
 // follow-camera fields. Does not change game behavior.
+//
+// USER_DEMO_5 locomotion first-divergence probe: TOOIE_UD5_LOCO=1 is
+// independent of TOOIE_DIAG. Implies DEMO_SYNC but emits only during
+// attract stage=0 sub=5 (icy Hailfire clip). Logging only.
 
 namespace tooie_diag {
 
@@ -45,6 +49,7 @@ bool demo_sync_enabled();
 bool shot_enabled();
 bool forced_facing_enabled();
 bool attract_enabled();
+bool ud5_loco_enabled();
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
 void note_syscall_return(uint32_t ovl, uint32_t ep);

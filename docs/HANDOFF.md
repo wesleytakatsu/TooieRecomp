@@ -1,10 +1,10 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 idle follow-cam glidx 1..38 match ANGRYLION_CONTROL; glidx 39 first remaining split is native 0x800979D8 return (pad 0001 MATCH). BLUE-vs-FIRE egg remains. Formal P08 gates: PHYSICAL_GAMEPAD_VALIDATION plus 0x800979D8 dynamic acceptance."
+description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_5 glidx-24 a1@0x80045620 is produced by 800EE780 add of already-different sp+0x54 (B-800EEBF0-INPUT)."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-21
+updated: 2026-08-23
 tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
@@ -599,9 +599,26 @@ attract parity. User Demo 1 and Demo 5 movement residuals remain open; see
 ```text
 P08_STATUS:                         ACTIVE / MANUAL_VALIDATION_PENDING
 P09_STATUS:                         PENDING / NOT_FORMALLY_OPEN
-NEXT_SINGLE_ACTION:                 trace USER_DEMO_5 to first movement/state divergence
-FIX_COMMIT:                         BLOCKED — recorded log hashes do not match current files
+NEXT_SINGLE_ACTION:                 independently arbitrate complete 800EE780 I/O and first already-divergent source (800EEBF0 src_dir[1]); no production fix
+FIX_COMMIT:                         NO — no production fix this session
 ```
+
+**USER_DEMO_5 first discriminator (2026-08-22):**
+[[plan/evidence/p08-user-demo5-locomotion-first-divergence]]. Mapping
+`stage=0 sub=5 map=296` is **PROVEN**. Talon Trot (`bsbtrot` overlay 29) is
+**PROVEN**. The claim that RT misses `bs_setState(22)` at glidx 34 is
+**CORRECTED/SUPERSEDED**: both runtimes call `next=22` on that tick
+(`/tmp/p08-demo5-bs20-exit-gate-20260822T184452Z/`, SHA256 **PASS** twice).
+The 698 CSV `bs_cur` 20 vs 22 split is sample-phase. The shared target-speed
+writer is `0x8009B9B0` (store `0x8009B9BC`, physics `player+0xC8+0x3C`):
+RT64's glidx-35 write is sampled at glidx 36 while AN samples it at glidx 35.
+This is a sampling-phase artifact, not a proven one-tick locomotion delay.
+The first **real** post-transition movement discriminator is
+`B-CAMERA-DERIVED-DIRECTION` at glidx 34: `func_800CAF00` consumes camera
+record `+0x1C` (`4387197b` vs `4392609a`) with matching stick
+`430865b1` and writes desired yaw `430898a8` vs `431f26e4`
+(`/tmp/p08-demo5-direction-firstdiff-20260822T201012Z/`, SHA256 PASS twice).
+Camctrl already differs at glidx 25 but is not read by movement until ytype=1.
 
 ## Final immutable checkpoint (2026-08-22T07:07Z)
 
@@ -613,3 +630,112 @@ bounded ncbapivot chain. Task-specific BCE84/979D8 probes are removed;
 reusable diagnostics remain env-gated. Tests/build/diff/generated-source
 gates pass. Demo 1/5 movement residuals stay open; this checkpoint does not
 start Demo 5.
+
+## USER_DEMO_5 camera-derived direction review — 2026-08-22
+
+Independent arbitration: `GROK_DIRECTION_VERDICT=CONFIRMED_WITH_CORRECTIONS`.
+The first semantic `camera+0x1C` mismatch is `yaw_ctrl` glidx 25 (last match
+glidx 24); it is parallel under `ytype=2` and becomes causal at glidx 34 when
+`ytype=1`/`bs_cur=22` calls `func_800CAF00`. The consumed fields match for
+stick angle, stick XY, distance, and zone; camera bits are
+`4387197b` vs `4392609a`, producing desired yaw `430898a8` vs `431f26e4`.
+Speed remains `418.370605` in both runtimes, so the first root is direction,
+not scalar speed.
+
+Static camera ownership is proven as `player+0x184 → D_80127708[index]`, with
+`func_800CAF00` reading record `+0x1C` and adding stick angle plus 90°.
+The best upstream producer target is `func_800CA628`, store `0x800CA65C`;
+whether that store executes in glidx 20..34 is still unproven because the
+capture did not trace camera writers. Next action: instrument that store with
+selected index/destination-role provenance and compare Demo1 Trot1, Demo1
+Trot2, and Demo5 Trot1 at their first active `func_800CAF00`.
+
+Capture `/tmp/p08-demo5-direction-firstdiff-20260822T201012Z/` passes SHA256
+verification twice. No production fix, commit, or push.
+
+## USER_DEMO_5 camera+0x1C writer provenance — 2026-08-22
+
+`func_800CA628` executes on both runtimes in glidx 20..28. Semantic join by
+glidx+selected+ord **PASS**. Heading store is `swc1 $f6, 0x14($v1)` at
+`0x800CA65C`, `$v0==2` / `src2[1] → record+0x1C`.
+
+CASE B: last matching write glidx 23 (`4392c3c2`). First differing write
+glidx 24 ord 9: `old_1c` MATCH, source/new `4392861e` vs `4392b342`. CA628
+does not compute a split; it copies an already-different FE14 `a2` stack input
+`src2[1]` (`80045678`, AN `ra=8010fe24`). `func_800CA8B4` is **not** on that
+first-write path. Talon Trot remains CONSUMER.
+
+Writer capture `/tmp/p08-demo5-camera1c-writer-20260822T211941Z/` SHA256 PASS
+twice. Cheap A/B/C: Demo1 trot1 MATCH; Demo1 trot2 NOT_CAPTURED; Demo5 trot1
+DIFF. Next: the writer of `s0+0x80`, which feeds the FE14 stack input. No
+production fix.
+
+## USER_DEMO_5 FE14/source boundary — 2026-08-22
+
+Independent static review narrows the CASE B result. `func_8010FE14`
+(`0x8010FE14..0x8010FE30`) is only a dereference/adaptor into CA628; it does
+not calculate or fill the heading. At glidx 24 ord 9, CA628 receives
+`src2=0x80045678`, and its element 1 is already different
+(`0x4392861e` vs `0x4392b342`).
+
+The selected caller path copies that element into the stack temporary at
+`func_800EE7F8`/`0x800EE804` from source field `s0+0x80` (`sp+0x2C` / runtime
+`0x8004567C`). The new writer audit identifies `func_80110790` as the
+downstream setter and corrects `func_80110A68`: it is an adaptor whose
+arithmetic is `func_800A516C -> func_800F18FC`, using `sp+0x6C` and
+`s0+0x74`, with no `s0+0x80` feedback read. The immutable paired artifact
+now captures the complete `80110A68` input pair and output: at glidx 24
+`sp+0x6C` matches, `s0+0x74` differs, and the output follows the eye.
+
+Current root boundary: `B-80111F70-INPUT / B-80111DB0-INPUT` (`*a1` at
+`0x80045620`); the first observed differing setter remains callsite
+`0x8011208C`. CA8B4 remains off the first-write path. No production fix,
+commit, or push.
+
+## USER_DEMO_5 80110A68 camera-input arbitration — 2026-08-22
+
+Gemini object identity is **CONFIRMED_WITH_CORRECTIONS**: `s0` is the
+CameraMode2 follow-camera object, `+0x74` is its position vector, and
+`+0x80/+0x84/+0x88` is the orientation vector. The fourth reported static
+writer, a bzero at `0x80110450`, is corrected: that PC is a `jal
+0x8002D6E0`, not a direct zeroing store.
+
+The paired artifact
+`/tmp/p08-demo5-s0-80-writers-20260823T002233Z/` passes SHA256 twice.
+The active writer join remains PASS: glidx 23 ord 4 is the last match; glidx
+24 ord 5 has matching old destination, differing source, and output equal to
+source at `0x800EE804`.
+
+`FUNC_80110A68_EXACT_ROLE: output-vector adaptor/orchestration`; arithmetic
+is `800A516C -> 800F18FC`, followed by `80110790` copying the result into
+`s0+0x80`. Smoothing/integrator and feedback claims are REFUTED for this
+chain. The complete `80110A68` runtime pair is now confirmed; `80110A68` is
+downstream. Inner capture
+`/tmp/p08-demo5-eye-inner-firstdiff-20260823T033246Z/` (SHA256 PASS twice)
+classifies the glidx-24 eye split as `B-80111F70-INPUT` (`*0x80045620`);
+`8011106C`/`800EF04C` copy/add zero `s0+0x8C`. Demo1 Trot #2 NOT_CAPTURED.
+
+## USER_DEMO_5 a1@0x80045620 arbitration — 2026-08-23
+
+The immutable inner capture historically passed SHA256 twice before the
+interruption; the directory is now absent, so a fresh recheck is
+NOT_RECHECKABLE. It confirms the translation branch split: 800EFB24
+subtracts a1-a2, 800EEF94 computes length, and
+80111DEC performs bc1fl for 0.01f < length. AN skips 800EF174; RT executes it.
+The final a1 is a ncbapivot stack local (sp+0x48, runtime 0x80045620), with
+immediate producer 800EE780 @ 0x808001AC from sp+0x28 and sp+0x54.
+80111A98/80111ABC are not on the active path.
+
+Current boundary: B-800EE780-INPUT-SOURCE-UNRESOLVED. The artifact lacks
+complete 800EE780 operand and old/source/new writer snapshots; next action
+is one paired 800EE780 trace. No production fix, commit, or push.
+
+## USER_DEMO_5 func_800EE780 operand provenance — 2026-08-23
+
+New recapture `/tmp/p08-demo5-ee780-source-20260823T053510Z/` SHA256 PASS
+twice after chmod. Previous inner `/tmp` capture remains LOST /
+NOT_RECHECKABLE; Luna text is preserved. `func_800EE780` is a vector add.
+Glidx 24 complete inputs: `sp+0x28` MATCH, `sp+0x54` X/Z already DIFF (Y
+MATCH). Immediate writer of that addend is `func_800EEBF0` with matching
+scale and differing `src_dir` Y. Current root: `B-800EEBF0-INPUT`. No
+production fix, commit, or push.

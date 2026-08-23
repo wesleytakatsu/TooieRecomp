@@ -35,6 +35,8 @@ extern "C" void tooie_ud4_cam_ovl(uint8_t* rdram, recomp_context* ctx, uint32_t 
                                  uint32_t ep, int leaving);
 extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick);
 extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx, uint32_t ovl, uint32_t ep, int leaving);
+extern "C" void tooie_ud5_overlay_gate(uint8_t* rdram, recomp_context* ctx, uint32_t ovl,
+                                      uint32_t ep, int leaving);
 extern "C" void baflameline_entrypoint_5(uint8_t* rdram, recomp_context* ctx);
 
 struct ActiveOverlayMapping {
@@ -911,11 +913,27 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         std::fflush(stderr);
     };
     dump_movement("enter");
+    if (tooie_diag::ud5_loco_enabled() && overlay_index == 29u) {
+        const int sub_v = int(MEM_BU(0x1, static_cast<gpr>(static_cast<int32_t>(0x80135470u))));
+        const int32_t post_glidx =
+            static_cast<int32_t>(MEM_W(0x8, static_cast<gpr>(static_cast<int32_t>(0x8012D5B0u))));
+        const int32_t glidx = (post_glidx > 0) ? (post_glidx - 1) : 0;
+        std::fprintf(stderr,
+                     "[ud5-btrot] enter ovl=29 ep=%u glidx=%d sub=%d a0=%08x ra=%08x\n",
+                     entry_index, glidx, sub_v,
+                     static_cast<uint32_t>(ctx->r4), static_cast<uint32_t>(ctx->r31));
+        std::fflush(stderr);
+        tooie_ud5_overlay_gate(rdram, ctx, overlay_index, entry_index, 0);
+    }
     if (tooie_diag::shot_enabled()) {
         tooie_shot_note_overlay(rdram, ctx, overlay_index, entry_index, 0);
     }
 
     func(rdram, ctx);
+
+    if (tooie_diag::ud5_loco_enabled() && overlay_index == 29u) {
+        tooie_ud5_overlay_gate(rdram, ctx, overlay_index, entry_index, 1);
+    }
 
     if (tooie_diag::attract_enabled() && overlay_index == 781u && entry_index == 3u) {
         tooie_ud4_ncbapivot_ep3_leave(rdram, ctx);

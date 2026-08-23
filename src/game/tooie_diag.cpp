@@ -29,6 +29,7 @@ std::atomic<bool> g_demo_sync_enabled{false};
 std::atomic<bool> g_shot_enabled{false};
 std::atomic<bool> g_forced_facing_enabled{false};
 std::atomic<bool> g_attract_enabled{false};
+std::atomic<bool> g_ud5_loco_enabled{false};
 std::atomic<bool> g_gameplay_seen{false};
 std::atomic<bool> g_inited{false};
 std::atomic<uint32_t> g_host_x_bits{0};
@@ -124,6 +125,13 @@ void ensure_init() {
                             std::memory_order_relaxed);
     if (g_attract_enabled.load(std::memory_order_relaxed)) {
         g_shot_enabled.store(true, std::memory_order_relaxed);
+        g_demo_sync_enabled.store(true, std::memory_order_relaxed);
+        g_movement_enabled.store(true, std::memory_order_relaxed);
+    }
+    const char* ud5 = std::getenv("TOOIE_UD5_LOCO");
+    g_ud5_loco_enabled.store(ud5 != nullptr && ud5[0] != '\0' && ud5[0] != '0',
+                             std::memory_order_relaxed);
+    if (g_ud5_loco_enabled.load(std::memory_order_relaxed)) {
         g_demo_sync_enabled.store(true, std::memory_order_relaxed);
         g_movement_enabled.store(true, std::memory_order_relaxed);
     }
@@ -244,6 +252,11 @@ void ensure_init() {
                      "user-demo ordinals + egg/camera fields)\n");
         std::fflush(stderr);
     }
+    if (g_ud5_loco_enabled.load(std::memory_order_relaxed)) {
+        std::fprintf(stderr,
+                     "[ud5-loco] enabled (implies DEMO_SYNC; sub=5 ticks only)\n");
+        std::fflush(stderr);
+    }
 }
 
 void format_stack(char* buf, size_t buflen) {
@@ -304,6 +317,11 @@ bool shot_enabled() {
 bool attract_enabled() {
     ensure_init();
     return g_attract_enabled.load(std::memory_order_relaxed);
+}
+
+bool ud5_loco_enabled() {
+    ensure_init();
+    return g_ud5_loco_enabled.load(std::memory_order_relaxed);
 }
 
 bool forced_facing_enabled() {

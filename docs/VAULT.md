@@ -24,7 +24,8 @@
 
 - [[plan/evidence/p08-user-demo4-800979d8-postfix-validation]] — P08 — corrected post-fix validation; exact ring-1 BCE84 source and bounded helper/P60 chain match, no global parity claim.
 - [[plan/evidence/p08-user-demo4-bainput-held-state-provenance]] — P08 — USER_DEMO_4 C-Right raw-pad → BaInput held-state; final BCE84 join PROVEN in bounded scope.
-- [[plan/evidence/p08-attract-movement-residuals]] — P08 — user-reproduced USER_DEMO_1 and USER_DEMO_5 movement residuals; Demo 5 is next first-divergence target.
+- [[plan/evidence/p08-attract-movement-residuals]] — P08 — user-reproduced USER_DEMO_1 residual; USER_DEMO_5 first split is now traced.
+- [[plan/evidence/p08-user-demo5-locomotion-first-divergence]] — P08 — USER_DEMO_5 Talon Trot; glidx-24 a1@0x80045620 from 800EE780 add of already-different sp+0x54 (`B-800EEBF0-INPUT`).
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
 - [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.

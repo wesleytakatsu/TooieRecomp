@@ -159,7 +159,9 @@ Evidência:
   is retained as `USER_REPORTED`; formal 15/15 gamepad and 14-item display
   checklists are not proven.
 - **P09**: `PENDING / NOT_FORMALLY_OPEN`.
-- **Open attract residuals**: USER_DEMO_1 and USER_DEMO_5 are user-reproduced
-  movement failures; see [[../../plan/evidence/p08-attract-movement-residuals]].
+- **Open attract residuals**: USER_DEMO_1 remains user-reproduced.
+  USER_DEMO_5 first real post-Talon-Trot movement split is glidx 34
+  `func_800CAF00` camera-derived direction
+  ([[../../plan/evidence/p08-user-demo5-locomotion-first-divergence]] §16).
 - The Demo 0 parity result is `PROVISIONAL_PRE_P09_PARITY_EVIDENCE`; Demo 1,
   Demo 2, and Demo 3 remain `UNTESTED`.

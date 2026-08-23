@@ -170,8 +170,13 @@ O trabalho só está concluído quando todos os critérios de
   pad-equals-held claim is CORRECTED/SUPERSEDED.
 
 - [[evidence/p08-attract-movement-residuals]] — **CURRENT:** user-reproduced
-  USER_DEMO_1 and USER_DEMO_5 movement residuals; Talon-Trot/locomotion link is
-  an inference only. Next target is Demo 5 first divergence.
+  USER_DEMO_1 residual remains; USER_DEMO_5 first overlapping split is documented
+  in [[evidence/p08-user-demo5-locomotion-first-divergence]].
+- [[evidence/p08-user-demo5-locomotion-first-divergence]] — **CURRENT:** USER_DEMO_5
+  is stage 0/sub 5/map 296 ice side; Talon Trot **PROVEN**; `bs_setState(22)`
+  MATCH; tspd glidx split is sample-phase; first real movement split is
+  camera-derived direction at glidx 34 `func_800CAF00`; glidx-24 `a1@0x80045620`
+  is `800EE780` `dst=a1+a2` of already-different `sp+0x54` (`B-800EEBF0-INPUT`).
 
 - [[evidence/p09-user-observed-parity-residuals]] — **PROVISIONAL_PRE_P09_PARITY_EVIDENCE:**
   Demo 0 only: 765/765 input, bounded physics/behavior evidence, Blue Egg parity at

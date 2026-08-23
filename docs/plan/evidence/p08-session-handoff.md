@@ -3,7 +3,7 @@ title: "P08 — session handoff: attract demo e render submission"
 description: "Estado autossuficiente P08: o oracle Angrylion RDP Plus + CXD4 LLE sustenta o R-ORACLE e o R-MOTION-ORACLE; USER_DEMO_4 bind-tick round.w.s e idle follow-cam 1..38 agora casam com o oracle; a primeira diferença restante é ncbapivot no dump glidx 39."
 status: evidence
 phase: P08
-updated: 2026-08-21
+updated: 2026-08-23
 tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, r-motion-oracle, rt64, intro, attract, demo2, visible-demo]
 ---
 
@@ -11,7 +11,8 @@ tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-orac
 
 ## CURRENT_HEAD
 
-- Branch: `main` @ `f1fdfefb3346e16bc813c106f0947c0d60aa228c` (walkstart capture). ROUND.W.S fix is `5854872c79a7cab1c9395ddcd173cece449ffe11`.
+- Canonical published HEAD for this writer pass: `25595a2eb8241ef7ca4aa135e6681e44abcf8598`.
+- USER_DEMO_5 camera translation: [[p08-user-demo5-locomotion-first-divergence]]. Recapture `/tmp/p08-demo5-ee780-source-20260823T053510Z/` SHA256 PASS twice. `800EE780` is `dst=a1+a2`; glidx 24 `sp+0x28` MATCH, `sp+0x54` X/Z DIFF (`B-800EEBF0-INPUT`). Previous inner `/tmp` artifact LOST / NOT_RECHECKABLE.
 - ANGRYLION_CONTROL tree: `tools/oracle/angrylion-control/` (relocated from `/tmp/p08-m64p*`; [[../../specs/BT/angrylion-control-oracle]]). Playable: `./run-tooie-angrylion-rdp.sh`. RT64: `./run-tooie.sh`. TooieRecomp stays RT64.
 - Agent workspace: open CLI/IDE in **TooieRecomp/**. MCP/vault configs are in-repo ([[../../MARKDOWN_VAULT_TOOLS]]). Sibling `BanjoRecomp` + cart ROM remain for CMake/oracle only.
 - Provisional Player & AI Speed Parity Baseline: [[p08-provisional-player-ai-speed-parity]] (`PLAYER_SCALAR_SPEED_PARITY: PASS`, `AI_ACTOR_SPEED_PARITY: PASS`, `USER_DEMO4_CLASSIFICATION: CAMERA_DIRECTION_DEFECT_WITH_SPEED_PARITY`, `HISTORICAL_FIRST_STRAIGHT_SPEED: PROVEN_CLEAN`).
@@ -839,12 +840,21 @@ The old `bs_pressed=0` probe is **CORRECTED/SUPERSEDED** because it read ring
 global attract parity is not. The exact BCE84/979D8 production probes were
 removed; env-gated chain/state diagnostics remain for the next investigation.
 
-Manual residuals are preserved in [[p08-attract-movement-residuals]]:
-USER_DEMO_1 and USER_DEMO_5 are reproduced by the user; Demos 2, 3, and 6 only
-appear correct manually; Demo 4 is supported by bounded paired evidence. The
-Talon-Trot/locomotion-transition explanation remains an **INFERENCE / USER-
-OBSERVED CORRELATION**. P08 stays `ACTIVE / MANUAL_VALIDATION_PENDING`; P09 is
-`PENDING / NOT_FORMALLY_OPEN`.
+Manual residuals are preserved in [[p08-attract-movement-residuals]].
+USER_DEMO_5 paired first-divergence is [[p08-user-demo5-locomotion-first-divergence]]:
+map 296 ice side **PROVEN**; Talon Trot overlay 29 **PROVEN**. Gate recapture
+§14: both runtimes `bs_setState(22)` at glidx 34 (`timer_bits=3f044445`).
+Missing RT transition **CORRECTED/SUPERSEDED**: shared writer `0x8009B9B0`
+stores target horizontal velocity at `player+0xC8+0x3C`; RT64's glidx-35
+write is sampled at glidx 36 while AN samples it at glidx 35. This is a
+sampling-phase artifact, not a proven one-tick locomotion delay. Direction
+recapture `/tmp/p08-demo5-direction-firstdiff-20260822T201012Z/` (SHA256 PASS
+twice): first real post-22 movement event is `func_800CAF00` at glidx 34
+(stick MATCH, cam `+0x1C` `4387197b` vs `4392609a`, direction
+`430898a8` vs `431f26e4`). `ROOT_CLASS: B-CAMERA-DERIVED-DIRECTION`.
+USER_DEMO_1 also uses that same resident direction path.
+P08 stays `ACTIVE / MANUAL_VALIDATION_PENDING`;
+P09 is `PENDING / NOT_FORMALLY_OPEN`.
 
 ## Artifact-integrity correction (2026-08-22)
 
@@ -885,3 +895,94 @@ ordinal 8; BCE84 ring-1 raw `0x115`/return 1, `bakey_held=1`,
 Temporary task-specific BCE84/979D8 probes are cleaned; reusable diagnostics
 remain. Tests, build, diff check, and generated-source check pass. P08 remains
 `ACTIVE / MANUAL_VALIDATION_PENDING`; Demo 1/5 movement residuals remain open.
+
+## USER_DEMO_5 camera-heading arbitration (2026-08-22)
+
+Independent review confirms the Grok result with one phase correction:
+`camera record +0x1C` semantically matches the player-control camera record in
+both runtimes, and its first semantic divergence is glidx 25 (`yaw_ctrl`), not
+just a demo-sync sample. It is not consumed while `ytype=2`; it becomes causal
+at glidx 34 `func_800CAF00` after state22/ytype1.
+
+The exact static path is `player+0x184 → D_80127708[index] → +0x1C`, then
+`camera+0x1C + stick_angle + 90°` in `func_800CAF00`. The best upstream target
+is `func_800CA628`, store `0x800CA65C`; execution of that writer is now
+**PROVEN** and classified **CASE B / DOWNSTREAM_WRITER**. First differing
+store is glidx 24 ord 9; source `src2[1]` already differs
+(`4392861e` vs `4392b342`) on the `func_8010FE14` path. `func_800CA8B4` is
+not on that first-write path. Writer capture:
+`/tmp/p08-demo5-camera1c-writer-20260822T211941Z/` (SHA256 PASS twice).
+
+Cheap A/B/C: Demo1 Trot1 camera/direction MATCH; Demo1 Trot2 NOT_CAPTURED;
+Demo5 Trot1 DIFF. Next single action: one producer upstream of FE14
+`src2[1]` only. No production fix, commit, or push.
+
+## USER_DEMO_5 FE14/source provenance review (2026-08-22)
+
+The writer capture remains intact and passes SHA256 twice. CA628 is
+**DOWNSTREAM_WRITER**: at glidx 24 ord 9, `old_1c` matches while
+`src2[1]` already differs (`4392861e` vs `4392b342`), and `swc1` copies it
+faithfully to `record+0x1C`.
+
+Static reconstruction closes FE14's role: `func_8010FE14` (`0x8010FE14..30`)
+does only `lw a0,0(a0)` plus `jal 0x800CA628`; it does not calculate or fill a
+heading. The selected event's `a2` is a caller stack vector at
+`0x80045678`, so element 1 is `0x8004567C`. The matching static caller path
+uses `func_800EE7F8` at `0x800EE804` to copy element 1 from `s0+0x80` into
+`sp+0x2C`.
+
+The new audit identifies `func_80110790` as the downstream setter and
+corrects `func_80110A68`: it is an output-vector adaptor whose arithmetic is
+`func_800A516C -> func_800F18FC`, using `sp+0x6C` and `s0+0x74`. There is no
+smoothing factor or feedback read of `s0+0x80`/`+0x8C`. Complete
+`80110A68` runtime inputs are now captured: `sp+0x6C` matches at glidx 24,
+while `s0+0x74` is the first differing input and the look-at output follows
+it. This closes `80110A68` as a downstream transform. The exact internal
+translation discriminator before the `0x8011208C` setter remains unresolved;
+`8011106C` is only a copy from `s0+0x8C`, and `80111F70` can modify the working
+eye through `80111DB0 -> 800EF174`.
+
+`func_800CA8B4` is not on the first-write path. No production fix, commit, or
+push. Next single action: capture complete paired `80110A68` inputs/output for
+glidx 23..24, preserving the same semantic join. The next required capture is
+the `80111FD4` P0-P9 working-eye/delta pipeline, not another `80110A68` trace.
+
+## USER_DEMO_5 inner 11F70/11DB0 discriminator (2026-08-23)
+
+Inner capture `/tmp/p08-demo5-eye-inner-firstdiff-20260823T033246Z/` SHA256
+PASS twice. Join PASS. `8011106C` = copy of zero `s0+0x8C`. `800EF04C` = add.
+AN skips `800EF174` because `|arg-eye|=0.0024 < 0.01`; RT applies
+`dir*0.2953` and commits the known glidx-24 eye. First field:
+`*0x80045620` (`B-80111F70-INPUT / B-80111DB0-INPUT`). Demo1 Trot #2
+NOT_CAPTURED. Next: one producer of that `a1` vector. No production fix.
+
+## USER_DEMO_5 a1@0x80045620 branch/provenance checkpoint (2026-08-23)
+
+The inner artifact /tmp/p08-demo5-eye-inner-firstdiff-20260823T033246Z/
+historically passed SHA256 twice before the interruption; the directory is
+now absent, so a fresh recheck is NOT_RECHECKABLE. Branch semantics are
+proven: 800EFB24 = a1-a2,
+800EEF94 = length, D_8012655C = 0.01f, and 0x80111DEC is bc1fl for
+0.01f < length. AN skips 800EF174; RT runs it.
+
+The current first upstream boundary is the final a1 local at
+0x80045620 = ncbapivot sp+0x48. Its immediate static producer is
+800EE780 @ 0x808001AC, not 80111A98/80111ABC; those routines are off the
+active 8010FFD0 != 0 path. The 800EE780 source-operand join was not
+captured, so the exact source discriminator remains unresolved.
+
+NEXT_SINGLE_ACTION: paired 800EE780 trace at glidx 23/24 (sp+0x28, sp+0x54,
+sp+0x48 old/source/new, plus branch flow). No production fix.
+
+## USER_DEMO_5 func_800EE780 source provenance (2026-08-23)
+
+New recapture `/tmp/p08-demo5-ee780-source-20260823T053510Z/` SHA256 PASS
+twice (`chmod a-w`). Previous inner `/tmp` dir remains LOST / NOT_RECHECKABLE.
+Branch/a1/eye chain reproduced. `800EE780` is `dst=a1+a2`. Glidx 24: `a1`
+MATCH, `a2` X/Z DIFF; writer `800EEBF0` already has different `src_dir` Y.
+ROOT_CLASS: `B-800EEBF0-INPUT`. Demo1 Trot #2 still NOT_CAPTURED. No
+production fix.
+
+NEXT_SINGLE_ACTION: independently arbitrate the complete func_800EE780
+input/output event and its first already-divergent source (`800EEBF0`
+`src_dir[1]`); move farther upstream only after that boundary is confirmed.

@@ -1,5 +1,5 @@
 diff --git a/src/device/r4300/pure_interp.c b/src/device/r4300/pure_interp.c
-index db5a596f..42ddc067 100644
+index db5a596f..54cf8808 100644
 --- a/src/device/r4300/pure_interp.c
 +++ b/src/device/r4300/pure_interp.c
 @@ -31,6 +31,7 @@
@@ -10,7 +10,7 @@ index db5a596f..42ddc067 100644
  
  #ifdef DBG
  #include "debugger/dbg_debugger.h"
-@@ -168,6 +169,45 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -168,6 +169,61 @@ void InterpretOpcode(struct r4300_core* r4300)
  	if (op_address == NULL)
  		return;
  	uint32_t op = *op_address;
@@ -26,8 +26,23 @@ index db5a596f..42ddc067 100644
 +		if (pcnow == 0x800CA628u || pcnow == 0x800CA65Cu || pcnow == 0x800CA660u ||
 +		    pcnow == 0x8010FC38u || pcnow == 0x8010FE14u || pcnow == 0x800CA8B4u ||
 +		    pcnow == 0x800CA8ECu || pcnow == 0x800E1A58u || pcnow == 0x80089488u ||
-+		    pcnow == 0x80800098u) {
++		    pcnow == 0x80800098u || pcnow == 0x80110790u || pcnow == 0x801107A0u ||
++		    pcnow == 0x80110770u || pcnow == 0x80110780u || pcnow == 0x80112524u ||
++		    pcnow == 0x80112548u || pcnow == 0x800F18FCu || pcnow == 0x800F1980u ||
++		    pcnow == 0x800A516Cu || pcnow == 0x800A51B4u || pcnow == 0x80110A68u ||
++		    pcnow == 0x80110A94u) {
 +			p08_ud4_cam(r4300, pcnow);
++			p08_ud5_cam1c(r4300, pcnow);
++		}
++		if (pcnow == 0x80111FD4u || pcnow == 0x80111FFCu || pcnow == 0x80112004u ||
++		    pcnow == 0x80111F70u || pcnow == 0x80111FC4u || pcnow == 0x80112070u ||
++		    pcnow == 0x80111DB0u || pcnow == 0x80111DD4u || pcnow == 0x800EF174u ||
++		    pcnow == 0x80111E64u || pcnow == 0x80111E70u || pcnow == 0x80111E7Cu ||
++		    pcnow == 0x8011106Cu || pcnow == 0x80111084u || pcnow == 0x800EF04Cu ||
++		    pcnow == 0x80112088u || pcnow == 0x800EE7F8u ||
++		    pcnow == 0x800EE780u || pcnow == 0x800EFB24u || pcnow == 0x800EEBF0u ||
++		    pcnow == 0x801107F0u || pcnow == 0x80111DCCu || pcnow == 0x800EEC28u) {
++			p08_ud5_eye(r4300, pcnow);
 +		}
 +		if (pcnow == 0x80112A84u || pcnow == 0x80112D08u ||
 +		    pcnow == 0x80112D28u || pcnow == 0x80112C34u ||
@@ -51,11 +66,23 @@ index db5a596f..42ddc067 100644
 +			p08_ud4_bce84(r4300, pcnow);
 +		}
 +		p08_ud4_np_tick(r4300, pcnow, op);
++		if (pcnow == 0x8009E5C8u) {
++			p08_ud5_setstate(r4300);
++		}
++		if (pcnow == 0x8009B9B0u || pcnow == 0x8009B9BCu ||
++		    pcnow == 0x80800B3Cu || pcnow == 0x80800B80u || pcnow == 0x80800B94u ||
++		    pcnow == 0x80800BA8u || pcnow == 0x80800BB0u || pcnow == 0x80800BB8u ||
++		    pcnow == 0x808007E0u || pcnow == 0x8008C894u || pcnow == 0x8008ADE4u ||
++		    pcnow == 0x8009D088u || pcnow == 0x8009EEB8u || pcnow == 0x800CAF00u ||
++		    pcnow == 0x800CAF2Cu || pcnow == 0x8009C914u || pcnow == 0x8009C930u ||
++		    pcnow == 0x8009B9C0u || pcnow == 0x8009BA68u || pcnow == 0x800EEB9Cu) {
++			p08_ud5_gate(r4300, pcnow);
++		}
 +	}
  
  	switch ((op >> 26) & 0x3F) {
  	case 0: /* SPECIAL prefix */
-@@ -203,7 +240,10 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -203,7 +255,10 @@ void InterpretOpcode(struct r4300_core* r4300)
  			 * using this as a reference for a JIT, do check Rd == 0 in it. */
  			JALR(r4300, op);
  			break;

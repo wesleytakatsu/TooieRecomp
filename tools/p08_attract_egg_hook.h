@@ -12,9 +12,16 @@
 
 static FILE* s_p08_egg_log = NULL;
 static FILE* s_p08_motion = NULL;
+static FILE* s_p08_ud5 = NULL;
 static int s_p08_logged_ep5 = 0;
 static uint32_t s_p08_last_post = 0xFFFFFFFFu;
 static int s_p08_last_sub = -1;
+
+static inline int p08_ud5_on(void)
+{
+    const char* e = getenv("P08_UD5_LOCO");
+    return e != NULL && e[0] != '\0' && e[0] != '0';
+}
 
 static inline uint16_t p08_be16_from_word(uint32_t word, int low_half)
 {
@@ -898,6 +905,659 @@ static inline void p08_ud4_np_tick(struct r4300_core* r4300, uint32_t pc, uint32
     }
 }
 
+static uint32_t s_p08_ud5_ca628_dst;
+static uint32_t s_p08_ud5_ca628_old;
+static uint32_t s_p08_ud5_ca628_src21;
+static unsigned s_p08_ud5_ca628_ord;
+static unsigned s_p08_ud5_ca8b4_ord;
+static unsigned s_p08_ud5_e1a58_ord;
+static uint32_t s_p08_ud5_ca8b4_a0;
+static uint32_t s_p08_ud5_ca8b4_a1;
+static uint32_t s_p08_ud5_ca8b4_a2;
+static unsigned s_p08_ud5_abc_trot[8];
+static unsigned s_p08_ud5_abc_pending[8];
+static uint32_t s_p08_abc_cam;
+static uint32_t s_p08_abc_stick;
+static uint32_t s_p08_ud5_set80_node;
+static uint32_t s_p08_ud5_set80_src;
+static uint32_t s_p08_ud5_set80_ra;
+static unsigned s_p08_ud5_set80_ord;
+static uint32_t s_p08_ud5_set74_s0;
+static unsigned s_p08_ud5_set74_ord;
+static uint32_t s_p08_ud5_sp6c_prod_dst;
+static unsigned s_p08_ud5_sp6c_prod_ord;
+static uint32_t s_p08_ud5_f18fc_out;
+static unsigned s_p08_ud5_f18fc_ord;
+static uint32_t s_p08_ud5_a516c_dst;
+static unsigned s_p08_ud5_a516c_ord;
+static uint32_t s_p08_ud5_a68_dst;
+static unsigned s_p08_ud5_a68_ord;
+
+static inline int p08_ud5_cam1c_window(struct r4300_core* r4300, int* glidx_out)
+{
+    if (!p08_ud5_on()) {
+        return 0;
+    }
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int glidx = (post > 0u) ? (int)post - 1 : 0;
+    if (glidx_out) {
+        *glidx_out = glidx;
+    }
+    return mode == 5 && sub == 5 && glidx >= 20 && glidx <= 28;
+}
+
+static inline void p08_ud5_cam1c(struct r4300_core* r4300, uint32_t pc)
+{
+    int glidx = 0;
+    if (!p08_ud5_cam1c_window(r4300, &glidx)) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    const uint32_t a1 = (uint32_t)regs[5];
+    const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t ra = (uint32_t)regs[31];
+    int32_t sel = -1;
+    uint32_t rec = p08_ud4_sel_rec(r4300);
+    uint32_t ps = 0, selw = 0;
+    (void)r4300_read_aligned_word(r4300, 0x80135490u, &ps);
+    if (p08_guest(ps)) {
+        (void)r4300_read_aligned_word(r4300, ps + 0x184u, &selw);
+        sel = (int32_t)selw;
+    }
+    if (pc == 0x800CA628u) {
+        uint32_t old_1c = 0, s0 = 0, s1 = 0, s2 = 0;
+        s_p08_ud5_ca628_dst = a0;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x1Cu, &old_1c);
+        }
+        if (p08_guest(a2)) {
+            (void)r4300_read_aligned_word(r4300, a2 + 0u, &s0);
+            (void)r4300_read_aligned_word(r4300, a2 + 4u, &s1);
+            (void)r4300_read_aligned_word(r4300, a2 + 8u, &s2);
+        }
+        s_p08_ud5_ca628_old = old_1c;
+        s_p08_ud5_ca628_src21 = s1;
+        const unsigned ord = ++s_p08_ud5_ca628_ord;
+        fprintf(stderr,
+                "[ud5-cam1c] phase=ca628 enter glidx=%d ord=%u pc=800ca628 "
+                "store=800ca65c ra=%08x dst=%08x src=%08x src2=%08x sel=%d rec=%08x "
+                "selected=%d old_1c=%08x src2_0=%08x src2_1=%08x src2_2=%08x "
+                "source_iter=1 source_reg=f6\n",
+                glidx, ord, ra, a0, a1, a2, sel, rec,
+                (a0 != 0 && a0 == rec) ? 1 : 0, old_1c, s0, s1, s2);
+        fflush(stderr);
+    } else if (pc == 0x800CA65Cu) {
+        const uint32_t v0 = (uint32_t)regs[2];
+        const uint32_t v1 = (uint32_t)regs[3];
+        const uint32_t store_addr = v1 + 0x14u;
+        const uint32_t f6 = p08_fpr_bits(r4300, 6);
+        uint32_t old_at = 0;
+        if (p08_guest(store_addr)) {
+            (void)r4300_read_aligned_word(r4300, store_addr, &old_at);
+        }
+        fprintf(stderr,
+                "[ud5-cam1c] phase=ca628 store glidx=%d pc=800ca65c "
+                "loop_v0=%u v1=%08x store=%08x dst=%08x dst_plus_1c=%08x "
+                "heading_store=%d old_at=%08x f6_bits=%08x\n",
+                glidx, v0, v1, store_addr, s_p08_ud5_ca628_dst,
+                s_p08_ud5_ca628_dst + 0x1Cu,
+                (store_addr == s_p08_ud5_ca628_dst + 0x1Cu) ? 1 : 0,
+                old_at, f6);
+        fflush(stderr);
+    } else if (pc == 0x800CA660u) {
+        uint32_t new_1c = 0;
+        if (p08_guest(s_p08_ud5_ca628_dst)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_ca628_dst + 0x1Cu, &new_1c);
+        }
+        fprintf(stderr,
+                "[ud5-cam1c] phase=ca628 leave glidx=%d ord=%u pc=800ca628 "
+                "store=800ca65c dst=%08x selected=%d old_1c=%08x source_bits=%08x "
+                "new_1c=%08x\n",
+                glidx, s_p08_ud5_ca628_ord, s_p08_ud5_ca628_dst,
+                (s_p08_ud5_ca628_dst != 0 && s_p08_ud5_ca628_dst == rec) ? 1 : 0,
+                s_p08_ud5_ca628_old, s_p08_ud5_ca628_src21, new_1c);
+        fflush(stderr);
+    } else if (pc == 0x8010FC38u) {
+        fprintf(stderr,
+                "[ud5-cam1c] phase=fc38 enter glidx=%d pc=8010fc38 ra=%08x a0=%08x\n",
+                glidx, ra, a0);
+        fflush(stderr);
+    } else if (pc == 0x800CA8B4u) {
+        uint32_t e0 = 0, e1 = 0, e2 = 0, s0 = 0, s1 = 0, s2 = 0;
+        s_p08_ud5_ca8b4_a0 = a0;
+        s_p08_ud5_ca8b4_a1 = a1;
+        s_p08_ud5_ca8b4_a2 = a2;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x00u, &e0);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x04u, &e1);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x08u, &e2);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x18u, &s0);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x1Cu, &s1);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x20u, &s2);
+        }
+        fprintf(stderr,
+                "[ud5-cam1c] phase=ca8b4 enter glidx=%d ord=%u pc=800ca8b4 ra=%08x "
+                "a0=%08x a1=%08x a2=%08x sel=%d rec=%08x selected=%d "
+                "eye_in=%08x,%08x,%08x src2_in=%08x,%08x,%08x\n",
+                glidx, ++s_p08_ud5_ca8b4_ord, ra, a0, a1, a2, sel, rec,
+                (a0 != 0 && a0 == rec) ? 1 : 0, e0, e1, e2, s0, s1, s2);
+        fflush(stderr);
+    } else if (pc == 0x800CA8ECu) {
+        uint32_t s0 = 0, s1 = 0, s2 = 0;
+        if (p08_guest(s_p08_ud5_ca8b4_a2)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_ca8b4_a2 + 0u, &s0);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_ca8b4_a2 + 4u, &s1);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_ca8b4_a2 + 8u, &s2);
+        }
+        fprintf(stderr,
+                "[ud5-cam1c] phase=ca8b4 leave glidx=%d ord=%u pc=800ca8b4 "
+                "selected=%d src2_0=%08x src2_1=%08x src2_2=%08x\n",
+                glidx, s_p08_ud5_ca8b4_ord,
+                (s_p08_ud5_ca8b4_a0 != 0 && s_p08_ud5_ca8b4_a0 == rec) ? 1 : 0,
+                s0, s1, s2);
+        fflush(stderr);
+    } else if (pc == 0x800E1A58u) {
+        uint32_t in_h = 0, a10 = 0, a12 = 0;
+        if (p08_guest(a1)) {
+            (void)r4300_read_aligned_word(r4300, a1 + 0u, &a10);
+            (void)r4300_read_aligned_word(r4300, a1 + 4u, &in_h);
+            (void)r4300_read_aligned_word(r4300, a1 + 8u, &a12);
+        }
+        fprintf(stderr,
+                "[ud5-cam1c] phase=e1a58 enter glidx=%d ord=%u pc=800e1a58 ra=%08x "
+                "a0=%08x a1=%08x heading_src=%08x a1_0=%08x a1_2=%08x\n",
+                glidx, ++s_p08_ud5_e1a58_ord, ra, a0, a1, in_h, a10, a12);
+        fflush(stderr);
+    } else if (pc == 0x80110790u) {
+        uint32_t target_mode2 = 0;
+        if (p08_guest(rec)) {
+            (void)r4300_read_aligned_word(r4300, rec + 0x4u, &target_mode2);
+        }
+        uint32_t old_80 = 0, old_84 = 0, old_88 = 0;
+        uint32_t src_0 = 0, src_1 = 0, src_2 = 0;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x80u, &old_80);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x84u, &old_84);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x88u, &old_88);
+        }
+        if (p08_guest(a1)) {
+            (void)r4300_read_aligned_word(r4300, a1 + 0x00u, &src_0);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x04u, &src_1);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x08u, &src_2);
+        }
+        s_p08_ud5_set80_node = a0;
+        s_p08_ud5_set80_src = a1;
+        s_p08_ud5_set80_ra = ra;
+        const unsigned ord = ++s_p08_ud5_set80_ord;
+        fprintf(stderr,
+                "[ud5-set80] phase=set80 enter glidx=%d ord=%u pc=80110790 store=800ee804 ra=%08x "
+                "node=%08x src=%08x sel=%d rec=%08x target_mode2=%08x selected=%d "
+                "old_80=%08x old_84=%08x old_88=%08x src_0=%08x src_1=%08x src_2=%08x\n",
+                glidx, ord, ra, a0, a1, sel, rec, target_mode2,
+                (a0 != 0 && a0 == target_mode2) ? 1 : 0,
+                old_80, old_84, old_88, src_0, src_1, src_2);
+        fflush(stderr);
+    } else if (pc == 0x801107A0u) {
+        uint32_t target_mode2 = 0;
+        if (p08_guest(rec)) {
+            (void)r4300_read_aligned_word(r4300, rec + 0x4u, &target_mode2);
+        }
+        uint32_t new_80 = 0, new_84 = 0, new_88 = 0;
+        if (p08_guest(s_p08_ud5_set80_node)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_set80_node + 0x80u, &new_80);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_set80_node + 0x84u, &new_84);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_set80_node + 0x88u, &new_88);
+        }
+        fprintf(stderr,
+                "[ud5-set80] phase=set80 leave glidx=%d ord=%u pc=80110790 store=800ee804 "
+                "node=%08x selected=%d new_80=%08x new_84=%08x new_88=%08x\n",
+                glidx, s_p08_ud5_set80_ord, s_p08_ud5_set80_node,
+                (s_p08_ud5_set80_node != 0 && s_p08_ud5_set80_node == target_mode2) ? 1 : 0,
+                new_80, new_84, new_88);
+        fflush(stderr);
+    } else if (pc == 0x80110770u) {
+        uint32_t old_74 = 0, old_78 = 0, old_7c = 0;
+        uint32_t s0_v = 0, s1_v = 0, s2_v = 0;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x74u, &old_74);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x78u, &old_78);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x7Cu, &old_7c);
+        }
+        if (p08_guest(a1)) {
+            (void)r4300_read_aligned_word(r4300, a1 + 0x0u, &s0_v);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x4u, &s1_v);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x8u, &s2_v);
+        }
+        s_p08_ud5_set74_s0 = a0;
+        const unsigned uord = ++s_p08_ud5_set74_ord;
+        fprintf(stderr,
+                "[ud5-set74] phase=set74 enter glidx=%d ord=%u pc=80110770 ra=%08x "
+                "s0=%08x src=%08x old_74=(%08x,%08x,%08x / %.4f,%.4f,%.4f) src=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1,
+                old_74, old_78, old_7c, p08_f32(old_74), p08_f32(old_78), p08_f32(old_7c),
+                s0_v, s1_v, s2_v, p08_f32(s0_v), p08_f32(s1_v), p08_f32(s2_v));
+        fflush(stderr);
+    } else if (pc == 0x80110780u) {
+        uint32_t new_74 = 0, new_78 = 0, new_7c = 0;
+        if (p08_guest(s_p08_ud5_set74_s0)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_set74_s0 + 0x74u, &new_74);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_set74_s0 + 0x78u, &new_78);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_set74_s0 + 0x7Cu, &new_7c);
+        }
+        fprintf(stderr,
+                "[ud5-set74] phase=set74 leave glidx=%d ord=%u pc=80110770 "
+                "s0=%08x new_74=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, s_p08_ud5_set74_ord, s_p08_ud5_set74_s0,
+                new_74, new_78, new_7c, p08_f32(new_74), p08_f32(new_78), p08_f32(new_7c));
+        fflush(stderr);
+    } else if (pc == 0x80112524u) {
+        uint32_t p30 = 0, p30_4 = 0, p30_8 = 0, p30_c = 0;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x30u, &p30);
+            if (p08_guest(p30)) {
+                (void)r4300_read_aligned_word(r4300, p30 + 0x4u, &p30_4);
+                (void)r4300_read_aligned_word(r4300, p30 + 0x8u, &p30_8);
+                (void)r4300_read_aligned_word(r4300, p30 + 0xCu, &p30_c);
+            }
+        }
+        s_p08_ud5_sp6c_prod_dst = a1;
+        const unsigned uord = ++s_p08_ud5_sp6c_prod_ord;
+        fprintf(stderr,
+                "[ud5-sp6c-prod] phase=sp6c_prod enter glidx=%d ord=%u pc=80112524 ra=%08x "
+                "s0=%08x dst=%08x p30=%08x src4=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1, p30,
+                p30_4, p30_8, p30_c, p08_f32(p30_4), p08_f32(p30_8), p08_f32(p30_c));
+        fflush(stderr);
+    } else if (pc == 0x80112548u) {
+        uint32_t d0 = 0, d1 = 0, d2 = 0;
+        if (p08_guest(s_p08_ud5_sp6c_prod_dst)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_sp6c_prod_dst + 0x0u, &d0);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_sp6c_prod_dst + 0x4u, &d1);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_sp6c_prod_dst + 0x8u, &d2);
+        }
+        fprintf(stderr,
+                "[ud5-sp6c-prod] phase=sp6c_prod leave glidx=%d ord=%u pc=80112524 "
+                "dst=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, s_p08_ud5_sp6c_prod_ord,
+                d0, d1, d2, p08_f32(d0), p08_f32(d1), p08_f32(d2));
+        fflush(stderr);
+    } else if (pc == 0x800F18FCu) {
+        uint32_t f0 = 0, f1 = 0, f2 = 0, t0 = 0, t1 = 0, t2 = 0;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x0u, &f0);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x4u, &f1);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x8u, &f2);
+        }
+        if (p08_guest(a1)) {
+            (void)r4300_read_aligned_word(r4300, a1 + 0x0u, &t0);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x4u, &t1);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x8u, &t2);
+        }
+        s_p08_ud5_f18fc_out = a2;
+        const unsigned uord = ++s_p08_ud5_f18fc_ord;
+        fprintf(stderr,
+                "[ud5-f18fc] phase=f18fc enter glidx=%d ord=%u pc=800f18fc ra=%08x "
+                "from=%08x to=%08x out=%08x from_v=(%08x,%08x,%08x / %.4f,%.4f,%.4f) to_v=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1, a2,
+                f0, f1, f2, p08_f32(f0), p08_f32(f1), p08_f32(f2),
+                t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2));
+        fflush(stderr);
+    } else if (pc == 0x800F1980u) {
+        uint32_t o0 = 0, o1 = 0, o2 = 0;
+        if (p08_guest(s_p08_ud5_f18fc_out)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_f18fc_out + 0x0u, &o0);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_f18fc_out + 0x4u, &o1);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_f18fc_out + 0x8u, &o2);
+        }
+        fprintf(stderr,
+                "[ud5-f18fc] phase=f18fc leave glidx=%d ord=%u pc=800f18fc "
+                "out=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, s_p08_ud5_f18fc_ord,
+                o0, o1, o2, p08_f32(o0), p08_f32(o1), p08_f32(o2));
+        fflush(stderr);
+    } else if (pc == 0x800A516Cu) {
+        uint32_t t0 = 0, t1 = 0, t2 = 0, e0 = 0, e1 = 0, e2 = 0;
+        if (p08_guest(a1)) {
+            (void)r4300_read_aligned_word(r4300, a1 + 0x0u, &t0);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x4u, &t1);
+            (void)r4300_read_aligned_word(r4300, a1 + 0x8u, &t2);
+        }
+        if (p08_guest(a2)) {
+            (void)r4300_read_aligned_word(r4300, a2 + 0x0u, &e0);
+            (void)r4300_read_aligned_word(r4300, a2 + 0x4u, &e1);
+            (void)r4300_read_aligned_word(r4300, a2 + 0x8u, &e2);
+        }
+        s_p08_ud5_a516c_dst = a0;
+        const unsigned uord = ++s_p08_ud5_a516c_ord;
+        fprintf(stderr,
+                "[ud5-a516c] phase=a516c enter glidx=%d ord=%u pc=800a516c ra=%08x "
+                "dst=%08x target=%08x eye=%08x target_v=(%08x,%08x,%08x / %.4f,%.4f,%.4f) eye_v=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1, a2,
+                t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2),
+                e0, e1, e2, p08_f32(e0), p08_f32(e1), p08_f32(e2));
+        fflush(stderr);
+    } else if (pc == 0x800A51B4u) {
+        uint32_t o0 = 0, o1 = 0, o2 = 0;
+        if (p08_guest(s_p08_ud5_a516c_dst)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_a516c_dst + 0x0u, &o0);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_a516c_dst + 0x4u, &o1);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_a516c_dst + 0x8u, &o2);
+        }
+        fprintf(stderr,
+                "[ud5-a516c] phase=a516c leave glidx=%d ord=%u pc=800a516c "
+                "out=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, s_p08_ud5_a516c_ord,
+                o0, o1, o2, p08_f32(o0), p08_f32(o1), p08_f32(o2));
+        fflush(stderr);
+    } else if (pc == 0x80110A68u) {
+        uint32_t sp6c_0 = 0, sp6c_1 = 0, sp6c_2 = 0;
+        uint32_t s0_74 = 0, s0_78 = 0, s0_7c = 0;
+        uint32_t p30 = 0;
+        if (p08_guest(a2)) {
+            (void)r4300_read_aligned_word(r4300, a2 + 0x0u, &sp6c_0);
+            (void)r4300_read_aligned_word(r4300, a2 + 0x4u, &sp6c_1);
+            (void)r4300_read_aligned_word(r4300, a2 + 0x8u, &sp6c_2);
+        }
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0x74u, &s0_74);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x78u, &s0_78);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x7Cu, &s0_7c);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x30u, &p30);
+        }
+        s_p08_ud5_a68_dst = a1;
+        const unsigned uord = ++s_p08_ud5_a68_ord;
+        fprintf(stderr,
+                "[ud5-a68] phase=a68 enter glidx=%d ord=%u pc=80110a68 ra=%08x "
+                "s0=%08x dst_sp60=%08x in_sp6c=%08x sp6c=(%08x,%08x,%08x / %.4f,%.4f,%.4f) s0_74=(%08x,%08x,%08x / %.4f,%.4f,%.4f) p30=%08x\n",
+                glidx, uord, ra, a0, a1, a2,
+                sp6c_0, sp6c_1, sp6c_2, p08_f32(sp6c_0), p08_f32(sp6c_1), p08_f32(sp6c_2),
+                s0_74, s0_78, s0_7c, p08_f32(s0_74), p08_f32(s0_78), p08_f32(s0_7c),
+                p30);
+        fflush(stderr);
+    } else if (pc == 0x80110A94u) {
+        uint32_t out_80 = 0, out_84 = 0, out_88 = 0;
+        if (p08_guest(s_p08_ud5_a68_dst)) {
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_a68_dst + 0x0u, &out_80);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_a68_dst + 0x4u, &out_84);
+            (void)r4300_read_aligned_word(r4300, s_p08_ud5_a68_dst + 0x8u, &out_88);
+        }
+        fprintf(stderr,
+                "[ud5-a68] phase=a68 leave glidx=%d ord=%u pc=80110a68 "
+                "out_sp60=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, s_p08_ud5_a68_ord,
+                out_80, out_84, out_88,
+                p08_f32(out_80), p08_f32(out_84), p08_f32(out_88));
+        fflush(stderr);
+    }
+}
+
+static uint32_t s_p08_ud5_eye_s0;
+static unsigned s_p08_ud5_fd4_ord;
+static unsigned s_p08_ud5_ee780_ord;
+static unsigned s_p08_ud5_efb24_ord;
+static unsigned s_p08_ud5_eebf0_ord;
+static uint32_t s_p08_ud5_ee780_dst;
+static uint32_t s_p08_ud5_ee780_glidx;
+
+static inline void p08_rd3(struct r4300_core* r4300, uint32_t a, uint32_t* x, uint32_t* y, uint32_t* z)
+{
+    *x = *y = *z = 0;
+    if (p08_guest(a)) {
+        (void)r4300_read_aligned_word(r4300, a + 0u, x);
+        (void)r4300_read_aligned_word(r4300, a + 4u, y);
+        (void)r4300_read_aligned_word(r4300, a + 8u, z);
+    }
+}
+
+static inline void p08_ud5_eye(struct r4300_core* r4300, uint32_t pc)
+{
+    int glidx = 0;
+    if (!p08_ud5_cam1c_window(r4300, &glidx)) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    const uint32_t a1 = (uint32_t)regs[5];
+    const uint32_t a2 = (uint32_t)regs[6];
+    const uint32_t a3 = (uint32_t)regs[7];
+    const uint32_t ra = (uint32_t)regs[31];
+    uint32_t x = 0, y = 0, z = 0, t0 = 0, t1 = 0, t2 = 0;
+    if (pc == 0x80111FD4u) {
+        uint32_t ax = 0, ay = 0, az = 0;
+        s_p08_ud5_eye_s0 = a0;
+        p08_rd3(r4300, a0 + 0x74u, &x, &y, &z);
+        p08_rd3(r4300, a0 + 0x8Cu, &t0, &t1, &t2);
+        p08_rd3(r4300, a1, &ax, &ay, &az);
+        fprintf(stderr,
+                "[ud5-eye] phase=P0 enter glidx=%d ord=%u pc=80111fd4 ra=%08x s0=%08x arg=%08x "
+                "eye74=(%08x,%08x,%08x / %.4f,%.4f,%.4f) s08c=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "argv=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ++s_p08_ud5_fd4_ord, ra, a0, a1,
+                x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2),
+                ax, ay, az, p08_f32(ax), p08_f32(ay), p08_f32(az));
+        fflush(stderr);
+        if (s_p08_ud5_ee780_dst != 0 && a1 == s_p08_ud5_ee780_dst) {
+            fprintf(stderr,
+                    "[ud5-ee780] edge_to_11fd4 glidx=%d dest=%08x out=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                    glidx, a1, ax, ay, az, p08_f32(ax), p08_f32(ay), p08_f32(az));
+            fflush(stderr);
+        }
+    } else if (pc == 0x80111FFCu) {
+        const uint32_t sp = (uint32_t)regs[29];
+        p08_rd3(r4300, sp + 0x3Cu, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-eye] phase=P1 after_107F0 glidx=%d pc=80111ffc work=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    } else if (pc == 0x80112004u) {
+        fprintf(stderr,
+                "[ud5-eye] phase=BR_0FFD0 glidx=%d pc=80112004 v0=%08x skip_trans_path=%d\n",
+                glidx, (uint32_t)regs[2], (regs[2] != 0) ? 1 : 0);
+        fflush(stderr);
+    } else if (pc == 0x80111F70u) {
+        uint32_t sc = 0, ax = 0, ay = 0, az = 0;
+        p08_rd3(r4300, a2, &x, &y, &z);
+        p08_rd3(r4300, a1, &ax, &ay, &az);
+        if (p08_guest(a3)) {
+            (void)r4300_read_aligned_word(r4300, a3, &sc);
+        }
+        fprintf(stderr,
+                "[ud5-eye] phase=P2 before_11F70 glidx=%d pc=80111f70 ra=%08x s0=%08x arg=%08x "
+                "work=%08x a3=%08x a3_0=%08x workv=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "argv=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ra, a0, a1, a2, a3, sc, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                ax, ay, az, p08_f32(ax), p08_f32(ay), p08_f32(az));
+        fflush(stderr);
+    } else if (pc == 0x80111FC4u) {
+        const uint32_t work = (uint32_t)regs[29] + 0x30u; /* 11F70 saved a2 at 0x30(sp) */
+        (void)work;
+        fprintf(stderr, "[ud5-eye] phase=P3 after_11F70 glidx=%d pc=80111fc4\n", glidx);
+        fflush(stderr);
+    } else if (pc == 0x80111DB0u) {
+        uint32_t sc = 0, thr = 0, ax = 0, ay = 0, az = 0;
+        p08_rd3(r4300, a2, &x, &y, &z);
+        p08_rd3(r4300, a1, &ax, &ay, &az);
+        if (p08_guest(a3)) {
+            (void)r4300_read_aligned_word(r4300, a3, &sc);
+        }
+        (void)r4300_read_aligned_word(r4300, 0x8012655Cu, &thr);
+        fprintf(stderr,
+                "[ud5-eye] phase=P4 before_11DB0 glidx=%d pc=80111db0 ra=%08x s0=%08x arg=%08x "
+                "work=%08x a3=%08x a3_0=%08x D_8012655C=%08x workv=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "argv=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ra, a0, a1, a2, a3, sc, thr, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                ax, ay, az, p08_f32(ax), p08_f32(ay), p08_f32(az));
+        fflush(stderr);
+    } else if (pc == 0x80111DD4u) {
+        uint32_t f0 = p08_fpr_bits(r4300, 0);
+        uint32_t thr = 0;
+        (void)r4300_read_aligned_word(r4300, 0x8012655Cu, &thr);
+        fprintf(stderr,
+                "[ud5-eye] phase=BR_EEF94 glidx=%d pc=80111dd4 f0=%08x/%.4f D_8012655C=%08x/%.4f "
+                "c_lt_thr_f0=%d\n",
+                glidx, f0, p08_f32(f0), thr, p08_f32(thr),
+                (p08_f32(thr) < p08_f32(f0)) ? 1 : 0);
+        fflush(stderr);
+    } else if (pc == 0x800EF174u) {
+        p08_rd3(r4300, a0, &x, &y, &z);
+        p08_rd3(r4300, a1, &t0, &t1, &t2);
+        fprintf(stderr,
+                "[ud5-eye] phase=P6 before_EF174 glidx=%d pc=800ef174 ra=%08x scale=%08x/%.4f "
+                "eye=(%08x,%08x,%08x / %.4f,%.4f,%.4f) dir=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ra, a2, p08_f32(a2),
+                x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2));
+        fflush(stderr);
+    } else if (pc == 0x80111E64u) {
+        p08_rd3(r4300, a0, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-eye] phase=P7 after_EF174 glidx=%d eye=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    } else if (pc == 0x80111E70u) {
+        fprintf(stderr, "[ud5-eye] phase=BR_SKIP_EF174 glidx=%d pc=80111e70\n", glidx);
+        fflush(stderr);
+    } else if (pc == 0x80111E7Cu) {
+        fprintf(stderr, "[ud5-eye] phase=P5 after_11DB0 glidx=%d pc=80111e7c\n", glidx);
+        fflush(stderr);
+    } else if (pc == 0x80112070u) {
+        const uint32_t sp = (uint32_t)regs[29];
+        p08_rd3(r4300, sp + 0x3Cu, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-eye] phase=P3 after_11F70 glidx=%d work=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    } else if (pc == 0x8011106Cu) {
+        p08_rd3(r4300, a0 + 0x8Cu, &t0, &t1, &t2);
+        fprintf(stderr,
+                "[ud5-eye] phase=P8 before_1106C glidx=%d pc=8011106c ra=%08x s0=%08x dst=%08x "
+                "s08c=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ra, a0, a1, t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2));
+        fflush(stderr);
+    } else if (pc == 0x80111084u) {
+        p08_rd3(r4300, a1, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-eye] phase=P9 after_1106C glidx=%d dst=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    } else if (pc == 0x800EF04Cu) {
+        p08_rd3(r4300, a0, &x, &y, &z);
+        p08_rd3(r4300, a1, &t0, &t1, &t2);
+        fprintf(stderr,
+                "[ud5-eye] phase=P10 before_EF04C glidx=%d pc=800ef04c "
+                "work=(%08x,%08x,%08x / %.4f,%.4f,%.4f) add=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2));
+        fflush(stderr);
+    } else if (pc == 0x80112088u) {
+        const uint32_t sp = (uint32_t)regs[29];
+        p08_rd3(r4300, sp + 0x3Cu, &x, &y, &z);
+        p08_rd3(r4300, sp + 0x30u, &t0, &t1, &t2);
+        fprintf(stderr,
+                "[ud5-eye] phase=P11 after_EF04C glidx=%d work=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "add=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2));
+        fflush(stderr);
+    } else if (pc == 0x800EE7F8u) {
+        if (s_p08_ud5_eye_s0 != 0 && a0 == s_p08_ud5_eye_s0 + 0x8Cu) {
+            p08_rd3(r4300, a0, &x, &y, &z);
+            p08_rd3(r4300, a1, &t0, &t1, &t2);
+            fprintf(stderr,
+                    "[ud5-eye] phase=s0_8c_write enter glidx=%d pc=800ee7f8 ra=%08x "
+                    "old=(%08x,%08x,%08x / %.4f,%.4f,%.4f) srcv=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                    glidx, ra, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z),
+                    t0, t1, t2, p08_f32(t0), p08_f32(t1), p08_f32(t2));
+            fflush(stderr);
+        }
+        if (glidx >= 22 && glidx <= 25) {
+            uint32_t ox = 0, oy = 0, oz = 0, sx = 0, sy = 0, sz = 0;
+            p08_rd3(r4300, a0, &ox, &oy, &oz);
+            p08_rd3(r4300, a1, &sx, &sy, &sz);
+            fprintf(stderr,
+                    "[ud5-ee7f8] enter glidx=%d ra=%08x dst=%08x src=%08x "
+                    "old=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                    "srcv=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                    glidx, ra, a0, a1,
+                    ox, oy, oz, p08_f32(ox), p08_f32(oy), p08_f32(oz),
+                    sx, sy, sz, p08_f32(sx), p08_f32(sy), p08_f32(sz));
+            fflush(stderr);
+        }
+    } else if (pc == 0x800EE780u) {
+        uint32_t ox = 0, oy = 0, oz = 0, s1x = 0, s1y = 0, s1z = 0, s2x = 0, s2y = 0, s2z = 0;
+        const unsigned uord = ++s_p08_ud5_ee780_ord;
+        s_p08_ud5_ee780_dst = a0;
+        s_p08_ud5_ee780_glidx = (uint32_t)glidx;
+        p08_rd3(r4300, a0, &ox, &oy, &oz);
+        p08_rd3(r4300, a1, &s1x, &s1y, &s1z);
+        p08_rd3(r4300, a2, &s2x, &s2y, &s2z);
+        fprintf(stderr,
+                "[ud5-ee780] enter glidx=%d ord=%u pc=800ee780 ra=%08x "
+                "a0=%08x a1=%08x a2=%08x a3=%08x "
+                "old=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "src_a1=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "src_a2=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1, a2, a3,
+                ox, oy, oz, p08_f32(ox), p08_f32(oy), p08_f32(oz),
+                s1x, s1y, s1z, p08_f32(s1x), p08_f32(s1y), p08_f32(s1z),
+                s2x, s2y, s2z, p08_f32(s2x), p08_f32(s2y), p08_f32(s2z));
+        fflush(stderr);
+    } else if (pc == 0x800EFB24u && glidx >= 22 && glidx <= 25) {
+        uint32_t a1x = 0, a1y = 0, a1z = 0, a2x = 0, a2y = 0, a2z = 0;
+        const unsigned uord = ++s_p08_ud5_efb24_ord;
+        p08_rd3(r4300, a1, &a1x, &a1y, &a1z);
+        p08_rd3(r4300, a2, &a2x, &a2y, &a2z);
+        fprintf(stderr,
+                "[ud5-efb24] enter glidx=%d ord=%u pc=800efb24 ra=%08x "
+                "a0=%08x a1=%08x a2=%08x a3=%08x "
+                "a1v=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "a2v=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1, a2, a3,
+                a1x, a1y, a1z, p08_f32(a1x), p08_f32(a1y), p08_f32(a1z),
+                a2x, a2y, a2z, p08_f32(a2x), p08_f32(a2y), p08_f32(a2z));
+        fflush(stderr);
+    } else if (pc == 0x800EEBF0u && glidx >= 22 && glidx <= 25) {
+        uint32_t ox = 0, oy = 0, oz = 0, sx = 0, sy = 0, sz = 0;
+        const unsigned uord = ++s_p08_ud5_eebf0_ord;
+        p08_rd3(r4300, a0, &ox, &oy, &oz);
+        p08_rd3(r4300, a1, &sx, &sy, &sz);
+        fprintf(stderr,
+                "[ud5-eebf0] enter glidx=%d ord=%u pc=800eebf0 ra=%08x "
+                "a0=%08x a1=%08x a2=%08x/%.4f a3=%08x "
+                "old=(%08x,%08x,%08x / %.4f,%.4f,%.4f) "
+                "src_dir=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, uord, ra, a0, a1, a2, p08_f32(a2), a3,
+                ox, oy, oz, p08_f32(ox), p08_f32(oy), p08_f32(oz),
+                sx, sy, sz, p08_f32(sx), p08_f32(sy), p08_f32(sz));
+        fflush(stderr);
+    } else if (pc == 0x801107F0u) {
+        p08_rd3(r4300, a1, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-eye] phase=P1 after_107F0 glidx=%d pc=801107f0 ra=%08x s0=%08x dst=%08x "
+                "work=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ra, a0, a1, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    } else if (pc == 0x80111DCCu) {
+        p08_rd3(r4300, a0, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-efb24] leave glidx=%d ra=%08x dest=%08x "
+                "delta=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, ra, a0, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    } else if (pc == 0x800EEC28u && glidx >= 22 && glidx <= 25) {
+        p08_rd3(r4300, a0, &x, &y, &z);
+        fprintf(stderr,
+                "[ud5-eebf0] leave glidx=%d dest=%08x "
+                "out=(%08x,%08x,%08x / %.4f,%.4f,%.4f)\n",
+                glidx, a0, x, y, z, p08_f32(x), p08_f32(y), p08_f32(z));
+        fflush(stderr);
+    }
+}
+
 static inline void p08_ud4_cam(struct r4300_core* r4300, uint32_t pc)
 {
     int glidx = 0;
@@ -1092,7 +1752,11 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
     int mode = 0, map = 0, stage = 0, sub = 0;
     uint32_t post = 0;
     p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
-    if (mode != 5 || (sub != 4 && sub != 0)) {
+    if (p08_ud5_on()) {
+        if (mode != 5 || sub != 5) {
+            return;
+        }
+    } else if (mode != 5 || (sub != 4 && sub != 0)) {
         return;
     }
     if (sub == 0 && post > 30u) {
@@ -1103,7 +1767,25 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
     }
     s_p08_last_sub = sub;
     s_p08_last_post = post;
-    if (!s_p08_motion) {
+    if (p08_ud5_on()) {
+        if (!s_p08_ud5) {
+            const char* path = getenv("P08_UD5_CSV");
+            if (path == NULL || path[0] == '\0') {
+                path = "/tmp/p08-angrylion-user_demo5.csv";
+            }
+            s_p08_ud5 = fopen(path, "a");
+            if (s_p08_ud5 && ftell(s_p08_ud5) == 0) {
+                fprintf(s_p08_ud5,
+                        "glidx,post,stage,sub,map,pad_x,pad_y,pad_btn,"
+                        "bs_prev,bs_cur,bs_next,ptype,px,py,pz,"
+                        "vx,vy,vz,tspd,accel,mult,yaw,ideal,phys_yaw,"
+                        "camctrl,sel,anim_id,anim_timer,anim_dur,anim_phase\n");
+            }
+        }
+        if (!s_p08_ud5) {
+            return;
+        }
+    } else if (!s_p08_motion) {
         s_p08_motion = fopen("/tmp/p08-angrylion-user_demo4.csv", "a");
         if (s_p08_motion && ftell(s_p08_motion) == 0) {
             fprintf(s_p08_motion,
@@ -1111,7 +1793,7 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
                     "cx,cy,cz,camctrl,sel\n");
         }
     }
-    if (!s_p08_motion) {
+    if (!p08_ud5_on() && !s_p08_motion) {
         return;
     }
 
@@ -1141,8 +1823,8 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
     }
 
     float px = 0, py = 0, pz = 0, yaw = 0, ideal = 0, phys = 0, vx = 0, vy = 0, vz = 0;
-    float cx = 0, cy = 0, cz = 0, camctrl = 0;
-    int32_t bs = -1, sel = -1;
+    float cx = 0, cy = 0, cz = 0, camctrl = 0, tspd = 0, accel = 0, mult = 0;
+    int32_t bs = -1, sel = -1, bs_prev = -1, bs_cur = -1, bs_next = -1, ptype = -1;
     if ((ps_w >= 0x80000000u) && ((ps_w + 0x80000000u) < 0x00800000u)) {
         uint32_t posp = 0, yawp = 0, physp = 0, bsp = 0, selw = 0;
         (void)r4300_read_aligned_word(r4300, ps_w + 0xE4u, &posp);
@@ -1165,18 +1847,29 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
             yaw = p08_f32(y0); ideal = p08_f32(y1);
         }
         if ((physp >= 0x80000000u)) {
-            uint32_t wx, wy, wz, wyaw;
-            wx = wy = wz = wyaw = 0;
+            uint32_t wx, wy, wz, wyaw, wtspd, wacc, wmult, wtype;
+            wx = wy = wz = wyaw = wtspd = wacc = wmult = wtype = 0;
+            (void)r4300_read_aligned_word(r4300, physp + 0x00u, &wtype);
             (void)r4300_read_aligned_word(r4300, physp + 0x10u, &wx);
             (void)r4300_read_aligned_word(r4300, physp + 0x14u, &wy);
             (void)r4300_read_aligned_word(r4300, physp + 0x18u, &wz);
+            (void)r4300_read_aligned_word(r4300, physp + 0x3Cu, &wtspd);
             (void)r4300_read_aligned_word(r4300, physp + 0x40u, &wyaw);
+            (void)r4300_read_aligned_word(r4300, physp + 0x44u, &wacc);
+            (void)r4300_read_aligned_word(r4300, physp + 0x50u, &wmult);
             vx = p08_f32(wx); vy = p08_f32(wy); vz = p08_f32(wz); phys = p08_f32(wyaw);
+            tspd = p08_f32(wtspd); accel = p08_f32(wacc); mult = p08_f32(wmult);
+            ptype = (int32_t)wtype;
         }
         if ((bsp >= 0x80000000u)) {
-            uint32_t bsw = 0;
-            (void)r4300_read_aligned_word(r4300, bsp, &bsw);
-            bs = (int32_t)bsw;
+            uint32_t b0 = 0, b1 = 0, b2 = 0;
+            (void)r4300_read_aligned_word(r4300, bsp + 0x0u, &b0);
+            (void)r4300_read_aligned_word(r4300, bsp + 0x4u, &b1);
+            (void)r4300_read_aligned_word(r4300, bsp + 0x8u, &b2);
+            bs = (int32_t)b0;
+            bs_prev = (int32_t)b0;
+            bs_cur = (int32_t)b1;
+            bs_next = (int32_t)b2;
         }
         if (sel >= 0 && sel < 8) {
             uint32_t rec = 0, cw = 0;
@@ -1220,6 +1913,32 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
         }
     }
     (void)rec_w;
+    if (p08_ud5_on() && s_p08_ud5) {
+        fprintf(s_p08_ud5,
+                "%d,%u,%d,%d,%d,%d,%d,0x%04x,"
+                "%d,%d,%d,%d,%.6f,%.6f,%.6f,"
+                "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,"
+                "%.6f,%d,%d,%.6f,%.6f,%.6f\n",
+                glidx, post, stage, sub, map, pad_x, pad_y, pad_btn,
+                bs_prev, bs_cur, bs_next, ptype, px, py, pz,
+                vx, vy, vz, tspd, accel, mult, yaw, ideal, phys,
+                camctrl, sel, (int)anim_id, anim_timer, anim_dur, anim_phase);
+        fflush(s_p08_ud5);
+        fprintf(stderr,
+                "[demo-sync] glidx=%d post=%u pad=(%d,%d,%04x) "
+                "bs_prev=%d bs_cur=%d bs_next=%d ptype=%d "
+                "pos=(%.2f,%.2f,%.2f) vel=(%.2f,%.2f,%.2f) tspd=%.2f accel=%.2f "
+                "yaw=%.2f ideal=%.2f phys_yaw=%.2f camctrl=%.4f "
+                "anim=(%d,%.3f,%.3f) sub=%d map=%d\n",
+                glidx, post, pad_x, pad_y, pad_btn, bs_prev, bs_cur, bs_next, ptype,
+                px, py, pz, vx, vy, vz, tspd, accel, yaw, ideal, phys, camctrl,
+                (int)anim_id, anim_timer, anim_dur, sub, map);
+        fflush(stderr);
+        if (sub == 5 && glidx >= 36) {
+            exit(0);
+        }
+        return;
+    }
     fprintf(s_p08_motion,
             "%d,%d,%u,%d,%d,0x%04x,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,"
             "%.4f,%.4f,%.4f,%.4f,%d,%d,%.4f,%.4f,%u,%u,%.4f\n",
@@ -1238,12 +1957,414 @@ static inline void p08_motion_on_glrecord(struct r4300_core* r4300)
     fflush(stderr);
 }
 
+static inline void p08_ud5_dump_anctrl(struct r4300_core* r4300, const char* phase,
+                                       int glidx, uint32_t extra0, uint32_t extra1)
+{
+    uint32_t ps = 0;
+    int32_t bs_prev = -1, bs_cur = -1, bs_next = -1;
+    uint32_t anctrl = 0, timer_bits = 0, dur_bits = 0, id_word = 0, flag_word = 0, rate_bits = 0;
+    uint8_t playback = 0, flags = 0;
+    int16_t anim_id = -1;
+    int32_t zone = -1;
+    uint32_t flag160 = 0, dist_bits = 0, stick_x_bits = 0, stick_y_bits = 0;
+    (void)r4300_read_aligned_word(r4300, 0x80135490u, &ps);
+    if (p08_guest(ps)) {
+        uint32_t bsp = 0, stick = 0, anim_p = 0;
+        (void)r4300_read_aligned_word(r4300, ps + 0x120u, &bsp);
+        (void)r4300_read_aligned_word(r4300, ps + 0x160u, &flag160);
+        (void)r4300_read_aligned_word(r4300, ps + 0x128u, &stick);
+        (void)r4300_read_aligned_word(r4300, ps + 0x04u, &anim_p);
+        if (p08_guest(bsp)) {
+            uint32_t b0 = 0, b1 = 0, b2 = 0;
+            (void)r4300_read_aligned_word(r4300, bsp + 0x0u, &b0);
+            (void)r4300_read_aligned_word(r4300, bsp + 0x4u, &b1);
+            (void)r4300_read_aligned_word(r4300, bsp + 0x8u, &b2);
+            bs_prev = (int32_t)b0;
+            bs_cur = (int32_t)b1;
+            bs_next = (int32_t)b2;
+        }
+        if (p08_guest(stick)) {
+            uint32_t zw = 0;
+            (void)r4300_read_aligned_word(r4300, stick + 0x3Cu, &zw);
+            (void)r4300_read_aligned_word(r4300, stick + 0x54u, &stick_x_bits);
+            (void)r4300_read_aligned_word(r4300, stick + 0x58u, &stick_y_bits);
+            (void)r4300_read_aligned_word(r4300, stick + 0x60u, &dist_bits);
+            zone = (int32_t)zw;
+        }
+        if (p08_guest(anim_p)) {
+            (void)r4300_read_aligned_word(r4300, anim_p + 0x00u, &anctrl);
+            if (p08_guest(anctrl)) {
+                (void)r4300_read_aligned_word(r4300, anctrl + 0x0Cu, &dur_bits);
+                (void)r4300_read_aligned_word(r4300, anctrl + 0x10u, &rate_bits);
+                (void)r4300_read_aligned_word(r4300, anctrl + 0x18u, &flag_word);
+                (void)r4300_read_aligned_word(r4300, anctrl + 0x2Cu, &timer_bits);
+                (void)r4300_read_aligned_word(r4300, anctrl + 0x34u, &id_word);
+                playback = (uint8_t)((flag_word >> 8) & 0xFFu);
+                flags = (uint8_t)((flag_word >> 0) & 0xFFu);
+                anim_id = (int16_t)(id_word >> 16);
+            }
+        }
+    }
+    const float timer = p08_f32(timer_bits);
+    const int isstopped = (playback == 3) ? 1 : 0;
+    const int gt_half = (timer > 0.5f) ? 1 : 0;
+    fprintf(stderr,
+            "[ud5-gate] phase=%s glidx=%d bs_prev=%d bs_cur=%d bs_next=%d "
+            "anim_id=%d anctrl=%08x timer_bits=%08x dur_bits=%08x rate_bits=%08x "
+            "playback=%u flags=0x%02x flag_word=%08x id_word=%08x "
+            "isstopped=%d gt_half=%d zone=%d flag160=%08x "
+            "stick_x_bits=%08x stick_y_bits=%08x dist_bits=%08x extra0=%08x extra1=%08x\n",
+            phase, glidx, bs_prev, bs_cur, bs_next, (int)anim_id, anctrl,
+            timer_bits, dur_bits, rate_bits, (unsigned)playback, (unsigned)flags,
+            flag_word, id_word, isstopped, gt_half, zone, flag160,
+            stick_x_bits, stick_y_bits, dist_bits, extra0, extra1);
+    fflush(stderr);
+}
+
+static inline void p08_ud5_gate(struct r4300_core* r4300, uint32_t pc)
+{
+    if (!p08_ud5_on()) {
+        return;
+    }
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    if (mode == 5 && (sub == 1 || sub == 5) && sub >= 0 && sub < 8 &&
+        (pc == 0x800CAF00u || pc == 0x800CAF2Cu) && s_p08_ud5_abc_pending[sub]) {
+        const int abc_glidx = (post > 0u) ? (int)post - 1 : 0;
+        const int64_t* aregs = r4300_regs(r4300);
+        if (pc == 0x800CAF00u) {
+            const uint32_t a0 = (uint32_t)aregs[4];
+            s_p08_abc_stick = (uint32_t)aregs[5];
+            s_p08_abc_cam = 0;
+            if (p08_guest(a0)) {
+                (void)r4300_read_aligned_word(r4300, a0 + 0x1Cu, &s_p08_abc_cam);
+            }
+        } else {
+            s_p08_ud5_abc_pending[sub] = 0;
+            fprintf(stderr,
+                    "[ud5-abc] event=caf00 sub=%d trot_ord=%u glidx=%d "
+                    "cam_plus_1c=%08x stick_ang=%08x f0_bits=%08x\n",
+                    sub, s_p08_ud5_abc_trot[sub], abc_glidx, s_p08_abc_cam,
+                    s_p08_abc_stick, p08_fpr_bits(r4300, 0));
+            fflush(stderr);
+        }
+    }
+    if (mode != 5 || sub != 5) {
+        return;
+    }
+    const int glidx = (post > 0u) ? (int)post - 1 : 0;
+    const int64_t* regs = r4300_regs(r4300);
+    static unsigned p08_ud5_tspd_ord = 0;
+    if (pc == 0x8009B9B0u || pc == 0x8009B9BCu) {
+        const uint32_t a0 = (uint32_t)regs[4];
+        const uint32_t source_bits = (uint32_t)regs[5];
+        uint32_t phys = 0, old_bits = 0, new_bits = 0, bsp = 0;
+        int32_t bs_prev = -1, bs_cur = -1, bs_next = -1;
+        if (p08_guest(a0)) {
+            (void)r4300_read_aligned_word(r4300, a0 + 0xC8u, &phys);
+            (void)r4300_read_aligned_word(r4300, a0 + 0x120u, &bsp);
+            if (p08_guest(phys)) {
+                (void)r4300_read_aligned_word(r4300, phys + 0x3Cu, &old_bits);
+                (void)r4300_read_aligned_word(r4300, phys + 0x3Cu, &new_bits);
+            }
+            if (p08_guest(bsp)) {
+                (void)r4300_read_aligned_word(r4300, bsp + 0x00u, (uint32_t*)&bs_prev);
+                (void)r4300_read_aligned_word(r4300, bsp + 0x04u, (uint32_t*)&bs_cur);
+                (void)r4300_read_aligned_word(r4300, bsp + 0x08u, (uint32_t*)&bs_next);
+            }
+        }
+        const unsigned ord = (pc == 0x8009B9B0u) ? ++p08_ud5_tspd_ord : p08_ud5_tspd_ord;
+        fprintf(stderr,
+                "[ud5-tspd] %s glidx=%d ord=%u pc=%08x store=8009b9bc ra=%08x "
+                "a0=%08x phys=%08x state=%d>%d next=%d old_bits=%08x "
+                "source_bits=%08x new_bits=%08x\n",
+                (pc == 0x8009B9B0u) ? "enter" : "store", glidx, ord, pc,
+                (uint32_t)regs[31], a0, phys, bs_prev, bs_cur, bs_next,
+                old_bits, source_bits, new_bits);
+        fflush(stderr);
+        return;
+    }
+    if (glidx >= 20 && glidx <= 50) {
+        static unsigned p08_ud5_rel_ord = 0;
+        static unsigned p08_ud5_caf_ord = 0;
+        static unsigned p08_ud5_yawideal_ord = 0;
+        static unsigned p08_ud5_tyaw_ord = 0;
+        static unsigned p08_ud5_hvel_ord = 0;
+        static unsigned p08_ud5_d088_ord = 0;
+        static unsigned p08_ud5_eeb_ord = 0;
+        if (pc == 0x8009D088u) {
+            const uint32_t a0 = (uint32_t)regs[4];
+            uint32_t ctrl = 0, ytype = 0xffffffffu, stick = 0, ang = 0, dist = 0, zone = 0;
+            uint32_t bsp = 0;
+            int32_t bs_cur = -1;
+            uint32_t cam_bits = 0, selw = 0, rec = 0;
+            if (p08_guest(a0)) {
+                (void)r4300_read_aligned_word(r4300, a0 + 0xFCu, &ctrl);
+                (void)r4300_read_aligned_word(r4300, a0 + 0x128u, &stick);
+                (void)r4300_read_aligned_word(r4300, a0 + 0x120u, &bsp);
+                (void)r4300_read_aligned_word(r4300, a0 + 0x184u, &selw);
+                if (p08_guest(ctrl)) {
+                    (void)r4300_read_aligned_word(r4300, ctrl, &ytype);
+                }
+                if (p08_guest(stick)) {
+                    (void)r4300_read_aligned_word(r4300, stick + 0x5Cu, &ang);
+                    (void)r4300_read_aligned_word(r4300, stick + 0x60u, &dist);
+                    (void)r4300_read_aligned_word(r4300, stick + 0x3Cu, &zone);
+                }
+                if (p08_guest(bsp)) {
+                    (void)r4300_read_aligned_word(r4300, bsp + 0x4u, (uint32_t*)&bs_cur);
+                }
+                if ((int32_t)selw >= 0 && (int32_t)selw < 8) {
+                    (void)r4300_read_aligned_word(r4300, 0x80127708u + selw * 4u, &rec);
+                    if (p08_guest(rec)) {
+                        (void)r4300_read_aligned_word(r4300, rec + 0x1Cu, &cam_bits);
+                    }
+                }
+            }
+            fprintf(stderr,
+                    "[ud5-dir] phase=yaw_ctrl enter glidx=%d ord=%u pc=8009d088 ra=%08x "
+                    "ytype=%d bs_cur=%d camctrl_bits=%08x stick_ang=%08x dist=%08x zone=%d\n",
+                    glidx, ++p08_ud5_d088_ord, (uint32_t)regs[31], (int)ytype, bs_cur,
+                    cam_bits, ang, dist, (int)zone);
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x8009EEB8u) {
+            const uint32_t a0 = (uint32_t)regs[4];
+            uint32_t stick = 0, ang = 0, sx = 0, sy = 0, dist = 0, zone = 0;
+            uint32_t cam_bits = 0, selw = 0, rec = 0;
+            if (p08_guest(a0)) {
+                (void)r4300_read_aligned_word(r4300, a0 + 0x128u, &stick);
+                (void)r4300_read_aligned_word(r4300, a0 + 0x184u, &selw);
+                if (p08_guest(stick)) {
+                    (void)r4300_read_aligned_word(r4300, stick + 0x54u, &sx);
+                    (void)r4300_read_aligned_word(r4300, stick + 0x58u, &sy);
+                    (void)r4300_read_aligned_word(r4300, stick + 0x5Cu, &ang);
+                    (void)r4300_read_aligned_word(r4300, stick + 0x60u, &dist);
+                    (void)r4300_read_aligned_word(r4300, stick + 0x3Cu, &zone);
+                }
+                if ((int32_t)selw >= 0 && (int32_t)selw < 8) {
+                    (void)r4300_read_aligned_word(r4300, 0x80127708u + selw * 4u, &rec);
+                    if (p08_guest(rec)) {
+                        (void)r4300_read_aligned_word(r4300, rec + 0x1Cu, &cam_bits);
+                    }
+                }
+            }
+            fprintf(stderr,
+                    "[ud5-dir] phase=rel_angle enter glidx=%d ord=%u pc=8009eeb8 ra=%08x "
+                    "a0=%08x camctrl_bits=%08x stick_ang=%08x stick_xy=%08x,%08x dist=%08x zone=%d\n",
+                    glidx, ++p08_ud5_rel_ord, (uint32_t)regs[31], a0, cam_bits, ang, sx, sy,
+                    dist, (int)zone);
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x800CAF00u) {
+            const uint32_t a0 = (uint32_t)regs[4];
+            const uint32_t stick_bits = (uint32_t)regs[5];
+            uint32_t cam_field = 0;
+            if (p08_guest(a0)) {
+                (void)r4300_read_aligned_word(r4300, a0 + 0x1Cu, &cam_field);
+            }
+            fprintf(stderr,
+                    "[ud5-dir] phase=caf00 enter glidx=%d ord=%u pc=800caf00 ra=%08x "
+                    "cam_obj=%08x cam_plus_1c=%08x stick_ang=%08x\n",
+                    glidx, ++p08_ud5_caf_ord, (uint32_t)regs[31], a0, cam_field, stick_bits);
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x800CAF2Cu) {
+            fprintf(stderr,
+                    "[ud5-dir] phase=caf00 leave glidx=%d pc=800caf2c f0_bits=%08x\n",
+                    glidx, p08_fpr_bits(r4300, 0));
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x8009C914u) {
+            const uint32_t a0 = (uint32_t)regs[4];
+            const uint32_t src_bits = (uint32_t)regs[5];
+            uint32_t yawp = 0, old_ideal = 0;
+            if (p08_guest(a0)) {
+                (void)r4300_read_aligned_word(r4300, a0 + 0xF8u, &yawp);
+                if (p08_guest(yawp)) {
+                    (void)r4300_read_aligned_word(r4300, yawp + 0x4u, &old_ideal);
+                }
+            }
+            fprintf(stderr,
+                    "[ud5-dir] phase=yaw_setIdeal enter glidx=%d ord=%u pc=8009c914 "
+                    "store=8009c930 ra=%08x a0=%08x src_bits=%08x old_ideal=%08x\n",
+                    glidx, ++p08_ud5_yawideal_ord, (uint32_t)regs[31], a0, src_bits, old_ideal);
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x8009C930u) {
+            fprintf(stderr,
+                    "[ud5-dir] phase=yaw_setIdeal store glidx=%d pc=8009c930 f0_bits=%08x\n",
+                    glidx, p08_fpr_bits(r4300, 0));
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x8009B9C0u) {
+            const uint32_t a0 = (uint32_t)regs[4];
+            const uint32_t src_bits = (uint32_t)regs[5];
+            uint32_t phys = 0, old_bits = 0;
+            if (p08_guest(a0)) {
+                (void)r4300_read_aligned_word(r4300, a0 + 0xC8u, &phys);
+                if (p08_guest(phys)) {
+                    (void)r4300_read_aligned_word(r4300, phys + 0x40u, &old_bits);
+                }
+            }
+            fprintf(stderr,
+                    "[ud5-dir] phase=set_target_yaw enter glidx=%d ord=%u pc=8009b9c0 "
+                    "store=8009b9dc ra=%08x a0=%08x phys=%08x src_bits=%08x old_bits=%08x\n",
+                    glidx, ++p08_ud5_tyaw_ord, (uint32_t)regs[31], a0, phys, src_bits, old_bits);
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x8009BA68u) {
+            fprintf(stderr,
+                    "[ud5-dir] phase=set_hvel enter glidx=%d ord=%u pc=8009ba68 ra=%08x "
+                    "yaw_bits=%08x spd_bits=%08x\n",
+                    glidx, ++p08_ud5_hvel_ord, (uint32_t)regs[31],
+                    (uint32_t)regs[5], (uint32_t)regs[6]);
+            fflush(stderr);
+            return;
+        }
+        if (pc == 0x800EEB9Cu) {
+            const uint32_t dst = (uint32_t)regs[4];
+            fprintf(stderr,
+                    "[ud5-dir] phase=sincos_vel enter glidx=%d ord=%u pc=800eeb9c ra=%08x "
+                    "dst=%08x yaw_bits=%08x spd_bits=%08x\n",
+                    glidx, ++p08_ud5_eeb_ord, (uint32_t)regs[31], dst,
+                    (uint32_t)regs[5], (uint32_t)regs[6]);
+            fflush(stderr);
+            return;
+        }
+    }
+    if (pc == 0x80800B3Cu) {
+        p08_ud5_dump_anctrl(r4300, "ep1-enter", glidx, (uint32_t)regs[4], (uint32_t)regs[5]);
+        fprintf(stderr, "[ud5-gate] phase=order glidx=%d event=ep1-enter pc=%08x\n", glidx, pc);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x80800B80u) {
+        fprintf(stderr, "[ud5-gate] phase=isstopped glidx=%d v0=%d ra=%08x\n",
+                glidx, (int)regs[2], (uint32_t)regs[31]);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x80800B94u) {
+        const uint32_t bits = p08_fpr_bits(r4300, 0);
+        const int gt = (p08_f32(bits) > 0.5f) ? 1 : 0;
+        fprintf(stderr, "[ud5-gate] phase=timer glidx=%d f0_bits=%08x gt_half=%d s0=%d\n",
+                glidx, bits, gt, (int)regs[16]);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x80800BA8u) {
+        const uint32_t fcc = (r4300->cp1.fcr31 >> 23) & 1u;
+        fprintf(stderr, "[ud5-gate] phase=timer-compare glidx=%d fcc=%u take_arbiter=%d fcr31=%08x\n",
+                glidx, fcc, fcc ? 1 : 0, r4300->cp1.fcr31);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x80800BB0u) {
+        p08_ud5_dump_anctrl(r4300, "arbiter-call", glidx, (uint32_t)regs[4], (uint32_t)regs[16]);
+        fprintf(stderr, "[ud5-gate] phase=arbiter-enter glidx=%d a0=%08x a1=%d\n",
+                glidx, (uint32_t)regs[4], (int)regs[16]);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x80800BB8u) {
+        fprintf(stderr, "[ud5-gate] phase=arbiter-leave glidx=%d v0=%d s0=%d\n",
+                glidx, (int)regs[2], (int)regs[16]);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x808007E0u) {
+        p08_ud5_dump_anctrl(r4300, "arbiter-fn", glidx, (uint32_t)regs[4], (uint32_t)regs[5]);
+        fprintf(stderr, "[ud5-gate] phase=arbiter-fn glidx=%d a0=%08x a1=%d ra=%08x\n",
+                glidx, (uint32_t)regs[4], (int)regs[5], (uint32_t)regs[31]);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x8008C894u) {
+        p08_ud5_dump_anctrl(r4300, "baanim-update-enter", glidx, (uint32_t)regs[4], 0);
+        fprintf(stderr, "[ud5-gate] phase=order glidx=%d event=baanim-update\n", glidx);
+        fflush(stderr);
+        return;
+    }
+    if (pc == 0x8008ADE4u) {
+        p08_ud5_dump_anctrl(r4300, "anctrl-update-enter", glidx, (uint32_t)regs[4], 0);
+        fprintf(stderr, "[ud5-gate] phase=order glidx=%d event=anctrl-update\n", glidx);
+        fflush(stderr);
+    }
+}
+
+static inline void p08_ud5_setstate(struct r4300_core* r4300)
+{
+    if (!p08_ud5_on()) {
+        return;
+    }
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int64_t* regs0 = r4300_regs(r4300);
+    const int32_t next_state0 = (int32_t)regs0[5];
+    if (mode == 5 && (sub == 1 || sub == 5) && next_state0 == 22 &&
+        sub >= 0 && sub < 8) {
+        const unsigned tord = ++s_p08_ud5_abc_trot[sub];
+        s_p08_ud5_abc_pending[sub] = 1;
+        fprintf(stderr,
+                "[ud5-abc] event=state22 sub=%d trot_ord=%u glidx=%d map=%d\n",
+                sub, tord, (post > 0u) ? (int)post - 1 : 0, map);
+        fflush(stderr);
+    }
+    if (mode != 5 || sub != 5) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    const int32_t next_state = (int32_t)regs[5];
+    const uint32_t ra = (uint32_t)regs[31];
+    int32_t prev = -1, cur = -1, nxt = -1;
+    if (a0 >= 0x80000000u && ((a0 + 0x80000000u) < 0x00800000u)) {
+        uint32_t bsp = 0;
+        (void)r4300_read_aligned_word(r4300, a0 + 0x120u, &bsp);
+        if (bsp >= 0x80000000u) {
+            uint32_t b0 = 0, b1 = 0, b2 = 0;
+            (void)r4300_read_aligned_word(r4300, bsp + 0x0u, &b0);
+            (void)r4300_read_aligned_word(r4300, bsp + 0x4u, &b1);
+            (void)r4300_read_aligned_word(r4300, bsp + 0x8u, &b2);
+            prev = (int32_t)b0;
+            cur = (int32_t)b1;
+            nxt = (int32_t)b2;
+        }
+    }
+    fprintf(stderr,
+            "[ud5-setstate] enter glidx=%d ra=%08x a0=%08x next=%d "
+            "before prev=%d cur=%d nextf=%d\n",
+            (post > 0u) ? (int)post - 1 : 0, ra, a0, next_state, prev, cur, nxt);
+    fflush(stderr);
+
+    /* Fill the dense transition window with a pre-state snapshot.  The
+     * syscall-698 hook records the post-tick view, but the state setter is
+     * the only stable observation point for ticks where the interpreter
+     * does not reach that hook.  This is diagnostic-only and intentionally
+     * stops before glidx 34, whose post-transition row is retained. */
+    const int state_glidx = (post > 0u) ? (int)post - 1 : 0;
+    if (state_glidx >= 20 && state_glidx <= 33) {
+        p08_motion_on_glrecord(r4300);
+    }
+}
+
 static inline void p08_attract_egg_on_syscall(struct r4300_core* r4300, uint32_t op)
 {
     const uint32_t code = (op >> 6) & 0xFFFFFu;
     const int interesting =
         (code == 126u) || (code == 129u) || (code >= 534u && code <= 540u) ||
-        (code == 552u) || (code == 698u) || (code == 731u) || (code == 781u);
+        (code == 552u) || (code == 698u) || (code == 731u) || (code == 781u) ||
+        (code == 29u);
     if (!interesting) {
         return;
     }
@@ -1281,6 +2402,7 @@ static inline void p08_attract_egg_on_syscall(struct r4300_core* r4300, uint32_t
     if (code == 535u) spawn = " cheggfire";
     else if (code == 539u) spawn = " cheggnormal";
     else if (code == 781u) spawn = " ncbapivot";
+    else if (code == 29u) spawn = " bsbtrot";
     fprintf(fp,
             "[egg-sys] pc=%08x ovl=%u ep=%u a0=%08x a1=%08x ra=%08x mode=%d map=%d "
             "stage=%d sub=%d post=%u%s",
@@ -1290,6 +2412,12 @@ static inline void p08_attract_egg_on_syscall(struct r4300_core* r4300, uint32_t
     }
     fprintf(fp, "\n");
     fflush(fp);
+    if (p08_ud5_on() && code == 29u && ep == 1u && mode == 5 && sub == 5) {
+        const int glidx = (post > 0u) ? (int)post - 1 : 0;
+        p08_ud5_dump_anctrl(r4300, "ovl29-ep1-enter", glidx, a0, a1);
+        fprintf(stderr, "[ud5-gate] phase=order glidx=%d event=ovl29-ep1-enter\n", glidx);
+        fflush(stderr);
+    }
 }
 
 #endif
