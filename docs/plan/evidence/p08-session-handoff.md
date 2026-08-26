@@ -885,3 +885,540 @@ ordinal 8; BCE84 ring-1 raw `0x115`/return 1, `bakey_held=1`,
 Temporary task-specific BCE84/979D8 probes are cleaned; reusable diagnostics
 remain. Tests, build, diff check, and generated-source check pass. P08 remains
 `ACTIVE / MANUAL_VALIDATION_PENDING`; Demo 1/5 movement residuals remain open.
+
+## USER_DEMO_5 `800EEBF0` angular-input checkpoint — 2026-08-23
+
+New immutable capture: `/tmp/p08-demo5-ee780-source-20260823T053510Z/`;
+SHA256 verification passed twice. `800EE780` is a proven downstream vec3 add.
+The first causal difference in the paired glidx-24 join is already its
+`sp+0x54` input, produced by `800EEBF0`/`800EF214`.
+
+`800EEBF0` takes a two-f32 angle pair plus a radius and emits
+`(r*cos(p)*sin(y), r*sin(p), r*cos(p)*cos(y))`. The first and third inputs
+match; only the yaw/heading differs (`4391e610` RT vs `43927d8b` AN). The
+second angle resides at `sp+0x38` and is written by the caller's
+`add.s @ 0x80800194`, stored at `0x808001A0` before the call at `0x8080019C`.
+The add's `80012C3C`/`800125E8` operands were not dynamically joined.
+
+Boundary: `B-ANGLE-SOURCE-PRECALL-COMBINATOR`. No production change. The
+capture is documented under the actual prior-run label `Grok 4.6 High`; the
+stale `Medium` string in immutable metadata was left untouched to preserve
+hashes. Next action: capture only the two operands of the `0x80800194` add.
+
+## USER_DEMO_5 p60 mode-state review — 2026-08-23
+
+`func_80112C3C` is independently confirmed: mode `0` returns `in_yaw`, modes
+`1/2/5` step through `800F1738`, and modes `3/4` use `800F1DCC`. The existing
+paired trace places the first p60+8 value split at glidx 23 (`RT=5`, `AN=0`),
+with the first returned-yaw split at glidx 24. Static provenance isolates
+`func_80112D08` / store `0x80112D14` via caller `func_80112A84`; dynamic first
+writer remains unproven due the headless RT64 Vulkan startup failure. No fix.
+
+## USER_DEMO_5 D90 call-presence review — 2026-08-23
+
+`func_801111D0` has two call-controlling branches: `0x80111230` tests
+`func_80112E84(a0)==1` (`p60+0xC`), then `0x80111270` tests
+`func_8011349C(a0,&sp+0x40)!=0`; `jal 80112D90` is at `0x80111294`.
+At glidx 23 the first input is zero in both runtimes. The paired trace proves
+RT reaches D90 and AN skips it, so the first control-flow split is the boolean
+second-gate result at `0x80111270`; its raw helper return was not logged. The
+same `(2,1,2002)` pad record is present in both runtimes. No direct C_RIGHT
+predicate exists in `801111D0`; no production change.
+
+## USER_DEMO_5 `0x80097B94` follow-up — 2026-08-23
+
+The independent arbitration establishes the static contract: `0x80097B94`
+passes action `0xD`/input `1` to `0x800979D8` and returns its `v0`. The Oracle
+capture matches Gemini's `(2,1,2002)` record at glidx 23 and reaches BCE84 with
+`prev_state=0`, ring 0, raw button word 0, hence result 0. The focused RT64
+capture's normalized glidx 23 has a different pad record
+`(-13,-15,0xF1F1)` and also returns 0. Result split `2/0` remains unjoined and
+unproven; published helper implementation coverage is complete, semantic
+event acceptance is not. No production change.
+
+## USER_DEMO_5 `0x80097B70` / action `0xA` follow-up — 2026-08-24
+
+The camera-left wrapper passes action `0xA` (`C_LEFT`) and input id `0` to
+`0x800979D8`; caller `0x800A4878` tests its return at `0x800A4928` and reaches
+`0x80110EFC(node, 0)` at `0x800A4930` when nonzero. The same visible Gemini
+record `(2,1,2002)` is joined at glidx 22/23/24.
+
+In the prior paired capture, record 23 is RT64 `v0=1`/consumer reached versus
+Oracle `v0=0`/consumer skipped. Oracle's complete BCE84 state is
+`prev=0, ring=1, raw=0xF3, masked=1, bakey=1`, with input 0 disabled before
+the helper; prior RT64 had `bakey=1` and input 0 enabled. A fresh RT64 capture
+of the same visible records instead had `ring=0, raw=0x72C, masked=0,
+bakey=0`, returning 0. The first bounded difference is therefore the
+history/ring-selected current word and enabled bit, not the pad.
+
+Classification is `B-ACTION-0A-HISTORY-STATE`. The published `0x800979D8`
+fix covers the helper contract, but the state writer remains unproven. No
+production change.
+
+## Corrected USER_DEMO_5 re-anchor: camera control (2026-08-24)
+
+Use the correctly paired replay's record join: records 22-24 are matches and
+record 25 is the first observed camera-control difference. The Trot-exit writer
+also matches in both runtimes (`bainput_enable(0,1)`, `0xFFFFFFBE ->
+0xFFFFFFBF`, bit 0 set), and action `0xA` returns 1 in both. This supersedes the
+old `0x80097B94 RT=2/AN=0`, `RT97B70=1/AN=0`, RT-only
+`0x80110EFC`/`0x801111D0`/`0x800979D0`, and
+action-`0xA` causal chain claims; `B-TROT-ENABLE-RECOVERY` is not root.
+
+`camctrl` is sampled from `0x80127708[ps+0x184]` record `+0x1C`. Static
+`func_800CA628` gives the relevant writer PC `0x800CA65C`, source2[1]. Record
+24 is `293.5294` / `0x4392C3C2`; record 25 is RT64 `293.0478` versus Oracle
+`293.4005` / `0x4392B342`. Oracle has the direct writer event; RT64 lacks the
+corresponding raw direct-writer capture. First-diff status is therefore
+`B-CAMERA-WRITER-OR-SOURCE-INCOMPLETE-JOIN`, not a proven upstream input cause.
+
+The old record-23 p60 `5/0` split and camera-chain causal claims are superseded
+for this pairing; recheck p60 only on the true record-24->25 path. Next capture
+must instrument RT64 `0x800CA65C` with raw old/source/new bits and source2
+inputs. Artifact: `/tmp/p08-demo5-record25-camera-firstdiff-20260824T024500Z/`.
+Status: `P08 ACTIVE / MANUAL_VALIDATION_PENDING`; `P09 PENDING / NOT_FORMALLY
+OPEN`. No production change.
+
+### Direct-writer arbitration correction (2026-08-24)
+
+The newer CA628 artifact contains the RT64 raw event. At record 25 the first
+relevant CA628 is RT64 ordinal `10329` (RA `0x8010FE24`), with old field
+`0x4392861E`, source2[1] `0x43922BE8`, and new field `0x43922BE8`; Oracle's
+paired event is ordinal `103`, `0x4392B342 -> 0x4392A91A`. This is Case B:
+CA628 is the first observed writer, but the field and source are already
+divergent at entry. `CA8B4` is only a vector copy and E1A58 preserves the
+heading in the later call. The actual writer before CA628 remains uncaptured;
+E1A58 is not root.
+
+### Active camera-node heading boundary (2026-08-24 correction)
+
+Keep these four storages separate: `active_node+0x34`,
+`active_node+0x3C`, temporary `stack_angles+0x4`, and
+`selected_record+0x1C`. The latest artifact watches the third and fourth
+storages, not `active_node+0x34`. `func_8010FE34:0x8010FEA8` loads the second;
+`func_800EFA4C:0x800EFA5C` stores it into the third; CA628 later copies the
+third into the fourth.
+
+The only direct static node+0x3C writer identified in the indexed primary code
+is `func_8010FDEC:0x8010FDFC`, called by `plcamera_entrypoint_13` at
+`0x808004A0`. The artifact did not capture its effective-address mutation, so
+the first causal node+0x3C writer remains unresolved:
+`B-NODE3C-TEMPORAL-BOUNDARY-CORRECTED`. Latest slot-0 semantic pointers are RT
+`0x801C6610` and Oracle `0x801CACB0`; the prior `0x8039D820` pointer belongs to
+an older FE14 capture and is not joined to this pair.
+
+### Node+0x3C checkpoint audit correction (2026-08-24)
+
+The later node3C artifact is hash-valid and read-only, but its temporal labels
+are not valid semantic node+0x3C evidence. Oracle's raw records 22–26 read
+`node=0x8031CF80`, `mode=0`, and `node+0x3C=0x01015590`; later it reads
+`0x801CACB0` with the same non-heading field. RT64 has no paired raw node3C
+checkpoint lines. The reported post-player MATCH and pre-FE34 DIFF were thus
+inferred from the heading pipeline, not direct joined reads. Keep the boundary
+as `B-NODE3C-TEMPORAL-BOUNDARY-CORRECTED`.
+
+### USER_DEMO_5 EFA4C heading provenance (2026-08-24)
+
+Current operational boundary **before** the register-provenance pass:
+`B-EFA4C-HEADING-SOURCE-PROVENANCE-UNRESOLVED`. That pass recaptured USER_DEMO_5
+glidx 22–25 and **failed** to rejoin the Luna EFA4C heading pair
+(`0x4392861E` vs `0x4392B342`). `func_80110970` / `func_8010FE34` did not
+execute. Observed consumer path is `FC38→FE14→CA628`. Classification:
+`CASE E - CORRECTED/SUPERSEDED`. Artifact:
+`/tmp/p08-demo5-efa4c-heading-provenance-20260824T061436Z/`. Next single
+action: independently arbitrate whether the 10970→EFA4C event exists on a
+map=296-only join, then promote at most one source/control producer.
+
+### USER_DEMO_5 record24 camera-path conflict arbitration (2026-08-24)
+
+That arbitration is complete but the event join is not: `ROOT_CLASS:
+JOIN-UNRESOLVED`. The Grok artifact is immutable and hash-valid, yet its
+`sub=5` window collides across attract slices and has two RT remapped-
+`glidx=24` series. It lacks the requested record ordinal, 6-byte sequence,
+pad/context join, paired call-order table, effective-CA628 table, and
+record24/25 state files. RT has wrapper observations for FC38/FE14/CA628 with
+`ra=0`; Oracle has no matching semantic lines. Therefore the replacement path
+is not proven, and the old FE34/10970/EFA4C claim is only
+`CORRECTED/SUPERSEDED`, not replaced by a causal winner.
+
+`CONFLICT_WINNER: NEITHER — NEW CAPTURE REQUIRED`. Do not promote
+`B-EFFECTIVE-CA628-SOURCE`; keep all record/input/state fields from this
+capture `UNKNOWN` until a map=296-only paired run joins ordinal, sequence,
+counter, pad tuple, stage/sub/map, relative call order, and effective CA628
+destination/source/old/new bits in both runtimes. This does not alter the
+separate `B-NODE3C-TEMPORAL-BOUNDARY-CORRECTED` result.
+
+### Independent map296 join validation and earliest camera boundary (2026-08-24)
+
+The replacement capture resolves replay identity: raw ud5-record streams are 28/28, raw6 is 28/28 bit-perfect, canonical keys have no duplicates, and the single epoch is gated by stage=0, sub=5, map=296, mode=5. D_8012D5B0+0x0 is the demo pointer, D_8012D5B8 is its post-consume record counter, and camera rec_ord can be one greater than the logical record while sharing the same logic tick. func_800151BC remains the proven tick boundary.
+
+The camera sub-join does not support the previously asserted sequence. R24 EFA4C counts are RT=66/AN=73, FE14=1/1, CA628=2/2, and A9318=0/0. Static 0x800A9318 is a separate 0x8010FE34 pass, not a proven exit of 0x800A8E9C; CAMERA_UPDATE_BOUNDARY_VERDICT=REFUTED and R24_CALL_SEQUENCE_MATCH=NO.
+
+Earliest comparable camera state is logical record 0, camera ordinal 1, CA628 call 1 (capture tag rec_ord=1). Old destination bits match (0x4324BF6C), but source bits differ (RT=0x4324B542, AN=0x4324B132). Current boundary: ROOT_CLASS=B-FIRST-CA628-SOURCE. R24 is downstream: both old and source are already different (0x4324A910 vs 0x4324A7B0); output bits remain unknown. This supersedes JOIN-UNRESOLVED for replay identity while retaining old causal chains as CORRECTED/SUPERSEDED; it does not alter B-NODE3C-TEMPORAL-BOUNDARY-CORRECTED.
+
+Derived artifact: /tmp/p08-demo5-first-camera-diff-from-joined-run-20260824T074500Z/; manifest SHA256 d1139defdfa6903041cef31fd2e4db98ca328bd964e702a4e1dca6683a7cff3f. No production change, commit, or push.
+
+### USER_DEMO_5 Record 0 CA628 source provenance & writer trace (2026-08-24)
+
+- **Artifact Directory:** `/tmp/p08-demo5-r0-ca628-source-firstdiff-20260824T144859Z/`
+- **Replay State:** `stage=0, sub=5, map=296, mode=5`, 28/28 bit-perfect record join.
+- **Initial Map 296 Checkpoint:** `sub+0x84 = 0x43240367` (164.013290), `node+0x50 = 0x3f3c04a3` (0.734446), `node+0x58 = 0x3f800000` (1.000000) bit-identical in BOTH runtimes. Refutes Case E (Map Init).
+- **First Divergent Writer:** `func_80116218` at `0x80116380` (`swc1 $f18, 0x4($s1)`).
+- **Target Memory Address:** `$sp + 0x2C` (`0x8004567C`, caller stack frame of `func_80110588`).
+- **Target Lifetime:** `STACK` (ephemeral stack-allocated vector `sp+0x28`).
+- **Values Stored ($f18):** RT64: `0x4324b542` (164.708038) vs Angrylion: `0x4324b132` (164.692169).
+- **Downstream Consumer:** `func_800CA628` Call 1 at `0x8010FE1C / 0x8010FE24` copies `src2[1]` (`*(sp+0x2C)`) into `dst+0x1C` (old value matched `0x4324bf6c`).
+- **Classification:** `Case A — Writer input diff / upstream angular math evaluation in func_80116218 / func_80116120`.
+- **Operational Boundary:** `B-R0-CA628-SOURCE-WRITER-PROVEN`.
+
+### Independent pre-0x80116380 arbitration: first cam_sub+0x84 transition (2026-08-24)
+
+**CURRENT_STATUS:** `P08 ACTIVE / MANUAL_VALIDATION_PENDING`; `P09 NOT FORMALLY OPEN`.
+
+**CURRENT_ROOT_BOUNDARY:** `B-R0-FIRST-CAMSUB84-WRITER-SOURCE` — `func_800EE7F8:0x800EE804` writes persistent `cam_sub+0x84` from `0x80045638`; immediate caller unknown.
+
+**LATEST_PROVEN_FACTS:** 28/28 joined records; `func_80110588` entry base `0x43240367` and node+`0x50` `0x3F3C04A3` match; the earlier `EE7F8` write is RT `0x4324036A` versus AN `0x4324036D`; the `0x80110634` stack copy already carries the difference; node+`0x50` first differs at `0x801161E0`; `0x80116380`/`CA628` are downstream.
+
+**REFUTED_OR_SUPERSEDED_CLAIMS:** Gemini's `80116380` root; prior `B-R0-CA628-SOURCE-WRITER-PROVEN` as root; all older FE34/10970/EFA4C/node+3C roots. Map 296 is Hailfire Peaks — Icy Side / `MAP_128_HP_ICY_SIDE`, not Mayahem; current TOML has no human-readable map table.
+
+**UNRESOLVED_QUESTIONS:** immediate caller/source producer; conditional `0x800893E0` execution/value; complete `func_80116120` input parity.
+
+**ARTIFACT_PATHS:** `/tmp/p08-demo5-r0-pre-80116380-firstdiff-20260824T082500Z/`, joined `/tmp/p08-demo5-map296-semantic-join-20260824T071156Z/`, source `/tmp/p08-demo5-r0-ca628-source-firstdiff-20260824T144859Z/`.
+
+**ARTIFACT_MANIFEST_SHA256:** `6c793196c0457e162bcf6ebd1ff8ed2f4e764f1a72d544cf09232edd0148c29b`.
+
+**WORKTREE_STATE:** intentionally dirty and preserved; documentation-only changes this run; no `RecompiledFuncs`/`src/overlays` changes.
+
+**CODE/BUILD/TEST_STATUS:** no production fix; no build/test; `git diff --check` pending.
+
+**WHAT_WAS_DONE_THIS_RUN:** independent raw/static arbitration plus immutable artifact and handoff update.
+
+**WHAT_REMAINS_PENDING:** exact caller of the earlier persistent `EE7F8` write.
+
+**NEXT_SINGLE_ACTION:** paired Record 0 capture with RA/callsite around that write, `f71`, and post-`EE7F8` stack checkpoint; stop there.
+
+**NEXT_RECOMMENDED_MODEL:** GPT-5.6 Luna High / Terra equivalent, adversarial float provenance.
+
+## USER_DEMO_5 `800EE780 → 800EEBF0 src_dir[1]` arbitration (2026-08-24)
+
+**PROJECT_PHASE:** P08 active causal arbitration; **P08_STATUS:** `ACTIVE / MANUAL_VALIDATION_PENDING`; **P09_STATUS:** `PENDING / NOT_FORMALLY OPEN`.
+
+**CURRENT_HEAD:** `25595a2eb8241ef7ca4aa135e6681e44abcf8598`. **WORKTREE_STATUS:** intentionally dirty state preserved; documentation-only change this round; no `RecompiledFuncs/**` or `src/overlays` change.
+
+**CURRENT_INVESTIGATION:** `USER_DEMO_5`, `stage=0/sub=5/map=296`, `Hailfire Peaks — Icy Side / MAP_128_HP_ICY_SIDE`.
+
+**CURRENT_ROOT_CLASS:** `B-800EEBF0-INPUT` — `PROVEN`.
+
+**CURRENT_ROOT_BOUNDARY:** `func_800EEBF0` consumes `sp+0x34` (`src_dir[0] = pitch`, `src_dir[1] = yaw`) and radius `a2`, producing `sp+0x54`. At glidx 24, its `src_dir[1]` (yaw) is the first divergent input (RT: `0x4391E610` vs AN: `0x43927D8B`), causing its Cartesian output `sp+0x54` to diverge. `func_800EE780` is an elementwise vector adder (`sp+0x48 = sp+0x28 + sp+0x54`) whose input A is bit-identical and whose output divergence is strictly inherited from `sp+0x54`.
+
+**LAST_PROVEN_MATCH:** glidx 23:
+- `func_800EEBF0`: RT64 ord=42 <-> ANGRYLION ord=6 (MATCH, 100% bit-exact).
+  - `old = (0xC43BDF50, 0x43BEBF32, 0x439FDC90)`, `src_dir = (0x41C84F23, 0x43928610, 0x446158B2)`, `scale = 0x446158D2`, `out = (0xC43BDF66, 0x43BEBF2F, 0x439FDC60)`.
+- `func_800EE780`: RT64 ord=374 <-> ANGRYLION ord=454 (MATCH, 100% bit-exact).
+  - `old = (0x45818C16, 0x447DB8E3, 0x458225C9)`, `src_a1 = (0x45990800, 0x441E594A, 0x45705000)`, `src_a2 = (0xC43BDF66, 0x43BEBF2F, 0x439FDC60)`, `out = (0x45818C13, 0x447DB8E2, 0x458225C6)`.
+
+**FIRST_PROVEN_DIFF:** glidx 24:
+- `func_800EEBF0`: RT64 ord=43 <-> ANGRYLION ord=7.
+  - `old = (0xC43CBBD0, 0x43BEC05C, 0x43A01330)` [MATCH].
+  - `src_dir[0]` (pitch) = `0x41C79912` (24.949741°) [MATCH].
+  - `src_dir[1]` (yaw) = RT: `0x4391E610` (291.797363°) vs AN: `0x43927D8B` (292.980804°) [DIFF].
+  - `scale` = `0x44621A8F` (904.414978) [MATCH].
+  - `out` = RT: `(0xC43E589D, 0x43BEC05A, 0x43983EF2)` vs AN: `(0xC43CBBB0, 0x43BEC05A, 0x43A01366)` [DIFF].
+- `func_800EE780`: RT64 ord=382 <-> ANGRYLION ord=462.
+  - `old = (0x45818C16, 0x447DB8E2, 0x458225C9)` [MATCH].
+  - `src_a1` = `(0x45992390, 0x441E58B4, 0x4570492C)` [MATCH].
+  - `src_a2` = RT: `(0xC43E589D, 0x43BEC05A, 0x43983EF2)` vs AN: `(0xC43CBBB0, 0x43BEC05A, 0x43A01366)` [DIFF from 800EEBF0].
+  - `out` = RT: `(0x4581587C, 0x447DB8E1, 0x4581A885)` vs AN: `(0x45818C1A, 0x447DB8E1, 0x458225CC)` [DIFF].
+
+**LATEST_PROVEN_CAUSAL_CHAIN:** `func_800EEBF0(input_yaw DIFF)` → `sp+0x54 (DIFF)` → `func_800EE780(a1 MATCH, a2 DIFF)` → `sp+0x48 (DIFF)`.
+
+**CURRENTLY_DOWNSTREAM_FUNCTIONS:** `func_800EE780` and `func_800EEBF0` are both faithful downstream helpers with identical logic between runtimes.
+
+**REFUTED_OR_SUPERSEDED_CHAINS:** bounded USER_DEMO_4 `979D8 → BCE84 → P60`; generic movement, CA628, FE14, and prior `80116380` camera-root claims remain superseded.
+
+**LATEST_ARTIFACT / CAPTURE_DIR:** `/tmp/p08-demo5-eebf0-ee780-20260824T182550Z/`.
+- **MANIFEST_SHA:** `6d1ec2322e9b9022b5600a3c54e74bc2bb09c6454af2773fe91793ad63bc7610`.
+- **SHA256_VERIFY:** PASS (verified twice; read-only `0444`/`0555`).
+
+**CURRENT_UNKNOWNS:** upstream evaluation producing return value `$v0` of `func_80097B70` (`bainput_should_rotate_camera_left` calling `func_800979D8` at `0x80097B7C`) at `glidx 23`.
+
+**PENDING_WORK:** GPT-5.6 Luna High causal arbitration of the `func_80112D90` call-presence boundary artifact before advancing upstream.
+
+**NEXT_SINGLE_ACTION:** GPT-5.6 Luna High independently arbitrates the new immutable paired `func_80112D90` call-boundary capture (`/tmp/p08-demo5-80112d90-call-boundary-20260825T040600Z/`) where the call presence difference (`RT64=YES` vs `ANGRYLION=NO`) is proven to originate upstream at branch `0x800A4928` (`beq $v0, $zero`) due to `func_80097B70` returning `1` in RT64 vs `0` in ANGRYLION.
+
+**NEXT_RECOMMENDED_MODEL:** GPT-5.6 Luna High.
+
+**FIX_IMPLEMENTED:** NO. **COMMIT:** NONE. **PUSHED:** NO.
+
+## Current arbitration checkpoint — 2026-08-25 (func_80097B70 & func_800979D8 Direct Measurement glidx 22->23)
+
+`/tmp/p08-demo5-80097b70-800979d8-20260825T170358Z/` is the current immutable paired artifact. `sha256sum -c SHA256SUMS` passes for every file and `SHA256SUMS` hashes to `650d68632e1bfca8ec94f5d1e7d500242fcb9717951f4e568061d951d538b9cd`.
+
+**RAW_LOG_PROVENANCE:** `NEW_RAW_CAPTURE` (Dual live capture of `TooieRecompiled` and Mupen64Plus `ANGRYLION_CONTROL`).
+
+**Observational Gap Resolution:**
+The prior gap where ANGRYLION `func_80097B70` return = 0 was an inference is now **RESOLVED**. Both runtimes directly measured `func_80097B70`, `func_800979D8`, branch `0x800A4928`, and the downstream dispatch chain:
+- **`glidx 22`:**
+  - `func_800979D8` leave: RT `v0=0` vs AN `v0=0` (**MATCH / PROVEN**).
+  - `func_80097B70` leave: RT `v0=0` vs AN `v0=0` (**MATCH / PROVEN**).
+  - Branch `0x800A4928`: `v0 == 0`, `taken = 1` in both runtimes (**MATCH / PROVEN**).
+  - `func_80112D90`: NOT called in either runtime; `p60+0xC = 0` (**MATCH / PROVEN**).
+- **`glidx 23`:**
+  - `func_800979D8` leave: RT `v0=1` vs AN `v0=0` (**DIVERGENCE / PROVEN**).
+  - `func_80097B70` leave: RT `v0=1` vs AN `v0=0` (**DIVERGENCE / PROVEN**).
+  - Branch `0x800A4928`:
+    - RT64: `v0 == 1`, `taken = 0` (falls through -> calls `func_80110EFC` -> `func_80110E00` -> `func_801111D0` -> `func_80112D90`, setting `p60+0xC = 1`).
+    - ANGRYLION: `v0 == 0`, `taken = 1` (branches to `0x800A4940` -> skips camera rotation dispatch; `p60+0xC` remains `0`).
+
+**Semantic join:** `PROVEN` across both runtimes. The normalized tuple `(stage=0, sub=5, map=296, mode=5, glidx, calling_region=func_800A4878, controlling_branch=0x800A4928, bainput_helper=func_800979D8)` matches across the glidx 22->23 transition.
+
+**CURRENT_ROOT_CLASS:** `B-BAINPUT-HELD-STATE` / `B-ROTATE-CAMERA-LEFT-INPUT`.
+**CURRENT_ROOT_BOUNDARY:** `bakey_held(self, 10)` (`0x800919F4`) query inside `func_800979D8` evaluating to `held = 1` in RT64 vs `held = 0` in ANGRYLION at `glidx 23`.
+
+**NEXT_SINGLE_ACTION:** Perform static and mechanical dynamic boundary analysis of `bakey_held` (`0x800919F4`) and `func_800BCE84` for button 10 (C-Left) at `glidx 23`.
+**NEXT_RECOMMENDED_MODEL:** Gemini 3.7 Flash High for mechanical boundary instrumentation / GPT-5.6 Luna High for causal arbitration. No fix, commit, or push.
+**OPTIONAL_MECHANICAL_MODEL:** DeepSeek V4 Flash.
+**OPTIONAL_SECONDARY_MODEL:** Grok 4.6 Medium for narrow timing/register ambiguity.
+
+## Superseding checkpoint — `800979D8` primary-log correction (2026-08-25)
+
+Artifact `/tmp/p08-demo5-80097b70-800979d8-20260825T170358Z/` is valid;
+manifest SHA is `650d68632e1bfca8ec94f5d1e7d500242fcb9717951f4e568061d951d538b9cd`
+and all `SHA256SUMS` entries pass. `analysis.md` is
+**CORRECTED/SUPERSEDED** where it claims `held RT=1 / AN=0`.
+
+Primary logs show at target glidx 23: `bakey_held=1` in both runtimes,
+enabled word `0xffffffbf` with bit 0 set in both, and `800979D8` return
+`RT=1` versus `AN=0`. `80097B70` is faithful forwarding; this is the first
+proven diff. AN lacks a direct `800BCE84` marker for its mapped-byte/table
+inputs, so complete external-state parity is not proven and the current
+classification is **Case B**, not a promoted `800BCE84` root.
+
+Static: `bakey_held` reads `self+0x40`, `key+0x18+button_id`, and `key+0`,
+then calls `800BCE84(state, button_id)` at `0x80091A18`; `800BCE84` reads
+`state+0x8+button_id`, calls `800BCCC0`, indexes the returned table, and
+returns bit 0. Map/button-word entry fields are trace-only. **CURRENT_ROOT_CLASS:**
+`B-800979D8-COMPLETE-READSET-UNKNOWN`. **NEXT_SINGLE_ACTION:** capture the
+complete `bakey_held` state and nested `800BCE84` call/args/return at glidx
+22/23 in both runtimes; stop at `800BCE84`. **NEXT_RECOMMENDED_MODEL:**
+Gemini 3.7 Flash High. No production fix.
+
+## Superseding narrow arbitration — `800979D8` post-`isEnabled` body (2026-08-25)
+
+The artifact is valid (`NEW_RAW_CAPTURE`, manifest
+`650d68632e1bfca8ec94f5d1e7d500242fcb9717951f4e568061d951d538b9cd`, all
+checksums **PASS**). At semantic glidx 23, `bakey_held=1/1`, enabled bit
+0 `1/1`, and final `800979D8` `RT=1/AN=0` are **PROVEN**. The host path
+with held and enabled both true has no enable side effect and returns `1`.
+
+## Canonical Checkpoint — `func_800979D8` Exact MIPS Recovery & Static Implementation Mismatch (2026-08-25)
+
+Artifact `/tmp/p08-demo5-800979d8-post-enabled-20260825T184847Z/` is valid;
+`NEW_RAW_CAPTURE`, manifest SHA is `4c75f328cfaa978174f373884472395cf708eeaf413f096f1808af8c913d705c`,
+and all `SHA256SUMS` entries pass (dual verification).
+
+1. **Exact Original MIPS Body (`0x800979D8 .. 0x80097A4C`) Recovered:**
+   - `0x800979E8`: calls `bakey_held(self, button_id)` (`0x800919F4`).
+   - `0x800979F0`: `beqz $v0, 0x80097A2C` (if held == 0, jumps to unheld path).
+   - `0x800979FC`: calls `bainput_isEnabled(self, input_id)` (`0x80098024`), which reads `*(input + 0x0) & (1 << input_id)`.
+   - `0x80097A04`: `bnez $v0, 0x80097A18` (if enabled != 0, skips disable helper).
+   - `0x80097A10`: calls `func_80097990(self, input_id, 0)` (when enabled == 0, clears bit in `*(input + 0x4)`).
+   - `0x80097A1C`: calls `func_80097978(self, input_id)`, which reads and returns `*(input + 0x4) & (1 << input_id)`!
+   - `0x80097A24`: jumps to epilogue `0x80097A40` and returns `$v0` from `func_80097978`.
+   - Unheld path (`0x80097A2C`): calls `func_80097990(self, input_id, 1)` (sets bit in `*(input + 0x4)`) and returns `$v0 = 0`.
+
+2. **Root Cause of glidx 23 Divergence:**
+   - At `glidx 23`, `bakey_held` returns `1` and `bainput_isEnabled` returns `1` in both runtimes.
+   - Original MIPS executes `0x80097A1C: jal 0x80097978`. `func_80097978` queries `*(input + 0x4) = 0xFFFFFFFE` -> bit 0 is 0 -> returns `$v0 = 0`.
+   - RT64 host replacement (`tooie_bainput_func_800979D8` in `src/game/boot_hw_stubs.cpp`): incorrectly calls `bainput_isEnabled(self, input_id)` a second time (reading `*(input + 0x0) = 0xFFFFFFBF` -> bit 0 is 1) -> returns `ctx->r2 = 1`.
+
+3. **Classification & Boundaries:**
+   - `STATIC_IMPLEMENTATION_MISMATCH_800979D8`: **PROVEN**.
+   - `CURRENT_ROOT_CLASS`: `B-800979D8-STATIC-HOST-IMPLEMENTATION-MISMATCH`.
+   - `CURRENT_ROOT_BOUNDARY`: Callee selection in `func_800979D8` (`0x80097A1C` calls `func_80097978` on `input+0x4`, not `bainput_isEnabled` on `input+0x0`).
+   - `NEXT_SINGLE_ACTION`: GPT-5.6 Luna High independently arbitrate the exact original-vs-host semantic mismatch before any production fix.
+   - `NEXT_RECOMMENDED_MODEL`: GPT-5.6 Luna High. No fix, commit, or push.
+
+### Corrected/Superseded — `800979D8` bug versus current `input+0x4` root (2026-08-25)
+
+Artifact `/tmp/p08-demo5-800979d8-post-enabled-20260825T184847Z/` is
+SHA-valid (manifest `4c75f328cfaa978174f373884472395cf708eeaf413f096f1808af8c913d705c`; all
+checks pass). The original body `0x800979D8..0x80097A4C`, including the
+post-`isEnabled` path, is complete and statically proven.
+
+`STATIC_IMPLEMENTATION_MISMATCH_800979D8=PROVEN`: original `80097990` writes
+`input+0x4` but host `bainput_enable` writes `input+0x0`; original `80097978`
+reads `input+0x4` at `80097984` but the host's second query reads `input+0x0`.
+This remains a real production bug and should eventually be fixed.
+
+At glidx23, `input+0=ffffffbf` matches in both runtimes, but `input+4` is
+RT64 `ffffffff` (bit0=1) versus Angrylion `fffffffe` (bit0=0). The prior
+`COMPLETE_EXTERNAL_INPUTS_MATCH=YES` claim is self-contradictory and
+**CORRECTED/SUPERSEDED** to **NO**. glidx22 `ffffffff`/`ffffffff` is the
+last proven match; glidx23 is the first proven difference.
+
+With no state change, a corrected host would return RT64 `1`, while original
+Angrylion returns `0`; counterfactual parity is **NO**. Hence
+`WOULD_FIXING_800979D8_ALONE_RESTORE_GLIDX23_PARITY=NO`.
+
+`PRODUCTION_CORRECTNESS_BUG`: static `800979D8` host mismatch.
+`CURRENT_PARITY_CAUSAL_ROOT`: divergent active/triggered `input+0x4` bit.
+`CURRENT_ROOT_CLASS`: `B-BAINPUT-ACTIVE-MASK-INPUT-PLUS4-STATE`.
+`CURRENT_ROOT_BOUNDARY`: bit0 of `input+0x4` for `input_id=0`, immediately
+before `80097A1C -> 80097978` / read PC `80097984`.
+
+`FIX_800979D8_NOW=NO`. `NEXT_SINGLE_ACTION`: statically enumerate immediate
+writers/callsites of this bit, starting at known writer `80097990`, then use
+one future dual-runtime join of old/new words, source, writer PC, callsite,
+call presence, and semantic occurrence. No new capture, upstream walk, or
+production edit in this checkpoint. Recommended model: **Gemini 3.7 Flash High**
+(DeepSeek V4 Flash for mechanical candidate enumeration; Grok 4.6 Medium only
+for ordering ambiguity).
+
+## Canonical Checkpoint — `input+0x4` First Temporal Writer & Host `800979D8` Causal Proof (2026-08-25)
+
+Artifact `/tmp/p08-demo5-inputplus4-first-writer-20260825T220500Z/` is valid;
+`NEW_RAW_CAPTURE`, manifest SHA is `3acb82b7a27b9dfa90da7a782e0618caebd6ef9daa574340261007703417de46`,
+all 10 `SHA256SUMS` entries pass (dual verification).
+
+1. **First Temporal Writer Event Identified:**
+   - At `glidx 22`, occurrence `func_800979D8(self, button_id=10, input_id=0)`:
+     - `held == 1` and `enabled == 0` in BOTH runtimes.
+     - `*(input + 0x4)` is `0xFFFFFFFF` (bit 0 = 1) in BOTH runtimes before call.
+     - **AN (Original MIPS):** Follows `0x80097A04` branch fallthrough and executes `0x80097A10: jal func_80097990(self, 0, 0)`. `func_80097990` executes CLEAR store at `0x800979CC`, transforming `*(input + 0x4)` from `0xFFFFFFFF` (bit 0 = 1) to `0xFFFFFFFE` (bit 0 = 0).
+     - **RT (Host C++ Replacement):** `tooie_bainput_func_800979D8` calls `bainput_enable(self, 0, 0)` at `0x8009817C` (modifying `input + 0x0`) instead of `func_80097990` (modifying `input + 0x4`). Therefore, `*(input + 0x4)` in RT64 is never modified and remains `0xFFFFFFFF` (bit 0 = 1).
+   - This single host defect at `glidx 22` is the exact causal producer of the `input+0x4` state divergence.
+
+2. **Downstream Target Divergence at `glidx 23`:**
+   - At `glidx 23`, `bainput_enable(self, 0, 1)` updates `*(input + 0x0)` to `0xFFFFFFBF` in both runtimes.
+   - When `func_800979D8(self, button_id=10, input_id=0)` is called:
+     - `held == 1`, `enabled == 1`.
+     - **AN:** Executes `0x80097A1C: jal func_80097978(self, 0)`, reads `*(input + 0x4) = 0xFFFFFFFE` (bit 0 = 0) -> returns `$v0 = 0`. Controlling branch `0x800A4928` branches over camera rotation left (`p60+0xC = 0`).
+     - **RT:** Host calls `bainput_isEnabled(self, 0)` on `*(input + 0x0) = 0xFFFFFFBF` (bit 0 = 1) -> returns `ctx->r2 = 1`. Controlling branch `0x800A4928` falls through to `func_80112D90`, setting `p60+0xC = 1` (unwanted camera rotation left).
+
+3. **Classification & Verification:**
+   - `FIRST_INPUT_PLUS4_DIFFERING_EVENT`: `glidx 22`, `func_800979D8(self, btn=10, in_id=0)`.
+   - `FIRST_INPUT_PLUS4_WRITER_RT`: `NO_WRITE_OBSERVED` (host called `bainput_enable` on `input+0`, omitting write to `input+4`).
+   - `FIRST_INPUT_PLUS4_WRITER_AN`: `func_80097990` at `0x800979CC` (CLEAR bit 0).
+   - `FIRST_INPUT_PLUS4_WRITER_EVENT_MATCH`: `ABSENT_IN_ONE_RUNTIME`.
+   - `FIRST_INPUT_PLUS4_OLD_MATCH`: `YES` (`0xFFFFFFFF`, bit0=1).
+   - `FIRST_INPUT_PLUS4_SOURCE_OPERATION_MATCH`: `NO`.
+   - `FIRST_INPUT_PLUS4_NEW_MATCH`: `NO` (`0xFFFFFFFE` [bit0=0] vs `0xFFFFFFFF` [bit0=1]).
+   - `HOST_800979D8_MISMATCH_CAUSES_INPUT_PLUS4_FIRST_DIFF`: **`PROVEN`**.
+   - `CURRENT_ROOT_CLASS`: `B-800979D8-HOST-REPLACEMENT-WRONG-SIDE-EFFECT`.
+   - `BAINPUT_INIT_EXECUTES_IN_WINDOW_RT`: `NO`.
+   - `BAINPUT_INIT_EXECUTES_IN_WINDOW_AN`: `NO`.
+   - `NEXT_SINGLE_ACTION`: GPT-5.6 Luna High arbitrate the first input+4 divergence and the causal proof that the host 800979D8 mismatch produces it.
+   - `NEXT_RECOMMENDED_MODEL`: GPT-5.6 Luna High. No fix, commit, or push.
+
+## Final causal root — raw `input+4` writer arbitration (2026-08-25)
+
+**CORRECTED/SUPERSEDES** the prior pending root. Artifact
+`/tmp/p08-demo5-inputplus4-first-writer-20260825T220500Z/` is a valid
+`NEW_RAW_CAPTURE`; manifest SHA is
+`3acb82b7a27b9dfa90da7a782e0618caebd6ef9daa574340261007703417de46`.
+
+`GLIDX22_800979D8_SEMANTIC_JOIN=PROVEN` for
+`stage=0/sub=5/map=296/mode=5`, player semantic self, button 10, input 0;
+call presence is YES in both. Held and enabled are `1/1` and `0/0`, and
+the old `input+4` is `ffffffff/ffffffff`. The pre-write glidx22 state thus
+matches. AN executes `0x80097A10 jal func_80097990` with `a1=0,a2=0` and
+changes `input+4` to `fffffffe`; RT calls `bainput_enable` and leaves
+`input+4=ffffffff` while writing `input+0`. The post-write state is the
+first divergence: `HOST_800979D8_MISMATCH_CAUSES_INPUT_PLUS4_FIRST_DIFF=PROVEN`.
+
+Raw opcode correction: `CLEAR_STORE_PC=0x800979CC` (`ac4c0004`),
+`SET_STORE_PC=0x800979B0` (`ac590004`); `80097A10` is the callsite,
+`80097A14` its delay slot, and `80097A18` its return address. Any earlier
+store-PC or caller-PC labels are **CORRECTED/SUPERSEDED**. At glidx23,
+AN reads `input+4` through `func_80097978` and returns 0; RT reads `input+0`
+through `bainput_isEnabled` and returns 1, yielding downstream
+`80097B70=0/1` and `800A4928=TAKEN/NOT_TAKEN`.
+
+`ROOT_CAUSE_FOUND=YES`, `FIX_IMPLEMENTED=NO`,
+`CURRENT_ROOT_CLASS=B-800979D8-HOST-REPLACEMENT-WRONG-SIDE-EFFECT`.
+The write-helper and read-helper mismatches are both **PROVEN** and belong
+to the same incorrect replacement; fix them together. A query-only glidx23
+change is insufficient, while a full faithful replacement is **EXPECTED**
+to restore this causal chain (not runtime-tested). Next: production fix plus
+dual-runtime A/B validation, followed by broader attract regression checks.
+
+## Post-Fix Validation Checkpoint — `tooie_bainput_func_800979D8` Faithful Fix (2026-08-25)
+
+Artifact `/tmp/p08-demo5-800979d8-fix-validation-20260825T235800Z/` is valid;
+`NEW_RAW_CAPTURE_POST_FIX`, manifest SHA is `9a977b6e1c4c276dd2b6616008723d4b3c7139b9d1c4bd6c519c2f23ae3373da`,
+all 16 `SHA256SUMS` entries pass (dual verification).
+
+- **`ROOT_CAUSE_FOUND:`** `YES`
+- **`ROOT_CAUSE_FIX_VALIDATED:`** `YES`
+- **`FIX_IMPLEMENTED:`** `YES`
+- **`FIX_SCOPE:`** `src/game/boot_hw_stubs.cpp` (`tooie_bainput_func_80097990` on `input+4`, `tooie_bainput_func_80097978` on `input+4`, and corrected `tooie_bainput_func_800979D8`)
+- **`HOST_WRITE_HELPER_FIXED:`** `YES`
+- **`HOST_READ_HELPER_FIXED:`** `YES`
+
+**Validation Results (100% Parity with ANGRYLION_CONTROL):**
+- `GLIDX21_CONTROL_PARITY:` `PASS` (held=0, enabled=1, input+4=0xFFFFFFFF, v0=0)
+- `GLIDX22_HELD_PARITY:` `PASS` (held=1/1)
+- `GLIDX22_ENABLED_PARITY:` `PASS` (enabled=0/0)
+- `GLIDX22_INPUT4_OLD_PARITY:` `PASS` (0xFFFFFFFF/0xFFFFFFFF)
+- `GLIDX22_OPERATION_PARITY:` `PASS` (func_80097990 CLEAR store)
+- `GLIDX22_INPUT4_NEW_PARITY:` `PASS` (0xFFFFFFFE/0xFFFFFFFE)
+- `GLIDX23_INPUT4_PARITY:` `PASS` (0xFFFFFFFE/0xFFFFFFFE)
+- `GLIDX23_800979D8_RETURN_PARITY:` `PASS` (v0=0/0)
+- `GLIDX23_80097B70_RETURN_PARITY:` `PASS` (v0=0/0)
+- `GLIDX23_800A4928_PARITY:` `PASS` (TAKEN/TAKEN, skipping camera rotation left)
+- `GLIDX23_80112D90_CALL_PARITY:` `PASS` (NO/NO, camera rotation left completely collapsed)
+- `GLIDX23_P60C_PARITY:` `PASS` (p60+0xC = 0/0)
+- `POST_FIX_EEBF0_PARITY:` `PASS` (yaw=270.0 in both runtimes)
+- `POST_FIX_EE780_PARITY:` `PASS` (a3=0 in glidx 21..23, 3fa21681 in glidx 24, 3fe2ec4e in glidx 25)
+- `BTN13_NEARBY_REGRESSION:` `PASS` (input+4 bit1 SET, v0=0 in both runtimes)
+
+**Status & Next Steps:**
+- The entire USER_DEMO_5 locomotion/camera divergence chain is **RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX**.
+- P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING** pending broader physical validation gates.
+- `NEXT_SINGLE_ACTION:` GPT-5.6 Luna High independently arbitrate the post-fix validation artifact and determine the remaining P08 work.
+- `NEXT_RECOMMENDED_MODEL:` GPT-5.6 Luna High. No commit/push.
+
+## Arbitragem final pós-fix P08 / USER_DEMO_5 — 2026-08-26 (GPT-5.6 Luna High)
+
+Este bloco **CORRIGE/SUPERSEDE** o checkpoint anterior quanto ao escopo e ao
+status; o registro histórico permanece intacto.
+
+Artifact: `/tmp/p08-demo5-800979d8-fix-validation-20260825T235800Z/`;
+`MANIFEST_SHA=9a977b6e1c4c276dd2b6616008723d4b3c7139b9d1c4bd6c519c2f23ae3373da`;
+checksum integral `SHA256SUMS`: 16/16 `OK`.
+
+`RT_RAW_PROVENANCE: NEW_RAW_CAPTURE_POST_FIX`;
+`AN_RAW_PROVENANCE: REFERENCE_ORACLE_CAPTURE_REUSED`;
+`REFERENCE_ORACLE_REUSE_VALID: YES`: `oracle.log` coincide byte a byte com
+`/tmp/oracle_fresh3.log`, e a linha temporal mostra a Oracle após a
+instrumentação e antes do fix. Validade limitada a este artifact.
+
+Veredicto: a substituição host de `800979D8` é semanticamente fiel ao MIPS
+(SET/CLEAR em `input+4`, consulta de enabled em `input+0`, query final em
+`input+4`, low-5-bit shift e retorno sign-extended). O chain focal
+`800979D8 → 80097B70 → 800A4928 → câmera/80112D90 → p60+0xC → yaw/EEBF0/EE780`
+tem `USER_DEMO5_TARGET_CHAIN_PARITY: PROVEN`; `GLOBAL_GAME_PARITY: NOT_PROVEN`.
+
+Classificação dos gates: `DIRECTLY_SUPPORTED` para estado held/enabled,
+old/new `input+4`, operações, retornos, branch, p60+0xC, yaw, EEBF0/EE780 e
+btn13; `DERIVED_BUT_PROVEN` para a junção causal normalizada e ausência do
+dispatch de rotação esquerda; `UNSUPPORTED` para parity global, long
+playthrough e Windows/controle físico.
+
+`P08_STATUS: ACTIVE / MANUAL_VALIDATION_PENDING`;
+`P09_STATUS: PENDING / NOT_FORMALLY_OPEN`;
+`USER_DEMO5_STATUS: RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`.
+`AUDIO_STARTUP_TICK` e `CHARACTER_EDGE_GRAPHICS_GLITCH` são `P08_RESIDUAL`;
+`WIDESCREEN_EDGE_GEOMETRY` é `POST_P08_ENHANCEMENT` por ser conteúdo 4:3;
+`LONG_PLAYTHROUGH_VALIDATION` é `MANUAL_VALIDATION_PENDING`;
+`WINDOWS_GAMEPAD_VALIDATION` é `BLOCKING_P08 / MANUAL_VALIDATION_PENDING`.
+
+Remaining P08: checklist Windows/controle físico (bloqueador), long
+playthrough/regressão ampla e triagem separada de áudio/gráficos. O fix focal
+está `CURRENT_FIX_READY_FOR_COMMIT: YES`, mas o worktree não é um commit único
+limpo por conter instrumentação/diagnóstico e docs históricos. Artifact `/tmp`
+não é commitável; `BUILD_THIS_ROUND: NOT_RUN`; nenhum commit/push foi feito.
+
+`NEXT_SINGLE_ACTION: executar e registrar a validação formal Windows + controle
+físico antes de abrir P09.`
