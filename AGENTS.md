@@ -72,6 +72,8 @@ and `chlightfader`. Intro walls `STILL_PRESENT` and independent
 `MAP_18B_CS_STARTUP_INTRO`). Do not return to GPU. Do not combine vis
 flags. Do not implement an intro production fix until MAP_18B extents
 are dumped. Keep original `800CACEC` v0 for demo/callback consumers.
+`CLEAN_PINNED_BUILD_VALIDATION: PASS` (`23c070a9` + clean RT64 `6f1c2d99`;
+artifact `/tmp/p08-clean-milestone-validation-20260830T035059Z/`).
 
 ## Source-of-truth hierarchy
 

@@ -1014,15 +1014,19 @@ causal normalizada e ausência do dispatch de rotação esquerda.
 
 Remaining P08: `800CAA24` and `800CACEC` aspect-aware H-expand are
 **production ON** (disable with `=0`). Object-pop user-confirmed.
-Intro walls `STILL_PRESENT` (`SOURCE_GEOMETRY`/`CAMERA_FRAMING`). Next:
+`CLEAN_PINNED_BUILD_VALIDATION: PASS` at Tooie `23c070a9` + BanjoRecomp
+`ec859632` + RT64 `6f1c2d99` (`TooieRecompiled` isolated Clang/Ninja;
+artifact `/tmp/p08-clean-milestone-validation-20260830T035059Z/`
+`SHA256SUMS` `af72f29f96026b3d678d0f6914ea21b6aeaae648ea6c9fe25a4e5e1ea7976228`).
+Capture ABI no-ops are unused by clean RT64. Intro walls
+`STILL_PRESENT` (`SOURCE_GEOMETRY`/`CAMERA_FRAMING`). Next:
 CPU dump of `MAP_18B_CS_STARTUP_INTRO` OPA/XLU extents vs Expand
 frustum (do not combine vis flags; do not return to GPU; do not
 implement intro production fix yet). Validação formal
 Windows/controle físico; long playthrough; triagem separada de
 áudio/character-edge. `CURRENT_FIX_READY_FOR_COMMIT: YES` para o fix
 focal `800979D8`. Widescreen map+object vis: `FIX_IMPLEMENTED: YES`
-(production); intro: `FIX_IMPLEMENTED: NO`. This commit is the gameplay
-map+object production milestone. Do not push.
+(production); intro: `FIX_IMPLEMENTED: NO`. Do not push.
 
 `USER_OBSERVED_LATE_POP_IN: YES`.
 `USER_OBSERVED_EARLY_POP_OUT: YES`.

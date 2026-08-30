@@ -16,7 +16,30 @@ This residual is separate from USER_DEMO_5 locomotion. USER_DEMO_5 remains
 `ACTIVE / MANUAL_VALIDATION_PENDING`. P09 remains
 `PENDING / NOT_FORMALLY_OPEN`. This note does **not** reopen those chains.
 
-## CURRENT (2026-08-30) — OBJECT_FRUSTUM_PRODUCTION + INTRO_WALL_ROOT
+## CURRENT (2026-08-30) — CLEAN_PINNED_BUILD_VALIDATION
+
+Isolated worktrees at Tooie `23c070a9`, BanjoRecomp `ec859632`, RT64
+`6f1c2d99` configured and linked `TooieRecompiled` after applying
+versioned `patches/runtime` to the isolated N64ModernRuntime only.
+`CLEAN_PINNED_BUILD_VALIDATION: PASS`. Capture ABI no-ops are unused by
+clean RT64 (`CAPTURE_ABI_NEEDED_BY_CLEAN_BUILD: NO`). Smoke SKIP: no
+isolated ROM. Intro walls remain a separate residual.
+
+```text
+GAMEPLAY_MAP_ROOT: resolved / production fix active
+GAMEPLAY_OBJECT_ROOT: resolved / production fix active
+CLEAN_PINNED_BUILD_VALIDATION: PASS
+CLEAN_BUILD_RESULT: PASS
+CLEAN_SMOKE_RESULT: SKIP
+INTRO_WALL_RESIDUAL: STILL_PRESENT
+NEXT_DISCRIMINATOR: INTRO_MAP_18B_SOURCE_EXTENT_VS_EXPAND_FRUSTUM
+NEXT_SINGLE_ACTION: CPU dump MAP_18B_CS_STARTUP_INTRO OPA/XLU vertex XZ vs source 4:3 and target Expand
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+ARTIFACT_DIRECTORY: /tmp/p08-clean-milestone-validation-20260830T035059Z/
+ARTIFACT_CHECKSUM_MANIFEST: af72f29f96026b3d678d0f6914ea21b6aeaae648ea6c9fe25a4e5e1ea7976228
+```
+
+## Prior (2026-08-30) — OBJECT_FRUSTUM_PRODUCTION + INTRO_WALL_ROOT
 
 User ran `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`. Gameplay objects
 A/B stay rendered at the lateral edge. Intro walls still disappear.

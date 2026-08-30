@@ -130,6 +130,8 @@ confirmed; `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` restaura original;
 DRAW-only). `ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED`.
 `TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED`. Intro walls
 `STILL_PRESENT` independent (`SOURCE_GEOMETRY`/`CAMERA_FRAMING`).
+`CLEAN_PINNED_BUILD_VALIDATION: PASS` (Tooie `23c070a9`, RT64 `6f1c2d99`;
+artifact `/tmp/p08-clean-milestone-validation-20260830T035059Z/`).
 Próximo: dump CPU de `MAP_18B_CS_STARTUP_INTRO` extents. Wording
 “GeoCmd intra-model untested” is `CORRECTED/SUPERSEDED`: era
 `800E3DC0`/`800CAB70`. Não voltar à GPU. Não combinar flags de vis.
