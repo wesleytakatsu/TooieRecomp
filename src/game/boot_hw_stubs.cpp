@@ -17,6 +17,9 @@
 #include "librecomp/addresses.hpp"
 #include "librecomp/overlays.hpp"
 #include "ultramodern/ultramodern.hpp"
+#include "ultramodern/config.hpp"
+#include "recompui/recompui.h"
+#include "tooie_window.h"
 #include "tooie_diag.h"
 #include "generated/overlay_dispatch.inc.h"
 
@@ -68,6 +71,10 @@ extern "C" void func_80110EFC(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80110E00(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_801111D0(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80112D90(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800CAA24(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800CACEC(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800E3E8C(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_8011447C(uint8_t* rdram, recomp_context* ctx);
 
 // Declared in syscall_handler.cpp
 extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr);
@@ -4102,6 +4109,251 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
     std::fflush(stderr);
 }
 
+// No-op capture ABI. Production frustum correction does not log.
+extern "C" uint64_t tooie_get_monotonic_ns() { return 0; }
+extern "C" uint32_t tooie_get_current_guest_frame() { return 0; }
+extern "C" uint32_t tooie_get_current_capture_id() { return 0; }
+extern "C" bool tooie_is_continuous_capture_active() { return false; }
+extern "C" void tooie_ws_log_event(const char* /*fmt*/, ...) {}
+extern "C" uint64_t tooie_ws_log_dl_rsp(uint32_t, uint32_t, uint32_t,
+                                       uint32_t, uint32_t, uint32_t,
+                                       uint64_t, uint64_t) {
+    return 0;
+}
+extern "C" void tooie_ws_log_prim_emit(uint32_t, uint32_t, uint64_t,
+                                       const char*, uint64_t, uint32_t,
+                                       uint32_t, uint32_t, uint32_t, uint32_t) {}
+
+// Production widescreen frustum correction (P08 gameplay maps + models).
+// 800CAA24: horizontal-only aspect-aware AABB retest. k = target/source.
+// 800CACEC: same H-expand for DRAW consumers only; original v0 is kept for
+// occupancy/demo/lighting. Disable with TOOIE_TEST_*_ASPECT_AWARE=0.
+// Does not write expanded planes back into guest volume memory.
+static bool tooie_ws_env_explicit_off(const char* name) {
+    const char* val = std::getenv(name);
+    return val != nullptr && val[0] == '0';
+}
+
+static bool tooie_map_vis_aspect_aware_enabled() {
+    static const bool enabled = !tooie_ws_env_explicit_off("TOOIE_TEST_MAP_VIS_ASPECT_AWARE");
+    return enabled;
+}
+
+static bool tooie_object_frustum_aspect_aware_enabled() {
+    static const bool enabled = !tooie_ws_env_explicit_off("TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE");
+    return enabled;
+}
+
+static thread_local int s_cacec_draw_consumer = 0;
+
+struct TooieCacecDrawScope {
+    TooieCacecDrawScope() { ++s_cacec_draw_consumer; }
+    ~TooieCacecDrawScope() { --s_cacec_draw_consumer; }
+};
+
+static inline bool tooie_ws_guest_safe(uint32_t a, size_t size = 1) {
+    const uint32_t p = a & 0x1FFFFFFFu;
+    return (p + size <= 0x00800000u) && (a >= 0x80000000u && a < 0xC0000000u);
+}
+
+static inline float tooie_ws_read_f32(const uint8_t* rdram, uint32_t a) {
+    if (!tooie_ws_guest_safe(a, 4)) {
+        return 0.0f;
+    }
+    const uint32_t p = a & 0x00FFFFFFu;
+    float val = 0.0f;
+    std::memcpy(&val, rdram + p, sizeof(val));
+    return val;
+}
+
+static float tooie_map_vis_target_aspect() {
+    const float original = 4.0f / 3.0f;
+    const ultramodern::renderer::GraphicsConfig graphics_config =
+        ultramodern::renderer::get_graphics_config();
+    int width = 0;
+    int height = 0;
+    recompui::get_window_size(width, height);
+    return tooie_window::calculate_target_aspect_ratio(
+        graphics_config.ar_option, width, height, original);
+}
+
+static float tooie_map_vis_k_for_volume(const uint8_t* rdram, uint32_t volume_ptr) {
+    float source = tooie_ws_read_f32(rdram, volume_ptr + 0xE8);
+    if (!(source > 0.0f) || !std::isfinite(source)) {
+        source = 4.0f / 3.0f;
+    }
+    const float target = tooie_map_vis_target_aspect();
+    if (!(source > 0.0f) || !std::isfinite(target)) {
+        return 1.0f;
+    }
+    float k = target / source;
+    if (!(k > 1.0f) || !std::isfinite(k)) {
+        return 1.0f;
+    }
+    return k;
+}
+
+static void tooie_ws_expand_h_plane(float& nx, float& ny, float& nz, float& d,
+                                    const float cam[3], const float fwd[3], float k) {
+    const float nf = nx * fwd[0] + ny * fwd[1] + nz * fwd[2];
+    nx = fwd[0] * nf + (nx - fwd[0] * nf) / k;
+    ny = fwd[1] * nf + (ny - fwd[1] * nf) / k;
+    nz = fwd[2] * nf + (nz - fwd[2] * nf) / k;
+    d = -(cam[0] * nx + cam[1] * ny + cam[2] * nz);
+}
+
+static uint32_t tooie_map_vis_aspect_eval_float_aabb(
+    const uint8_t* rdram, uint32_t volume_ptr, uint32_t min_ptr, uint32_t max_ptr, float k) {
+    if (!tooie_ws_guest_safe(volume_ptr, 0x64) ||
+        !tooie_ws_guest_safe(min_ptr, 12) ||
+        !tooie_ws_guest_safe(max_ptr, 12)) {
+        return 0xFFFFFFFFu;
+    }
+
+    const float minv[3] = {
+        tooie_ws_read_f32(rdram, min_ptr + 0),
+        tooie_ws_read_f32(rdram, min_ptr + 4),
+        tooie_ws_read_f32(rdram, min_ptr + 8),
+    };
+    const float maxv[3] = {
+        tooie_ws_read_f32(rdram, max_ptr + 0),
+        tooie_ws_read_f32(rdram, max_ptr + 4),
+        tooie_ws_read_f32(rdram, max_ptr + 8),
+    };
+    const float cam[3] = {
+        tooie_ws_read_f32(rdram, volume_ptr + 0x0),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x4),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x8),
+    };
+    float fwd[3] = {
+        tooie_ws_read_f32(rdram, volume_ptr + 0xC),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x10),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x14),
+    };
+    const float flen = std::sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]);
+    if (!(flen > 1.0e-6f) || !std::isfinite(flen)) {
+        return 0xFFFFFFFFu;
+    }
+    fwd[0] /= flen;
+    fwd[1] /= flen;
+    fwd[2] /= flen;
+
+    for (int pl = 0; pl < 4; ++pl) {
+        float nx = tooie_ws_read_f32(rdram, volume_ptr + 0x24 + pl * 0x10);
+        float ny = tooie_ws_read_f32(rdram, volume_ptr + 0x28 + pl * 0x10);
+        float nz = tooie_ws_read_f32(rdram, volume_ptr + 0x2C + pl * 0x10);
+        float d  = tooie_ws_read_f32(rdram, volume_ptr + 0x30 + pl * 0x10);
+        if (pl < 2 && k > 1.0f) {
+            tooie_ws_expand_h_plane(nx, ny, nz, d, cam, fwd, k);
+        }
+        const float px = (nx >= 0.0f) ? minv[0] : maxv[0];
+        const float py = (ny >= 0.0f) ? minv[1] : maxv[1];
+        const float pz = (nz >= 0.0f) ? minv[2] : maxv[2];
+        if ((nx * px + ny * py + nz * pz + d) >= 0.0f) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static uint32_t tooie_cacec_eval_sphere(
+    const uint8_t* rdram, uint32_t volume_ptr,
+    float x, float y, float z, float radius, float k) {
+    if (!tooie_ws_guest_safe(volume_ptr, 0x64) || !std::isfinite(radius) || radius < 0.0f) {
+        return 0xFFFFFFFFu;
+    }
+    const float cam[3] = {
+        tooie_ws_read_f32(rdram, volume_ptr + 0x0),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x4),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x8),
+    };
+    float fwd[3] = {
+        tooie_ws_read_f32(rdram, volume_ptr + 0xC),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x10),
+        tooie_ws_read_f32(rdram, volume_ptr + 0x14),
+    };
+    const float flen = std::sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]);
+    if (!(flen > 1.0e-6f) || !std::isfinite(flen)) {
+        return 0xFFFFFFFFu;
+    }
+    fwd[0] /= flen;
+    fwd[1] /= flen;
+    fwd[2] /= flen;
+    const float rel[3] = {x - cam[0], y - cam[1], z - cam[2]};
+    for (int pl = 0; pl < 4; ++pl) {
+        float nx = tooie_ws_read_f32(rdram, volume_ptr + 0x24 + pl * 0x10);
+        float ny = tooie_ws_read_f32(rdram, volume_ptr + 0x28 + pl * 0x10);
+        float nz = tooie_ws_read_f32(rdram, volume_ptr + 0x2C + pl * 0x10);
+        if (pl < 2 && k > 1.0f) {
+            float d_unused = 0.0f;
+            tooie_ws_expand_h_plane(nx, ny, nz, d_unused, cam, fwd, k);
+        }
+        const float dot = nx * rel[0] + ny * rel[1] + nz * rel[2];
+        if (radius <= dot) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void tooie_wrap_func_800CAA24(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t volume_ptr = static_cast<uint32_t>(ctx->r4);
+    const uint32_t min_ptr = static_cast<uint32_t>(ctx->r5);
+    const uint32_t max_ptr = static_cast<uint32_t>(ctx->r6);
+    func_800CAA24(rdram, ctx);
+    if (!tooie_map_vis_aspect_aware_enabled()) {
+        return;
+    }
+    const uint32_t orig = static_cast<uint32_t>(ctx->r2);
+    const float k = tooie_map_vis_k_for_volume(rdram, volume_ptr);
+    if (!(k > 1.0f) || orig != 0) {
+        return;
+    }
+    const uint32_t aspect_vis =
+        tooie_map_vis_aspect_eval_float_aabb(rdram, volume_ptr, min_ptr, max_ptr, k);
+    if (aspect_vis == 1) {
+        ctx->r2 = 1;
+    }
+}
+
+static void tooie_wrap_func_800CACEC(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t vp = static_cast<uint32_t>(ctx->r4);
+    const uint32_t pos_p = static_cast<uint32_t>(ctx->r5);
+    const uint32_t r6_u = static_cast<uint32_t>(ctx->r6);
+    float radius = 0.0f;
+    std::memcpy(&radius, &r6_u, sizeof(radius));
+    const float px = tooie_ws_read_f32(rdram, pos_p);
+    const float py = tooie_ws_read_f32(rdram, pos_p + 4);
+    const float pz = tooie_ws_read_f32(rdram, pos_p + 8);
+    func_800CACEC(rdram, ctx);
+    if (!tooie_object_frustum_aspect_aware_enabled()) {
+        return;
+    }
+    const uint32_t orig_res = static_cast<uint32_t>(ctx->r2);
+    if (orig_res != 0 || s_cacec_draw_consumer <= 0) {
+        return;
+    }
+    const float k = tooie_ws_guest_safe(vp, 0xECu)
+        ? tooie_map_vis_k_for_volume(rdram, vp) : 1.0f;
+    if (!(k > 1.0f)) {
+        return;
+    }
+    const uint32_t expanded = tooie_cacec_eval_sphere(rdram, vp, px, py, pz, radius, k);
+    if (expanded == 1) {
+        ctx->r2 = 1;
+    }
+}
+
+static void tooie_wrap_func_800E3E8C(uint8_t* rdram, recomp_context* ctx) {
+    TooieCacecDrawScope draw_scope;
+    func_800E3E8C(rdram, ctx);
+}
+
+static void tooie_wrap_func_8011447C(uint8_t* rdram, recomp_context* ctx) {
+    TooieCacecDrawScope draw_scope;
+    func_8011447C(rdram, ctx);
+}
+
 namespace banjo {
 void register_boot_lookup_stubs() {
     // Prefer real ultramodern/libultra recomp hooks at Tooie VRAMs.
@@ -4229,6 +4481,10 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110970), tooie_wrap_80110970);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010FE34), tooie_wrap_8010fe34);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800A9318), tooie_wrap_800a9318);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CAA24), tooie_wrap_func_800CAA24);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CACEC), tooie_wrap_func_800CACEC);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E3E8C), tooie_wrap_func_800E3E8C);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }

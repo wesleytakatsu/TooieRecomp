@@ -27,6 +27,52 @@ Before changing code, build logic, patches, plans, or specs:
 
 Do not reopen hypotheses explicitly marked `REFUTED`, `CORRECTED/SUPERSEDED`, or resolved unless new primary evidence contradicts them.
 
+Active P08 residual: `WIDESCREEN_EDGE_GEOMETRY`. Canonical state is
+`docs/HANDOFF.md` and `docs/plan/evidence/p08-session-handoff.md`.
+`gspropsDll_entrypoint_1` is a one-shot type-6 load of all gccubes, not
+per-frame visibility. Type-6 per-frame consumer is `800FF62C` over
+`D_80136EE0`; vis is Euclidean `800EFFB4` (NOT aspect/FOV); TYPE6 vis CF
+`NO_CHANGE`. Sprite types 7/9/C (`800CBB18` is type 0xC, not 0xA) dispatch
+at map load via `gccube_ep6`; `800F0064` is world XZ membership, not
+camera/FOV/aspect; GSPROPS vis CF is `PARTIAL_HIT` on inserts and
+`REFUTED` as Expand pop. Bound-sprite `800B3CDC` products live in
+`D_8012AE80+0xE0`; per-frame consumers are spatial queries (`800CB8F0`
+LIVE 5777) with `draw_fn=NONE`; `BOUND_SPRITE_VIEW_CULL_AS_EXPAND_ROOT`
+is `REFUTED`. Do not wrap `80108DC0` as vis. Do not treat `800F0064` as
+a FOV gate. Do not reopen bound-sprite draw. Do not combine
+`TOOIE_TEST_DISABLE_MAP_VIS_CULL`, `TOOIE_TEST_DISABLE_MODEL_GEO_CULL`,
+`TOOIE_TEST_DISABLE_PROP_CELL_VIS_CULL`, `TOOIE_TEST_DISABLE_GSPROPS_VIS_CULL`,
+or `TOOIE_TEST_DISABLE_TYPE6_STATIC_VIS_CULL`.
+`8011458C` is occupancy/near-fog via `801143A4`, not actor draw.
+Actor chain `80114184`→`800BD708`→`800CD23C`→`800EA628`→`80103508`→`8010108C`.
+`TOOIE_TEST_EXPAND_ACTOR_CUBE_AABB` is `PARTIAL_HIT` visitation /
+`NO_CHANGE` draw-DL (`03508=3` `0108c=0`).
+`ACTOR_PICKUP_VIEW_CULL_AS_EXPAND_ROOT` is `REFUTED`.
+`80108C14` is a rare `D_80136EE0` submit (`LIVE` 2 vs `800FF62C=1337`),
+same type-6 objects, GETTER jalr not DRAW, RESOURCE gates only.
+`80108C14_AS_REMAINING_DRAW_ROOT` is `REFUTED`.
+`REMAINING_STATIC_DECORATIVE_VIEW_CULL_AS_EXPAND_ROOT` is `REFUTED`.
+Prior “intra-model GeoCmd analog untested” is `CORRECTED/SUPERSEDED`:
+it was `800E3DC0`/`800CAB70` (BK GeoCmdD homolog; `E3DC0_DIRECT_ROOT`
+already `REFUTED`). No distinct extra GeoCmd layer. `800CAA24` aspect-aware
+H-plane Expand is **production default ON** (user visual
+`VISUALLY_CONFIRMED_FOR_TESTED_GAMEPLAY_MAP_GEOMETRY`; `TOOIE_TEST_MAP_VIS_ASPECT_AWARE=0`
+forces original). `ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED`
+(do not say globally actor/pickup view cull REFUTED).
+`TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED`;
+`TYPE6_GAMEPLAY_OBJECT_POP_ROOT: REOPENED_TARGETED`.
+Screenshot A/B/C object pop is `PROVEN` (object-specific, shared with demo).
+Corrected object-pop diagnostic captured gameplay `chsilo`/`chnests`.
+A/B transitions are `OBJECT_MODEL_FRUSTUM_SIDE_PLANE` (`800CACEC` source
+reject / target accept). User visual confirmed aspect-aware CACEC;
+**production ON** unless `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`.
+DRAW-only expand (`800E3E8C`/`8011447C`); original v0 for `8011458C`
+and `chlightfader`. Intro walls `STILL_PRESENT` and independent
+(`SOURCE_GEOMETRY`/`CAMERA_FRAMING` `STRONG_HYPOTHESIS`; map
+`MAP_18B_CS_STARTUP_INTRO`). Do not return to GPU. Do not combine vis
+flags. Do not implement an intro production fix until MAP_18B extents
+are dumped. Keep original `800CACEC` v0 for demo/callback consumers.
+
 ## Source-of-truth hierarchy
 
 Use the repository, not chat history, as canonical state.

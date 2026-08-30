@@ -7,7 +7,7 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-20
+updated: 2026-08-30
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
 ---
 
@@ -299,9 +299,8 @@ produção; mapping pendente preservado.
 | [[../../plan/evidence/p08-display-effect-catalog]] | **CURRENT:** P08-T02 catálogo de display lists e efeitos gráficos |
 | [[../../plan/evidence/p08-demo-full-motion-sync-diagnosis]] | **CURRENT:** diagnóstico diferencial de sincronização e movimento da demo de gameplay |
 | [[../../plan/evidence/p08-attract-actor-loop-diagnosis]] | freeze mechanism slot7 / C2AB8 |
-| [[../../plan/evidence/p08-type4-transition-semantics-audit]] | type-4 complete, warp consumido |
-| [[../../plan/evidence/p08-intro-to-demo-transition-diagnosis]] | timeline histórica |
 | [[../../plan/evidence/p08-visual-validation/README]] | frames humanos |
+| [[../../plan/evidence/p08-widescreen-edge-geometry]] | **CURRENT:** 800CAA24 PRODUCTION ON; object-pop witness INCONCLUSIVE (chintrochar); 800CACEC=8024DB50 analog STRONG_HYPOTHESIS; intro MIXED |
 | demais p08-* | resolved/deferred (ver handoff) |
 
 ## Fluxo esperado
@@ -1007,15 +1006,479 @@ causal normalizada e ausência do dispatch de rotação esquerda.
 `P08_STATUS: ACTIVE / MANUAL_VALIDATION_PENDING`;
 `P09_STATUS: PENDING / NOT_FORMALLY_OPEN`;
 `USER_DEMO5_STATUS: RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`.
-`AUDIO_STARTUP_TICK: P08_RESIDUAL`; `WIDESCREEN_EDGE_GEOMETRY:
-POST_P08_ENHANCEMENT`; `CHARACTER_EDGE_GRAPHICS_GLITCH: P08_RESIDUAL`;
+`AUDIO_STARTUP_TICK: P08_RESIDUAL`; `WIDESCREEN_EDGE_GEOMETRY: 800CAA24 PRODUCTION ON; 800CACEC object frustum PRODUCTION ON (user visual VISUALLY_CONFIRMED; DRAW-only H-expand; TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0 disables); attract prod new_accept=279; intro walls STILL_PRESENT independent SOURCE_GEOMETRY/CAMERA_FRAMING STRONG_HYPOTHESIS MAP_18B_CS_STARTUP_INTRO; ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT REFUTED; TYPE6_AS_INTRO_RESIDUAL_ROOT STRONGLY_WEAKENED`; `FOCAL_00349D38_AS_GLOBAL_ROOT: REFUTED`; `FOCAL_00349D38_AS_WITNESS: YES`; `FOCAL_TEXTURE_TMEM_ANOMALY: STRONGLY_WEAKENED / STATIC_AUDIT_REFUTED`; `FOCAL_TEXTURE_RUNTIME_REVALIDATED_WITH_NEW_AUTO_CAPTURE: NO`; `SAME_RT64_REVISION: YES` (`6f1c2d99`); `CAB70/E3DC0/CACEC: USER NO_CHANGE`; `MAP_VIS_PRODUCTION: ON unless TOOIE_TEST_MAP_VIS_ASPECT_AWARE=0`; `MAP_VIS_CF: TOOIE_TEST_DISABLE_MAP_VIS_CULL` default OFF not promoted; `OBJECT_POP_DIAG: TOOIE_DIAG_WS_OBJECT_POP` default OFF; `MODEL_GEO_CF: 801143A4` USER visual NO_CHANGE / intro 0 calls; `PROP_CELL_CF: TOOIE_TEST_DISABLE_PROP_CELL_VIS_CULL` listed 153→325 intro `dl_rsp` identical (INDEPENDENT of gsprops); `GSPROPS_VIS_CF: TOOIE_TEST_DISABLE_GSPROPS_VIS_CULL` 60s attract inserts 90→114 PARTIAL_HIT, REFUTED as Expand pop; `TYPE6_VIS_CF: TOOIE_TEST_DISABLE_TYPE6_STATIC_VIS_CULL` vis rej=0 / draw 84 identical / RSP NO_CHANGE; `ACTOR_CUBE_AABB_CF: TOOIE_TEST_EXPAND_ACTOR_CUBE_AABB` ea628 22722→257504 PARTIAL_HIT visitation NO_CHANGE draw-DL; `STATIC_DECORATIVE_VIEW_CF: NOT_IMPLEMENTED`; `LOD_CF: NOT_IMPLEMENTED`; `CULL_WINDING_ANOMALY: REFUTED_FOR_FOCAL`
+([[../../plan/evidence/p08-widescreen-edge-geometry]]; pixel probe `ABANDONED_FOR_SAFETY`; `PERFORMANCE_GATING_CLEANUP_PRESERVED: YES`; artifact `/tmp/p08-widescreen-object-model-frustum-banjo-port-20260830T024845Z/`; next `USER_VISUAL_OBJECT_FRUSTUM_ASPECT`; do **not** wrap `80108DC0` as vis; do **not** reopen `800F0064` as FOV; do **not** reopen bound-sprite draw; do **not** production-bypass `800CAB70`/`800E3DC0`/`800CACEC`/`801143A4`/`800BE09C`/`800BD708`/`80108C14`; `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE` diagnostic only; do **not** combine vis flags; do **not** enter `TARGETED_FOCAL_DEPTH_CAUSAL_TEST_DESIGN` this residual).
+`CHARACTER_EDGE_GRAPHICS_GLITCH: P08_RESIDUAL`;
 `LONG_PLAYTHROUGH_VALIDATION: MANUAL_VALIDATION_PENDING`;
 `WINDOWS_GAMEPAD_VALIDATION: BLOCKING_P08 / MANUAL_VALIDATION_PENDING`.
 
-Remaining P08: validação formal Windows/controle físico, long playthrough e
-triagem separada de áudio/gráficos. `CURRENT_FIX_READY_FOR_COMMIT: YES` para o
-fix focal, mas o worktree ainda mistura instrumentação/diagnóstico e histórico
-documental. `BUILD_THIS_ROUND: NOT_RUN`; nenhum commit/push foi feito.
+Remaining P08: `800CAA24` and `800CACEC` aspect-aware H-expand are
+**production ON** (disable with `=0`). Object-pop user-confirmed.
+Intro walls `STILL_PRESENT` (`SOURCE_GEOMETRY`/`CAMERA_FRAMING`). Next:
+CPU dump of `MAP_18B_CS_STARTUP_INTRO` OPA/XLU extents vs Expand
+frustum (do not combine vis flags; do not return to GPU; do not
+implement intro production fix yet). Validação formal
+Windows/controle físico; long playthrough; triagem separada de
+áudio/character-edge. `CURRENT_FIX_READY_FOR_COMMIT: YES` para o fix
+focal `800979D8`. Widescreen map+object vis: `FIX_IMPLEMENTED: YES`
+(production); intro: `FIX_IMPLEMENTED: NO`. This commit is the gameplay
+map+object production milestone. Do not push.
 
-`NEXT_SINGLE_ACTION: executar e registrar a validação formal Windows + controle
-físico antes de abrir P09.`
+`USER_OBSERVED_LATE_POP_IN: YES`.
+`USER_OBSERVED_EARLY_POP_OUT: YES`.
+`BIDIRECTIONAL_EDGE_VISIBILITY_ERROR: USER_OBSERVED`.
+`USER_MANUAL_CAB70_BYPASS_VISUAL_RESULT: NO_CHANGE`.
+`USER_MANUAL_E3DC0_BYPASS_VISUAL_RESULT: NO_CHANGE`.
+`USER_MANUAL_CACEC_BYPASS_VISUAL_RESULT: NO_CHANGE`.
+`CAB70_DIRECT_VISUAL_ROOT: REFUTED_FOR_OBSERVED_SYMPTOM`.
+`E3DC0_DIRECT_VISUAL_ROOT: REFUTED_FOR_OBSERVED_SYMPTOM`.
+`CACEC_DIRECT_VISUAL_ROOT: REFUTED_FOR_OBSERVED_SYMPTOM`.
+`CURRENT_ROOT_CLASS: UNKNOWN / RE-ANCHOR_REQUIRED` (historical for the unjoined 1481..2200 window).
+`CURRENT_ROOT_CLASS_STATUS: DL_IDENTITY_CAPTURE_INCONCLUSIVE_FOR_VISUAL_WINDOW`.
+`CAPTURE_VALID: YES` (1481..2200 unjoined; superseded by 1425..2144 joined capture).
+`DL_IDENTITY_JOINED_TO_VISUAL_WINDOW: NO`.
+`LATE_POP_IN_SIGNATURE_FOUND: NO`.
+`VISIBILITY_THRESHOLD_ASPECT_MISMATCH: NOT_PROVEN_FOR_CAPTURED_EVENT`.
+`LATEST_ARTIFACT: /tmp/p08-widescreen-dl-identity-arbitration-20260826T072436Z/`
+(`SHA256SUMS` `f4b2c20086ced79a3d728174464a2dc673a6fff201d0c7edfe1f014739ddccff`).
+
+`NEXT_SINGLE_ACTION: GUEST_FRAME_JOINED_DISPLAY_LIST_IDENTITY — dedicated identity log + RT64 guest_frame field so the next USER_SELECTED window contains [ws-dl-emit] and [ws-dl-rsp]. No production frustum/LOD/room/RT64 patch. No new bypass. Model: Gemini 3.7 Flash High.`
+
+### P08 current setup checkpoint — GUEST_DISPLAY_LIST_IDENTITY_CAPTURE (2026-08-26)
+
+Implemented and smoke-tested as diagnostic-only. The guest emission boundary is
+GraphicsTask wrapper `0x80014148`; root DL source is `GraphicsTask+0x8`, nested
+DL source is direct `Gfx.w1`, and the monotonic emission sequence is active only
+inside `TOOIE_DIAG_WS_CONTINUOUS`. RT64 `processDisplayLists` records the
+resolved physical identity and workload/counter before HLE dispatch. No
+production fix, bypass, culling/projection/LOD/room/section/near-clipping
+change, or `RecompiledFuncs/**` edit was made.
+
+```text
+BUILD_RESULT: PASS
+DL_IDENTITY_CAPTURE_READY: YES
+DL_ADDRESS_SEMANTICS: PROVEN
+NESTED_DL_TRACKING: YES
+NODE_TO_DL_JOIN: NO
+DL_TO_RSP_JOIN: YES
+RSP_TO_RT64_WORKLOAD_JOIN: PARTIAL
+DL_TO_RT64_DRAW_JOIN: NO
+END_TO_END_JOIN: PARTIAL
+PER_FRAME_ACTIVE_DL_SET_READY: YES
+DL_FIRST_LAST_SEEN_READY: YES
+DL_SCREEN_BOUNDS_JOIN: NO
+EXTRA_BAND_DL_CLASSIFICATION: NO
+CURRENT_ROOT_CLASS: UNKNOWN / RE-ANCHOR_REQUIRED
+CURRENT_ROOT_BOUNDARY: NOT_PROMOTED
+FIX_IMPLEMENTED: NO
+TEMP_DIAGNOSTIC_CHANGE_IMPLEMENTED: YES
+DEFAULT_RUNTIME_BEHAVIOR_CHANGED: NO
+```
+
+Reference artifact: `/tmp/p08-widescreen-dl-identity-setup-20260826T070058Z/`;
+manifest SHA `3b9e63bcc0954a9b451045c7d78508176a893c10386ab1984f3ac399febf3390`.
+Smoke: 3,892 guest events, 169 roots, 3,723 nested events, monotonic sequence,
+and complete 720-frame window.
+
+### P08 current arbitration — DL identity vs USER_SELECTED window (2026-08-26)
+
+User-selected capture `/tmp/tooie-ws-continuous.log` is structurally valid
+(`TRIGGER_ACTIVATED` start_frame=1481, `CAPTURE_COMPLETE` after 720 frames,
+camera moving). It does **not** join display-list identity onto that window:
+0 `[ws-dl-emit]` anywhere, 0 `[ws-dl-rsp]` between trigger and complete.
+The RSP/RT64 identity dump after complete is clocks 1..169 and matches the
+start_frame=1 intro smoke nested timeline. Neither
+`GUEST_DISPLAY_LIST_SELECTION_OR_EMISSION_BOUNDARY` nor
+`DOWNSTREAM_RSP_RT64_BOUNDARY` is promoted.
+
+Arbitration artifact: `/tmp/p08-widescreen-dl-identity-arbitration-20260826T072436Z/`;
+manifest SHA `f4b2c20086ced79a3d728174464a2dc673a6fff201d0c7edfe1f014739ddccff`.
+
+### P08 DL identity & frame-join fix checkpoint (2026-08-26)
+
+Diagnosed and corrected the previous unjoined capture defect. Hooked master Gfx
+task emission at `func_80013EF0` (`0x80013EF0`) reading `task+0x08` and `task+0x0C`,
+unified logging into `/tmp/tooie-ws-dl-identity.log` with mutex protection and monotonic
+clocks, exported canonical `tooie_get_current_guest_frame()` / `tooie_get_current_capture_id()`,
+and linked RSP HLE via `tooie_ws_log_dl_rsp()`.
+
+```text
+BUILD_RESULT: PASS
+OLD_DL_EVENT_TIMING_BUG_ROOT: PROVEN
+DL_IDENTITY_FRAME_JOIN_FIX_STATUS: VERIFIED
+GUEST_FRAME_JOIN_ACCURACY: 100.0%
+UNJOINED_DL_EVENT_COUNT: 0
+DL_EVENTS_WITH_GUEST_FRAME_UNKNOWN: 0
+DL_EMIT_INSIDE_CAPTURE_COUNT: 4779
+DL_RSP_INSIDE_CAPTURE_COUNT: 8908
+DL_RT64_INSIDE_CAPTURE_COUNT: 8908
+RT64_DRAW_INSIDE_CAPTURE_COUNT: 47761
+ROOT_COMMAND_BUFFER_IDENTITY: DOUBLE_BUFFER (80159600, 80160cd0)
+CURRENT_ROOT_CLASS: UNKNOWN / RE-ANCHOR_REQUIRED
+CURRENT_ROOT_BOUNDARY: NOT_PROMOTED
+FIX_IMPLEMENTED: NO
+TEMP_DIAGNOSTIC_CHANGE_IMPLEMENTED: YES
+DEFAULT_RUNTIME_BEHAVIOR_CHANGED: NO
+LATEST_ARTIFACT: /tmp/p08-widescreen-dl-framejoin-fix-20260826T130423Z/
+LATEST_SHA256SUMS_SHA: 4c650961c173fb7ad7a924fbaaf90abe1393cc3a9d1a53adfe41807d7442cb32
+```
+
+NEXT_SINGLE_ACTION: User triggers one live capture during active gameplay exhibiting the edge geometry glitch (touch /tmp/tooie-ws-capture) to generate authoritative trace in /tmp/tooie-ws-dl-identity.log.
+
+### P08 current arbitration — frame-joined USER_SELECTED window (2026-08-26)
+
+Complete capture `capture_id=1` guest frames **1425..2144** (720,
+`[ws-capture-complete]` present). Nested depth-1 unique count 65 equals RSP
+depth-1. Consecutive nested Jaccard mean 0.997 (0 intermittent). 22 nested DLs
+first_seen after trigger, 9 start-set DLs later absent, concentrated at phys
+`0x0034xxxx`/`0x0035xxxx` with **no** static map/terrain bind. Persistent 49
+nested DLs are guest-emitted and RSP-received. Extra-band draws occur; DL→draw
+join remains NO. Identity last preserved at RSP G_DL visit.
+
+```text
+CAPTURE_VALID: YES
+GUEST_NESTED_DL_SET_BEHAVIOR: CHANGING
+GUEST_DL_TO_RSP_CONTINUITY: PROVEN
+GUEST_DL_ABSENCE_EVIDENCE: PARTIAL
+GUEST_SELECTION_FOR_PERSISTENT_DLS: REFUTED
+RSP_RECEIVES_PERSISTENT_GEOMETRY_EVIDENCE: PROVEN
+RSP_TO_RT64_WORKLOAD_JOIN: PARTIAL
+DL_TO_RT64_DRAW_JOIN: NO
+LAST_IDENTITY_PRESERVING_BOUNDARY: RSP_HLE_G_DL_VISIT
+IDENTITY_LOST_AT: RSP_G_DL_TO_RT64_DRAW
+RT64_IS_RENDERING_EXTRA_BAND_GEOMETRY: YES
+CURRENT_ROOT_CLASS: GUEST_DISPLAY_LIST_SELECTION_OR_EMISSION_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS: STRONG_HYPOTHESIS (later REFINED)
+CURRENT_ROOT_BOUNDARY: nested depth-1 G_DL membership (focal 0035dd20)
+NEXT_DISCRIMINATOR: DL_PRODUCER_BRANCH_TRACE
+FIX_IMPLEMENTED: NO
+LATEST_ARTIFACT: /tmp/p08-widescreen-dl-framejoined-user-arbitration-20260826T143436Z/
+LATEST_SHA256SUMS_SHA: f0f9b493cf4bdac6ebe2378f8ce5b04ce09f8f4eab34058cd58ff7fed6d80f54
+```
+
+`NEXT_SINGLE_ACTION:` Trace producer of nested DL `0035dd20` — **DONE**; see producer-trace checkpoint below.
+
+### P08 current producer trace — nested DL 0x8035dd20 (2026-08-26)
+
+Read-only static/dynamic join of focal nested leaf `0x0035dd20` / `0x8035dd20`
+on the VALID USER_SELECTED window. Storage class is relocated loaded
+map-model payload. First membership branch is `func_80801174_gcmapsects`
+(`0x808011CC` sphere `800E3E8C`, `0x808011F8` AABB `800E3D0C`→`func_800CAA24`).
+G_DL emitter store is UNJOINED. `DYNAMIC_BRANCH_JOIN: NO`. Visual root
+**NOT PROVEN**. No bypass. No production fix.
+
+```text
+FOCAL_DL_PHYSICAL: 0x0035dd20
+FOCAL_DL_KSEG0: 0x8035dd20
+FOCAL_DL_STORAGE_CLASS: LOADED_MAP_MODEL_PAYLOAD
+FOCAL_DL_STATIC_OR_DYNAMIC: DYNAMIC_RELOCATED
+FOCAL_DL_SEMANTIC_CLASS: LEAF_DISPLAY_LIST / MAP_MODEL_PAYLOAD
+FOCAL_DL_MAP_TERRAIN_BIND: UNKNOWN
+FOCAL_DL_FROM_GCMAPSECTS: UNKNOWN (pointer) / YES (class selector)
+FOCAL_DL_FROM_GCCUBEDLL: NO
+FOCAL_DL_FROM_GCSECTIONDLL: NO
+FOCAL_DL_REACHES_800CAA24: YES (static section path)
+FOCAL_DL_LOD_CONTROLLED: NO
+DYNAMIC_BRANCH_JOIN: NO
+CURRENT_ROOT_CLASS: GUEST_MAP_SECTION_DL_SELECTION_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS: STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY: func_80801174_gcmapsects (800E3E8C ∧ 800E3D0C/CAA24)
+NEXT_DISCRIMINATOR: FOCAL_BRANCH_TIMELINE
+FIX_IMPLEMENTED: NO
+LATEST_ARTIFACT: /tmp/p08-widescreen-dl-producer-trace-20260826T150351Z/
+LATEST_SHA256SUMS_SHA: 40d591c62899a56b60f73f4e990f019b1b1890b22b4e4d6a33b41b6eba48f5ee
+```
+
+`NEXT_SINGLE_ACTION:` Instrument `func_80801174_gcmapsects` + `func_800E3D0C`/`func_800CAA24` vs G_DL `0x8035dd20` membership. No bypass. No production patch.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 FOCAL_BRANCH_TIMELINE setup (2026-08-26)
+
+Implemented diagnostic-only wrappers for `func_80801174_gcmapsects`'s real
+helper path (`800E3E8C → 800E3D0C → 800CAA24`), using caller-frame
+reconstruction. Original sphere and CAA24
+returns are recorded with the existing DL `capture_id`/`guest_frame`; no
+bypass, fix, generated-file edit, or RT64 edit was made in this round.
+
+`CAA24` is a two-group separating-plane predicate over the camera/viewport
+volume from `D_8012D500` and two AABB corner vectors (`1=pass`, `0=reject`).
+The stable section identity is `section_ptr + section_index + entry_ptr`.
+Build PASS. Launcher smoke completed 720 frames and logged 3,881 DL events but
+did not reach map traversal, so branch runtime evidence remains `UNKNOWN`.
+
+Artifact: `/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/`;
+manifest SHA `f010ac8a1a33e97494a0d6d5dcb90a237bc8814399c4a01ba1328f21c9de81e3`.
+Next single action: one live user capture; recommended arbitration model:
+Grok 4.6 Medium.
+
+### P08 FOCAL_BRANCH_TIMELINE user arbitration (2026-08-26)
+
+USER_SELECTED `touch /tmp/tooie-ws-capture` produced VALID capture_id=1 frames
+**1717..2436** (720/720, complete present). Focal nested DL `0x8035dd20` is
+present on all 179 graphics-emit frames **1720..2432**. Neighbor `0x8035d268`
+drops at 1856; `0x8035e2d8` persists. `[ws-focal-branch]` events = 0 while
+`[ws-geo-e]`/`[ws-geo-d]` still fire on stack nodes. CAA24/sphere membership
+control is **UNKNOWN**. Focal DL as causal anchor is **WEAKENED** for this
+window (Signature D: already present). Setup artifact
+`/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/` is missing
+from `/tmp`. No bypass. No production fix.
+
+```text
+CAPTURE_VALID: YES
+FOCAL_BRANCH_EVENTS_IN_WINDOW: 0
+CAA24_CONTROLS_FOCAL_MEMBERSHIP: UNKNOWN
+SPHERE_CONTROLS_FOCAL_MEMBERSHIP: UNKNOWN
+FOCAL_DL_8035DD20_AS_CAUSAL_ANCHOR: WEAKENED
+CURRENT_ROOT_CLASS: GUEST_MAP_SECTION_DL_SELECTION_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS: STRONG_HYPOTHESIS
+NEXT_DISCRIMINATOR: FOCAL_BRANCH_JOIN_REPAIR
+FIX_IMPLEMENTED: NO
+LATEST_ARTIFACT: /tmp/p08-widescreen-focal-branch-user-arbitration-20260826T233105Z/
+LATEST_SHA256SUMS_SHA: 4b1867cb2145af8dc5c33b6916943ce335edf6295a886eaef9d37bddf87a7a65
+```
+
+`NEXT_SINGLE_ACTION:` Repair observation of `func_80801174_gcmapsects` so `[ws-focal-branch]` emits on a live `0x8035dd20` frame; then recapture at pop-in. No bypass. No production patch.
+
+### P08 FOCAL_BRANCH_JOIN_REPAIR (2026-08-27)
+
+Old RA/LOOKUP gate root cause is proven (jal PC+8, unmaterialized `r31`,
+helper SP, CreateStatic, address-taken EP table). Direct hook is `ld --wrap`
+of `func_80801174_gcmapsects` plus unlimited ovl=662 `[ws-gcmapsects-syscall]`
+and LOOKUP rebind after `load_overlays`. Build PASS. 45s attract smoke: one
+syscall `ep=15`, `GC_MAPSECTS_ENTRY_COUNT=0`,
+`GC_MAPSECTS_HOOK_VERIFIED=NO`. Focal `0x8035dd20` remains WEAKENED.
+`FIX_IMPLEMENTED: NO`. Artifact
+`/tmp/p08-widescreen-focal-branch-join-repair-20260827T004617Z/`
+(manifest `2c84d1739211aff278e4e469f3af40e816640cc2f0304ff6493d62c9d1f19cfc`).
+
+`NEXT_SINGLE_ACTION:` Get `[ws-gcmapsects-entry] > 0` on the glitch map, then one USER_SELECTED capture. No bypass. No production patch.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+### P08 POST_GCMAPSECTS_REANCHOR (2026-08-27)
+
+Manual gameplay showed the widescreen wall-hole while overlay 662 logged
+39 syscalls (`ep4=27`, `ep15=12`, `ep9/13/17=0`) and `func_80801174` ran
+**0** times. `GUEST_MAP_SECTION_DL_SELECTION_BOUNDARY` is
+`CORRECTED/SUPERSEDED` for this run (`REFUTED_FOR_THIS_RUN` as a necessary
+cause). ep4 is a point-in-section AABB query (`func_800EFED0`); a0 stride
+`0x9C` matches `Actor`. Static world DLs do not require 80801174.
+`CURRENT_ROOT_CLASS:` `RSP_TO_RT64_GEOMETRY_BOUNDARY` / `STRONG_HYPOTHESIS`.
+Banjo `gEXSetNearClipping` relevance `MEDIUM`; do not implement. Artifact
+`/tmp/p08-widescreen-post-gcmapsects-reanchor-20260827T012256Z/`
+(manifest `3c626fd6b1b1d44520550066ef7c34d6d0c2077bb26b0b8b29325623b33e0e37`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `RSP_PRIMITIVE_IDENTITY_PROPAGATION`. No bypass. No production patch. No new user capture this round.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 RSP_PRIMITIVE_IDENTITY_PROPAGATION (2026-08-27)
+
+End-to-end identity chain from nested guest `G_DL` -> RSP HLE DL context stack ->
+primitive sequence generation (`TRI1`, `TRI2`, `QUAD`, `RECT`) -> `DrawCall` batching
+-> `FramebufferRenderer` host widescreen NDC extra-band classification (`minNdcX`,
+`maxNdcX`, `extra_left_intersect`, `extra_right_intersect`) is implemented, built,
+and verified via automated smoke test.
+
+```text
+RSP_PRIMITIVE_PROPAGATION:    IMPLEMENTED_AND_VERIFIED
+DL_CONTEXT_STACK_ACTIVE:      YES
+DL_CONTEXT_EVENTS:            8597
+PRIMITIVES_WITH_DL_IDENTITY:  76229
+RT64_DRAWS_WITH_PRIM_ID:      45506
+JOIN_RATE_DL_TO_PRIMITIVE:    100.0%
+JOIN_RATE_PRIMITIVE_TO_DRAW:  100.0%
+CURRENT_ROOT_CLASS:           RSP_TO_RT64_GEOMETRY_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY:        RSP_G_DL_TO_RT64_DRAW
+LAST_IDENTITY_PRESERVING_BOUNDARY: RT64_HOST_DRAW_EXTRA_BAND_CLASSIFICATION
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-rsp-primitive-identity-setup-20260827T015059Z/
+ARTIFACT_CHECKSUM_MANIFEST:   bb7ea94f1a8f71cb101c0cc4cb38832ccd5aa219240f2526669537eadcdd88e0
+FIX_IMPLEMENTED:              NO
+```
+
+Artifacts dual-verified in `/tmp/p08-widescreen-rsp-primitive-identity-setup-20260827T015059Z/`.
+Single unified log `/tmp/tooie-ws-dl-identity.log`.
+
+`NEXT_SINGLE_ACTION:` USER_SELECTED_AUTHORITATIVE_CAPTURE (user plays to visual anomaly with `TOOIE_DIAG_WS_CONTINUOUS=1` and triggers `touch /tmp/tooie-ws-capture`).
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 RSP_DRAW_USER_ARBITRATION (2026-08-27)
+
+USER_SELECTED capture_id=1 frames **245023..245742** during a visible
+widescreen wall-hole. RSP TRI* primitive→draw join **99.94%**. Every proj=1
+world frame has extra-left and extra-right classified DrawCalls; the proj=1
+extra-band DL set is **STABLE**. `RSP_TO_RT64_DRAW_CREATION_FAILURE` is
+`REFUTED`. `CURRENT_ROOT_CLASS:` `POST_RT64_DRAW_VISIBILITY_BOUNDARY` /
+`STRONG_HYPOTHESIS`. Clip/depth reject telemetry was not in this log.
+Banjo `gEXSetNearClipping` stays `MEDIUM`. Artifact
+`/tmp/p08-widescreen-rsp-draw-user-arbitration-20260827T030225Z/`
+(manifest `2084f416c77a64082a459bf58244cc49a715972efefb454d131a441c13b914ed`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `EXTRA_BAND_FRAGMENT_DEPTH_VISIBILITY`. No bypass. No production patch.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 EXTRA_BAND_FRAGMENT_DEPTH_VISIBILITY (2026-08-27)
+
+End-to-end depth visibility and GPU submission instrumentation is implemented,
+compiled, and verified via automated smoke test.
+
+```text
+POST_DRAW_CPU_REJECTION_FOUND: NO
+DRAW_SURVIVES_TO_GPU_SUBMISSION: YES (100.0%)
+EXTRA_BAND_DRAWS_CLASSIFIED:  29498
+EXTRA_BAND_DRAWS_GPU_SUBMITTED: 29502
+EXTRA_BAND_SCISSOR_EMPTY_COUNT: 0
+EXTRA_BAND_DRAW_SUBMISSION_RATE: 100.0%
+DEPTH_TEST_STATE_CAPTURE_READY: YES
+COLOR_DEPTH_EXTENT_MATCH:     YES (304x228 / 1622x912)
+DEPTH_COORDINATE_SPACE:       HOST_WIDESCREEN_PIXELS / NDC
+EXTRA_BAND_DEPTH_COVERAGE_MISMATCH: REFUTED
+CLIP_STATE_CAPTURE_READY:     YES
+BANJO_NEAR_CLIPPING_EFFECT_STAGE: RASTERIZER_DEPTH_CLIP_ENABLE
+BANJO_NEAR_CLIPPING_CAN_EXPLAIN_LATERAL_HOLES: NO
+FRAGMENT_VISIBILITY_DIRECTLY_OBSERVABLE: NO (proxy active)
+PASS_IDENTITY_CAPTURE_READY:  YES
+CURRENT_ROOT_CLASS:           POST_RT64_DRAW_VISIBILITY_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+USER_CAPTURE_READY:           YES
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-extra-band-depth-visibility-setup-20260827T032333Z/
+ARTIFACT_CHECKSUM_MANIFEST:   386063613e37c2b2272957489a0f0b740c05d803b8745503137dc126ab44d712
+```
+
+Artifacts dual-verified in `/tmp/p08-widescreen-extra-band-depth-visibility-setup-20260827T032333Z/`.
+Single unified log `/tmp/tooie-ws-dl-identity.log` with `[ws-gpu-draw-submit]`.
+
+`NEXT_SINGLE_ACTION:` USER_SELECTED_AUTHORITATIVE_CAPTURE (user plays to visual anomaly with `TOOIE_DIAG_WS_CONTINUOUS=1` and triggers `touch /tmp/tooie-ws-capture`).
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+### P08 GPU_DEPTH_USER_ARBITRATION (2026-08-27)
+
+USER_SELECTED missing-wall capture_id=1 frames **6885..7604**, camera
+**720/720 static**. Proj=1 extra-band DrawCalls **3288/3288** reach GPU
+submit by primitive identity. Color/depth extents **2164x1140** match.
+Near intersections **0**; far `maxNdcZ>1` is epsilon with `depth_clip=0`
+(`FAR_DEPTH_CLIP_ANOMALY: REFUTED`). Smoke 29498 vs 29502 is accounting.
+`CURRENT_ROOT_CLASS:` `POST_GPU_SUBMISSION_FRAGMENT_OR_COMPOSITE_BOUNDARY`
+/ `STRONG_HYPOTHESIS`. Artifact
+`/tmp/p08-widescreen-gpu-depth-user-arbitration-20260827T033147Z/`
+(manifest `6996bd3bcf9974c86d95fc4650f08bc8b061faf407b5fa80ed39288aa94c2eca`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `SEMANTIC_WALL_DRAW_LOCALIZATION`. No bypass. No production patch. No GPU readback.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+### P08 POST_SUBMISSION_COMPOSITE_STATE_TRACE (2026-08-27)
+
+Static + CPU present telemetry. Pixel probe `NOT_COMPLETED / ABANDONED_FOR_SAFETY`
+(three Vulkan incidents). Extra-band proj=1 GPU submit remains proven;
+missing-wall-specific draw remains `NOT_PROVEN`. VI `viewRectangle`/`cropRectangle`
+are `{0,0,1,1}`. Smoke: `uvMax.x=1.0` on 38 presents; gameplay VI `304x228`
+allocates wide host target `1622x912` and samples all of it. Decision **B**
+`GPU_FRAGMENT_RASTER_OR_SEMANTIC_BOUNDARY`. Artifact
+`/tmp/p08-widescreen-post-submission-composite-audit-20260827T052315Z/`
+(manifest `444e33af976f32ba2c4f94409a2210bf80871346281554e9891c66291bb2a2d2`).
+`FIX_IMPLEMENTED: NO`.
+
+### P08 SEMANTIC_WALL_DRAW_LOCALIZATION (2026-08-27)
+
+CPU-only. USER GPU artifact missing from `/tmp`. Persistent USER DLs
+`0031e***` have 0 hits in remaining logs. Smoke `[ws-wall-bounds]` ranks
+map-RAM extra-band DLs (`0031f6d8` vertical subset is scene-local only).
+`MISSING_WALL_DRAW_SEMANTIC_JOIN: NO`. Artifact
+`/tmp/p08-widescreen-semantic-wall-localization-20260827T063054Z/`
+(manifest `2bed363d288b066a76cb656047e2a15c5e988684ad4442ed67aafb67d62e7d51`).
+`FIX_IMPLEMENTED: NO`.
+
+### P08 CPU_SCREEN_BOUNDS_WALL_CANDIDATE_ARBITRATION (2026-08-27)
+
+USER_SELECTED capture_id=1 frames **13309..14028**, camera **720/720 static**
+`(3467.4,105.0,4735.7)`. Screenshot hole NDC `x[-1.00,-0.76] y[-0.30,1.00]`.
+Top cluster: MAP_RAM `00349d38` extra-left TRI1, world
+`(2245,-153,3680)-(2497,400,4263)`, `vert_frac=1`, `gpu_submitted=1` 318/318.
+`MISSING_WALL_DRAW_SEMANTIC_JOIN: PARTIAL`.
+`MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: STRONGLY_SUPPORTED`.
+`CURRENT_ROOT_CLASS:` `WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY`.
+`CULL_WINDING_ANOMALY: UNKNOWN`. Artifact
+`/tmp/p08-widescreen-user-wall-bounds-arbitration-20260827T151459Z/`
+(manifest `cd50d98a55c0ab24bb1ed3d982ae4b648ba148b3bdc2ed0182f31189dd6018b4`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `TARGETED_CULL_WINDING_TRACE`. No bypass. No production patch. No GPU readback.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+### P08 TARGETED_CULL_WINDING_TRACE (2026-08-27)
+
+No new capture. Screenshot mapping recorded as **APPROXIMATE**. Semantic join
+stays **PARTIAL**. Focal `00349d38` extra-left TRI1 GBI indices `0,1,2`; object
+xyz **not in capture**. Positive X aspect scale **cannot** flip winding.
+`SHADER_CULL` = specialized PSO **CullMode FRONT**. `CULL_WINDING_ANOMALY:
+UNKNOWN`. Artifact
+`/tmp/p08-widescreen-targeted-cull-winding-20260827T152926Z/`
+(manifest `c260d0fd338f4b14039e65bc70a33601318682f7686ba5c72441cc18e0d2eb56`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `TARGETED_FOCAL_VERTEX_WINDING_DUMP`. No bypass. No production patch. No GPU readback.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 TARGETED_FOCAL_VERTEX_WINDING_USER_ARBITRATION (2026-08-27)
+
+USER capture `capture_id=1` frames **8278..8997**, camera static
+`(3477.8,113.9,4682.8)`. Real V0/V1/V2 for `00349d38` TRI1 (same world AABB as
+the prior extra-left candidate). Geometric **FRONT**, source/target NDC **CCW
+MATCH**, expected raster survival **YES**. Same-DL FRONT TRI2 cluster matches.
+`CULL_WINDING_ANOMALY: REFUTED_FOR_FOCAL`. Semantic join stays **PARTIAL**.
+Artifact `/tmp/p08-widescreen-focal-winding-user-arbitration-20260827T193119Z/`
+(manifest `f1499333a0fcdb1395f550848e8539026419058f8935c4c8c6b3a9092943667c`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `TARGETED_RASTER_STATE_TRACE` on `00349d38` TRI1. No bypass. No production patch. No GPU readback.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 TARGETED_FOCAL_VERTEX_WINDING_USER_ARBITRATION (2026-08-29)
+
+New USER capture `capture_id=1` frames **3754..4473**, camera static
+`(3598.4,57.8,4908.3)` at the same missing-wall location. Real V0/V1/V2
+identical to the extra-left TRI1 AABB. Geometric **FRONT** (`dot=-0.5196`),
+source/target NDC **CCW MATCH** (`Sx=0.702785` for this ~1920x1012 window vs
+4:3), expected raster survival **YES**. Same-DL FRONT TRI2 cluster matches;
+BACK TRI2 and `0034b800` are culled as expected.
+`CULL_WINDING_ANOMALY: REFUTED_FOR_FOCAL`. Semantic join stays **PARTIAL**.
+Artifact `/tmp/p08-widescreen-focal-winding-user-arbitration-20260829T164524Z/`
+(manifest `d0d993e6e015d482e6807350b8d65de993d6348b7f8d96287972e9d1ee13e489`).
+`FIX_IMPLEMENTED: NO`.
+
+### TARGETED_RASTER_STATE_SETUP (2026-08-29)
+
+Targeted raster state telemetry implemented in RT64 `FramebufferRenderer::addDrawCall`
+under `TOOIE_DIAG_WS_FOCAL_RASTER=1` logging to `/tmp/tooie-ws-focal-raster-state.log`
+with event tag `[ws-focal-raster-state]`.
+Audited all 7 possible fragment discard sites in `RasterPS.hlsl` (0 active for focal `00349d38` TRI1).
+`POST_PROJECTION_NATIVE_COORDINATE_MISMATCH` is **REFUTED**.
+`FIRST_FOCAL_VS_CENTRAL_STATE_DIFFERENCE` is **NONE_OBSERVED**.
+Artifact `/tmp/p08-widescreen-targeted-raster-state-setup-20260829T173856Z/`
+(manifest `fbd3366d1a666196a77c536779cd3b087a0957382ac60bee2cbffe334c81fc14`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` User performs ONE capture at same wall, camera static, with `TOOIE_DIAG_WS_CONTINUOUS=1 TOOIE_DIAG_WS_WALL_BOUNDS=1 TOOIE_DIAG_WS_FOCAL_WINDING=1 TOOIE_DIAG_WS_FOCAL_RASTER=1`. Then Grok 4.6 Medium arbitrates.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+### P08 TARGETED_RASTER_STATE_USER_ARBITRATION (2026-08-29)
+
+USER capture `capture_id=1` frames **2926..3645**, camera static
+`(3584.1,50.7,4893.8)` on host viewport **1622x912** (`Sx=0.750`). Focal
+`00349d38` extra-left TRI1 (exact world verts) is GPU-submitted 286/286 on
+`proj=2` with depth test/write **LESS**. `PRIOR_PROJ1_DEPTH_RESULT_APPLIES_TO_FOCAL: NO`.
+Explicit fragment discard **0/7**. Alpha/coverage/color-write/blend-zero
+**REFUTED_FOR_FOCAL**. Scissor intersects (**PARTIAL** at top clip). First
+runtime state difference vs same-DL FRONT TRI2 is **tex_id**. CPU AABB finds
+no strictly closer visible prior depth writer; depth-test result is **not
+observable** (`DEPTH_OCCLUSION_RESULT: UNKNOWN`). Semantic join stays
+**PARTIAL**. Artifact
+`/tmp/p08-widescreen-focal-raster-user-arbitration-20260829T181535Z/`
+(manifest `a8ce5b47e43ca92986ce19628cc1c1084e6ff2fa22079dc4f17197bcf8636190`).
+`FIX_IMPLEMENTED: NO`.
+
+`NEXT_SINGLE_ACTION:` `TARGETED_FOCAL_TEXTURE_TMEM_TRACE` on `00349d38` TRI1 vs same-DL FRONT TRI2. No GPU readback. No depth bypass. No production patch.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.

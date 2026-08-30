@@ -5,6 +5,25 @@ status: evidence
 
 # USER_DEMO_5 locomotion first-divergence evidence
 
+## CURRENT (2026-08-30) — P08 WIDESCREEN pointer (not locomotion)
+
+USER_DEMO_5 remains `RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`.
+Widescreen residual is independent. Canonical:
+`docs/plan/evidence/p08-widescreen-edge-geometry.md` and `docs/HANDOFF.md`.
+
+This round: user confirmed aspect-aware `800CACEC`; object frustum is
+**production ON**. Intro walls remain independent
+(`SOURCE_GEOMETRY`/`CAMERA_FRAMING`). Artifact
+`/tmp/p08-widescreen-object-production-intro-root-20260830T031102Z/`.
+Prior Banjo-port artifact preserved
+`/tmp/p08-widescreen-object-model-frustum-banjo-port-20260830T024845Z/`.
+Prior witness-analysis artifact preserved
+`/tmp/p08-widescreen-object-pop-witness-analysis-20260830T022303Z/`
+SHA256SUMS `471db3eaf6f138143cfcf7443adbeb6eeef183aa40d38c9a31ef54610b98dbef`.
+Prior production-witness artifact preserved
+`/tmp/p08-widescreen-map-production-and-object-witness-20260830T020240Z/`
+`9c7566804674e3057f71414d1cf659396e47e75fb705dfdf4bd046b0ba5e86d8`.
+
 ## Independent `800EEBF0` / `800EE780` arbitration — 2026-08-23
 
 Canonical base: `25595a2eb8241ef7ca4aa135e6681e44abcf8598`.
@@ -1800,15 +1819,18 @@ físico.
 `P09_STATUS: PENDING / NOT_FORMALLY_OPEN`;
 `USER_DEMO5_STATUS: RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`.
 `AUDIO_STARTUP_TICK: P08_RESIDUAL`; `WIDESCREEN_EDGE_GEOMETRY:
-POST_P08_ENHANCEMENT` (baseline 4:3); `CHARACTER_EDGE_GRAPHICS_GLITCH:
+POST_P08_ENHANCEMENT` (baseline 4:3) is **CORRECTED/SUPERSEDED** as a
+causal class by [[p08-widescreen-edge-geometry]]
+(`D — HOST_RT64_WIDESCREEN_ADAPTATION_BOUNDARY`). This locomotion note is
+not the canonical widescreen evidence. `CHARACTER_EDGE_GRAPHICS_GLITCH:
 P08_RESIDUAL`; `LONG_PLAYTHROUGH_VALIDATION: MANUAL_VALIDATION_PENDING`;
 `WINDOWS_GAMEPAD_VALIDATION: BLOCKING_P08 / MANUAL_VALIDATION_PENDING`.
 
-Remaining P08: validação formal Windows/controle físico, long playthrough e
-triagem separada dos residuais de áudio/gráficos. O fix focal está
-`CURRENT_FIX_READY_FOR_COMMIT: YES`; o worktree completo ainda mistura
-instrumentação/diagnóstico e histórico, portanto não é um commit único limpo.
-`BUILD_THIS_ROUND: NOT_RUN`; nenhum commit/push foi feito.
-
-`NEXT_SINGLE_ACTION: executar e registrar a validação formal Windows + controle
-físico antes de abrir P09.`
+Remaining P08: WIDESCREEN_EDGE_GEOMETRY discriminator (separate residual;
+canonical [[p08-widescreen-edge-geometry]]); next
+`ACTOR_PICKUP_PREMODEL_VIEW_VISIBILITY` (`800F0064` `REFUTED`; bound-sprite
+view cull `REFUTED`; `800CAB70`/`8011458C` start). Validação formal
+Windows/controle físico; long playthrough; triagem separada de
+áudio/character-edge. O fix focal `800979D8` permanece
+`CURRENT_FIX_READY_FOR_COMMIT: YES`. This widescreen round did not reopen
+USER_DEMO_5. Nenhum commit/push foi feito.

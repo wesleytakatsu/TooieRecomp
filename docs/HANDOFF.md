@@ -1,14 +1,1479 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_4 idle follow-cam glidx 1..38 match ANGRYLION_CONTROL; glidx 39 first remaining split is native 0x800979D8 return (pad 0001 MATCH). BLUE-vs-FIRE egg remains. Formal P08 gates: PHYSICAL_GAMEPAD_VALIDATION plus 0x800979D8 dynamic acceptance."
+description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_5 is RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX. WIDESCREEN_EDGE_GEOMETRY: 800CAA24 PRODUCTION ON; 800CACEC object frustum PRODUCTION ON (user visual confirmed); intro walls STILL_PRESENT independent SOURCE_GEOMETRY/CAMERA_FRAMING. P09 not formally open."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-21
+updated: 2026-08-30
 tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
 ---
 
 # Handoff — TooieRecomp
+
+## CURRENT (2026-08-30) — OBJECT_FRUSTUM_PRODUCTION + INTRO_WALL_ROOT
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+800CACEC_AS_OBJECT_POP_GATE:  PROVEN
+OBJECT_FRUSTUM_ASPECT_AWARE_VISUAL_RESULT: VISUALLY_CONFIRMED
+OBJECT_FRUSTUM_PRODUCTION_PROMOTED: YES
+PRODUCTION_OBJECT_FIX_MATCHES_VALIDATED_DIAGNOSTIC: YES
+FOUR_THREE_IDENTITY:          PROVEN
+ARBITRARY_ASPECT_SUPPORT:     YES
+DEMO_ORIGINAL_CULL_RESULT_PRESERVED: YES
+MAP_VIS_PRODUCTION_FIX:       ACTIVE
+INTRO_WALL_RESIDUAL:          STILL_PRESENT
+INTRO_STATE_FUNCTION:         T_INTRO mode=3 map=0; MAP_18B_CS_STARTUP_INTRO (395/0x18B)
+INTRO_CAMERA_PATH:            chintrocam overlay
+INTRO_MAP_OR_MODEL_SOURCE:    MAP_18B_CS_STARTUP_INTRO
+INTRO_LATERAL_WALL_GEOMETRY_PRESENT: UNKNOWN
+INTRO_MISSING_WALL_PASSES_800CAA24: UNKNOWN
+INTRO_MISSING_WALL_CLASS:     SOURCE_GEOMETRY / CAMERA_FRAMING
+INTRO_FIRST_DROP_GATE:        NONE_PROVEN
+INTRO_CAMERA_EXPAND_EXPOSES_UNSAFE_REGION: UNKNOWN
+BANJO_INTRO_GEOMETRY_FIX:     hotpatch_intro_opa_map_model ASSET_149D extra wall/grass DL
+TOOIE_STRUCTURAL_ANALOG:      MAP_18B OPA/XLU + Expand; do not port Banjo verts
+INTRO_ROOT_STATUS:            STRONG_HYPOTHESIS
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_DISCRIMINATOR:           INTRO_MAP_18B_SOURCE_EXTENT_VS_EXPAND_FRUSTUM
+NEXT_SINGLE_ACTION:           CPU dump MAP_18B_CS_STARTUP_INTRO OPA/XLU vertex XZ vs source 4:3 and target Expand
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-object-production-intro-root-20260830T031102Z/
+ARTIFACT_CHECKSUM_MANIFEST:   3d69e9a80426875a31e3c65c1c07e538c61a93d9b49d9d54df2c39a1a2ba0fe8
+```
+
+User: `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1` gameplay objects stay
+visible. Promoted to production (ON unless env `=0`). DRAW-only H-expand
+(`800E3E8C` / `8011447C`); occupancy `8011458C` and `chlightfader` keep
+original v0. Attract 62s prod new_accept=279. Intro walls still missing:
+independent of both gameplay fixes. Banjo intro needed extra OPA
+triangles + pillarbox. No intro production fix. This commit is the
+gameplay `800CAA24` + `800CACEC` production milestone. Do not push.
+
+## Prior (2026-08-30) — OBJECT_MODEL_FRUSTUM_BANJORECOMP_PORT
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_VIS_PRODUCTION_PROMOTED:  YES
+MAP_SECTION_800CAA24_ROOT:    PROVEN_PARTIAL
+GAMEPLAY_MAP_WALL_FIX:        VISUALLY_SUCCESSFUL
+GAMEPLAY_OBJECT_POP:          STILL_PRESENT (user rerun)
+SUMMARY_FRAMES:               8861
+SUMMARY_TRANSITION_COUNT:     96 logged / 902 dropped
+GAMEPLAY_INSTANCES_CAPTURED:  YES
+INTRO_INSTANCES_EXCLUDED:     YES
+OBJECT_A_RUNTIME_IDENTITY:    chsilo 0x801ad888 getter=0x80086e60 xyz=(-6706,-922,3702) r=95 MEDIUM
+OBJECT_B_RUNTIME_IDENTITY:    chnests 0x801adf3c getter=0x80085ac8 xyz=(-5849,-921,3709) r=70 MEDIUM
+CONTROL_C_RUNTIME_IDENTITY:   chnests 0x801adc30 getter=0x80085ac8 xyz=(-7127,-920,4412) LOW
+OBJECT_A_TRANSITION_CLASS:    OBJECT_MODEL_FRUSTUM_SIDE_PLANE
+OBJECT_B_TRANSITION_CLASS:    OBJECT_MODEL_FRUSTUM_SIDE_PLANE
+SOURCE_REJECT_TARGET_ACCEPT_OBSERVED: YES (89/96 logs)
+CACEC_BANJO_ANALOG_STATUS:    PROVEN
+CACEC_SEES_EXPANDED_PLANES:   NO
+800CACEC_AS_OBJECT_POP_GATE:  PROVEN
+PREVIOUS_CACEC_NO_CHANGE:     intro/map walls, not this object-pop path
+DEMO_ORIGINAL_CULL_RESULT_REQUIRED: YES
+OBJECT_FRUSTUM_COUNTERFACTUAL_IMPLEMENTED: YES
+OBJECT_FRUSTUM_COUNTERFACTUAL_FLAG: TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE
+CACEC_SOURCE_REJECT_TARGET_ACCEPT_COUNT: 244 (attract B)
+CACEC_TARGET_NEW_DRAW_COUNT:  244
+OBJECT_FRUSTUM_COUNTERFACTUAL_RESULT: STRONG_HIT
+FOUR_THREE_IDENTITY:          PROVEN
+ARBITRARY_ASPECT_SUPPORT:     YES
+INTRO_WALL_RESIDUAL:          OPEN_MIXED
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+FIX_IMPLEMENTED:              YES (800CAA24 production); object frustum diagnostic only, not promoted
+NEXT_DISCRIMINATOR:           USER_VISUAL_OBJECT_FRUSTUM_ASPECT
+NEXT_SINGLE_ACTION:           TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1 ./build/TooieRecompiled
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-object-model-frustum-banjo-port-20260830T024845Z/
+ARTIFACT_CHECKSUM_MANIFEST:   ab92e43b8cfe48e81ae44b85beed830d8751f621d54aeadc7bd0b8ae55f9e126
+```
+
+User rerun with `TOOIE_DIAG_WS_OBJECT_POP=1` captured gameplay
+`chnests`/`chsilo`/`chsignpost`. Distance fell while `800CACEC` went
+ACCEPT→REJECT and source-4:3 NO / target-Expand YES. Same k H-expand
+as production `800CAA24` is implemented behind
+`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE` (default OFF, not blanket
+TRUE). Attract 62s: 244 source-reject/target-accept applied. Do not
+promote until the user confirms A/B stay visible. Keep original cull
+for demo callbacks (Banjo PR #29). Do not combine vis flags.
+
+## Prior (2026-08-30) — OBJECT_POP_WITNESS_ANALYSIS (INCONCLUSIVE)
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_VIS_ASPECT_AWARE_VISUAL_RESULT: VISUALLY_CONFIRMED_FOR_TESTED_GAMEPLAY_MAP_GEOMETRY
+MAP_VIS_PRODUCTION_PROMOTED:  YES
+PRODUCTION_MAP_FIX_MATCHES_VALIDATED_DIAGNOSTIC: YES
+FOUR_THREE_IDENTITY:          PROVEN
+ARBITRARY_ASPECT_SUPPORT:     YES
+RT64_CHANGE_NEEDED:           NO
+OBJECT_POP_SCREENSHOT_SEQUENCE: PROVEN
+OBJECT_POP_CLASSIFICATION:    INCONCLUSIVE
+OBJECT_A_CLASS:               UNKNOWN
+OBJECT_B_CLASS:               UNKNOWN
+CONTROL_OBJECT_C_CLASS:       UNKNOWN
+LOCKED_THIS_RUN:              chintrochar (0x80086C98) — NOT A/B
+TYPE6_GAMEPLAY_OBJECT_POP_STATUS: REOPENED_TARGETED
+TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED
+800CACEC_STRUCTURAL_ANALOG_OF_8024DB50: PROVEN
+800CACEC_AS_OBJECT_POP_GATE:  STRONG_HYPOTHESIS
+ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED
+MAP_SECTION_800CAA24_ROOT:    PROVEN_PARTIAL
+INTRO_WALL_RESIDUAL:          OPEN_MIXED
+INTRO_RESIDUAL_INDEPENDENT_FROM_GAMEPLAY_MAP_FIX: STRONG_HYPOTHESIS
+NORMAL_GAMEPLAY_AND_DEMO_OBJECT_POP_SHARED: USER_OBSERVED
+OBJECT_POP_DIAGNOSTIC_FLAG:   TOOIE_DIAG_WS_OBJECT_POP
+OBJECT_POP_SUMMARY_PATH:      /tmp/tooie-ws-object-pop-summary.txt
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+FIX_IMPLEMENTED:              YES (800CAA24 production only; no object fix)
+NEXT_DISCRIMINATOR:           USER_VISUAL_OBJECT_POP_DIAG_CACEC
+NEXT_SINGLE_ACTION:           TOOIE_DIAG_WS_OBJECT_POP=1 ./build/TooieRecompiled (do not combine vis flags). Pan at the screenshot objects; summary auto-writes.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-object-pop-witness-analysis-20260830T022303Z/
+ARTIFACT_CHECKSUM_MANIFEST:   471db3eaf6f138143cfcf7443adbeb6eeef183aa40d38c9a31ef54610b98dbef
+```
+
+Completed diagnostic: frames=8315 pool=24 locked=3 logs=0. Locked
+`_chintrochar_entrypoint_0`. `800EFFB4` never called. Type-6 vis did not
+toggle on captured intro instances; A/B were not in the pool. `800CACEC`
+is Banjo `viewport_func_8024DB50` (sphere vs 4 side planes). Diagnostic
+now tracks `800CACEC`, evicts intro, never locks intro. No object
+production fix. If later proven: same k H-expand as `800CAA24` for DRAW
+only; keep original v0 for demo/callback semantics; no blanket TRUE.
+
+## Prior (2026-08-30) — WIDESCREEN_EDGE_GEOMETRY MAP_VIS_PRODUCTION + OBJECT_POP_WITNESS
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_VIS_ASPECT_AWARE_VISUAL_RESULT: VISUALLY_CONFIRMED_FOR_TESTED_GAMEPLAY_MAP_GEOMETRY
+MAP_VIS_PRODUCTION_PROMOTED:  YES
+PRODUCTION_MAP_FIX_MATCHES_VALIDATED_DIAGNOSTIC: YES (near-match attract; same k/math)
+FOUR_THREE_IDENTITY:          PROVEN
+ARBITRARY_ASPECT_SUPPORT:     YES
+RT64_CHANGE_NEEDED:           NO
+OBJECT_POP_SCREENSHOT_SEQUENCE: PROVEN
+OBJECT_A_CLASS:               UNKNOWN
+OBJECT_B_CLASS:               UNKNOWN
+CONTROL_OBJECT_C_CLASS:       UNKNOWN
+TYPE6_GAMEPLAY_OBJECT_POP_STATUS: REOPENED_TARGETED
+TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED
+ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED
+MAP_SECTION_800CAA24_ROOT:    PROVEN_PARTIAL
+INTRO_WALL_RESIDUAL:          OPEN_MIXED
+INTRO_RESIDUAL_INDEPENDENT_FROM_GAMEPLAY_MAP_FIX: STRONG_HYPOTHESIS
+NORMAL_GAMEPLAY_AND_DEMO_OBJECT_POP_SHARED: USER_OBSERVED
+OBJECT_POP_DIAGNOSTIC_FLAG:   TOOIE_DIAG_WS_OBJECT_POP
+OBJECT_POP_SUMMARY_PATH:      /tmp/tooie-ws-object-pop-summary.txt
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+FIX_IMPLEMENTED:              YES (800CAA24 production only; no object fix)
+NEXT_DISCRIMINATOR:           USER_VISUAL_OBJECT_POP_DIAG
+NEXT_SINGLE_ACTION:           TOOIE_DIAG_WS_OBJECT_POP=1 ./build/TooieRecompiled (do not combine with TOOIE_TEST_DISABLE_MAP_VIS_CULL). Pan at the screenshot objects; summary auto-writes.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-map-production-and-object-witness-20260830T020240Z/
+ARTIFACT_CHECKSUM_MANIFEST:   9c7566804674e3057f71414d1cf659396e47e75fb705dfdf4bd046b0ba5e86d8
+```
+
+User: gameplay walls look good under aspect-aware. Three screenshots prove
+individual A/B object pop (gray dome then orange; blue nest control stays).
+Same pop in demo. Intro walls still broken. Production 800CAA24 H-expand is
+ON unless `TOOIE_TEST_MAP_VIS_ASPECT_AWARE=0`. Attract P@5880 new_accept=3425
+vs diagnostic C 3504. Identities remain UNKNOWN (do not guess from appearance).
+
+## Prior (2026-08-30) — WIDESCREEN_EDGE_GEOMETRY 800CAA24_FINAL_SEMANTICS
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MAP_VIS_ASPECT_AWARE_CLASSIFICATION: STRONG_CANDIDATE
+FUNC_800CAA24_ROLE: world float AABB vs 4 frustum SIDE planes (no near/far)
+FUNC_800E3D0C_ROLE: map-section wrapper; two 800CAA24 tests on D_8012D500
+INDEPENDENT_GEOCMD_LIKE_CULL_EXISTS: YES (800E3DC0/800CAB70 = BK GeoCmdD homolog)
+DISTINCT_GEOCMD_LAYER_BEYOND_E3DC0: NO
+INTRA_MODEL_GEOCMD_ANALOG_UNTESTED_WORDING: CORRECTED/SUPERSEDED
+E3DC0_DIRECT_ROOT: REFUTED (do not relabel)
+TARGET_ASPECT_AVAILABLE_TO_GUEST_PATCH: YES
+ASPECT_API_IMPLEMENTATION_NEEDED: NO
+RT64_CHANGE_NEEDED: NO
+FOUR_THREE_IDENTITY: PROVEN (k<=1 leaves orig)
+USER_VISUAL_TEST_REQUIRED_NOW: YES
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + aspect-aware STRONG_CANDIDATE + leftover items/rocks MIXED + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + STRONG_CANDIDATE_PENDING_USER_VISUAL + OPEN_RESIDUALS
+FIX_IMPLEMENTED: NO
+NEXT_DISCRIMINATOR:           USER_VISUAL_MAP_VIS_ASPECT_AWARE
+NEXT_SINGLE_ACTION:           TOOIE_TEST_MAP_VIS_ASPECT_AWARE=1 ./build/TooieRecompiled (do not combine with TOOIE_TEST_DISABLE_MAP_VIS_CULL). Compare gameplay walls vs leftover items/rocks vs intro MIXED.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-map-vis-final-semantics-20260830T010730Z/
+ARTIFACT_CHECKSUM_MANIFEST:   2c66095cc262b4d6b8fad31a4bc13b0609109db4555e223cb638fce456c3eaca
+```
+
+Attract aligned frames=5880: A dl=262956; B blanket dl=1063786 forced=401577;
+C aspect dl=283719 new_accept=3504 (C/A DL 1.079, B/A 4.045). `k=1.33333`
+source=4/3 target=16/9. Prior remaining-static artifact preserved
+`/tmp/p08-widescreen-remaining-static-decorative-draw-20260830T002649Z/`
+`f7fa715b7bb5888df0222be2ef5a2439243453f67732ad6aafb1414f634c5174`.
+
+## Prior (2026-08-30) — WIDESCREEN_EDGE_GEOMETRY REMAINING_STATIC_DECORATIVE_MODEL_DRAW
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+FUNC_80108C14_ROLE: rare D_80136EE0 walk; overlay-loaded then 800819B4
+FUNC_80108C14_IS_PER_FRAME: NO (LIVE 2 vs 800FF62C=1337)
+FUNC_80108C14_IS_DRAW: CONDITIONAL
+FUNC_80108C14_EMITS_DL: YES structurally; LIVE 0
+MODEL_LIST_GLOBAL: D_80136EE0 (same 0x9C type-6 objects)
+80108C14_AS_REMAINING_DRAW_ROOT: REFUTED
+REMAINING_STATIC_DECORATIVE_VIEW_CULL_AS_EXPAND_ROOT: REFUTED
+ACTOR_PICKUP_VIEW_CULL_AS_EXPAND_ROOT: REFUTED
+BOUND_SPRITE_VIEW_CULL_AS_EXPAND_ROOT: REFUTED
+TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED
+INTRO_RESIDUAL_CLASS: MIXED
+STATIC_DECORATIVE_VIEW_COUNTERFACTUAL: NOT_IMPLEMENTED
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + leftover items/rocks MIXED (type-6 Euclidean not aspect; actor draw NO_CHANGE; possible intra-model GeoCmd analog untested; leftover source geometry) + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + OPEN_RESIDUALS
+FIX_IMPLEMENTED: NO
+NEXT_DISCRIMINATOR:           GLOBAL_RESIDUAL_RERANK_800CAA24_FINAL_SEMANTICS
+NEXT_SINGLE_ACTION:           Re-rank remaining gameplay residual after closed object families: 800CAA24 remaining section semantics versus intra-model GeoCmd analog versus leftover source geometry. Do not return to GPU. Do not combine vis flags.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-remaining-static-decorative-draw-20260830T002649Z/
+ARTIFACT_CHECKSUM_MANIFEST:   f7fa715b7bb5888df0222be2ef5a2439243453f67732ad6aafb1414f634c5174
+```
+
+60s attract: `08c14=2 visits=42 skip_id0=41 da298 fail=1 ffab0=0 dl=0`.
+Same list as type-6 (`ff62c=1337 vis rej=0 dl=53`). Jalr `obj+0x10` is
+GETTER (`chintrochar`/`chnests`/`chsignpost`/…), not DRAW. Gates are
+RESOURCE (`asset_id==0` / `800DA298` overlay loaded); `CAN_REJECT_SOTI: NO`.
+HARD STOP Parts 14/15. Prior actor-pickup artifact preserved
+`/tmp/p08-widescreen-actor-pickup-premodel-view-20260830T000358Z/`
+`4706ad90341a23e6bbf299a53acac7495b32f472387dbcc3d7dc77665fec0d5d`.
+
+## Prior (2026-08-30) — WIDESCREEN_EDGE_GEOMETRY ACTOR_PICKUP_PREMODEL_VIEW_VISIBILITY
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+FUNC_8011458C_ROLE: occupancy/near-fog probe via 801143A4; NOT actor draw dispatch
+FUNC_8011458C_PER_FRAME: YES
+ACTOR_SOURCE_CONTAINER: gccube grid D_80128410 / cube 0xC occupancy
+ACTOR_SPATIAL_SELECTION_FUNCTION: 80114184 AABB + 800BD708 cube idx
+ACTOR_LIST_CONSUMER: 800CD23C
+ACTOR_DRAW_DISPATCH: 800EA628
+ACTOR_MODEL_DRAW: 80103508
+ACTOR_DL_EMIT: 8010108C
+FIRST_NEW_ACTOR_VIEW_GATE: 800BD708 (cube AABB; WORLD_SPATIAL GRID)
+ACTOR_VIEW_COUNTERFACTUAL_FLAG: TOOIE_TEST_EXPAND_ACTOR_CUBE_AABB
+ACTOR_VIEW_COUNTERFACTUAL_RESULT: PARTIAL_HIT visitation / NO_CHANGE draw-DL
+ACTOR_PICKUP_VIEW_CULL_AS_EXPAND_ROOT: REFUTED
+BOUND_SPRITE_VIEW_CULL_AS_EXPAND_ROOT: REFUTED
+TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED
+INTRO_RESIDUAL_CLASS: MIXED
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + actor cube AABB PARTIAL_HIT visitation / draw NO_CHANGE / REFUTED as Expand DRAW root + bound-sprite view cull REFUTED + type-6 Euclidean not aspect + leftover items/rocks + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + OPEN_RESIDUALS
+FIX_IMPLEMENTED: NO
+NEXT_DISCRIMINATOR:           REMAINING_STATIC_DECORATIVE_MODEL_DRAW
+NEXT_SINGLE_ACTION:           Start at 80108C14 model-list / overlay jalr DRAW vs UPDATE for leftover items/rocks that are not 800CAA24, not 800EA628->8010108C (attract 0108c=0), not bound-sprite, not type-6 Euclidean. Do not automatically return to GPU. Do not combine vis flags.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-actor-pickup-premodel-view-20260830T000358Z/
+ARTIFACT_CHECKSUM_MANIFEST:   4706ad90341a23e6bbf299a53acac7495b32f472387dbcc3d7dc77665fec0d5d
+```
+
+60s attract A (flag=0): `14184=1505 ea628=22722 03508=3 draw108c=0 dl=0 cube_span max=8`.
+60s attract B (`TOOIE_TEST_EXPAND_ACTOR_CUBE_AABB=1`): `ea628=257504` (~11×) `expanded=3371` `03508=3 draw108c=0 dl=0 cube_span max=72`. Extra candidates fail `800EB350` Euclidean / `800CB854` pass-mode. HARD STOP on this actor view family.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY BOUND_SPRITE_INSTANCE_PER_FRAME_DRAW
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+PROP_TYPE_7_ROLE: static bound sprite occupancy (800CBA68 -> gcbound_ep3)
+PROP_TYPE_9_ROLE: static bound sprite occupancy (800CBAC8 -> gcbound_ep4)
+PROP_TYPE_A_ROLE: SKIPPED (CORRECTED/SUPERSEDED)
+PROP_TYPE_C_ROLE: static bound sprite occupancy (800CBB18 -> gcbound_ep5)
+BOUND_SPRITE_INSERT_FUNCTION: 800B3CDC via 808001A8_gcboundDll
+BOUND_SPRITE_CONTAINER: D_8012AE80+0xE0 (header 0x8012AF60)
+BOUND_SPRITE_RECORD_SIZE: 0x18
+BOUND_SPRITE_FIRST_PER_FRAME_CONSUMER: 800CB8F0 (lookup; queries 800CBC3C/CBDD4/CC078/CC338)
+BOUND_SPRITE_DRAW_FUNCTION: NONE
+BOUND_SPRITE_DL_EMIT_FUNCTION: NONE
+BOUND_SPRITE_PATH_EXERCISED: YES (60s attract cb8f0=5777 nonnull=5777)
+BOUND_SPRITE_VIEW_CULL_AS_EXPAND_ROOT: REFUTED
+SPRITE_800F0064_AS_LATERAL_EXPAND_ROOT: REFUTED
+TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED
+TYPE6_AS_GLOBAL_GAMEPLAY_RESIDUAL_ROOT: UNKNOWN / LOW_PRIORITY
+INTRO_RESIDUAL_CLASS: MIXED
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + type-6 Euclidean not aspect + 800F0064 REFUTED + bound-sprite view cull REFUTED + actor/pickup OPEN + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + OPEN_RESIDUALS
+FIX_IMPLEMENTED: NO
+NEXT_DISCRIMINATOR:           ACTOR_PICKUP_PREMODEL_VIEW_VISIBILITY
+NEXT_SINGLE_ACTION:           Trace actor/pickup pre-draw vis at 800CAB70/800E3DC0/800CACEC and 8011458C; prove whether any gate can reject SOURCE_OUTSIDE_TARGET_INSIDE. No actor CF until proven. Do not reopen 800F0064 or bound-sprite draw. Do not combine vis flags.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-bound-sprite-per-frame-draw-20260829T231221Z/
+ARTIFACT_CHECKSUM_MANIFEST:   fde93ff1c4e3059d186c567f810ad753b7fbe9cdc075ede0b193726d62a98d51
+```
+
+`800B3CDC` inserts 0x18 occupancy nodes (xyz, half-radius, packed id).
+Per-frame consumers are spatial queries, not a renderer. LIVE 60s:
+`draw_fn=NONE dl_emit=NONE`. No frustum/FOV/aspect pre-draw gate.
+HARD STOP on this family.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY GSPROPS_SPRITE_7_9_A_PER_FRAME_VISIBILITY
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+PROP_TYPE_7_ROLE: static bound sprite (800CBA68 -> gcbound_ep3)
+PROP_TYPE_9_ROLE: static bound sprite (800CBAC8 -> gcbound_ep4)
+PROP_TYPE_A_ROLE: SKIPPED (CORRECTED/SUPERSEDED)
+PROP_TYPE_C_ROLE: static bound sprite (800CBB18 -> gcbound_ep5)
+FUNC_800F0064_ROLE: world XZ dist^2 < radius^2 (NOT camera/FOV/aspect)
+FUNC_800F0064_CAN_CAUSE_LATERAL_EXPAND_POP: NO
+SPRITE_PATH_AUTOMATICALLY_EXERCISED: YES (60s attract; 30s intro t7=0)
+T7_SEEN: 47
+T9_SEEN: 36
+TA_SEEN: 0 (type 0xA skipped)
+TC_SEEN: 1
+SPRITE_VISIBILITY_TESTS: 703
+SPRITE_VISIBILITY_ACCEPTS: 62
+SPRITE_VISIBILITY_REJECTS: 641
+SPRITE_DRAW_ATTEMPTS (inserts): 90 -> 114 CF
+GSPROPS_VIS_COUNTERFACTUAL_REUSED: YES
+SPRITE_VIS_COUNTERFACTUAL_CPU_RESULT: PARTIAL_HIT (inserts); REFUTED as Expand pop
+TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED
+TYPE6_AS_GLOBAL_GAMEPLAY_RESIDUAL_ROOT: UNKNOWN / LOW_PRIORITY
+INTRO_RESIDUAL_CLASS: MIXED
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + type-6 Euclidean not aspect + 800F0064 spatial-index REFUTED as FOV + bound-sprite per-frame draw UNKNOWN + actor/pickup OPEN + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + OPEN_RESIDUALS
+FIX_IMPLEMENTED: NO
+NEXT_DISCRIMINATOR:           BOUND_SPRITE_INSTANCE_PER_FRAME_DRAW
+NEXT_SINGLE_ACTION:           Identify who walks D_8012AE80+0xE0 / 800B3CDC products every frame and which camera/FOV gate (if any) drops them before DL. Do not reopen 800F0064 as vis. Do not combine vis flags.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-gsprops-sprite-visibility-20260829T224516Z/
+ARTIFACT_CHECKSUM_MANIFEST:   40941e011e86c403ec0b9cb0f781a6db3b15ff04cd4d7ea6aae18ce5be604894
+```
+
+`gccube_ep6` is MAP-LOAD (LIVE gccube6=2). `800F0064` compares prop world XZ
+to bound records; samples are far world pairs, not 4:3 lateral edges.
+Independent `TOOIE_TEST_DISABLE_GSPROPS_VIS_CULL=1` forced 70 rejects and
+raised inserts 90→114 (`PARTIAL_HIT`) but cannot explain Expand pop.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY LOADED_STATIC_MODEL_PER_FRAME_DRAW
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+MODEL_GEO_FLAG_CONFIRMED_ACTIVE_DURING_GAMEPLAY: UNKNOWN
+GSPROPS_ENTRYPOINT_1_ROLE: PROVEN_ONE_SHOT_TYPE6_LOAD
+GSPROPS_ENTRYPOINT_1_SELECTOR_RESULT: REFUTED_AS_PER_FRAME_VISIBILITY_SELECTOR
+PROP_CELL_800BE09C_RESULT: REFUTED_FOR_STATIC_TYPE6_ROOT
+FUNC_80108DC0_ROLE: model/resource constructor into D_80136EE0 (NOT vis)
+TYPE6_PROP_RECORD_SIZE: 0x14 (cube-list); loaded object 0x9C
+TYPE6_FIRST_PER_FRAME_CONSUMER: 800FF62C
+TYPE6_FIRST_PER_FRAME_CONSUMER_ADDRESS: 0x800FF62C
+TYPE6_PER_FRAME_ITERATION_SOURCE: D_80136EE0
+TYPE6_DRAW_FUNCTION: 8010108C (first visit) then vtable+0x10
+TYPE6_DL_EMIT_FUNCTION: 800819B4
+TYPE6_FIRST_VISIBILITY_GATE: 8010038C later + 800EFFB4 Euclidean sphere
+TYPE6_FIRST_VISIBILITY_GATE_ROLE: dist^2 vs radius^2; NOT frustum/FOV/aspect
+TYPE6_VISIBILITY_GATE_STATUS: PROVEN exists; LIVE never rejected tracked intro type-6
+TYPE6_CONSUMER_EXERCISED: YES (25s auto-start still intro)
+TRACKED_TYPE6_LOADED: 10
+TRACKED_TYPE6_CONSUMER_SEEN: 320
+TRACKED_TYPE6_DRAW_ATTEMPTS: 84
+TRACKED_TYPE6_VISIBILITY_REJECTS: 0
+TRACKED_TYPE6_VISIBILITY_ACCEPTS: 0
+TRACKED_TYPE6_DL_EMITS: 53
+TYPE6_VIS_COUNTERFACTUAL_IMPLEMENTED: YES (TOOIE_TEST_DISABLE_TYPE6_STATIC_VIS_CULL)
+TYPE6_VIS_COUNTERFACTUAL_RESULT: NO_CHANGE
+TYPE6_AS_OBSERVED_RESIDUAL_ROOT: STRONGLY_WEAKENED (intro)
+RESIDUAL_ROCKS_LIKELY_TYPE6: UNKNOWN
+RESIDUAL_ITEMS_LIKELY_TYPE6: UNKNOWN
+RESIDUAL_GENERAL_ASSETS_LIKELY_TYPE6: UNKNOWN
+INTRO_RESIDUAL_CLASS: MIXED
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + type-6 draw path PROVEN but vis not aspect + sprite/gcbound OPEN + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + OPEN_RESIDUALS
+PERFORMANCE_GATING_CLEANUP_PRESERVED: YES
+GPU_READBACK_USED:            NO
+FIX_IMPLEMENTED:              NO
+NEXT_DISCRIMINATOR:           GSPROPS_SPRITE_7_9_A_PER_FRAME_VISIBILITY
+NEXT_SINGLE_ACTION:           Exercise types 7/9/A -> gcbound -> 800F0064 on an automated attract/demo window that actually dispatches sprites (intro t7=0). Do not combine vis flags. Type-6 consumer is closed.
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-loaded-static-model-per-frame-draw-20260829T215504Z/
+ARTIFACT_CHECKSUM_MANIFEST:   de43c12dfcaccd59e3b4cd4ca2b6aa88a74dd232e89b757c4e6e56393b4c7940
+```
+
+`80108DC0` constructs a 0x9C object and `80106668` appends it to
+`D_80136EE0`. `gsprops_1` does not store v0. Per-frame consumer is
+`800A5CFC` → `800FF62C` (LIVE 500). Vis is first-visit `8010108C` then
+later Euclidean `800EFFB4` (never entered for the 10 tracked intro models).
+`+0x64` bit17 skip is gameplay (320 vs 5000 visits); do not bypass.
+Independent `TOOIE_TEST_DISABLE_TYPE6_STATIC_VIS_CULL=1` produced
+`NO_CHANGE` (draw_attempts 84, dl_emits 53, dl_rsp 34472). Type-6 is
+`STRONGLY_WEAKENED` as the widescreen-edge residual root in this window.
+
+Sprite/bound path (`gsprops_2` types 7/9/A → gcbound → `800F0064`) remains
+**not exercised** in intro 25s (`t7=0`). Do **not** wrap `80108DC0` as vis.
+Do **not** combine MAP_VIS / MODEL_GEO / PROP_CELL / GSPROPS_VIS / TYPE6_VIS.
+Do **not** reopen GPU/TMEM/`00349d38`. Intro leftover remains MIXED.
+
+`NEXT_SINGLE_ACTION:` Exercise gsprops types 7/9/A → gcbound → `800F0064`
+on an automated attract/demo window that actually dispatches sprites.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY GSPROPS_STATIC_PROP_SELECTOR
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+MODEL_GEO_FLAG_CONFIRMED_ACTIVE_DURING_GAMEPLAY: UNKNOWN
+GSPROPS_ENTRYPOINT_1_ADDRESS: overlay 0x808000A0; syscall stub 0x80088B88; DLL 727
+GSPROPS_ENTRYPOINT_1_ROLE: PROVEN one-shot type-6 collect/load; NOT per-frame vis; NOT DL emit
+GSPROPS_ENTRYPOINT_1_INPUT_CONTAINER: gccube_ep0 stack list (cap ~500); ALL cubes D_80128410
+STATIC_PROP_SELECTOR_FUNCTION: gccubeDll_entrypoint_0 + gsprops_0 type==6
+STATIC_PROP_SELECTOR_STATUS: PROVEN as one-shot ALL-cube type-6 load; REFUTED as residual per-frame vis
+RELATION_TO_800BE09C: INDEPENDENT / PARALLEL
+EXTRA_800BE09C_CELLS_DROPPED_AT: NEVER_CONSUMED_BY_GSPROPS
+RELATION_TO_800CAA24: INDEPENDENT
+GSPROPS_VIS_COUNTERFACTUAL_IMPLEMENTED: YES (TOOIE_TEST_DISABLE_GSPROPS_VIS_CULL; 800F0064 in gsprops_vis_pass only)
+GSPROPS_SELECTOR_COUNTERFACTUAL_CPU_RESULT: NO_CHANGE (xzrad=0 intro/25s; collect 11/10 identical)
+PROP_CELL_800BE09C_RESULT: STRONG_HYPOTHESIS actor; REFUTED intro RSP; INDEPENDENT of gsprops
+INTRO_RESIDUAL_CLASS: MIXED
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET: 800CAA24 PARTIAL + loaded-static per-frame draw UNKNOWN + sprite/gcbound later + intro leftover MIXED
+CURRENT_ROOT_SET_STATUS: PARTIAL_PROVEN + OPEN_RESIDUALS
+PERFORMANCE_GATING_CLEANUP_PRESERVED: YES
+GPU_READBACK_USED:            NO
+FIX_IMPLEMENTED:              NO
+NEXT_DISCRIMINATOR:           LOADED_STATIC_MODEL_PER_FRAME_DRAW
+NEXT_SINGLE_ACTION:           Identify who draws the 10 models loaded by gsprops_1/80108DC0 after the one-shot collect; do not assume 80108C14 or 801143A4; do not combine MAP_VIS
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-gsprops-static-prop-selector-20260829T210810Z/
+ARTIFACT_CHECKSUM_MANIFEST:   09bb0ef3fc74105e1306577af670ef13d088044768047bad03438b53378e27ce
+```
+
+`gspropsDll_entrypoint_1` is a **one-shot load** of every cube's type-6
+static models (`gccubeDll_entrypoint_0` walks all 1274 cubes; 11 appended,
+10 load OK, 1 fail). It is **not** a per-frame visibility selector.
+Sprite/bound path (`gsprops_2` types 7/9/A → gcbound → `800F0064` XZ radius)
+was **not exercised** in intro 12s/25s (`t7=0`, `xzrad=0`). Independent
+`TOOIE_TEST_DISABLE_GSPROPS_VIS_CULL=1` did not change collect/load and
+did not produce a causal RSP increase (`dl_rsp` 9375 vs 9445 is run variance).
+
+`800BE09C` RANGE extras are **never consumed by gsprops** (gsprops already
+walks all cubes). `800CAA24` map AABB is **independent**. Do **not** wrap
+`80108DC0` as vis (resource/load). Do **not** assume `80108C14` is per-frame
+draw (`calls=1`). Do **not** combine MAP_VIS / MODEL_GEO / PROP_CELL /
+GSPROPS_VIS. Do **not** reopen GPU/TMEM/`00349d38`. Intro leftover remains
+MIXED; do not deepen this round.
+
+USER MAP_VIS still: gameplay maps/walls restored a lot; items/rocks/assets
+still vanish at corners. USER MODEL_GEO still like the broken baseline.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY RESIDUAL_PROP_CELL_AND_CUTSCENE_VISIBILITY_AUDIT
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+SAME_RT64_REVISION:           YES
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+MAP_SECTION_800CAA24_VISUAL_RESULT: PROVEN_PARTIAL_FOR_GAMEPLAY_MAP_GEOMETRY
+MODEL_GEO_801143A4_VISUAL_RESULT: REFUTED_FOR_OBSERVED_RESIDUAL
+MODEL_GEO_FLAG_CONFIRMED_ACTIVE_DURING_GAMEPLAY: UNKNOWN (12s/25s intro calls=0)
+PROP_CELL_COUNTERFACTUAL_IMPLEMENTED: YES (TOOIE_TEST_DISABLE_PROP_CELL_VIS_CULL; draw-pass RANGE only)
+PROP_CELL_COUNTERFACTUAL_CPU_RESULT: listed 153->325; dl_rsp identical 9445; 801143A4 still 0
+TOOIE_PROP_SPATIAL_CONTAINER: gccube D_80128410
+TOOIE_PROP_CELL_VISIBILITY_FUNCTION: 800BE09C 3x3x3 RANGE via 800BE444
+TOOIE_PROP_CELL_VISIBILITY_STATUS: STRONG_HYPOTHESIS actor gate; REFUTED intro RSP; UNKNOWN gsprops static props
+INTRO_800CAA24_ACTIVE: YES
+INTRO_RESIDUAL_CLASS: MIXED
+DEMO_RESIDUAL_CLASS: MIXED / UNKNOWN
+CUTSCENE_ASPECT_FALLBACK_FEASIBLE: PARTIAL
+BANJORECOMP_CURRENT_WIDESCREEN_CULLING_COMPLETE: NO (issue #125)
+PERFORMANCE_GATING_CLEANUP_PRESERVED: YES
+GPU_READBACK_USED:            NO
+FIX_IMPLEMENTED:              NO
+USER_VISUAL_TEST_REQUIRED_NOW: NO
+CURRENT_ROOT_SET:             800CAA24 PARTIAL + gsprops selector UNKNOWN + intro leftover MIXED B/C
+CURRENT_ROOT_SET_STATUS:      PARTIAL_PROVEN + OPEN_RESIDUALS
+NEXT_DISCRIMINATOR:           GSPROPS_STATIC_PROP_SELECTOR
+NEXT_SINGLE_ACTION:           Identify the selector that fills gspropsDll_entrypoint_1 (rocks/items/sprites); do not combine MAP_VIS
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-residual-prop-cell-cutscene-audit-20260829T204203Z/
+ARTIFACT_CHECKSUM_MANIFEST:   52a0f350cc540708f9a6de44c7e60bc60066c51e6807e71c71395589bee59fbd
+```
+
+USER MAP_VIS: gameplay map walls restored a lot; items/rocks/assets still vanish at corners; intro/demo still lose walls.
+USER MODEL_GEO: looked like the original broken baseline.
+Do not treat 801143A4 as the residual object root. Do not collapse BK viewport_cube_* into 800CAA24.
+Prior port-audit artifact `/tmp/p08-widescreen-banjorecomp-visibility-port-audit-20260829T192021Z/` (`8efe75283a7e8fa1d024b36e92dc61a3c57408acbff07ecf6cecbdd9aacd2a0b`) remains valid for SAME_RT64 / CAB70 NO_CHANGE / 00349d38 witness.
+
+User clarification: missing walls/objects are pervasive (intro/cutscenes +
+gameplay, many walls AND objects, late-pop-in and early-pop-out). `00349d38`
+is a witness triangle only. Do not optimize the global root around its
+texture, TMEM, individual depth, or material.
+
+BanjoRecomp and Tooie pin the **same** RT64 revision
+`6f1c2d99a4ea571c139f449c326fd176ba8f3496`. Remaining deltas are guest-side
+(geometry selection, patches, LOD, culling, model mods). BK bbox/sphere/GeoCmdD
+map to CAB70/CACEC/E3DC0 and are already USER-refuted as visual roots. BK
+GeoCmd8 LOD has **no** Tooie equivalent. USER MAP_VIS proves `800CAA24`
+partial for gameplay map geometry. USER MODEL_GEO and intro smokes (0 calls)
+refute `801143A4` as the observed residual object root (gameplay exercise
+UNKNOWN). Tooie cube RANGE `800BE09C` (via `800BE444`, draw-pass parents
+`8011458C`/`8010A01C`/`80109CC4`/`801099D0`) is independent of `800CAA24`.
+PROP_CELL CF listed cubes 153→325; intro `dl_rsp` stayed 9445; `801143A4`
+stayed 0. Residual items/rocks/assets are NOT explained by this actor RANGE.
+Texture/TMEM not reopened. Performance gating cleanup preserved. No production
+fix.
+
+`NEXT_SINGLE_ACTION:` Identify the selector that fills `gspropsDll_entrypoint_1` (rocks/items/sprites). Do not combine MAP_VIS. Do not assume `8011458C`.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY TARGETED_FOCAL_TEXTURE_TMEM_SETUP
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+PERFORMANCE_GATING_CLEANUP_IMPLEMENTED: YES
+DIAGNOSTICS_OFF_OVERHEAD:     NEGLIGIBLE
+OLD_P08_LOGS_DEFAULT_OFF:     YES
+FOCAL_TEXTURE_FLAG:           TOOIE_DIAG_WS_FOCAL_TEXTURE
+FOCAL_AUTO_TRIGGER_IMPLEMENTED: YES
+AUTO_CAPTURE_DURATION:        300 focal draws (~150-180 frames)
+AUTO_CAPTURE_STOP_CONDITION:  s_auto_draw_count >= 300
+MANUAL_TOUCH_REQUIRED:        NO
+FOCAL_SOURCE_DL:              00349d38 extra-left TRI1
+FOCAL_TEXTURE_TRACE_READY:    YES
+FOCAL_TMEM_TRACE_READY:       YES
+FOCAL_TILE_TRACE_READY:       YES
+FOCAL_LOAD_CHAIN_READY:       YES
+FOCAL_UV_TRACE_READY:         YES
+FOCAL_VS_CENTRAL_COMPARE_READY: YES
+FOCAL_TEXTURE_TMEM_ANOMALY:   REFUTED
+GPU_READBACK_USED:            NO
+DEFAULT_RUNTIME_BEHAVIOR_CHANGED: NO
+DEFAULT_RUNTIME_LOGGING:      NONE (standard boot output only)
+USER_CAPTURE_REQUIRED_NOW:    NO
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-texture-tmem-setup-20260829T183238Z/
+ARTIFACT_CHECKSUM_MANIFEST:   d91118158d0753c17e1ad0370e6150834255ffebffc67b02554692f39ad8b782
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. Performance cleanup completed:
+software vertex/bounding box calculations in `rt64_framebuffer_renderer.cpp`
+are gated under `tooieWsAnyDiagEnabled()`, per-draw `std::filesystem::exists`
+calls removed, and file logging uses persistent handles. Standalone flag
+`TOOIE_DIAG_WS_FOCAL_TEXTURE=1` with automatic trigger on focal world vertices
+eliminates manual `touch` requirement. Texture, TMEM, tile descriptor, load chain,
+and UV analysis prove that `FOCAL_TEXTURE_TMEM_ANOMALY` is `REFUTED` (the difference
+in `tex_id` between focal and central FRONT is standard expected material difference
+for distinct terrain faces).
+
+`NEXT_SINGLE_ACTION:` Design and implement `TARGETED_FOCAL_DEPTH_CAUSAL_TEST_DESIGN` to isolate depth occlusion without GPU readback.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY TARGETED_RASTER_STATE_USER_ARBITRATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+CAPTURE_VALID:                YES
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          2926
+CAPTURE_END_FRAME:            3645
+CAMERA_EFFECTIVELY_STATIC:    YES (716/720 at 3584.1,50.7,4893.8)
+FOCAL_SOURCE_DL:              00349d38 extra-left TRI1
+FOCAL_EVENTS:                 288 TRI1 (1440 total 00349d38 in window)
+FOCAL_GPU_SUBMITTED:          YES 286/286
+FOCAL_PIPELINE:               000075df080aa190 SPECIALIZED RasterVS+RasterPSMS
+FOCAL_DEPTH_TEST_ENABLED:     YES
+FOCAL_DEPTH_WRITE_ENABLED:    YES
+FOCAL_DEPTH_COMPARE:          LESS
+FOCAL_DEPTH_RANGE_VALID:      YES
+FOCAL_DEPTH_TEST_RESULT_DIRECTLY_OBSERVABLE: NO
+FOCAL_DEPTH_TARGET_ID:        00137840
+PRIOR_PROJ1_DEPTH_RESULT_APPLIES_TO_FOCAL: NO
+DEPTH_CLEAR_BEFORE_FOCAL:     UNKNOWN
+DEPTH_OCCLUSION_RESULT:       UNKNOWN
+PRIOR_DEPTH_OCCLUDER_CANDIDATES: 1_WEAK_CORNER_SLIVER (00348470)
+ACTIVE_FRAGMENT_DISCARD_SITES_FOR_FOCAL: 0
+ALPHA_COMPARE_ROOT:           REFUTED_FOR_FOCAL
+COVERAGE_ZERO_ROOT:           REFUTED_FOR_FOCAL
+COLOR_WRITE_DISABLED_ROOT:    REFUTED_FOR_FOCAL
+BLEND_ZERO_OUTPUT_ROOT:       REFUTED_FOR_FOCAL
+FOCAL_INTERSECTS_RASTER_SCISSOR: YES
+POST_PROJECTION_NATIVE_COORDINATE_MISMATCH: REFUTED
+SOURCE_CLIP_FLAGS_USED_AFTER_TARGET_EXPANSION: NO
+FIRST_FOCAL_VS_CENTRAL_RUNTIME_STATE_DIFFERENCE: tex_id
+CENTRAL_CONTROL_IS_DEPTH_EQUIVALENT: PARTIAL
+CULL_WINDING_ANOMALY:         REFUTED_FOR_FOCAL
+MISSING_WALL_DRAW_SEMANTIC_JOIN: PARTIAL
+MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: STRONGLY_SUPPORTED
+CURRENT_ROOT_CLASS:           WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY:        after GPU submit of 00349d38 TRI1 call=134 proj=2
+GPU_READBACK_USED:            NO
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-raster-user-arbitration-20260829T181535Z/
+ARTIFACT_CHECKSUM_MANIFEST:   a8ce5b47e43ca92986ce19628cc1c1084e6ff2fa22079dc4f17197bcf8636190
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. USER capture at the missing-wall
+pose with `TOOIE_DIAG_WS_FOCAL_RASTER=1`. Focal TRI1 is geometric FRONT, survives
+cull, intersects scissor, and is GPU-submitted on proj=2 with depth test/write
+LESS. Do not inherit proj=1 depth-off. Explicit fragment discard, alpha,
+coverage-zero, color-write disable, and blend-zero are refuted for this focal.
+CPU-side scissor-clipped AABB finds no strictly closer visible prior depth
+writer. Depth-test *result* is not observable. First logged runtime state
+difference vs same-DL FRONT TRI2 is TMEM `tex_id`. Do not claim wall pixels.
+
+`NEXT_SINGLE_ACTION:` `TARGETED_FOCAL_TEXTURE_TMEM_TRACE` on `00349d38` TRI1 vs same-DL FRONT TRI2 (`tex_id` 4a7b1a2672b73a09 vs eca4591a3dbd2fcc). CPU-only. No GPU readback. No depth bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY TARGETED_RASTER_STATE_SETUP
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+INSTRUMENTATION_STATUS:       TARGETED_RASTER_STATE_TRACE_IMPLEMENTED
+FOCAL_SOURCE_DL:              00349d38 extra-left TRI1
+FOCAL_RASTER_FILTER_IMPLEMENTED: YES
+PIPELINE_ID_CAPTURE_READY:    YES
+SHADER_VARIANT_CAPTURE_READY: YES
+ALPHA_COMPARE_CAPTURE_READY:  YES
+COVERAGE_CAPTURE_READY:       YES
+BLEND_CAPTURE_READY:          YES
+COLOR_WRITE_CAPTURE_READY:    YES
+DEPTH_CAPTURE_READY:          YES
+SCISSOR_CAPTURE_READY:        YES
+VIEWPORT_CAPTURE_READY:       YES
+POSSCREEN_SEMANTICS_RESOLVED: YES (CPU-only, not in GPU shaders)
+SOURCE_TARGET_CLIP_RELATION_CAPTURE_READY: YES
+COMBINER_CAPTURE_READY:       YES
+TEXTURE_STATE_CAPTURE_READY:  YES
+FRAGMENT_DISCARD_SITES_IDENTIFIED: YES (0/7 active for focal)
+FOCAL_HOST_SCREEN_BOUNDS_READY: YES
+FOCAL_SCISSOR_INTERSECTION_READY: YES
+POST_PROJECTION_NATIVE_COORDINATE_MISMATCH: REFUTED
+SOURCE_CLIP_FLAGS_USED_AFTER_TARGET_EXPANSION: NO
+FIRST_FOCAL_VS_CENTRAL_STATE_DIFFERENCE: NONE_OBSERVED
+FOCAL_RASTER_STATE_CAPTURE_READY: YES
+USER_CAPTURE_READY:           YES
+GPU_READBACK_USED:            NO
+FIX_IMPLEMENTED:              NO
+DEFAULT_RUNTIME_BEHAVIOR_CHANGED: NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-targeted-raster-state-setup-20260829T173856Z/
+ARTIFACT_CHECKSUM_MANIFEST:   fbd3366d1a666196a77c536779cd3b087a0957382ac60bee2cbffe334c81fc14
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. Targeted raster state telemetry
+implemented in RT64 `FramebufferRenderer::addDrawCall` with dedicated log sink
+`/tmp/tooie-ws-focal-raster-state.log` and unified tag `[ws-focal-raster-state]`.
+Shader/PSO mapping proves specialized `RasterVS`/`RasterPS` pipeline is identical
+between focal TRI1 and central same-DL FRONT TRI2. Alpha compare, coverage, blend,
+color write mask (0x0F), depth test/write, and scissor intersection ([100..503] px
+in [0..1920]) are 100% healthy. `FIRST_FOCAL_VS_CENTRAL_STATE_DIFFERENCE` is
+`NONE_OBSERVED`.
+
+`NEXT_SINGLE_ACTION:` User performs ONE capture at same wall, camera static, with `TOOIE_DIAG_WS_CONTINUOUS=1 TOOIE_DIAG_WS_WALL_BOUNDS=1 TOOIE_DIAG_WS_FOCAL_WINDING=1 TOOIE_DIAG_WS_FOCAL_RASTER=1`. Then Grok 4.6 Medium arbitrates.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-29) — WIDESCREEN_EDGE_GEOMETRY TARGETED_FOCAL_VERTEX_WINDING_USER_ARBITRATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+CAPTURE_VALID:                YES
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          3754
+CAPTURE_END_FRAME:            4473
+CAMERA_EFFECTIVELY_STATIC:    YES (720/720)
+CAM_POS:                      (3598.4, 57.8, 4908.3)
+FOCAL_SOURCE_DL:              00349d38 TRI1 (world AABB matches prior extra-left)
+GEOMETRIC_EXPECTED_FACING:    FRONT (norm_cam_dot=-0.5196)
+SIGNED_AREA_SOURCE/TARGET:    +0.748114 / +0.525758 (CCW/CCW MATCH)
+RASTER_CLASSIFIED_FACING:     BACK (Vulkan CLOCKWISE; survives CULL_FRONT)
+EXPECTED_RASTER_SURVIVAL:     YES
+FACING_MISMATCH:              NO
+CULL_SURVIVAL_MISMATCH:       NO
+CULL_WINDING_ANOMALY:         REFUTED_FOR_FOCAL
+MISSING_WALL_DRAW_SEMANTIC_JOIN: PARTIAL
+MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: STRONGLY_SUPPORTED
+CURRENT_ROOT_CLASS:           WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-winding-user-arbitration-20260829T164524Z/
+ARTIFACT_CHECKSUM_MANIFEST:   d0d993e6e015d482e6807350b8d65de993d6348b7f8d96287972e9d1ee13e489
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. New USER capture at the same
+missing-wall location with `TOOIE_DIAG_WS_FOCAL_WINDING=1`. Real V0/V1/V2
+match the prior extra-left TRI1. Focal TRI1 faces the camera, source/target
+winding match (generic Sx=0.702785 for this ~1920x1012 window vs 4:3), and
+the compensated RT64 cull expects survival. Same-DL FRONT TRI2 cluster shares
+that signature. Do not pursue cull. No GPU pixel claim.
+
+`NEXT_SINGLE_ACTION:` TARGETED_RASTER_STATE_TRACE on `00349d38` TRI1 (depth/coverage/blend/other-mode/scissor on native vs wide FB submits). No GPU readback. No cull bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY TARGETED_FOCAL_VERTEX_WINDING_USER_ARBITRATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+CAPTURE_VALID:                YES
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          8278
+CAPTURE_END_FRAME:            8997
+CAMERA_EFFECTIVELY_STATIC:    YES (720/720)
+CAM_POS:                      (3477.8, 113.9, 4682.8)
+FOCAL_SOURCE_DL:              00349d38 TRI1 (world AABB matches prior extra-left)
+GEOMETRIC_EXPECTED_FACING:    FRONT (norm_cam_dot=-0.5965)
+SIGNED_AREA_SOURCE/TARGET:    +1.175925 / +0.881943 (CCW/CCW MATCH)
+RASTER_CLASSIFIED_FACING:     BACK (Vulkan CLOCKWISE; survives CULL_FRONT)
+EXPECTED_RASTER_SURVIVAL:     YES
+FACING_MISMATCH:              NO
+CULL_SURVIVAL_MISMATCH:       NO
+CULL_WINDING_ANOMALY:         REFUTED_FOR_FOCAL
+MISSING_WALL_DRAW_SEMANTIC_JOIN: PARTIAL
+MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: STRONGLY_SUPPORTED
+CURRENT_ROOT_CLASS:           WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-winding-user-arbitration-20260827T193119Z/
+ARTIFACT_CHECKSUM_MANIFEST:   f1499333a0fcdb1395f550848e8539026419058f8935c4c8c6b3a9092943667c
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. USER capture with
+`TOOIE_DIAG_WS_FOCAL_WINDING=1` supplies real V0/V1/V2. Focal TRI1 faces the
+camera, source/target winding match, and the compensated RT64 cull expects
+survival. Same-DL FRONT TRI2 cluster shares that signature. Do not pursue
+cull. No GPU pixel claim.
+
+`NEXT_SINGLE_ACTION:` TARGETED_RASTER_STATE_TRACE on `00349d38` TRI1 (depth/coverage/blend/other-mode/scissor on native vs wide FB submits). No GPU readback. No cull bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY TARGETED_FOCAL_VERTEX_WINDING_DUMP
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+INSTRUMENTATION_STATUS:       IMPLEMENTED_CPU_SIDE_SAFE
+GPU_READBACKS_USED:           NO (0 buffer readbacks, 0 image transfers, 0 thread race conditions)
+PRIMARY_FOCAL_CANDIDATE:      source_dl = 00349d38 extra-left TRI1
+SECONDARY_CONTROL:            source_dl = 0034b800
+INTERNAL_CONTROL:             source_dl = 00349d38 central TRI2 triangles
+LOG_SINKS:                    /tmp/tooie-ws-focal-winding.log + unified [ws-focal-winding]
+ASPECT_SCALE_INVARIANCE_THEOREM: PROVEN (Sx > 0 strictly preserves 2D NDC area sign)
+SELFTEST_RESULT:              66/66 checks passed (100% sign preservation across 1:1, 4:3, 16:10, 16:9, 21:9, 32:9)
+BUILD_STATUS:                 SUCCESS (ninja exit code 0)
+CURRENT_ROOT_CLASS:           WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-vertex-winding-setup-20260827T154601Z/
+ARTIFACT_CHECKSUM_MANIFEST:   d29cce81fc78995a14de11979ef1933cbcfa8fb0dbf158cbeb1bddf5cdcacc15
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. CPU-side telemetry hooked into `FramebufferRenderer::addDrawCall` extracts real $V_0, V_1, V_2$ object, world, clip, and NDC coordinates, model determinant, signed areas, world normals, camera positions, geometric dot products, and clip masks without any GPU memory readbacks or queue synchronization.
+
+`NEXT_SINGLE_ACTION:` Execute safe focal vertex telemetry capture (or process captured telemetry) to record real $V_0/V_1/V_2$ parameters for `00349d38` extra-left TRI1 vs controls. No GPU readback. No fix. No bypass.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY TARGETED_CULL_WINDING_TRACE
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+USER_SCREENSHOT_CROP_MAPPING: APPROXIMATE
+USER_HOLE_NDC_RECT:           APPROXIMATE_VISUAL_GUIDE_ONLY
+MISSING_WALL_DRAW_SEMANTIC_JOIN: PARTIAL
+MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: STRONGLY_SUPPORTED
+FOCAL_SOURCE_DL:              00349d38 extra-left TRI1 (GBI v0/v1/v2 = 0,1,2)
+POSITIVE_X_ASPECT_SCALE_CAN_FLIP_WINDING: NO
+SHADER_CULL_IMPLEMENTATION:   specialized PSO CullMode FRONT (not GS/compute)
+VIEWPORT_Y_FLIPPED:           NO
+NDC_TO_VULKAN_Y_FLIP:         YES (RasterVS -Y and DXC -fvk-invert-y)
+FRONT_FACE_COMPENSATION_PRESENT: YES
+TRIANGLE_REQUIRES_CLIPPING:   YES (ndcX min -1.3163, ndcY min -1.4054)
+CULL_WINDING_ANOMALY:         UNKNOWN (object/world/NDC verts not in capture)
+CURRENT_ROOT_CLASS:           WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-targeted-cull-winding-20260827T152926Z/
+ARTIFACT_CHECKSUM_MANIFEST:   c260d0fd338f4b14039e65bc70a33601318682f7686ba5c72441cc18e0d2eb56
+```
+
+Canonical: [[p08-widescreen-edge-geometry]]. Screenshot crop is approximate;
+semantic join stays PARTIAL. Aspect expansion is generic `target_aspect /
+source_aspect` (positive X scale). Next is a focal vertex/signed-area dump,
+not a cull bypass and not GPU readback.
+
+`NEXT_SINGLE_ACTION:` TARGETED_FOCAL_VERTEX_WINDING_DUMP on `00349d38` extra-left TRI1 (central TRI2 control + `0034b800`): object/world/clip/NDC verts and signed areas. No GPU readback. No fix. No bypass.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY CPU_SCREEN_BOUNDS_WALL_CANDIDATE_ARBITRATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+FINAL_RENDER_TARGET_PIXEL_PROBE: NOT_COMPLETED / ABANDONED_FOR_SAFETY
+GPU_PIXEL_READBACK_CURRENT_APPROACH: UNSAFE
+LIVE_GPU_READBACK:            DO_NOT_RETRY_WITH_CURRENT_APPROACH
+WIDE_EXTENT_PRESERVED_THROUGH_PRESENT: PROVEN
+VIRENDERER_COMPOSITE_ROOT:    REFUTED as extra-band X crop
+POST_RENDER_4_3_CROP_PATH:    NOT_FOUND
+CAPTURE_VALID:                YES
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          13309
+CAPTURE_END_FRAME:            14028
+CAMERA_EFFECTIVELY_STATIC:    YES (720/720)
+CAM_POS:                      (3467.4, 105.0, 4735.7)
+USER_HOLE_SCREEN_RECT:        x[0.00,0.12] y[0.00,0.65] (top-left origin)
+USER_HOLE_NDC_RECT:           x[-1.00,-0.76] y[-0.30,1.00]
+WALL_BOUNDS_EVENTS:           41142 in window
+TOP_CANDIDATE_SOURCE_DL:      00349d38 extra-left TRI1 (not whole DL)
+TOP_CANDIDATE_GPU_SUBMITTED:  YES (318/318 gpu_submitted=1)
+MISSING_WALL_DRAW_SEMANTIC_JOIN: PARTIAL
+MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: STRONGLY_SUPPORTED
+CULL_WINDING_ANOMALY:         UNKNOWN (geom_cull=BACK; winding/det not logged)
+CURRENT_ROOT_CLASS:           WALL_SPECIFIC_GPU_RASTER_STATE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+LAST_IDENTITY_PRESERVING_BOUNDARY: GPU_DRAW_SUBMISSION (this wall cluster)
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-user-wall-bounds-arbitration-20260827T151459Z/
+ARTIFACT_CHECKSUM_MANIFEST:   cd50d98a55c0ab24bb1ed3d982ae4b648ba148b3bdc2ed0182f31189dd6018b4
+```
+
+Canonical: [[p08-widescreen-edge-geometry]].
+New USER_SELECTED capture + screenshot join the left hole to MAP_RAM
+`00349d38` extra-left TRI1 (nearby vertical opaque, proj=2, depth on). That
+draw reaches GPU while the hole is visible. Smoke DLs `0031f6d8` are not this
+wall. Distant proj=1 `0031e***` are demoted. Next is cull/winding of this
+cluster, not GPU readback.
+
+`NEXT_SINGLE_ACTION:` TARGETED_CULL_WINDING_TRACE on `00349d38` extra-left TRI1 (and sibling `0034b800`): winding, clip-space cross, mtx det, viewport sign; no GPU readback; no fix; no bypass.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY POST_SUBMISSION_COMPOSITE_STATE_TRACE
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+FINAL_RENDER_TARGET_PIXEL_PROBE: NOT_COMPLETED / ABANDONED_FOR_SAFETY
+GPU_PIXEL_READBACK_CURRENT_APPROACH: UNSAFE
+LIVE_GPU_READBACK:            DO_NOT_RETRY_WITH_CURRENT_APPROACH
+CAPTURE_VALID:                YES (prior USER_SELECTED; this round no new user capture)
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          6885
+CAPTURE_END_FRAME:            7604
+CAMERA_EFFECTIVELY_STATIC:    YES (720/720)
+DRAW_TO_GPU_SUBMISSION_FAILURE: REFUTED
+USER_EXTRA_BAND_SUBMISSION_JOIN_RATE: 100%
+EXTRA_BAND_PROJ1_DRAWS_REACH_GPU_DURING_VISIBLE_GLITCH: PROVEN
+MISSING_WALL_SPECIFIC_DRAW_REACHES_GPU: NOT_PROVEN
+MISSING_WALL_DRAW_SEMANTIC_JOIN: NO
+COLOR_DEPTH_EXTENT_MATCH:     YES (2164x1140 prior capture)
+EXTRA_BAND_DEPTH_TARGET_TRUNCATION: REFUTED
+NEAR_PLANE_INTERSECTION_COUNT: 0
+FAR_DEPTH_CLIP_ANOMALY:       REFUTED
+BANJO_NEAR_CLIPPING_REFERENCE_RELEVANCE: LOW
+MSAA_RESOLVE_WIDESCREEN_SAFE: YES
+VI_UV_COVERS_WIDE_SOURCE:     PROVEN (smoke uvMax.x=1.0 all 38 presents)
+POST_RENDER_4_3_CROP_PATH:    NOT_FOUND
+POST_RENDER_SOURCE_CLAMP:     FOUND (shader LowerRight; runtime X does not crop extra-band)
+POST_RENDER_PILLARBOX_PATH:   FOUND (window contain-fit / copyFromChanges; not extra-band crop)
+WIDE_EXTENT_PRESERVED_THROUGH_PRESENT: PROVEN (smoke); same functions as USER capture
+VIRENDERER_COMPOSITE_ROOT:    REFUTED as extra-band X crop; NOT_PROVEN as wall visual root
+GPU_FRAGMENT_RASTER_ROOT:     NOT_PROVEN
+COMPOSITE_CROP_ROOT:          STRONGLY_WEAKENED
+CURRENT_ROOT_CLASS:           POST_GPU_SUBMISSION_FRAGMENT_OR_COMPOSITE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+LAST_IDENTITY_PRESERVING_BOUNDARY: GPU_DRAW_SUBMISSION
+DECISION:                     B GPU_FRAGMENT_RASTER_OR_SEMANTIC_BOUNDARY
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-post-submission-composite-audit-20260827T052315Z/
+ARTIFACT_CHECKSUM_MANIFEST:   444e33af976f32ba2c4f94409a2210bf80871346281554e9891c66291bb2a2d2
+```
+
+Canonical: [[p08-widescreen-edge-geometry]].
+Pixel probe caused three Vulkan GPU/session incidents and is abandoned. Do not
+retry GPU readback. Extra-band proj=1 draws reach GPU during the glitch;
+the missing wall mesh is **not** proven to be among them. Static+CPU composite
+audit: MSAA resolve is full-extent; VI samples the full wide texture
+(`uvMax.x=1`); VI crop/view rects are stubbed `{0,0,1,1}`. Next is semantic
+wall-draw localization, not another GPU copy.
+
+`NEXT_SINGLE_ACTION:` SEMANTIC_WALL_DRAW_LOCALIZATION (CPU-side identity of which extra-band proj=1 DLs could be the missing wall; no GPU readback; no fix; no bypass).
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY GPU_DEPTH_USER_ARBITRATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+USER_SELECTED_WIDESCREEN_MISSING_WALL: YES
+CAPTURE_VALID:                YES
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          6885
+CAPTURE_END_FRAME:            7604
+CAMERA_EFFECTIVELY_STATIC:    YES (720/720)
+USER_EXTRA_BAND_DRAWS_CLASSIFIED: 56718 (proj1 3288)
+USER_EXTRA_BAND_DRAWS_GPU_SUBMITTED: 3288/3288 proj1 by prim identity
+USER_EXTRA_BAND_SUBMISSION_JOIN_RATE: 100.0% (prim identity; naive frame+call is desync)
+DRAW_TO_GPU_SUBMISSION_FAILURE: REFUTED
+GPU_SUBMITTED_EXTRA_BAND_SET_BEHAVIOR: STABLE (Jaccard 1.0)
+COLOR_DEPTH_EXTENT_MATCH:     YES (2164x1140)
+EXTRA_BAND_DEPTH_TARGET_TRUNCATION: REFUTED_FOR_USER_CAPTURE
+NEAR_PLANE_INTERSECTION_COUNT: 0
+FAR_PLANE_INTERSECTION_COUNT: 411 (maxNdcZ<=1.0005; depth_clip=0)
+FAR_DEPTH_CLIP_ANOMALY:       REFUTED
+BANJO_NEAR_CLIPPING_REFERENCE_RELEVANCE: LOW
+MISSING_WALL_DRAW_SEMANTIC_JOIN: NO
+ARBITRATION_CASE:             C
+CURRENT_ROOT_CLASS:           POST_GPU_SUBMISSION_FRAGMENT_OR_COMPOSITE_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+LAST_IDENTITY_PRESERVING_BOUNDARY: GPU_DRAW_SUBMISSION
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-gpu-depth-user-arbitration-20260827T033147Z/
+ARTIFACT_CHECKSUM_MANIFEST:   6996bd3bcf9974c86d95fc4650f08bc8b061faf407b5fa80ed39288aa94c2eca
+```
+
+Canonical: [[p08-widescreen-edge-geometry]].
+USER_SELECTED capture while the lateral wall was visibly missing and the
+camera was fully static. Extra-band proj=1 DrawCalls reach GPU submit. That
+does **not** prove the missing wall mesh itself is submitted.
+`POST_RT64_DRAW_VISIBILITY_BOUNDARY` is `CORRECTED/SUPERSEDED`. Pixel probe
+later abandoned for safety.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY EXTRA_BAND_FRAGMENT_DEPTH_VISIBILITY
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+POST_DRAW_CPU_REJECTION_FOUND: NO
+DRAW_SURVIVES_TO_GPU_SUBMISSION: YES (100.0%)
+EXTRA_BAND_DRAWS_CLASSIFIED:  29498
+EXTRA_BAND_DRAWS_GPU_SUBMITTED: 29502
+EXTRA_BAND_DRAW_SUBMISSION_RATE: 100.0%
+DEPTH_TEST_STATE_CAPTURE_READY: YES
+COLOR_DEPTH_EXTENT_MATCH:     YES
+DEPTH_COORDINATE_SPACE:       HOST_WIDESCREEN_PIXELS / NDC
+EXTRA_BAND_DEPTH_COVERAGE_MISMATCH: REFUTED
+CLIP_STATE_CAPTURE_READY:     YES
+BANJO_NEAR_CLIPPING_EFFECT_STAGE: RASTERIZER_DEPTH_CLIP_ENABLE
+BANJO_NEAR_CLIPPING_CAN_EXPLAIN_LATERAL_HOLES: NO
+FRAGMENT_VISIBILITY_DIRECTLY_OBSERVABLE: NO (proxy active)
+PASS_IDENTITY_CAPTURE_READY:  YES
+CURRENT_ROOT_CLASS:           POST_RT64_DRAW_VISIBILITY_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+USER_CAPTURE_READY:           YES
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-extra-band-depth-visibility-setup-20260827T032333Z/
+ARTIFACT_CHECKSUM_MANIFEST:   386063613e37c2b2272957489a0f0b740c05d803b8745503137dc126ab44d712
+```
+
+Canonical: [[p08-widescreen-edge-geometry]].
+Artifact: `/tmp/p08-widescreen-extra-band-depth-visibility-setup-20260827T032333Z/`
+(manifest `386063613e37c2b2272957489a0f0b740c05d803b8745503137dc126ab44d712`).
+Dual verification: PASS. All extra-band draws survive 100% to final GPU draw submission.
+Depth extent matches color extent (100%). Depth mismatch is REFUTED.
+Next single action: one USER_SELECTED authoritative capture at the visual anomaly.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY RSP_DRAW_USER_ARBITRATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+USER_SELECTED_WIDESCREEN_VISIBILITY_ERROR: YES
+CAPTURE_VALID:                YES
+CAPTURE_ID:                   1
+CAPTURE_START_FRAME:          245023
+CAPTURE_END_FRAME:            245742
+RSP_PRIMITIVES_TOTAL:         604428
+RSP_PRIMITIVES_WITH_DRAW:     604088
+RSP_PRIMITIVES_WITHOUT_DRAW:  340
+PRIMITIVE_TO_DRAW_JOIN_RATE:  99.9437% (RSP); RECT dual-seq unjoin is instrumentation
+RT64_DRAWS_TOTAL:             212560
+EXTRA_LEFT_DRAWS:             28831
+EXTRA_RIGHT_DRAWS:            21725
+ARBITRATION_CASE:             B
+RSP_TO_RT64_DRAW_CREATION_FAILURE: REFUTED
+RT64_DRAW_PRESENT_DURING_VISUAL_ERROR: PROVEN (structural)
+CURRENT_ROOT_CLASS:           POST_RT64_DRAW_VISIBILITY_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY:        after RT64 extra-band DrawCall classification
+LAST_IDENTITY_PRESERVING_BOUNDARY: RT64_HOST_DRAW_EXTRA_BAND_CLASSIFICATION
+BANJO_NEAR_CLIPPING_REFERENCE_RELEVANCE: MEDIUM
+FIX_IMPLEMENTED:              NO
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-rsp-draw-user-arbitration-20260827T030225Z/
+ARTIFACT_CHECKSUM_MANIFEST:   2084f416c77a64082a459bf58244cc49a715972efefb454d131a441c13b914ed
+```
+
+USER_SELECTED capture while missing wall polygons were visible. Camera static
+for 712/720 frames. Every proj=1 world frame (142) has extra-left and
+extra-right classified draws; the proj=1 extra-band DL set is STABLE
+(Jaccard 1.0). Draw creation is not the hole. Root is after DrawCall
+(depth/clip/coverage). No semantic wall→DL join.
+
+`NEXT_SINGLE_ACTION:` EXTRA_BAND_FRAGMENT_DEPTH_VISIBILITY (diagnostic RT64 fragment/depth counters on the stable proj=1 extra-band DL set). No bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY RSP_PRIMITIVE_IDENTITY_PROPAGATION
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+RSP_PRIMITIVE_PROPAGATION:    IMPLEMENTED_AND_VERIFIED
+DL_CONTEXT_STACK_ACTIVE:      YES
+DL_CONTEXT_EVENTS:            8597
+PRIMITIVES_WITH_DL_IDENTITY:  76229
+RT64_DRAWS_WITH_PRIM_ID:      45506
+JOIN_RATE_DL_TO_PRIMITIVE:    100.0%
+JOIN_RATE_PRIMITIVE_TO_DRAW:  100.0%
+CURRENT_ROOT_CLASS:           RSP_TO_RT64_GEOMETRY_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY:        RSP_G_DL_TO_RT64_DRAW
+LAST_IDENTITY_PRESERVING_BOUNDARY: RT64_HOST_DRAW_EXTRA_BAND_CLASSIFICATION
+ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-rsp-primitive-identity-setup-20260827T015059Z/
+ARTIFACT_CHECKSUM_MANIFEST:   bb7ea94f1a8f71cb101c0cc4cb38832ccd5aa219240f2526669537eadcdd88e0
+FIX_IMPLEMENTED:              NO
+```
+
+End-to-end identity chain from nested guest `G_DL` -> RSP HLE DL context stack ->
+primitive sequence generation (`TRI1`, `TRI2`, `QUAD`, `RECT`) -> `DrawCall` batching
+-> `FramebufferRenderer` host widescreen NDC extra-band classification (`minNdcX`,
+`maxNdcX`, `extra_left_intersect`, `extra_right_intersect`) is verified and active.
+Single unified log `/tmp/tooie-ws-dl-identity.log`. Smoke test confirmed 100% join rate.
+Artifacts dual-verified in `/tmp/p08-widescreen-rsp-primitive-identity-setup-20260827T015059Z/`.
+
+`NEXT_SINGLE_ACTION:` USER_SELECTED_AUTHORITATIVE_CAPTURE (user plays to visual anomaly with `TOOIE_DIAG_WS_CONTINUOUS=1` and triggers `touch /tmp/tooie-ws-capture`).
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY POST_GCMAPSECTS_REANCHOR
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+USER_OBSERVED_WIDESCREEN_GLITCH_IN_RUN: YES
+OVERLAY662_TOTAL_SYSCALLS:    39
+EP4_COUNT:                    27
+EP15_COUNT:                   12
+EP9_COUNT:                    0
+EP13_COUNT:                   0
+EP17_COUNT:                   0
+GCMAPSECTS_ENTRY_COUNT:       0
+GCMAPSECTS_80801174_ACTIVE_FOR_OBSERVED_RUN: NO
+GCMAPSECTS_80801174_REQUIRED_FOR_OBSERVED_SYMPTOM: REFUTED_FOR_THIS_RUN
+CAA24_GCMAPSECTS_PATH_REQUIRED_FOR_OBSERVED_SYMPTOM: REFUTED_FOR_THIS_RUN
+EP4_FUNCTION:                 gcmapsects_entrypoint_4
+EP4_ROLE:                     point-in-section AABB query (index or -1)
+EP4_CAN_SKIP_GEOMETRY:        NO
+FOCAL_DL_8035DD20_AS_CAUSAL_ANCHOR: WEAKENED
+CURRENT_ROOT_CLASS:           RSP_TO_RT64_GEOMETRY_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY:        RSP_G_DL_TO_RT64_DRAW
+LAST_IDENTITY_PRESERVING_BOUNDARY: RSP_HLE_G_DL_VISIT
+BANJO_NEAR_CLIPPING_REFERENCE_RELEVANCE: MEDIUM
+FIX_IMPLEMENTED:              NO
+```
+
+Manual gameplay: missing wall polygons while `func_80801174` never ran.
+ep4 is occupancy query (`func_800EFED0` min<point<max vs section AABB);
+a0 burst stride 0x9C = Actor.position. ep15 inits/clears `D_801285B0` including
+`+0x80`. Static world DLs come from map payload + gccubeDll/gsprops/geo +
+GraphicsTask, not 80801174. Artifact
+`/tmp/p08-widescreen-post-gcmapsects-reanchor-20260827T012256Z/`
+(manifest `3c626fd6b1b1d44520550066ef7c34d6d0c2077bb26b0b8b29325623b33e0e37`).
+
+`NEXT_SINGLE_ACTION:` RSP_PRIMITIVE_IDENTITY_PROPAGATION (nested G_DL → primitives → RT64 extra-band class). No bypass. No fix. No new user capture this round.
+`NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+## Prior (2026-08-27) — WIDESCREEN_EDGE_GEOMETRY FOCAL_BRANCH_JOIN_REPAIR
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+CAPTURE_VALID:                YES (id=1 frames 1717..2436; no new user capture)
+FOCAL_DL_8035DD20_AS_CAUSAL_ANCHOR: WEAKENED
+FOCAL_CLUSTER_TRANSITION:     MIXED_ASYMMETRIC_NEIGHBOR_DROPOUT
+SECTION_BLOCK_ACTIVATION:     NOT_SUPPORTED
+FOCAL_BRANCH_EVENTS_IN_WINDOW: 0
+OLD_RA_GATE_ROOT_CAUSE:       $ra is jal PC+8 (0x808011CC / 0x808011F4), not 0x80801174; LOOKUP does not materialize r31; helper used 800E3E8C SP; add_loaded_function(0x80801174) misses CreateStatic; dispatch table address-takes EPs so --wrap(ep9/17) never sees syscalls
+SPHERE_CALL_PC_IN_80801174:   0x808011C4
+SPHERE_EXPECTED_RA:           0x808011CC
+CAA24_PATH_CALL_PC_IN_80801174: 0x808011EC
+CAA24_EXPECTED_RA:            0x808011F4
+80801174_ADDRESS_SEMANTICS:   linked overlay VRAM (not stable LOOKUP key)
+DIRECT_GCMAPSECTS_HOOK:       YES
+HOOK_MECHANISM:               ld --wrap 80801174/80801640 + unlimited ovl=662 syscall log + LOOKUP rebind after load_overlays
+SECTION_POINTER_SOURCE:       ctx->r4
+SECTION_INDEX_SOURCE:         ctx->r5
+SECTION_ENTRY_SOURCE:         *(a0+0x68)+index*0x58
+GC_MAPSECTS_ENTRY_COUNT:      0
+SPHERE_EVENTS_IN_GCMAPSECTS:  0
+CAA24_EVENTS_IN_GCMAPSECTS:   0
+CALL_ID_JOIN_ERRORS:          0
+UNKNOWN_GUEST_FRAME_EVENTS:   0
+GC_MAPSECTS_HOOK_VERIFIED:    NO
+BUILD_RESULT:                 PASS
+FIX_IMPLEMENTED:              NO
+CURRENT_ROOT_CLASS:           GUEST_MAP_SECTION_DL_SELECTION_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    OBSERVABILITY_REPAIR
+CURRENT_ROOT_BOUNDARY:        func_80801174_gcmapsects
+USER_CAPTURE_READY:           NO
+```
+
+45s attract smoke logged one `[ws-gcmapsects-syscall] ep=15 a0=801285b0
+text_start=80198ff0` and never ep 9/13/17. `80801640` only calls `80801174`
+when `section+0x80 != 0`; ep 15 clears that byte. First-128 stderr dispatch
+log is not a 662 histogram. Do not bypass. Do not treat stack `[ws-geo-e]`
+nodes `0x800455b0`/`0x80045618` as 80801174. Artifact
+`/tmp/p08-widescreen-focal-branch-join-repair-20260827T004617Z/`
+(manifest `2c84d1739211aff278e4e469f3af40e816640cc2f0304ff6493d62c9d1f19cfc`).
+
+`NEXT_SINGLE_ACTION:` Get `[ws-gcmapsects-entry] > 0` on the glitch map (attract Wooded/TDL is proven not to tick ep 9/17). Then one USER_SELECTED capture. No bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-27) — join-repair first wrap install
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+WORKTREE:                     DIRTY (preserve)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+CAPTURE_VALID:                YES (id=1 frames 1717..2436; no new user capture)
+FOCAL_DL_8035DD20_AS_CAUSAL_ANCHOR: WEAKENED
+FOCAL_CLUSTER_TRANSITION:     MIXED_ASYMMETRIC_NEIGHBOR_DROPOUT
+SECTION_BLOCK_ACTIVATION:     NOT_SUPPORTED
+FOCAL_BRANCH_EVENTS_IN_WINDOW: 0
+OLD_RA_GATE_ROOT_CAUSE:       $ra is jal PC+8 (0x808011CC / 0x808011F4), not 0x80801174; LOOKUP does not materialize r31; helper used 800E3E8C SP; add_loaded_function(0x80801174) misses CreateStatic same-section C calls and runtime ram+offset keys
+SPHERE_CALL_PC_IN_80801174:   0x808011C4
+SPHERE_EXPECTED_RA:           0x808011CC
+CAA24_PATH_CALL_PC_IN_80801174: 0x808011EC
+CAA24_EXPECTED_RA:            0x808011F4
+80801174_ADDRESS_SEMANTICS:   linked overlay VRAM (not stable LOOKUP key)
+DIRECT_GCMAPSECTS_HOOK:       YES
+HOOK_MECHANISM:               ld --wrap func_80801174_gcmapsects (+ 80801640 / ep 9 / ep 17)
+SECTION_POINTER_SOURCE:       ctx->r4
+SECTION_INDEX_SOURCE:         ctx->r5
+SECTION_ENTRY_SOURCE:         *(a0+0x68)+index*0x58
+GC_MAPSECTS_ENTRY_COUNT:      0
+SPHERE_EVENTS_IN_GCMAPSECTS:  0
+CAA24_EVENTS_IN_GCMAPSECTS:   0
+CALL_ID_JOIN_ERRORS:          0
+UNKNOWN_GUEST_FRAME_EVENTS:   0
+GC_MAPSECTS_HOOK_VERIFIED:    NO
+BUILD_RESULT:                 PASS
+FIX_IMPLEMENTED:              NO
+CURRENT_ROOT_CLASS:           GUEST_MAP_SECTION_DL_SELECTION_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:    OBSERVABILITY_REPAIR
+CURRENT_ROOT_BOUNDARY:        func_80801174_gcmapsects
+USER_CAPTURE_READY:           NO
+```
+
+Attract/auto-start smoke reached Wooded Hollow 335 and TDL 278 without calling
+ep 9/17 / `80801640` / `80801174`. ovl=662 loaded; only logged syscall was
+ep=15 (init). Link-level wrap is proven (objdump 80801640 → `__wrap_`). Do not
+bypass. Do not treat stack `[ws-geo-e]` nodes `0x800455b0`/`0x80045618` as
+80801174. Artifact
+`/tmp/p08-widescreen-focal-branch-join-repair-20260827T002831Z/`
+(manifest `0cd05b6bbac330111b9bdd4a8fa86630b0b6dee02f968d9b568722723450b4d1`).
+
+`NEXT_SINGLE_ACTION:` Run until `[ws-gcmapsects-entry]` count > 0 on a map that actually ticks `gcmapsects` ep 9/17 (the glitch map, not intro-only attract), then one USER_SELECTED capture. No bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-26) — WIDESCREEN_EDGE_GEOMETRY FOCAL_BRANCH_TIMELINE user arbitration
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+WORKTREE:                     DIRTY (preserve; diagnostic wraps + docs)
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+USER_OBSERVED_LATE_POP_IN:               YES
+USER_OBSERVED_EARLY_POP_OUT:             YES
+BIDIRECTIONAL_EDGE_VISIBILITY_ERROR:     USER_OBSERVED
+USER_MANUAL_CAB70_BYPASS_VISUAL_RESULT:  NO_CHANGE
+USER_MANUAL_E3DC0_BYPASS_VISUAL_RESULT:  NO_CHANGE
+USER_MANUAL_CACEC_BYPASS_VISUAL_RESULT:  NO_CHANGE
+CAB70_DIRECT_VISUAL_ROOT:                REFUTED_FOR_OBSERVED_SYMPTOM
+E3DC0_DIRECT_VISUAL_ROOT:                REFUTED_FOR_OBSERVED_SYMPTOM
+CACEC_DIRECT_VISUAL_ROOT:                REFUTED_FOR_OBSERVED_SYMPTOM
+SPHERE_CULLING_IS_VISUAL_ROOT:           REFUTED_FOR_OBSERVED_SYMPTOM
+BBOX_VISUAL_ROOT:                        REFUTED_FOR_OBSERVED_SYMPTOM
+FRUSTUM_ASPECT_MISMATCH_FOR_CAPTURED_EVENT: REFUTED
+USER_TRIGGER_FOUND:                      YES
+CAPTURE_COMPLETE_FOUND:                  YES
+CAPTURE_VALID:                           YES
+CAPTURE_ID:                              1
+CAPTURE_START_FRAME:                     1717
+CAPTURE_END_FRAME:                       2436
+FOCAL_BRANCH_LOG_PRESENT:                YES (0 bytes; truncate-only)
+FOCAL_BRANCH_EVENTS_IN_WINDOW:           0
+FOCAL_SECTION_IDENTITY:                  UNKNOWN
+FOCAL_SECTION_IDENTITY_STABLE:           UNKNOWN
+FOCAL_DL_PHYSICAL:                       0x0035dd20
+FOCAL_DL_KSEG0:                          0x8035dd20
+FOCAL_DL_STORAGE_CLASS:                  LOADED_MAP_MODEL_PAYLOAD
+FOCAL_DL_STATIC_OR_DYNAMIC:              DYNAMIC_RELOCATED
+FOCAL_DL_SEMANTIC_CLASS:                 LEAF_DISPLAY_LIST / MAP_MODEL_PAYLOAD
+FOCAL_DL_MAP_TERRAIN_BIND:               UNKNOWN
+FOCAL_DL_FIRST_SEEN_FRAME:               1720
+FOCAL_DL_LAST_SEEN_FRAME:                2432
+FOCAL_DL_REAPPEARS:                      NO
+LAST_SEEN_IS_CAPTURE_TAIL:               YES
+FOCAL_DL_FROM_GCMAPSECTS:                UNKNOWN (pointer) / YES (class selector)
+FOCAL_DL_FROM_GCCUBEDLL:                 NO
+FOCAL_DL_FROM_GCSECTIONDLL:              NO
+FOCAL_DL_REACHES_800CAA24:               YES (static section path)
+FOCAL_DL_LOD_CONTROLLED:                 NO
+DYNAMIC_BRANCH_JOIN:                     NO
+CAA24_CONTROLS_FOCAL_MEMBERSHIP:         UNKNOWN
+SPHERE_CONTROLS_FOCAL_MEMBERSHIP:        UNKNOWN
+POST_WALK_SELECTION_INVOLVED:            UNKNOWN
+FOCAL_DL_8035DD20_AS_CAUSAL_ANCHOR:      WEAKENED
+FOCAL_CLUSTER_TRANSITION:                MIXED_ASYMMETRIC_NEIGHBOR_DROPOUT
+SECTION_BLOCK_ACTIVATION:                NOT_SUPPORTED
+GUEST_DL_TO_RSP_CONTINUITY:              PROVEN
+LAST_IDENTITY_PRESERVING_BOUNDARY:       RSP_HLE_G_DL_VISIT
+IDENTITY_LOST_AT:                        RSP_G_DL_TO_RT64_DRAW
+DL_TO_RT64_DRAW_JOIN:                    NO
+CURRENT_ROOT_CLASS:                      GUEST_MAP_SECTION_DL_SELECTION_BOUNDARY
+CURRENT_ROOT_CLASS_STATUS:               STRONG_HYPOTHESIS
+CURRENT_ROOT_BOUNDARY:                   func_80801174_gcmapsects (800E3E8C ∧ 800E3D0C/CAA24) for nested leaf 0x8035dd20
+PRIOR_ROOT_CLASS:                        GUEST_DISPLAY_LIST_SELECTION_OR_EMISSION_BOUNDARY (REFINED, not REFUTED)
+NEXT_DISCRIMINATOR:                      FOCAL_BRANCH_JOIN_REPAIR
+FIX_IMPLEMENTED:                         NO
+TEMP_DIAGNOSTIC_CHANGE_THIS_ROUND:       NO
+```
+
+New USER_SELECTED window `capture_id=1` frames **1717..2436** is VALID (720/720,
+`[ws-capture-complete]` present). Do not mix with prior VALID window 1425..2144
+or the smoke start=245. Focal nested leaf `0x8035dd20` is **already present on
+all 179 graphics-emit frames 1720..2432** (cadence every 4 VI frames). Neighbor
+`0x8035d268` drops at emit 1856; `0x8035e2d8` persists with focal. Signature D
+matches this window: no ABSENT→PRESENT onset, so CAA24/sphere membership control
+is **UNKNOWN**. `[ws-focal-branch]` count is **0** even while the DL is live;
+helper wrappers still logged `[ws-geo-e]`/`[ws-geo-d]` on stack nodes. Setup
+artifact `/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/` is
+**missing from /tmp**. Do not bypass CAA24. Do not reopen CAB70/E3DC0/CACEC.
+
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]].
+Latest Branch Arbitration: `/tmp/p08-widescreen-focal-branch-user-arbitration-20260826T233105Z/`
+(manifest `4b1867cb2145af8dc5c33b6916943ce335edf6295a886eaef9d37bddf87a7a65`).
+Latest Producer Artifact: `/tmp/p08-widescreen-dl-producer-trace-20260826T150351Z/`
+(manifest `40d591c62899a56b60f73f4e990f019b1b1890b22b4e4d6a33b41b6eba48f5ee`).
+Latest DL-identity Arbitration: `/tmp/p08-widescreen-dl-framejoined-user-arbitration-20260826T143436Z/`
+(manifest `f0f9b493cf4bdac6ebe2378f8ce5b04ce09f8f4eab34058cd58ff7fed6d80f54`).
+
+`NEXT_SINGLE_ACTION:` Repair observation of `func_80801174_gcmapsects` (guest-PC-safe helper RA or overlay-safe hook) so `[ws-focal-branch]` emits on a frame where `0x8035dd20` is already guest-emitted; then recapture at pop-in. No bypass. No fix.
+`NEXT_RECOMMENDED_MODEL:` Grok 4.6 Medium.
+
+## Prior (2026-08-26) — producer of 0x8035dd20 is map-section selection
+
+Prior VALID USER_SELECTED window was `capture_id=1` frames **1425..2144**,
+focal first_seen **1432**, last_seen **2140**. Static producer machinery remains
+`gcmapsects` `func_80801174` (sphere `800E3E8C` ∧ AABB `800E3D0C`→`func_800CAA24`).
+Visual root is still **NOT PROVEN**. The later 1717..2436 window did not
+re-observe that onset.
+
+## Prior (2026-08-25) — WIDESCREEN_EDGE_GEOMETRY class C — CORRECTED/SUPERSEDED as visual root
+
+```text
+CURRENT_HEAD:                 ab0ebe5f721388d71df3d16c9d77ed0c1ff09fd1
+WORKTREE_AT_INVESTIGATION:    CLEAN
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+USER_DEMO5_STATUS:            RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX
+P08_STATUS:                   ACTIVE / MANUAL_VALIDATION_PENDING
+P09_STATUS:                   PENDING / NOT_FORMALLY_OPEN
+CURRENT_ROOT_CLASS:           C — CPU_FRUSTUM_VISIBILITY_CULLING_BOUNDARY
+CURRENT_ROOT_BOUNDARY:        func_800CAB70
+VISUAL_FIX_STATUS:            USER_VALIDATION_PENDING
+FIX_IMPLEMENTED:              NO
+COMMIT_PUSH:                  NO
+```
+
+The prior label `WIDESCREEN_EDGE_GEOMETRY: POST_P08_ENHANCEMENT` is
+**CORRECTED/SUPERSEDED**. The earlier `D — HOST_RT64_WIDESCREEN_ADAPTATION_BOUNDARY`
+header class is **CORRECTED/SUPERSEDED** as a *previous* current-root claim.
+CPU `func_800CAB70` remains **`PROVEN`** as a guest 4:3 frustum *rejection*
+boundary (telemetry). It is **`REFUTED_FOR_OBSERVED_SYMPTOM`** as the cause of
+the user-visible lateral polygon glitch: manual
+`TOOIE_DIAG_CAB70_BYPASS=1` and `TOOIE_DIAG_E3DC0_BYPASS=1` both
+`NO_CHANGE`.
+
+Controlled counterfactual experiment telemetry remains valid:
+`/tmp/p08-widescreen-cull-counterfactual-20260825T225500Z/`
+(manifest `c356a78d52344b43b440f07df4cdb951be6b672c16f485fcc382a9e6990f9057`).
+
+- `CAB70_CAUSES_GUEST_4_3_FRUSTUM_REJECTION:` **`PROVEN`**
+- `CAB70_BYPASS_RESTORES_VISIBILITY_PATH:` **`PROVEN`** (telemetry / dispatch)
+- `E3DC0_INHERITS_CAB70:` **`PROVEN`**
+- `CAB70_CAUSES_OBSERVED_EDGE_POLYGON_GLITCH:` **`REFUTED_FOR_OBSERVED_SYMPTOM`**
+- `LATERAL_VISUAL_DEFECT_WITH_CAB70_BYPASS:` **`PRESENT / NO_CHANGE`**
+  (prior `RESOLVED` is **CORRECTED/SUPERSEDED**)
+- `VISUAL_GLITCH_RESOLVED:` **REFUTED** as a claim; user visual `NO_CHANGE`
+- Draft `ar_option != Original` enable condition is **CORRECTED/SUPERSEDED**.
+- `FIX_IMPLEMENTED:` `NO`
+
+Do not open P09. Do not mix with `AUDIO_STARTUP_TICK` or `CHARACTER_EDGE_GRAPHICS_GLITCH`.
 
 ## Prioridade atual
 
@@ -1150,16 +2615,20 @@ validação Windows/controle físico (ainda não executados).
 - `AUDIO_STARTUP_TICK: P08_RESIDUAL` (observado pelo usuário; não é prova de
   regressão causal deste chain).
 - `WIDESCREEN_EDGE_GEOMETRY: POST_P08_ENHANCEMENT` (conteúdo original 4:3,
-  não um gate de parity do alvo).
+  não um gate de parity do alvo) is **CORRECTED/SUPERSEDED**. The 2026-08-25
+  class-C `func_800CAB70` visual-root claim is also **CORRECTED/SUPERSEDED**:
+  user manual CAB70/E3DC0 bypass is `NO_CHANGE`. Current class:
+  `G — RT64_G_EX_ASPECT_PIPELINE_BOUNDARY`
+  ([[plan/evidence/p08-widescreen-edge-geometry]]).
 - `CHARACTER_EDGE_GRAPHICS_GLITCH: P08_RESIDUAL` (observado, ainda sem
   reprodução causal formal).
 - `LONG_PLAYTHROUGH_VALIDATION: MANUAL_VALIDATION_PENDING`.
 - `WINDOWS_GAMEPAD_VALIDATION: BLOCKING_P08 / MANUAL_VALIDATION_PENDING`.
 
-Remaining P08: executar a checklist formal com Windows e controle físico;
-depois realizar o long playthrough/regressão ampla; em paralelo, triagem
-separada do tic de áudio e do glitch gráfico. A geometria de borda widescreen
-fica fora do gate P08 e é enhancement posterior.
+Remaining P08: live RT64 aspect/scissor/screenPos discriminator for
+`WIDESCREEN_EDGE_GEOMETRY` (class G; CAB70 visual-root **REFUTED_FOR_OBSERVED_SYMPTOM**);
+checklist formal Windows/controle físico; long playthrough; triagem
+separada do tic de áudio e de `CHARACTER_EDGE_GRAPHICS_GLITCH`.
 
 `CURRENT_FIX_READY_FOR_COMMIT: YES` para o fix focal, condicionado à revisão
 do worktree: a produção está em `src/game/boot_hw_stubs.cpp`; os cinco docs
@@ -1168,5 +2637,73 @@ O worktree ainda mistura instrumentação/diagnóstico e documentação históri
 portanto não está sendo declarado como commit único limpo. `BUILD_THIS_ROUND:
 NOT_RUN`; nenhum PASS de build é inferido. Nenhum commit/push foi feito.
 
-`NEXT_SINGLE_ACTION: executar a validação formal Windows + controle físico e
-registrar o resultado antes de abrir P09.`
+`NEXT_SINGLE_ACTION: Gemini 3.7 Flash High run the live RT64
+useWideViewport / converted-scissor / post-aspect screenPos-X discriminator
+specified in [[plan/evidence/p08-widescreen-edge-geometry]]. Formal
+Windows/gamepad validation remains a separate P08 gate.`
+
+## Current P08 display-list identity & frame-join fix (2026-08-26)
+
+The single discriminator `GUEST_DISPLAY_LIST_IDENTITY_CAPTURE` has been audited,
+corrected, and verified end-to-end. The root cause of the previous unjoined capture
+was diagnosed: `tooie_ws_capture_graphics_task` in `boot_hw_stubs.cpp` hooked
+`0x80014148` and read `task+0x08` as `ucode_boot` and `task+0x0C` as `ucode_boot_size`
+with `end < start`, dropping 100% of emissions, while `rt64_interpreter.cpp` opened
+an independent log handle that buffered writes until shutdown and hardcoded
+`guest_frame=UNKNOWN`.
+
+The fix:
+1. Hooked master graphics task submission at `func_80013EF0` (`0x80013EF0`), where
+   `$a0` is `GraphicsTask*` (`task+0x08 = start`, `task+0x0C = end`, `size = end - start`).
+2. Thread-safe, mutex-protected unified logging directly into `/tmp/tooie-ws-dl-identity.log`.
+3. Exported canonical `tooie_get_current_guest_frame()` and `tooie_get_current_capture_id()`
+   read by Tooie guest hooks, RSP HLE interpreter, and RT64 rasterizer.
+4. Direct C linkage `tooie_ws_log_dl_rsp()` replacing file polling.
+
+`DL_IDENTITY_CAPTURE_READY: YES`; `DL_ADDRESS_SEMANTICS: PROVEN`;
+`NESTED_DL_TRACKING: YES`; `NODE_TO_DL_JOIN: NO`;
+`DL_TO_RSP_JOIN: YES`; `RSP_TO_RT64_WORKLOAD_JOIN: YES`;
+`DL_TO_RT64_DRAW_JOIN: YES`; `END_TO_END_JOIN: YES`;
+`PER_FRAME_ACTIVE_DL_SET_READY: YES`; `DL_FIRST_LAST_SEEN_READY: YES`;
+`OLD_DL_EVENT_TIMING_BUG_ROOT: PROVEN`; `DL_IDENTITY_FRAME_JOIN_FIX_STATUS: VERIFIED`;
+`GUEST_FRAME_JOIN_ACCURACY: 100.0%`; `UNJOINED_DL_EVENT_COUNT: 0`;
+`DL_EVENTS_WITH_GUEST_FRAME_UNKNOWN: 0`.
+
+Validation smoke test results:
+- `[ws-capture-start]`: 1
+- `[ws-frame]`: 648
+- `[ws-dl-emit]`: 4,779
+- `[ws-dl-rsp]`: 8,908
+- `[ws-dl-rt64]`: 8,908
+- `[ws-rt64-draw]`: 47,761
+- Root ping-pong: `80159600` and `80160cd0` (`DOUBLE_BUFFER`).
+- Root join match: 100% matched with ~78µs main-to-render thread latency.
+
+Causal state: `CURRENT_ROOT_CLASS: UNKNOWN / RE-ANCHOR_REQUIRED` (preserved);
+`CURRENT_ROOT_BOUNDARY: NOT_PROMOTED` (preserved).
+Artifact: `/tmp/p08-widescreen-dl-framejoin-fix-20260826T130423Z/`; manifest
+SHA256: `4c650961c173fb7ad7a924fbaaf90abe1393cc3a9d1a53adfe41807d7442cb32`.
+
+`NEXT_SINGLE_ACTION: User triggers one live capture during active gameplay exhibiting the edge geometry glitch (touch /tmp/tooie-ws-capture) to generate authoritative trace in /tmp/tooie-ws-dl-identity.log.`
+
+## P08 FOCAL_BRANCH_TIMELINE setup (2026-08-26)
+
+Implemented diagnostic-only branch capture in `src/game/boot_hw_stubs.cpp`.
+The direct generated `80801174` path is observed through caller-frame
+reconstruction in wrappers at `800E3E8C → 800E3D0C → 800CAA24`; no generated
+file was edited.
+Events use the same `capture_id` and `guest_frame` as the existing DL stream.
+Stable identity is `section_ptr + section_index + section_entry_ptr` with
+entry stride `0x58`.
+
+`CAA24` is a two-group separating-plane predicate over the camera/viewport
+volume from `D_8012D500` and two AABB corner vectors (`v0=1` pass, `v0=0`
+reject). Its exact retail writer/update cadence remains `UNKNOWN`. Build:
+`ninja -C build TooieRecompiled` PASS. The launcher smoke completed 720 frames
+and emitted 3,881 DL events, but did not enter map traversal, so branch runtime
+evidence remains `UNKNOWN`; no causal claim is made. `FIX_IMPLEMENTED: NO`.
+
+Artifact: `/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/`;
+manifest SHA `f010ac8a1a33e97494a0d6d5dcb90a237bc8814399c4a01ba1328f21c9de81e3`.
+Next single action: one live user capture at the visible residual, then Grok
+4.6 Medium arbitration of sphere versus CAA24 versus section state.

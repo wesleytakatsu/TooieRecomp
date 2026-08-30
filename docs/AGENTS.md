@@ -77,6 +77,12 @@ Specs = contratos estáveis.
 Evidence = investigação e hipóteses.
 Handoff = estado corrente para novo chat.
 
+P08 `WIDESCREEN_EDGE_GEOMETRY` current: `800CAA24` production ON;
+`800CACEC` object frustum production ON (user visual confirmed). Intro
+walls `STILL_PRESENT` independent (`SOURCE_GEOMETRY`/`CAMERA_FRAMING`).
+Next: CPU dump of `MAP_18B_CS_STARTUP_INTRO` extents. Do not combine
+vis flags. Do not implement intro production fix yet.
+
 Toda conclusão deve ser classificada:
 - `PROVEN`
 - `REFUTED`
@@ -94,3 +100,36 @@ Antes de encerrar:
 - `markdown_vault_audit`
 - `git diff --check`
 - status do worktree
+
+Residual P08 ativo (`WIDESCREEN_EDGE_GEOMETRY`): estado canônico em
+[[HANDOFF]] e [[plan/evidence/p08-session-handoff]].
+`gspropsDll_entrypoint_1` é load one-shot type-6 de todos os gccubes, não
+visibilidade por frame. Consumidor per-frame type-6: `800FF62C` sobre
+`D_80136EE0`; vis euclidiana `800EFFB4` (não FOV/aspect); TYPE6 vis CF
+`NO_CHANGE`. Sprites 7/9/C (`800CBB18` = type 0xC, não 0xA) disparam no
+load do mapa via `gccube_ep6`; `800F0064` é círculo XZ mundo, não
+câmera/FOV/aspect; GSPROPS vis CF `PARTIAL_HIT` em inserts e `REFUTED`
+como pop Expand. Instâncias `800B3CDC` em `D_8012AE80+0xE0` são occupancy
+query (`800CB8F0` LIVE 5777; `draw_fn=NONE`);
+`BOUND_SPRITE_VIEW_CULL_AS_EXPAND_ROOT: REFUTED`. Não envolver
+`80108DC0` como vis. Não tratar `800F0064` como gate FOV. Não reabrir
+draw de bound-sprite. Não combinar flags MAP_VIS / MODEL_GEO / PROP_CELL /
+GSPROPS_VIS / TYPE6_VIS. `8011458C` é occupancy/near via `801143A4`,
+não dispatch de actor. Cadeia actor
+`80114184`→`800BD708`→`800CD23C`→`800EA628`→`80103508`→`8010108C`.
+CF `TOOIE_TEST_EXPAND_ACTOR_CUBE_AABB`: `PARTIAL_HIT` visitation /
+`NO_CHANGE` draw-DL. `ACTOR_PICKUP_VIEW_CULL_AS_EXPAND_ROOT: REFUTED`.
+`80108C14` é submit raro da mesma lista type-6 `D_80136EE0` (`LIVE` 2 vs
+`800FF62C=1337`); jalr GETTER, não DRAW; gates RESOURCE only.
+`80108C14_AS_REMAINING_DRAW_ROOT: REFUTED`.
+`REMAINING_STATIC_DECORATIVE_VIEW_CULL_AS_EXPAND_ROOT: REFUTED`.
+`800CAA24` aspect-aware (H `n_cam_x /= k`) é **produção ON** (visual
+gameplay confirmado; `TOOIE_TEST_MAP_VIS_ASPECT_AWARE=0` restaura original).
+`800CACEC` object frustum H-expand is **produção ON** (user visual
+confirmed; `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` restaura original;
+DRAW-only). `ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED`.
+`TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED`. Intro walls
+`STILL_PRESENT` independent (`SOURCE_GEOMETRY`/`CAMERA_FRAMING`).
+Próximo: dump CPU de `MAP_18B_CS_STARTUP_INTRO` extents. Wording
+“GeoCmd intra-model untested” is `CORRECTED/SUPERSEDED`: era
+`800E3DC0`/`800CAB70`. Não voltar à GPU. Não combinar flags de vis.
