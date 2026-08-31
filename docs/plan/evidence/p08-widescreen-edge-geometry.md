@@ -3853,3 +3853,51 @@ is allowed. Artifact:
 `/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/`; manifest
 SHA `f010ac8a1a33e97494a0d6d5dcb90a237bc8814399c4a01ba1328f21c9de81e3`.
 `FIX_IMPLEMENTED: NO`; next action is one user capture, then Grok 4.6 Medium.
+
+## 2026-08-31 ultrawide revalidation after production projection fix
+
+The committed T_INTRO source-aspect policy was revalidated with the corrected
+OPA triangle set and CPU homogeneous clipping. Scene A representative early,
+middle, and WALL7759/WALL7799-era poses retain wall-to-empty authored-extent
+boundaries in target-only bands at 21:9 and 32:9. SKY18/background occupies
+separate right-side target-only portions. This confirms the 21:9+ residual
+under the final policy; it does not reopen the closed 16:9 result and does
+not justify a cull bypass or geometry patch in this round.
+
+Artifact: `/tmp/p08-tintro-ultrawide-revalidation-20260831T042437Z/`.
+
+## 2026-08-31 authoritative draw-label recapture
+
+The new CPU graphics-task capture is authoritative for draw-time ownership
+and inherited state: `RSP::drawIndexedTri` supplied OPA/XLU/OTHER labels,
+semantic material fields, DL root/parent/leaf/gfx address, workload vertex
+buffers, matrices, viewport and scissor. `RDP::fillRect` and `drawTexRect`
+supplied the background-source stream. No GPU readback was used, and all
+temporary source instrumentation was removed after validation.
+
+The capture contains 1,644 Scene-A camera samples and 118,319 triangle rows,
+plus 4,227 Scene-B samples and 550,829 valid triangle rows. The post-file-
+select Scene-B entry was reached, but the bounded run ended without a
+semantic end marker. The two roots also contain character/effect submissions;
+the capture has no authoritative environment asset/group discriminator, so
+normal/material grouping is conservative rather than connected-topology
+proof. Consequently `CAP_CONFIDENCE=LOW`, `RAW_GLOBAL_MAX_SAFE_ASPECT=UNKNOWN`,
+and `SINGLE_TINTRO_SAFE_CAP_FEASIBLE=NO`.
+
+Artifact: `/tmp/p08-tintro-authoritative-recapture-20260831T071206Z/`;
+manifest SHA `72aa50123e9ed4914bd2c47b71d50e37df35dbe3a463622b36359f89c5dfcde1`.
+
+## T_INTRO centered 16:9 presentation candidate (2026-08-31; deferred)
+
+The centered black-pillarbox policy above 16:9 was a candidate only. It was
+tested acceptable experimentally, then deferred by the user and removed from
+the worktree. The RT64 API, VI rectangle plumbing, Tooie activation/reset
+hooks, and candidate test are not current production behavior.
+
+The committed dynamic source-aspect compensation remains unchanged and is the
+only current T_INTRO production fix. Static validation of the removed
+candidate had passed before deferral: Tooie build, window 38/38, projection
+7/7, and the deterministic presentation-rect test. Artifact:
+`/tmp/p08-tintro-pillarbox-candidate-20260831T130202Z/` (SHA256SUMS SHA
+`320b3cfe86ec3625615dc270f063907f0b838baa2911b7c0222f76da39cbd4de`).
+`PILLARBOX_CANDIDATE_FINAL_STATUS: DEFERRED_AND_REMOVED_FROM_WORKTREE`.

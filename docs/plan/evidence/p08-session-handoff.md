@@ -3190,3 +3190,27 @@ DL events but no map-section calls. Runtime branch evidence is therefore
 pending, not refuted. Artifact:
 `/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/`; SHA
 `f010ac8a1a33e97494a0d6d5dcb90a237bc8814399c4a01ba1328f21c9de81e3`.
+
+## 2026-08-31 ultrawide revalidation
+
+Under the committed dynamic cinematic source-aspect policy, CPU homogeneous
+clipping of the corrected MAP_18B OPA triangles confirms Scene A
+wall-to-empty authored-extent terminations in target-only bands at 21:9 and
+32:9. The right-side target-only content is mixed SKY18/background and is not
+classified as missing wall geometry. Scene B reaches the same opening camera
+and OPA root, so the same semantic boundary applies; no heap-address or leaf
+set identity is required. 16:9 remains the previously confirmed production
+milestone. No geometry extension was implemented.
+
+Artifact: `/tmp/p08-tintro-ultrawide-revalidation-20260831T042437Z/`.
+
+## P08 closure / deferred ultrawide presentation (2026-08-31)
+
+The committed T_INTRO dynamic source-aspect projection fix is closed and
+visually confirmed for the tested 16:9 scenes. The experimentally acceptable
+centered max-16:9 pillarbox candidate was deferred and removed from the
+Tooie/RT64 worktrees; no RT64 production commit is required. The next single
+action is the animated/swaying model-part graphical-glitch investigation.
+Open queue after P08: animated model-part glitches (`UNKNOWN`, NEXT), audio
+“tic tic” (`UNKNOWN`, after bug 1), and T_INTRO ultrawide above 16:9 (deferred,
+authored-extent residual proven).

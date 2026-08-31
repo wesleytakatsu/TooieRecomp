@@ -3369,3 +3369,66 @@ Artifact: `/tmp/p08-widescreen-focal-branch-timeline-setup-20260826T164317Z/`;
 manifest SHA `f010ac8a1a33e97494a0d6d5dcb90a237bc8814399c4a01ba1328f21c9de81e3`.
 Next single action: one live user capture at the visible residual, then Grok
 4.6 Medium arbitration of sphere versus CAA24 versus section state.
+
+## P08 ultrawide revalidation (2026-08-31)
+
+The production T_INTRO projection fix remains valid for the tested 16:9
+scenes. CPU homogeneous clipping of the corrected MAP_18B OPA triangle set
+under the final source-aspect policy still finds target-only wall-to-empty
+terminations at 21:9 and 32:9 in representative Scene A poses; separate
+right-side target-only portions are SKY18/background. The 21:9+ authored
+extent residual is therefore confirmed under the production policy, while
+the exact live Scene B capture remains a semantic-equivalence check through
+the shared opening camera/root. No geometry extension was implemented.
+
+Artifact: `/tmp/p08-tintro-ultrawide-revalidation-20260831T042437Z/`.
+
+## P08 authoritative T_INTRO recapture (2026-08-31)
+
+One new CPU-only RT64 graphics-task capture was produced with cached
+`TOOIE_DIAG_TINTRO_AUTHORITATIVE_GEOMETRY=1`. Triangle emission records carry
+source pass owner (OPA/XLU/OTHER), material state, DL provenance, real
+workload vertex/UV/color buffers, matrices, viewport, and scissor; RDP
+`fillRect`/`drawTexRect` records provide background-source evidence. No GPU
+readback was used. The temporary instrumentation was removed afterward.
+
+Observed rows: Scene A 1,644 camera samples / 118,319 triangles; Scene B
+4,227 / 550,829 valid triangles. A and the post-file-select B entry were
+observed, but the bounded run ended without an explicit B end marker.
+Environment-vs-character asset identity and connected topology remain
+insufficient for a safe-aspect failure predicate. `CAP_CONFIDENCE: LOW`; no
+numeric production cap is promoted and no production fix is implemented.
+
+Artifact: `/tmp/p08-tintro-authoritative-recapture-20260831T071206Z/`; manifest
+SHA `72aa50123e9ed4914bd2c47b71d50e37df35dbe3a463622b36359f89c5dfcde1`.
+`NEXT_SINGLE_ACTION`: add a bounded authoritative environment asset/group
+discriminator at the same CPU draw seam and rerun to an explicit Scene-B end
+marker; do not implement a production cap.
+
+### P08 T_INTRO centered 16:9 presentation candidate (2026-08-31; deferred)
+
+An experimental centered black-pillarbox policy above 16:9 was implemented
+and user-tested acceptable, but is explicitly deferred. Its Tooie activation
+hook, RT64 presentation extension, and deterministic rectangle test were
+removed during the P08 closure cleanup. It is not current production behavior;
+the committed dynamic T_INTRO source-aspect projection fix remains unchanged.
+
+Static validation of the removed candidate had passed before deferral:
+`TooieRecompiled` build, `window_display_test` 38/38, projection policy test
+7/7, and `tintro_presentation_rect_test`. No GPU readback was used. Artifact:
+`/tmp/p08-tintro-pillarbox-candidate-20260831T130202Z/` (SHA256SUMS SHA
+`320b3cfe86ec3625615dc270f063907f0b838baa2911b7c0222f76da39cbd4de`).
+
+`PILLARBOX_CANDIDATE_FINAL_STATUS: DEFERRED_AND_REMOVED_FROM_WORKTREE`.
+`NEXT_SINGLE_ACTION`: investigate animated/swaying model-part glitches.
+
+### P08 closure cleanup (2026-08-31)
+
+The obsolete P08 diagnostic layer in `boot_hw_stubs.cpp`, two unreferenced
+P08-only offline probes, the repository-local capture tree, and all
+candidate-specific RT64/Tooie code were removed. The reusable AngryLyon
+control instrumentation remains because its oracle scripts depend on it.
+The permanent T_INTRO projection regression test remains. Confirmed open bug
+queue: (1) animated/swaying model parts — root `UNKNOWN`, priority NEXT; (2)
+intermittent audio “tic tic” — root `UNKNOWN`, after bug 1; (3) T_INTRO
+ultrawide above 16:9 — deferred, proven authored-extent residual.

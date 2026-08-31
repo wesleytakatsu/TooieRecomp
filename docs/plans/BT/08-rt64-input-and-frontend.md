@@ -1497,6 +1497,16 @@ LATEST_SHA256SUMS_SHA: 40d591c62899a56b60f73f4e990f019b1b1890b22b4e4d6a33b41b6eb
 `NEXT_SINGLE_ACTION:` Instrument `func_80801174_gcmapsects` + `func_800E3D0C`/`func_800CAA24` vs G_DL `0x8035dd20` membership. No bypass. No production patch.
 `NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
 
+## P08 ultrawide revalidation (2026-08-31)
+
+The committed T_INTRO projection fix remains valid at tested 16:9. CPU/static
+revalidation confirms residual authored-extent wall terminations in Scene A
+at 21:9 and 32:9; Scene B shares the opening camera and OPA root. Keep
+21:9+/32:9 as an open geometry/presentation decision. No production change
+was made in this validation round.
+
+Artifact: `/tmp/p08-tintro-ultrawide-revalidation-20260831T042437Z/`.
+
 ### P08 FOCAL_BRANCH_TIMELINE setup (2026-08-26)
 
 Implemented diagnostic-only wrappers for `func_80801174_gcmapsects`'s real
@@ -1787,3 +1797,14 @@ observable** (`DEPTH_OCCLUSION_RESULT: UNKNOWN`). Semantic join stays
 
 `NEXT_SINGLE_ACTION:` `TARGETED_FOCAL_TEXTURE_TMEM_TRACE` on `00349d38` TRI1 vs same-DL FRONT TRI2. No GPU readback. No depth bypass. No production patch.
 `NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
+
+### P08 T_INTRO presentation policy (2026-08-31; deferred)
+
+The centered 16:9 max-aspect presentation candidate was tested acceptable,
+then deferred and removed from the worktree. Its RT64 seam, Tooie hook, and
+candidate test are not current behavior. The committed dynamic T_INTRO
+projection compensation remains unchanged. Static validation of the removed
+candidate had passed before deferral.
+
+`PILLARBOX_CANDIDATE_FINAL_STATUS:` `DEFERRED_AND_REMOVED_FROM_WORKTREE`.
+`NEXT_SINGLE_ACTION:` animated/swaying model-part glitch investigation.

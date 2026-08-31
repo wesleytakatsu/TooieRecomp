@@ -3,7 +3,7 @@
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — P08 ACTIVE / MANUAL_VALIDATION_PENDING. The immutable `/tmp/p08-979d8-final-20260822T070735Z` capture verifies twice; the bounded `0x800979D8 → BCE84 → P60 → ncbapivot` chain is proven for USER_DEMO_4, while USER_DEMO_1/5 movement residuals remain open.
+- [[HANDOFF]] — Handoff — TooieRecomp — P08 closure cleanup: gameplay visibility and T_INTRO 16:9 projection are closed; ultrawide >16:9 pillarbox candidate deferred and removed. USER_DEMO_5 is RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX.
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Vault = `TooieRecomp/docs`. Configs de MCP/IDE no TooieRecomp (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`). Abrir agentes neste repositório, não em `N64-Recomp/`.
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [[specs/BT/angrylion-control-oracle]] — ANGRYLION_CONTROL — Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE pinned under `tools/oracle/angrylion-control/` (measurement only; TooieRecomp stays RT64).
@@ -24,7 +24,8 @@
 
 - [[plan/evidence/p08-user-demo4-800979d8-postfix-validation]] — P08 — corrected post-fix validation; exact ring-1 BCE84 source and bounded helper/P60 chain match, no global parity claim.
 - [[plan/evidence/p08-user-demo4-bainput-held-state-provenance]] — P08 — USER_DEMO_4 C-Right raw-pad → BaInput held-state; final BCE84 join PROVEN in bounded scope.
-- [[plan/evidence/p08-attract-movement-residuals]] — P08 — user-reproduced USER_DEMO_1 and USER_DEMO_5 movement residuals; Demo 5 is next first-divergence target.
+- [[plan/evidence/p08-attract-movement-residuals]] — P08 — user-reproduced USER_DEMO_1 residual; USER_DEMO_5 is RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX; widescreen residual is independent (T_INTRO CLIP_X Expand K=4/3; first env G_DL 0x0031f6d8/0x0031f8f8 at Scene-A frame 5).
+- [[plan/evidence/p08-widescreen-edge-geometry]] — P08 — WIDESCREEN_EDGE_GEOMETRY: T_INTRO 16:9 first RT64 divergence CLIP_X (viewProj 0.905148->0.678861, K=4/3 AUTO); guest Original/Expand owner diff=0 REFUTED; 21:9+ authored extent PROVEN/separate.
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
 - [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
@@ -65,7 +66,7 @@
 - [[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] — P08 — corrigir binding de R_MIPS_26 intra-overlay no GENERATOR — Fix estrutural no N64Recomp: jal same-section em seções relocatable agora resolve para chamada direta a C, mesmo com use_lookup_for_all_function_calls=true. Elimina a colisão de base vram 0x80800000 (chintrochar→gsworldDll). Scheduler preservado via restrição a relocatable. Validado 3/3 smokes + 140s run.
 - [[plan/evidence/p08-runtime-frontend-smoke]] — BT P08 — runtime, launcher e música — Evidência do desbloqueio DP/VI e do ciclo de música do launcher.
 - [[plan/evidence/p08-demo-zbuffer-oracle-sol-review]] — P08 — independent Z-buffer oracle-validity review — Rice-zero is not a CPU-visible rendered-Z oracle; RT64 ownership/order is valid but exact format is refuted; C-ORACLE.
-- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: attract demo e render submission — Visible demo and matrix fix validated; right-only input report not reproduced on e97.
+- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: attract demo e render submission — T_INTRO 16:9 first RT64 divergence is CLIP_X (K=4/3 AUTO); guest presentation envelope REFUTED; first env owner 0x0031f6d8/0x0031f8f8 at frame 5.
 - [[plan/evidence/p08-slot7-object-lifecycle-arbitration]] — P08 — slot7 table[2] object lifecycle arbitration (Grok) — Arbitragem Gemini×DeepSeek: creator 20790, clearer 205D0, countdown +0x34, C2AB8 progress A|C; origem UNKNOWN; ROOT_CAUSE_PROVEN=NO.
 - [[plan/evidence/p08-guest-preemption-runtime-audit]] — P08 — guest preemption & runtime scheduler structural audit — Auditoria estrutural do gap N64 (interrupt preemption) vs N64ModernRuntime (cooperative token único).
 - [[plan/evidence/p08-guest-preemption-causal-validation]] — P08 — guest preemption causal validation (clean experiment, class A) — Experimento limpo reversível: yield_self_1ms em func_800C2AB8 → AUDIO roda, func_800205D0 limpa table[2].word0, C2AB8 retorna, attract progride (até SIGSEGV downstream novo em func_800BCF28). Gap de preempção provado causalmente.
@@ -148,4 +149,5 @@
 - [[specs/BT/symbols]] — BT — Symbols and Relocations — The repo ships plain-text symbol and relocation maps used by Splat at build time. These are the raw material for a static-recomp symbol table.
 - [[specs/BT/syscalls]] — BT — Overlay Syscall Dispatch — Generates `overlay_syscalls.s` from `overlays.us.toml` (banjo-tooie-Recomp):
 - [[specs/BT/tools]] — BT — Tooling — C++ and Python tools under `banjo-tooie-Recomp/tools/`, built by `tools/Makefile` and used by the main Makefile.
+- [[plan/evidence/p08-widescreen-edge-geometry]] — P08 — Widescreen edge geometry: gameplay map/object vis production ON; intro WALL7799 skip original AABB TOP cull; 819F8 post-AABB skip OPEN.
 - [[specs/index]] — Specifications Index — Technical specifications for the two reference projects used to build a Banjo-Tooie static recompilation.

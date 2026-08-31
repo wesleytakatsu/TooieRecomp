@@ -12,8 +12,17 @@ Widescreen residual is independent. Canonical:
 `docs/plan/evidence/p08-widescreen-edge-geometry.md` and `docs/HANDOFF.md`.
 
 This round: user confirmed aspect-aware `800CACEC`; object frustum is
-**production ON**. Intro walls remain independent
-(`SOURCE_GEOMETRY`/`CAMERA_FRAMING`). Artifact
+**production ON**. Intro walls remain independent.
+`CAMERA_FRAMING_EXPOSES_OUTSIDE_MODEL` and `INTRO_ASPECT_CLAMP` /
+Clamp16x9 are `CORRECTED/SUPERSEDED` / `REFUTED` for current 16:9.
+Canonical: `docs/plan/evidence/p08-widescreen-edge-geometry.md`.
+Latest intro artifact
+`/tmp/p08-intro-original-presentation-envelope-20260830T163614Z/`
+`SHA256SUMS` `2c2ffed179c34aafc57a3040f83ffc175b4c24257abc2761be7ef895884a8fea`.
+Prior framing artifact preserved
+`/tmp/p08-intro-source-geometry-framing-20260830T115524Z/`
+`SHA256SUMS` `28c90810dcd26bfd9e7015417089cbd14425d0dc271514558727a372db63a867`.
+Prior object-production artifact preserved
 `/tmp/p08-widescreen-object-production-intro-root-20260830T031102Z/`.
 Prior Banjo-port artifact preserved
 `/tmp/p08-widescreen-object-model-frustum-banjo-port-20260830T024845Z/`.

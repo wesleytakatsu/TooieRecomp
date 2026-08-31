@@ -102,8 +102,18 @@ idle follow-cam glidx 1..38 match ANGRYLION_CONTROL.
 Remaining first difference is dump glidx 39 walking-player `ncbapivot`
 jumptable `80112C3C` on `*(node+0x60)+8` (0 vs 5;
 [[../../plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]]).
-P08 remains **ACTIVE / MANUAL_VALIDATION_PENDING**; P09 remains
-**PENDING / NOT_FORMALLY_OPEN**.
+P08 `WIDESCREEN_EDGE_GEOMETRY` is **CLOSED FOR CURRENT SCOPE**: gameplay
+visibility and tested 16:9 T_INTRO projection are production-closed; the
+ultrawide authored-extent residual is deferred. The next tracked work is the
+open graphical/audio bug queue in [[../../HANDOFF]]. P09 remains **PENDING /
+NOT_FORMALLY_OPEN**.
+WIDESCREEN_EDGE_GEOMETRY (2026-08-31): T_INTRO 16:9 first RT64
+divergence is CLIP_X (`K=4/3` AUTO on cinematic viewProj). Guest
+presentation-envelope Original/Expand owner diff is `0` (`REFUTED`).
+Canonical: [[../../plan/evidence/p08-widescreen-edge-geometry]].
+P08 closure: the centered max-16:9 pillarbox candidate for T_INTRO ultrawide
+was tested acceptable but is `DEFERRED_AND_REMOVED_FROM_WORKTREE`; the next
+single action is animated/swaying model-part graphical-glitch investigation.
 The local `0x800979D8` mapping passes its focused contract test. The corrected
 BCE84 ring-1 raw join content matches the bounded held-input/P60/ncbapivot
 chain (`0x115` → `1` → `2`, `p60.C/E/+8=1/2/5`) on both runtimes; the

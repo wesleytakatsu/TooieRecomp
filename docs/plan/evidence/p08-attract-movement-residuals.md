@@ -14,7 +14,90 @@ tags: [p08, attract, movement, residual, user-observation, demo1, demo5]
 This note records manual observations after the `0x800979D8` checkpoint. They
 are product/parity evidence, not automated proofs and not a new movement fix.
 
-## CURRENT (2026-08-30) — OBJECT_FRUSTUM_PRODUCTION + INTRO_WALL_ROOT
+## CURRENT (2026-08-31) — T_INTRO_RT64_TRIANGLE_TRANSLATION_DIVERGENCE
+
+USER_DEMO_5 remains `RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`. Do not mix
+locomotion residuals with widescreen missing-side geometry. Canonical:
+[[p08-widescreen-edge-geometry]].
+
+T_INTRO 16:9 first RT64 divergence is CLIP_X: Expand AUTO applies `K=4/3`
+to cinematic `viewProj[0][0]` (`0.905148` → `0.678861`). Guest
+presentation-envelope Original/Expand owner difference is `0` (`REFUTED`).
+Do not reintroduce `±0.754` as horizontal crop. 21:9+ authored extent
+stays `PROVEN`/separate. `TINTRO_16X9_AUTHORED_EXTENT` is
+`STRONG_HYPOTHESIS` only. Next is a Tooie T_INTRO/cutscene candidate, not
+an RT64 global AUTO change. Do not widen CAB70. Do not force WALL7799.
+
+```text
+TINTRO_16X9_RT64_ROOT_CLASS: RT64_PROJECTION_TRANSLATION
+ROOT_CONFIDENCE: HIGH
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION: See [[p08-widescreen-edge-geometry]] (Tooie-side default-off T_INTRO/cutscene candidate to skip AUTO K=4/3 on cinematic viewProj; do not change RT64 globally)
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+ARTIFACT_DIRECTORY: /tmp/p08-tintro-rt64-triangle-translation-20260831T032400Z/
+ARTIFACT_CHECKSUM_MANIFEST: 4971dfafeea24b2c44d365c9df11350dbbcc4bb7f172991550de54731ff3f07a
+```
+
+## Prior (2026-08-30) — T_INTRO_PER_DRAW_TRANSFORM_OWNERSHIP
+
+USER_DEMO_5 remains `RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`. Do not mix
+locomotion residuals with widescreen missing-side geometry. Canonical:
+[[p08-widescreen-edge-geometry]].
+
+Two cinematic wall defects:
+
+- `SCENE_A_FIRST_VISIBLE_AFTER_LAUNCH` (priority, HIGH) — first env at
+  frame 5, G_DL `0x0031f6d8`/`0x0031f8f8`, not OPA7417/`0x00123340`
+- `SCENE_B_NEW_GAME_INTRO` (same T_INTRO cinematic, different heap G_DLs)
+
+Opening type-13 LEFT rejects remain **not** the visible hole owner.
+`REAL_HOLE_FIRST_DROP_STAGE: NO_CPU_DROP`. Do not add
+`TOOIE_TEST_INTRO_TYPE13_ASPECT`. Do not widen CAB70. Do not force 7799.
+Do not assign MAP_18B from map-struct 0. 21:9+ authored extent stays
+separate/`PROVEN`. Clamp16x9 `REFUTED`. No production intro fix this round.
+
+```text
+OPA7417_ZERO_TRIANGLE_ROOT: WRONG_RESOURCE + WRONG_MODEL_MATRIX
+REAL_HOLE_FIRST_DROP_STAGE: NO_CPU_DROP
+A_B_EQUIVALENT_DRAW_OWNER: NO
+RECOMMENDED_INTRO_SOLUTION_CLASS: MORE_EVIDENCE_REQUIRED
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION: See [[p08-widescreen-edge-geometry]] (dense CPU NDC occupancy of 0x0031f6d8/0x0031f8f8 at Scene-A frame 5; content-stable ID); do not force WALL7799; do not reintroduce Clamp16x9
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+ARTIFACT_DIRECTORY: /tmp/p08-tintro-per-draw-owner-20260830T193644Z/
+ARTIFACT_CHECKSUM_MANIFEST: 88a9885d0abc13fb0e0bf3d12008058ee8c89e00404598876148644bb5a66fa9
+```
+
+## Prior (2026-08-30) — T_INTRO_TYPE13_OPENING_LEFT_REJECT
+
+USER_DEMO_5 remains `RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`. Do not mix
+locomotion residuals with widescreen missing-side geometry. Canonical:
+[[p08-widescreen-edge-geometry]].
+
+Two cinematic wall defects:
+
+- `SCENE_A_FIRST_VISIBLE_AFTER_LAUNCH` (priority, HIGH)
+- `SCENE_B_NEW_GAME_INTRO` (same T_INTRO model, post-gameselect replay)
+
+Prior WALL7799 TOP-cull evidence is late **SCENE_A**, not SCENE_B. Opening
+type-13 first reject is **LEFT** (`CAB70`); aspect-widen does not accept
+those leaves. Do not add `TOOIE_TEST_INTRO_TYPE13_ASPECT`. Do not force
+7799. Do not assign MAP_18B from map-struct 0. 21:9+ authored extent stays
+separate/`PROVEN`. Clamp16x9 `REFUTED`. No production intro fix this round.
+
+```text
+INTRO_PRIMARY_CLASS: UNKNOWN (7799 skip original; 819F8 post-AABB skip OPEN)
+INTRO_ROOT_STATUS: CORRECTED/SUPERSEDED for current 16:9
+INTRO_16X9_PRESENTATION_REVEALS_ORIGINALLY_CROPPED_NDC: REFUTED (X-crop)
+RECOMMENDED_INTRO_SOLUTION_CLASS: MORE_EVIDENCE_REQUIRED
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION: See [[p08-widescreen-edge-geometry]] (submitted on-screen L/R 20% at opening; do not add TOOIE_TEST_INTRO_TYPE13_ASPECT); do not force WALL7799; do not reintroduce Clamp16x9
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+ARTIFACT_DIRECTORY: /tmp/p08-intro-wall7799-gate-20260830T173445Z/
+ARTIFACT_CHECKSUM_MANIFEST: 30ad57994bc6635bdf97d1f44c832f80f740811813178084d0c295b2c41f41f4
+```
+
+## Prior (2026-08-30) — OBJECT_FRUSTUM_PRODUCTION + INTRO_WALL_ROOT
 
 USER_DEMO_5 remains `RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX`. Do not mix
 locomotion residuals with widescreen missing-side geometry. Canonical:
