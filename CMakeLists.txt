@@ -125,6 +125,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
@@ -388,6 +389,20 @@ target_link_libraries(window_display_test PRIVATE
     SDL2::SDL2
 )
 set_target_properties(window_display_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# T_INTRO projection-policy regression: proves source aspect comes from the
+# cinematic matrix and rejects the old VI 304/228 compensation at 16:9.
+add_executable(tintro_projection_policy_test
+    ${CMAKE_SOURCE_DIR}/tests/tintro_projection_policy_test.cpp
+)
+target_include_directories(tintro_projection_policy_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/game
+)
+target_compile_options(tintro_projection_policy_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(tintro_projection_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # P08-T08 graphics failure regression test: proves error classification, message formatting, and simulated failure safety.
 add_executable(graphics_failure_test

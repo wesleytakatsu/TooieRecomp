@@ -4,6 +4,7 @@
 #include <cstdio>
 #include "recomp.h"
 #include "funcs.h"
+#include "tintro_projection_policy.h"
 
 // Saved pointers for func_800E4640 reload
 static uint32_t s_saved_P_mtx = 0;
@@ -157,6 +158,8 @@ extern "C" void func_800E44FC(uint8_t* rdram, recomp_context* ctx) {
 
     float v_view[4][4];
     mtxf_mul(v_view, t_s, v_rot);
+
+    tooie_tintro_projection_policy::apply(rdram, proj);
 
     // 6. Allocate Mtx entries from dynamic matrix buffer arg0->unk4
     uint32_t cur_gfx = static_cast<uint32_t>(GUEST_W(rdram, gfx_ctx + 0x00));

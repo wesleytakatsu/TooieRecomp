@@ -1,15 +1,490 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente P08: USER_DEMO_5 resolved; 800CAA24 PRODUCTION ON; 800CACEC object frustum PRODUCTION ON (user visual confirmed); intro walls STILL_PRESENT independent."
+description: "Estado autossuficiente P08: USER_DEMO_5 resolved; T_INTRO 16:9 first RT64 divergence is CLIP_X (K=4/3 AUTO on cinematic viewProj); guest presentation envelope REFUTED."
 status: evidence
 phase: P08
-updated: 2026-08-30
+updated: 2026-08-31
 tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, r-motion-oracle, rt64, intro, attract, demo2, visible-demo]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
 
-## CURRENT_SESSION (2026-08-30) — CLEAN_PINNED_BUILD_VALIDATION
+## CURRENT (2026-08-31) — T_INTRO_TRUE_SOURCE_ASPECT_PRODUCTION
+
+The user visually confirmed the true-source-aspect policy on the tested 16:9
+Scene A and Scene B paths: no disappearing wall has been observed. It is now
+production-default in Tooie at `func_800E44FC`, remains T_INTRO-only and
+render-only, and derives source aspect from `abs(P[1][1]/P[0][0])` in the
+actual cinematic projection. The old VI `304/228` source remains an RT64 root
+finding, not the production cinematic source.
+
+```text
+PRODUCTION_POLICY: true cinematic source-aspect compensation
+SOURCE_ASPECT_HARDCODED: NO
+CANDIDATE_A_FINAL_STATUS: REMOVED
+CANDIDATE_B_ENV_FLAG_FINAL_STATUS: REMOVED; production default
+TINTRO_TRUE_SOURCE_ASPECT_VISUAL_RESULT: VISUALLY_CONFIRMED_FOR_TESTED_16X9_SCENES
+TINTRO_21X9_PLUS_FINAL_STATUS: OPEN_REVALIDATION_REQUIRED
+PROJECTION_POLICY_REGRESSION_TEST: ADDED / PASS
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+NO_PUSH: YES
+```
+
+## SUPERSEDED (2026-08-31) — T_INTRO_PROJECTION_SOURCE_ASPECT_CANDIDATES
+
+The RT64 `K=4/3` projection root is confirmed. Two diagnostic-only Tooie-side
+policies are now implemented, default OFF, and restricted to T_INTRO mode 3
+or MAP 18B (395): `TOOIE_TEST_TINTRO_PROJECTION_ORIGINAL` and
+`TOOIE_TEST_TINTRO_TRUE_SOURCE_ASPECT`. The latter derives the cinematic
+source aspect from `abs(P[1][1]/P[0][0])`, which is approximately
+`1.767441860`, and uses `min(target, source)/(4/3)` so no `K<1` is applied.
+The code changes only the temporary projection matrix; no RT64 source setter,
+global RT64 edit, geometry edit, or production promotion was made.
+
+```text
+EXISTING_ASPECT_EXTENSION_API: PARTIAL
+TOOIE_CAN_OVERRIDE_SOURCE_ASPECT_WITHOUT_RT64_CORE_CHANGE: YES
+CANDIDATE_A_IMPLEMENTED: YES; CANDIDATE_A_DEFAULT: OFF
+CANDIDATE_B_IMPLEMENTED: YES; CANDIDATE_B_DEFAULT: OFF
+CANDIDATE_A_MATCHES_GUEST_GOLDEN: YES
+CANDIDATE_B_MATCHES_EXPECTED_TRUE_ASPECT: YES
+SCENE_A_CANDIDATE_ACTIVE: YES
+SCENE_B_CANDIDATE_ACTIVE: YES
+GAMEPLAY_CANDIDATE_ACTIVE: NO
+RENDER_ONLY_CHANGE: YES
+DEMO_SEMANTIC_SIDE_EFFECT_RISK: LOW
+TINTRO_21X9_PLUS_AUTHORED_EXTENT: PROVEN / SEPARATE
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+NEXT_SINGLE_ACTION: TOOIE_TEST_TINTRO_TRUE_SOURCE_ASPECT=1 ./build/TooieRecompiled
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+ARTIFACT_DIRECTORY: /tmp/p08-tintro-projection-candidate-20260831T034438Z/
+ARTIFACT_CHECKSUM_MANIFEST: 665ae932cfe019b1cebd04fa6dc1f78c6b70f8d3388faee6c5522b1e0f7474ed
+GPU_READBACK_USED: NO
+```
+
+## CURRENT (2026-08-31) — T_INTRO_RT64_TRIANGLE_TRANSLATION_DIVERGENCE
+
+Guest golden CLIP/NDC from Scene-A frame 5 MATCH RT64 RSP CPU clip. The
+first RT64 divergence is Expand `adjustProjectionMatrix`: cinematic
+`viewProj[0][0]` `0.905148` → `0.678861` (`K=4/3` from VI 304/228 vs
+window 16:9). This is **not** the 0.58% guest-projection-aspect delta and
+is **not** the already-refuted presentation-envelope remap.
+
+```text
+TINTRO_16X9_RT64_ROOT_CLASS: RT64_PROJECTION_TRANSLATION
+ROOT_CONFIDENCE: HIGH
+FIRST_RT64_DIVERGENCE_STAGE: CLIP_X
+RT64_EXPAND_EQUATION: matrix[row][0] *= 1/K; K=target/source=4/3; AUTO when origin NONE && scissor covers FB width && width>height
+RT64_ORIGINAL_EXPAND_TRIANGLE_DIFFERENCE_COUNT: 5
+RT64_TRANSFORM_CAN_EXPLAIN_LARGE_VISUAL_FAILURE: YES
+CLIP_CLASSIFICATION_MATCH: NO
+WITNESS_WINDING_MATCH: YES
+EXPAND_FLIPS_ANY_WITNESS_WINDING: NO
+GUEST_RT64_RASTER_STATE_MATCH: YES
+SCENE_B_SHOWS_SAME_RT64_DIVERGENCE: YES
+TINTRO_16X9_AUTHORED_EXTENT: STRONG_HYPOTHESIS
+TINTRO_21X9_PLUS_AUTHORED_EXTENT: PROVEN
+FIX_LAYER: TOOIE
+FIX_SCOPE: TINTRO
+CANDIDATE_IMPLEMENTED: diagnostic-only
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION: implement a Tooie-side default-off T_INTRO/cutscene candidate that prevents RT64 AUTO from applying K=4/3 to the cinematic viewProj; re-check Scene-A frame 5 walls; do not change RT64 globally
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+ARTIFACT_DIRECTORY: /tmp/p08-tintro-rt64-triangle-translation-20260831T032400Z/
+ARTIFACT_CHECKSUM_MANIFEST: 4971dfafeea24b2c44d365c9df11350dbbcc4bb7f172991550de54731ff3f07a
+GPU_READBACK_USED: NO
+```
+
+Witnesses (leaf `0x0031f6d8`): A idx 77 WALL `f5281fc8`; B idx 81 WALL
+`61f2aa16`; C idx 47 B1_EXPECTED_WALL `6a470e60`; D idx 78 B1_LATER
+`75749e8e`; E idx 67 UNKNOWN `f0dd1ea1`. RSP CPU clip MATCH; GPU
+`modViewProj` uses the scaled first column. Isolation:
+`APP_FOLDER_PATH=/tmp/tooie-intro-16x9-xdg/TooieRecompiled`.
+
+## CURRENT (2026-08-31) — T_INTRO_PRESENTATION_ENVELOPE_RECONCILIATION
+
+The prior Original `[-0.754,+0.754]` versus Expand `[-1,+1]` owner delta is
+`REFUTED/SUPERSEDED`. `vis_half` originated in
+the removed historical intro-wall probe as `presented/src_a`; it is an
+aspect-derived host scalar, not guest-NDC X. The live T_INTRO scissor is
+`(0,28)-(304,200)`: X is full `[-1,+1]`, while Y is letterboxed to
+`[-0.754385965,+0.754385965]`.
+
+RT64 Original and Expand both present all guest X values; they differ only in
+host contain-fit mapping (Original pillarboxes at 16:9, Expand fills the
+window). Corrected presented-owner difference is `0` (old `16872` was the
+intentional `vis_half` X test). B-1 remains `1764` conservative UNKNOWN-owner
+pixels and `4224` WALL-to-WALL replacements; the exact-ID mismatch is not a
+proven visual wall defect. `RT64_PRESENTATION_TRANSFORM_AS_ROOT: REFUTED`.
+
+Artifact: `/tmp/p08-tintro-presentation-reconciliation-20260831T025942Z/`
+(manifest SHA `c08eeab9d38cf89be1c79b8184bb95e67b53ab3e703ad118901d856cb4dd6dc3`).
+
+## CURRENT (2026-08-31) — TRUSTED_CPU_RDP_PIXEL_OWNER_REFERENCE
+
+The local pinned Angrylion RDP Plus CPU core (`9c8b9ed3e7d7f00dff8bc872ccdd3fba1a3673fc`)
+now supplies the offline owner replay. It uses the reference edgewalker,
+subpixel setup, coverage-mask generation, z/alpha eligibility, blender path,
+and framebuffer write callback; no generic float rasterizer or GPU readback.
+
+```text
+SCENE_A_FRAME:                     5
+SCENE_A_ENV_TRIANGLES:             156
+SCENE_A_OWNER_UNRESOLVED_PIXELS:   0
+SCENE_A_WALL_OWNER_LEFT_20:        60.82%
+SCENE_A_WALL_OWNER_RIGHT_20:       19.31%
+B1_ACTUAL_OVERLAP_PIXELS:          5988
+B1_EXACT_WALL_ID_FINAL:             NO; later draw owners replace it
+B1_FINAL_CLASS:                     WALL 4224 / UNKNOWN 1764
+B1_OWNER_CAUSE:                     LATER_DRAW_WINS
+ORIGINAL_EXPAND_DIFFERENCE:         16872 presented-envelope pixels
+GUEST_CPU_RENDER_PATH_AS_ROOT:      STRONGLY_WEAKENED
+GPU_READBACK_USED:                  NO
+```
+
+The expected B-1 wall and CPU-nearest alternate both write through the
+reference path (wall coverage 8/8 everywhere; alternate 8/8 except one 7/8
+sample). The exact expected wall ID is not the final owner because later
+draws 67 and 78 write the region; this is not a Z/alpha/state rejection.
+Artifact: `/tmp/p08-tintro-rdp-owner-reference-20260831T011600Z/` (manifest
+`dbf77934a31b2244a5b5af1568413a03c88a0ce823f3886f4b102a4fe9cbf83e`).
+
+## CURRENT (2026-08-30) — T_INTRO_VISIBLE_SURFACE_OWNERSHIP_SCENE_A_VS_B
+
+Scene-A frame 5 remains 156 submitted/render-eligible triangles; fresh
+Scene-B equivalent capture frame 2409 has 80. The complete task-root walk
+observed roots `0x80160cd0` and `0x80159600` (first-env A/B roots respectively
+`0x80160cd0`/`0x80159600`) and decodes E2/E3 RDP SETOTHERMODE through nested
+G_DL calls. B-1 wall and nearer alternate share Z compare/update OFF and the
+same 2-cycle/bilinear/force-blend/alpha-none class; wall draw order is 48,
+alternate 13. Exact RDP blender/coverage ownership remains UNKNOWN, so no
+state-caused mismatch or candidate is proven. Artifact:
+`/tmp/p08-tintro-render-state-owner-20260830T180800Z/` (manifest SHA
+`3d342e999430f817d0333a539968f87935c5b66a848e29864e857edd6a1c3b14`).
+
+## Prior (2026-08-30) — T_INTRO_PER_DRAW_TRANSFORM_OWNERSHIP
+
+```text
+SCENE_A_FIRST_ENV_FRAME:      5
+SCENE_A_FIRST_HOLE_WITNESS_FRAME: 5
+OPA7417_ZERO_TRIANGLE_ROOT:   WRONG_RESOURCE + WRONG_MODEL_MATRIX
+SCENE_A_LEFT_EDGE_GDL:        0x0031f6d8 / 0x0031f8f8
+SCENE_A_LEFT_EDGE_MODEL_MATRIX: 0x8017b0b0 T(camera)
+PRIMARY_HOLE_FRAME:           5
+PRIMARY_HOLE_SIDE:            LEFT
+REAL_HOLE_FIRST_DROP_STAGE:   NO_CPU_DROP
+REAL_HOLE_FIRST_DROP_FUNCTION: func_80013EF0
+A_B_EQUIVALENT_DRAW_OWNER:    NO
+A_B_EQUIVALENT_FIRST_DROP:    YES
+SCENE_A_VISUAL_ROOT_CLASS:    MORE_EVIDENCE_REQUIRED
+SHARED_VISUAL_ROOT:           STRONG_HYPOTHESIS
+IMPLEMENTATION_COMPLEXITY:    LOW_MEDIUM
+IMPLEMENTED_FINAL_FIX:        NO
+NEXT_SINGLE_ACTION:           Dense CPU NDC occupancy grid of 0x0031f6d8/0x0031f8f8 at Scene-A frame 5; content-stable ID for Scene B
+NEXT_RECOMMENDED_MODEL:       GPT-5.6 Luna
+ARTIFACT_DIRECTORY:           /tmp/p08-tintro-per-draw-owner-20260830T193644Z/
+ARTIFACT_CHECKSUM_MANIFEST:   88a9885d0abc13fb0e0bf3d12008058ee8c89e00404598876148644bb5a66fa9
+GPU_READBACK_USED:            NO
+```
+
+`TOOIE_DIAG_TINTRO_DRAW_PROVENANCE=1` (default OFF). F3DEX2 `G_DL_PUSH=0`
+is a call; `0x00123340` is setup-only. Frame-5 env uses local verts + MV
+translation = camera. Do not widen CAB70. Do not force WALL7799.
+
+## Prior session (2026-08-30) — T_INTRO_SCREEN_EDGE_OWNER_AUDIT
+
+```text
+SCENE_A_OPENING_FRAME:        3 (stable VP sample frame 315)
+OPA_7417_TRIANGLES_IN_CLIP:   0
+SCREEN_EDGE_TRIANGLE_OWNER:   NONE_PROVEN
+ARTIFACT_DIRECTORY:           /tmp/p08-tintro-screen-edge-owner-20260830T190608Z/
+ARTIFACT_CHECKSUM_MANIFEST:   1d9fad539b87a0c7ffd4fdeffa7840c1a97bf8f8ab148596d0a1660ce7f1f21b
+```
+
+Static OPA-7417 ownership of the opening hole is REFUTED/INSUFFICIENT.
+
+## Prior session (2026-08-30) — T_INTRO_TYPE13_OPENING_LEFT_REJECT
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+TYPE13_REJECT_OWNER:          800CAB70
+LIVE_PLANE_MAPPING_PROVEN:    YES (0=LEFT 2=TOP 3=BOTTOM; 1=RIGHT/FAR)
+SCENE_A_FIRST_REJECT_PLANE:   LEFT
+SCENE_A_FIRST_REJECT_VALUE:   +34.2265015
+SOURCE_REJECT_TARGET_ACCEPT:  NO
+FOUR_THREE_IDENTITY:          PROVEN
+A_B_EQUIVALENT_CAMERA_FOUND:  YES
+A_B_SAME_REJECT_RESULT:       YES
+TOOIE_TYPE13_MATCHES_BANJO_GEOCMDD_CLASS: YES
+CANDIDATE_IMPLEMENTED:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+SHARED_ROOT:                  PROVEN
+NEXT_SINGLE_ACTION:           Identify SUBMITTED on-screen L/R 20% geometry at opening; do not add TOOIE_TEST_INTRO_TYPE13_ASPECT
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-tintro-type13-reject-plane-20260830T184303Z/
+ARTIFACT_CHECKSUM_MANIFEST:   93b735b8ad433c291ea32340fae6627b268047636987a553f504f3909cfe967a
+BUILD_RESULT:                 PASS
+WINDOW_DISPLAY_TEST:          PASS 38/38
+GPU_READBACK_USED:            NO
+```
+
+`TOOIE_DIAG_TINTRO_TYPE13=1` (default OFF) dumps live CAB70 planes from
+the viewport pointer (`*0x8012D500`), not the pointer slot. Guest aspect
+1.767 already. Six left-edge type-13 AABBs original-LEFT-reject; widen
+does not accept. Scene B replay matches exactly. WALL7799 remains late
+SCENE_A TOP, kept.
+
+## Prior (2026-08-30) — TWO_INTRO_SCENES_SEPARATED
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+SCENE_A:                      SCENE_A_FIRST_VISIBLE_AFTER_LAUNCH
+SCENE_A_EPOCH:                1
+SCENE_A_MAP:                  0
+SCENE_A_OVERLAY:              674
+SCENE_A_OPA_MODEL:            G_DL 0x00123340
+SCENE_A_CAMERA_OWNER:         T_INTRO cam (529.38, 6943.89, -1904.13)
+SCENE_A_ROOT_DRAW:            func_80013EF0 + func_800E3DC0
+SCENE_B:                      SCENE_B_NEW_GAME_INTRO
+SCENE_B_EPOCH:                5 (frontend)
+SCENE_B_MAP:                  0
+SCENE_B_OVERLAY:              440/638 after gameselect 205
+SCENE_B_OPA_MODEL:            G_DL 0x00123340
+SCENE_B_CAMERA_OWNER:         T_INTRO replay; same opening cam as SCENE_A
+SCENE_B_ROOT_DRAW:            func_80013EF0 + func_800E3DC0
+PRIOR_WALL7759_INVESTIGATION_BELONGS_TO: SCENE_A
+SCENE_A_B_SHARED_MAP_RENDERER: YES
+SCENE_A_B_SHARED_VISIBILITY_STACK: YES
+SCENE_A_FAILURE_CLASS:        VISIBILITY_REJECT
+SCENE_B_FAILURE_CLASS:        VISIBILITY_REJECT
+SCENE_A_WALL_OWNER:           G_DL 0x00123340
+SCENE_A_FIRST_DROP_STAGE:     VISIBILITY_REJECT
+SCENE_A_FIRST_DROP_FUNCTION:  func_800E3DC0 / func_800CAB70
+SCENE_A_WALL_DL_SUBMISSION:   PROVEN_PRESENT
+SCENE_A_MATCHES_DK64_INTERNAL_BOUND_PATTERN: NO
+SCENE_B_MATCHES_DK64_INTERNAL_BOUND_PATTERN: NO
+SHARED_ROOT_PLAUSIBLE:        HIGH
+SHARED_ROOT_CANDIDATE:        same T_INTRO model + type-13 AABB; two plays
+IMPLEMENTED_FINAL_FIX:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION:           At SCENE_A opening cam prove type-13 first reject plane (X vs TOP) for G_DL 0x00123340 lateral walls; CPU-only; do not force WALL7799
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-two-intro-scenes-20260830T181514Z/
+ARTIFACT_CHECKSUM_MANIFEST:   4aae5e68e62eb61f5fc7dba8e6b9007d06ba70f61e5da1e762f680bde56b048a
+BUILD_RESULT:                 PASS
+WINDOW_DISPLAY_TEST:          PASS 38/38
+GPU_READBACK_USED:            NO
+NO_COMMIT:                    YES
+NO_PUSH:                      YES
+```
+
+`TOOIE_DIAG_STARTUP_SCENES=1` (default OFF) is the process-start timeline.
+It does not enable frontend. WALL7799 kOpenCam evidence remains valid for
+**late SCENE_A** only; do not treat it as SCENE_B. Do not implement
+`TOOIE_TEST_INTRO_7799_VIS`.
+
+## Prior (2026-08-30) — MAP18B_ORIGINAL_PRESENTATION_ENVELOPE
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+INTRO_16X9_AUTHORED_EXTENT_AS_ROOT: REFUTED/SUPERSEDED
+INTRO_21X9_PLUS_AUTHORED_EXTENT: PROVEN
+INTRO_16X9_CPU_CULL_ROOT:     REFUTED
+INTRO_16X9_MISSING_DL_ROOT:   REFUTED (7759/7779/7644/SKY18); OPEN (WALL7799)
+INTRO_16X9_PRESENTATION_REVEALS_ORIGINALLY_CROPPED_NDC: REFUTED (X-crop)
+INTRO_GUEST_PROJECTION_ALREADY_WIDE: PROVEN
+INTRO_16X9_NEEDS_NEW_GEOMETRY: NO
+INTRO_WALL_DL_SUBMISSION:     PROVEN_PRESENT
+DL_PRESENT_4_3_MISSING_16_9:  NO
+INTRO_16X9_FIRST_DROP_STAGE:  NO_CPU_DROP
+INTRO_16X9_ROOT:              STRONG_HYPOTHESIS (upper-left empty w/o 7799)
+Clamp16x9:                    REFUTED
+GROUP81_AS_OPENING_HOLE_ROOT: REFUTED
+GROUP84_AS_OPENING_HOLE_ROOT: REFUTED
+INTRO_21X9_PLUS_GEOMETRY_EXTENSION_NEED: OPEN / LIKELY
+IMPLEMENTED_CANDIDATE:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION:           Prove why nested leaf 0x819A8 (WALL7799 gfx 7783-7807) is never G_DL-appended at the opening pose; CPU-only; do not extend geometry; do not pillarbox ±0.754
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-intro-original-presentation-envelope-20260830T163614Z/
+ARTIFACT_CHECKSUM_MANIFEST:   2c2ffed179c34aafc57a3040f83ffc175b4c24257abc2761be7ef895884a8fea
+BUILD_RESULT:                 PASS
+GPU_READBACK_USED:            NO
+NO_COMMIT:                    YES
+NO_PUSH:                      YES
+```
+
+Live VP dumps (71) + ROM triangles clipped in guest clip-space. Opening
+frame 6954: submitted 7759/7779 cover left to ndc x=-1 for y≤+0.05;
+y≥+0.15 empty at both ±0.754 and ±1 without 7799. Guest scissor is
+full width, so original cinematic X is ±1. Isolation uses
+`APP_FOLDER_PATH=/tmp/tooie-intro-16x9-xdg/TooieRecompiled`.
+`INTRO_16X9_MISSING_DL_ROOT OPEN (WALL7799)` is `CORRECTED/SUPERSEDED`
+by the type-13 AABB TOP-cull proof (current). The prior
+`INTRO_SPECIAL_GEO_GATE: nested type-13 DRAW_DISTANCE` label is
+`CORRECTED/SUPERSEDED` → `AABB_FRUSTUM_GATE`.
+
+## Prior (2026-08-30) — MAP18B_16X9_EDGE_DRAW_SUBMISSION_AND_FIRST_DROP_GATE
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+INTRO_16X9_AUTHORED_EXTENT_AS_ROOT: REFUTED/SUPERSEDED
+INTRO_21X9_PLUS_AUTHORED_EXTENT: PROVEN
+INTRO_WALL_DL_SUBMISSION:     PROVEN_PRESENT
+DL_PRESENT_4_3_MISSING_16_9:  NO
+INTRO_16X9_FIRST_DROP_STAGE:  NO_CPU_DROP
+INTRO_16X9_ROOT:              STRONG_HYPOTHESIS
+CPU_CLIP_SPACE_DIFFERENCE:    NONE
+HOST_VISIBLE_NDC_DIFFERENCE:  YES
+DROP_ASPECT_DEPENDENT:        NO
+INTRO_SPECIAL_GEO_GATE:       nested type-13 DRAW_DISTANCE 0x81980/0x81940/0x819A8
+PRIOR_TEST_COVERED_THIS_EXACT_PATH: NO
+Clamp16x9:                    REFUTED
+GROUP81_AS_OPENING_HOLE_ROOT: REFUTED
+GROUP84_AS_OPENING_HOLE_ROOT: REFUTED
+INTRO_21X9_PLUS_GEOMETRY_EXTENSION_NEED: OPEN / LIKELY
+IMPLEMENTED_FINAL_FIX:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION:           CPU-clip WALL7759 against ndc x=-1 vs x=-0.754; no geometry extension
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-intro-16x9-dl-drop-20260830T160704Z/
+ARTIFACT_CHECKSUM_MANIFEST:   9ca8fa3c374c75b81594fa5f535633ff977f2a542bbb11389646d6ccbdca553a
+BUILD_RESULT:                 PASS
+GPU_READBACK_USED:            NO
+NO_COMMIT:                    YES
+NO_PUSH:                      YES
+```
+
+the historical `TOOIE_DIAG_INTRO_WALL_DL=1` probe (removed). Isolation must use
+`APP_FOLDER_PATH` (XDG_CONFIG_HOME is ignored). Unique G_DL matching:
+7759/7779/7644/SKY18 present at 16:9 Expand and 4:3 Original. No 16:9-only
+CPU drop. Expand presented vis NDC is ±1.000; Original is ±0.754.
+Cinematic projection stays ~1.767:1.
+
+## Prior (2026-08-30) — MAP18B_OPENING_WALL_REAL_TRIANGLE_BINDING
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+GFX7759_GROUP:                nested type-13 196/7721 AABB (-894,2635,-4305)-(767,3780,-2810)
+GFX7759_VISUAL_ROLE:          WALL
+GFX18_GROUP:                  0
+GFX18_VISUAL_ROLE:            BACKGROUND
+XLU_EDGE_COVERAGE_PRESENT:    NO (7418 ROM-identical to 7417)
+SOURCE_4_3_EDGE_COVERAGE_COMPLETE: NO (right sky/clear)
+LEFT_VISIBLE_EDGE_OWNER:      gfx 7779/7644/7759/7760/7799
+RIGHT_VISIBLE_EDGE_OWNER:     gfx 18 / NO_MODEL_GEOMETRY
+TARGET_ONLY_HOLE_COUNT:       0 at 16:9/6955; 13 at 21:9+32:9 left
+HIGH_Y_HOLE_CONFIRMED_BY_LIVE_RAYS: NO
+GEOMETRY_EXTENSION_NOW_PROVEN: NO
+TOOIE_MATCHES_BANJO_PATTERN:  LOW
+IMPLEMENTED_FINAL_FIX:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION:           Bind gfx 10993/3214/8336 and frame-1255 LEFT y=+1 7799 miss; do not extend 81/84 or 7759
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-intro-real-edge-owner-20260830T145138Z/
+ARTIFACT_CHECKSUM_MANIFEST:   380e7c2aec4d849f6fb3d7197173adfd2f533066890e3d497ec74c8fdcd4560f
+BUILD_RESULT:                 SKIP
+GPU_READBACK_USED:            NO
+NO_COMMIT:                    YES
+NO_PUSH:                      YES
+```
+
+Left opening edge is the WRAP wall at gfx 7759-family. Right is sky.
+XLU 7418 is not a second mesh. 16:9 still hits the left wall. No
+candidate. Clamp16x9 stays refuted. Do not push.
+
+## Prior (2026-08-30) — MAP18B_INTRO_BOUNDARY_OWNERSHIP_AND_GEOMETRY_EXTENSION_CANDIDATE
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+GROUP81_VERTEX_COUNT:         7
+GROUP81_TRIANGLE_COUNT:       3
+GROUP84_VERTEX_COUNT:         21
+GROUP84_TRIANGLE_COUNT:       9
+RIGHT_BOUNDARY_SURFACE:       OPA group 81 gfx 2583
+LEFT_BOUNDARY_SURFACE:        OPA group 84 DL 2643-2691
+MATERIAL_STATE_REUSABLE:      YES
+TEXTURE_CAN_REPEAT:           NO
+STATIC_EXTENSION_FEASIBLE:    YES
+STATIC_EXTENSION_SAFE:        NO
+DYNAMIC_EXTENSION_FEASIBLE:   YES
+TOOIE_CAN_USE_SAME_ARCHITECTURAL_PATTERN: PARTIAL
+HIGH_Y_SEPARATE_HOLE_EXISTS:  YES
+CHOSEN_ARCHITECTURE:          MORE_EVIDENCE_REQUIRED
+CANDIDATE_IMPLEMENTED:        NO
+IMPLEMENTED_FINAL_FIX:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION:           Bind opening-shot wall to live frustum-edge triangle hits (gfx 7759 / gfx 18) plus XLU 7418
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-intro-geometry-extension-candidate-20260830T143035Z/
+ARTIFACT_CHECKSUM_MANIFEST:   6000f3f889a2693191175de272570e69ae73d93cd4be8eead9580c7adaa213e4
+BUILD_RESULT:                 SKIP
+GPU_READBACK_USED:            NO
+NO_COMMIT:                    YES
+NO_PUSH:                      YES
+```
+
+OPA 7417 type-13 leaves 81/84 have exact DL/vertex/material bind. Live
+frustum-edge rays do not hit those leaves. No geometry candidate. Clamp16x9
+stays refuted. Do not push.
+
+## Prior (2026-08-30) — MAP18B_LIVE_CAMERA_AND_WALL_ENVELOPE_CAPTURE
+
+```text
+CURRENT_HEAD:                 17d49afe33871ba03e49c3f922658673ba59c659
+PRODUCTION_MILESTONE_HEAD:    23c070a9a2e00c691c04e543e0d8fc2aafebcd41
+HEAD_BANJORECOMP:             ec859632cfa584e2272d32e46051543429a2baf4
+HEAD_RT64:                    6f1c2d99a4ea571c139f449c326fd176ba8f3496
+CURRENT_FOCUS:                WIDESCREEN_EDGE_GEOMETRY
+MAP18B_CAMERA_OWNER:          D_8012D500 + func_800CB124 + host func_800E44FC
+INTRO_REAL_CAMERA_POSITION:   (-1243.8077, 3682.9285, -1254.0330) frame 6955
+INTRO_REAL_CAMERA_FORWARD:    (0.74934, 0.00698, -0.66215)
+INTRO_REAL_VFOV:              30.7071 deg
+INTRO_REAL_TARGET_ASPECT:     1.777778
+INTRO_REAL_TARGET_HFOV:       52.0369 deg
+INTRO_WALL_GEO_GROUP:         81 right / 84 left
+INTRO_WALL_LOCAL_AABB:        group 81 (2336,1258,-4308)-(4460,2563,-3486)
+BOUNDARY_PLANAR:              NO
+LIVE_MAX_SAFE_HORIZONTAL_FOV: 40.2985 deg
+LIVE_MAX_SAFE_ASPECT:         1.3363:1
+SAFE_4_3:                     YES
+SAFE_16_10:                   NO
+SAFE_16_9:                    NO
+SAFE_21_9:                    NO
+SAFE_32_9:                    NO
+DYNAMIC_CAMERA_FULL_WIDTH_FEASIBLE: NO
+GEOMETRY_EXTENSION_FEASIBLE:  YES
+GEOMETRY_EXTENSION_COMPLEXITY: MEDIUM
+BANJO_TOOIE_STRUCTURAL_SIMILARITY: HIGH
+INTRO_FINAL_SOLUTION_CLASS:   MORE_EVIDENCE_REQUIRED
+INTRO_CLAMP16X9_VISUAL_RESULT: NO_CHANGE
+FAILED_CLAMP_CHANGE_REMOVED:    YES
+IMPLEMENTED_FINAL_FIX:        NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION:           CPU-parse OPA 7417 vertex/material/DL ownership for live groups 81/84
+NEXT_RECOMMENDED_MODEL:       Grok 4.6 Medium
+ARTIFACT_DIRECTORY:           /tmp/p08-intro-live-camera-envelope-20260830T133604Z/
+ARTIFACT_CHECKSUM_MANIFEST:   3c4b0229c98c233364abc69def03f61f23749e21f2c11dac5216b3c913dbf8d7
+GPU_READBACK_USED:            NO
+BUILD_RESULT:                 PASS
+NO_COMMIT:                    YES
+NO_PUSH:                      YES
+```
+
+Live CPU T_INTRO capture. Constraining descent is 4:3-safe and fails
+wider aspects on the right (group 81). Camera full-width is not
+viable. Geometry extension needs vertex/DL bind. No production fix.
+Do not push.
+
+## Prior (2026-08-30) — INTRO_ARBITRARY_ASPECT_AUDIT
+
+Representative alcove inference only; live pose UNKNOWN. Artifact
+`/tmp/p08-intro-arbitrary-aspect-fix-design-20260830T122919Z/`.
+
+## Prior (2026-08-30) — CLEAN_PINNED_BUILD_VALIDATION
 
 ```text
 CURRENT_HEAD:                 23c070a9a2e00c691c04e543e0d8fc2aafebcd41
