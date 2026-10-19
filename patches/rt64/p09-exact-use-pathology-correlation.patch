@@ -1,0 +1,1788 @@
+# p09 exact-use pathology correlation. External RT64 delta only.
+# Prerequisite is the intentionally dirty diagnostic baseline on top of RT64
+# commit 6f1c2d99a4ea571c139f449c326fd176ba8f3496. That commit is only the
+# commit under the dirty baseline. This patch does not apply to a clean HEAD.
+# Do not fold the unrelated pre-existing dirty RT64 worktree into this file.
+#
+# Baseline file SHA256. These bytes must already be present before apply:
+# 3b983f56d76d42db12d3103c926d0394b5b5afc68aa0012071bce2da64fd5de1  src/render/rt64_rsp_processor.cpp
+# 941ae09e8891889c2cf3057d06aaa5a413f2efdf6b4be7fe1a020a786c221a07  src/render/rt64_transform_processor.cpp
+# 00a65b5b779e046152f8199af6eaafd060d8f92dfdbc27fc2033d54f3ac6c9b6  src/render/rt64_transform_processor.h
+# New file must be absent before apply:
+# src/render/rt64_p09_exact_use_correlation.h
+#
+# Companion working-tree sources are not part of this external dependency patch:
+# TooieRecomp/CMakeLists.txt
+# TooieRecomp/tests/p09_exact_use_correlation_test.cpp
+# Companion CMakeLists.txt baseline SHA256, not a hunk in this file:
+# daeb1badfd21b379036f5b322adc5a2cc325ff5ade98a0617123edf4456837e6
+#
+--- a/src/render/rt64_rsp_processor.cpp
++++ b/src/render/rt64_rsp_processor.cpp
+@@ -3,6 +3,8 @@
+ //
+ 
+ #include "rt64_rsp_processor.h"
++#include "rt64_p09_exact_use_correlation.h"
++#include "rt64_transform_processor.h"
+ 
+ #include "rt64_buffer_uploader.h"
+ 
+@@ -17,6 +19,7 @@
+ #include <cmath>
+ #include <cstddef>
+ #include <cstdint>
++#include <cerrno>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+@@ -43,6 +46,17 @@
+             return cached != 0;
+         }
+ 
++        // Standalone, default OFF. Bounded collection of exact-use seam coverage
++        // for pathological join pairs; see P09CorrSession.
++        bool p09SeamEdgePathologyCorrelationEnabled() {
++            static int cached = -1;
++            if (cached < 0) {
++                cached = p09CorrelationFlagTruthy(
++                    std::getenv("TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION")) ? 1 : 0;
++            }
++            return cached != 0;
++        }
++
+         bool p09RspForceEndpointCurrentEnabled() {
+             static int cached = -1;
+             if (cached < 0) {
+@@ -1386,6 +1400,9 @@
+         struct P09JoinVert {
+             uint32_t world = 0;
+             uint32_t bone = 0;
++            // Exact render-use key from the real f/pr/d/t/c source loops.
++            P09SeamExactUseKey key{};
++            bool keyOk = false;
+             P09Vec3 prev{};
+             P09Vec3 cur{};
+             P09Vec3 live{};
+@@ -1971,15 +1988,191 @@
+         P09RspEndpointBindingStats g_p09RspEndpointBinding;
+         std::mutex g_p09RspEndpointBindingMutex;
+ 
++        struct P09CorrPendingPair {
++            P09SeamExactUseKey a{};
++            P09SeamExactUseKey b{};
++            bool aOk = false;
++            bool bOk = false;
++            bool tie = false;
++            bool pathological = false;
++        };
++
++        // One bounded capture attempt (one workload, one RSP dispatch).
++        struct P09CorrAttempt {
++            std::vector<P09CorrPendingPair> pairs;
++            uint64_t generation = 0;
++            uint64_t pathPairs = 0;
++            uint64_t pairsDroppedCap = 0;
++            uint64_t vertsDroppedCap = 0;
++        };
++
++        // Collection lifecycle. All fields guarded by g_p09RspEndpointBindingMutex.
++        // Plans are built and consumed inside one attempt; nothing persists.
++        struct P09CorrSession {
++            P09CorrelationBudget budget;
++            P09ExactUseCorrelation corr;
++            uint64_t generation = 0;
++            uint64_t dispatchesSeen = 0;
++            uint64_t attemptsWithPath = 0;
++            uint64_t attemptsNoPath = 0;
++            uint64_t planBuilt = 0;
++            uint64_t planInactive = 0;
++            uint64_t planNotExhaustive = 0;
++            uint64_t seamSearchSkippedBudget = 0;
++            uint64_t pairsDroppedCap = 0;
++            uint64_t vertsDroppedCap = 0;
++            uint64_t lastWorkloadId = 0;
++            double gateMsTotal = 0.0;
++            double attemptMsTotal = 0.0;
++            double attemptMsLast = 0.0;
++            double attemptMsPeak = 0.0;
++            double planMsTotal = 0.0;
++            double planMsLast = 0.0;
++            double planMsPeak = 0.0;
++            uint64_t statusWrites = 0;
++            P09CaptureControl capture;
++            uint64_t dispatchesWhileWaiting = 0;
++            uint64_t dispatchesAfterExhausted = 0;
++            bool armPollStarted = false;
++            uint64_t lastArmPollMs = 0;
++            // Cleared by the fresh-session assignment in p09CorrResetCorrelationOnly.
++            P09TieSample tieSample;
++        };
++        P09CorrSession g_p09Corr;
++
++        static const char kP09CorrArmPath[] = "/tmp/tooie-p09-seam-edge-pathology-correlation.arm";
++
++        void p09CorrResetCorrelationOnly() {
++            P09CorrSession &cs = g_p09Corr;
++            const P09CaptureControl capture = cs.capture;
++            const bool armPollStarted = cs.armPollStarted;
++            const uint64_t lastArmPollMs = cs.lastArmPollMs;
++            const uint64_t statusWrites = cs.statusWrites;
++            const uint64_t dispatchesWhileWaiting = cs.dispatchesWhileWaiting;
++            cs = P09CorrSession{};
++            cs.capture = capture;
++            cs.armPollStarted = armPollStarted;
++            cs.lastArmPollMs = lastArmPollMs;
++            cs.statusWrites = statusWrites;
++            cs.dispatchesWhileWaiting = dispatchesWhileWaiting;
++        }
++
++        bool p09CorrMarkerVisible() {
++            FILE *marker = std::fopen(kP09CorrArmPath, "rb");
++            if (marker == nullptr) {
++                return false;
++            }
++            std::fclose(marker);
++            return true;
++        }
++
++        // At most once per second, and once on the first enabled dispatch.
++        // Removal runs before any arm, rearm, or stale count. Failure leaves
++        // the session unchanged and latches in the shared controller.
++        void p09CorrPollArm(uint64_t nowMs) {
++            P09CorrSession &cs = g_p09Corr;
++            if (cs.armPollStarted && ((nowMs - cs.lastArmPollMs) < 1000ull)) {
++                return;
++            }
++            cs.armPollStarted = true;
++            cs.lastArmPollMs = nowMs;
++            const bool visible = p09CorrMarkerVisible();
++            bool consumed = false;
++            if (visible) {
++                consumed = (::remove(kP09CorrArmPath) == 0);
++            }
++            const P09ArmEvent ev = p09CaptureObserveMarker(cs.capture, visible, consumed);
++            if (ev == P09ArmEvent::Rearmed) {
++                p09CorrResetCorrelationOnly();
++            }
++        }
++
++        void p09CorrNotePendingPair(P09CorrAttempt &at, const P09JoinVert &child, const P09JoinVert &parent,
++            bool tie, bool pathological) {
++            if (pathological) {
++                at.pathPairs++;
++            }
++            P09CorrPendingPair pending;
++            pending.a = child.key;
++            pending.b = parent.key;
++            pending.aOk = child.keyOk;
++            pending.bOk = parent.keyOk;
++            pending.tie = tie;
++            pending.pathological = pathological;
++            if (!p09ExactUseAppendCapped(at.pairs, kP09ExactUseMaxPendingPairs, at.pairsDroppedCap, pending)) {
++                return;
++            }
++        }
++
++        // Second pass over the same prev/cur filter and the same gap==bestGap
++        // test the selector used. Does not change best, bestTie, or counters.
++        void p09CorrRecordPathologicalTie(const P09CorrAttempt &at, const P09JoinVert &child,
++            const std::vector<P09JoinVert> &parents, size_t best, float bestGap) {
++            P09TieMemberInput members[kP09TieMemberCap];
++            uint32_t stored = 0;
++            uint32_t multiplicity = 0;
++            for (size_t pi = 0; pi < parents.size(); pi++) {
++                const P09JoinVert &parent = parents[pi];
++                if (!parent.prevOk || !parent.curOk || !child.prevOk || !child.curOk) {
++                    continue;
++                }
++                const float gap = p09NdcDistXY(child.prev, parent.prev) + p09NdcDistXY(child.cur, parent.cur);
++                if (gap != bestGap) {
++                    continue;
++                }
++                multiplicity++;
++                if (stored >= uint32_t(kP09TieMemberCap)) {
++                    continue;
++                }
++                P09TieMemberInput &m = members[stored];
++                m = P09TieMemberInput{};
++                m.key = parent.key;
++                m.keyComplete = parent.keyOk;
++                m.selected = (pi == best);
++                m.gap = gap;
++                m.gapEqualsBest = true;
++                m.prevNdcX = parent.prev.x;
++                m.prevNdcY = parent.prev.y;
++                m.curNdcX = parent.cur.x;
++                m.curNdcY = parent.cur.y;
++                m.prevNdcOk = parent.prevOk;
++                m.curNdcOk = parent.curOk;
++                if (parent.prevWorldOk) {
++                    m.prevWorldX = parent.prevWorld.x;
++                    m.prevWorldY = parent.prevWorld.y;
++                    m.prevWorldZ = parent.prevWorld.z;
++                    m.prevWorldOk = true;
++                }
++                if (parent.curWorldOk) {
++                    m.curWorldX = parent.curWorld.x;
++                    m.curWorldY = parent.curWorld.y;
++                    m.curWorldZ = parent.curWorld.z;
++                    m.curWorldOk = true;
++                }
++                stored++;
++            }
++            P09TieGroupInput in;
++            in.child = child.key;
++            in.childComplete = child.keyOk;
++            in.bestGap = bestGap;
++            in.multiplicity = multiplicity;
++            in.attemptGeneration = at.generation;
++            in.members = members;
++            in.memberCount = stored;
++            p09TieSampleRecord(g_p09Corr.tieSample, in);
++        }
++
+         void p09EmitNearestJoinPairs(P09RspEndpointBindingStats &st,
+             const std::vector<P09JoinVert> &parents,
+-            const std::vector<P09JoinVert> &children) {
++            const std::vector<P09JoinVert> &children,
++            P09CorrAttempt *corrAttempt = nullptr) {
+             if (parents.empty() || children.empty()) {
+                 return;
+             }
+             for (const P09JoinVert &child : children) {
+                 size_t best = SIZE_MAX;
+                 float bestGap = 1.0e30f;
++                bool bestTie = false;
+                 for (size_t pi = 0; pi < parents.size(); pi++) {
+                     const P09JoinVert &parent = parents[pi];
+                     if (!parent.prevOk || !parent.curOk || !child.prevOk || !child.curOk) {
+@@ -1990,6 +2183,10 @@
+                     if (gap < bestGap) {
+                         bestGap = gap;
+                         best = pi;
++                        bestTie = false;
++                    }
++                    else if (gap == bestGap) {
++                        bestTie = true;
+                     }
+                 }
+                 if (best == SIZE_MAX) {
+@@ -2147,6 +2344,12 @@
+                 const bool pairPathological = haveLlll && haveClcl &&
+                     (llllRel >= kP09VisuallySignificantEdge) &&
+                     (clclRel <= kP09NearCurrentEdge);
++                if (corrAttempt != nullptr) {
++                    p09CorrNotePendingPair(*corrAttempt, child, parent, bestTie, pairPathological);
++                    if (pairPathological && bestTie) {
++                        p09CorrRecordPathologicalTie(*corrAttempt, child, parents, best, bestGap);
++                    }
++                }
+                 if (pairPathological) {
+                     st.llllPathologicalSampleCount++;
+                     st.llllPoseTestPathologicalCount++;
+@@ -4433,8 +4636,324 @@
+             }
+         }
+ 
++        // Eligibility walk. Caller enters only for P09PreWalk::Walk.
++        // Waiting, exhaustion, and cooldown must not enter here.
++        // dispatchesSeen counts walks only.
++        bool p09CorrGate(const RSPProcessor::ProcessParams &p, P09RspEndpointBindingStats &st,
++            uint32_t dispatchVertexCount, uint64_t nowMs) {
++            P09CorrSession &cs = g_p09Corr;
++            cs.dispatchesSeen++;
++            P09CorrelationEligibilityInput in;
++            if ((p.workloadQueue != nullptr) && (p.workloadIndex < WORKLOAD_QUEUE_SIZE) &&
++                (p.curFrame != nullptr) && (p.prevFrame != nullptr)) {
++                const Workload &workload = p.workloadQueue->workloads[p.workloadIndex];
++                in.hasWorkload = (workload.workloadId != 0);
++                if (in.hasWorkload) {
++                    const DrawData &dd = workload.drawData;
++                    in.hasGeometry = (dispatchVertexCount > 0u) && (dd.vertexCount() > 0u) &&
++                        !dd.faceIndices.empty() && (workload.fbPairCount > 0u);
++                    const GameFrameMap::WorkloadMap *map = (p.workloadIndex < p.curFrame->frameMap.workloads.size())
++                        ? &p.curFrame->frameMap.workloads[p.workloadIndex] : nullptr;
++                    in.frameMatched = p.prevFrame->matched && (map != nullptr) && map->mapped;
++                    in.intermediate = (p.curFrameWeight > 1.0e-4f) && (p.curFrameWeight < (1.0f - 1.0e-4f));
++                    const uint64_t modelBin = p09ResolveModelBin(st);
++                    in.hasModelBin = (modelBin != 0);
++                    if (in.hasGeometry && in.hasModelBin) {
++                        for (uint32_t f = 0; f < workload.fbPairCount && !in.hasTargetCall; f++) {
++                            const FramebufferPair &fbPair = workload.fbPairs[f];
++                            for (uint32_t pr = 0; pr < fbPair.projectionCount && !in.hasTargetCall; pr++) {
++                                const Projection &proj = fbPair.projections[pr];
++                                for (uint32_t d = 0; d < proj.gameCallCount; d++) {
++                                    const GameCall &call = proj.gameCalls[d];
++                                    if ((call.callDesc.triangleCount > 0u) &&
++                                        (p09V4VisibleTargetIndex(call.callDesc.sourceDl, modelBin) >= 0)) {
++                                        in.hasTargetCall = true;
++                                        break;
++                                    }
++                                }
++                            }
++                        }
++                    }
++                }
++            }
++            return p09CorrelationDecide(cs.budget, p09CorrelationEligibility(in), &nowMs) == P09CorrelationDecision::Collect;
++        }
++
++        void p09CorrWriteTieArtifact() {
++            static const char kPath[] = "/tmp/tooie-p09-seam-edge-pathology-ties.txt";
++            static const char kTmp[] = "/tmp/tooie-p09-seam-edge-pathology-ties.txt.tmp";
++            FILE *out = std::fopen(kTmp, "w");
++            if (out == nullptr) {
++                return;
++            }
++            p09TieFormatSample(out, g_p09Corr.tieSample);
++            std::fflush(out);
++            const bool ok = (std::ferror(out) == 0);
++            std::fclose(out);
++            if (ok) {
++                std::rename(kTmp, kPath);
++            }
++            else {
++                ::remove(kTmp);
++            }
++        }
++
++        void p09CorrWriteStatus() {
++            p09CorrWriteTieArtifact();
++            static const char kPath[] = "/tmp/tooie-p09-seam-edge-pathology-correlation.txt";
++            static const char kTmp[] = "/tmp/tooie-p09-seam-edge-pathology-correlation.txt.tmp";
++            const P09CorrSession &cs = g_p09Corr;
++            const P09CorrelationBudget &b = cs.budget;
++            const P09ExactUseCorrelation &c = cs.corr;
++            const P09ExactUseUniqueSummary u = p09ExactUseSummarize(c);
++            bool rateValid = false;
++            const double rate = p09ExactUsePairCoverageRate(c, rateValid);
++            bool allValid = false;
++            const double allRate = p09ExactUsePairFullOfAllObserved(c, allValid);
++            const bool recordedTruncated = p09RecordedCohortTruncated(cs.pairsDroppedCap, cs.vertsDroppedCap,
++                c.uniqueTableOverflow, cs.planNotExhaustive, cs.planInactive);
++            const bool captureIncomplete = p09CaptureRunIncomplete(cs.capture.phase, b, cs.seamSearchSkippedBudget);
++            const bool cohortReady = p09ObservedCohortReadyForReview(c, recordedTruncated);
++            FILE *out = std::fopen(kTmp, "w");
++            if (out == nullptr) {
++                return;
++            }
++            std::fprintf(out,
++                "SCHEMA=P09_SEAM_EDGE_PATHOLOGY_CORRELATION_V2\n"
++                "FLAG=TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION\n"
++                "STANDALONE=YES\n"
++                "STATE=%s\n"
++                "REQUEST_MARKER=/tmp/tooie-p09-seam-edge-pathology-correlation.arm\n"
++                "USER_FLOW_1=Launch with TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION set to 1, true, yes, or on. State stays WAITING_FOR_REQUEST. No cohort scan and no seam plan run while waiting.\n"
++                "USER_FLOW_2=When OBSERVED_MARKER_ABSENT=YES, at the desired character scene create the request marker. State becomes CAPTURING only after that file is removed. A failed removal keeps the previous state and counters. This is a limited diagnostic capture, not visual proof.\n"
++                "STALE_MARKER_RULE=A marker present before the path has been observed absent does not start capture, and is counted as ignored only after the file is removed. A leftover file at launch cannot start a boot capture. A failed removal is latched and is not counted again on later polls of the same file.\n"
++                "REARM_RULE=A later marker resets only correlation counters and generation after the file is removed, then returns to CAPTURING. A failed removal does not reset and does not rearm again while that file remains. Legacy diagnostics and guest state are not reset.\n"
++                "OBSERVED_MARKER_ABSENT=%s\n"
++                "STALE_MARKERS_IGNORED=%llu\n"
++                "ARM_COUNT=%llu\n"
++                "REARM_COUNT=%llu\n"
++                "MARKER_CONSUME_FAILURES=%llu\n"
++                "MARKER_CONSUME_LATCHED=%s\n"
++                "RECORDED_COHORT_TRUNCATED=%s\n"
++                "CAPTURE_RUN_INCOMPLETE=%s\n"
++                "SAMPLED_NOT_GLOBAL=YES\n"
++                "GLOBAL_GAME_COVERAGE=NO\n"
++                "GLOBAL_READY=NO\n"
++                "OBSERVED_COHORT_READY_FOR_REVIEW=%s\n"
++                "OBSERVED_COHORT_READY_FOR_REVIEW_IS_NOT_PRODUCTION_OR_GLOBAL=YES\n"
++                "NO_FIX_CLAIM=YES\n"
++                "EXHAUSTIVE_CPU_SEARCH_CAN_HITCH=YES\n"
++                "NO_WALL_TIME_ABORT=YES\n"
++                "VISUAL_PROOF=NO\n"
++                "RUNTIME_TIMINGS=NOT_CAPTURED\n"
++                "LIMIT_MAX_ATTEMPTS=%u\n"
++                "LIMIT_CADENCE_ELIGIBLE_DISPATCHES=%u\n"
++                "LIMIT_MAX_SEAM_SEARCHES=%u\n"
++                "LIMIT_MIN_HEAVY_ATTEMPT_INTERVAL_MS=%llu\n"
++                "LIMIT_BONE_JOIN_VERTS_PER_SLOT=%zu\n"
++                "LIMIT_PENDING_PAIRS_PER_ATTEMPT=%zu\n"
++                "LIMIT_UNIQUE_KEYS=%zu\n"
++                "ELIGIBILITY_WALKS=%llu\n"
++                "ELIGIBILITY_WALKS_EXCLUDE_WAITING_EXHAUSTED_AND_COOLDOWN=YES\n"
++                "DISPATCHES_WHILE_WAITING=%llu\n"
++                "DISPATCHES_AFTER_EXHAUSTED=%llu\n"
++                "ELIGIBLE_DISPATCHES=%llu\n"
++                "ATTEMPTS=%llu\n"
++                "ATTEMPTS_WITH_PATH_PAIR=%llu\n"
++                "ATTEMPTS_NO_PATH_PAIR=%llu\n"
++                "SEAM_SEARCHES=%llu\n"
++                "SEAM_SEARCH_SKIPPED_BUDGET=%llu\n"
++                "SKIPPED_CADENCE=%llu\n"
++                "SKIPPED_WALL_CLOCK=%llu\n"
++                "SKIPPED_WALL_CLOCK_COUNTS_PRE_WALK_COOLDOWN=YES\n"
++                "SKIPPED_BUDGET_EXHAUSTED=%llu\n",
++                p09CapturePhaseName(cs.capture.phase),
++                cs.capture.observedMarkerAbsent ? "YES" : "NO",
++                static_cast<unsigned long long>(cs.capture.staleIgnored),
++                static_cast<unsigned long long>(cs.capture.arms),
++                static_cast<unsigned long long>(cs.capture.rearms),
++                static_cast<unsigned long long>(cs.capture.consumeFailures),
++                cs.capture.consumeFailedLatched ? "YES" : "NO",
++                recordedTruncated ? "YES" : "NO",
++                captureIncomplete ? "YES" : "NO",
++                cohortReady ? "YES" : "NO",
++                b.maxAttempts, b.cadence, b.maxSeamSearches,
++                static_cast<unsigned long long>(kP09CorrelationAttemptIntervalMs),
++                kP09MaxBoneJoinVerts, kP09ExactUseMaxPendingPairs, kP09ExactUseMaxUniqueKeys,
++                static_cast<unsigned long long>(cs.dispatchesSeen),
++                static_cast<unsigned long long>(cs.dispatchesWhileWaiting),
++                static_cast<unsigned long long>(cs.dispatchesAfterExhausted),
++                static_cast<unsigned long long>(b.eligibleSeen),
++                static_cast<unsigned long long>(b.attempts),
++                static_cast<unsigned long long>(cs.attemptsWithPath),
++                static_cast<unsigned long long>(cs.attemptsNoPath),
++                static_cast<unsigned long long>(b.seamSearches),
++                static_cast<unsigned long long>(cs.seamSearchSkippedBudget),
++                static_cast<unsigned long long>(b.skippedCadence),
++                static_cast<unsigned long long>(b.skippedWallClock),
++                static_cast<unsigned long long>(b.skippedBudget));
++            for (uint32_t i = 1; i < uint32_t(P09CorrelationSkip::Count); i++) {
++                std::fprintf(out, "SKIPPED_INELIGIBLE_%s=%llu\n", p09CorrelationSkipName(P09CorrelationSkip(i)),
++                    static_cast<unsigned long long>(b.skippedIneligible[i]));
++            }
++            std::fprintf(out,
++                "PLAN_BUILT=%llu\n"
++                "PLAN_INACTIVE=%llu\n"
++                "PLAN_NOT_EXHAUSTIVE=%llu\n"
++                "PAIRS_DROPPED_PENDING_CAP=%llu\n"
++                "VERTS_DROPPED_BONE_CAP=%llu\n"
++                "UNIQUE_TABLE_OVERFLOW=%llu\n"
++                "LAST_WORKLOAD_ID=%llu\n"
++                "UNIT_PAIR=emitted nearest-join pair (child,parent)\n"
++                "UNIT_OCCURRENCE=member key of a pair, repeats counted, 2 per pair\n"
++                "UNIT_UNIQUE_KEY=distinct nine-field exact-use key\n"
++                "PATH_PAIR_TOTAL=%llu\n"
++                "PATH_PAIR_FULLY_COVERED=%llu\n"
++                "PATH_PAIR_ONE_SIDED=%llu\n"
++                "PATH_PAIR_NOT_COVERED=%llu\n"
++                "PATH_PAIR_AMBIGUOUS=%llu\n",
++                static_cast<unsigned long long>(cs.planBuilt),
++                static_cast<unsigned long long>(cs.planInactive),
++                static_cast<unsigned long long>(cs.planNotExhaustive),
++                static_cast<unsigned long long>(cs.pairsDroppedCap),
++                static_cast<unsigned long long>(cs.vertsDroppedCap),
++                static_cast<unsigned long long>(c.uniqueTableOverflow),
++                static_cast<unsigned long long>(cs.lastWorkloadId),
++                static_cast<unsigned long long>(c.pathPairs),
++                static_cast<unsigned long long>(c.pathFull),
++                static_cast<unsigned long long>(c.pathOneSided),
++                static_cast<unsigned long long>(c.pathNotCovered),
++                static_cast<unsigned long long>(c.pathAmbiguous));
++            for (uint32_t i = 1; i < uint32_t(P09ExactUseUnknownReason::Count); i++) {
++                std::fprintf(out, "PATH_PAIR_AMBIGUOUS_%s=%llu\n",
++                    p09ExactUseUnknownReasonName(P09ExactUseUnknownReason(i)),
++                    static_cast<unsigned long long>(c.ambiguousByReason[i]));
++            }
++            if (allValid) {
++                std::fprintf(out, "PATH_PAIR_FULL_OF_ALL_OBSERVED=%.6f\n", allRate);
++            }
++            else {
++                std::fprintf(out, "PATH_PAIR_FULL_OF_ALL_OBSERVED=NA\n");
++            }
++            std::fprintf(out,
++                "PATH_PAIR_FULL_OF_ALL_OBSERVED_DENOMINATOR=full+one_sided+not_covered+ambiguous (all observed pathological pairs; ambiguous stays in the denominator and is not a definitive miss)\n"
++                "PATH_PAIR_FULL_OF_ALL_OBSERVED_IS_NOT_A_READINESS_SIGNAL=YES\n");
++            if (rateValid) {
++                std::fprintf(out, "PATH_PAIR_COVERAGE_RATE_DEFINITIVE=%.6f\n", rate);
++            }
++            else {
++                std::fprintf(out, "PATH_PAIR_COVERAGE_RATE_DEFINITIVE=NA\n");
++            }
++            std::fprintf(out,
++                "PATH_PAIR_COVERAGE_RATE_DEFINITIVE_IS_SECONDARY=YES\n"
++                "PATH_PAIR_COVERAGE_RATE_DENOMINATOR=fully+one_sided+not_covered (ambiguous excluded; secondary only)\n"
++                "PATH_OCCURRENCE_TOTAL=%llu\n"
++                "PATH_OCCURRENCE_SELECTED=%llu\n"
++                "PATH_OCCURRENCE_NOT_SELECTED=%llu\n"
++                "PATH_OCCURRENCE_UNKNOWN=%llu\n"
++                "PATH_UNIQUE_KEYS=%llu\n"
++                "PATH_UNIQUE_KEYS_SELECTED=%llu\n"
++                "PATH_UNIQUE_KEYS_NOT_SELECTED=%llu\n"
++                "PATH_UNIQUE_KEYS_UNKNOWN=%llu\n"
++                "NONPATH_OBSERVED_UNIVERSE=NEAREST_JOIN_PAIRS_IN_ATTEMPTS_WITH_A_PATH_PAIR_UNDER_BONE_AND_PENDING_CAPS_UNKNOWN_IF_PLAN_NOT_BUILT\n"
++                "NONPATH_PAIR_TOTAL=%llu\n"
++                "NONPATH_OCCURRENCE_TOTAL=%llu\n"
++                "NONPATH_OCCURRENCE_SELECTED=%llu\n"
++                "NONPATH_OCCURRENCE_NOT_SELECTED=%llu\n"
++                "NONPATH_OCCURRENCE_UNCLASSIFIED=%llu\n"
++                "NONPATH_UNIQUE_KEYS=%llu\n"
++                "NONPATH_UNIQUE_KEYS_SELECTED=%llu\n"
++                "NONPATH_UNIQUE_KEYS_NOT_SELECTED=%llu\n"
++                "NONPATH_UNIQUE_KEYS_UNCLASSIFIED=%llu\n"
++                "UNIQUE_KEYS_ON_BOTH_PATH_AND_NONPATH=%llu\n"
++                "CPU_GATE_MS_TOTAL=%.3f\n"
++                "CPU_ATTEMPT_MS_TOTAL=%.3f\n"
++                "CPU_ATTEMPT_MS_LAST=%.3f\n"
++                "CPU_ATTEMPT_MS_PEAK=%.3f\n"
++                "CPU_SEAM_PLAN_MS_TOTAL=%.3f\n"
++                "CPU_SEAM_PLAN_MS_LAST=%.3f\n"
++                "CPU_SEAM_PLAN_MS_PEAK=%.3f\n"
++                "RUNTIME_COVERAGE=NOT_ASSERTED_BY_THIS_FILE\n",
++                static_cast<unsigned long long>(c.pathOccurrences),
++                static_cast<unsigned long long>(c.pathOccurrencesSelected),
++                static_cast<unsigned long long>(c.pathOccurrencesNotSelected),
++                static_cast<unsigned long long>(c.pathOccurrencesUnknown),
++                static_cast<unsigned long long>(u.pathKeys),
++                static_cast<unsigned long long>(u.pathKeysSelected),
++                static_cast<unsigned long long>(u.pathKeysNotSelected),
++                static_cast<unsigned long long>(u.pathKeysUnknown),
++                static_cast<unsigned long long>(c.nonPathPairs),
++                static_cast<unsigned long long>(c.nonPathOccurrences),
++                static_cast<unsigned long long>(c.nonPathOccurrencesSelected),
++                static_cast<unsigned long long>(c.nonPathOccurrencesNotSelected),
++                static_cast<unsigned long long>(c.nonPathOccurrencesUnknown),
++                static_cast<unsigned long long>(u.nonPathKeys),
++                static_cast<unsigned long long>(u.nonPathKeysSelected),
++                static_cast<unsigned long long>(u.nonPathKeysNotSelected),
++                static_cast<unsigned long long>(u.nonPathKeysUnknown),
++                static_cast<unsigned long long>(u.keysOnBoth),
++                cs.gateMsTotal, cs.attemptMsTotal, cs.attemptMsLast, cs.attemptMsPeak,
++                cs.planMsTotal, cs.planMsLast, cs.planMsPeak);
++            std::fflush(out);
++            const bool ok = (std::ferror(out) == 0);
++            std::fclose(out);
++            if (ok) {
++                std::rename(kTmp, kPath);
++            }
++            else {
++                ::remove(kTmp);
++            }
++            g_p09Corr.statusWrites++;
++        }
++
++        // Builds the same-workload plan locally (never the global last-workload
++        // plan) and classifies every pending pair of this attempt.
++        void p09CorrFinalizeAttempt(const RSPProcessor::ProcessParams &p, const P09CorrAttempt &at,
++            uint64_t workloadId) {
++            P09CorrSession &cs = g_p09Corr;
++            cs.pairsDroppedCap += at.pairsDroppedCap;
++            cs.vertsDroppedCap += at.vertsDroppedCap;
++            cs.lastWorkloadId = workloadId;
++            if (at.pathPairs == 0) {
++                cs.attemptsNoPath++;
++                return;
++            }
++            cs.attemptsWithPath++;
++            P09ExactUsePlanResult plan; // inactive unless the build below succeeds
++            if (p09CorrelationSeamSearchAllowed(cs.budget)) {
++                cs.budget.seamSearches++;
++                if (p09SeamEdgeBuildExactUsePlan(p.workloadQueue, p.workloadIndex, p.curFrame, p.prevFrame, plan)) {
++                    cs.planBuilt++;
++                    if (plan.exhaustive == 0) {
++                        cs.planNotExhaustive++;
++                    }
++                }
++                else {
++                    cs.planInactive++;
++                }
++                cs.planMsLast = plan.cpuMs;
++                cs.planMsTotal += plan.cpuMs;
++                cs.planMsPeak = std::max(cs.planMsPeak, plan.cpuMs);
++            }
++            else {
++                cs.seamSearchSkippedBudget++;
++            }
++            // Same value stored on the attempt at collect time. Defensive
++            // same-call check only. There is no plan cache.
++            const uint64_t planGeneration = cs.generation;
++            for (const P09CorrPendingPair &pair : at.pairs) {
++                p09ExactUseNotePair(cs.corr, plan, planGeneration, at.generation,
++                    pair.a, pair.aOk, pair.b, pair.bOk, pair.tie, pair.pathological);
++            }
++            // Same local plan object. Inactive, skipped, or failed builds stay
++            // Unknown. This does not consult a global last-workload plan.
++            p09TieSampleApplyLocalPlan(cs.tieSample, at.generation, plan, planGeneration, at.generation);
++        }
++
+         void p09RspEndpointBindingNote(const RSPProcessor::ProcessParams &p, uint32_t vertexStart, uint32_t vertexCount) {
+-            if (!p09RspEndpointBindingEnabled() || (p.drawData == nullptr) || (p.drawBuffers == nullptr)) {
++            const bool legacyOn = p09RspEndpointBindingEnabled();
++            const bool corrOn = p09SeamEdgePathologyCorrelationEnabled();
++            if ((!legacyOn && !corrOn) || (p.drawData == nullptr) || (p.drawBuffers == nullptr)) {
+                 return;
+             }
+ 
+@@ -4442,6 +4961,53 @@
+             const DrawData &drawData = *p.drawData;
+             DrawBuffers &drawBuffers = *p.drawBuffers;
+             P09RspEndpointBindingStats &st = g_p09RspEndpointBinding;
++
++            // Standalone correlation starts WAITING_FOR_REQUEST. The arm marker
++            // is polled at 1 Hz only while this flag is on. The shared pre-walk
++            // helper decides waiting, exhaustion, and cooldown before any
++            // fb/projection/game-call walk. A non-collect dispatch leaves
++            // without an endpoint scan when legacy is off.
++            bool corrCollect = false;
++            P09CorrAttempt corrAttempt;
++            std::chrono::steady_clock::time_point corrStart{};
++            if (corrOn) {
++                const auto now = std::chrono::steady_clock::now();
++                const uint64_t nowMs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
++                    now.time_since_epoch()).count());
++                p09CorrPollArm(nowMs);
++                const P09PreWalk preWalk = p09CorrelationPreWalk(g_p09Corr.capture.phase, g_p09Corr.budget, &nowMs);
++                if (preWalk == P09PreWalk::Waiting) {
++                    g_p09Corr.dispatchesWhileWaiting++;
++                }
++                else if (preWalk == P09PreWalk::Exhausted) {
++                    if (g_p09Corr.capture.phase == P09CapturePhase::Capturing) {
++                        g_p09Corr.capture.phase = P09CapturePhase::Exhausted;
++                    }
++                    g_p09Corr.dispatchesAfterExhausted++;
++                }
++                else if (preWalk == P09PreWalk::Walk) {
++                    corrStart = now;
++                    corrCollect = p09CorrGate(p, st, vertexCount, nowMs);
++                    const double gateMs = std::chrono::duration<double, std::milli>(
++                        std::chrono::steady_clock::now() - corrStart).count();
++                    g_p09Corr.gateMsTotal += gateMs;
++                }
++                if (corrCollect) {
++                    corrAttempt.generation = ++g_p09Corr.generation;
++                    corrAttempt.pairs.reserve(256);
++                }
++                else {
++                    static std::chrono::steady_clock::time_point s_corrLastStatus{};
++                    if ((s_corrLastStatus.time_since_epoch().count() == 0) ||
++                        (now - s_corrLastStatus >= std::chrono::seconds(1))) {
++                        s_corrLastStatus = now;
++                        p09CorrWriteStatus();
++                    }
++                    if (!legacyOn) {
++                        return;
++                    }
++                }
++            }
+             if (!st.poseSlerpVerified) {
+                 p09VerifyReferenceSlerp(st.poseSlerpEndpointsCorrect, st.poseSlerpMidpointCorrect);
+                 st.poseSlerpVerified = true;
+@@ -5759,6 +6325,20 @@
+                                         P09JoinVert jv;
+                                         jv.world = worlds[c];
+                                         jv.bone = (worlds[c] < 512u) ? worldToBone[worlds[c]] : 0u;
++                                        if (corrCollect) {
++                                            P09ExactUseKeyInput keyIn;
++                                            keyIn.workloadId = workload.workloadId;
++                                            keyIn.fbPair = f;
++                                            keyIn.projection = pr;
++                                            keyIn.gameCall = d;
++                                            keyIn.triangleLocal = t;
++                                            keyIn.cornerInTriangle = uint32_t(c);
++                                            keyIn.faceStart = faceStart;
++                                            keyIn.storedVertexId = globals[c];
++                                            keyIn.worldIndex = worlds[c];
++                                            keyIn.vertexCount = triDraw.vertexCount();
++                                            jv.keyOk = p09ExactUseKeyMake(keyIn, jv.key);
++                                        }
+                                         jv.prev = prevN[c];
+                                         jv.cur = curN[c];
+                                         jv.live = liveN[c];
+@@ -6081,6 +6661,10 @@
+                                             (boneVerts[uint32_t(slot)].size() < kP09MaxBoneJoinVerts)) {
+                                             boneVerts[uint32_t(slot)].push_back(jv);
+                                         }
++                                        else if (corrCollect && (slot >= 0) &&
++                                            (uint32_t(slot) < kP09FeatherWorldCount)) {
++                                            corrAttempt.vertsDroppedCap++;
++                                        }
+                                     }
+                                 }
+                                 const float eP = p09MaxEdgeXY(prevTN);
+@@ -6250,7 +6834,25 @@
+                         continue;
+                     }
+                     p09EmitNearestJoinPairs(st, boneVerts[uint32_t(parentSlot)],
+-                        boneVerts[uint32_t(childSlot)]);
++                        boneVerts[uint32_t(childSlot)], corrCollect ? &corrAttempt : nullptr);
++                }
++                if (corrCollect) {
++                    p09CorrFinalizeAttempt(p, corrAttempt, workload.workloadId);
++                }
++            }
++
++            if (corrCollect) {
++                const double attemptMs = std::chrono::duration<double, std::milli>(
++                    std::chrono::steady_clock::now() - corrStart).count();
++                g_p09Corr.attemptMsLast = attemptMs;
++                g_p09Corr.attemptMsTotal += attemptMs;
++                g_p09Corr.attemptMsPeak = std::max(g_p09Corr.attemptMsPeak, attemptMs);
++                if (p09CorrelationBudgetExhausted(g_p09Corr.budget)) {
++                    g_p09Corr.capture.phase = P09CapturePhase::Exhausted;
++                }
++                p09CorrWriteStatus();
++                if (!legacyOn) {
++                    return;
+                 }
+             }
+ 
+--- a/src/render/rt64_transform_processor.cpp
++++ b/src/render/rt64_transform_processor.cpp
+@@ -1562,38 +1562,11 @@
+ 
+     // P09 paired-edge dry-run (version 2). CPU plan only. V1 is unchanged.
+     static bool p09V2UseLess(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) {
+-        if (a.workloadId != b.workloadId) {
+-            return a.workloadId < b.workloadId;
+-        }
+-        if (a.fbPair != b.fbPair) {
+-            return a.fbPair < b.fbPair;
+-        }
+-        if (a.projection != b.projection) {
+-            return a.projection < b.projection;
+-        }
+-        if (a.gameCall != b.gameCall) {
+-            return a.gameCall < b.gameCall;
+-        }
+-        if (a.triangleLocal != b.triangleLocal) {
+-            return a.triangleLocal < b.triangleLocal;
+-        }
+-        if (a.cornerInTriangle != b.cornerInTriangle) {
+-            return a.cornerInTriangle < b.cornerInTriangle;
+-        }
+-        if (a.faceCornerIndex != b.faceCornerIndex) {
+-            return a.faceCornerIndex < b.faceCornerIndex;
+-        }
+-        if (a.storedVertexId != b.storedVertexId) {
+-            return a.storedVertexId < b.storedVertexId;
+-        }
+-        return a.originalWorldIndex < b.originalWorldIndex;
++        return p09ExactUseLess(a, b);
+     }
+ 
+     static bool p09V2UseEqual(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) {
+-        return a.workloadId == b.workloadId && a.fbPair == b.fbPair && a.projection == b.projection &&
+-            a.gameCall == b.gameCall && a.triangleLocal == b.triangleLocal &&
+-            a.cornerInTriangle == b.cornerInTriangle && a.faceCornerIndex == b.faceCornerIndex &&
+-            a.storedVertexId == b.storedVertexId && a.originalWorldIndex == b.originalWorldIndex;
++        return p09ExactUseEqual(a, b);
+     }
+ 
+     struct P09V2PlanStore {
+@@ -1660,8 +1633,10 @@
+         hist[bucket] += 1u;
+     }
+ 
++    // planOut != nullptr: exact-use correlation path. Fills the local plan and
++    // returns before the global plan, session and status publication.
+     static void p09SeamEdgeDryRunV2(const Workload &workload, const GameFrameMap::WorkloadMap *workloadMap,
+-        const WorkloadQueue *queue, bool prevFrameValid) {
++        const WorkloadQueue *queue, bool prevFrameValid, P09ExactUsePlanResult *planOut = nullptr) {
+         // Safety bounds stop pathological allocation or time. They are not
+         // search capacities. A hit marks the workload non-exhaustive.
+         static constexpr uint32_t kSafetyMaxEdges = 1000000u;
+@@ -2710,6 +2685,17 @@
+         const bool countsExhaustive = !searchSaturated && !planSaturated && !vertexSaturated;
+         const bool aliasExhaustive = !searchSaturated && !planSaturated;
+ 
++        if (planOut != nullptr) {
++            planOut->uses = uses;
++            planOut->workloadId = workload.workloadId;
++            planOut->prevFrameValid = frameMapReady ? 1 : 0;
++            // Without a mapped previous frame the cross-frame search cannot
++            // prove a miss, so the plan is never exhaustive in that case.
++            planOut->exhaustive = (aliasExhaustive && frameMapReady) ? 1 : 0;
++            planOut->active = 1;
++            return;
++        }
++
+         gP09V2Plan.uses = uses;
+         gP09V2Plan.active = 1;
+         gP09V2Plan.exhaustive = aliasExhaustive ? 1 : 0;
+@@ -3145,6 +3131,27 @@
+         bufferUploader = std::make_unique<BufferUploader>(worker->device);
+     }
+ 
++    bool p09SeamEdgeBuildExactUsePlan(const WorkloadQueue *queue, uint32_t workloadIndex,
++        const GameFrame *curFrame, const GameFrame *prevFrame, P09ExactUsePlanResult &out) {
++        out = P09ExactUsePlanResult();
++        if ((queue == nullptr) || (curFrame == nullptr) || (workloadIndex >= queue->workloads.size())) {
++            return false;
++        }
++        const Workload &workload = queue->workloads[workloadIndex];
++        const GameFrameMap::WorkloadMap *workloadMap = nullptr;
++        if (workloadIndex < curFrame->frameMap.workloads.size()) {
++            workloadMap = &curFrame->frameMap.workloads[workloadIndex];
++        }
++        // Same predicate as TransformProcessor::process: matched previous frame
++        // and a mapped workload.
++        const bool prevFrameValid = (prevFrame != nullptr) && prevFrame->matched &&
++            (workloadMap != nullptr) && workloadMap->mapped;
++        const auto start = std::chrono::steady_clock::now();
++        p09SeamEdgeDryRunV2(workload, workloadMap, queue, prevFrameValid, &out);
++        out.cpuMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
++        return out.active != 0;
++    }
++
+     void TransformProcessor::process(const ProcessParams &p) {
+         for (uint32_t w : p.curFrame->workloads) {
+             Workload &workload = p.workloadQueue->workloads[w];
+--- a/src/render/rt64_transform_processor.h
++++ b/src/render/rt64_transform_processor.h
+@@ -7,28 +7,21 @@
+ #include <cstdint>
+ 
+ #include "rt64_buffer_uploader.h"
++#include "rt64_p09_exact_use_correlation.h"
+ 
+ namespace RT64 {
+     struct GameFrame;
+     struct WorkloadQueue;
+ 
+-    // Exact render use for the P09 paired-edge dry-run. Membership is the
+-    // certified seam corner, not the WORLD slot.
+-    struct P09SeamExactUseKey {
+-        uint64_t workloadId = 0;
+-        uint32_t fbPair = 0;
+-        uint32_t projection = 0;
+-        uint32_t gameCall = 0;
+-        uint32_t triangleLocal = 0;
+-        uint8_t cornerInTriangle = 0;
+-        uint32_t faceCornerIndex = 0;
+-        uint32_t storedVertexId = 0;
+-        uint16_t originalWorldIndex = 0;
+-    };
+-
+     bool p09SeamEdgeDryRunV2WouldAliasExactUse(const P09SeamExactUseKey &key);
+     bool p09SeamEdgeDryRunV2AliasPlanExhaustive();
+ 
++    // On-demand, same-call exact-use seam plan for one workload. Builds and
++    // returns a local plan (never the global last-workload plan) and writes no
++    // legacy status/session output. Inactive result on any missing input.
++    bool p09SeamEdgeBuildExactUsePlan(const WorkloadQueue *queue, uint32_t workloadIndex,
++        const GameFrame *curFrame, const GameFrame *prevFrame, P09ExactUsePlanResult &out);
++
+     struct TransformProcessor {
+         std::unique_ptr<BufferUploader> bufferUploader;
+         std::vector<BufferUploader::Upload> uploads;
+--- /dev/null
++++ b/src/render/rt64_p09_exact_use_correlation.h
+@@ -0,0 +1,924 @@
++//
++// RT64 - P09 exact-use pathology correlation (pure CPU helpers, no GPU/RT64 types).
++//
++// Diagnostic only. Shared by the RSP endpoint producer, the on-demand seam plan
++// builder in the transform processor and the Tooie host test. Nothing here
++// changes interpolation, aliases, remaps or clones.
++//
++
++#pragma once
++
++#include <algorithm>
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++#include <map>
++#include <vector>
++
++namespace RT64 {
++    // Exact render use. One key = one face corner of one triangle of one game
++    // call of one workload. WORLD slot alone is never an identity.
++    struct P09SeamExactUseKey {
++        uint64_t workloadId = 0;
++        uint32_t fbPair = 0;
++        uint32_t projection = 0;
++        uint32_t gameCall = 0;
++        uint32_t triangleLocal = 0;
++        uint8_t cornerInTriangle = 0;
++        uint32_t faceCornerIndex = 0;
++        uint32_t storedVertexId = 0;
++        uint16_t originalWorldIndex = 0;
++    };
++
++    inline bool p09ExactUseLess(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) {
++        if (a.workloadId != b.workloadId) return a.workloadId < b.workloadId;
++        if (a.fbPair != b.fbPair) return a.fbPair < b.fbPair;
++        if (a.projection != b.projection) return a.projection < b.projection;
++        if (a.gameCall != b.gameCall) return a.gameCall < b.gameCall;
++        if (a.triangleLocal != b.triangleLocal) return a.triangleLocal < b.triangleLocal;
++        if (a.cornerInTriangle != b.cornerInTriangle) return a.cornerInTriangle < b.cornerInTriangle;
++        if (a.faceCornerIndex != b.faceCornerIndex) return a.faceCornerIndex < b.faceCornerIndex;
++        if (a.storedVertexId != b.storedVertexId) return a.storedVertexId < b.storedVertexId;
++        return a.originalWorldIndex < b.originalWorldIndex;
++    }
++
++    inline bool p09ExactUseEqual(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) {
++        return !p09ExactUseLess(a, b) && !p09ExactUseLess(b, a);
++    }
++
++    // Real source indices of one corner as seen by the producer loops.
++    struct P09ExactUseKeyInput {
++        uint64_t workloadId = 0;
++        uint32_t fbPair = 0;          // f
++        uint32_t projection = 0;      // pr
++        uint32_t gameCall = 0;        // d
++        uint32_t triangleLocal = 0;   // t
++        uint32_t cornerInTriangle = 0; // c
++        uint32_t faceStart = 0;       // start of the call in faceIndices
++        uint32_t storedVertexId = 0;  // faceIndices[faceStart + t * 3 + c]
++        uint32_t worldIndex = 0;      // worldIndices[storedVertexId]
++        uint32_t vertexCount = 0;     // drawData.vertexCount()
++    };
++
++    // Returns false (key unusable) on any invalid/incomplete field. The key is
++    // never inferred from WORLD or GameCall+WORLD.
++    inline bool p09ExactUseKeyMake(const P09ExactUseKeyInput &in, P09SeamExactUseKey &out) {
++        out = P09SeamExactUseKey();
++        if (in.workloadId == 0 || in.cornerInTriangle > 2u) return false;
++        if (in.storedVertexId >= in.vertexCount) return false;
++        if (in.worldIndex > 0xFFFFu) return false;
++        const uint64_t faceCorner = uint64_t(in.faceStart) + uint64_t(in.triangleLocal) * 3u + in.cornerInTriangle;
++        if (faceCorner >= 0xFFFFFFFFull) return false;
++        out.workloadId = in.workloadId;
++        out.fbPair = in.fbPair;
++        out.projection = in.projection;
++        out.gameCall = in.gameCall;
++        out.triangleLocal = in.triangleLocal;
++        out.cornerInTriangle = uint8_t(in.cornerInTriangle);
++        out.faceCornerIndex = uint32_t(faceCorner);
++        out.storedVertexId = in.storedVertexId;
++        out.originalWorldIndex = uint16_t(in.worldIndex);
++        return true;
++    }
++
++    // Same-workload plan produced by the on-demand seam builder. A default
++    // constructed result is inactive and can only yield Unknown.
++    struct P09ExactUsePlanResult {
++        std::vector<P09SeamExactUseKey> uses; // sorted by p09ExactUseLess, unique
++        uint64_t workloadId = 0;
++        uint8_t active = 0;
++        uint8_t exhaustive = 0;
++        uint8_t prevFrameValid = 0;
++        double cpuMs = 0.0;
++    };
++
++    enum class P09ExactUseMember : uint8_t { Selected = 0, NotSelected, Unknown };
++
++    enum class P09ExactUseUnknownReason : uint8_t {
++        None = 0,
++        PlanInactive,
++        PlanNotExhaustive,
++        WrongWorkload,
++        WrongGeneration,
++        KeyIncomplete,
++        Tie,
++        DuplicateMember,
++        Count
++    };
++
++    inline const char *p09ExactUseUnknownReasonName(P09ExactUseUnknownReason r) {
++        switch (r) {
++        case P09ExactUseUnknownReason::None: return "NONE";
++        case P09ExactUseUnknownReason::PlanInactive: return "PLAN_INACTIVE";
++        case P09ExactUseUnknownReason::PlanNotExhaustive: return "PLAN_NOT_EXHAUSTIVE";
++        case P09ExactUseUnknownReason::WrongWorkload: return "WRONG_WORKLOAD";
++        case P09ExactUseUnknownReason::WrongGeneration: return "WRONG_GENERATION";
++        case P09ExactUseUnknownReason::KeyIncomplete: return "KEY_INCOMPLETE";
++        case P09ExactUseUnknownReason::Tie: return "TIE";
++        case P09ExactUseUnknownReason::DuplicateMember: return "DUPLICATE_MEMBER";
++        default: return "UNKNOWN";
++        }
++    }
++
++    // Plan-level validity shared by every member of a pair.
++    inline P09ExactUseUnknownReason p09ExactUsePlanReason(const P09ExactUsePlanResult &plan,
++        uint64_t expectedWorkloadId, uint64_t planGeneration, uint64_t expectedGeneration) {
++        if (plan.active == 0) return P09ExactUseUnknownReason::PlanInactive;
++        if (plan.workloadId != expectedWorkloadId) return P09ExactUseUnknownReason::WrongWorkload;
++        // Defensive same-call check. The plan is built and consumed together.
++        // This is not a cache invalidation scheme.
++        if (planGeneration != expectedGeneration) return P09ExactUseUnknownReason::WrongGeneration;
++        if (plan.exhaustive == 0) return P09ExactUseUnknownReason::PlanNotExhaustive;
++        return P09ExactUseUnknownReason::None;
++    }
++
++    // Selected only when the key is in the plan. NotSelected is a definitive
++    // miss and requires a valid, exhaustive, same-workload/generation plan.
++    inline P09ExactUseMember p09ExactUseClassifyMember(const P09ExactUsePlanResult &plan,
++        uint64_t planGeneration, uint64_t expectedGeneration,
++        const P09SeamExactUseKey &key, bool keyComplete, P09ExactUseUnknownReason *reasonOut = nullptr) {
++        P09ExactUseUnknownReason reason = P09ExactUseUnknownReason::None;
++        if (!keyComplete) {
++            reason = P09ExactUseUnknownReason::KeyIncomplete;
++        }
++        else {
++            reason = p09ExactUsePlanReason(plan, key.workloadId, planGeneration, expectedGeneration);
++        }
++        if (reasonOut != nullptr) *reasonOut = reason;
++        if (reason != P09ExactUseUnknownReason::None) return P09ExactUseMember::Unknown;
++        const auto found = std::lower_bound(plan.uses.begin(), plan.uses.end(), key, p09ExactUseLess);
++        const bool hit = (found != plan.uses.end()) && p09ExactUseEqual(*found, key);
++        return hit ? P09ExactUseMember::Selected : P09ExactUseMember::NotSelected;
++    }
++
++    enum class P09PairCoverage : uint8_t { Full = 0, OneSided, NotCovered, Ambiguous };
++
++    // Fully covered only when BOTH member keys are in the same exhaustive plan.
++    // Ties, incomplete keys, duplicate members and invalid plans are Ambiguous.
++    inline P09PairCoverage p09ExactUseClassifyPair(const P09ExactUsePlanResult &plan,
++        uint64_t planGeneration, uint64_t expectedGeneration,
++        const P09SeamExactUseKey &a, bool aComplete,
++        const P09SeamExactUseKey &b, bool bComplete, bool tie,
++        P09ExactUseUnknownReason *reasonOut = nullptr) {
++        auto ambiguous = [&](P09ExactUseUnknownReason r) {
++            if (reasonOut != nullptr) *reasonOut = r;
++            return P09PairCoverage::Ambiguous;
++        };
++        if (reasonOut != nullptr) *reasonOut = P09ExactUseUnknownReason::None;
++        if (tie) return ambiguous(P09ExactUseUnknownReason::Tie);
++        if (!aComplete || !bComplete) return ambiguous(P09ExactUseUnknownReason::KeyIncomplete);
++        if (p09ExactUseEqual(a, b)) return ambiguous(P09ExactUseUnknownReason::DuplicateMember);
++        P09ExactUseUnknownReason ra = P09ExactUseUnknownReason::None;
++        P09ExactUseUnknownReason rb = P09ExactUseUnknownReason::None;
++        const P09ExactUseMember ma = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, a, true, &ra);
++        const P09ExactUseMember mb = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, b, true, &rb);
++        if (ma == P09ExactUseMember::Unknown) return ambiguous(ra);
++        if (mb == P09ExactUseMember::Unknown) return ambiguous(rb);
++        if ((ma == P09ExactUseMember::Selected) && (mb == P09ExactUseMember::Selected)) return P09PairCoverage::Full;
++        if ((ma == P09ExactUseMember::Selected) || (mb == P09ExactUseMember::Selected)) return P09PairCoverage::OneSided;
++        return P09PairCoverage::NotCovered;
++    }
++
++    struct P09ExactUseKeyLess {
++        bool operator()(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) const {
++            return p09ExactUseLess(a, b);
++        }
++    };
++
++    // Units, all explicit:
++    //   PAIR        one emitted nearest-join pair (child, parent).
++    //   OCCURRENCE  one member key of one pair (2 per pair, repeats counted).
++    //   UNIQUE_KEY  distinct P09SeamExactUseKey (bounded table, overflow flagged).
++    // Observed sampled universe = nearest-join pairs from boneVerts (per-slot
++    // vertex cap and pending-pair cap) in attempts that had a pathological pair.
++    // The plan built for that attempt classifies them. An inactive or
++    // non-exhaustive plan is Unknown/Ambiguous, not a definitive miss.
++    // Not an all-plan exposure and not global game coverage.
++    constexpr size_t kP09ExactUseMaxUniqueKeys = 4096;
++    constexpr size_t kP09ExactUseMaxPendingPairs = 2048;
++
++    // Shared store. A full table drops the new item and does not overwrite.
++    template <typename T>
++    inline bool p09ExactUseAppendCapped(std::vector<T> &dst, size_t cap, uint64_t &dropped, const T &item) {
++        if (dst.size() >= cap) {
++            dropped++;
++            return false;
++        }
++        dst.push_back(item);
++        return true;
++    }
++
++    struct P09ExactUseCorrelation {
++        uint64_t pathPairs = 0;
++        uint64_t pathFull = 0;
++        uint64_t pathOneSided = 0;
++        uint64_t pathNotCovered = 0;
++        uint64_t pathAmbiguous = 0;
++        uint64_t ambiguousByReason[size_t(P09ExactUseUnknownReason::Count)] = {};
++        uint64_t pathOccurrences = 0;
++        uint64_t pathOccurrencesSelected = 0;
++        uint64_t pathOccurrencesNotSelected = 0;
++        uint64_t pathOccurrencesUnknown = 0;
++        uint64_t nonPathPairs = 0;
++        uint64_t nonPathOccurrences = 0;
++        uint64_t nonPathOccurrencesSelected = 0;
++        uint64_t nonPathOccurrencesNotSelected = 0;
++        uint64_t nonPathOccurrencesUnknown = 0;
++        uint64_t uniqueTableOverflow = 0;
++        // bit0 path, bit1 nonpath, bit2 selected, bit3 notSelected, bit4 unknown
++        std::map<P09SeamExactUseKey, uint8_t, P09ExactUseKeyLess> keys;
++    };
++
++    struct P09ExactUseUniqueSummary {
++        uint64_t pathKeys = 0;
++        uint64_t pathKeysSelected = 0;
++        uint64_t pathKeysNotSelected = 0;
++        uint64_t pathKeysUnknown = 0;
++        uint64_t nonPathKeys = 0;
++        uint64_t nonPathKeysSelected = 0;
++        uint64_t nonPathKeysNotSelected = 0;
++        uint64_t nonPathKeysUnknown = 0;
++        uint64_t keysOnBoth = 0;
++    };
++
++    inline void p09ExactUseNoteMember(P09ExactUseCorrelation &c, const P09SeamExactUseKey &key,
++        bool keyComplete, P09ExactUseMember m, bool pathological) {
++        if (!keyComplete) {
++            return; // incomplete keys have no identity; occurrence counters still count them
++        }
++        uint8_t bits = pathological ? 1u : 2u;
++        bits |= (m == P09ExactUseMember::Selected) ? 4u : ((m == P09ExactUseMember::NotSelected) ? 8u : 16u);
++        auto found = c.keys.find(key);
++        if (found != c.keys.end()) {
++            found->second |= bits;
++        }
++        else if (c.keys.size() < kP09ExactUseMaxUniqueKeys) {
++            c.keys.emplace(key, bits);
++        }
++        else {
++            c.uniqueTableOverflow++;
++        }
++    }
++
++    // Records one emitted pair. Member and pair verdicts come from the same
++    // classifier used for coverage.
++    inline P09PairCoverage p09ExactUseNotePair(P09ExactUseCorrelation &c, const P09ExactUsePlanResult &plan,
++        uint64_t planGeneration, uint64_t expectedGeneration,
++        const P09SeamExactUseKey &a, bool aComplete,
++        const P09SeamExactUseKey &b, bool bComplete, bool tie, bool pathological) {
++        P09ExactUseUnknownReason reason = P09ExactUseUnknownReason::None;
++        const P09PairCoverage cov = p09ExactUseClassifyPair(plan, planGeneration, expectedGeneration,
++            a, aComplete, b, bComplete, tie, &reason);
++        const P09ExactUseMember ma = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, a, aComplete);
++        const P09ExactUseMember mb = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, b, bComplete);
++        auto occ = [&](P09ExactUseMember m, uint64_t &sel, uint64_t &miss, uint64_t &unk) {
++            if (m == P09ExactUseMember::Selected) sel++;
++            else if (m == P09ExactUseMember::NotSelected) miss++;
++            else unk++;
++        };
++        if (pathological) {
++            c.pathPairs++;
++            c.pathOccurrences += 2;
++            occ(ma, c.pathOccurrencesSelected, c.pathOccurrencesNotSelected, c.pathOccurrencesUnknown);
++            occ(mb, c.pathOccurrencesSelected, c.pathOccurrencesNotSelected, c.pathOccurrencesUnknown);
++            switch (cov) {
++            case P09PairCoverage::Full: c.pathFull++; break;
++            case P09PairCoverage::OneSided: c.pathOneSided++; break;
++            case P09PairCoverage::NotCovered: c.pathNotCovered++; break;
++            default:
++                c.pathAmbiguous++;
++                c.ambiguousByReason[size_t(reason)]++;
++                break;
++            }
++        }
++        else {
++            c.nonPathPairs++;
++            c.nonPathOccurrences += 2;
++            occ(ma, c.nonPathOccurrencesSelected, c.nonPathOccurrencesNotSelected, c.nonPathOccurrencesUnknown);
++            occ(mb, c.nonPathOccurrencesSelected, c.nonPathOccurrencesNotSelected, c.nonPathOccurrencesUnknown);
++        }
++        p09ExactUseNoteMember(c, a, aComplete, ma, pathological);
++        p09ExactUseNoteMember(c, b, bComplete, mb, pathological);
++        return cov;
++    }
++
++    inline P09ExactUseUniqueSummary p09ExactUseSummarize(const P09ExactUseCorrelation &c) {
++        P09ExactUseUniqueSummary s;
++        for (const auto &kv : c.keys) {
++            const uint8_t v = kv.second;
++            const bool path = (v & 1u) != 0;
++            const bool non = (v & 2u) != 0;
++            const bool sel = (v & 4u) != 0;
++            const bool miss = (v & 8u) != 0;
++            const bool unk = (v & 16u) != 0;
++            if (path) {
++                s.pathKeys++;
++                if (sel) s.pathKeysSelected++;
++                if (miss) s.pathKeysNotSelected++;
++                if (unk) s.pathKeysUnknown++;
++            }
++            if (non) {
++                s.nonPathKeys++;
++                if (sel) s.nonPathKeysSelected++;
++                if (miss) s.nonPathKeysNotSelected++;
++                if (unk) s.nonPathKeysUnknown++;
++            }
++            if (path && non) s.keysOnBoth++;
++        }
++        return s;
++    }
++
++    inline uint64_t p09ExactUseAllObservedPathPairs(const P09ExactUseCorrelation &c) {
++        return c.pathFull + c.pathOneSided + c.pathNotCovered + c.pathAmbiguous;
++    }
++
++    // Secondary metric. Full / (Full + OneSided + NotCovered). Ambiguous pairs
++    // are excluded. This is not a readiness signal. valid=false if the
++    // definitive denominator is zero.
++    inline double p09ExactUsePairCoverageRate(const P09ExactUseCorrelation &c, bool &valid) {
++        const uint64_t denom = c.pathFull + c.pathOneSided + c.pathNotCovered;
++        valid = denom != 0;
++        return valid ? double(c.pathFull) / double(denom) : 0.0;
++    }
++
++    // Primary metric: proven-full fraction of ALL observed pathological pairs.
++    // Ambiguous pairs stay in the denominator. They are not definitive misses.
++    // A value of 1 is not readiness. valid=false when nothing was observed.
++    inline double p09ExactUsePairFullOfAllObserved(const P09ExactUseCorrelation &c, bool &valid) {
++        const uint64_t total = p09ExactUseAllObservedPathPairs(c);
++        valid = total != 0;
++        return valid ? double(c.pathFull) / double(total) : 0.0;
++    }
++
++    // Recorded-data truncation: caps, overflow, or a plan that cannot prove a miss.
++    // Sampling and attempt/seam budgets are a different field (capture-run incomplete).
++    inline bool p09RecordedCohortTruncated(uint64_t pairsDroppedCap, uint64_t vertsDroppedCap,
++        uint64_t uniqueTableOverflow, uint64_t planNotExhaustive, uint64_t planInactive) {
++        return (pairsDroppedCap > 0) || (vertsDroppedCap > 0) || (uniqueTableOverflow > 0) ||
++            (planNotExhaustive > 0) || (planInactive > 0);
++    }
++
++    // True only when every observed pathological pair is Full, the total is
++    // non-zero, and the recorded cohort was not truncated. NOT production
++    // readiness and NOT global game coverage.
++    inline bool p09ObservedCohortReadyForReview(const P09ExactUseCorrelation &c, bool recordedCohortTruncated) {
++        const uint64_t total = p09ExactUseAllObservedPathPairs(c);
++        if (total == 0 || recordedCohortTruncated) return false;
++        if (c.pathAmbiguous != 0 || c.pathOneSided != 0 || c.pathNotCovered != 0) return false;
++        return c.pathFull == total;
++    }
++
++    // ---- capture lifecycle (default OFF; waits for an explicit request) ----
++    inline bool p09CorrelationTokenEq(const char *value, const char *literal) {
++        for (; *literal != '\0'; ++literal, ++value) {
++            if (*value == '\0') return false;
++            unsigned char c = static_cast<unsigned char>(*value);
++            if (c >= 'A' && c <= 'Z') c = static_cast<unsigned char>(c - 'A' + 'a');
++            if (c != static_cast<unsigned char>(*literal)) return false;
++        }
++        return *value == '\0';
++    }
++
++    // Fail closed. Only 1 / true / yes / on, case-insensitive. Legacy flags do not use this.
++    inline bool p09CorrelationFlagTruthy(const char *value) {
++        if ((value == nullptr) || (value[0] == '\0')) return false;
++        return p09CorrelationTokenEq(value, "1") || p09CorrelationTokenEq(value, "true") ||
++            p09CorrelationTokenEq(value, "yes") || p09CorrelationTokenEq(value, "on");
++    }
++
++    enum class P09CorrelationSkip : uint8_t {
++        None = 0,         // eligible
++        NoWorkload,       // no queue/workload/frame (includes non-queue callers)
++        NoGeometry,       // empty/boot workload: no vertices, faces or triangles
++        NoFrameMatch,     // previous frame not matched/mapped: no endpoint data
++        NotIntermediate,  // endpoint scan is skipped for weight 0/1
++        NoModelBin,       // upstream model bin not published yet
++        NoTargetCall,     // no gameCall matched an exact target DL
++        Count
++    };
++
++    inline const char *p09CorrelationSkipName(P09CorrelationSkip s) {
++        switch (s) {
++        case P09CorrelationSkip::None: return "ELIGIBLE";
++        case P09CorrelationSkip::NoWorkload: return "NO_WORKLOAD";
++        case P09CorrelationSkip::NoGeometry: return "NO_GEOMETRY";
++        case P09CorrelationSkip::NoFrameMatch: return "NO_FRAME_MATCH";
++        case P09CorrelationSkip::NotIntermediate: return "NOT_INTERMEDIATE";
++        case P09CorrelationSkip::NoModelBin: return "NO_MODEL_BIN";
++        case P09CorrelationSkip::NoTargetCall: return "NO_TARGET_CALL";
++        default: return "UNKNOWN";
++        }
++    }
++
++    struct P09CorrelationEligibilityInput {
++        bool hasWorkload = false;
++        bool hasGeometry = false;
++        bool frameMatched = false;
++        bool intermediate = false;
++        bool hasModelBin = false;
++        bool hasTargetCall = false;
++    };
++
++    inline P09CorrelationSkip p09CorrelationEligibility(const P09CorrelationEligibilityInput &in) {
++        if (!in.hasWorkload) return P09CorrelationSkip::NoWorkload;
++        if (!in.hasGeometry) return P09CorrelationSkip::NoGeometry;
++        if (!in.frameMatched) return P09CorrelationSkip::NoFrameMatch;
++        if (!in.intermediate) return P09CorrelationSkip::NotIntermediate;
++        if (!in.hasModelBin) return P09CorrelationSkip::NoModelBin;
++        if (!in.hasTargetCall) return P09CorrelationSkip::NoTargetCall;
++        return P09CorrelationSkip::None;
++    }
++
++    // One budget covers both expensive walks. Ineligible dispatches consume
++    // nothing. Every cadence-th eligible dispatch is one attempt (cohort scan).
++    // Heavy attempts are also spaced by kP09CorrelationAttemptIntervalMs when
++    // the caller injects a timestamp. A seam search runs at most once per
++    // attempt and only after a pathological pair exists, bounded by maxSeamSearches.
++    // nowMs == nullptr keeps the original cadence-only behavior for callers and
++    // tests that do not inject a clock.
++    constexpr uint64_t kP09CorrelationAttemptIntervalMs = 2000;
++
++    struct P09CorrelationBudget {
++        uint32_t maxAttempts = 24;
++        uint32_t cadence = 4;
++        uint32_t maxSeamSearches = 8;
++        uint64_t eligibleSeen = 0;
++        uint64_t attempts = 0;
++        uint64_t seamSearches = 0;
++        uint64_t skippedCadence = 0;
++        uint64_t skippedWallClock = 0;
++        uint64_t skippedBudget = 0;
++        uint64_t lastHeavyAttemptMs = 0;
++        uint64_t skippedIneligible[size_t(P09CorrelationSkip::Count)] = {};
++    };
++
++    enum class P09CorrelationDecision : uint8_t {
++        Collect = 0, SkipIneligible, SkipCadence, SkipBudgetExhausted, SkipWallClock
++    };
++
++    inline P09CorrelationDecision p09CorrelationDecide(P09CorrelationBudget &b, P09CorrelationSkip eligibility,
++        const uint64_t *nowMs = nullptr) {
++        if ((b.attempts >= b.maxAttempts) || (b.seamSearches >= b.maxSeamSearches)) {
++            b.skippedBudget++;
++            return P09CorrelationDecision::SkipBudgetExhausted;
++        }
++        if (eligibility != P09CorrelationSkip::None) {
++            b.skippedIneligible[size_t(eligibility)]++;
++            return P09CorrelationDecision::SkipIneligible;
++        }
++        const uint64_t index = b.eligibleSeen;
++        if (b.cadence > 1u && (index % b.cadence) != 0u) {
++            b.eligibleSeen++;
++            b.skippedCadence++;
++            return P09CorrelationDecision::SkipCadence;
++        }
++        if ((nowMs != nullptr) && (b.attempts > 0) &&
++            (*nowMs < b.lastHeavyAttemptMs + kP09CorrelationAttemptIntervalMs)) {
++            b.skippedWallClock++;
++            return P09CorrelationDecision::SkipWallClock;
++        }
++        b.eligibleSeen++;
++        b.attempts++;
++        if (nowMs != nullptr) {
++            b.lastHeavyAttemptMs = *nowMs;
++        }
++        return P09CorrelationDecision::Collect;
++    }
++
++    inline bool p09CorrelationSeamSearchAllowed(const P09CorrelationBudget &b) {
++        return b.seamSearches < b.maxSeamSearches;
++    }
++
++    // Attempts or seam-search budget. Either one stops further costly work.
++    inline bool p09CorrelationBudgetExhausted(const P09CorrelationBudget &b) {
++        return (b.attempts >= b.maxAttempts) || (b.seamSearches >= b.maxSeamSearches);
++    }
++
++    enum class P09CapturePhase : uint8_t { WaitingForRequest = 0, Capturing, Exhausted };
++
++    inline const char *p09CapturePhaseName(P09CapturePhase phase) {
++        switch (phase) {
++        case P09CapturePhase::WaitingForRequest: return "WAITING_FOR_REQUEST";
++        case P09CapturePhase::Capturing: return "CAPTURING";
++        case P09CapturePhase::Exhausted: return "EXHAUSTED";
++        default: return "UNKNOWN";
++        }
++    }
++
++    enum class P09ArmEvent : uint8_t { None = 0, StaleIgnored, Armed, Rearmed };
++
++    // Request-marker lifecycle. `consumed` is the caller's removal result.
++    // Phase, arm, rearm, and stale counts change only after a successful
++    // removal. A failed removal latches until the path is absent or a later
++    // removal succeeds, and does not increment again while latched.
++    // Rearmed means the caller may reset correlation counters and generation
++    // only, then stay in CAPTURING. The RSP session wipe is not this function.
++    struct P09CaptureControl {
++        P09CapturePhase phase = P09CapturePhase::WaitingForRequest;
++        bool observedMarkerAbsent = false;
++        bool consumeFailedLatched = false;
++        uint64_t staleIgnored = 0;
++        uint64_t arms = 0;
++        uint64_t rearms = 0;
++        uint64_t consumeFailures = 0;
++    };
++
++    inline P09ArmEvent p09CaptureObserveMarker(P09CaptureControl &ctl, bool markerVisible, bool consumed) {
++        if (!markerVisible) {
++            ctl.consumeFailedLatched = false;
++            if (!ctl.observedMarkerAbsent) {
++                ctl.observedMarkerAbsent = true;
++            }
++            return P09ArmEvent::None;
++        }
++        if (!consumed) {
++            if (!ctl.consumeFailedLatched) {
++                ctl.consumeFailedLatched = true;
++                ctl.consumeFailures++;
++            }
++            return P09ArmEvent::None;
++        }
++        ctl.consumeFailedLatched = false;
++        if (!ctl.observedMarkerAbsent) {
++            ctl.staleIgnored++;
++            return P09ArmEvent::StaleIgnored;
++        }
++        if (ctl.phase == P09CapturePhase::WaitingForRequest) {
++            ctl.phase = P09CapturePhase::Capturing;
++            ctl.arms++;
++            return P09ArmEvent::Armed;
++        }
++        ctl.phase = P09CapturePhase::Capturing;
++        ctl.rearms++;
++        return P09ArmEvent::Rearmed;
++    }
++
++    inline bool p09CorrelationCostlyWorkAllowed(P09CapturePhase phase, const P09CorrelationBudget &b) {
++        if (phase != P09CapturePhase::Capturing) return false;
++        if (p09CorrelationBudgetExhausted(b)) return false;
++        return true;
++    }
++
++    // Caller runs the fb/projection/game-call walk only for Walk.
++    // Cooldown counts skippedWallClock once and does not consume an attempt
++    // or an eligible slot. Exhausted does not classify eligibility.
++    enum class P09PreWalk : uint8_t { Waiting = 0, Exhausted, Cooldown, Walk };
++
++    inline P09PreWalk p09CorrelationPreWalk(P09CapturePhase phase, P09CorrelationBudget &b, const uint64_t *nowMs) {
++        if (phase == P09CapturePhase::WaitingForRequest) {
++            return P09PreWalk::Waiting;
++        }
++        if ((phase != P09CapturePhase::Capturing) || p09CorrelationBudgetExhausted(b)) {
++            return P09PreWalk::Exhausted;
++        }
++        if ((nowMs != nullptr) && (b.attempts > 0) &&
++            (*nowMs < b.lastHeavyAttemptMs + kP09CorrelationAttemptIntervalMs)) {
++            b.skippedWallClock++;
++            return P09PreWalk::Cooldown;
++        }
++        return P09PreWalk::Walk;
++    }
++
++    // A finished observed sample is not a finished eligible run, and neither is
++    // global game coverage. Waiting and exhaustion are incomplete runs. Cadence
++    // above 1 is sampling by design.
++    inline bool p09CaptureRunIncomplete(P09CapturePhase phase, const P09CorrelationBudget &b,
++        uint64_t seamSearchSkippedBudget) {
++        if (phase != P09CapturePhase::Capturing) return true;
++        if (b.cadence > 1u) return true;
++        if ((b.skippedCadence > 0) || (b.skippedBudget > 0) || (b.skippedWallClock > 0) ||
++            (seamSearchSkippedBudget > 0)) {
++            return true;
++        }
++        if ((b.attempts >= b.maxAttempts) || (b.seamSearches >= b.maxSeamSearches)) return true;
++        return false;
++    }
++
++    // First-20 pathological tie groups that already feed this correlation.
++    // A group is one child plus every parent whose prevXY+curXY gap tied the
++    // selected parent. Recording does not change selection or coverage counters
++    // and does not suppress the tie. DISTINCT_EXACT_USES means the stored
++    // 9-field keys are complete and not all equal. It is not proof that any
++    // of those uses is a legitimate seam.
++    constexpr size_t kP09TieGroupCap = 20;
++    constexpr size_t kP09TieMemberCap = 96;
++
++    enum class P09TieIdentity : uint8_t {
++        SameExactUseRepeat = 0,
++        DistinctExactUses,
++        Unknown
++    };
++
++    inline const char *p09TieIdentityName(P09TieIdentity id) {
++        switch (id) {
++        case P09TieIdentity::SameExactUseRepeat: return "SAME_EXACT_USE_REPEAT";
++        case P09TieIdentity::DistinctExactUses: return "DISTINCT_EXACT_USES";
++        default: return "UNKNOWN";
++        }
++    }
++
++    inline const char *p09ExactUseMemberName(P09ExactUseMember m) {
++        switch (m) {
++        case P09ExactUseMember::Selected: return "SELECTED";
++        case P09ExactUseMember::NotSelected: return "NOT_SELECTED";
++        default: return "UNKNOWN";
++        }
++    }
++
++    struct P09TieMemberRec {
++        P09SeamExactUseKey key{};
++        bool keyComplete = false;
++        bool selected = false;
++        float gap = 0.0f;
++        bool gapEqualsBest = false;
++        float prevNdcX = 0.0f;
++        float prevNdcY = 0.0f;
++        float curNdcX = 0.0f;
++        float curNdcY = 0.0f;
++        bool prevNdcOk = false;
++        bool curNdcOk = false;
++        float prevWorldX = 0.0f;
++        float prevWorldY = 0.0f;
++        float prevWorldZ = 0.0f;
++        float curWorldX = 0.0f;
++        float curWorldY = 0.0f;
++        float curWorldZ = 0.0f;
++        bool prevWorldOk = false;
++        bool curWorldOk = false;
++        P09ExactUseMember membership = P09ExactUseMember::Unknown;
++        P09ExactUseUnknownReason reason = P09ExactUseUnknownReason::PlanInactive;
++    };
++
++    struct P09TieMemberInput {
++        P09SeamExactUseKey key{};
++        bool keyComplete = false;
++        bool selected = false;
++        float gap = 0.0f;
++        bool gapEqualsBest = false;
++        float prevNdcX = 0.0f;
++        float prevNdcY = 0.0f;
++        float curNdcX = 0.0f;
++        float curNdcY = 0.0f;
++        bool prevNdcOk = false;
++        bool curNdcOk = false;
++        float prevWorldX = 0.0f;
++        float prevWorldY = 0.0f;
++        float prevWorldZ = 0.0f;
++        float curWorldX = 0.0f;
++        float curWorldY = 0.0f;
++        float curWorldZ = 0.0f;
++        bool prevWorldOk = false;
++        bool curWorldOk = false;
++    };
++
++    struct P09TieGroupRec {
++        P09SeamExactUseKey child{};
++        bool childComplete = false;
++        P09ExactUseMember childMembership = P09ExactUseMember::Unknown;
++        P09ExactUseUnknownReason childReason = P09ExactUseUnknownReason::PlanInactive;
++        float bestGap = 0.0f;
++        uint32_t multiplicity = 0;
++        uint32_t stored = 0;
++        bool membersTruncated = false;
++        int32_t selectedStoredIndex = -1;
++        P09TieIdentity identity = P09TieIdentity::Unknown;
++        bool planQueried = false;
++        uint8_t planActive = 0;
++        uint8_t planExhaustive = 0;
++        uint64_t planWorkloadId = 0;
++        uint64_t planGeneration = 0;
++        uint64_t expectedGeneration = 0;
++        uint64_t attemptGeneration = 0;
++        P09TieMemberRec members[kP09TieMemberCap];
++    };
++
++    struct P09TieGroupInput {
++        P09SeamExactUseKey child{};
++        bool childComplete = false;
++        float bestGap = 0.0f;
++        uint32_t multiplicity = 0;
++        uint64_t attemptGeneration = 0;
++        const P09TieMemberInput *members = nullptr;
++        uint32_t memberCount = 0;
++    };
++
++    struct P09TieSample {
++        P09TieGroupRec groups[kP09TieGroupCap];
++        uint32_t storedGroups = 0;
++        uint64_t observedPathologicalTieGroups = 0;
++        uint64_t skippedGroups = 0;
++        uint64_t memberTruncationEvents = 0;
++    };
++
++    // Complete enumeration of complete keys only. Truncation, a short list,
++    // or any incomplete key stays UNKNOWN. Coordinate equality is not used.
++    inline P09TieIdentity p09TieClassifyIdentity(const P09TieMemberRec *members, uint32_t stored,
++        uint32_t multiplicity, bool truncated) {
++        if (truncated || (members == nullptr) || (stored < 2u) || (stored != multiplicity)) {
++            return P09TieIdentity::Unknown;
++        }
++        for (uint32_t i = 0; i < stored; i++) {
++            if (!members[i].keyComplete) {
++                return P09TieIdentity::Unknown;
++            }
++        }
++        for (uint32_t i = 1; i < stored; i++) {
++            if (!p09ExactUseEqual(members[0].key, members[i].key)) {
++                return P09TieIdentity::DistinctExactUses;
++            }
++        }
++        return P09TieIdentity::SameExactUseRepeat;
++    }
++
++    // Appends one group. Past the group cap, counts a skip and does not replace
++    // an earlier group. Does not touch coverage counters.
++    inline void p09TieSampleRecord(P09TieSample &sample, const P09TieGroupInput &in) {
++        sample.observedPathologicalTieGroups++;
++        if (sample.storedGroups >= kP09TieGroupCap) {
++            sample.skippedGroups++;
++            return;
++        }
++        P09TieGroupRec &g = sample.groups[sample.storedGroups];
++        g = P09TieGroupRec{};
++        g.child = in.child;
++        g.childComplete = in.childComplete;
++        g.bestGap = in.bestGap;
++        g.multiplicity = in.multiplicity;
++        g.attemptGeneration = in.attemptGeneration;
++        const uint32_t provided = (in.members == nullptr) ? 0u : in.memberCount;
++        const uint32_t store = (provided < uint32_t(kP09TieMemberCap)) ? provided : uint32_t(kP09TieMemberCap);
++        g.stored = store;
++        g.membersTruncated = (in.multiplicity > store);
++        for (uint32_t i = 0; i < store; i++) {
++            const P09TieMemberInput &src = in.members[i];
++            P09TieMemberRec &dst = g.members[i];
++            dst.key = src.key;
++            dst.keyComplete = src.keyComplete;
++            dst.selected = src.selected;
++            dst.gap = src.gap;
++            dst.gapEqualsBest = src.gapEqualsBest;
++            dst.prevNdcX = src.prevNdcX;
++            dst.prevNdcY = src.prevNdcY;
++            dst.curNdcX = src.curNdcX;
++            dst.curNdcY = src.curNdcY;
++            dst.prevNdcOk = src.prevNdcOk;
++            dst.curNdcOk = src.curNdcOk;
++            if (src.prevWorldOk) {
++                dst.prevWorldX = src.prevWorldX;
++                dst.prevWorldY = src.prevWorldY;
++                dst.prevWorldZ = src.prevWorldZ;
++                dst.prevWorldOk = true;
++            }
++            if (src.curWorldOk) {
++                dst.curWorldX = src.curWorldX;
++                dst.curWorldY = src.curWorldY;
++                dst.curWorldZ = src.curWorldZ;
++                dst.curWorldOk = true;
++            }
++            if (src.selected && (g.selectedStoredIndex < 0)) {
++                g.selectedStoredIndex = int32_t(i);
++            }
++        }
++        g.identity = p09TieClassifyIdentity(g.members, g.stored, g.multiplicity, g.membersTruncated);
++        if (g.membersTruncated) {
++            sample.memberTruncationEvents++;
++        }
++        sample.storedGroups++;
++    }
++
++    // Membership against the caller-supplied plan only. An inactive plan stays
++    // Unknown / PLAN_INACTIVE. This does not read any other plan.
++    inline void p09TieSampleApplyLocalPlan(P09TieSample &sample, uint64_t attemptGeneration,
++        const P09ExactUsePlanResult &plan, uint64_t planGeneration, uint64_t expectedGeneration) {
++        for (uint32_t gi = 0; gi < sample.storedGroups; gi++) {
++            P09TieGroupRec &g = sample.groups[gi];
++            if (g.attemptGeneration != attemptGeneration) {
++                continue;
++            }
++            g.planQueried = true;
++            g.planActive = plan.active;
++            g.planExhaustive = plan.exhaustive;
++            g.planWorkloadId = plan.workloadId;
++            g.planGeneration = planGeneration;
++            g.expectedGeneration = expectedGeneration;
++            g.childMembership = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration,
++                g.child, g.childComplete, &g.childReason);
++            for (uint32_t i = 0; i < g.stored; i++) {
++                P09TieMemberRec &m = g.members[i];
++                m.membership = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration,
++                    m.key, m.keyComplete, &m.reason);
++            }
++        }
++    }
++
++    inline void p09TieFormatKey(std::FILE *out, const P09SeamExactUseKey &k) {
++        std::fprintf(out,
++            "workload=%llu fbPair=%u projection=%u gameCall=%u triangleLocal=%u corner=%u faceCorner=%u storedVertex=%u world=%u",
++            static_cast<unsigned long long>(k.workloadId), k.fbPair, k.projection, k.gameCall,
++            k.triangleLocal, static_cast<unsigned>(k.cornerInTriangle), k.faceCornerIndex,
++            k.storedVertexId, static_cast<unsigned>(k.originalWorldIndex));
++    }
++
++    inline void p09TieFormatCoord2(std::FILE *out, bool ok, float x, float y) {
++        if (!ok) {
++            std::fprintf(out, "NA");
++            return;
++        }
++        std::fprintf(out, "%.9g,%.9g", x, y);
++    }
++
++    inline void p09TieFormatCoord3(std::FILE *out, bool ok, float x, float y, float z) {
++        if (!ok) {
++            std::fprintf(out, "NA");
++            return;
++        }
++        std::fprintf(out, "%.9g,%.9g,%.9g", x, y, z);
++    }
++
++    // Bounded text: stored groups only, stored members only. No seam search.
++    inline void p09TieFormatSample(std::FILE *out, const P09TieSample &sample) {
++        if (out == nullptr) {
++            return;
++        }
++        std::fprintf(out,
++            "SCHEMA=P09_SEAM_EDGE_PATHOLOGY_TIE_GROUPS_V1\n"
++            "FLAG=TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION\n"
++            "GROUP_CAP=%u\n"
++            "MEMBER_CAP=%u\n"
++            "SAMPLED_SCOPE=PATHOLOGICAL_NEAREST_JOIN_TIES_FEEDING_EXACT_USE_CORRELATION_FIRST_20_PER_ARMED_SESSION\n"
++            "SELECTION_UNCHANGED=YES\n"
++            "TIE_SUPPRESSION=NO\n"
++            "OBSERVED_PATHOLOGICAL_TIE_GROUPS=%llu\n"
++            "STORED_GROUPS=%u\n"
++            "SKIPPED_GROUPS=%llu\n"
++            "MEMBER_TRUNCATION_EVENTS=%llu\n"
++            "ORIGINAL_PAIR_CLASSIFICATION=AMBIGUOUS_UNTIL_INDEPENDENT_REVIEW\n"
++            "IDENTITY_NOTE=DISTINCT_EXACT_USES means complete 9-field keys differ. It does not prove seam legitimacy.\n"
++            "COORDINATE_NOTE=Identical NDC is not exact-use identity.\n"
++            "PLAN_NOTE=Membership uses only the attempt-local plan passed with the group. PLAN_QUERIED=NO or PLAN_ACTIVE=0 is UNKNOWN and is not a miss.\n",
++            static_cast<unsigned>(kP09TieGroupCap),
++            static_cast<unsigned>(kP09TieMemberCap),
++            static_cast<unsigned long long>(sample.observedPathologicalTieGroups),
++            sample.storedGroups,
++            static_cast<unsigned long long>(sample.skippedGroups),
++            static_cast<unsigned long long>(sample.memberTruncationEvents));
++        for (uint32_t gi = 0; gi < sample.storedGroups && gi < kP09TieGroupCap; gi++) {
++            const P09TieGroupRec &g = sample.groups[gi];
++            std::fprintf(out, "GROUP index=%u attemptGeneration=%llu\n", gi,
++                static_cast<unsigned long long>(g.attemptGeneration));
++            std::fprintf(out, "CHILD ");
++            p09TieFormatKey(out, g.child);
++            std::fprintf(out, "\n");
++            std::fprintf(out,
++                "CHILD_COMPLETE=%s\n"
++                "CHILD_MEMBERSHIP=%s\n"
++                "CHILD_REASON=%s\n"
++                "BEST_GAP=%.9g\n"
++                "EXACT_EQUALITY=gap==bestGap\n"
++                "MULTIPLICITY=%u\n"
++                "STORED=%u\n"
++                "TRUNCATED=%s\n"
++                "IDENTITY=%s\n"
++                "SELECTED_STORED_INDEX=%d\n"
++                "PLAN_QUERIED=%s\n"
++                "PLAN_ACTIVE=%u\n"
++                "PLAN_EXHAUSTIVE=%u\n"
++                "PLAN_WORKLOAD=%llu\n"
++                "PLAN_GENERATION=%llu\n"
++                "EXPECTED_GENERATION=%llu\n"
++                "DO_NOT_INFER_MISS=YES\n",
++                g.childComplete ? "YES" : "NO",
++                p09ExactUseMemberName(g.childMembership),
++                p09ExactUseUnknownReasonName(g.childReason),
++                g.bestGap,
++                g.multiplicity,
++                g.stored,
++                g.membersTruncated ? "YES" : "NO",
++                p09TieIdentityName(g.identity),
++                static_cast<int>(g.selectedStoredIndex),
++                g.planQueried ? "YES" : "NO",
++                static_cast<unsigned>(g.planActive),
++                static_cast<unsigned>(g.planExhaustive),
++                static_cast<unsigned long long>(g.planWorkloadId),
++                static_cast<unsigned long long>(g.planGeneration),
++                static_cast<unsigned long long>(g.expectedGeneration));
++            const uint32_t n = (g.stored < uint32_t(kP09TieMemberCap)) ? g.stored : uint32_t(kP09TieMemberCap);
++            for (uint32_t i = 0; i < n; i++) {
++                const P09TieMemberRec &m = g.members[i];
++                std::fprintf(out, "MEMBER index=%u selected=%s gap=%.9g gapEqualsBest=%s ",
++                    i, m.selected ? "YES" : "NO", m.gap, m.gapEqualsBest ? "YES" : "NO");
++                p09TieFormatKey(out, m.key);
++                std::fprintf(out, " PREV_NDC=");
++                p09TieFormatCoord2(out, m.prevNdcOk, m.prevNdcX, m.prevNdcY);
++                std::fprintf(out, " CUR_NDC=");
++                p09TieFormatCoord2(out, m.curNdcOk, m.curNdcX, m.curNdcY);
++                std::fprintf(out, " PREV_WORLD=");
++                p09TieFormatCoord3(out, m.prevWorldOk, m.prevWorldX, m.prevWorldY, m.prevWorldZ);
++                std::fprintf(out, " CUR_WORLD=");
++                p09TieFormatCoord3(out, m.curWorldOk, m.curWorldX, m.curWorldY, m.curWorldZ);
++                std::fprintf(out, " MEMBERSHIP=%s REASON=%s\n",
++                    p09ExactUseMemberName(m.membership), p09ExactUseUnknownReasonName(m.reason));
++            }
++        }
++    }
++}

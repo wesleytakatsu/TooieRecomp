@@ -1,3 +1,14 @@
+---
+title: "P08 — Caminho host dos controles"
+description: "Comprovação do caminho de entrada host para controles via stubs e isolamento do CIC-6105."
+status: validated
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-09
+tags: [p08, input, controller, host, recomp-api, cic6105]
+---
+
 # P08 — caminho host dos controles
 
 Data: 2026-08-09

@@ -1,0 +1,295 @@
+diff --git a/src/hle/rt64_workload.cpp b/src/hle/rt64_workload.cpp
+index b4c85f5..377aee8 100644
+--- a/src/hle/rt64_workload.cpp
++++ b/src/hle/rt64_workload.cpp
+@@ -83,6 +83,8 @@ namespace RT64 {
+         drawData.prevViewTransforms.clear();
+         drawData.prevProjTransforms.clear();
+         drawData.prevViewProjTransforms.clear();
++        drawData.endpointViewProjTransforms.clear();
++        drawData.endpointWorldTransforms.clear();
+         drawData.lerpWorldTransforms.clear();
+         drawData.prevWorldTransforms.clear();
+         drawData.invTWorldTransforms.clear();
+@@ -105,7 +107,11 @@ namespace RT64 {
+         drawData.viewTransforms.push_back(interop::float4x4::identity());
+         drawData.projTransforms.push_back(interop::float4x4::identity());
+         drawData.viewProjTransforms.push_back(interop::float4x4::identity());
++        drawData.endpointViewProjTransforms.push_back(interop::float4x4::identity());
++        drawData.endpointViewProjTransforms.push_back(interop::float4x4::identity());
+         drawData.worldTransforms.push_back(interop::float4x4::identity());
++        drawData.endpointWorldTransforms.push_back(interop::float4x4::identity());
++        drawData.endpointWorldTransforms.push_back(interop::float4x4::identity());
+         drawData.transformGroups.push_back(TransformGroup());
+         drawData.worldTransformGroups.push_back(0);
+         drawData.viewProjTransformGroups.push_back(0);
+diff --git a/src/hle/rt64_workload.h b/src/hle/rt64_workload.h
+index 8ea27d5..6d8897a 100644
+--- a/src/hle/rt64_workload.h
++++ b/src/hle/rt64_workload.h
+@@ -51,6 +51,8 @@ namespace RT64 {
+         std::vector<interop::float4x4> prevViewTransforms;
+         std::vector<interop::float4x4> prevProjTransforms;
+         std::vector<interop::float4x4> prevViewProjTransforms;
++        std::vector<interop::float4x4> endpointViewProjTransforms;
++        std::vector<interop::float4x4> endpointWorldTransforms;
+         std::vector<interop::float4x4> worldTransforms;
+         std::vector<interop::float4x4> prevWorldTransforms;
+         std::vector<interop::float4x4> invTWorldTransforms;
+@@ -160,6 +162,8 @@ namespace RT64 {
+         BufferPair worldTransformsBuffer;
+         BufferPair viewProjTransformsBuffer;
+         BufferPair prevWorldTransformsBuffer;
++        BufferPair endpointViewProjTransformsBuffer;
++        BufferPair endpointWorldTransformsBuffer;
+         BufferPair invTWorldTransformsBuffer;
+         BufferPair triPosBuffer;
+         BufferPair triTcBuffer;
+diff --git a/src/render/rt64_descriptor_sets.h b/src/render/rt64_descriptor_sets.h
+index 69a82ac..b551004 100644
+--- a/src/render/rt64_descriptor_sets.h
++++ b/src/render/rt64_descriptor_sets.h
+@@ -527,6 +527,8 @@ namespace RT64 {
+         uint32_t dstPos;
+         uint32_t dstTc;
+         uint32_t dstCol;
++        uint32_t endpointViewProj;
++        uint32_t endpointWorld;
+ 
+         RSPProcessDescriptorSet(RenderDevice *device = nullptr) {
+             builder.begin();
+@@ -551,6 +553,8 @@ namespace RT64 {
+             dstPos = builder.addReadWriteStructuredBuffer(19);
+             dstTc = builder.addReadWriteStructuredBuffer(20);
+             dstCol = builder.addReadWriteStructuredBuffer(21);
++            endpointViewProj = builder.addStructuredBuffer(22);
++            endpointWorld = builder.addStructuredBuffer(23);
+             builder.end();
+ 
+             if (device != nullptr) {
+diff --git a/src/render/rt64_projection_processor.cpp b/src/render/rt64_projection_processor.cpp
+index e842dcc..710f1cd 100644
+--- a/src/render/rt64_projection_processor.cpp
++++ b/src/render/rt64_projection_processor.cpp
+@@ -39,6 +39,11 @@ namespace RT64 {
+             drawData.prevViewTransforms = drawData.viewTransforms;
+             drawData.prevProjTransforms = drawData.projTransforms;
+             drawData.prevViewProjTransforms = drawData.viewProjTransforms;
++            drawData.endpointViewProjTransforms.resize(drawData.viewProjTransforms.size() * 2);
++            for (size_t i = 0; i < drawData.viewProjTransforms.size(); i++) {
++                drawData.endpointViewProjTransforms[i * 2] = drawData.viewProjTransforms[i];
++                drawData.endpointViewProjTransforms[i * 2 + 1] = drawData.viewProjTransforms[i];
++            }
+         }
+ 
+         for (size_t s = 0; s < p.curFrame->perspectiveScenes.size(); s++) {
+@@ -114,6 +119,11 @@ namespace RT64 {
+ 
+             adjustProjectionMatrix(projMatrix, projRatioScale);
+ 
++            const interop::float4x4 curViewEndpoint = viewMatrix;
++            const interop::float4x4 curProjEndpoint = projMatrix;
++            interop::float4x4 prevViewEndpoint = curViewEndpoint;
++            interop::float4x4 prevProjEndpoint = curProjEndpoint;
++
+             interop::float4x4 &prevViewTransform = drawData.prevViewTransforms[proj.transformsIndex];
+             interop::float4x4 &prevProjTransform = drawData.prevProjTransforms[proj.transformsIndex];
+             if ((prevProjMatrix != nullptr) && (prevViewMatrix != nullptr) && (rigidBody != nullptr)) {
+@@ -121,6 +131,8 @@ namespace RT64 {
+                 const interop::float4x4 curProjTransform = projMatrix;
+                 interop::float4x4 adjustedPrevProj = *prevProjMatrix;
+                 adjustProjectionMatrix(adjustedPrevProj, projRatioScale);
++                prevViewEndpoint = *prevViewMatrix;
++                prevProjEndpoint = adjustedPrevProj;
+                 viewMatrix = rigidBody->lerp(p.curFrameWeight, *prevViewMatrix, curViewTransform, true);
+                 prevViewTransform = rigidBody->lerp(p.prevFrameWeight, *prevViewMatrix, curViewTransform, true);
+ 
+@@ -141,6 +153,8 @@ namespace RT64 {
+             }
+ 
+             viewProjMatrix = hlslpp::mul(viewMatrix, projMatrix);
++            drawData.endpointViewProjTransforms[proj.transformsIndex * 2] = hlslpp::mul(prevViewEndpoint, prevProjEndpoint);
++            drawData.endpointViewProjTransforms[proj.transformsIndex * 2 + 1] = hlslpp::mul(curViewEndpoint, curProjEndpoint);
+ 
+             interop::float4x4 &prevViewProjTransform = drawData.prevViewProjTransforms[proj.transformsIndex];
+             prevViewProjTransform = hlslpp::mul(prevViewTransform, prevProjTransform);
+@@ -156,6 +170,8 @@ namespace RT64 {
+             DrawBuffers &drawBuffers = workload.drawBuffers;
+             std::pair<size_t, size_t> uploadRange = { 0, drawData.viewProjTransforms.size() };
+             uploads.emplace_back(BufferUploader::Upload{ drawData.modViewProjTransforms.data(), uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.viewProjTransformsBuffer });
++            std::pair<size_t, size_t> endpointRange = { 0, drawData.endpointViewProjTransforms.size() };
++            uploads.emplace_back(BufferUploader::Upload{ drawData.endpointViewProjTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.endpointViewProjTransformsBuffer });
+         }
+ 
+         bufferUploader->submit(p.worker, uploads);
+diff --git a/src/render/rt64_rsp_processor.cpp b/src/render/rt64_rsp_processor.cpp
+index 5687b81..4189dc0 100644
+--- a/src/render/rt64_rsp_processor.cpp
++++ b/src/render/rt64_rsp_processor.cpp
+@@ -6,7 +6,29 @@
+ 
+ #include "rt64_buffer_uploader.h"
+ 
++#include <cstdlib>
++
+ namespace RT64 {
++    namespace {
++        bool p09RspForceEndpointCurrentEnabled() {
++            static int cached = -1;
++            if (cached < 0) {
++                const char *env = std::getenv("TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT");
++                cached = ((env != nullptr) && (env[0] != '\0') && (env[0] != '0')) ? 1 : 0;
++            }
++            return cached != 0;
++        }
++
++        bool p09RspMarkWCrossingEnabled() {
++            static int cached = -1;
++            if (cached < 0) {
++                const char *env = std::getenv("TOOIE_DIAG_RSP_MARK_W_CROSSING");
++                cached = ((env != nullptr) && (env[0] != '\0') && (env[0] != '0')) ? 1 : 0;
++            }
++            return cached != 0;
++        }
++    }
++
+     // RSPProcessor
+ 
+     RSPProcessor::RSPProcessor(RenderDevice *device) {
+@@ -23,6 +45,8 @@ namespace RT64 {
+         processCB.vertexCount = drawVertexCount - processCB.vertexStart;
+         processCB.prevFrameWeight = p.prevFrameWeight;
+         processCB.curFrameWeight = p.curFrameWeight;
++        processCB.forceEndpointCurrent = p09RspForceEndpointCurrentEnabled() ? 1u : 0u;
++        processCB.markWCrossing = p09RspMarkWCrossingEnabled() ? 1u : 0u;
+         p.outputBuffers->screenPosBuffer.computedSize += processCB.vertexCount * sizeof(float) * 4;
+         p.outputBuffers->genTexCoordBuffer.computedSize += processCB.vertexCount * sizeof(float) * 2;
+         p.outputBuffers->shadedColBuffer.computedSize += processCB.vertexCount * sizeof(float) * 4;
+@@ -44,6 +68,8 @@ namespace RT64 {
+         processSet->setBuffer(processSet->rspLookAtVector, p.drawBuffers->rspLookAtBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPLookAt)));
+         processSet->setBuffer(processSet->viewProjTransforms, p.drawBuffers->viewProjTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
+         processSet->setBuffer(processSet->worldTransforms, p.drawBuffers->worldTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
++        processSet->setBuffer(processSet->endpointViewProj, p.drawBuffers->endpointViewProjTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
++        processSet->setBuffer(processSet->endpointWorld, p.drawBuffers->endpointWorldTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
+         processSet->setBuffer(processSet->dstPos, p.outputBuffers->screenPosBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 4));
+         processSet->setBuffer(processSet->dstTc, p.outputBuffers->genTexCoordBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 2));
+         processSet->setBuffer(processSet->dstCol, p.outputBuffers->shadedColBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 4));
+diff --git a/src/render/rt64_rsp_processor.h b/src/render/rt64_rsp_processor.h
+index 25c0cf9..59039fa 100644
+--- a/src/render/rt64_rsp_processor.h
++++ b/src/render/rt64_rsp_processor.h
+@@ -15,6 +15,10 @@ namespace RT64 {
+             uint32_t vertexCount;
+             float prevFrameWeight;
+             float curFrameWeight;
++            uint32_t forceEndpointCurrent;
++            uint32_t markWCrossing;
++            uint32_t pad1;
++            uint32_t pad2;
+         };
+ 
+         struct ModifyCB {
+diff --git a/src/render/rt64_shader_library.cpp b/src/render/rt64_shader_library.cpp
+index d1c5273..f15023f 100644
+--- a/src/render/rt64_shader_library.cpp
++++ b/src/render/rt64_shader_library.cpp
+@@ -511,7 +511,7 @@ namespace RT64 {
+         {
+             RSPProcessDescriptorSet descriptorSet;
+             layoutBuilder.begin();
+-            layoutBuilder.addPushConstant(0, 0, sizeof(uint32_t) * 4, RenderShaderStageFlag::COMPUTE);
++            layoutBuilder.addPushConstant(0, 0, sizeof(uint32_t) * 8, RenderShaderStageFlag::COMPUTE);
+             layoutBuilder.addDescriptorSet(descriptorSet);
+             layoutBuilder.end();
+             rspProcess.pipelineLayout = layoutBuilder.create(device);
+diff --git a/src/render/rt64_transform_processor.cpp b/src/render/rt64_transform_processor.cpp
+index cd8004d..a3c8372 100644
+--- a/src/render/rt64_transform_processor.cpp
++++ b/src/render/rt64_transform_processor.cpp
+@@ -30,6 +30,7 @@ namespace RT64 {
+             lerpWorldTransforms.clear();
+             invTWorldTransforms.clear();
+             prevWorldTransforms.clear();
++            drawData.endpointWorldTransforms.resize(drawData.worldTransforms.size() * 2);
+ 
+             hlslpp::float4x4 prevMatrix, curMatrix, invMatrix, invTMatrix;
+ 
+@@ -42,6 +43,8 @@ namespace RT64 {
+                     if (transformMap.mapped) {
+                         const hlslpp::float4x4 &prevTransform = prevDrawData.worldTransforms[workloadMap.transforms[t].prevTransformIndex];
+                         const hlslpp::float4x4 &curTransform = drawData.worldTransforms[t];
++                        drawData.endpointWorldTransforms[t * 2] = prevTransform;
++                        drawData.endpointWorldTransforms[t * 2 + 1] = curTransform;
+                         prevMatrix = transformMap.rigidBody.lerp(p.prevFrameWeight, prevTransform, curTransform, true);
+                         curMatrix = transformMap.rigidBody.lerp(p.curFrameWeight, prevTransform, curTransform, true);
+                         invMatrix = hlslpp::inverse(curMatrix);
+@@ -56,6 +59,8 @@ namespace RT64 {
+                         lerpWorldTransforms.emplace_back(drawData.worldTransforms[t]);
+                         invTWorldTransforms.emplace_back(invTMatrix);
+                         prevWorldTransforms.emplace_back(drawData.worldTransforms[t]);
++                        drawData.endpointWorldTransforms[t * 2] = drawData.worldTransforms[t];
++                        drawData.endpointWorldTransforms[t * 2 + 1] = drawData.worldTransforms[t];
+                     }
+                 }
+             }
+@@ -65,6 +70,8 @@ namespace RT64 {
+                     invMatrix = hlslpp::inverse(drawData.worldTransforms[t]);
+                     invTMatrix = hlslpp::transpose(invMatrix);
+                     invTWorldTransforms.push_back(invTMatrix);
++                    drawData.endpointWorldTransforms[t * 2] = drawData.worldTransforms[t];
++                    drawData.endpointWorldTransforms[t * 2 + 1] = drawData.worldTransforms[t];
+                 }
+             }
+         }
+@@ -85,6 +92,8 @@ namespace RT64 {
+             uploads.emplace_back(BufferUploader::Upload{ worldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.worldTransformsBuffer });
+             uploads.emplace_back(BufferUploader::Upload{ prevWorldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.prevWorldTransformsBuffer });
+             uploads.emplace_back(BufferUploader::Upload{ invTWorldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.invTWorldTransformsBuffer });
++            std::pair<size_t, size_t> endpointRange = { 0, drawData.endpointWorldTransforms.size() };
++            uploads.emplace_back(BufferUploader::Upload{ drawData.endpointWorldTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.endpointWorldTransformsBuffer });
+         }
+ 
+         bufferUploader->submit(p.worker, uploads);
+diff --git a/src/shaders/RSPProcessCS.hlsl b/src/shaders/RSPProcessCS.hlsl
+index b02446e..72b04d2 100644
+--- a/src/shaders/RSPProcessCS.hlsl
++++ b/src/shaders/RSPProcessCS.hlsl
+@@ -16,6 +16,10 @@ struct RSPProcessCB {
+     uint vertexCount;
+     float prevFrameWeight;
+     float curFrameWeight;
++    uint forceEndpointCurrent;
++    uint markWCrossing;
++    uint pad1;
++    uint pad2;
+ };
+ 
+ [[vk::push_constant]] ConstantBuffer<RSPProcessCB> gConstants : register(b0);
+@@ -37,6 +41,8 @@ StructuredBuffer<RSPLight> rspLightVector : register(t15);
+ StructuredBuffer<RSPLookAt> rspLookAtVector : register(t16);
+ StructuredBuffer<float4x4> viewProjTransforms : register(t17);
+ StructuredBuffer<float4x4> worldTransforms : register(t18);
++StructuredBuffer<float4x4> endpointViewProj : register(t22);
++StructuredBuffer<float4x4> endpointWorld : register(t23);
+ RWStructuredBuffer<float4> dstPos : register(u19);
+ RWStructuredBuffer<float2> dstTc : register(u20);
+ RWStructuredBuffer<float4> dstCol : register(u21);
+@@ -65,6 +71,18 @@ void CSMain(uint vertexIndex : SV_DispatchThreadID) {
+     const float3 vel = float3(srcVel[posIndex + 0], srcVel[posIndex + 1], srcVel[posIndex + 2]);
+     float4 tfPos = mul(mul(viewProjMat, worldMat), float4(pos - vel * (1.0f - gConstants.curFrameWeight), 1.0f));
+ 
++    // Failed W-sign production candidate is disabled. Default-off
++    // TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT still snaps every vertex to
++    // endpoint CURRENT clip. TOOIE_DIAG_RSP_MARK_W_CROSSING is inert
++    // without the removed sign test.
++    if (gConstants.forceEndpointCurrent != 0u) {
++        const float4 endpointPos = float4(pos, 1.0f);
++        tfPos = mul(mul(endpointViewProj[viewProjIndex * 2u + 1u], endpointWorld[transformIndex * 2u + 1u]), endpointPos);
++        if (gConstants.markWCrossing != 0u) {
++            tfPos.x += 0.70f * tfPos.w;
++        }
++    }
++
+     // Fog.
+     const uint fogIndex = srcFogIndices[vertexOffsetIndex];
+     float4 vertexColor;

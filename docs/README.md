@@ -16,6 +16,7 @@ Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [Regras para agentes](AGENTS.md)
 - [Markdown Vault MCP (guia de uso)](MARKDOWN_VAULT_TOOLS.md) — workspace = TooieRecomp; vault = `docs/`
 - [Specifications (hub)](specs/index.md)
+- [Reverse-engineering knowledge](reverse-engineering/README.md) — current model of the game (not forensic evidence)
 
 ## Especificações por projeto
 

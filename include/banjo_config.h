@@ -28,6 +28,7 @@ namespace banjo {
 
         namespace graphics {
             inline const std::string cutscene_aspect_ratio_mode = "cutscene_aspect_ratio_mode";
+            inline const std::string show_fps_counter = "show_fps_counter";
         }
     }
 

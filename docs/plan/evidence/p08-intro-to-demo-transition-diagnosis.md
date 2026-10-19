@@ -18,7 +18,7 @@ tags: [tooie-recomp, p08, intro, attract, transition, clean-freeze, post-mortem]
 > cfg_param3` / `+0x10 cfg_sfx_id`. O blocker corrente é downstream
 > (mode-5/attract init, `func_800C2AB8`). Este documento permanece como registro
 > histórico da investigação; ver
-> [[p08-type4-transition-semantics-audit#clean-freeze-exact-type-4-snapshot]] e
+> [[p08-type4-transition-semantics-audit#11-clean-freeze-exact-type-4-snapshot]] e
 > [[p08-session-handoff]].
 
 BASE HEAD: `cf3116696e290069372a85764929c69284135d0e`
@@ -342,7 +342,7 @@ não causa primária provada. Frame-sync já foi exonerado independentemente.
 > `3.5` = `+0x18 cfg_param3` (NÃO target), `2883` = `+0x10 cfg_sfx_id`,
 > `+0x20 active_sfx=2885`, `+0x30 state_frame_counter=1`, `+0x28 elapsed=0.0`
 > (reset pós-completion). A type-4 **completou** (`state 2`, `render 2`, gate
-> aberto). Ver [[p08-type4-transition-semantics-audit#clean-freeze-exact-type-4-snapshot]].
+> aberto). Ver [[p08-type4-transition-semantics-audit#11-clean-freeze-exact-type-4-snapshot]].
 
 O array apontava para uma type-4 ativa, naquele run aproximadamente em
 `0x8027AAC0`. Esse endereço é heap-specific e não é constante global.

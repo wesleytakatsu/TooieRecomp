@@ -30,7 +30,7 @@ At the verified baseline, `origin` is
 - [Splat](splat.md) — `baserom.us.yaml` segment layout.
 - [Build](build.md) — `Makefile` pipeline to ELF + recompressed ROM.
 - [Symbols](symbols.md) — symbol and relocation maps for the recompiler.
-- [Overlays](overlays.md) — dynamic overlay architecture (851 overlays).
+- [Overlays](overlays.md) — dynamic overlay architecture (884 overlay slots, kTooieOverlayCount = 884, ~851 populated).
 - [Syscalls](syscalls.md) — overlay dispatch via the syscall table (decomp + TooieRecomp P06).
 - [RSP e áudio](rsp-and-audio.md) — n_aspMain / OSTask / pipeline SDL (TooieRecomp P07).
 - [Input e controles](input.md) — contrato compartilhado com BanjoRecomp; attract/demo também consome `glrecord` no pad guest.

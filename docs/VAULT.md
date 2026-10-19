@@ -1,9 +1,86 @@
+---
+title: "Índice da documentação"
+description: "Índice geral da documentação do TooieRecomp."
+status: current
+updated: 2026-10-16
+tags: [vault, index, tooierecomp]
+---
+
 # Índice da documentação
+
+## reverse-engineering
+
+Canonical current knowledge about Banjo-Tooie (what the game is). Forensic
+proof lives under `docs/plan/evidence/`. Do not silently promote hypotheses.
+
+- [[reverse-engineering/README]] — Reverse-engineering knowledge base
+- [[reverse-engineering/glossary]] — Status, provenance, aliases
+- [[reverse-engineering/corrections]] — High-value identity corrections
+- [[reverse-engineering/symbols/functions]] — Function registry (see also `symbols/functions.csv`)
+- [[reverse-engineering/symbols/overlays]] — Overlays of current interest
+- [[reverse-engineering/symbols/structs]] — Struct layout registry
+- [[reverse-engineering/assets/README]] — Resource / asset catalog
+- [[reverse-engineering/assets/animations]] — Animation identities
+- [[reverse-engineering/assets/models]] — Model identities
+- [[reverse-engineering/characters/banjo]] — Banjo
+- [[reverse-engineering/characters/kazooie]] — Kazooie
+- [[plan/evidence/p09-kazooie-carry-banjo-head-feathers]] — P09 — Kazooie carry-Banjo head feathers; V1 token on V5 match
+- [[plan/evidence/p09-kazooie-feather-v1-capture]] — P09 — V1 live identity + matrix CSV
+- [[plan/evidence/p09-kazooie-feather-v2-producer-witness]] — P09 — bone103 scale reanalysis + AE820 dump
+- [[plan/evidence/p09-kazooie-feather-v3-implementation]] — P09 — V3 feather implementation notes
+- [[plan/evidence/p09-generic-selective-world-interpolation-production-design]] — P09 — SELECTIVE_ELEMENTWISE_WORLD default-off; multi-world GameCall classifier; visual test required
+- [[plan/evidence/p09-standard-slerp-world-production-candidate-discriminator]] — P09 — STANDARD_SLERP_WORLD CPU arm; rotation-only mathematical SLERP; recapture required
+- [[plan/evidence/p09-elementwise-world-interpolation-causal-discriminator]] — P09 — ELEMENTWISE_WORLD recapture: attachments linear, pathologies fixed, material nonrigidity
+- [[plan/evidence/p09-cpu-diagnostic-shader-semantics-repair]] — P09 — CPU clip helpers repaired to SPIR-V row-vector WQ; offline synth only
+- [[plan/evidence/p09-cpu-shader-matrix-semantics-and-homogeneous-audit]] — P09 — SPIR-V proves CPU matrix mismatch; repair diagnostics before recapture
+- [[plan/evidence/p09-exact-order-validated-camera-pose-view]] — P09 — prior camera-pose arm; shader-equivalence claim superseded by matrix audit
+- [[plan/evidence/p09-independent-architecture-root-cause-review]] — P09 — Astra architecture review; VIEW inverse-camera lerp; nonstandard quat interior; WORLD JOIN drops w
+- [[plan/evidence/p09-exact-order-view-world-temporal-cohort-forensic]] — P09 — hierarchy REFUTED; MODELVIEW order invalid; exact-order VIEW×WORLD cohort/composite waits recapture
+- [[plan/evidence/p09-view-world-interaction-root-discriminator]] — P09 — CLCL VIEW×WORLD safe class; world-space/hierarchical/modelview discriminator
+- [[plan/evidence/p09-tfpos-factorial-term-attribution]] — P09 — CPU 16-way LIVE/CURRENT tfPos factorial; CLCL captured; world non-rigidity REFUTED
+- [[plan/evidence/p09-world-matrix-interpolation-rigidity-forensic]] — P09 — world RigidBody TRS+SLERP; RIGID_WORLD JOIN recapture REFUTED as root
+- [[plan/evidence/p09-articulated-temporal-coherence-root]] — P09 — JOIN/phase coherent-scope; CLIP_LERP closed; ALL_CURRENT residual overstated
+- [[plan/evidence/p09-projective-w-production-fix]] — P09 — CLIP_LERP/NDC_LERP CPU counterfactuals; W-sign CURRENT remains production
+- [[plan/evidence/p09-projective-w-and-viewproj-representation-root-cause]] — P09 — VERSION=3 relative INVALID; projective-W / viewProj class; witness v4 pending
+- [[plan/evidence/p09-relative-view-world-interpolation-root-cause]] — P09 — SIMPLE REFUTED; combined-relative INVALID on VERSION=3
+- [[plan/evidence/p09-boned-interpolation-counterfactual]] — P09 — AUTO DECOMPOSE proven; SIMPLE offline counterfactual REFUTED by VERSION=2
+- [[plan/evidence/p09-world-occurrence-identity-root-cause-audit]] — P09 — 39 session-union worldIndex vs 9 bones; V5C token-only; CPU 58.6x world lerp
+- [[plan/evidence/p09-passive-high-rate-temporal-coherency-witness]] — P09 — passive CPU intermediate clip reconstruction; capture done (58.596×)
+- [[plan/evidence/p09-temporal-coherency-root-cause]] — P09 — mixed-time projection-only INVALID; global CURRENT FIXED; coherency invariant
+- [[plan/evidence/p09-high-rate-force-current-projection]] — P09 — INVALID mixed-time projection-only CURRENT; diagnostic removed
+- [[plan/evidence/p09-high-rate-force-current-frame]] — P09 — high-rate extra frames with CURRENT weights; V5C SAME, original FPS FIXED; user visual FIXED
+- [[plan/evidence/p09-feather-no-interp-v5c]] — P09 — V5C NO_INTERP on 79,100–105,107,108; V5B missed JOIN parents; visual SAME
+- [[plan/evidence/p09-kazooie-feather-v6-post-matrix-vertex-path]] — P09 — V5B NO_INTERP SAME on seven bones; V6 triangle path
+- [[plan/evidence/p09-kazooie-feather-v6b-triangle-witness-repair]] — P09 — V6 TRI=0 key failure; V6B triangle witness
+- [[plan/evidence/p09-bounded-crest-post-handoff-transferability-audit]] — P09 — crest Q/RSPProcess/RSPModify/RasterVS transfer; visible-feather position path closed
+- [[plan/evidence/p09-visual-geometry-identity-and-scope-forensic]] — P09 — six right-plume DLs miss left plume and crest
+- [[plan/evidence/p09-narrow-rspprocess-structural-forensic]] — P09 — RSPProcessCS statically closed after Q' refute
+- [[plan/evidence/p09-feather-postprocess-q-witness-v1]] — P09 — CPU Q' postprocess witness V1
+- [[plan/evidence/p09-post-handoff-structural-forensic]] — P09 — post-V7 structural forensic; RSPModify absent; RSPProcess first writer
+- [[plan/evidence/p09-v5-real-call-match]] — P09 — V5 snout RT64 match (closed primary)
+- [[reverse-engineering/characters/mumbo]] — Mumbo
+- [[reverse-engineering/systems/resource-system]] — Asset table / load
+- [[reverse-engineering/systems/animation]] — Animation application
+- [[plan/evidence/p09-animation-clip-transition-and-authored-key-forensic]] — P09 — clip22 107/108 match ROM keys; time resets are clip changes
+- [[plan/evidence/p09-feather-anim-sample-time-v1]] — P09 — baanim clip/time + raw 0x28 before AE8A8
+- [[plan/evidence/p09-upstream-current-bone-transform-semantic-forensic]] — P09 — AE8A8 compose closed; 107 steps later proven authored
+- [[reverse-engineering/systems/secondary-animation]] — bawobble
+- [[reverse-engineering/systems/model-renderer]] — func_800DE448 / DE498
+- [[reverse-engineering/systems/geocmd]] — GeoCmd 0x02 dual-mtx
+- [[reverse-engineering/systems/transform-interpolation]] — RT64 AUTO; V5C token-only; intermediate CPU world-lerp explosion
+- [[plan/evidence/p09-v4-real-match-witness]] — P09 real RT64 call/candidate/result witness (V4)
+- [[reverse-engineering/systems/overlays]] — Overlay VRAM / ba cluster
+- [[reverse-engineering/modding/README]] — Modding map
+- [[reverse-engineering/modding/known-extension-points]] — Known seams
 
 ## Notas
 
 - [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — P08 closure cleanup: gameplay visibility and T_INTRO 16:9 projection are closed; ultrawide >16:9 pillarbox candidate deferred and removed. USER_DEMO_5 is RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX.
+- [[HANDOFF]] — Handoff — TooieRecomp — P09 STANDARD_SLERP_WORLD CPU arm; ELEMENTWISE recapture proven; recapture STANDARD_SLERP_WORLD.
+- [[plan/evidence/p09-upstream-current-bone-transform-semantic-forensic]] — P09 — current-bone compose parent*child XYZW; additive unused; 107 keyed steps; clip time unresolved
+- [[plan/evidence/p09-visible-feather-alpha-coverage-texture-forensic]] — P09 — plume AC/TT/ST forensic; all three CLOSED as local mismatch
+- [[plan/evidence/p09-post-position-draw-temporal-and-depth-state-forensic]] — P09 — draw-temporal and depth-state forensic; both CLOSED as local mismatch
+- [[plan/evidence/p09-visible-feather-culling-winding-face-visibility-forensic]] — P09 — 14-DL culling/winding forensic; status A; no missing triangles
 - [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Vault = `TooieRecomp/docs`. Configs de MCP/IDE no TooieRecomp (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`). Abrir agentes neste repositório, não em `N64-Recomp/`.
 - [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 - [[specs/BT/angrylion-control-oracle]] — ANGRYLION_CONTROL — Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE pinned under `tools/oracle/angrylion-control/` (measurement only; TooieRecomp stays RT64).
@@ -28,6 +105,13 @@
 - [[plan/evidence/p08-widescreen-edge-geometry]] — P08 — WIDESCREEN_EDGE_GEOMETRY: T_INTRO 16:9 first RT64 divergence CLIP_X (viewProj 0.905148->0.678861, K=4/3 AUTO); guest Original/Expand owner diff=0 REFUTED; 21:9+ authored extent PROVEN/separate.
 - [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
 - [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
+- [[plan/evidence/p09-live-geocmd-type2-dispatch]] — P09 — E2AA4 raw 0; compact 0x62B type-2 is DCF48; dual-mtx demoted.
+- [[plan/evidence/p09-19aa0-gmtx-rt64-match-stage]] — P09 — 19AA0/mlMtxApply dataflow; D_8007BCD0 REFUTED; V3 match CSV.
+- [[plan/evidence/p09-live-0x62b-tree-reachability]] — P09 — 0x11CB8 is a DE2A4 sibling; tree witness.
+- [[plan/evidence/p09-e2aa4-snout-witness]] — P09 — true 0x62B span 0x13178; snout witness moved to E2AA4; generic E2180 demoted.
+- [[plan/evidence/p09-62b-snout-e2180-layout]] — P09 — independent 0x62B snout parse; GeoCmd02 @ 0x11CB8 not 0x14960; E2180 a1 semantics.
+- [[plan/evidence/p09-deferred-render-context-e0b8c]] — P09 — DE448 immediate vs E2180 not in 80092444 TLS; durable 0x62B; E0B8C conditional.
+- [[plan/evidence/p09-player-model-witness-r31-repair]] — P09 — r31 DE448 filter retired; D_80135490+80092444+80092B04 player model witness.
 - [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
 - [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
 - [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):

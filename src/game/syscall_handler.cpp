@@ -29,6 +29,7 @@ extern "C" void func_80082088(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80108C90(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick);
 extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick);
+extern "C" void tooie_demo7_drift_tick(uint8_t* rdram);
 extern "C" void tooie_ud4_ncbapivot_ep3(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_ud4_ncbapivot_ep3_leave(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_ud4_cam_ovl(uint8_t* rdram, recomp_context* ctx, uint32_t ovl,
@@ -940,6 +941,9 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         if (tooie_diag::demo_sync_enabled()) {
             tooie_demo_sync_tick(rdram, tick);
         }
+    }
+    if (overlay_index == 698u && entry_index == 0u && tooie_diag::demo7_drift_enabled()) {
+        tooie_demo7_drift_tick(rdram);
     }
     if (tooie_diag::shot_enabled()) {
         tooie_shot_note_overlay(rdram, ctx, overlay_index, entry_index, 1);

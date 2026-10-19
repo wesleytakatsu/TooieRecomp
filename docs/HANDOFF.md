@@ -1,14 +1,2272 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P08 remains ACTIVE / MANUAL_VALIDATION_PENDING. USER_DEMO_5 is RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX. WIDESCREEN_EDGE_GEOMETRY: T_INTRO 16:9 first RT64 divergence is CLIP_X (viewProj[0][0] 0.905148->0.678861, K=4/3 AUTO). Guest presentation envelope remains REFUTED. P09 not formally open."
+description: "PRECOMMIT REVIEW CHECKPOINT: P1 RT64 packaging replay resolved with 3 clean-pin patches (rt64-rsp-endpoint-current.patch, rt64-present-fps-decimator-and-counter.patch, rt64-p09-exact-use-correlation-header.patch) and frontend registration in tools/apply_runtime_patches.sh; old incremental patches superseded for clean pin. P2 getter diagnostic gate resolved in include/tooie_diag.h and src/game/tooie_diag.cpp, validated by getter_diag_gate_test PASS and rebuilt binary 74a0cea0. Prior user visual confirmation ('Sim, continua funcionando') preserved on tested candidate binary A6A2 (a6a2c023); automated tests/builds distinguish latest binary 74a0cea0 without claiming user visual for new hash. Root owns final staging, commit, and push; Git commit establishes publication truth. NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-08-31
-tags: [tooie-recomp, handoff, p08, intro, attract, demo2, sigsegv, bsrest, baflameline, slot7, lifecycle, bcf28, 80013a7c, visible-demo, matrix-fix, transform-hooks, input, stick-angle, window, error-handling]
+updated: 2026-10-19
+tags: [tooie-recomp, handoff, p08, p09, precommit, review, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, settings, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
 ---
 
 # Handoff — TooieRecomp
+
+Registro operacional vivo do P09-RES-05: [[plan/evidence/p09-current-work]].
+Atualizar ao iniciar/encerrar sessões e após resultados relevantes; confirmar
+build atual antes da próxima captura V2. Esta referência não altera os gates.
+
+## CURRENT (2026-10-19) — PRECOMMIT_REVIEW_RT64_CLEAN_PIN_REPLAY_AND_GETTER_GATE_RESOLVED
+
+Read [[plan/evidence/checkpoint-20261019-review-and-patch-replay]], [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+Pre-commit review of the 196-file working tree manifest completed with both Grok 4.7 Medium sessions ending with `end_turn`. Root owns Git staging, commit, and push. This document records pre-commit provenance; the Git commit itself identifies the final snapshot and Git log / remote verification establishes publication truth.
+
+- **P1 Resolution — RT64 Clean-Pin Patch Replay & Applicator Chain (PROVEN)**:
+  - Initial review identified that older incremental RT64 patches (`rt64-present-rate-decimator.patch`, `rt64-present-success-counter.patch`, `p09-exact-use-pathology-correlation.patch`) were based on the dirty worktree and failed `git apply --check` (exit 1) on clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
+  - Replaced for clean pin apply by 3 new non-overlapping patches in `patches/rt64/` against base `6f1c2d99`:
+    - `patches/rt64/rt64-rsp-endpoint-current.patch` (SHA256 `49925480...`, 16,629 bytes): production CURRENT `tfPos` snap and post-snap fog in `RSPProcessCS.hlsl`, push constant expansion, and CPU data path.
+    - `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256 `6d746f27...`, 5,415 bytes): cumulative presentation decimator (`rt64_present_decimator.h`, `rt64_present_stats.h`), `viOriginalRate` write protection under `configurationMutex`, and `presentSuccessCount` increment.
+    - `patches/rt64/rt64-p09-exact-use-correlation-header.patch` (SHA256 `0d4c250a...`, 43,083 bytes): diagnostic correlation header required by host unit test.
+    - `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256 `37266d0b...`, 2,732 bytes, pin `d0d90ba`): RecompFrontend overlay update hook.
+  - `tools/apply_runtime_patches.sh` registered with the 3 RT64 clean-pin patches and frontend patch (+49 insertions, SHA256 `87a6455f...`; `bash -n` exit 0, `git diff --check` exit 0). Applicator script was NOT run against live checkouts to protect uncommitted diagnostic state.
+  - Scratch replay on isolated clone `rt64-scratch-apply`: reverse `--check` exit 0; 14 covered paths verified (6 byte-identical to live, 8 differ strictly due to excluded diagnostics).
+  - Standalone tests compiled and passed against scratch: `rt64_present_decimator_test` PASS exit 0; `p09_exact_use_correlation_test` 1354/1354 PASS exit 0; `p09_cpu_shader_clip_semantics` 14/14 PASS exit 0.
+  - Old incremental patches remain in tree for historical provenance, but are SUPERSEDED for clean-pin apply. Pathology C++ hook integration was explicitly NOT reproduced from clean pin; not all diagnostics are claimed reproducible from pin.
+- **P2 Resolution — Model-Getter Diagnostic Gate Fix (PROVEN)**:
+  - In `src/game/backpack_lookup_diag.cpp`, `__wrap_func_80092B04` unconditionally called `v7_note_model_getter`, which did guest memory reads, atomic counter increments, and acquired `g_secondary_sway_mu` to write `g_durable_bins` on default gameplay.
+  - Gated in `include/tooie_diag.h` and `src/game/tooie_diag.cpp`: `v7_note_model_getter` returns early when `!g_getter_durable_needed` (evaluated in `ensure_init()` across consumers requesting durable metadata: `TOOIE_DIAG_SECONDARY_SWAY`, `TOOIE_DIAG_FEATHER_HANDOFF_V7`, `TOOIE_DIAG_FEATHER_POSTPROCESS_Q`, temporal coherency, `TOOIE_DIAG_RSP_ENDPOINT_BINDING`, and strict `TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION`).
+  - Validated by host test `tests/getter_diag_gate_test.cpp` PASS exit 0.
+  - Rebuilt binary `build/TooieRecompiled` SHA256 `74a0cea04a2bc3704860388673c40b2e73ee34d284f3a2afa0faebe91a9c05f5` (size: 29,418,200 bytes, exit 0).
+  - **Binary hash distinction**: Rebuilt binary `74a0cea0...` is distinct from prior user-tested candidate binary A6A2 (SHA256 `a6a2c023...`, size: 29,413,928 bytes). User visual confirmation ("Sim, continua funcionando") was conducted on A6A2; do NOT claim user visual confirmation for `74a0cea0...`.
+- **Preserved State & Invariants**:
+  - Aspect-aware widescreen culling remains default ON (`TOOIE_TEST_MAP_VIS_ASPECT_AWARE=1`, `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). Narrow allowlist: pure draw `func_800B97A4` (kind 3) + preserved `func_8011447C` (kind 2); mixed renderer `func_800DE498` stays on original unexpanded `v0`.
+  - Widescreen object edge pop fix is visually confirmed for the tested area on candidate binary A6A2 (`VISUALLY_CONFIRMED_FOR_TESTED_AREA`, `USER_REPORTED`). Broader maps/objects/movement parity remains an untested residual.
+  - USER_DEMO1 trajectory (355 samples), actor records (546 words), LCG RNG snapshots (14), and Fire Egg sweep hit (`v0=0x80132f60`, `func_800CD6B4=1`) match original bit-exact.
+  - Demo 7 cutscene stop fix preserved (`n64recomp-zero-size-static.patch`).
+  - CURRENT `tfPos` workaround default ON (palliative); intermediate frames repeat vertex poses above native; continuous interpolation remains `NOT_IMPLEMENTED`.
+  - Audio glitch remains deferred; 8-preset UI selector remains `PLANNED` / `NOT_IMPLEMENTED`; formal P09 phase remains `PENDING / NOT_FORMALLY_OPEN`.
+- **Operational Boundaries / What Was Not Run**:
+  - No game launch or termination during review; user may have game running.
+  - Native A6A2 gate not repeated; cited from cache.
+  - Applicator script not executed against live trees.
+  - Root owns Git stage, commit, and push; Git commit will establish publication truth.
+
+```text
+PRECOMMIT_REVIEW_STATUS: PASSED_WITH_FINDINGS_RESOLVED (P1 and P2 resolved; clean-pin replay verified; automated gates exit 0)
+P1_RT64_CLEAN_PIN_CHAIN: RESOLVED (3 new patches + frontend patch in tools/apply_runtime_patches.sh; old incremental patches SUPERSEDED)
+P2_GETTER_DIAG_GATE: RESOLVED (v7_note_model_getter gated by g_getter_durable_needed; getter_diag_gate_test PASS; binary 74a0cea0 exit 0)
+BINARY_HASH_DISTINCTION: PROVEN (latest build 74a0cea0 distinct from user-tested candidate A6A2 a6a2c023; user visual confirmation applies to A6A2 only)
+WIDESCREEN_EDGE_QA_STATUS: VISUALLY_CONFIRMED_FOR_TESTED_AREA (USER_REPORTED on candidate A6A2; broader game parity untested residual)
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment
+```
+
+## Prior (2026-10-19) — USER_DEMO1_FRUSTUM_PARITY_LANDED_AND_USER_VISUALLY_CONFIRMED_FOR_TESTED_AREA
+
+Read [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+Grok 4.7 Medium implementation session `01a15118-c738-7dd3-98ed-cc5db5021bb5` completed `end_turn` (38 turns; root observed CLI exit 0). The narrow fix landed in candidate binary A6A2 (SHA256 `a6a2c023a9e3b0688cac15249cda61b5c8b8ccdf68c7c40f91d8c512356bef5e`).
+Source edits owned in `src/game/boot_hw_stubs.cpp`, `src/game/tooie_demo1_projectile.h`, and `tests/tooie_demo1_upd_layout_test.cpp`; `RecompiledFuncs` untouched, no generated hand-edits.
+
+- **Scope Boundary & Allowlist Architecture (PROVEN)**:
+  - `tooie_wrap_func_800E3E8C` no longer opens a `TooieCacecDrawScope` (shared broad DRAW scope dropped; nested CACEC only expands if an outer scope is active).
+  - Pure draw caller `func_800B97A4` registered via `tooie_wrap_func_800B97A4` with scope kind 3 when `tooie_cacec_pure_draw_vram(kCacecPureDrawB97A4)` is true (guest VRAM `0x800B97A4`; accept path emits G_MTX / G_DL / G_MOVEMEM and matrix calls without RNG/simulation side effects).
+  - Existing `tooie_wrap_func_8011447C` scope kind 2 preserved for object visual pop culling.
+  - Mixed renderer `func_800DE498` (which stores E3E8C `v0` to `0x8012C940` and on accept executes callbacks and writes renderer context) stays on original `v0` because no scope wraps it.
+  - Unclassified callers stay on original `v0`. No default flag OFF, no RNG save/restore, no host-PC/RA production gates.
+- **Production Default-ON Parity Verification (PROVEN)**:
+  - Feature remains production default ON (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). Both fresh default-ON captures completed exit 0 with matching verification.
+  - **TARGET Capture** (`demo1-sep-target-current/target.csv`, SHA256 `016a102c92f279aef896bcab0802be27b1671adab06f8bc374bf227573b398ec`, owned PID 1776728, 66.084s, exit 0):
+    - All 355 paired trajectory samples `w0..w11` (`tgtrec`) match original flag-OFF / oracle2 bit-exact (0 mismatches; old buggy default-ON diverged post 83).
+    - All 546 ActorRecord words (`updrec` 39 words x 14 pre/post snapshots across posts 80..86) match original bit-exact.
+    - All 14 raw LCG RNG snapshots (`a2`) match original bit-exact (resolving PRE82 RNG split).
+    - All 14 `+0x60` words match original `0003006c` (was `0004006c` under buggy default-ON).
+  - **PROJECTILE Capture** (`demo1-sep-projectile-current/projectile.csv`, SHA256 `570f42e0ad8d31a883c2345afc5e0b000a3fde22baa7edc7722ab35b031d1531`, owned PID 1774174, 67.274s, exit 0):
+    - Post 355 sweep `func_800CD820` leave returns `v0 = 0x80132f60` (hit) and narrowphase `func_800CD6B4` leave returns `1`, exactly matching original hit (old buggy default-ON missed with `v0 = 0`).
+    - 22 sweep ENTER pairs and 21 `sueggmove9` ENTER pairs match original in 6 geometry words and gamespeed `gs`.
+  - **Build & Tests**: Ninja exit 0 (up-to-date); all unit test binaries (`upd_layout`, `target_selector`, `projectile`, `parity`, `demo7_drift`, `mips_rounding`, `coverage`) exit 0. Test `tooie_demo1_upd_layout_test` verifies `pure_draw_accepts=1` in harness. Unit test models old policy vs new policy; no actual old binary unit test execution exit 1 is claimed.
+- **Epistemic Boundaries & Status**:
+  - Positive draw accept exists in unit harness; runtime TARGET window recorded `cacecx = 0` (expected when mixed DE498 scope is dropped; runtime cacecx is NOT promoted from 0).
+  - Graphical QA of widescreen object-edge pop previously `NOT_TESTED` is now superseded by direct user visual confirmation: user launched `./build/TooieRecompiled` normally without flags in a previously affected gameplay area and confirmed: *"Sim, continua funcionando"*.
+  - Classification: **`VISUALLY_CONFIRMED_FOR_TESTED_AREA`**, **`USER_REPORTED`**.
+  - Epistemic scope: This confirms preservation of the observed visual expansion in the gameplay area tested by the user. Do NOT claim all maps, all objects, or global movement parity proven. Broader game parity remains an untested residual.
+- **User Direction & Next Step**:
+  - User explicitly chose KEEP VISUAL EXPANSION ACTIVE (feature stays default ON; candidate binary A6A2).
+  - User visual test closes QA for the tested area. No new action needed on the bounded Demo 1 fix. User may have the game open; do not touch running processes.
+  - Invariants maintained: P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio glitch deferral maintained.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SCOPE_BOUNDARY_FIX: PROVEN (shared E3E8C broad scope dropped; allowlist pure-draw B97A4 kind 3 + preserved 8011447C kind 2; DE498 original v0)
+DEFAULT_ON_TARGET_PARITY: PROVEN (355x12 trajectory words, 546 record words, 14 RNG snapshots, +0x60=0003006c exact original under default-ON binary A6A2)
+DEFAULT_ON_PROJECTILE_PARITY: PROVEN (post 355 Fire Egg sweep hit v0=0x80132f60, CD6B4=1, 22 sweep + 21 move pairs exact under default-ON binary A6A2)
+BUILD_AND_TEST_STATUS: PASS (ninja exit 0; layout/selector/projectile/parity/demo7/mips/coverage exit 0; pure_draw_accepts=1 in harness)
+WIDESCREEN_EDGE_QA_STATUS: VISUALLY_CONFIRMED_FOR_TESTED_AREA (USER_REPORTED: "Sim, continua funcionando" on normal noflags launch; cacecx=0 in target window unpromoted; broader game/objects untested residual)
+USER_CHOICE: RESOLVED (KEEP EXPANSION VISUAL ACTIVE; feature stays default ON; user visual QA completed for tested area)
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when continuing broader fidelity
+```
+
+## Prior (2026-10-19) — USER_DEMO1_SOURCE_PROVEN_CALL_CHAIN_AND_GROK_ROUND2 (SUPERSEDED BY LANDED FIX)
+
+Read [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+Prior single-feature counterfactual causality documentation remains SUCCESS and canonical (`demo1-frustum-causality-checkpoint-gemini.json`): setting `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` as an experimental per-process flag restored 355 NPC prefix words, all 546 ActorRecord words, 14 RNG snapshots, and post 355 Fire Egg sweep hit (`v0 = 0x80132f60`, narrowphase `func_800CD6B4` LEAVE = 1).
+User confirmed Demo 7 cutscene stopping is **VISUALLY FIXED** and Fire Egg miss persists on current default production binary (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). User reaffirmed objective is general subtle gameplay/action parity across movement, kinematics, and state transitions, not an artificial aim or steering patch; no global clock hack.
+**User Choice Resolved**: KEEP EXPANSION VISUAL ACTIVE while proper fix; **NO temporary OFF default**. Setting flag OFF (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`) is strictly an experimental per-process counterfactual diagnostic; it is NOT a production mitigation. Production invariants preserved: shader CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio glitch deferral maintained.
+
+- **Source Findings & Gating Architecture (`PROVEN`)**:
+  - Broadly treating `func_800E3E8C` (`E3E8C`) as DRAW scope allows aspect-expanded accept (`v0 = 1`) inside mixed renderer routine `func_800DE498` (`0x800DE6EC`).
+  - `func_800DE498` stores `v0` to `0x8012C940`. If nonzero (accepted), it takes the visible path: executes registered pre-draw callback `0x800DE738: jalr $v0` with `$a0` loaded from `0x8012C9AC`, calls asset resolver `800D674C`, stores renderer processing context `s0+0x14/0x18/0x1C`, and emits display lists. If culled (`v0 == 0`), it branches to `0x800DE718`, calls cleanup helper `func_800DE318`, and returns 0.
+  - **Renderer Context vs. Actor State**: Stores to `s0+0x14`, `s0+0x18`, and `s0+0x1C` are writes to the **renderer processing context** (`s0`), NOT actor state writes (`PROVEN` distinction; do not conflate renderer context with actor state).
+  - **Registration Chain**: Standard actor draw entry `func_80101870` -> `func_80101808` calls `func_800DF47C(func_801015D0, arg0)`, registering callback `func_801015D0` at `0x8012C9A8` and `Actor*` at `0x8012C9AC`, then enters `func_800DE448` -> `func_800DE498`.
+  - **Pre-Draw Dispatch**: Callback `func_801015D0` calls `func_80101934(Actor*)` at `0x80101784`, which indexes jump table `D_801243E8` via `(actor->unk74 & 0xF)`. Table entry `+0x04` invokes `func_80101A50(Actor*)`.
+  - **RNG Stepping and Actor Mutation**: `func_80101A50` calls `func_800DC0C0` at `0x80101AA0` (RA `0x80101AA8`), advancing global LCG RNG seed `D_8012C7F0`. It tests random float `$f0 < D_80126434` (`0.03f`). On match, it directly mutates guest actor state byte `sb $t2, 0x7A($a2)` (setting bit `0x10` or `0x20` on `Actor->unk7A`). Both arms call `func_800DF744(1, ...)` and `func_800DF744(2, ...)`, writing to global renderer selector array `D_8012C850`.
+  - **Epistemic Classification**: Semantic identity as facial/eye-blink animation is **`STRONG_INFERENCE`** (suggested by 3% probability check and selectors 1/2, but without explicit asset/animation binding proof in source). Control flow gating, global LCG RNG stepping, actor byte `0x7A` mutation, and renderer array writes are strictly **`PROVEN`**.
+- **Paired Native Telemetry Arbitration (`PROVEN`)**:
+  - Telemetry (`demo1-rng-paired-native-chain-gate.json`): Current has 32 RNG steps vs Oracle 27 across posts 79..84.
+  - Sequence step gap grows monotonically across posts: Post 79: 0 (6 vs 6); Post 80: 0 (4 vs 4); Post 81: +1 (7 vs 6; **first extra step**); Post 82: +1 (5 vs 4); Post 83: +2 (6 vs 4); Post 84: +1 (4 vs 3). Cumulative delta = +5 steps across window.
+  - LCG chain exhibits **ZERO breaks** across all observed steps and snapshots (`breaks: []`). Every transition satisfies $s' = (1664525 \times s + 1013904223) \pmod{2^{32}}$.
+  - Expected oracle after-states, once calculated, never match actual observed stores once desynchronized.
+  - First extra RNG call is definitively the **SECOND `func_80101A50` call in post 81 (seq 146 in Current, before `6239b638` -> after `036f8437`)**, NOT global `func_8001608C` (which executes in both runtimes).
+  - Preceded directly by `cacecx` extra accept owner `func_800DE498` at seq 142 on position `(-2818, 300, -2237)`.
+  - Later differences are a deterministic chain shift, not independent new consumers.
+- **Native PC Mapper & Symbol Resolution (`PROVEN`)**:
+  - Old `T/t`-only cache (`demo1-rng-ee14-nm.json`) was **INVALID and incomplete** (omitted recompiled weak `W/w` functions).
+  - Completed `nm T t W w` (`demo1-rng-ee14-origin-resolution.json`) validated binary `EE14` (`ee14d6cb1c144a09ccec7f393dc2e986ac26fb0826893d2e0d490df9d19a683c`) with positive function sizes.
+  - Return address is guest original `0x80101AA8` (`jal func_800DC0C0` at `0x80101AA0`).
+- **Critical Operational & Quota Update**:
+  - **NO SONNET**: Sonnet quota is expired. All further Sonnet calls are strictly forbidden.
+  - **Haiku**: Approaching quota limit; reserved/unused now.
+  - **Grok 4.7 Medium**: Designated **SOLE** code writer and test executor. Resumed implementation session `01a15118-c738-7dd3-98ed-cc5db5021bb5`: round 1 cap 50 exit 1 with source proof and no edit (`demo1-frustum-parity-grok-implementation-report.txt`); round 2 active budget 70 (`demo1-frustum-parity-grok-implementation-round2.json`, completed `end_turn` exit 0).
+  - **Gemini**: Designated for **ALL** Markdown and documentation maintenance.
+  - **Native Agent `demo7_capture`**: Read-only Grok review only; NO other capture authority.
+  - **Opus**: DONE (read-only existing report `demo1-rng-consumer-opus.json`, not active job).
+  - Current code EE14 diagnostics is NOT a fix; original default vis ON CURRENT palliative / FPS / audio unchanged.
+- **Main Implementation Objective**:
+  - Correct shared `func_800E3E8C` consumer selection to separate genuine visual DRAW passes from logic/simulation callbacks.
+  - Preserve existing `func_8011447C` unless primary simulation harm proof is established (guest outparam write alone is NOT sim evidence).
+  - Allowed pure DRAW writes: Gfx buffers, render-only temps.
+  - `+0x60` semantic remains strictly UNKNOWN and is not necessary for this cause.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SINGLE_FEATURE_CAUSALITY: PROVEN (TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0 restores 355x12 prefix, 39x14 record words, 14 RNG snapshots, and post 355 Fire Egg hit)
+SOURCE_MECHANISM: PROVEN (shared E3E8C broad DRAW scope enables mixed DE498 gate; registered callback 801015D0 -> 80101934 -> D_801243E8 -> 80101A50 steps global LCG RNG D_8012C7F0, mutates actor byte 0x7A, writes D_8012C850 selectors via DF744)
+SEMANTIC_CLASSIFICATION: facial/eye-blink animation is STRONG_INFERENCE; control flow, RNG step, byte 0x7A mutation, renderer writes are PROVEN
+FIRST_EXTRA_RNG_CALL: PROVEN (second func_80101A50 in post 81 seq 146 curr, preceded by cacecx extra accept in func_800DE498 seq 142; NOT global 8001608C)
+PAIRED_RNG_GAP: PROVEN (grows 1..4 across posts, 32 curr vs 27 oracle in posts 79..84; zero breaks in chain; oracle after calculated never matches observed store)
+NATIVE_PC_MAPPER: PROVEN (old T/t cache INVALID; completed nm T t W w validated binary EE14 with positive sizes; RA guest 80101aa8)
+USER_CHOICE: RESOLVED (KEEP EXPANSION VISUAL ACTIVE while proper fix; NO temp OFF default; env flag 0 is EXPERIMENT ONLY)
+GROK_STATUS: COMPLETED (session 01a15118-c738-7dd3-98ed-cc5db5021bb5 completed end_turn exit 0, binary A6A2)
+AGENT_ROLE_ROUTING: Grok PRIMARY code/tests; Gemini ALL Markdown; Haiku minimal/unused; Native demo7_capture read-only; Sonnet NO calls; Opus DONE
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: user visual check of widescreen edges in known affected gameplay area, feature ON; if fails narrower remaining mixed-render separation requires next task
+```
+
+## Prior (2026-10-18) — USER_DEMO1_OBJECT_FRUSTUM_COUNTERFACTUAL_CAUSALITY_PROVEN
+
+Read [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User reaffirmed the objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack.
+User requires keeping the object visual pop fix production default ON (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`); shader CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio deferral maintained. Setting flag OFF (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`) is strictly an experimental per-process counterfactual diagnostic; NO production source or config change has been made.
+
+- **Single-Feature Counterfactual Causality (PROVEN)**:
+  - On the unchanged binary (`c56ce4e17b554020c36eec14a9e48861693679e9426161031e10aef4527a67e2`) with the TARGET logger (`TOOIE_DIAG_DEMO1_TARGET=1`), setting ONLY `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` (explicit-off getter at `boot_hw_stubs.cpp:4264..4267`, wrapper 4451 calling original `800CACEC` and returning before aspect-aware expansion; no other `TOOIE_TEST_*` flag combined; CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-object-original/target.csv`, SHA256 `1f43e7c570f21ec082bc7afac88cf01789cebbd8c2ec4e142f0aee9eb791f928`, 415 rows, 66.217s, exit 0/0, FINISH 357) restored:
+    - All 355 `tgtrec` posts 2..356 x 12 raw words bit-exact with the original Angrylion oracle reference (`demo1-first-writer-oracle-2`).
+    - All 14 pre/post snapshots across frames 80..86 x 39 ActorRecord words (546 words total) bit-exact with Oracle (`demo1-object-frustum-record39-comparison.json` is `[]` empty list).
+    - Record `+0x60` high 16 bits: was `0004` (curr `0004006c`) under default aspect-aware ON vs original `0003` (`0003006c`); with flag OFF, it is now `0003` (`0003006c`), matching Oracle exactly.
+    - All 14 raw RNG `D_8012C7F0` snapshots bit-exact with Oracle, completely resolving the PRE82 divergence ($k=4$ `036f8437` vs $k=5$ `c125942a`) and POST83 geometry divergence.
+    - All 14 gamespeed `gs` words exact `0x3d4cccce`.
+  - In comparison, default Current with aspect-aware ON had 274 posts (83..356) differing in position.
+- **Actual Fire Egg Collision Restored (PROVEN)**:
+  - In a dedicated PROJECTILE-only capture with the same flag OFF (`TOOIE_DIAG_DEMO1_PROJECTILE=1` and `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`, controller 1600930 / game 1600931, exit 0/0, 66.824s, 313 rows, FINISH 391, CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current-object-original/projectile.csv`, SHA256 `3d54fe91ac1bc570a95a87241322f7d58593575aac951c4b4250d397a3344258`):
+    - Actual Fire Egg sweep at post 355: `func_800CD820` sweep leave returns `v0 = 0x80132f60` (nonzero hit, matching Oracle `89a6bad1...`), whereas default Current returns `v0 = 0` (miss).
+    - Narrowphase `func_800CD6B4` LEAVE = 1 on both off-current and Oracle; default Current has no such callback at 355.
+    - All 22 sweep ENTER input pairs and 21 `sueggmove` ENTER input pairs are exact in `w0..w5` geometry and `w11` `gs`.
+    - Sweep/move counts: 44 sweep / 42 move off/oracle vs default 64 / 62 (projectile stops at hit).
+    - Bound centers at posts 354 and 355: all 6 selected `0x8008A018` LEAVE center triples exact with Oracle, including actual target post 355 `w0=c5af7c8d, w1=c401d0fa, w2=44a89e51` = `(-5615.56885, -519.265259, 1348.94739)`, completely restoring the prior ~427-unit bound center difference.
+- **Causal Verdict & Epistemic Boundaries**:
+  - `OBJECT_FRUSTUM_ASPECT_AWARE=1` is **CAUSAL** for observed RNG divergence, NPC trajectory divergence, and Fire Egg collision miss in USER_DEMO1.
+  - The underlying call consumer and side-effects remain **UNKNOWN**.
+  - Do NOT claim all NPCs globally fixed or physical fix done.
+  - Do NOT globally REFUTE widescreen capability; update prior UNTESTED statement to PROVEN at feature level with mechanism UNKNOWN.
+  - Source ABI and canonical getter roles from prior investigations are strictly preserved.
+- **Background Workloads & Active Agents**:
+  - Sonnet medium code job (`demo1-frustum-parity-fix-sonnet.json` / `report.txt`): RUNNING, code writer only, default acceptance capture ONLY after READY.
+  - Grok field 60 old 30-turn audit exited with code 1 INCOMPLETE (`demo1-field60-and-rng-grok.json` and `.report.txt`), noted typo (Cpre82=Opost82) and found no field role; census stopped as feature-level causality is now established.
+  - New main Grok READONLY job (`demo1-frustum-simulation-owner-grok.json` / `report.txt`): RUNNING bounded CACEC feedback; immutable baseline copy `demo1-frustum-default-baseline.cpp`.
+  - Opus 5.5 medium READ-ONLY consumer design job (`demo1-rng-consumer-opus.json`): COMPLETED (exit 0, `is_error=false`, 14 turns, 242.8s). Proposed two entries (`func_800DC090` and `func_800DC0C0`) + writers (`800DC310`, `800DC324`, `800DC330`, `800DC354`), static coverage NOT gate tested. Opus used raw grep in violation of navigation policy, noted procedurally. Wide RNG trace proposal is now conditional, not automatically next because minimal counterfactual already isolated the feature.
+- **Preserved Invariants**:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SINGLE_FEATURE_CAUSALITY: PROVEN (TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0 restores 355x12 prefix, 39x14 record words, 14 RNG snapshots, and post 355 Fire Egg hit)
+UNDERLYING_MECHANISM: UNKNOWN (exact call consumer / side-effects of 800CACEC aspect-aware expand in simulation still unisolated)
+CURRENT_CF_TARGET_CSV: /home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-object-original/target.csv (SHA256 1f43e7c5..., 415 rows, 56 updrec, FINISH 357)
+CURRENT_CF_PROJECTILE_CSV: /home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current-object-original/projectile.csv (SHA256 3d54fe91..., 313 rows, FINISH 391)
+CF_TARGET_PREFIX_PARITY: 355/355_EXACT_MATCH (all 12 words bit-exact with Oracle 73c1faa...)
+CF_RECORD_WORDS_PARITY: 546/546_EXACT_MATCH (14 snapshots x 39 words bit-exact; demo1-object-frustum-record39-comparison.json is [])
+CF_RECORD_PLUS_60_STATUS: RESTORED_TO_ORACLE_0003006c (was 0004006c under default aspect-aware ON)
+CF_RNG_D8012C7F0_STATUS: 14/14_EXACT_MATCH (all 14 snapshots bit-exact with Oracle; PRE82 split resolved)
+CF_FIRE_EGG_HIT_STATUS: HIT_RESTORED_AT_POST355 (v0=0x80132f60, CD6B4=1, 22/21 sweep/move pairs exact, actual target center restored)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_PRODUCTION_STATUS: USER_REPORTED_MISS (persists on production binary with default ON; OFF is experimental CF only)
+WIDESCREEN_CAPABILITY_STATUS: NOT_GLOBALLY_REFUTED (prior UNTESTED statement updated to PROVEN at feature level with mechanism UNKNOWN)
+ACTIVE_BACKGROUND_AGENTS: Sonnet job demo1-frustum-parity-fix-sonnet RUNNING; Grok job demo1-frustum-simulation-owner-grok RUNNING
+COMPLETED_BACKGROUND_AGENTS: Opus job demo1-rng-consumer-opus DONE (exit 0, 14 turns; noted raw grep limit); Grok field60 exit 1 INCOMPLETE
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: owning-layer separation of expanded DRAW from original simulation, preserving visible object fix (awaiting Sonnet code writer / Grok simulation owner analysis)
+```
+
+## Prior (2026-10-18) — USER_DEMO1_FIRST_WRITER_PAIRED_CAPTURE_AND_RECORD_FIELD60_RNG_ANALYSIS (SUPERSEDED BY COUNTERFACTUAL CAUSAL PROOF)
+
+Read [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User reaffirmed the objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack. While the historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), the fresh causal root on the current binary is strictly **UNKNOWN**.
+
+- Prior Prefix Parity & Critical VI Cadence Wording (PROVEN & INDEPENDENTLY CONFIRMED):
+  - Prior 420 exact non-clock player/input/camera/gs/anim/phys match at EXACT PC `0x800151BC` ENTRY (consumed 1..420) independently confirmed by Haiku (`demo1-actual-pair-haiku-report.txt`, 0 field mismatches across 420 paired rows).
+  - VI handler cadence difference observed (100/419 transitions, +40 oracle entries); causal role in NPC/mob timing UNKNOWN/OPEN HYPOTHESIS, player 420 exact does NOT refute NPC timing; `--nospeedlimit` is logical only, not real-time proof. No global clock fix claim.
+- Grok First NPC Prefix Audit Completed (DONE):
+  - Grok prefix audit finished cleanly (`demo1-first-npc-prefix-grok-report.txt` and `.json`, 7 turns, stopReason `end_turn`, CLI exit 0, replacing earlier pending status).
+  - 355 `tgtrec` pairs (posts 2..356) joined on post. Trajectory handle `0x80132f30` (post 2) with callback word `w3 = 0x80085C98`.
+  - Ambiguous markers `0x80132f00` (post 28) and `0x80132f60` (post 140 projectile target) separated; `0x80132f60` is NOT the sampled trajectory.
+  - Position words `w0..w2` match posts 2..82 (81 pairs). First position diff occurs at post 83 (delta `0.207508441`).
+  - Word `w10` first differs at post 121 (`04311038` vs `04311048`), `w9` at 171, `w5..w7` at 215. `w11` (`gs`) raw exact on all 355 pairs.
+  - In-memory mutation test verified: flipping bit 0 of `w0` at post 40 shifted the first diff to post 40.
+- Preceding First-Writer Diagnostic Failure & Fix (PROVEN):
+  - Initial first-writer capture yielded 0 `updrec` rows (diagnostic FAIL).
+  - Causes:
+    1. Host RA unreliability in recomp: generated code for `func_800FF62C` calls `LOOKUP_FUNC(0x80100368)` without setting `ctx->r31` immediately before jal; guest RA is stale/caller-dependent on host; RA range guard unsound in recomp.
+    2. MARKER vs RECORD arg confusion: `func_80100368(a0)` receives actor RECORD (`s0` from `801067C4`), but wrapper checked `a0 == s_d1t_marker` (MarkerHandle), which never matched (`accepted_real_call_arg = 0`).
+    3. Post dump mistake: flush dumped 39 words at the MarkerHandle address instead of resolving the actor record.
+  - Corrected default-OFF via Sonnet: resolved record dynamically via `upd_expected_record`, direct-call SP scope (`ctx->r29 == scope_entry_r29 - 0x58`), post flush re-resolves record from marker (or emits `postmiss`).
+  - Regression fixture `tests/tooie_demo1_upd_layout_test.cpp` on `demo1_tgtrec_ident_{current,oracle}.csv` (355x2 rows): old-wrong build exits 1 (FAIL: 0/355 accepted); new build exits 0 (PASS: 355/355 accepted), covering 5 relocations on Current and 7 on Oracle.
+- Independent Haiku ABI Gate (PROVEN):
+  - `demo1-writer-record-abi-haiku-report.txt` confirmed `func_80100368` receives actor RECORD in a0 and calls `*(record+0x10)` unchanged; marker `80132f30` is invalid as a0.
+  - Direct-call SP scope (`ctx->r29 == scope_entry_r29 - 0x58`) correctly isolates direct calls from `800FF62C` while excluding nested callee calls.
+  - Haiku mapper criticism corrected to `NOT_TESTED`; independent generated source `80106790` maps `marker+0x1A >> 5` through `vector_at(*D_80136EE0)`.
+- NEW Actual FIRSTWRITER 2 Paired Capture Telemetry (PROVEN):
+  - Current: `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-2/target.csv` (SHA256 `fbb2770bc1270762849aaf25f5dacefa4b18d04976ae8c3900618a6da652c75f`, controller 1584474, game 1584475, exit 0/0, 66.459s). Binary SHA256 `c56ce4e17b554020c36eec14a9e48861693679e9426161031e10aef4527a67e2`.
+  - Oracle: `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-oracle-2/target.csv` (SHA256 `73c1faaace84937324c565889580c620513498971495a663ad356da70f06313c`, controller 1585301, instance 1585302, exit 0/0, 101.350s). Core SHA256 `4b782df4545ecb84a1aeee69c8159f893cfb503c5b38da78efb630d4baf8e199`.
+  - Both captures produced exactly 415 valid rows (exit 0/0), 56 `updrec` rows (posts 80..86 x pre/post x 4 chunks of 10/10/10/9 words; 39 words total).
+  - Finish diagnostics: `w5 = 0` (invalid bindings), `w7 = 7` (predumps emitted), `w8 = 0` (postmiss rows).
+  - Baseline invariance: all 355 `tgtrec` posts 2..356 x 12 words match pre-writer TARGET2 baseline bit-for-bit.
+- Proven Comparisons & Geometry Findings:
+  - **Record +0x60 First Diff**: Already differs at first available sample PRE80: Current `0004006c` vs Oracle `0003006c` (difference in upper halfword `0004` vs `0003`). Semantic meaning is strictly **UNKNOWN**; do not promote field role to state/timer/pointer/fault without owning source. All other 38 words are **BIT-EXACT** through PRE83 inclusive!
+  - **RNG `D_8012C7F0` First Diff & Step Distances**: Matches PRE/POST 80 and 81 (`1cf1d2b5`, `c91d98c4`, `28f1cd53`). Recurrence confirmed from generated source: $s' = (1664525 \times s + 1013904223) \pmod{2^{32}}$. Shared POST81 = `28f1cd53`. First sampled diff PRE82: Oracle $k=4$ (`036f8437`) vs Current $k=5$ (`c125942a`). Step distance offset (Oracle $\to$ Current) grows: PRE82 $+1$, POST82 $+1$, PRE83 $+2$, POST83 $+3$, PRE84 $+4$. These are LCG sequence step distances, NOT proven actual call counts until other writes to `D_8012C7F0` are excluded.
+  - **Gamespeed `gs`**: All 14 sampled `gs` w11 bits match `0x3d4cccce` identically across both runtimes.
+  - **Geometry First Diff**: POST83: +4/+8/+C (norm `0.207508441`), plus RAW +48/+54 (+48 cur `438c677a` vs ora `438cbb8e`, +54 cur `4389fee4` vs ora `438cbb8e`), cause UNKNOWN. Pre83 positions are exact.
+  - **Entity Identity**: Tracked stream is FIRST BOUND OTHER ACTOR `0x80132f30` (callback `0x80085C98`); actual projectile target `0x80132f60` remains separate.
+  - **Post Bracket Nuance**: Post bracket spans to the next loop getter call or logic exit; it can contain downstream actor prep/work; NOT an isolated-update proof.
+- Epistemic Corrections & Active Workload:
+  - **Sonnet Widescreen Inference Correction**: Sonnet's report asserted that because divergence occurs in pre-draw simulation state, widescreen changes are refuted. That inference is **INVALID**: prior-frame draw/visibility feedback has not been excluded, therefore a pre-draw difference alone cannot refute the hypothesis; no assertion is made that feedback actually occurs here. Widescreen feedback remains an **UNTESTED HYPOTHESIS**, NOT REFUTED.
+  - Suspect `C401C` audio still needs proof; no canonical promotion.
+  - Completed and active background jobs: Grok field 60 30-turn audit exited with code 1 INCOMPLETE; Opus 5.5 consumer design completed exit 0; Sonnet medium code job running; new main Grok simulation owner job running.
+- Preserved Invariants:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - No production fix or parity claim for Demo 1.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+CURRENT_WRITER2_CSV_PATH: /home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-2/target.csv (415 rows, 56 updrec, FINISH 357)
+ORACLE_WRITER2_CSV_PATH: /home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-oracle-2/target.csv (415 rows, 56 updrec, FINISH 357)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_EGG_RESULT: USER_REPORTED_MISS (persists on user binary 87c5...)
+USER_DEMO1_PREFIX_PARITY: 420/420_EXACT_MATCH (consumed 1..420 independently confirmed by Haiku)
+FIRST_WRITER_DIAG_FIX: PROVEN (Sonnet host-RA / record-arg fix; 355x2 fixture old FAIL 1 / new PASS 0; covers relocations 5/7)
+FIRST_WRITER_ABI_GATE: PROVEN (Haiku 80100368 record arg confirmed, direct SP scope confirmed; mapper criticism marked NOT_TESTED)
+GROK_PREFIX_REPORT: DONE (end_turn 7 turns, CLI exit 0; replaces earlier pending; 355 tgtrec pairs, post 83 first pos diff)
+WRITER2_CAPTURE_STATUS: PROVEN (valid 415/415 rows, exit 0/0, 56 updrec, invalid_binding=0, predumps=7, postmiss=0)
+RECORD_PLUS_60_DIFF: PROVEN (current 0004006c vs orig 0003006c already PRE80; meaning UNKNOWN; other 38 words exact thru PRE83)
+RNG_D8012C7F0_DIFF: PROVEN (POST81 same 28f1cd53; LCG 1664525x+1013904223u32; orig PRE82 k=4 / curr k=5; step offset PRE83 +2, POST83 +3, PRE84 +4; sequence distances NOT proven call counts)
+GS_W11_STATUS: BIT_EXACT (all 14 sampled gs w11 bits match 3d4cccce)
+GEOMETRY_FIRST_DIFF: POST83 (+4/+8/+C pos norm 0.207508441, RAW +48/+54; pre83 positions exact; cause UNKNOWN)
+TRACKED_ACTOR_IDENTITY: FIRST BOUND OTHER ACTOR 80132f30 (callback 80085C98; actual shot candidate 80132f60 remains separate)
+SONNET_WIDESCREEN_CLAIM: CORRECTED (predraw diff refuting widescreen was INVALID INFERENCE; prior-frame draw feedback UNTESTED not REFUTED)
+ACTIVE_BACKGROUND_AGENTS: Grok job demo1-field60-and-rng-grok RUNNING; Opus job demo1-rng-consumer-opus RUNNING (both NOTPASS; no cause/fix)
+PRESERVED_STATE: Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: trace RNG consumers between POST81 and PRE82 (read-only design, no cause/fix)
+```
+
+## Prior (2026-10-18) — USER_DEMO1_PROJECTILE_DIAGNOSTIC_AND_LIVENESS_TRACKING (SUPERSEDED BY PAIR 2 & 3 SWEEP/TARGET DIAGNOSTICS)
+
+Read [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User reaffirmed the objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack. While the historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), the fresh causal root on the current binary is strictly **UNKNOWN**.
+
+- Prior Prefix Parity (PROVEN & INDEPENDENTLY CONFIRMED):
+  - Prior 420 exact non-clock player/input/camera/gs/anim/phys match at EXACT PC `0x800151BC` ENTRY (consumed 1..420) independently confirmed by Haiku (`demo1-actual-pair-haiku-report.txt`, 0 field mismatches across 420 paired rows).
+  - VI cadence delta (100/419 transitions) and +40 oracle handler entries are NOT proven root cause; possible NPC/timer cadence remains an OPEN HYPOTHESIS; `--nospeedlimit` is logical only, not wall time.
+- Sonnet Projectile Diagnostic Implementation (PROVEN):
+  - Sonnet session completed with `is_error=false` (report `demo1-projectile-diagnostic-sonnet-report.txt`, JSON `demo1-projectile-diagnostic-sonnet.json`). Build exit 0, all unit/regression tests reported 0.
+  - Isolated default-OFF flags: `TOOIE_DIAG_DEMO1_PROJECTILE=1` (Tooie) and `P08_DEMO1_PROJECTILE=1` with `P08_DEMO1_PROJECTILE_CSV` (Angrylion oracle). No typos (exact flag names verified).
+  - Five entry/return hook points: `_baeggsetup_entrypoint_5` @ `0x80084A60`, `_cheggfire_entrypoint_2` @ `0x800871F0`, `_sueggmove_entrypoint_9` @ `0x8008A480`, `_suegg_entrypoint_9` @ `0x8008A3C0`, and core2 sweep `func_800CD820`. Plus per-frame `objpoll` (37 columns) for overlay-relative callback tracking.
+  - Binary SHA256: `af0723b4b7f802446b455401b1c9e83a50aa61772ec37a598aa451df7f666705`. Oracle core SHA256: `41b59e2802be5782a2f3ab4f685bbad2fee062bd4da72e8ee01c6d6c4b7ebe88`. Diagnostic ONLY; no production behavior fix.
+- Haiku Static Gate Report (`demo1-projectile-haiku-gate-report.txt`):
+  - Evaluated static code: ABI, exactly-once original call, ctx/reg preservation, 37-col schema, and default-OFF gate: PASS.
+  - Coverage caveat: gate validates direct and `LOOKUP_FUNC` sites; indirect calls via overlay-relative descriptor/callback pointers (`0x808xxxxx`) are NOT guaranteed to be intercepted by Tooie wrappers (which is why `objpoll` exists). Missing callback alone is NOT proof of divergence.
+- Owned Controlled Projectile Captures (PROVEN):
+  - Current Tooie: Controller PID 1282788, game PID/pgid 1282791, elapsed 66.243s, exit 0/0, FINISH post 391, 189 data rows + 1 header. CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current/projectile.csv` (SHA256 `6b5686b77b723180f08954d3573be31d73294140b22815ae39f90725432775c7`). Flag ONLY `TOOIE_DIAG_DEMO1_PROJECTILE=1`; user game check passed. Counts: setup 1 pair, fire 1 pair (post 333), movement 31 pairs, sweep 32 pairs, objpoll 57.
+  - Pinned Angrylion Oracle: Controller PID 1283584, game PID/pgid 1283587, elapsed 94.041s, exit 0/0, FINISH post 391, fresh isolated config/states/saves, `--nospeedlimit` (PERTURBED_LOGICAL_ONLY). 92 data rows + 1 header. CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-oracle/projectile.csv` (SHA256 `8bd18fd1444d6f8f6305b200f0c5afc68d0401739b6c4f10af29d42261568aab`). Counts: setup 1 pair, fire 2 enter / 1 leave, movement 7 pairs, sweep 7 pairs, objpoll 57. Controller JSONLs record exact cmd/env/hashes.
+- Bounded Telemetry Findings & Epistemic Boundaries (PROVEN):
+  - `setup_enter`/`leave` and `fire spawn_enter`/`leave` raw payloads are bit-exact between Tooie and Oracle.
+  - All 7 actually matched movement and sweep pairs (`post 333..340`) have bit-exact raw payloads.
+  - All 7 oracle sweep leave rows show `v0 = 0` (same as Current: no hit detected in this window). Baseline no-hit proven for these frames.
+  - First raw `objpoll` difference occurs at `post 341` (~40 XYZ difference), BUT on Oracle the old tracked pointer `0x801d0a2c` freezes at `341..342`, exhibits a heap link at `343`, and then MIPS code words at `388`.
+  - Object liveness, relocation, or free status is UNKNOWN (possible DEFRAG HYPOTHESIS); this is NOT proven as a first gameplay divergence! Current tracked pointer `0x801c767c` continues movement normally.
+  - Snapshot UNKNOWN: target/muzzle final normals and callback delta-time are not captured (`w11` unused). Do not infer VI root.
+- Background Workloads & Active Agents:
+  - Prior Grok main 40-turn audit PID 1274832 was interrupted via SIGINT after 13 read-only turns (redundant gates before runtime); supervisor PID 1270040 was terminated via SIGTERM. Classification: `INTERRUPTED_REDUNDANT_AUDIT_DIRECT_CAPTURE` (not PASS). Raw JSON may be empty, source transcript preserved. Not active.
+  - Grok data-only job PID 1284587 (max 12 turns, outputs `demo1-projectile-compare-grok.json` and `report.txt`), INCOMPLETE.
+  - Sonnet liveness + callback DT diagnostic job PID 1286150 (outputs `demo1-projectile-liveness-sonnet.json` and `report.txt`), COMPLETED.
+- Preserved Invariants:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - User observation that FireEgg still MISSES on user build `87c5...` preserved.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+  - No global clock, aim, or collision hypotheses promoted to specs.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+CURRENT_PROJECTILE_BINARY_SHA256: af0723b4b7f802446b455401b1c9e83a50aa61772ec37a598aa451df7f666705
+ORACLE_CORE_SHA256: 41b59e2802be5782a2f3ab4f685bbad2fee062bd4da72e8ee01c6d6c4b7ebe88
+CURRENT_PROJECTILE_CSV_SHA256: 6b5686b77b723180f08954d3573be31d73294140b22815ae39f90725432775c7 (189 rows)
+ORACLE_PROJECTILE_CSV_SHA256: 8bd18fd1444d6f8f6305b200f0c5afc68d0401739b6c4f10af29d42261568aab (92 rows)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_EGG_RESULT: USER_REPORTED_MISS (persists on user binary 87c5...)
+USER_DEMO1_PREFIX_PARITY: 420/420_EXACT_MATCH (consumed 1..420 independently confirmed by Haiku)
+PROJECTILE_SPAWN_AND_EARLY_SWEEPS: BIT_EXACT_MATCH (setup/fire/sweeps 333..340 matched; sweep leave v0=0)
+ORACLE_TRACKED_PTR_FREEZE_AT_341: PROVEN (0x801d0a2c freezes 341..342, heap link 343; liveness/reloc UNKNOWN)
+COLLISION_HIT_STATUS: UNKNOWN (baseline no-hit proven for early window; overall hit UNKNOWN)
+ACTIVE_BACKGROUND_AGENTS: PID 1284587 (Grok compare), PID 1286150 (Sonnet liveness+DT diag)
+PRESERVED_STATE: Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: await liveness diagnostic gates and fresh bounded paired capture using stable identity; not global aim/clock fix
+```
+
+## Prior (2026-10-18) — USER_DEMO1_PAIRED_PARITY_PREFIX_MATCH_AND_HIT_UNKNOWN (SUPERSEDED BY PROJECTILE CAPTURE)
+
+Read [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User clarified the latest objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack. While the historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), the fresh causal root on the current binary is strictly **UNKNOWN**.
+
+- Diagnostic Implementation & Build Verification (PROVEN):
+  - Sonnet CLI session 22383 implemented isolated, default-OFF flags `TOOIE_DIAG_DEMO1_PARITY=1` and `P08_DEMO1_PARITY=1` mirrored at EXACT PC `0x800151BC` ENTRY, stage 0 sub 0, glidx `0..420` (max 421 rows), player 0 only.
+  - Schema covers 62 columns: cumulative guest VI handler entries `0x8001443C` and logic counter, raw 6-byte pad (`r0..r5`), precise 9-group fields (`px,py,pz`, `vx,vy,vz`, `ptype`, `velxz`, `tspd`, `yaw`, `ideal`, `phys_yaw`, `bs_prev`/`cur`/`next`, `anim`, camera `camx,camy,camz,camctrl,sel`, gamespeed `gs`).
+  - Unit test `tests/tooie_demo1_parity_test` passed exit 0; ninja build exit 0 (diagnostic binary SHA256 `5b6fc6d069f00411cfd2ade4b94d7fa15055a44206bc100ffbd5ba569af31bc6`); oracle core rebuild exit 0 (lib SHA256 `c2a9e7fa7a3476c4a6eacb35bedc30c3d8128c16a28e190fbf0c0e96c05d9c04`).
+- Controlled Paired Captures (PROVEN):
+  - Current Tooie: Controller PID 1073249, game PID/pgid 1073258, elapsed 67.679s, exit 0, reason `window_consumed_420`. Console log `/home/wesley/.cache/tooie-fps-investigation/demo1-parity-current/console.log` (501,453 bytes, SHA256 `57920a649162c7bec4b17dd3d0e86ef41eed0fb813c98008a6323e5fe83492aa`). Header + 420 data rows.
+  - Pinned Angrylion Oracle: Controller PID 1074236, oracle PID/pgid 1074257, elapsed 98.713s, exit 0, reason `window_consumed_420`. CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-parity-oracle/demo1.csv` (179,297 bytes, SHA256 `fa45b8d202a791eba76b6ef0f2b20265ed2297cddc25eb0c90b11811f55736e3`). Header + 420 data rows. Wall time under `--nospeedlimit` is perturbed; logical parity only.
+  - Owned capture processes exited cleanly; no processes relaunched; no user processes touched.
+- Paired Comparator Verdict & Divergence Analysis (PROVEN):
+  - Evaluated via `demo1-parity-compare.py` -> `demo1-parity-compare.json` and Grok final paired report `demo1-paired-main-grok-report.txt`.
+  - **420 exact non-clock matched pairs** (consumed 1..420). Both sides skip only consumed 0 (post 1), confirming identical hook boundary without port split.
+  - Zero 1-ULP differences, zero persistent geometric or action differences across sampled player and camera fields from consumed 1 through 420: raw `r0..r5`, `gs_bits` (matches at every consumed: `0x3D4CCCCE` = 0.05 and `0x3D088889` = 0.03333, including C-up row 322), `yaw`, `ideal`, `phys_yaw`, `px,py,pz` and bit words, `vx,vy,vz` and bit words, `velxz`, `tspd`, `accel`, `mult`, `ptype`, `bs_prev/cur/next`, `anim_id/timer/dur/phase`, `camx/camy/camz, camctrl, sel`.
+  - **First in-window divergence**: VI-handler entry cadence (`0x8001443C`). In-window delta-VI mismatches on 100 of 419 transitions. First step consumed 1->2: Tooie dvi 0 (vi 3134), oracle dvi 6 (vi 3414->3420). Cumulative VI growth consumed 1->420: Tooie +847, oracle +887 (+40 entries). This is an emulator/runtime entry cadence difference under `--nospeedlimit`; it did NOT move any sampled guest fields.
+  - Verdict: `player/input/camera/gs prefix MATCH through consumed 420. HIT UNKNOWN. No code fix. Not PASS. Not a visual-miss proof. Not a realtime proof. No aim, hit, or clock change.`
+- Fire-Edge & Projectile Dispatch Telemetry:
+  - Consumed 322 / post 323 (buttons `0x2008` = C-up with Z, stick `(-9, 84)`): player entry pose matches bit-exact between Tooie and oracle (`px,py,pz = -4692.11475, -426.484711, 1129.06921`, `yaw = 291.797241°`, `velxz = 287.608307`, `bs_cur = 9`, `anim_id = 42`, `cam = -4086.1438, -160.789032, 950.552246`). This entry pose differs from the later SHOT leave pose on `87c5...` due to sample phase and binary.
+  - Oracle append tail (`/tmp/p08-angrylion-attract-eggs.log`, 56,989 bytes, 426 lines) reveals `cheggfire` sys dispatch occurs at raw post 333 (consumed 332): `800871f0` overlay 535 ep 2 (`obj64 = c5932bf8` [-4709.5], `obj6c = 448e0aee` [1136.34]).
+  - Actor low-9 masking (`+0x6C & 0x1FF`) remains strictly INVALID.
+- Independent Audits & Preserved Disagreements:
+  - Grok Contract Audit (`workload-grok-parity-audit-report.txt`): PID 1065434 remains ACTIVE in background (user explicitly requested keeping agents running across quota resets). Audited compiler flags (`RecompiledFuncs` with `RECOMP_MIPS_ROUND_COMPAT=1`; `TooieRecompiled` without it), lookup table binding mechanism, native libm math overrides (`800136E4`, `800138D0`, `80013970`), stick helpers (`800BCCC0`, `800BCCD8`), and hypotheses H1-H4. Differentiated diagnostic binary `5b6fc6d0` from user-reported miss binary `87c5a08b`.
+  - Haiku Capture Audit (`workload-haiku-capture-audit-report.txt`): 20 static gates G1-G20 evaluated. Confirmed 62-column schema parity. Flagged G15 oracle CSV append mode risk (successfully averted by Grok's fresh path) and G14 run-tagging gap.
+- Active & Historical Process Tracking:
+  - Active background agent: PID 1065434 (Grok independent contract audit).
+  - Historical exited PIDs: Driver PID 1067821, Grok paired runner PID 1067822, Tooie controller PID 1073249 / game PID 1073258, Oracle controller PID 1074236 / oracle PID 1074257, earlier SHOT capture PID 1059296, user game PID 1050817.
+- Preserved Prior State:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - User observation that FireEgg still MISSES on current build `87c5...` preserved.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+  - No global clock, aim, or collision hypotheses promoted to specs.
+
+`NEXT_SINGLE_ACTION`: same-phase bounded diagnostic on both Tooie and pinned oracle around raw post 333 (the cheggfire line) at `800871f0` overlay 535 entrypoint 2 and sweep callee identity/radius/result word, default OFF on both sides, without clock/aim/hit changes.
+
+## Prior (2026-10-17) — USER_DEMO7_FIX_PROVEN_AND_VERIFIED
+
+Read [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-attract-movement-residuals]], [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]], and [[plan/evidence/p09-fps-counter-and-settings-toggle]].
+The user-observed player drift during Demo 7 in the attract sequence (TDL Stomping Plains, stage 0 sub 8) has been forensically isolated, root-caused, and resolved at the owning generator layer without hand-editing generated code. Independent final gate evaluation by Grok on fixed runtime capture `demo7-fixed-root.log` (121 rows, controller 396.13s) confirms **Criterion 1 (Bounded Demo 7 Drift) PASS**. A 90.032s serial timing test (`timing-fixed-pid-serial-90s.log`) with PID-tagged serialization fix in `src/game/tooie_diag.cpp` verified guest VI cadence at ~60.012 Hz (NO evidence of a 2x VI clock in the measured window). Prior FPS counter and settings toggle, Phase 1 default CURRENT `tfPos` workaround, RT64 below-native decimator, and audio glitch deferral remain strictly preserved.
+
+- Root Cause Discovery & Verification (PROVEN):
+  - In original N64 hardware, entering State 116 (`0x74`, `bsrest` overlay 84) calls INIT ep9 (`0x808005B8`) -> `0x8080020C` -> `0x80800308`, which calls the static stop helper at `0x80800000` (`static_344_80800000`). This helper invokes `baphysics_set_target_horizontal_velocity(ps, 0)` (`tspd = 0.0`) and clears velocity vectors to `(0, 0, 0)`.
+  - In recompiled C (`RecompiledFuncs/funcs_416.c:4188`), `static_344_80800000` was emitted with an **EMPTY BODY** `;}` due to a static function end-boundary defect in `N64Recomp/src/main.cpp`. The decompilation ELF contained zero-size NOTYPE markers (`bsrest_VRAM` and `bsrest_TEXT_START`) at `0x80800000`, causing `cur_func_end == static_func_addr` and truncating the helper body. Sibling `static_304_80800324` in `.bsledge` was similarly empty.
+  - The missing stop helper caused Banjo to retain pre-cinematic walking momentum (`tspd = 500.0`, `velxz ~ 514..520`) throughout the overhead cinematic slide.
+- Generator Fix & Official Tooling Regeneration (PROVEN):
+  - Fixed `N64Recomp/src/main.cpp`: skips section function symbols equal to the static address that are zero-sized in that section; adds bounds checks before indexing.
+  - Versioned patch: `patches/runtime/n64recomp-zero-size-static.patch` (SHA256 `48ca1e7710a7b6ecd2f4cfe3c8ac064c11b2307ad98f35ee53b70b3f1cfebb58`), registered in `tools/apply_runtime_patches.sh`.
+  - Regression test: `tests/n64recomp_zero_size_static_test.sh` exits 0 PASS on patched generator, exits 1 FAIL on old generator.
+  - Decompilation inputs restored: pinned fork `25033be6ec9e35975483f064d086391d2381ca4c`, ROM SHA1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, matching ELF `banjotooie_decompressed.elf` (SHA1 `2b2d04c5b6484594f750b097daf670f7a8a24167`, size 91855676).
+  - Full regeneration executed via official tooling (`tools/run_recomp.sh` / N64Recomp); all 420 files regenerated; exactly 5 files changed (2 restored helpers in `funcs_416.c`, 4 rounding aliases semantically identical).
+  - Zero hand-editing of generated code. Full build `ninja -C build TooieRecompiled tooie_demo7_drift_test` exit 0; `python3 tools/check_generated_fresh.py` exit 0.
+- Independent Grok Final Gate Evaluation (PROVEN):
+  - Fixed capture: `demo7-fixed-root.log` (121 rows `glidx 0..120`, controller 396.13s wall time).
+  - **Criterion 1 (Bounded Demo 7 Drift)**: **PASS**.
+    - 119 pose pairs ($i \to i+1$, $i=1..119$): 0 tolerance failures (pos/vel/cam $\le 0.009$, anim $\le 0.00051$, tspd $\le 0.051$). Max error pos 3D: 0.005771, vel 3D: 0.006328, cam 3D: 0.008015, tspd: 0.044263.
+    - Pad inputs match same-index $i \to i$ 120/120.
+    - Sequence 11 `tspd_set a1=0` nested inside sequence 10 `bs_setState(0x74)` verified on trace (pre `tspd = 500.0`, post `tspd = 0.0`, leave `vel = (0, 0, 0)`).
+    - Stationarity (`glidx 38..120`, 83 rows): `bs_cur = 116`, `tspd = 0.0`, position fixed at `(-80.46, 0.00, 4496.25)`, `velxz = 0.0`.
+- Second User Scope (Criterion 2 — Global Real-Time Speed & Cadence):
+  - **Status: NOT YET PROVEN RESOLVED / BOUNDED CADENCE CONFIRMED**.
+  - One matched bounded scene does not certify global speed. Raw gamespeed snapshots across sample phases (0.05 vs 0.03333 on 42/119 rows) reflect sample-phase differences between hook sites, not a per-update integration error.
+  - Serial 90.032s timing run (`timing-fixed-pid-serial-90s.log`) with PID-tagged serialization fix (`g_timing_mu` in `src/game/tooie_diag.cpp`, build exit 0) completed with process exit 0 (owned instance closed).
+  - Guest execution stream (PID 938341) over 59.038s delta interval (wall 20.004s..79.042s) measured 3543 VIs => **60.0121955 Hz** and 1435 logic updates => **24.3063789 Hz** across changing scenes (PID 938331 had 0 VIs).
+  - Bounded conclusion: **NO evidence of a 2x VI clock** in the measured window. This does NOT prove universal camera/mob/campaign timing parity; user-specific non-Demo7 velocity reproduction questions remain open. Production bug is CLOSED for the tested window.
+- Preserved Prior State:
+  - Present FPS counter and Graphics options toggle remain verified and ready for gameplay QA.
+  - Phase 1 default CURRENT `tfPos` workaround remains default-ON; continuous interpolation remains not implemented.
+  - Phase 2 below-native decimator in RT64 remains operational.
+  - Audio glitch remains explicitly DEFERRED per user directive.
+
+`NEXT_SINGLE_ACTION`: normal clean user visual QA Demo 7, and concrete non-Demo 7 speed reproduction if persists.
+
+## Prior (2026-10-17) — USER_DEMO7_STATE116_AND_BOUNDED_DIAGNOSTIC_VERIFIED (SUPERSEDED BY DEMO 7 FIX)
+
+Read [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-attract-movement-residuals]], [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]], and [[plan/evidence/p09-fps-counter-and-settings-toggle]].
+Bounded diagnostic capture (121 rows `gl0..120`) executed by root and verified. Sonnet primary MIPS disassembly of `bs_setState` (`0x8009E5D8`) proved `*(player + 0x120)` maps `+0: prev`, `+4: cur`, `+8: next`, correcting prior claims that `bs = 4` was current state. During the hands-off slide, Banjo executes State 116 (`0x74`, `_bsrest_entrypoint_12`) with `anim = 111` while `bs_prev = 4`. Angrylion oracle Phase 2 tick-start sampler (`0x800151BC`) was run. Expanded user criteria separate Demo 7 cutscene parity from global real-time speed preservation. Prior FPS counter and settings toggle completion, Phase 1 default CURRENT `tfPos` workaround, below-native decimator, and audio glitch deferral remain strictly preserved.
+
+
+- State Struct Layout & Kinematics Correction (CORRECTED/SUPERSEDED & PROVEN):
+  - Prior claim that Banjo was executing state `bs = 4` during the overhead cinematic slide is CORRECTED/SUPERSEDED.
+  - Original Tooie MIPS disassembly of `bs_setState` at `0x8009E5D8` (`funcs_350.c:1434-1551`) maps `*(player + 0x120)` as: `+0: prev`, `+4: cur`, `+8: next`.
+  - Legacy `[demo-sync]` field logged `MEM_W(player + 0x120)` (+0 = `bs_prev`), which read 4 while current state was actually `bs_cur = 116` (`0x74`). Do NOT call state 4 cinematic.
+  - `glidx 35..37`: `bs_prev = 2`, `bs_cur = 4`.
+  - `glidx 38`: `bs_prev = 4`, `bs_cur = 116` (`0x74`), `ptype = 2`, `tspd = 500.0`, `anim = 111`, `velxz = 441.46`.
+  - `glidx 50..120`: `bs_cur = 116` persists with neutral stick / remap (`(0, 0)`, ang 90, dist 0); `tspd = 500.0`; `velxz ~ 514..520`; world position integrates continuously across XZ; Y reaches terrain floor -200.00 at `glidx = 106..120`.
+- State 116 (`0x74`) Source Proof (PROVEN from ROM / MIPS):
+  - Stride 12 table `D_80117F38` entry 116 word +0 is `0x800839A8` = `_bsrest_entrypoint_12` (overlay 84 `bsrest`, ROM `0x01F33AF0`, RAM `0x80800000`).
+  - Method table at `0x80800930`: `[0]` ep11 END (`0x80800660`), `[1]` ep9 INIT (`0x808005B8`), `[2]` ep10 UPDATE (`0x808005F8`), `[3]` core2 interrupt (`0x80099B94`).
+  - Physics invariance: NONE of INIT, UPDATE, or END resets `tspd` (`phys + 0x3C`), `velocity` (`phys + 0x10`), or `ptype` (`phys + 0x00`).
+  - Exit gate in UPDATE (ep10): checks `0x8008E35C` (state 119) or `0x8080032C`. For anim 111, `0x8080032C` returns 1 (permitting exit) ONLY if state stack top `0x8009CC68(player) == 0` (`depth = (*(ps+0xF0))+0x80`, top at `ptr + depth*16 - 16`).
+  - Persistent 116 may be original scripted cinema; do not promote a faulty stack or exit bug without original oracle baseline. Fix layer UNKNOWN.
+- Isolated Bounded Diagnostic & Root Capture Verification (PROVEN):
+  - Sonnet implemented DEFAULT-OFF isolated flag `TOOIE_DIAG_DEMO7_DRIFT=1`, avoiding 400k-line diagnostic cascades. Hooked at overlay 698 ep0 exit, stage 0 sub 8 glidx 0..120, player 0 only, max 121 rows. Host test `tooie_demo7_drift_test` exits 0 PASS.
+  - Root full build exit 0 (`demo7-root-full-build.log`) and bounded capture completed (`demo7-bounded-root.log`, 121 rows `gl0..120`, controller 407.21s, clean PID exit).
+  - Kinematics in bounded capture match prior heavy capture (`velxz * gs` physical integration); no production fix yet.
+- Logging Nuance & Map Clarification:
+  - Map field `MEM_H(0x10, 0x80127630)` clears to 0 during mode-5 body, but exact guest clearing writer is untraced (categorical claims of after-warp consumption mechanisms removed absent primary proof). Filtering `map == 282` drops 100% of body.
+  - Raw `cammode` halfword at record + 0x16 overlaps lower half of float at +0x14; contaminated. Viewport camera at `0x8012D500` cleanly marks overhead cut at `glidx = 38`.
+- Oracle Parity Status:
+  - Phase 1 run (`P08_DEMO7_SUB8=1`, `demo7-oracle-isolated/demo7.csv`) yielded 5 rows (0, 33..36) because PC `0x8009C914` was not called per-frame and output buffered; SIGINT 802.31s normal 0 (`NOT PASS`). Oracle row `idx + 1` aligns with Tooie position/velocity before 116 (pos max error 0.0058, vel max error 0.0064 rounded), though anim timers/durations show possible phase difference.
+  - Sonnet corrected instrumentation (`tools/p08_attract_egg_hook.h` and mupen patch) to single per-logic PC `0x800151BC` tick-start sampler with `fflush()` per row, no yaw mix.
+  - Phase 2 capture IN PROGRESS (`demo7-oracle-phase2/demo7.csv`, PID 750322, `--nospeedlimit`). Do NOT claim results until finished.
+- Expanded Objective & Two Acceptance Criteria:
+  - (1) Faithful Demo 7 stationary cinema parity versus original N64 hardware.
+  - (2) Preserve guest logic/VI/motion/animation/camera real-time speed, not FPS poses (running 2 instances diagnostics with `--nospeedlimit` does NOT prove wall throughput). No global fix from 1 map.
+- Preserved Prior State:
+  - Present FPS counter and Graphics options toggle remain verified and ready for gameplay QA.
+  - Phase 1 default CURRENT `tfPos` workaround remains default-ON; continuous interpolation remains not implemented.
+  - Phase 2 below-native decimator in RT64 remains operational.
+  - Audio glitch remains explicitly DEFERRED per user directive.
+
+`NEXT_SINGLE_ACTION`: finish Phase 2 original Angrylion oracle capture (`demo7-oracle-phase2/demo7.csv`) and compare first divergence by validated phase against root bounded capture state 116 world position, velocity, ptype, tspd, anim, camera, and gs; choose owning layer and faithful fix only after comparative evidence.
+
+## Prior (2026-10-17) — USER_DEMO7_CUTSCENE_DRIFT_INVESTIGATION_BOUNDED (SUPERSEDED BY STATE 116 FINDINGS)
+
+Read [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-attract-movement-residuals]], [[plan/evidence/p08-provisional-follow-camera-and-egg-differential]], and [[plan/evidence/p09-fps-counter-and-settings-toggle]].
+User diagnostic capture analyzed via offline streaming parser (provenance: user capture `demo7-user-capture.log` SHA256 `74f859128f586306626df1eb964e161983c6c916c9509c14b04ff8b577d99467`, 407,919 lines; analysis dump `demo7-user-capture-analysis.txt`; verdict `demo7-user-capture-verdict.txt`; Grok CLI session `01a14b7c-c6ef-7bd3-9a0b-3fef4d99acf4`, exit 0). No code, build, or runtime execution this task (`PARSED_NOT_A_GAME_PASS`; zero tests reported `PASS`). Prior FPS counter and settings toggle completion, Phase 1 default CURRENT `tfPos` workaround completion, below-native decimator completion, and audio glitch deferral remain strictly preserved.
+
+- Scene Mapping & Logger Nuance (PROVEN):
+  - Spoken user sequence: `intro -> Demo 1, 2, 3 -> intro -> Demo 4, 5, 6 -> intro -> Demo 7, 8, 9` (hands off keyboard/controller).
+  - Independent gate: 6,607 `[demo-sync]` lines parsed, 0 unparsed. Stage 0, sub 8 has 1,244 consecutive rows (`glidx 1..1244`, `cnt = 1245` on every line), 0 gaps, 0 skips, `tick_delta == 2`.
+  - Logger map field (`MEM_H(0x10, 0x80127630)` at `0x80127640`) is live on boundary tails (278, 314, 395, 296, 185, 264), but clears to 0 during mode-5 clip body after warp consumption. Filtering `map == 282` drops 100% of the Demo 7 body. Exact guest clearing writer not traced.
+  - Scene identity is confirmed by `stage = 0, sub = 8` in registry order, preceded by intro sub 7 (`map = 395`) and followed by Demo 8 sub 9 (`map = 264`, join at glidx 1245 has 0.00 XZ jump).
+  - Raw `cammode` at record + 0x16 overlaps half of float at +0x14 (only 3/1244 values in [-1, 64]); contaminated. Viewport camera (`0x8012D500`) cleanly marks overhead cut at `glidx = 38` (dY 345 -> 755, `camctrl` 341 -> 3.53).
+- Kinematics & Motion Owner Narrowing (PROVEN):
+  - `glidx 1..33`: idle stand at `(-116.00, 0.00, 4523.00)`, `bs = 0`, `anim = 111`, `tspd = 0`, `velxz = 0` (~1.1s guest pre-walk).
+  - `glidx 34..49`: stick-driven walk (~0.5s guest time), `bs = 1` then `2` then `4`, `tspd` reaches 500, `velxz` accelerates ~514.
+  - `glidx 38`: `bs = 2 -> 4`, `anim = 12 -> 111`, `tspd = 500.0`, viewport camera moves overhead.
+  - `glidx 50`: recorded stick released (`remap = (0, 0)`, `bastick = (0, 0, 0)`; `pad x = 1` residue byte, bstick angle 90 persists harmlessly). Position is `(116.70, -22.24, 4336.06)`.
+  - `glidx 50..90`: `bs = 4`, `anim = 111`, `tspd = 500`, `velxz ~ 514..520` remain; world XZ moves steadily to `glidx 90` `(650.40, -149.10, 3898.99)`, Y falls from -22.24 toward -149.10 (-200 at gl 106).
+  - Stream gate across 41 steps `glidx 50..90`: median ratio `deltaXZ / (velxz * gs) = 1.000354467227695` (min 0.66643885, max 1.00159322). Body-wide ratio (367 steps pred>5, step>1): median `1.00038`, residual median 0.000.
+  - Physical integration explains steady slide. Motion owner is narrowed from UNKNOWN mechanism to guest-world displacement with nonzero retained target speed/velocity during idle-looking pose (`anim 111`, `bs 4`).
+- Epistemic Boundaries & Open Blockers:
+  - Root cause and interpreted guest function writer of `tspd` (`phys + 0x3C`) and `velocity` (`phys + 0x10`) remain STILL UNKNOWN. No code correction made.
+  - No claim that all cutscenes share this root.
+  - Collision remains `USER_OBSERVED` (no collider field logged); oracle baseline for Demo 7 not run yet.
+  - Actual role of `bs = 4` and formal name of `animation 111` not reproven from symbols in this pass.
+  - Diagnostic overhead: `TOOIE_DIAG_DEMO_SYNC` also forced movement diagnostics (407k lines with 227k `tooie-move`); avoid full-run captures.
+  - No freeze physics, no unconditional zeroing of velocity. CURRENT/FPS/audio unchanged.
+- Demo 5 Status Preservation:
+  - Bounded helper `tooie_ud5_bainput_window` is strictly gated to `sub == 5`. Demo 5 is not globally resolved from the bounded helper; open Demo 5 residuals in `p08-attract-movement-residuals` remain preserved.
+- Preserved Prior State:
+  - Present FPS counter and Graphics options toggle remain verified and ready for gameplay QA.
+  - Phase 1 default CURRENT `tfPos` workaround remains default-ON; continuous interpolation remains not implemented.
+  - Phase 2 below-native decimator in RT64 remains operational.
+  - Audio glitch remains explicitly DEFERRED per user directive.
+
+`NEXT_SINGLE_ACTION`: locate interpreted guest state `bs = 4` init/update/end and physics mode/target-speed writer at `bs = 2 -> bs = 4` (`glidx = 38`), then trace if needed bounded stage 0 sub 8 `glidx 35..60` without `map == 282` filter; compare against Angrylion oracle where necessary before faithful fix; avoid full-run captures due to `DEMO_SYNC` execution weight (407k lines).
+
+## Prior (2026-10-17) — P09_FPS_COUNTER_AND_SETTINGS_TOGGLE_VERIFIED
+
+Read [[plan/evidence/p09-fps-counter-and-settings-toggle]], [[plan/evidence/p09-default-current-workaround-and-fps-plan]], [[plan/evidence/p09-current-work]], [[plan/evidence/p09-session-handoff]], and [[specs/Tooie/graphics-and-presentation]].
+Under explicit user authorization, the top-left visible present FPS counter and extra settings toggle have been verified across codebase implementation, standalone versioned patch generation, host unit tests, and documentation. The counter measures actual successful swapchain present cadence rather than selected target or simulation rate. The toggle defaults to OFF (`false`), persists in `graphics.json`, and reuses the existing frontend RmlUi render-thread hook without parallel custom UI. In-game runtime QA is pending.
+
+- Settings & Persistence:
+  - Option: "Show Present FPS" added to `add_graphics_options` in `src/game/config.cpp:186-198` and `include/banjo_config.h` (`banjo::configkeys::graphics::show_fps_counter`).
+  - Default: `false` (OFF). Persists automatically through `graphics.json`.
+  - User directions: In-game or launcher configuration menu -> Graphics tab -> check "Show Present FPS" to enable. Setting updates live via change callback `tooie::set_fps_overlay_enabled()`.
+- Counter & Cadence Architecture:
+  - Measurement: `RT64::presentSuccessCount` atomic in `src/hle/rt64_present_stats.h` incremented strictly upon successful `ext.swapChain->present(...)` in `rt64_present_queue.cpp:513`. Decimator skips and failed presents are not counted.
+  - Pacing separation: `presentTimestamp` in `rt64_present_queue.cpp:508` remains a pacing clock for `preciseSleepUntil` (above-native target); it is not an FPS display metric. Developer ImPlot present-time graph (`rt64_state.cpp:2465`) remains dev-mode only.
+  - Meter: `tooie::PresentRateMeter` (`include/tooie_fps_meter.h`) computes rounded integer rate over a 1 s monotonic window. Stalls > 3 s reset window and display `"-- FPS"`.
+  - Overlay: `recompui::set_overlay_update_callback` added to RecompFrontend (`recompui/src/base/ui_state.cpp`), called on render thread in `draw_hook()`. Displays `"%u FPS"` at 16 dp from top-left with dark backing; not a shown context (unaffected by `hide_all_contexts()`, zero input capture).
+- Versioned Patches:
+  - RecompFrontend: `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256: `37266d0bd13d42c0b8f174c0118b6a9b2490784c5880f05e6ee37ab811cd48a7`) on clean `d0d90ba`.
+  - RT64: `patches/rt64/rt64-present-success-counter.patch` (SHA256: `173c9b7cafc4b9750fb610b56faca8125399679a874d1c159f6c53e420c31c68`) on dirty `6f1c2d99`.
+  - Reverse apply check: `git apply --reverse --check` exits 0 for both patches.
+- Build & Verification Gates:
+  - Host test: `./build/tooie_fps_meter_test` exits 0 (`tooie_fps_meter_test PASS`). Covers 1 s window, midpoint rounding, zero presents, stalls > 3 s, backwards clock, and resets.
+  - Diff check: `git diff --check` passes exit 0 across TooieRecomp, RT64, and RecompFrontend.
+- Epistemic Boundaries & Critical Distinctions:
+  - Present Cadence vs. Motion Rate: With default-ON CURRENT `tfPos` workaround active, presentation rates above native repeat the current vertex pose. The counter reading near 60 FPS while visible motion updates at ~30 Hz reflects actual swapchain presents, not 60 Hz simulation/motion.
+  - Runtime QA NOT performed: No game process was launched during this verification; on-screen visual presentation in live gameplay is pending root/user review.
+  - Eight-preset UI widget: Remains `PLANNED` / `NOT_IMPLEMENTED` (`REQ-GFX-06`). The FPS counter is an independent settings toggle.
+  - Native guest logic Hz: `viOriginalRate` remains formally `UNKNOWN` (unmeasured).
+
+`NEXT_SINGLE_ACTION`: with user authorization, launch `./build/TooieRecompiled`, enable "Show Present FPS" in Graphics options, and visually verify top-left overlay presentation and pose repeat behavior in gameplay.
+
+## Prior (2026-10-17) — P09_RT64_PRESENT_DECIMATOR_IMPLEMENTED_AND_BUILD_GATES_PASSED
+
+Read [[plan/evidence/p09-default-current-workaround-and-fps-plan]], [[plan/evidence/p09-current-work]], [[plan/evidence/p09-session-handoff]], and [[specs/Tooie/graphics-and-presentation]].
+RT64 below-native presentation decimator implemented and verified across host unit tests, address data race, and root full/incremental compilation gates. P09 Phase 1 default CURRENT `tfPos` workaround remains active; Phase 2 below-native presentation cap mechanism is operational in RT64; RecompFrontend 8-preset UI widget remains planned; in-game runtime QA is pending.
+
+- Pacing fix mechanism:
+  - Header `src/hle/rt64_present_decimator.h` introduces `PresentDecimator` integer accumulator (`ticks += targetRate`, `ticks >= originalRate`), generating exact average presentation cadences for non-divisors (45, 70, ...) and divisors (20, 30) without float drift or integer overflow (`uint32_t`).
+  - Condition: applies when `manualRate && !present.paused && (targetRate > 0) && (viOriginalRate > 0) && (targetRate < viOriginalRate)`.
+  - Present queue integration (`src/hle/rt64_present_queue.cpp`): skipped presentations reuse the existing catch-up skip path (`skipInterpolation()`, `notifyPresentId(present)`, framebuffer-operation release, and `threadAdvanceBarrier`).
+  - Workload ACK path static proof: all guest workloads are consumed and acknowledged in order; guest logic, audio tasks, and VI interrupts are never delayed, slept, or stalled.
+- Concurrency & cadence fixes (Sonnet review followup):
+  - Proven data race eliminated: `rt64_workload_queue.cpp:1021` previously wrote `ext.sharedResources->viOriginalRate` without holding a lock while the present thread read it under `configurationMutex`. Write is now wrapped under `const std::scoped_lock configurationLock(ext.sharedResources->configurationMutex)`. Lock ordering is verified safe (leaf lock; no lock inversion).
+  - Catch-up skip explicitly resets the decimator (`presentDecimator = PresentDecimator()`).
+  - Paused presents pass `paused == true` into `shouldPresent()`, resetting cadence so the first unpaused frame displays immediately without dropping.
+- Build & test gates:
+  - Host test: `tests/rt64_present_decimator_test.cpp` added to `CMakeLists.txt` (`rt64_present_decimator_test`). Tests 20/60, 30/60, 45/60, 20/30, initial workload display, pass-through on non-manual/original/equal-above-native/unknown/paused, rate change resync, and pause-reset. Test exits 0 (`rt64_present_decimator_test PASS`).
+  - Companion test: `tooie_rsp_endpoint_current_test` exits 0 (20/20 assertions PASS).
+  - Root full build: `cmake --build build --target TooieRecompiled rt64_present_decimator_test tooie_rsp_endpoint_current_test -j2` exit 0 (logged in `/home/wesley/.cache/tooie-fps-investigation/root-build.log`, `[362/362] Linking CXX executable TooieRecompiled`).
+  - Final incremental gate: logged in `/home/wesley/.cache/tooie-fps-investigation/root-build-final.log` completed exit 0 (`[6/6] Linking CXX executable TooieRecompiled`).
+  - Patch: `patches/rt64/rt64-present-rate-decimator.patch` applied cleanly over RT64 dirty baseline (historical; superseded for clean pin apply by `patches/rt64/rt64-present-fps-decimator-and-counter.patch`).
+  - Diff check: `git diff --check` passes exit 0 across Tooie and RT64 trees.
+- Epistemic boundaries & explicit limits:
+  - Runtime QA NOT performed: no game process was launched for this verification; no actual in-game FPS measurements or speed guarantees are claimed.
+  - Workload ACK path is a static proof only.
+  - Above-native rates: extra presents occur, but because default-ON CURRENT `tfPos` workaround is active, intermediate frames repeat the current vertex pose. Smooth motion at rates above native remains impossible until permanent continuous interpolation is implemented.
+  - Dynamic guest logic Hz: numeric `viOriginalRate` remains formally `UNKNOWN` (unmeasured).
+  - Eight-preset UI widget: remains `PLANNED` / `NOT_IMPLEMENTED`.
+  - P09 formal status: remains `PENDING / NOT_FORMALLY_OPEN`.
+
+`NEXT_SINGLE_ACTION`: implement the 8-preset UI selector widget in RecompFrontend and perform runtime QA with FPS measurements.
+
+## Prior (2026-10-17) — WHOLE_PROJECT_SPEC_AND_DOCUMENTATION_AUDIT_COMPLETED
+
+Read [[plan/evidence/documentation-spec-audit-20261016]], [[specs/index]], [[plan/evidence/p09-current-work]], [[plan/evidence/p09-default-current-workaround-and-fps-plan]], and [[plan/evidence/p09-session-handoff]].
+Whole-project documentation and specification audit completed across Rounds 1–7 under user authorization. All 286 documents in the `docs/` vault and 7 first-party Markdown documents outside `docs/` were inventoried; complete 12-domain TooieRecomp specification suite established under `docs/specs/Tooie/` and integrated into the master requirements matrix [[specs/index]]. All gameplay state, runtime facts, and technical gates are strictly preserved.
+
+- Documentation audit summary: Complete audit ledger recorded in [[plan/evidence/documentation-spec-audit-20261016]]. Total first-party documentation scope is 293 markdown files (286 inside `docs/`, 7 outside: `AGENTS.md`, `GEMINI.md`, `tools/oracle/README.md`, `metadata/coverage_report.md`, `metadata/rsp_tasks.inventory.md`, `.claude/skills/graft/SKILL.md`, `.grok/skills/graft/SKILL.md`). Generated metadata reports (`coverage_report.md`, `rsp_tasks.inventory.md`) are explicitly classified as read-only generated documents (do not hand-edit). Generated graph `graft/`, sibling checkouts (`BanjoRecomp`, `ROM`, `banjo-tooie-Recomp`), and build caches (`build/`, `RecompiledFuncs/`, etc.) are explicitly excluded.
+- Epistemic & scope clarity: Raw `/tmp` transcripts from earlier CLI rounds were lost across restart; persisted git Markdown serves as canonical evidence. Whole-tree structural inventory is explicitly distinguished from targeted semantic source verification. No exhaustive line-by-line review of all 286 notes or universal QA proof is claimed.
+- Corrections & alignments: Dynamic overlay count synchronized to 884 overlay slots (`kTooieOverlayCount = 884`, ~851 populated, 33 empty gap slots) per `src/game/generated/overlay_dispatch.inc.h` and `metadata/coverage_report.md`, preserving Round 3 correction. Guest logic Hz and animation Hz reaffirmed strictly `UNKNOWN`. Missing frontmatter warnings resolved (0 missing frontmatter); orphan navigation resolved.
+- Round 7 Targeted Save Spec & Census Correction: `docs/specs/Tooie/save-system.md` factual error resolved: differentiated Ultra64 OS SDK `osEepromProbe` return value (`0x02` for `SaveType::Eep16k` / `AllowAll`, `0x01` for `Eep4k` in register `r2`/`v0`, per `N64ModernRuntime/librecomp/src/eep.cpp:11-24` and `src/game/boot_hw_stubs.cpp:656-659`) from raw Joybus/PIF status word (`0x0080` was historically raw hardware status bit, not SDK return; no guessing raw protocol values); reconciled REQ-SAV-03 criteria as required behavior vs actual untested acceptance (`PARTIAL / PENDING_QA`); documented REQ-SAV-01 provenance (`pi.cpp:get_save_size` = 0x800 and boot probe initialization in `func_800166DC`); defined atomic persistence as host crash-safety against torn writes rather than universal save corruption prevention; clarified low-level Joybus SI packet parsing bypass in favor of native SDK replacements. Reconciled filesystem spec counts: 45 files total in `docs/specs/` (13 Tooie: 12 domain + 1 index; 14 BK: 13 topics + 1 index; 17 BT: 16 insumos + 1 index; 1 root master hub) without conflating 41 domain/topic specs with 4 hub documents. Reconciled warning origin: of 59 non-blocking warnings, 58 are pre-existing and 1 large-file warning is newly introduced by the thorough multi-round audit ledger itself (`documentation-spec-audit-20261016.md`, 55k+ chars).
+- Validation checks: `markdown_vault_audit` confirmed 0 errors, 15 diagnostic warnings (14 pre-existing large files + 1 audit ledger), 44 lint warnings (historical markdown), 59 total non-blocking warnings. `git diff --check` passed exit 0.
+- Preserved gameplay state: P09 Phase 1 default CURRENT `tfPos` workaround (`apply_default_before_renderer_init()`) is default-ON; explicit `0` rolls back to experimental interpolation. Permanent interpolation fix is `NOT_IMPLEMENTED`. FPS presets {20, 30, 45, 60, 70, 100, 120, 144} are `PLANNED` and `NOT_IMPLEMENTED`, blocked by below-native pacing in RT64 `WorkloadQueue`. Audio glitch is `DEFERRED` per user instruction. Formal P09 phase status is `PENDING / NOT_FORMALLY_OPEN`. Historical unit/build test results not rerun this task.
+
+`NEXT_SINGLE_ACTION`: singular focused audit/measurement of native cadence and present-queue backpressure to choose a below-native presentation cap without clock changes; then implement presets with actual tests all 8 and timing QA.
+
+## Prior (2026-10-16) — P09_DEFAULT_WORKAROUND_IMPLEMENTED_AND_FPS_PRESETS_PLANNED
+
+Read [[plan/evidence/p09-current-work]], [[plan/evidence/p09-default-current-workaround-and-fps-plan]], and [[plan/evidence/p09-session-handoff]].
+Following user directive to install the palliative workaround as the default run before addressing FPS selection, Phase 1 default workaround is implemented, verified by unit test (20/20 PASS) and independent Haiku review, and verified in root normal gameplay QA. Phase 2 FPS presets {20, 30, 45, 60, 70, 100, 120, 144} are planned but NOT implemented, blocked by actual below-native presentation pacing constraints in RT64 `WorkloadQueue`.
+
+- Status & flags: `DEFAULT_WORKAROUND_IMPLEMENTED: YES`, `PERMANENT_INTERPOLATION_FIX_NOT_IMPLEMENTED: YES`, `FPS_PRESETS_PLANNED_NOT_IMPLEMENTED: YES`, `P09_FORMAL_PHASE: PENDING / NOT_FORMALLY_OPEN`, `NO_COMMIT: YES`, `NO_PUSH: YES`.
+- Workaround mechanism: `apply_default_before_renderer_init()` (`src/game/tooie_rsp_endpoint_current.cpp:14-38`) runs in `src/main/main.cpp:1153` before `activate_tooie_guest_preemption()` and `recomp::start()`. When `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` is UNSET, sets `"1"`. Explicit values (`"0"`, `""`, `"1"`, `"keep"`) are preserved. Explicit `0` restores experimental original interpolation. Normal `./build/TooieRecompiled` requires no activation flag.
+- Scope & presentation behavior: Workaround is strictly scoped to Tooie integration; RT64 default remains OFF. Uses shader-local `tfPos` CURRENT bypass (`RSPProcessCS.hlsl:78-93`, where `tfPos` also directly drives fog calculation), NOT global weights (`TOOIE_DIAG_FORCE_CURRENT_FRAME` unchanged). Vertex positions and fog are CURRENT; other weights, presentation cadence, and guest logic unchanged. No continuous position interpolation claim at 60+ FPS.
+- Future diagnostic rule: Future interpolation diagnostics MUST explicitly set `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0` to prevent workaround from masking visual glitches while CPU witness assumes interpolation. Heavy collectors remain OFF.
+- Build & test evidence: `cmake --build build --target tooie_rsp_endpoint_current_test` exit 0; `./build/tooie_rsp_endpoint_current_test` exit 0 (20/20 assertions PASS, saved in `/tmp/p09-default-workaround/policy-test-root.log`). Executable `TooieRecompiled` linked exit 0 (binary SHA256 `0d2e4ba5fa7e4ed0347d83180ff4c831c54b8f47567fa012de15dac3dc736b84`). RT64 HEAD `6f1c2d99` untouched (31 dirty files +13850/-44 preserved). Ordering check is static source order, not runtime/GPU trace. Untouched tests (38, 7, 1354) NOT RUN this round.
+- Run provenance & QA: Writer report "Game was not launched" is writer-scoped sandbox provenance. Root actually launched `./build/TooieRecompiled` without flags (`/tmp/p09-default-workaround/normal-launch.log`, size ~852KB). User observed: "Está rodando bem. O áudio tem o mesmo glitch de sempre que já tinha desde quase o início do projeto e pretendo resolver o áudio só mais para frente." Existing audio glitch explicitly deferred; no audio changes.
+- Phase 2 pacing facts: UI already accepts manual integer 20..240 step 1 (`ui_config_tab_graphics.cpp:311-313`); runtime accepts 10..1000. These generic values are NOT the requested 8-preset selector. In RT64 (`rt64_workload_queue.cpp:1175`), pacing/interpolation runs only when `targetRate > viOriginalRate`. For below-native targets (`targetRate <= viOriginalRate`), `generateInterpolated=false`, `displayFrames=1`, sending one present per native workload without lower-rate pacing or sleep. Hence 20/30 honesty is not guaranteed (native guest Hz currently UNKNOWN). Preserving ALL guest updates/VI/audio without skipping guest work requires a true presentation decimation hook; backpressure `waitForWorkloadId` is UNVERIFIED. User `graphics.json` unchanged (`Display`, manual 60).
+- Deferred research queue: Prior research on first-20 tie groups, nearest-join NDC ties, and Sonnet analysis is preserved as historical and deferred queue; root is not reopened and aliases are not implemented.
+
+`NEXT_SINGLE_ACTION`: singular focused audit/measurement of native cadence and present-queue backpressure to choose a below-native presentation cap without clock changes; then implement presets with actual tests all 8 and timing QA.
+
+## Prior (2026-10-16) — P09_PATHOLOGICAL_TIE_GROUPS_CAPTURED_AND_ARBITRATED
+
+Read [[plan/evidence/p09-current-work]], [[plan/evidence/p09-pathological-tie-groups]], [[plan/evidence/p09-exact-use-pathology-correlation]], and [[plan/evidence/p09-causal-baseline-and-fix-direction]].
+Bounded first-20 pathological tie-group diagnostic implemented, validated by host tests (1354/1354 exit 0), compiled in TooieRecompiled (rebuilt binary SHA256 `84d31479...`, exit 0), and captured in gameplay runtime (`EXHAUSTED` at 24 attempts, 6 plans, 162 pathological pair occurrences, all ambiguous TIE, 179 unique keys).
+
+- Captures & hashes: `/tmp/p09-tie-discriminator/capture-gameplay/tooie-p09-seam-edge-pathology-correlation.txt` (SHA256 `74b0b2e5f219522c42b041a6a5cea9005bea8f57ddd0fc595df8f69024528c7d`) and sibling `/tmp/p09-tie-discriminator/capture-gameplay/tooie-p09-seam-edge-pathology-ties.txt` (SHA256 `5b1fc21a2af77dbab9abc42919465e45a65a13014321cee405468cc6fd59b2a8`). Versioned patch `patches/rt64/p09-exact-use-pathology-correlation.patch` SHA256 `7b93258cecadcb0b18b1f4a22f0a278c70a1cc20f3e1f0ed8fbb112b0bd7f38f`.
+- Group structure: 20 groups stored (`kP09TieGroupCap=20`), 142 omitted (`skippedGroups=142`), 0 member truncation. 12 mult=2, 8 mult=4 = 56 parent face-corner occurrences across distinct 9-field keys. All 20 groups have exactly 2 distinct `storedVertex` records per group at identical parent `WORLD` and printed coordinates (not bitwise identity). All 20 child keys and 56 members returned `MEMBERSHIP=NOT_SELECTED` (`REASON=NONE`) against local active exhaustive plan.
+- Independent review & arbitration: Haiku static review PASS (noted unchecked `fclose` before rename, non-blocking); Haiku capture analysis clarified `selected=YES` (nearest search choice) vs `MEMBERSHIP=NOT_SELECTED` (plan membership) as separate non-contradictory fields. Sonnet solution escalation executed; Root arbitration confirmed Sonnet withdrew P1 point-cert (`k`-points, reciprocity, 0.08), global plan miss claim, and raw ID persistence. All three Sonnet options (P1, P2, P3) remain `HYPOTHESIS`.
+- Scope & boundaries: `PRODUCTION_FIX_NOT_IMPLEMENTED: YES`, `P09_FORMAL_PHASE: PENDING / NOT_FORMALLY_OPEN`, `NO_COMMIT: YES`, `NO_PUSH: YES`.
+
+`NEXT_SINGLE_ACTION`: a READ-ONLY focused audit of existing paired-boundary-edge/provenance data and its correlation to the sampled pathological uses, starting with producer/topology semantics and what current artifacts actually contain; no new lerp/alias or telemetry implementation automatically. Root stops at newly identified evidence blocker after Sonnet analysis as authorized, not claiming fix.
+
+## Prior (2026-10-15) — P09_EXACT_USE_GAMEPLAY_CAPTURED_ALL_AMBIGUOUS_TIE
+
+Read [[plan/evidence/p09-current-work]], [[plan/evidence/p09-exact-use-pathology-correlation]], and [[plan/evidence/p09-causal-baseline-and-fix-direction]].
+Causal baseline is established (`CAUSE_ALREADY_ESTABLISHED: YES`, root class `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS` proven decisively via `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1` and `TOOIE_DIAG_FORCE_CURRENT_FRAME=1`), while production fix is not implemented (`PRODUCTION_FIX_NOT_IMPLEMENTED: YES`).
+Armed gameplay capture executed; process reached limit (`EXHAUSTED` at 24 attempts). Meaningful runtime data captured, but all 194 pathological pair occurrences are ambiguous TIE; coverage rate is undecidable. This existing 194-TIE capture remains an exact-use diagnostic blocker for nearest-NDC join authorization onto alias keys, NOT an unknown root cause. No production fix is implemented.
+
+- Capture file & hash: `/tmp/p09-correlation-implementation/capture-gameplay-20261015.txt` (SHA256 `b6be018a3619a78a7c05ba7d0b8fa6c64e27d22e5cde6bedbebeebdf771203e7`). Initial empty capture retained as history. Game left running in `EXHAUSTED` state (no new searches without rearm).
+- Accounting & plans: 2135 walks, 93 eligible dispatches, 24 attempts (4 with path pair, 20 with no path pair), 4 seam searches, 4 local plans built (`PLAN_BUILT=4`). No plan failure, capacity cap, or truncation (`PLAN_INACTIVE=0`, `PLAN_NOT_EXHAUSTIVE=0`, `PAIRS_DROPPED_PENDING_CAP=0`, `VERTS_DROPPED_BONE_CAP=0`, `UNIQUE_TABLE_OVERFLOW=0`, `RECORDED_COHORT_TRUNCATED=NO`).
+- Pathology correlation: `PATH_PAIR_TOTAL=194`, `PATH_PAIR_FULLY_COVERED=0`, `PATH_PAIR_ONE_SIDED=0`, `PATH_PAIR_NOT_COVERED=0`, `PATH_PAIR_AMBIGUOUS=194`, `PATH_PAIR_AMBIGUOUS_TIE=194`. Saturated by 194 ties (`PATH_PAIR_FULL_OF_ALL_OBSERVED=0.000000`, definitive rate `NA`). Cumulative occurrences across 4 plans, not 194 unique certified edges.
+- Keys & nonpathological universe: 214 unique path keys (1 selected, 213 not selected). Nonpathological: 454 pairs, 481 unique keys (4 selected, 477 not selected). 25 keys on both path and nonpath.
+- CPU timings (runtime diagnostic only, NOT game FPS or visual proof): attempt peak 202.762 ms (total 590.915 ms), plan peak 200.776 ms (total 551.464 ms), gate total 10.382 ms.
+- Haiku source review: proven that `p09EmitNearestJoinPairs` sets `bestTie = true` on exact float equality `gap == bestGap` in NDC XY distance, and classifier prioritizes TIE over key checks. Coincident parent hypothesis is UNKNOWN; identical coordinates do not prove ambiguity is false because sourcekeys/WORLD policy matter. No tie suppression or dedup production fix authorized.
+- Arbitration & fix direction: Haiku proposal for new CLIP_LERP/NDC_LERP visual discriminator is SUPERSEDED by 2026-09-14 closure in `p09-articulated-temporal-coherence-root.md`. Next discriminator serves selection for the known cause, not a fresh search for root.
+
+`NEXT_SINGLE_ACTION` (historical): one bounded diagnostic discriminator logging first ~20 tie groups, exact full sourcekeys/originalWORLD and prev/cur positions, gap/multiplicity and candidate memberships to distinguish repeated same-use from different legitimate-use; then review, before alias/interpolation edits (currently NOT_IMPLEMENTED; task stops at newly observed blocker per scope rule).
+
+## Prior (2026-10-15) — P09_EXACT_USE_PATHOLOGY_CORRELATION_CAPTURED_EMPTY_AND_RELAUNCH_WAITING
+
+Read [[plan/evidence/p09-current-work]] and [[plan/evidence/p09-exact-use-pathology-correlation]].
+First actual capture executed; output is empty (`CAPTURED_EMPTY / NO_ELIGIBLE_SAMPLES`). Root relaunched with dedicated flag and confirmed waiting; user positioning character gameplay before root arming.
+
+- First capture observation (`capture-empty-20261015.txt`): `ARM_COUNT=1`, `REARM_COUNT=0`, `MARKER_CONSUME_FAILURES=0`. `ELIGIBILITY_WALKS=181`, `ELIGIBLE_DISPATCHES=0`, `ATTEMPTS=0`, `PATH_PAIR_TOTAL=0`. Ineligible skip breakdown (first-failure order): `SKIPPED_INELIGIBLE_NO_WORKLOAD=61`, `SKIPPED_INELIGIBLE_NOT_INTERMEDIATE=59`, `SKIPPED_INELIGIBLE_NO_TARGET_CALL=61`; `NO_GEOMETRY=0`, `NO_FRAME_MATCH=0`, `NO_MODEL_BIN=0`. User estimated run at ~30 seconds; scene was `UNKNOWN`.
+- Classification: `CAPTURED_EMPTY / NO_ELIGIBLE_SAMPLES`. This is NOT evidence of zero coverage, false positives, or correctness. Former runtime-not-captured state preserved as historical; meaningful pathology sample, visual confirmation, and real CPU execution timings remain `NOT_CAPTURED`.
+- Haiku gate review (`haiku-empty-capture-output.json`): read-only check confirmed first-failure gate ordering (`NO_WORKLOAD` -> `NO_GEOMETRY` -> `NO_FRAME_MATCH` -> `NOT_INTERMEDIATE` -> `NO_MODEL_BIN` -> `NO_TARGET_CALL`) and 0x62B target display lists (`p09V4VisibleTargetIndex`). Do NOT promote its inference that movement is strictly required or that modelbin is resolved globally as proven: counters record first failure; zero `no_model_bin` applies only to the 61 dispatches reaching that gate.
+- Relaunch status: root relaunched with dedicated flag (`TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION=1 ./build/TooieRecompiled`), confirmed status `STATE=WAITING_FOR_REQUEST`, zero walks. User positioning character gameplay before root arming.
+
+`NEXT_SINGLE_ACTION` (historical): wait for user ready in character scene then arm and inspect eligible/attempt counters; still no aliases or production fix.
+
+## Prior (2026-10-15) — P09_EXACT_USE_PATHOLOGY_CORRELATION_IMPLEMENTED_AND_REVIEWED
+
+Read [[plan/evidence/p09-current-work]] and [[plan/evidence/p09-exact-use-pathology-correlation]].
+Exact-use pathology correlation diagnostic implemented, validated by host tests, compiled in TooieRecompiled, and approved by independent Haiku review.
+
+- Diagnostics & flags: `TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION` (default-OFF, CPU-only, standalone). Request marker `/tmp/tooie-p09-seam-edge-pathology-correlation.arm` with transactional `::remove == 0` consume, startup stale-marker deletion/ignore, pre-walk 2000 ms cadence gate (`p09CorrelationPreWalk`), and finite safety limits (max 24 heavy attempts, 8 seam searches).
+- Methodology: 9-field keys on both pair members; same-call local plan avoids global transform-all-before-RSP overwrite; strict all-observed metric `PATH_PAIR_FULL_OF_ALL_OBSERVED` includes ambiguous cases in denominator.
+- Gates & review: `p09_exact_use_correlation_test` 1231/1231 passed exit 0; `TooieRecompiled` linked 35/35 exit 0; companion tests 38/38 and 7/7 exit 0; git diff --check exit 0; patch `patches/rt64/p09-exact-use-pathology-correlation.patch` (SHA256 `5108ad3f...`) validated apply/reverse RC:0 on dirty baseline over RT64 `6f1c2d99`. Haiku final review PASS (static/helper/build scope); root arbitration confirmed hash list integrity and exit 0 logs.
+- Runtime boundary: runtime pathology coverage, character scene capture, visual proof, CPU timings remain `NOT_CAPTURED`. No aliases, no production fix, formal P09 pending, cleanup/commit not ready (`NO_COMMIT=YES`, `NO_PUSH=YES`).
+
+`NEXT_SINGLE_ACTION` (historical): user runs one scene capture with `TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION=1 ./build/TooieRecompiled`, arming via `/tmp/tooie-p09-seam-edge-pathology-correlation.arm` in character scene, and inspects correlation output; still no aliases or production fix.
+
+## Prior (2026-10-15) — P09_V2_SEAM_EDGE_CAPTURE_REVIEW_CASE2
+
+Read [[plan/evidence/p09-current-work]] and [[plan/evidence/p09-seam-edge-v2-capture-review]].
+Review of preserved snapshot `/tmp/tooie-p09-seam-edge-dry-run-v2-20261015-030500.txt` completed.
+Operational decision: `CASE2`. Gate 3 `PASS` scoped to 12 same-call detail records and latest-workload accounting only.
+
+- 12 certified same-call detail records verified: 12/12 `REVERSED`, residuals 0.0 in PREV/CUR (<= tol), disjoint vertices and distinct original worlds, 24/24 competitor margins pass (`nextBest - best > marginNeed`). 135 cross-call certified pairs uninspected (detail output capped at 12); competitor choices not independently auditable.
+- Counter semantics arbitrated via `rt64_transform_processor.cpp`: initial Haiku CASE3 suspicion resolved and `CORRECTED/SUPERSEDED` (151 tolpass = 135 cert + 16 ambig; 2063 hash gap is repeated edge inserts; 18 cross boundary gap is isolated projection groups).
+- Visual & perf: user qualitative OFF normal / V2 slow observed; no measured FPS or exclusive search causality. Visual correction pending; no production fix, formal P09 pending, cleanup/commit not ready.
+- Scope: advances exclusively to default-off CPU exact-use pathology correlation; not production seam identity approval or alias implementation.
+
+`NEXT_SINGLE_ACTION` (historical): implement ONLY default-off CPU exact-use pathology correlation checking both pathological uses against full key (workloadId, fbPair, projection, gameCall, triangleLocal, corner, faceCorner, storedVertex, originalWorld); report total, covered, uncovered, ambiguous, and nonpathological selected; no aliases or performance patch now; correlation remains NOT_IMPLEMENTED/NOT_CAPTURED.
+
+## Prior (2026-10-15) — P09_V2_RUNTIME_EXHAUSTIVE_SEARCH_CAPTURED
+
+Read [[plan/evidence/p09-current-work]] and [[plan/evidence/p09-seam-edge-dry-run-v2]].
+User ran V2 (`TOOIE_DIAG_P09_SEAM_EDGE_DRY_RUN_V2=1 ./build/TooieRecompiled`).
+Process finished; no active game process or live flags. Preserved snapshot:
+`/tmp/tooie-p09-seam-edge-dry-run-v2-20261015-030500.txt` (SHA256 `256d5fdd935c7d105810d885f4bbdb4047453606cdc5544bc56ef1e81bbbe6e5`).
+Full counter/timing details documented once in [[plan/evidence/p09-current-work]].
+
+- Search accounting (latest workload): boundaries 4627, same-call evaluated 66588, cross-call raw 664920 (duplicates 554413, unique evaluated 110507), certified 55 same / 135 cross, exact uses 732. Session 2200 workloads cumulative (not latest workload count).
+- Search exhaustiveness: `SAME_CALL_SEARCH_EXHAUSTIVE=YES`, `CROSS_CALL_BUCKET_SEARCH_EXHAUSTIVE=YES`, `CROSS_CALL_UNIQUE_PAIR_GENERATION_EXHAUSTIVE=YES`, all search dropped 0, `EMERGENCY_LIMIT_HIT=NO`, `RETRIEVAL_CELL_SMALLER_THAN_EDGE_SCALE=NO` (correcting fictitious `RETRIEVAL_RADIUS_RISK`), `LATEST_WORKLOAD_COUNTS_EXHAUSTIVE=YES`, `ALIAS_PLAN_EXHAUSTIVE=YES`. Text detail cap (12/190 accepted, 178 dropped) does not invalidate exhaustive search (`DETAIL_OUTPUT_ONLY_SATURATION=YES`).
+- Acceptance scope: search accounting accepted ONLY FOR LATEST WORKLOAD. Structural/coherence review pending (`CERTIFIED` alone insufficient to prove edge identity). Pathology coverage remains `NOT_CAPTURED`.
+- Visual observation: `INCONCLUSIVE` due to extreme slowdown reported by user. Diagnostic changes no rendering, no production fix; persistent glitches do not refute diagnostic. Strong CPU-overhead hypothesis supported by self-times (search 64ms, session peak 439ms), NOT full frame profiler, NOT measured FPS, NOT controlled A-B. Haiku review (`/tmp/p09-haiku-performance.json`) noted callsite cpp:3259 (not unconditional every-frame). A-B qualitativo (`USER_OBSERVED`): volta ao normal sem a flag e desaceleração severa associada ao V2 ativo; confirma associação relatada, mas não é FPS medido, benchmark controlado, prova de custo exclusivo de busca versus outra telemetria nem causalidade de thread/frequência; self-times existentes inalterados (64ms latest, 439ms pico).
+- Build & phase status: Retain build `PASS` from 14/10 with freshness caveat (`BYTE_IDENTITY=UNKNOWN_BUILD_DID_NOT_RECOMPILE_SOURCE`). `P09_FORMAL_PHASE=PENDING / NOT_CLAIMED`. `PRODUCTION_FIX_UPDATED=NO`. `CLEANUP_READY=NO`. `COMMIT_READY=NO`.
+
+`NEXT_SINGLE_ACTION`: inspect certified paired-edge A/B provenance and residual/tolerance/margin details from preserved snapshot; only after coherent certification proceed exact-use pathology correlation. Do not implement aliases yet.
+
+## Prior (2026-10-14) — P09_V2_SEARCH_EXHAUSTIVENESS_VALIDATION_GATE
+
+Read [[plan/evidence/p09-current-work]] and [[plan/evidence/p09-session-handoff]].
+Actual validation gate verified by orchestrator on 2026-10-14 23:51 -0300:
+- Build: `cmake --build build --target TooieRecompiled window_display_test tintro_projection_policy_test` exit 0 (`[3/3] Linking TooieRecompiled`).
+- Unit tests: `./build/window_display_test` exit 0 (`PASS: 38/38 assertions passed`), `./build/tintro_projection_policy_test` exit 0 (`PASS: 7/7 assertions passed`).
+- Trees & diff checks: `git -C TooieRecomp diff --check` exit 0; `git -C BanjoRecomp/lib/rt64 diff --check` exit 0.
+- Source edits: `NONE`. Game launch: `NOT_RUN`. No runtime capture, no visual validation, no production fix.
+- Git HEADs: Tooie `ff5b6d992f5bcdc1f9002a2c351fc68d018e3bcf`, BanjoRecomp `ec859632cfa584e2272d32e46051543429a2baf4`, RT64 `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
+- Freshness caveat (mandatory): incremental build reused the RT64 object compiled on 2026-09-24 (`rt64_transform_processor.cpp.o`) and relinked `TooieRecompiled` on 2026-10-14 23:51. `source mtime <= object mtime <= binary mtime`. V2 symbols (`RT64::p09SeamEdgeDryRunV2WouldAliasExactUse`, `RT64::p09SeamEdgeDryRunV2AliasPlanExhaustive`) are confirmed present via `nm` in both object and executable. This establishes an `INFERENCE` of freshness, NOT byte-for-byte proof of compiling this exact source; `BYTE_IDENTITY=UNKNOWN_BUILD_DID_NOT_RECOMPILE_SOURCE`. Do not claim RT64 source recompiled or that full P09 is proven.
+- Artifact hashes: Source SHA256 `941ae09e8891889c2cf3057d06aaa5a413f2efdf6b4be7fe1a020a786c221a07`, Object SHA256 `2f9887fe227c6aff0bf63d018f9610aca8d62e1784be5a010eeb00b310e1b932`, Executable SHA256 `17873fec359484654d8deeb7ae40302f4a4a44b7a40c6ea0e792c63e91152953`.
+- Multi-model routing: Grok real model `grok-4.7` medium (not fast, `context_window=200000`), Gemini documentation (Gemini 3.8 Flash High), Haiku `claude-haiku-5-5` medium independent read-only review; Sonnet/Opus not used. Initial CLI permission attempts failed/cancelled before gate; final gate completed.
+- Haiku review summary (`/tmp/p09-haiku-review.json`): static check confirmed repair present in `rt64_transform_processor.cpp` for same-call (:2270-2302), cross-call (:2326-2425), and fail-closed safety stops (:2700-2712), but did not follow `gP09V2Plan.exhaustive` assignment to final refusal path (do not claim full review).
+- Status: `ROOT_CAUSE_CLASS=NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`. `RUNTIME_V2_EXHAUSTIVE_CAPTURE=NOT_CAPTURED`. `PATHOLOGY_CORRELATION=NOT_CAPTURED`. `VISUAL_CONFIRMATION=NOT_RUN`. `P09_FORMAL_PHASE=PENDING / NOT_CLAIMED`. `PRODUCTION_FIX_UPDATED=NO`. `CLEANUP_READY=NO`. `COMMIT_READY=NO`.
+- Vault audit: marked pending execution by orchestrator after edits.
+
+`NEXT_SINGLE_ACTION`: user performs isolated V2 capture in character scene, first preserving existing output, enabling ONLY `TOOIE_DIAG_P09_SEAM_EDGE_DRY_RUN_V2=1 ./build/TooieRecompiled`; inspect all exhaustive fields incl `RETRIEVAL_RADIUS_RISK=NO`, certification and exact-use provenance. Captures and pathology coverage remain `NOT_CAPTURED`; no aliases or production fix; cleanup/commit not ready; P09 formal remains pending.
+
+## Prior (2026-09-24) — P09_PAIRED_EDGE_V2_SEARCH_EXHAUSTIVENESS_REPAIR
+
+Read [[plan/evidence/p09-seam-edge-dry-run-v2]].
+The previous runtime file is not a negative cross-call result: same-call
+evaluation stopped at 16384, the 48-entry bucket walk dropped 180588
+entries, and the cross-call dedup probe failed. V2 identity, tolerance
+(`EDGE_SCALE_COEFFICIENT=1e-4`, no 0.25 floor, no world-translation term),
+and rendering are unchanged. Search storage is per workload. Same-call
+pairs are all evaluated, with streaming top-2 partners. Cross-call
+retrieval is an exact 32-unit cell plus its 26 neighbors. Each unordered
+pair is evaluated once from the lower edge id. Fixed candidate caps are
+gone. Absolute bounds that remain are safety stops: a hit sets
+`EMERGENCY_LIMIT_HIT=YES` and refuses an exhaustive alias plan. Certified
+details name both edges. Pathology coverage stays `NOT_CAPTURED`. The game
+was not launched, so the repaired counters are not captured yet.
+
+`ROOT_CAUSE_CLASS=NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`.
+`PRODUCTION_FIX_UPDATED=NO`.
+`CLEANUP_READY=NO`.
+`COMMIT_READY=NO`.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_P09_SEAM_EDGE_DRY_RUN_V2=1 ./build/TooieRecompiled`
+on the character scene and confirm search, certification, and the exact-use
+plan are no longer truncated before any pathology correlation.
+
+## Prior (2026-09-24) — P09_PAIRED_EDGE_SEAM_ALIAS_DRY_RUN_V2
+
+Read [[plan/evidence/p09-seam-edge-dry-run-v2]].
+`TOOIE_DIAG_P09_SEAM_EDGE_DRY_RUN_V2=1` writes
+`/tmp/tooie-p09-seam-edge-dry-run-v2.txt`. V1
+`TOOIE_DIAG_P09_SEAM_ALIAS_DRY_RUN` is unchanged. Certification is a
+vertex-disjoint boundary-edge pair: both endpoints, both orientations
+allowed, PREV and CURRENT, row-vector `mul(localPos4, WORLD)`, no 0.25
+floor, and no world-translation term. The cross-call hash only retrieves.
+Ambiguous partners stay rigid. Exact-use membership is
+`p09SeamEdgeDryRunV2WouldAliasExactUse` (workload, fb pair, projection,
+GameCall, triangle, corner, face corner, stored vertex, original WORLD).
+It is not a WORLD-slot plan. Pathology coverage counters stay
+`NOT_CAPTURED`. The first runtime capture saturated search, so its
+cross-call certified count of 0 is not a negative result.
+`MEMORY_OVERHEAD_STATUS=PARTIAL_ESTIMATE`.
+`BUFFER_GROWTH_AUDIT_COMPLETE=NO`. No alias, remap, clone, shader, VIEW,
+or PROJECTION change. Game was not launched for the repair below. Offline
+before that repair: TooieRecompiled linked, `window_display_test` 38/38,
+`tintro_projection_policy_test` 7/7.
+
+`ROOT_CAUSE_CLASS=NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`.
+`CURRENT_WORLD_INDEX_FIX_STATUS=INSUFFICIENT_GRANULARITY`.
+`PRODUCTION_FIX_UPDATED=NO`.
+
+## Prior (2026-09-24) — P09_SEAM_ALIAS_DRY_RUN_VALIDITY_REVIEW
+
+Read [[plan/evidence/p09-seam-alias-dry-run-validity-review]]. The user
+captured 29 cross-call and zero same-call certified pairs in the latest
+workload; 9857/11903 session workloads had at least one pair. Static review
+finds the current two-frame point coincidence rule insufficient as seam
+identity (`CASE_B`), and the shared `BOUNDS_SATURATED=YES` flag can describe
+search or alias-plan truncation. The 54,234-byte peak is an incomplete
+arithmetic estimate. Corrected V2 pathological JOINs have not been joined
+to exact GameCall/face-corner/vertex/WORLD uses in the dry-run plan.
+No production alias/remap or shader change was made.
+
+`NEXT_SINGLE_ACTION`: implement a versioned default-off CPU seam dry-run
+with paired-edge/provenance identity, per-limit saturation counters and
+exact-use plan keys for the subsequent corrected V2 coverage correlation.
+Do not materialize aliases yet.
+
+## Prior (2026-09-24) — P09_CALL_LOCAL_SEAM_ALIAS_DRY_RUN_PROTOTYPE
+
+Read [[plan/evidence/p09-seam-alias-dry-run]].
+`TOOIE_DIAG_P09_SEAM_ALIAS_DRY_RUN=1` writes
+`/tmp/tooie-p09-seam-alias-dry-run.txt`. It plans call-local seam aliases
+and vertex clones from GameCall face slices after WORLD frame matching.
+It does not change lerp policy, buffers, `worldIndices`, shaders, VIEW, or
+PROJECTION. GameCall identity and original-slot frame match are available
+at that layer. A future alias insert remains before `State::fullSync`
+upload and must inherit the original slot's match. Ambiguous partners stay
+rigid. Unrelated vertices in the same GameCall stay rigid by design.
+Cross-call lookup is a bounded spatial hash and is not seam identity.
+`WORLD_INDEX_IS_16_BIT=YES`. Runtime seam/alias/clone counts are
+`NOT_CAPTURED`. `SNOUT_SPECIFIC_ROOT=UNPROVEN`.
+`CURRENT_WORLD_INDEX_FIX_STATUS=INSUFFICIENT_GRANULARITY`.
+`PRODUCTION_FIX_UPDATED=NO`.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_P09_SEAM_ALIAS_DRY_RUN=1 ./build/TooieRecompiled`
+on the character scene and read the dry-run file. Leave both WORLD-index
+visual toggles off. Do not duplicate matrices or remap `worldIndices` yet.
+
+## Prior (2026-09-24) — P09_CALL_LOCAL_WORLD_INTERPOLATION_ARCHITECTURE_REVIEW
+
+Read [[plan/evidence/p09-call-local-world-interpolation-architecture-review]].
+The user observed that the multi-only WORLD-index candidate brings Kazooie
+feather glitches back and still shows Klungo stripes, Mumbo flicker and Banjo
+snout deformation. `CURRENT_WORLD_INDEX_FIX_STATUS=INSUFFICIENT_GRANULARITY`.
+Static RT64 review found that GameCall face slices persist on CPU, but a
+WORLD slot receives one interpolation result. Shared vertices can carry only
+one WORLD index. `State::fullSync` uploads draw data before render-time
+`TransformProcessor`, so a late remap alone is insufficient. The proposed
+default-off prototype reserves candidate matrix/vertex aliases before the
+existing upload, then certifies endpoint seams after frame matching and uses
+elementwise only for certified call uses. It remains conditional on CPU
+candidate/false-positive counts, 16-bit index capacity, and companion buffer
+invariants. No code, game run, GPU operation, commit or push in this review.
+
+## Prior (2026-09-23) — P09_MULTI_ONLY_WORLD_SELECTOR_VISUAL_CANDIDATE
+
+Read [[plan/evidence/p09-multi-only-world-selector-visual-candidate]].
+The selector audit showed mixed WORLD indices
+(`CURRENT_SELECTOR_SELECTED_MIXED_USAGE_COUNT=20` on a representative
+workload, session peak 31). A second default-off candidate,
+`TOOIE_TEST_P09_MULTI_ONLY_ELEMENTWISE_WORLD=1`, applies the same
+16-entry WORLD lerp only when that workload's GameCalls use the index
+in multi-WORLD calls and in no single-WORLD call. Mixed indices keep
+`RigidBody::lerp`. The original toggle is unchanged and wins if both
+are set. Enable one candidate. Shader, VIEW, and PROJECTION are
+unchanged. Do not ship. Do not add matrix duplication or remapping
+until this visual result is in.
+
+`ROOT_CAUSE_CLASS=NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`.
+`CURRENT_ORIGINAL_SELECTOR_STATUS=PARTIAL_FIX_WITH_REGRESSIONS`.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_TEST_P09_MULTI_ONLY_ELEMENTWISE_WORLD=1
+./build/TooieRecompiled` on the same scene. Leave
+`TOOIE_DIAG_RSP_ENDPOINT_BINDING` and `TOOIE_DIAG_P09_SELECTOR_AUDIT`
+off. Report feathers, backpack/top, Mumbo feathers, Klungo lines,
+Mumbo disappearance, Banjo snout, and any new squash/shear/wobble.
+
+## Prior (2026-09-23) — P09_SELECTIVE_WORLD_SELECTOR_GRANULARITY_AUDIT
+
+Read [[plan/evidence/p09-selective-world-selector-granularity-audit]].
+User A/B: `TOOIE_TEST_P09_SELECTIVE_ELEMENTWISE_WORLD=1` corrects Kazooie
+head feathers, Banjo backpack/top flap, and Mumbo feathers. Banjo
+snout/muzzle stays glitched. Klungo gains moving line/cutting artifacts.
+Mumbo gains an occasional near-one-frame disappearance. Camera and
+ordinary rigid objects look normal. Candidate stays default-off.
+`CURRENT_VISUAL_CANDIDATE_STATUS=PARTIAL_FIX_WITH_REGRESSIONS`.
+
+Selector granularity is the WORLD slot. Marking a slot replaces
+`lerpWorldTransforms[t]` for every later consumer of that index.
+`TRANSFORMPROCESSOR_WORLD_INDEX_SELECTOR_GRANULARITY_SAFE=NO`.
+Cross-GameCall constraints escape. Snout class is `NOT_PROVEN`.
+The audit file was captured after this note; the multi-only candidate
+above is the follow-up. Shader unchanged.
+
+## Prior (2026-09-17) — P09_GENERIC_SELECTIVE_WORLD_INTERPOLATION_PRODUCTION_DESIGN
+
+Read [[plan/evidence/p09-generic-selective-world-interpolation-production-design]].
+Default-off CPU candidate `TOOIE_TEST_P09_SELECTIVE_ELEMENTWISE_WORLD=1`
+applies exact 16-entry WORLD lerp only to world indices used by GameCalls
+with more than one distinct `worldIndices` slot. Other WORLDs keep
+`RigidBody::lerp`. VIEW/PROJECTION interpolation unchanged. Failed W-sign
+shader snap is disabled. User visual result is recorded in the 2026-09-23
+audit above. Do not promote.
+
+## Prior (2026-09-16) — P09_STANDARD_SLERP_WORLD_PRODUCTION_CANDIDATE_DISCRIMINATOR
+
+Read [[plan/evidence/p09-standard-slerp-world-production-candidate-discriminator]].
+CPU-only `STANDARD_SLERP_WORLD` arm is implemented on repaired V2
+shader-equivalent pairing. Clip is
+`mul(LIVE_POS4, mul(STANDARD_SLERP_WORLD, mul(LIVE_VIEW, LIVE_PROJECTION)))`.
+Rotation only uses explicit shortest-arc SLERP (`p09StandardSlerp`);
+T/S/skew/perspective match production decompose/recompose. Production
+HLSL and Transform/Projection interpolation are unchanged. Game was not
+launched. Offline: TooieRecompiled linked, `window_display_test` 38/38,
+`tintro_projection_policy_test` 7/7, synth 14/14,
+`STANDARD_WORLD_SLERP_REFERENCE_VALID=YES`.
+
+Prior ELEMENTWISE recapture (`PROVEN`):
+`ROOT_CAUSE_CLASS=NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`.
+Do not ship elementwise WORLD. Quaternion-law correlation is not yet a
+sufficient cause.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste STANDARD_SLERP_WORLD_* JOIN /
+worldspace / pathology / rigidity keys.
+
+## Prior (2026-09-16) — P09_ELEMENTWISE_WORLD_INTERPOLATION_CAUSAL_DISCRIMINATOR
+
+Read [[plan/evidence/p09-elementwise-world-interpolation-causal-discriminator]].
+User recapture: elementwise WORLD is linear, fixes 156/156 corrected
+pathologies, reduces articulated gap, and introduces material
+nonrigidity. Do not promote it to production.
+
+## Prior (2026-09-16) — P09_REPAIR_CPU_DIAGNOSTIC_SHADER_SEMANTICS
+
+Read [[plan/evidence/p09-cpu-diagnostic-shader-semantics-repair]].
+CPU clip diagnostics now use `mul(pos4,mul(WORLD,VIEWPROJ))`, matching
+SPIR-V `OpMatrixTimesMatrix(W,Q)` then `OpVectorTimesMatrix(p,WQ)`.
+Physical WORLD is `mul(pos4,WORLD)`; camera-relative is
+`mul(pos4,mul(WORLD,VIEW))`. Status schema is
+`P09_RSP_ENDPOINT_BINDING_V2_SHADER_EQUIVALENT`. Legacy MODELVIEW/hierarchy
+and stale `VIEW_WORLD_ROOT_CLASS=CROSS_STREAM_TEMPORAL_COHORT_MISMATCH`
+claims are superseded. Pose reject reasons are separated; actual pose
+endpoints are checked. No production HLSL/upload change. Game root
+`UNRESOLVED`. Offline acceptance is `PASS`: synth 9/9, static SPIR-V
+match, TooieRecompiled linked, `window_display_test` 38/38,
+`tintro_projection_policy_test` 7/7.
+
+## Prior (2026-09-15) — P09_CPU_SHADER_MATRIX_SEMANTICS_AND_HOMOGENEOUS_AUDIT
+
+Read [[plan/evidence/p09-cpu-shader-matrix-semantics-and-homogeneous-audit]].
+`PROVEN`: compiled Vulkan shader applies `p_row * (WORLD * VIEWPROJ)`;
+old CPU helpers applied `(VIEWPROJ * WORLD) * p_column`. That mismatch is
+the reason this repair exists. Old factorial/pose/WORLD metrics are not
+shader-equivalent. FORCE_CURRENT visual evidence survives separately.
+
+## Prior (2026-09-15) — P09_IMPLEMENT_EXACT_ORDER_VALIDATED_CAMERA_POSE_VIEW
+
+Read [[plan/evidence/p09-exact-order-validated-camera-pose-view]].
+CPU arm `EXACT_ORDER_VALIDATED_CAMERA_POSE_VIEW` is implemented, default-off,
+on the same LLLL samples. Standard mathematical SLERP (not the RT64 helper).
+Exact order `((POSE_DERIVED_LIVE_VIEW*LIVE_PROJ)*LIVE_WORLD)*LIVE_POS4`.
+Pose JOIN / pathology / relative-path / WORLD_H.w / WORLD SLERP-law keys
+remain `NOT_CAPTURED`. `ROOT_CAUSE_CLASS=UNRESOLVED`. Do not ship a
+production fix.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste the `POSE_VIEW_*` /
+`POSE_DERIVED_VIEW_MATCHES_SAFE_CLASS` / pathology coverage /
+relative-deviation / `WORLD_H_W_*` / `WORLD_SLERP_LAW_*` keys.
+
+## Prior (2026-09-15) — P09_INDEPENDENT_ARCHITECTURE_ROOT_CAUSE_REVIEW
+
+Read [[plan/evidence/p09-independent-architecture-root-cause-review]].
+Latest status confirms 249 pathological JOINs on aligned cohorts, zero on
+misaligned cohorts; mapping-coherent fallback `REFUTED` for this capture.
+`ROOT_CAUSE_CLASS=UNRESOLVED`. CLCL returns to the endpoint reference;
+do not ship it or infer a camera root solely from its safe metrics.
+
+Static/CPU findings: VIEW interpolates inverse-camera entries directly.
+The bundled quaternion helper plus RT64's `1-weight` has correct endpoints
+but is not mathematical constant-speed SLERP. WORLD JOIN drops homogeneous
+w; its xyz ratios do not prove coherence of the complete projected input.
+These are proof boundaries, not authorization for hierarchy or W fixes.
+
+## Prior (2026-09-15) — P09_MAPPING_COHERENCE_FALLBACK_COUNTERFACTUAL
+
+Do **not** ship CLCL. Do not implement production yet.
+
+Static correction of the 12 class-B mismatches: they are **not**
+proven VIEW-prev-workload-A vs WORLD-prev-workload-B. VIEW is
+mapped and interpolates PREV→CURRENT; WORLD is unmapped so
+TransformProcessor duplicates CURRENT as both endpoints. The
+defect may be the same numeric `curFrameWeight` applied to
+VIEW PREV→CURRENT vs WORLD CURRENT→CURRENT.
+
+CPU diagnostic keeps class A–E, `MISMATCH_CALL_*`,
+`COHORT_ALIGNED_LIVE` (unmappable, no synthesized WORLD PREV),
+and adds `MAPPING_COHERENT_LIVE`: interpolate VIEW+WORLD only
+when both have a valid PREV pair; otherwise snap both streams
+to CURRENT for that GameCall/sample. Exact order
+`((VIEW*LIVE_PROJ)*WORLD)*LIVE_POS`. Shader unchanged.
+New keys `NOT_CAPTURED`. Evidence:
+[[plan/evidence/p09-mapping-coherence-fallback-counterfactual]].
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste
+`MAPPING_COHERENT_*` `MAPPING_COHERENT_IS_LOCALIZED`
+`TEMPORAL_COHORT_MISMATCH_CORRELATES_WITH_PATHOLOGY`
+`PATHOLOGICAL_ON_B_*` `CLASS_B_MAPPING_ASYMMETRY_EXPLAINS_CATASTROPHIC_GLITCH`
+`CLASS_B_WORLD_PREV_RECOVERABLE`
+`COHORT_ALIGNED_*` `MISMATCH_CALL_*`. No GPU readback. No commit.
+
+## Prior (2026-09-15) — P09_TEMPORAL_COHORT_MISMATCH_CAUSAL_PROOF
+
+User recapture of the previous diagnostic:
+
+```text
+COHORT_BOTH_MAPPED=12896
+COHORT_VIEW_MAPPED_WORLD_UNMAPPED=12
+COHORT_VIEW_MATCH_PREV_WORKLOAD_MISMATCH=0
+LLLL_PATHOLOGICAL=288 (CLCL fixes all 288)
+SAME_COHORT_COMPOSITE_MATCHES_SAFE_CLASS=NO
+```
+
+CPU classifies JOIN/pathology by temporal cohort class A–E and
+runs `COHORT_ALIGNED_LIVE` without CURRENT snap. Evidence:
+[[plan/evidence/p09-temporal-cohort-mismatch-causal-proof]].
+
+## Prior (2026-09-15) — P09_EXACT_ORDER_VIEW_WORLD_TEMPORAL_COHORT_FORENSIC
+
+User recapture: LIVE world-space JOIN preserves attachments
+(MAX 1.006 vs endpoints 1). Hierarchy interpolation is `REFUTED`.
+Previous MODELVIEW counterfactual reordered PROJECTION and is
+`NO` for root cause. Exact-order factorial still holds: CLCL is
+the safe class; VIEW is the strongest single factor. Do **not**
+implement CURRENT VIEW+WORLD. Do not reopen hierarchy.
+
+CPU diagnostic now traces VIEW/WORLD source cohorts (including
+VIEW match-time prev workload vs ordinal interp prev), exact-order
+LLLL/CLLL/LLCL/CLCL pathological attribution, homogeneous W on
+that set, and SAME_COHORT_COMPOSITE
+`lerp((PREV_VIEW*LIVE_PROJ)*PREV_WORLD,(CUR_VIEW*LIVE_PROJ)*CUR_WORLD)`
+without moving PROJECTION. Status ~1 Hz. Shader unchanged.
+New keys `NOT_CAPTURED`. Evidence:
+[[plan/evidence/p09-exact-order-view-world-temporal-cohort-forensic]].
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste
+`/tmp/tooie-rsp-endpoint-binding-status.txt`
+`VIEW_PREV_SOURCE` / `VIEW_CURRENT_SOURCE` /
+`WORLD_PREV_SOURCE` / `WORLD_CURRENT_SOURCE` /
+`VIEW_WORLD_*_TEMPORAL_COHORT_ALIGNED` /
+`VIEW_WORLD_USE_SAME_NUMERIC_WEIGHT` /
+`VIEW_WORLD_WEIGHT_HAS_SAME_TEMPORAL_INTERVAL` /
+`LLLL_PATHOLOGICAL_*` /
+`VIEW_WORLD_INTERACTION_MANIFESTS_AS_HOMOGENEOUS_W_CANCELLATION` /
+`SAME_COHORT_COMPOSITE_*` / `CLCL_COUNTERFACTUAL_VALID` /
+`VIEW_WORLD_ROOT_CLASS`. No GPU readback. No commit.
+
+## Prior (2026-09-15) — P09_VIEW_WORLD_INTERACTION_ROOT_DISCRIMINATOR
+
+16-way factorial captured: CLCL is the minimum set matching
+ALL_CURRENT. World-space JOIN recapture later closed hierarchy.
+Previous MODELVIEW order is invalid. Evidence:
+[[plan/evidence/p09-view-world-interaction-root-discriminator]].
+
+## Prior (2026-09-14) — P09_TFPOS_FACTORIAL_TERM_ATTRIBUTION
+
+World-matrix non-rigidity is `REFUTED` as the dominant P09 cause
+(user recapture: decompose 123630/0 valid, LIVE JOIN MAX 48860 vs
+RIGID_WORLD 48902, correlation NO). PR22 stays closed.
+
+LIVE FAIL / POLICY_A FAIL / shader-local ALL CURRENT tfPos PASS.
+CPU 16-way LIVE/CURRENT factorial of VIEW, PROJECTION, WORLD,
+POSITION. User recapture: CLCL is the safe class. Evidence:
+[[plan/evidence/p09-tfpos-factorial-term-attribution]].
+
+## Prior (2026-09-14) — P09_WORLD_MATRIX_INTERPOLATION_RIGIDITY_FORENSIC
+
+Complete JOIN recapture is VALID (`JOIN_PAIR_COUNT=80190`,
+coincident=80190). POLICY_A kills JOIN phase disagreement
+(LIVE max 46.4 → 0.121) but spatial JOIN P95/P99 barely
+changes (LIVE 0.164/0.648 vs POLICY_A 0.164/0.633). Coherent
+CURRENT scopes closed (`BEST_COHERENT_SCOPE=NONE`). Production
+`worldMat` is `RigidBody::lerp` TRS+SLERP when decompose is
+valid (`TransformGroup.decompose` default true), **not**
+element-wise; fallback is element-wise 3x3. View cameras
+default decompose **off** (element-wise). CPU diagnostic now
+measures PREV/CURRENT/LIVE rigidity and a `RIGID_WORLD` JOIN
+counterfactual. Runtime rigidity keys `NOT_CAPTURED`. Shader
+unchanged. Evidence:
+[[plan/evidence/p09-world-matrix-interpolation-rigidity-forensic]].
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste
+`/tmp/tooie-rsp-endpoint-binding-status.txt`
+`PREV_WORLD_*` / `LIVE_WORLD_*` /
+`ENDPOINT_WORLDS_ARE_RIGID` /
+`LIVE_WORLD_INTERPOLATION_INTRODUCES_NONRIGIDITY` /
+`LIVE_NONRIGIDITY_CORRELATES_WITH_JOIN_ERROR` /
+`RIGID_WORLD_JOIN_*` /
+`RIGID_WORLD_MATERIALLY_REDUCES_JOIN_ERROR`. No GPU
+readback. No commit.
+
+## Prior (2026-09-14) — P09_DIAGNOSTIC_HEAP_CRASH_FORENSIC
+
+JOIN recapture was VALID (`JOIN_PAIR_COUNT=53946`) until a native
+`double free or corruption (out)` abort on feather pickup. Core
+PID 217569: gfx thread and RT64 render worker were both in
+`p09PercentileCopy` on the process-global residual vectors. Overlay
+unload is not the free site. `WORLD_TO_BONE_BOUND_COUNT=0` is
+last-dispatch, not a mapping contradiction. Status writes are now
+tmp+rename. Do not infer `BEST_COHERENT_SCOPE`. POLICY_A kills JOIN
+catastrophes but does not solve ordinary P95/P99 or the visual
+glitch. Production `RSPProcessCS` unchanged. Evidence:
+[[plan/evidence/p09-diagnostic-heap-crash-forensic]].
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste a complete
+`/tmp/tooie-rsp-endpoint-binding-status.txt` including
+`JOIN_DIAGNOSTIC_VALID`, `JOIN_PAIR_COUNT`, `LIVE_JOIN_*`,
+`POLICY_A_JOIN_*`, `*_JOIN_PHASE_DELTA`,
+`PER_TRANSFORM_CURRENT_VERTEX_PERCENT`,
+`PER_DRAW_CURRENT_VERTEX_PERCENT`,
+`COMPONENT_CURRENT_VERTEX_PERCENT`,
+`PER_DRAW_CURRENT_GAMECALL_PERCENT`, `PER_*_TRIGGER_COUNT`,
+`PER_*_JOIN` metrics, `BEST_COHERENT_SCOPE`,
+`CPU_DIAG_SHARED_STATE_LOCKED`, `STATUS_WRITE_ATOMIC`. No GPU
+readback. No commit.
+
+## Prior (2026-09-14) — P09_JOIN_DIAGNOSTIC_REPAIR_AND_PER_DRAW_AUDIT
+
+Prior capture was VALID for residual triangles (`34060`) and INVALID
+for JOIN (`JOIN_PAIR_COUNT=0`). First dead gate: mixed-world edges
+inside one triangle, with logical bones `79/100…` compared to
+concrete `worldIndices`. Attachment is V7 JOIN topology (cross-face
+/ cross-draw), not a mixed-transform triangle. PER_DRAW envelope
+`MAX=1.026 P99=1` is independent of JOIN and was untrustworthy
+without CURRENT-snap percent. CPU diagnostic now maps world→bone
+from V7 OWN/JOIN DLs, pairs articulated nearest verts, and emits
+PER_DRAW vertex/GameCall CURRENT percents. Production
+`RSPProcessCS` unchanged.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` and paste `JOIN_DIAGNOSTIC_VALID`,
+`JOIN_PAIR_COUNT`, `LIVE_JOIN_*`, `POLICY_A_JOIN_*`,
+`*_JOIN_PHASE_DELTA`, `PER_DRAW_CURRENT_VERTEX_PERCENT`,
+`PER_DRAW_CURRENT_GAMECALL_PERCENT`,
+`PER_DRAW_IS_EFFECTIVELY_ALL_CURRENT`, `PER_*_TRIGGER_COUNT`,
+`BEST_COHERENT_SCOPE`. No GPU readback. No commit.
+
+## Prior (2026-09-13) — P09_SAFE_ENDPOINT_SCREENSPACE_INTERPOLATION_FORENSIC
+
+Valid residual capture (`33020` triangles). Zero-cross is the
+dominant residual class (`32561`); triangle-consistent CURRENT does
+not solve it (`MAX` still `6.89`). POLICY_A cuts catastrophes
+(`121`→`13.6`) but the visual glitch remains.
+
+CPU binding diag now also counterfactuals **homogeneous clip lerp**
+and **NDC lerp** (crossings → CURRENT), LIVE NDC-segment overshoot,
+and edge vs endpoint envelope. Shader/policy unchanged; do not
+implement until recapture shows a candidate strongly dominates LIVE
+and POLICY_A.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` (normal high-rate) and paste
+`CLIP_LERP_*` / `NDC_LERP_*` /
+`ZERO_CROSS_LIVE_NDC_OVERSHOOT_*` /
+`BEST_TEMPORAL_POSITION_POLICY`. No GPU readback. No commit.
+
+## Prior (2026-09-13) — P09_RESIDUAL_TRIANGLE_DIAGNOSTIC_REPAIR
+
+Prior capture: intermediate feather verts 63805, target DL mask
+`0x3fff`, but `RESIDUAL_TRIANGLE_COUNT=0` (`INVALID`). First dead
+gate was CPU selection: `anyFeather` + `curOk`/`kP09EdgeFloor`, not
+the V4 visible 0x62B face walk. Residual now reuses V4 target DLs
+(14 + extra logicals), session-accumulates, and emits skip/valid
+keys. Production shader/policy unchanged.
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` (normal high-rate) and paste
+`/tmp/tooie-rsp-endpoint-binding-status.txt` including
+`RESIDUAL_DIAGNOSTIC_VALID`, `RESIDUAL_TRIANGLE_COUNT`,
+`RESIDUAL_TARGET_DL_CALL_COUNT` / `RESIDUAL_FACE_COUNT` /
+`RESIDUAL_*_SKIP_*`, POLICY_A_*/LIVE_*/CROSS_*/TRIANGLE_CURRENT_*.
+No GPU readback. No commit.
+
+## Prior (2026-09-12) — P09_RESIDUAL_VISUAL_DEFORMATION_AFTER_POLICY_A
+
+User visual: normal high-rate `GLITCH`; selective POLICY_A `FAIL`;
+shader-local all-CURRENT `PASS`; `TOOIE_DIAG_RSP_MARK_W_CROSSING=1`
+`A / PASS`. `GPU_W_SIGN_BRANCH_EXECUTES: PROVEN`. Do not treat the
+marker magnitude as a GPU measurement.
+
+The visible feather defect is moderate screen-space stretch
+(roughly 0.5x–1x apparent character size), not a 5×/50×
+CPU “explosion”. `POLICY_A_EXPLOSION_COUNT=0` does **not** prove
+visual correctness. `POLICY_A_MAX_EXPANSION_RATIO` only updated
+when `ratio >= 5` (`OLD_POLICY_A_MAX_METRIC_WAS_FILTERED: YES`).
+
+CPU binding diag now records unfiltered LIVE / POLICY_A /
+TRIANGLE_CURRENT edge and NDC residuals vs ALL_CURRENT, plus
+0/1/2/3 crossing-vertex classes. Production shader unchanged.
+Residual numbers are `NOT_CAPTURED` until recapture. Evidence:
+[[plan/evidence/p09-projective-w-production-fix]].
+
+`NEXT_SINGLE_ACTION`: `TOOIE_DIAG_RSP_ENDPOINT_BINDING=1
+./build/TooieRecompiled` (normal high-rate, no force-CURRENT, no
+W-crossing marker) and paste `/tmp/tooie-rsp-endpoint-binding-status.txt`
+POLICY_A_* / LIVE_* / CROSS_* / TRIANGLE_CURRENT_* / ZERO_CROSS_*
+keys. No GPU readback. No commit.
+
+## Prior (2026-09-12) — P09_HUMAN_OBVIOUS_GPU_BRANCH_MARKER
+
+The previous `TOOIE_DIAG_RSP_MARK_W_CROSSING=1` NDC offset
+`(+0.20,-0.12)` was too subtle for binary user validation.
+The same default-off env now applies a human-obvious bounded
+horizontal NDC shift only inside `prevClipW * curClipW <= 0`
+after `tfPos = curClip`: `tfPos.x += 0.70 * tfPos.w` (~35% of
+screen width). User visual: `A / PASS`.
+`GPU_W_SIGN_BRANCH_EXECUTES: PROVEN`. Production W-sign policy
+unchanged when the env is unset. Evidence:
+[[plan/evidence/p09-projective-w-production-fix]].
+
+## Prior (2026-09-12) — P09_SELECTIVE_GPU_BRANCH_EXECUTION_PROOF
+
+Authoritative CPU replay: intermediate feather 68770, endpoint
+crossings 926, sidecar=witness 926/926, `POLICY_A_EXPLOSION_COUNT=0`.
+Selective `prevW*curW <= 0` is **compiled and default-on** in a normal
+`./build/TooieRecompiled` run. Force-CURRENT only ORs into the same
+`tfPos = curClip` path. Remaining CPU-vs-GPU contradiction is
+whether the GPU W-sign branch actually runs on visible feathers.
+The first branch marker (`+0.20,-0.12` NDC) was too subtle.
+Evidence: [[plan/evidence/p09-projective-w-production-fix]].
+
+## Prior (2026-09-12) — P09_RSP_SHADER_EXECUTION_AND_BUFFER_VISIBILITY_PROOF
+
+Live session sidecar/witness A/B is **equal** (`108569`/`108569`,
+feather `1698`/`1698`, max clip-W and matrix diffs `0`).
+`SIDECAR_CONTENT_MATCHES_WITNESS: PROVEN`. Target DL mask `0x3fff`,
+feather world mask `0x1ff`. Construction/pair/aspect/W-sign policy
+unchanged.
+
+Remaining question: why the visual glitch remains if the GPU
+candidate should switch the 1698 crossing feather vertices to
+CURRENT. Static upload: endpoint viewProj/world are submitted in
+the same BufferUploader batch as interpolated t17/t18, copied
+before `RSPProcess` dispatch, after-copy barrier is
+`RenderBarrierStage::ALL`, and the graphics worker `wait()`s before
+the next overwrite. SPIR-V of the production blob: Binding 22/23,
+`prevW*curW <= 0`, CURRENT clip phi, phi feeds `dstPos`. Tasks 1–3
+do not close the remaining visual fail. Intermediate-only counts
+are instrumented, not yet recaptured live.
+
+Default-off `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1` forces
+`RSPProcessCS` `tfPos` to endpoint CURRENT (shader-local only).
+Evidence: [[plan/evidence/p09-projective-w-production-fix]].
+
+## Prior (2026-09-12) — P09_ENDPOINT_SIDECAR_VS_WITNESS_RECONCILIATION
+
+User live bind file: correct t22/t23 **buffer objects**;
+session A/B later proved sidecar content equals the CPU witness
+(`108569`/`108569`). The earlier last-dispatch `0` vs VERSION=4
+`1292` was last-dispatch overwrite, not a construction bug.
+Policy unchanged.
+
+## Prior (2026-09-12) — P09_PROJECTIVE_W_PRODUCTION_CANDIDATE
+
+VERSION=4: 75 explosions, all with clip.w sign change. Per-vertex
+current-endpoint fallback implemented. User visual **FAIL**.
+Superseded by the failed-candidate audit above.
+
+## Prior (2026-09-09) — P09_RELATIVE_VIEW_WORLD_INTERPOLATION_ROOT_CAUSE
+
+VERSION=2: live explosions 51, SIMPLE also 51 (`ratioS≈live`).
+PR23 SIMPLE is `REFUTED` for the captured explosions. Do not port
+PR22/23. World DECOMPOSE is not a sufficient root.
+
+Dual B/C signatures: CURRENT viewProj fixes `curId=974`; CURRENT
+world fixes `curId=1019/1138`. Working class was independent RT64
+interpolation of coupled view and world; VERSION=3 **invalidated**
+the combined-relative experiment. Evidence:
+[[plan/evidence/p09-relative-view-world-interpolation-root-cause]].
+
+## Prior (2026-09-09) — P09_BONED_INTERPOLATION_COUNTERFACTUAL
+
+Live untagged 0x62B worlds interpolate as **DECOMPOSE** (`AUTO` →
+`decompose=true`; `RigidBody::lerp` TRS of already-composed worlds).
+Wrong-occurrence pairing is **not** proven for the 44 explosions.
+Do **not** add another mixed-time CURRENT visual override.
+
+The same default-off CPU witness (`TOOIE_DIAG_FEATHER_TEMPORAL_COHERENCY=1`)
+now reconstructs `G_EX_INTERPOLATE_SIMPLE` offline via
+`lerpMatrixComponents` and does **not** feed it to rendering.
+Prior status lacked endpoint matrices, so SIMPLE counts need a
+**new capture** (`VERSION=2`). Evidence:
+[[plan/evidence/p09-boned-interpolation-counterfactual]].
+
+`NEXT_SINGLE_ACTION`: user recapture with
+`TOOIE_DIAG_FEATHER_TEMPORAL_COHERENCY=1` only; do not implement
+Tooie GeoCmd tagging until SIMPLE numbers land. No GPU readback.
+No `FORCE_CURRENT_FRAME`.
+
+## Prior (2026-09-09) — P09_WORLD_OCCURRENCE_IDENTITY_ROOT_CAUSE_AUDIT
+
+`39` worldIndex values are a session union. V5C token-only.
+Wrong-occurrence pairing not proven. CPU term is WORLD DECOMPOSE.
+Evidence: [[plan/evidence/p09-world-occurrence-identity-root-cause-audit]].
+
+## Prior (2026-09-09) — P09_PASSIVE_HIGH_RATE_TEMPORAL_COHERENCY_WITNESS
+
+Default-off CPU witness reconstructed the live intermediate clip
+equation. Capture: 58.596× explosion, vel always 0, view/proj stable.
+Evidence: [[plan/evidence/p09-passive-high-rate-temporal-coherency-witness]].
+
+## Prior (2026-09-09) — P09_TEMPORAL_COHERENCY_ROOT_CAUSE
+
+Normal high framerate `GLITCH` (including after removing the
+projection-only diagnostic: no leak). Original framerate `FIXED`.
+V5C nine-world CURRENT `SAME`. Global
+`TOOIE_DIAG_FORCE_CURRENT_FRAME=1` `FIXED`. Projection-only CURRENT
+is `INVALID_TEMPORALLY_INCOHERENT` (glitch plus severe ghosting).
+That experiment is **not** causal evidence that ProjectionProcessor
+is the original root. Its code was removed.
+
+Do not add another per-component CURRENT override. Do not turn
+`FORCE_CURRENT_FRAME` into production: it repeats current game frames
+instead of interpolating them. Remaining class: interpolation at a
+shared intermediate `w`, or AUTO match pairing of previous
+view/world. Evidence:
+[[plan/evidence/p09-temporal-coherency-root-cause]].
+
+## Prior (2026-09-09) — P09_HIGH_RATE_FORCE_CURRENT_PROJECTION
+
+Projection-only CURRENT is `INVALID_TEMPORALLY_INCOHERENT`. Code
+removed. Evidence:
+[[plan/evidence/p09-high-rate-force-current-projection]],
+[[plan/evidence/p09-temporal-coherency-root-cause]].
+
+## Prior (2026-09-09) — P09_HIGH_RATE_FORCE_CURRENT_FRAME
+
+Global current-frame diagnostic with high refresh and extra renders is
+`USER_OBSERVED` `FIXED`. V5C remained `SAME`. Evidence:
+[[plan/evidence/p09-high-rate-force-current-frame]]. Isolation:
+[[plan/evidence/p09-high-rate-force-current-projection]].
+
+## Prior (2026-09-09) — P09_FEATHER_NO_INTERP_V5C
+
+V5B `NO_INTERP` covered only 79, 100–105. Visible JOIN triangles
+directly use parent world transforms 107 (`0x592`/`0x61E`) and 108
+(`0x4B0`). V5C extended the same default-off seam to all nine bones.
+User visual: `SAME`. Evidence:
+[[plan/evidence/p09-feather-no-interp-v5c]].
+
+## Prior (2026-09-09) — P09_BANJORECOMP_TRANSFORM_TAGGING_PORTABILITY_AUDIT
+
+BanjoRecomp PR #22/#23 is a real explicit `gEXMatrixGroup` architecture
+Tooie does not have. Live 0x62B uses ungrouped RT64 AUTO. The tagging
+port is still not a ready production fix. V5B did **not** cover JOIN
+parents 107/108; that interpolation-closure claim is superseded by
+[[plan/evidence/p09-feather-no-interp-v5c]]. PR #23 SIMPLE is
+causally relevant again as a *candidate* only if V5C is
+`FIXED`/`BETTER`. Evidence:
+[[plan/evidence/p09-banjorecomp-transform-tagging-portability-audit]].
+
+## Prior (2026-09-08) — P09_ANIMATION_CLIP_TRANSITION_AND_AUTHORED_KEY_FORENSIC
+
+V1 capture plus ROM keys: intra-clip sample time is continuous.
+The five negative time events are clip changes whose new t equals
+one ADE4 step after start-at-0. `func_800E0170` / `func_800E04C0`
+sample cart flag-`0x16` clips. Clip 22 bone 107/108 raw 0x28 matches
+authored cubic Euler/scale (max rot error ~1e-6 rad, scale ~1e-8).
+The old 30/60/120° 107 steps are authored walk↔idle interpolations
+of a 180° Y rest vs identity, not a sampler bug. Do not call GPU
+bug. No production fix. Evidence:
+[[plan/evidence/p09-animation-clip-transition-and-authored-key-forensic]].
+
+`NEXT_SINGLE_ACTION`: user visual A/B vs original N64/Angrylion of
+combined 0x62B Kazooie walk to see whether the authored 107 scale
+ramp and 108 nod are the remaining visible wobble. Do not add a
+witness. Do not GPU-readback. Do not production-fix. Do not start
+presentation.
+
+## Prior (2026-09-08) — P09_FEATHER_ANIM_SAMPLE_TIME_V1
+
+Default-off CPU witness `TOOIE_DIAG_FEATHER_ANIM_SAMPLE_TIME=1`
+captured 1451 `baanim_update` ticks and 384 CSV rows. ADE4 only
+advances the timer; `func_800E0170` writes 0x28 records. Luna
+`ANIMATION_SAMPLE_TIME_BUG` from negative deltas is `CORRECTED` in
+[[plan/evidence/p09-animation-clip-transition-and-authored-key-forensic]].
+Evidence: [[plan/evidence/p09-feather-anim-sample-time-v1]].
+
+## Prior (2026-09-08) — P09_UPSTREAM_CURRENT_BONE_TRANSFORM_SEMANTIC_FORENSIC
+
+Guest current-matrix compose is `parent ⊗ child` XYZW in `func_800AE8A8`,
+then AEAA0/AEBA8 into `AnimMtxList+0x50+(index<<6)`. Offline 991-frame
+0x62B window: product error ≤ 1.6e-7 rad. Additive bytes 8/9 are 0.
+Bone 107 carries uniform scale and the large quantized local steps
+(30°/60°/120° at 1548–1557). Plume roots 103/100 stay locally smooth.
+Clip id and `baanim` sample time are not in existing dumps. Do not call
+GPU bug. No production fix. Evidence:
+[[plan/evidence/p09-upstream-current-bone-transform-semantic-forensic]].
+
+`NEXT_SINGLE_ACTION`: one bounded CPU witness at `baanim_update` /
+`0x8008ADE4` for clip id, sample time/frame, and 0x28 TRS of bones
+79, 100–105, 107, 108 plus one body bone. Do not GPU-readback. Do not
+start presentation/compositing. Do not reopen downstream renderer stages.
+
+## Prior (2026-09-08) — P09_VISIBLE_FEATHER_ALPHA_COVERAGE_TEXTURE_FORENSIC
+
+The twelve plume DLs locally load CI4 64x32 + pal16, set
+`G_TT_RGBA16` and `G_AC_THRESHOLD` during triangles, then restore
+both. Crest `0x4A6`/`0x4B0` and head `0x48F` use `G_TEXTURE on=0`
+and a SHADE-alpha combine with no AC/TT. ST is static ROM; no
+`G_MODIFYVTX` ST; texgen cleared. Texture hashes live on the same
+GameCall as the faces. AC/TT cannot cover crest and have no
+movement-only material driver. Do not call GPU bug. No production
+fix. No new capture. Evidence:
+[[plan/evidence/p09-visible-feather-alpha-coverage-texture-forensic]].
+
+`NEXT_SINGLE_ACTION`: bounded static / command-stream audit of frame
+presentation / compositing / final-image association for the 14
+visible feather DLs. Do not add an alpha, ST, or texture witness.
+Do not GPU-readback.
+
+## Prior (2026-09-07) — P09_POST_POSITION_DRAW_TEMPORAL_AND_DEPTH_STATE_FORENSIC
+
+Face slices, GameCalls, and GameFrame matching stay on the producing
+workload (16-gen V7: 0 association mismatches, exclusive `game_call`
+per DL, `fb_pair=3`). Ring reuse is blocked by GPU wait + barrier.
+The 14 DLs do not set zCmp/zUpd/ZMODE/primDepth; RT64 raster depth is
+otherMode, inherited and body-shared. Do not call GPU bug. No
+production fix. No new capture. Evidence:
+[[plan/evidence/p09-post-position-draw-temporal-and-depth-state-forensic]].
+
+`NEXT_SINGLE_ACTION`: bounded static / command-stream audit of
+color/alpha/coverage and texture-coordinate paths on the 14 visible
+feather DLs. Do not add a position, cull, or temporal witness. Do not
+GPU-readback.
+
+## Prior (2026-09-07) — P09_VISIBLE_FEATHER_CULLING_WINDING_FACE_VISIBILITY_FORENSIC
+
+Pre-append triangle rejection is absent on all 14 visible feather DLs
+(`EXACT_MATCH = static_tri * 1258`, remainder 0). The 14 DLs (and body
+`0x48F`/`0xBC`) preserve inherited `G_CULL_*` and never set it; 27 other
+`0x62B` DLs explicitly clear cull. `G_CULLDL` is absent and a no-op in
+RT64. No negative-determinant feather matrix. Culling/winding status
+`A`. Do not call GPU bug. No production fix. No new capture. Evidence:
+[[plan/evidence/p09-visible-feather-culling-winding-face-visibility-forensic]].
+
+`NEXT_SINGLE_ACTION`: bounded static / command-stream audit of depth /
+occlusion / draw temporal association on the 14 visible feather DLs. Do
+not add another position witness. Do not GPU-readback.
+
+## Prior (2026-09-07) — P09_BOUNDED_CREST_POST_HANDOFF_TRANSFERABILITY_AUDIT
+
+Crest `0x4A6`/`0x4B0` consumes the same `Q'[4]`, V=0, RSPProcess layout,
+TransformProcessor LERP path, and RasterVS path as the plumes. Nested
+`0x03000010` runs before crest `G_VTX`; both crest DLs have zero
+`G_MODIFYVTX`. Join slots 0–4/27–31 do not survive into RSPProcess
+after V3 global-vertex/worldIndex handoff. Full visible-feather
+post-handoff position path is `CLOSED`. Do not call GPU bug. No
+production fix. No new capture. Evidence:
+[[plan/evidence/p09-bounded-crest-post-handoff-transferability-audit]].
+
+`NEXT_SINGLE_ACTION`: bounded static / command-stream audit of triangle
+culling / winding / face visibility on the 14 visible feather DLs. Do
+not add another position witness. Do not GPU-readback.
+
+## Prior (2026-09-07) — P09_VISUAL_GEOMETRY_IDENTITY_AND_SCOPE_FORENSIC
+
+The six closed right-plume DLs do **not** cover the user-visible
+"head feathers" set. Left plume is a complete parallel six-DL tree
+(`0x5C0/0x5D8/0x5F0/0x608/0x61E/0x636`); crest is `0x4A6`/`0x4B0`.
+V6B already submitted those DLs. V7/Q'/RSPProcess remain closed only
+for the right six. GeoCmd parent of both plumes is 107, not head 108
+(`CORRECTED`). No production fix. No new witness. Evidence:
+[[plan/evidence/p09-visual-geometry-identity-and-scope-forensic]].
+
+`NEXT_SINGLE_ACTION`: extend V7 exact-admission / CPU-handoff to the
+eight additional DLs (left six + crest pair). Do not instrument
+RSPProcess. Do not GPU-readback. Do not implement in the forensic turn
+that produced this note.
+
+## Prior (2026-09-07) — P09_NARROW_RSPPROCESS_STRUCTURAL_FORENSIC
+
+`RSPProcessCS` is statically closed as a target-local failure.
+V7 CPU handoff stays `CORRECT`. Q' stays refuted as localized primary
+(shared viewProjIndex 4, 0 large deltas). RSPModify absent. World lerp
+closed (V5B). No production fix. No new witness. Evidence:
+[[plan/evidence/p09-narrow-rspprocess-structural-forensic]],
+[[plan/evidence/p09-feather-postprocess-q-witness-v1]].
+
+`NEXT_SINGLE_ACTION`: determine whether the visible wobble is actually
+produced by the six admitted right-plume DLs (`0x534/0x54C/0x564/0x57C/0x592/0x5AA`)
+versus other `0x62B` geometry, using existing captures and static
+draw/DL identity. Do not instrument RSPProcess. Do not GPU-readback.
+
+## Prior (2026-09-07) — P09_FEATHER_POSTPROCESS_Q_WITNESS_V1
+
+Bounded CPU-only Q' witness is implemented. V7 VERSION=2 CPU handoff
+stays `CORRECT`. World lerp stays closed as primary (V5B). No production
+fix. No V8. No GPU readback. Evidence:
+[[plan/evidence/p09-feather-postprocess-q-witness-v1]],
+[[plan/evidence/p09-post-handoff-structural-forensic]].
+
+`NEXT_SINGLE_ACTION`: user runs one capture
+`TOOIE_DIAG_FEATHER_POSTPROCESS_Q=1 ./build/TooieRecompiled` and inspects
+`/tmp/tooie-kazooie-feather-postprocess-q-v1-status.txt` (`PRELIMINARY_CLASS`,
+`TARGET_SAMPLES`, `BODY_CONTROL_SHARES_TARGET_Q`).
+
+## Prior (2026-09-07) — P09_POST_HANDOFF_STRUCTURAL_FORENSIC
+
+V7 VERSION=2 CPU handoff remains `CORRECT`. Static post-handoff audit:
+target DLs `0x534/0x54C/0x564/0x57C/0x592/0x5AA` and nested `0x03000040`
+(if `seg3=Gfx[0]`) contain **zero** `G_MODIFYVTX`. First remaining
+position writer is `RSPProcessCS`. World-matrix lerp stays closed (V5B).
+ProjectionProcessor still rewrites Q after handoff (not V5B-covered;
+weak for feather-only). Evidence:
+[[plan/evidence/p09-post-handoff-structural-forensic]].
+
+`NEXT_SINGLE_ACTION`: implement one bounded CPU reconstruction of
+RSPProcess inputs after TransformProcessor+ProjectionProcessor (W', Q',
+P, V, viewProjIndex) versus the V7-proven handoff. Do not implement a
+production fix. Do not create a broad V8. Do not GPU-readback.
+
+## Prior (2026-09-07) — P09_V7_HANDOFF_COMPARATOR_AND_JOIN_ROLE_REPAIR
+
+Exact direct-DL admission is working (`APPEND_EXACT_TARGET_MATCH=40124`,
+mask `0x3F`). Do not reopen low-page matching. `byte_mismatch=3` on
+`INITIAL_HANDOFF_OK` rows is a diagnostic stride-4 vs stride-3
+`posFloats` artifact, not a CPU upload bug. Join `0x54C`/`0x564`/`0x592`
+roles are the proven child slots 0–3 / parent slots 28–31 map. Schema is
+now `P09_FEATHER_HANDOFF_V7 / VERSION=2`. Evidence:
+[[plan/evidence/p09-feather-v7-cpu-handoff-implementation]].
+
+`NEXT_SINGLE_ACTION`: user runs one cleaned VERSION=2 capture and inspects
+`APPEND_POSITION_MATCH` and `JOIN_*_ROLE_RESOLVED`.
+
+## Prior (2026-09-07) — P09_V7_EXACT_TARGET_ADMISSION_REPAIR
+
+The durable `0x62B` model-context bridge is working (1297 normalized
+publications, physical base `0x229070`, 0 clears). Zero validated targets in
+the last capture were caused by a base-less `0xFFF` candidate prefilter that
+systematically missed the six true DLs by `+0x70`. Admission is now six
+full-address comparisons against `physical(model_bin)+0x2670+logical*8`.
+Evidence: [[plan/evidence/p09-feather-v7-cpu-handoff-implementation]].
+
+`V7_EXACT_TARGET_ADMISSION_REPAIRED=YES`; `JOIN_UNRESOLVED_IS_BLOCKER=YES`;
+no causal root is claimed. One cleaned V7 capture is authorized.
+
+`NEXT_SINGLE_ACTION`: user runs one bounded V7 capture
+`TOOIE_DIAG_FEATHER_HANDOFF_V7=1 ./build/TooieRecompiled` and inspects
+`APPEND_EXACT_TARGET_MATCH` plus the six per-target exact counts.
+
+## Prior (2026-09-05) — P09_V7_CPU_HANDOFF_IMPLEMENTATION
+
+Implementation evidence: [[plan/evidence/p09-feather-v7-cpu-handoff-implementation]].
+The bounded default-off `P09_FEATHER_HANDOFF_V7 / VERSION=1` witness is now
+implemented in RT64 owning source. Workload-owned generation and append records
+feed the post-append → `State::fullSync` face-slice/source comparison; render
+selection records capture actual matrix-source predicates and referenced matrix
+bytes. Target quotas are independent for `0x534/0x54C/0x564/0x57C/0x592/0x5AA`.
+
+`V7_IMPLEMENTED=YES`; `JOIN_UNRESOLVED_IS_BLOCKER=YES`; no causal root is
+claimed. Build and static checks pass. No game, GPU readback, synchronization,
+commit or push was performed. Manual capture is required next:
+`TOOIE_DIAG_FEATHER_HANDOFF_V7=1 ./build/TooieRecompiled`.
+`NEXT_SINGLE_ACTION`: user runs one bounded V7 capture and inspects its CSV/status
+pair while retaining incomplete join coverage.
+
+The subsequent analysis pass found that both requested V7 output files were
+absent; see [[plan/evidence/p09-v7-cpu-handoff-capture-analysis]]. Older V6/V6C
+files were excluded, and no causal root was selected. The activation repair now
+creates the status heartbeat at enable and records raw APPEND/fullSync/render
+hook counters; the next action is one cleaned direct-binary V7 capture.
+
+## Prior (2026-09-05) — P09_POST_TRIANGLE_ARCHITECTURAL_REVIEW
+
+Static review: [[plan/evidence/p09-post-triangle-architectural-review]].
+Accepted V6C: own meshes `0x5AA/0x57C/0x534` provenance correct, zero stale;
+`0x592` has 468 resolved expected joins and 3,252 unresolved of 3,720.
+`0x03000040 -> 0x0011C870`, zero triangles: leftover hypothesis remains REFUTED.
+V5B NO_INTERP/SIMPLE exclusions remain closed.
+
+**CORRECTED:** `FIRST_BAD_LAYER=AFTER_RSP_TRIANGLE_SUBMISSION` is not proven.
+V6C observes pre-append inputs; distal joins `0x54C/0x564` are not targeted.
+The retained CSV contains no unresolved target join samples or final uploads.
+`JOIN_UNRESOLVED_IS_BLOCKER=YES` for exclusive downstream localization;
+`JOIN_CAN_EXPLAIN_PRIMARY_VISUAL_ARTIFACT=UNKNOWN`.
+`ROOT_CLASS=UNKNOWN / INCOMPLETE_JOIN_AND_CPU_HANDOFF_EVIDENCE`, confidence LOW.
+
+RT64 preserves per-vertex world indices through batching; no normal-path
+compaction/rebase found. Raster position first consumes the index in
+`RSPProcessCS`, not `RSPWorldCS`. First downstream witness: actual face append
+versus `State::fullSync` mesh slice/upload sources, with a bounded render-matrix
+selection continuation. `workloadId=0` during construction requires a separate
+diagnostic generation, not a reused ring-slot key.
+
+`V7_IMPLEMENTED=NO` at review time; superseded by the implementation section
+above. Both dirty worktrees and dirty Plume remain preserved.
+
+## Prior (2026-09-04) — P09_REPAIR_V6_TRIANGLE_WITNESS_AFTER_ZERO_TRI
+
+A real V6 capture wrote schema `P09_SECONDARY_SWAY_KAZOOIE_FEATHER_V6`
+with `TRACKED_BONES_WITH_TRI_MASK=0x00` and no triangle CSV. That is
+**not** missing feather geometry: V5B already had GMTX/VERTEX/POSTMATCH
+`0x7F`. F3DEX2 `G_TRI1`/`G_TRI2` do call the hooked
+`RSP::drawIndexedTri`. V6 stored `FeatherWorldHit` under matrix/match
+workload and cleared `p09DiagnosticMatrixToken` at the first
+world-transform G_VTX, so TRI rows never passed the post-filter.
+
+V6B classifies from per-vertex `worldIndices` first, keeps raw GBI/RSP
+counters, and does not require a tracked active transform or live token
+for initial visibility. Default-off. CSV
+`/tmp/tooie-kazooie-feather-v6b-tri.csv`.
+
+```text
+TEMPORAL_MATRIX_INTERPOLATION_CAUSAL_STATUS: REFUTED_FOR_VISIBLE_FEATHER_CHAIN
+SIMPLE_INTERPOLATION_CAUSAL_STATUS: REFUTED_AS_PRIMARY_FIX
+FULL_VISIBLE_CHAIN_AUTO_IDENTITY_STATUS: CORRECT
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_KAZOOIE_FEATHER_V6B
+V6B_IMPLEMENTED: YES
+V6_HOOK_IS_ON_ACTUAL_RUNTIME_PATH: YES
+V6_DESIGN_BUG: WORLDHIT_KEYED_BY_MATRIX_WORKLOAD_NOT_DRAW_WORKLOAD_AND_TOKEN_CLEARED_BEFORE_TRIANGLE
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+NEXT_SINGLE_ACTION: user runs one V6B capture TOOIE_DIAG_SECONDARY_SWAY=1; inspect RAW_TRI_* then TRI_CLASSIFIED_COUNT and /tmp/tooie-kazooie-feather-v6b-tri.csv
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+```
+
+Do not reopen matrix identity, AUTO previous selection, bone103 source,
+scale, determinant, quaternion continuity, F2L dest, G_MTX operand,
+modelview token lifetime, or SIMPLE as the primary fix.
+
+Feather G_VTX sources are static segment-1 tables. RT64 stores
+`worldIndices=curTransformIndex` at `setVertexCommon`. F3DEX2 velocity is 0;
+displayed GPU position uses current `worldMats[per-vertex index]`. Join DLs
+mix child slots 0–3 with parent 28–31 by design. Own meshes reuse cache
+slots 0–N; reload updates transform state. Type-0x18 does not flush or clear
+the vertex cache. First post-matrix difference from snout: nested type-2
+104/105 plus `G_DL 0x03000040` before own `G_VTX` versus snout first-child
+type-0x18 and `G_DL 0x03000010`. Segment 3 base is `RUNTIME_REQUIRED`.
+
+V6 is diagnostic-only, default-off. CSV `/tmp/tooie-kazooie-feather-v6-tri.csv`.
+Classes: `MATCH_ACTIVE` / `MIXED_JOIN` / `STALE_OR_LEFTOVER` /
+`MIXED_AND_NE_ACTIVE`.
+
+Evidence: [[plan/evidence/p09-kazooie-feather-v6-post-matrix-vertex-path]],
+[[plan/evidence/p09-kazooie-feather-v5-full-chain]],
+[[plan/evidence/p09-session-handoff]],
+[[reverse-engineering/systems/transform-interpolation]],
+[[reverse-engineering/systems/geocmd]],
+[[reverse-engineering/characters/kazooie]].
+
+## Prior (2026-09-04) — P09_KAZOOIE_FEATHER_V5B_DIAGNOSTIC_GATE_REPAIR
+
+The V5 no-interpolation capture was incomplete: only boneAnimID 103 reached
+the token/match/post-match path because `secondary_sway_note_dcf48()` rejected
+the six `Sibling62B` feather nodes. The diagnostic gate is now repaired for
+the seven proven live `0x62B` identities `79, 100, 101, 102, 103, 104, 105`.
+Acceptance requires the live resource, one of those animation IDs, and the
+existing proven type-2 node/index mapping; unrelated `0x62B` siblings remain
+rejected.
+
+Each accepted transform carries its resource ID into its own matrix token.
+The V4 modelview-parallel token stack, per-depth lifetime, child G_MTX slot,
+G_POPMTX restore, bounded type-0x18 restore alias, full-width GPR pointer
+preservation, RT64 identity matching, and guest matrices are unchanged. The
+diagnostic now counts GUEST, MATRIX, GMTX, VERTEX, MATCHED, POSTMATCH, and
+NO_INTERP independently for each tracked bone and emits masks. Complete
+coverage is mask `0x7F`; any other mask reports incomplete.
+
+```text
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_KAZOOIE_FEATHER_V5B
+SIBLING62B_TARGETED_ACCEPT_IMPLEMENTED: YES
+UNRELATED_62B_SIBLINGS_STILL_REJECTED: YES
+FULL_CHAIN_OWN_TOKEN_SUPPORT: YES
+FULL_GPR_POINTER_PRESERVATION_RETAINED: YES
+MODELVIEW_STACK_TOKEN_LOGIC_RETAINED: YES
+FULL_CHAIN_NO_INTERP_OVERRIDE_SUPPORTED: YES
+IDENTITY_MATCHING_UNCHANGED: YES
+GUEST_MATRICES_UNCHANGED: YES
+FULL_CHAIN_COVERAGE_STATUS_IMPLEMENTED: YES
+CAPTURE_CAN_SELF_DECLARE_INCOMPLETE: YES
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: NO (await V5B capture and complete masks)
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+NEXT_SINGLE_ACTION: user runs exactly one V5B no-interpolation capture; inspect masks before interpreting its visual result
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+```
+
+No game was run during this repair.
+
+## Prior (2026-09-04) — P09_KAZOOIE_FEATHER_TRACE_GMTX_TO_ACTUAL_VISIBLE_DISPLAYLIST_AND_RT64_VERTEX_WORKLOAD
+
+Banjo snout V5 remains the clean control (`NO_P09_CAUSAL_FAILURE_OBSERVED`).
+Primary token is still `0x62B/+0x124A0` idx 30 anim 103 (`PROVEN_FOR_CAPTURE`).
+Guest matrix/rotation remain valid (`FIRST_BAD_GUEST_STAGE: NONE_OBSERVED`).
+The fresh V4 capture reaches the real RT64 match path: 328 call contexts,
+500 valid candidates, 126 `matchTransform` matches, and seven one-to-one
+allocator drops. Five drops are `CURRENT_ALREADY_MAPPED` and two are
+`PREVIOUS_ALREADY_USED`; no semantic previous-frame mismatch was observed.
+The V4 witness has no final transform-to-DL/triangle association, so no drop
+is clearly causal for the visible `0x5AA` feather, while visual causality for
+all seven remains `UNKNOWN`. Do not reopen animation producer RE.
+
+Static 0x62B reconstruction (`PROVEN` `STATIC_ROM`/`STATIC_MIPS`): bone 103
+is compact DCF48. Its first child is nested type-2 104, **not** a type-0x11
+`dl=0x534` (that tip is bone 105 `+0x124D0`). Own visible GeoCmd is
+`+0x12580` type-0x11 `dl=0x5AA`; join is `+0x12550` type-0x18 `dl=0x592`.
+All those DLs contain F3DEX2 `G_VTX=0x01` directly plus nested
+`G_DL 0x03000040`. Command order is `MIXED`. V3 `VERTEX_BIND_COUNT=0` is
+`TOKEN_EXPIRES_BEFORE_CHILD_DL`: child 104/105 G_MTX cleared a scalar
+token before any G_VTX. Snout V5 bound because snout's first child is
+type-0x18 with G_VTX immediately after destA.
+
+V4 (default-off) keeps the dest-keyed G_MTX token on a modelview-parallel
+stack, restores it on `G_POPMTX`, and treats type-0x18 same-depth G_MTX as
+a one-shot restore alias. Binding reaches `setVertexCommon` and the real
+`GameFrame::matchTransform` path. The seven drops are not sufficient to target
+the allocator because none is proven visible-causal. A diagnostic-only
+post-match interpolation A/B is now implemented: with
+`TOOIE_DIAG_SECONDARY_SWAY=1 TOOIE_DIAG_FEATHER_INTERP_SIMPLE=1`, only the
+unique primary feather match gets SIMPLE-like component interpolation after
+the existing current/previous pair is selected. AUTO identity and V4
+matching telemetry remain unchanged; the switch is default-off.
+
+```text
+RE_KNOWLEDGE_BASE_PATH: docs/reverse-engineering/
+PRIMARY_WITNESS: KAZOOIE_CARRY_BANJO_HEAD_FEATHER
+LIVE_FEATHER_RESOURCE: 0x62B
+PRIMARY_FEATHER: 0x62B+0x124A0 idx30 anim103
+PRIMARY_FEATHER_VISIBLE_GEOCMD: 0x12580 (type 0x11 dl=0x5AA) and 0x12550 (type 0x18 dl=0x592)
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_KAZOOIE_FEATHER_V4
+GUEST_MATRIX_VALID: YES
+GUEST_ROTATION_VALID: YES
+FIRST_BAD_GUEST_STAGE: NONE_OBSERVED
+FEATHER_COMMAND_ORDER: MIXED
+DOES_PRIMARY_DL_CONTAIN_VERTEX_DIRECTLY: YES
+WHY_V3_SET_VERTEX_WITNESS_SAW_ZERO_ROWS: TOKEN_EXPIRES_BEFORE_CHILD_DL
+CORRECT_TOKEN_BINDING_SEAM: setVertexCommon with modelview-stacked token + type-0x18 restore alias
+FEATHER_V4_IMPLEMENTED: YES
+V4_EXPECTED_TO_REACH_GAMEFRAME_MATCH: PROVEN (133 bound tokens)
+V4_EXPECTED_TO_REACH_MATCHTRANSFORM: PROVEN (126 matched)
+FEATHER_RT64_MATCH_STATUS: AUTO_IDENTITY_CORRECT_OBSERVED (126 matched / 7 allocator drops)
+V4_DROP_AUDIT: NO_CLEARLY_CAUSAL_DROP; 5 CURRENT_ALREADY_MAPPED, 2 PREVIOUS_ALREADY_USED
+MISSING_GROUP_CAUSAL_STATUS: DIAGNOSTIC_A_B_READY (not a production conclusion)
+BANJO_SNOUT_ROOT: NO_P09_CAUSAL_FAILURE_OBSERVED
+PRODUCTION_FIX: NO
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED; OBSERVABILITY_REPAIRED_STATIC
+ROOT_CONFIDENCE: HIGH observability / LOW graphical root
+P09_KNOWLEDGE_PROMOTED_TO_RE_DOCS: YES
+AB_SWITCH_IMPLEMENTED: YES (default-off; primary 0x62B/+0x124A0 bone30 anim103)
+AB_IDENTITY_MATCHING_UNCHANGED: YES
+INTERP_MODE_CONTROL_COUNT: IMPLEMENTED
+INTERP_MODE_SIMPLE_OVERRIDE_COUNT: IMPLEMENTED
+BUILD_RESULT: PASS (TooieRecompiled; Tooie HEAD ff5b6d992f5bcdc1f9002a2c351fc68d018e3bcf dirty; RT64 6f1c2d99 dirty rsp token stack)
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+DIFF_CHECK: PASS
+NEXT_SINGLE_ACTION: user runs one B capture with SIMPLE override and reports visual classification only
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+USER_MANUAL_TEST_REQUIRED_NOW: YES (one B run; no control rerun)
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+## CURRENT (2026-09-05) — V7 EXACT TARGET VALIDATION IMPLEMENTED
+
+The unsafe low-page match remains only a candidate prefilter. Candidates now
+retain full `current_dl` and are validated against the game-side model-bin
+identity using the V6C full runtime-address formula. Only validated records
+increment tracked append counts or `OBSERVED_TARGET_MASK`; unvalidated
+candidates are bounded and labeled with rejection reasons.
+
+```text
+V7_TARGET_MATCH_COLLISION_SAFE_FOR_CAUSAL_USE: YES (after exact validation)
+LOW_PAGE_RESOLVER_ROLE_AFTER_REPAIR: CANDIDATE_PREFILTER_ONLY
+TARGET_VALIDATION_USES_FULL_ADDRESS: YES
+TARGET_VALIDATION_USES_MODEL_CONTEXT: YES
+V7_VALIDATION_STRENGTH_EQUIVALENT_TO_V6C: YES
+TARGET_CANDIDATE_COUNTERS_IMPLEMENTED: YES
+TARGET_VALIDATED_COUNTERS_IMPLEMENTED: YES
+TARGET_REJECTED_COUNTERS_IMPLEMENTED: YES
+OBSERVED_TARGET_MASK_COUNTS_VALIDATED_ONLY: YES
+TRACKED_APPEND_COUNTS_VALIDATED_ONLY: YES
+MANDATORY_COVERAGE_USES_VALIDATED_ONLY: YES
+UNVALIDATED_CANDIDATE_CAN_REACH_CAUSAL_ANALYSIS: NO
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+TOOIE_DIFF_CHECK: PASS
+RT64_DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: YES (one capture authorized; agent did not run it)
+USER_TEST_COMMAND: cd /home/wesley/projetos/N64-Recomp/TooieRecomp && rm -f /tmp/tooie-kazooie-feather-v7-cpu-handoff.csv /tmp/tooie-kazooie-feather-v7-cpu-handoff-status.txt && TOOIE_DIAG_FEATHER_HANDOFF_V7=1 ./build/TooieRecompiled
+NEXT_SINGLE_ACTION: run one bounded V7 capture with the exact-identity bridge
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+## CURRENT (2026-09-05) — V7 LOW-PAGE COLLISION AUDIT
+
+The admission repair is not collision-safe for causal use. The runtime fallback
+implemented in `p09V7TargetIndex` is:
+
+```text
+(current_dl & 0xFFFu) == ((0x2670u + logical_index * 8u) & 0xFFFu)
+```
+
+It compares 12 address bits and discards the upper 20 bits. For example,
+`0x5010` and `0x6010` both satisfy the `0x534` page pattern `0x010`, while
+being different display-list addresses. The exact V6C formula includes the
+physical model-bin base and is therefore not equivalent to this fallback.
+
+`INITIAL_HANDOFF` checks face-slice, source-array, matrix, and (when present)
+`sourceDl == record.currentDl`; those are internal consistency checks and do
+not independently establish model identity. `p09V7RecordAppend` writes the
+candidate and updates `OBSERVED_TARGET_MASK` before those checks. A false
+low-page candidate can therefore reach the V7 CSV and causal completeness
+logic as a trusted target. The repository has no complete static table of all
+runtime model/DL addresses, so an attributable non-feather collision count is
+`UNKNOWN`, not zero.
+
+```text
+V7_TARGET_MATCH_COLLISION_SAFE_FOR_CAUSAL_USE: NO
+LOW_PAGE_MATCH_CAN_COLLIDE: YES
+FALSE_POSITIVE_TARGET_ADMISSION_POSSIBLE: YES
+APPEND_MATCH_IS_ONLY_CANDIDATE: YES
+CANDIDATE_LATER_VALIDATED_WITH_MODEL_IDENTITY: NO
+CANDIDATE_LATER_VALIDATED_WITH_FULL_DL_ADDRESS: YES (only record.currentDl == gameCall.sourceDl self-consistency; no independent target validation)
+CANDIDATE_LATER_VALIDATED_WITH_GENERATION_AND_MODEL_CONTEXT: NO
+FALSE_CANDIDATE_CAN_REACH_CAUSAL_CSV_AS_VALID_TARGET: YES
+KNOWN_COLLIDING_NON_FEATHER_DLS_FOUND: UNKNOWN
+COLLISION_COUNT: UNKNOWN
+V7_CAN_REPORT_FALSE_POSITIVE_CANDIDATES: NO
+CODE_CHANGE_REQUIRED: YES (future diagnostic-only validation design; not applied here)
+USER_MANUAL_TEST_REQUIRED_NOW: NO (capture remains blocked)
+NEXT_SINGLE_ACTION: add an independent model/DL validation state before authorizing capture
+```
+
+This is an audit correction only. No production behavior, game run, GPU
+readback, synchronization, commit, or push was performed.
+
+Evidence: [[plan/evidence/p09-kazooie-feather-gmtx-to-dl-trace]],
+[[plan/evidence/p09-kazooie-feather-v4-ab-static-audit]],
+[[plan/evidence/p09-kazooie-feather-v3-capture-analysis]],
+[[plan/evidence/p09-kazooie-feather-v2-producer-witness]],
+[[plan/evidence/p09-kazooie-feather-v1-capture]],
+[[plan/evidence/p09-kazooie-carry-banjo-head-feathers]],
+[[reverse-engineering/characters/kazooie]],
+[[reverse-engineering/systems/geocmd]],
+[[reverse-engineering/systems/transform-interpolation]].
+
+## Prior (2026-09-03) — P09_IMPLEMENT_REAL_RT64_MATCH_WITNESS_V4
+
+V3 token plumbing to RT64 G_MTX is `PROVEN` (2567/2568 in the preserved
+capture). The V2 float buffer at `D_8007BCD0` is **REFUTED**. Generated code
+uses **`D_8007BCB0`** as the mlMtx cursor; `guMtxF2L(float=*cursor,
+Mtx=gfx_ctx+4)`; G_MTX operand is the Gfx Mtx ring, not GeoCmd `node+4`.
+V4 now witnesses the real `GameFrame` call/candidate/one-to-one match path;
+flush rows are secondary only. No production fix.
+The first V4 capture is `CORRECTED`: its matrix events carry real workload
+IDs, but vertex events carry workload `0`, overwriting token identity before
+the match witness. Zero V4 CALL/candidate rows therefore do not prove an
+RT64 rejection.
+
+```text
+RE_KNOWLEDGE_BASE_PATH: docs/reverse-engineering/
+LIVE_BANJO_BODY_RESOURCE: 0x62B
+X62B_SNOUT_NODE_OFFSET: 0x11CB8
+LIVE_0X62B_TYPE2_HANDLER: func_800DCF48 (PROVEN_RUNTIME)
+FUNC_80019AA0_CURSOR: D_8007BCB0
+D_8007BCD0_EXACT_ROLE: REFUTED as 19AA0/mlMtxApply cursor
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_SINGLE_MTX_IDENTITY_V4
+RT64_MATCH_WITNESS: REAL_MATCHTRANSFORM
+RT64_CALL_MATCH_WITNESS: ENABLED
+FLUSH_SENTINEL_ROWS: SECONDARY_ONLY
+MISSING_GROUP_CAUSAL_STATUS: HYPOTHESIS
+PRODUCTION_FIX: NO
+ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+V4_CAPTURE_ROOT: DIAGNOSTIC_ARGUMENT_MISMATCH_MATRIX_VS_VERTEX_WORKLOAD
+V4_CAPTURE_CONFIDENCE: HIGH (witness failure only)
+NEXT_SINGLE_ACTION: preserve matrix workload identity across the vertex callback, rebuild, then capture once
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-19aa0-gmtx-rt64-match-stage]],
+[[plan/evidence/p09-v2-snout-runtime-correlation]],
+[[plan/evidence/p09-v4-real-match-witness]],
+[[reverse-engineering/systems/transform-interpolation]].
+
+### Prior — P09_TRACE_SINGLE_G_MTX_IDENTITY
+
+Live type-2 slot is `func_800DCF48` (`PROVEN_RUNTIME`). The registered
+`0x62B` GeoCmd root is in-place `model_bin+0x119F0`. Absence of `+0x11CB8`
+from the DE2A4 census is a **list-head wrap** artifact: the snout is a
+sibling after type `0x0A` `@0x11CA0` in the neck child list; child
+`+0x11CC8` and visible DL `+0x11CF8` were live. The fresh sibling-aware
+capture proves snout→DCF48 and its nested ADE2C current-matrix selection.
+The witness does not yet capture a previous matrix or RT64 identity. Static
+trace now proves `ADE2C` returns a local bone slot, `func_80019AA0` composes it
+into the float matrix arena, and `mlMtxApply`/`guMtxF2L` writes the fixed matrix
+destination used by the plain single `G_MTX`. The 17 ADE2C addresses are
+rotating animation-matrix source tables; rotating addresses alone are not an
+RT64 identity bug. The first bounded runtime capture reached DCF48 (4,728
+snout samples), but every token was rejected by a diagnostic pointer mistake:
+the cursor is `D_8007BCD0`, not `0x8007BCB0`, and `mlMtxApply` loads its real
+destination from that cursor rather than its incoming `ctx->r5`. The RT64 CSV
+was therefore absent; runtime identity remains unproven. No production fix.
+
+```text
+RE_KNOWLEDGE_BASE_PATH: docs/reverse-engineering/
+LIVE_BANJO_BODY_RESOURCE: 0x62B
+X62B_SNOUT_NODE_OFFSET: 0x11CB8
+TRUE_0X62B_ASSET_SIZE: 0x13178
+LIVE_0X62B_TYPE2_HANDLER: func_800DCF48 (PROVEN_RUNTIME)
+LIVE_SNOUT_HANDLER_REACHABILITY: PROVEN_RUNTIME (DCF48 accept=2243)
+E2AA4_PRIMARY_SNOUT_WITNESS: DEMOTED
+X62B_SNOUT_USES_E2AA4: NO
+TOOIE_DIAG_SECONDARY_SWAY: default-off DE498 0x62B tree CSV + DCF48 + ADE2C
+NEW_SNOUT_WITNESS_IMPLEMENTED: YES
+SINGLE_G_MTX_IDENTITY_WITNESS_IMPLEMENTED: YES (STATIC; RUNTIME_BLOCKED_ON_CORRECTED_POINTER_CAPTURE)
+CANDIDATE_IMPLEMENTED: NO
+PRODUCTION_FIX: NO
+ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CURRENT_MOST_LIKELY_LAYER: SINGLE_G_MTX_IDENTITY_UNRESOLVED (UNTESTED)
+NEXT_SINGLE_ACTION: correct the bounded cursor/destination witness, then inspect one capture's guest/RT64 identity CSV
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-single-gmtx-identity-static-trace]],
+[[plan/evidence/p09-single-gmtx-identity-witness]],
+[[reverse-engineering/systems/transform-interpolation]],
+[[plan/evidence/p09-live-0x62b-tree-dcf48-capture]],
+[[plan/evidence/p09-live-0x62b-tree-reachability]],
+[[plan/evidence/p09-de2a4-dcf48-runtime-capture]],
+[[plan/evidence/p09-live-geocmd-type2-dispatch]].
+
+### Prior — P09_FIX_MODEL_BOUNDARIES_AND_MOVE_SNOUT_WITNESS_TO_GEOCMD02_E2AA4_SCOPE
+
+The previous E2180 “inside span” counter used `rel < 0x20000`, which is
+**not** decompressed `0x62B` (`0x13178`). Capture `a1=0x80241E50`
+(`rel=0x1BD20`) is past `0x80226130+0x13178=0x802392A8`. Generic E2180
+is a multi-caller population. Default-off witness now identifies the
+snout at `func_800E2AA4` (`LOOKUP` bound) with
+`a1 == model_bin + 0x11CB8` inside the true asset range. Nested E2180
+is a tiny TLS token around that call only. No production fix.
+
+```text
+RE_KNOWLEDGE_BASE_PATH: docs/reverse-engineering/
+LIVE_BANJO_BODY_RESOURCE: 0x62B
+X62B_SNOUT_NODE_OFFSET: 0x11CB8
+TRUE_0X62B_ASSET_SIZE: 0x13178
+OLD_0X14960_ASSUMPTION: RETIRED
+OLD_ALLOCATION_SPAN_0X20000: RETIRED
+GENERIC_E2180_DISCOVERY_FILTER: DEMOTED
+TOOIE_DIAG_SECONDARY_SWAY: default-off E2AA4 snout + true asset span
+NEW_SNOUT_WITNESS_IMPLEMENTED: YES
+CANDIDATE_IMPLEMENTED: NO
+PRODUCTION_FIX: NO
+ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CURRENT_MOST_LIKELY_LAYER: MATRIX_IDENTITY / INTERPOLATION_TAGGING
+NEXT_SINGLE_ACTION: one TOOIE_DIAG_SECONDARY_SWAY=1 capture; read E2AA4 split rejects + e2aa4 tuples
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-e2aa4-snout-witness]],
+[[plan/evidence/p09-corrected-snout-e2180-capture]],
+[[plan/evidence/p09-62b-snout-e2180-layout]].
+
+### P09_PROVE_LIVE_0X62B_SNOUT_NODE_LAYOUT_AND_E2180_ARGUMENT_SEMANTICS
+
+Independent parse of cart asset `0x62B` (skip-2 raw deflate, 78200 bytes,
+66 bones). Live snout is GeoCmd `0x02` at **`0x11CB8`**, INDEX 11,
+boneAnimID 42. `0x14960` is `0x62A` only and is past the end of `0x62B`.
+E2180 `a1` is the GeoCmd node (`PROVEN` generated C). Default-off witness
+now splits span/type/bone/pointer rejects and accepts `0x11CB8` or type2
+plus bone 42 / INDEX 11 inside the durable `0x62B` span. No production fix.
+
+```text
+RE_KNOWLEDGE_BASE_PATH: docs/reverse-engineering/
+LIVE_BANJO_BODY_RESOURCE: 0x62B
+X62B_SNOUT_NODE_OFFSET: 0x11CB8
+OLD_0X14960_ASSUMPTION: RETIRED
+OLD_R31_FILTER: RETIRED
+OLD_80092444_TLS_FOR_E2180: RETIRED
+TOOIE_DIAG_SECONDARY_SWAY: default-off durable 0x62B + 0x11CB8/type2/bone42
+NEW_SNOUT_WITNESS_IMPLEMENTED: YES
+CANDIDATE_IMPLEMENTED: NO
+PRODUCTION_FIX: NO
+ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CURRENT_MOST_LIKELY_LAYER: MATRIX_IDENTITY / INTERPOLATION_TAGGING
+NEXT_SINGLE_ACTION: static E2180/GeoCmd reverse engineering of the live a1 population and node-field semantics
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-62b-snout-e2180-layout]],
+[[plan/evidence/p09-persistent-snout-filter-zero]].
+
+### P09 corrected 0x62B snout E2180 capture (2026-09-02)
+
+The fresh capture postdates the current executable and is usable for the
+corrected filter, but it accepts no snout node. Durable registration found one
+unique `0x62B` model bin (`0x80226130`) with 2,693 model rows and 5,386
+registration hits. E2180 entered 1,062 times; 216 entries were inside that
+registered span. None had relative offset `0x11CB8`, type 2, or boneAnimID 42.
+The one bounded in-span tuple was `a1=0x80241E50`, model-relative `0x1BD20`,
+with raw `WORD0=0x000A0004` and `HWORD_A=0x0020`.
+
+Evidence: [[plan/evidence/p09-corrected-snout-e2180-capture]].
+
+```text
+CAPTURE_POSTDATES_CURRENT_EXECUTABLE: YES
+CAPTURE_USABLE: YES (corrected filter; no accepted snout sample)
+DE448_0X62B_REGISTRATION_COUNT: 5386 registration hits (2693 model rows)
+REGISTERED_0X62B_BIN_COUNT: 1 (0x80226130)
+E2180_RAW_ENTRY_COUNT: 1062
+E2180_NODE_INSIDE_0X62B_COUNT: 216
+E2180_REL_0X11CB8_COUNT: 0
+E2180_TYPE2_COUNT: 0
+E2180_BONE42_COUNT: 0
+SNOUT_FILTER_ACCEPT_COUNT: 0
+SNOUT_FILTER_REJECTION_BREAKDOWN: NO_DURABLE_MODEL=472, OUTSIDE_SPAN=846, WRONG_TYPE=1062, WRONG_BONE_ANIM_ID=1062
+SNOUT_CSV_ROWS: 0 (missing)
+FIRST_BAD_LAYER: E2180 live-node identity/field decoding
+ROOT_CLASS: RUNTIME_E2180_POPULATION_OR_NODE_SEMANTICS_MISMATCH
+ROOT_CONFIDENCE: LOW
+NEXT_SINGLE_ACTION: static E2180/GeoCmd reverse engineering of the live a1 population and node-field semantics
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+GPU_READBACK_USED: NO
+```
+
+This is not a matrix or interpolation witness. Do not request another
+identical capture and do not implement a production fix. The generated path
+still proves E2180 receives the saved E2AA4 `a1`; what remains unproven is
+which live GeoCmd population and field encoding that pointer represents.
+
+### P09_RECONCILE_DEFERRED_MODEL_RENDER_CONTEXT_AND_LIVE_SECONDARY_ANIMATION_PRODUCER
+
+Canonical RE tree: `docs/reverse-engineering/`. Forensic layer:
+`docs/plan/evidence/`. This round:
+[[plan/evidence/p09-deferred-render-context-e0b8c]].
+
+`func_800DE448` immediately calls `func_800DE498` then `func_800DE2A4` jalr
+GeoCmd. Wrapped `800E2180` is **not** inside `func_80092444` TLS. Durable
+identity is the live `0x62B` `model_bin`. `func_800E0B8C` is a record writer
+and is **not** called every BK walk frame (`unkC==2` on overlay 162). No
+production fix. Default-off snout witness no longer uses 92444 TLS.
+
+```text
+RE_KNOWLEDGE_BASE_PATH: docs/reverse-engineering/
+LIVE_BANJO_BODY_RESOURCE: 0x62B
+OLD_R31_FILTER: RETIRED
+OLD_80092444_TLS_FOR_E2180: RETIRED
+TOOIE_DIAG_SECONDARY_SWAY: default-off durable 0x62B model_bin + GeoCmd02/bone42
+NEW_PERSISTENT_MODEL_WITNESS_IMPLEMENTED: YES
+CANDIDATE_IMPLEMENTED: NO
+PRODUCTION_FIX: NO
+ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CURRENT_MOST_LIKELY_LAYER: MATRIX_IDENTITY / INTERPOLATION_TAGGING
+NEXT_SINGLE_ACTION: targeted E2180 argument/node-layout reverse engineering
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+### P09 corrected-filter capture attempt (2026-09-02) — SUPERSEDED
+
+The only artifacts found (`2026-09-02T14:29:09.301Z`) predate the current
+executable (`2026-09-02T15:16:20.887Z`) and current corrected source
+(`tooie_diag.cpp` at `2026-09-02T14:57:54.597Z`). Their status still reports
+the retired `0x14960` filter, so their zero-accept result is not evidence
+against the corrected `0x11CB8` filter. No corrected tuple or matrix witness
+is available. Evidence:
+[[plan/evidence/p09-persistent-snout-filter-zero]].
+
+```text
+DE448_0X62B_REGISTRATION_COUNT: 6054
+REGISTERED_0X62B_BIN_COUNT: 1 (0x8020E340)
+E2180_RAW_ENTRY_COUNT: 1614
+SNOUT_FILTER_ACCEPT_COUNT: 0
+SNOUT_FILTER_REJECTION_BREAKDOWN: NO_DURABLE_MODEL=496, WRONG_NODE=1118
+SNOUT_CSV_ROWS: 0 (missing)
+E2180_IN_REGISTERED_0X62B_SPAN_COUNT: UNKNOWN
+E2180_TYPE2_COUNT: UNKNOWN
+E2180_BONE42_COUNT: UNKNOWN
+E0B8C_RAW_ENTRY_COUNT: 0 (conditional writer; non-diagnostic)
+GUEST_ANIMATION_STATE_VALID: UNKNOWN
+SNOUT_CURRENT_GUEST_MATRIX_VALID: UNKNOWN
+SNOUT_PREVIOUS_MATRIX_VALID: UNKNOWN
+FIRST_BAD_LAYER: UNKNOWN
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CANDIDATE_IMPLEMENTED: NO
+NEXT_SINGLE_ACTION: targeted E2180 argument/node-layout reverse engineering
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+GPU_READBACK_USED: NO
+```
+
+`WRONG_NODE` currently merges node type, boneAnimID, and registered-span
+predicates. Do not infer a guest-transform or interpolation root, and do not
+request another identical run.
+
+### P09 authoritative snout witness attempt (2026-09-02)
+
+The fresh secondary-sway capture reconfirmed the player scope (1,934/1,934
+DE448 samples) and the live resource sequence `0x62A` → `0x62B`, but emitted
+no `bones.csv` or `snout.csv`. The old counters were post-filter counters, so
+zero does not distinguish wrapper bypass from filter rejection. Core2
+`LOOKUP_FUNC` address-taken dispatch was the missing observation boundary;
+linker `--wrap` alone was not sufficient for an authoritative runtime-map
+hook.
+
+The diagnostic now explicitly binds E0B8C/E2180 through
+`add_loaded_function` and records raw wrapper-entry and snout rejection
+counters. This remains default-off and makes no production transform change.
+
+```text
+PLAYER_MODEL_ROWS: 1934
+PLAYER_MODEL_0x62A: 135 (frames 503–637; bin 0x801D5020)
+PLAYER_MODEL_0x62B: 1799 (frames 638–2436; bin 0x80224AA0)
+BONES_CSV_ROWS: 0 (missing in submitted capture)
+SNOUT_CSV_ROWS: 0 (missing in submitted capture)
+HIP3_GUEST_STATE_VALID: UNKNOWN
+SNOUT42_CURRENT_GUEST_TRANSFORM_VALID: UNKNOWN
+PREVIOUS_CURRENT_LOGICAL_PAIRING: UNKNOWN
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CANDIDATE_IMPLEMENTED: NO
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: YES (new diagnostic binary)
+NEXT_SINGLE_ACTION: one fresh secondary-sway capture with runtime-map hooks
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+### P09 repaired runtime-map witness (2026-09-02)
+
+The fresh capture was inspected directly after binding both wrappers with
+`add_loaded_function`. It is usable for the player identity, but not for a
+guest bone or matrix witness. E2180 raw entry proves that its runtime-map
+binding is active; E0B8C has no raw entry during this walk, so this is a hard
+stop on further blind captures.
+
+```text
+PLAYER_MODEL_ROWS: 2126
+PLAYER_MODEL_0x62A: 142 (frames 495–636; bin 0x801D5010)
+PLAYER_MODEL_0x62B: 1984 (frames 637–2620; bin 0x80224B40)
+OUTER_PLAYER_SCOPE_HITS: 2126
+DE448_IN_PLAYER_SCOPE_HITS: 2126
+E0B8C_RAW_ENTRY_COUNT: 0
+E0B8C_FILTER_ACCEPT_COUNT: 0
+E0B8C_REJECTION_BREAKDOWN: no entry; no post-filter rejection observed
+E2180_RAW_ENTRY_COUNT: 3491
+E2180_FILTER_ACCEPT_COUNT: 0
+E2180_REJECTION_BREAKDOWN: NO_SCOPE=3491, NO_GETTER=0, WRONG_RESOURCE=0, WRONG_NODE=0
+BONES_CSV_ROWS: 0 (missing)
+SNOUT_CSV_ROWS: 0 (missing)
+CAPTURE_USABLE: NO (transform witness; player identity usable)
+E0B8C_RUNTIME_BINDING_WORKING: NO (not demonstrated; no live entry)
+E2180_RUNTIME_BINDING_WORKING: YES
+FILTERS_WORKING: PARTIAL
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+CANDIDATE_IMPLEMENTED: NO
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION: reconcile the actual E0B8C runtime dispatch/call path
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+The generated player path reaches `GeoCmd02 → func_800E2AA4 →
+func_800E2180`; E2180 is not evidence that E0B8C must also run. The zero
+E0B8C entry therefore does not prove a wrapper-map failure by itself. It does
+prove that this capture cannot classify bawobble state, current matrices, or
+interpolation identity. Do not request another identical run.
+
+Do not enable `TOOIE_DIAG_BACKPACK_FLAP` for the model-id capture.
+Do not treat E2AA4 as the snout root until live id is `0x62A`/`0x62B`.
+Do not follow SUPERSEDED `NEXT_SINGLE_ACTION` blocks below.
+
+Canonical RE: [[reverse-engineering/README]]. Evidence:
+[[plan/evidence/p09-session-handoff]],
+[[plan/evidence/p09-player-model-witness-r31-repair]],
+[[plan/evidence/p09-secondary-sway-static-root]].
+
+### Historical failed capture (r31 filter, SUPERSEDED repair target)
+
+`/tmp/tooie-secondary-sway-status.txt` reported `DE448_TOTAL_SEEN=31020`,
+zero filtered hits. Repair is in CURRENT. Do not restore the r31 whitelist.
+
+```text
+CAPTURE_USABLE: NO
+NEXT_SINGLE_ACTION: SUPERSEDED — see CURRENT
+```
+
+## SUPERSEDED (2026-09-02) — P09_MAP_BANJO_WOBBLE_PART3_TO_EXACT_GEOMETRY_AND_SNOUT
+
+Static ROM/MIPS mapping. That round had **no** `TOOIE_DIAG_SECONDARY_SWAY`.
+Uncommitted P09 backpack diagnostics were preserved. Findings below remain
+valid; the live-model witness and RE tree supersede the "no new hook" /
+`NEXT_SINGLE_ACTION` lines.
+
+`D_80801448` / `badata_entrypoint_27` is an **animation-id** table. `0x56` / `0xEC` / `0x13A` decompress as animations (`000000c8` / `00000028` / `0000003f`), **not** `0000000B` models. That prior body-model claim is `CORRECTED/SUPERSEDED`.
+
+Live BK walk geometry is overlay 118 packed list `+0xC160` = **`0x61F`** (`STRONG_INFERENCE` / later `MEDIUM` static, ExtraSegments, **zero GeoCmd 0x02**). High-detail Banjo `0x62A`/`0x62B` have GeoCmd 0x02 but are absent from overlay 118's first 256KB.
+
+Wobble `func_800E0B8C(part=3)` writes type-3 Euler. Consumer is `func_800E0E94` from `func_800AF04C` using bone `+0xC` = **boneAnimID**. Part 3 is hip, **not** the snout. Snout is **boneAnimID 42**. `PART3_TAG5_RELATION` is `REFUTED` as identity (tag 5 on `0x62A` is the right hand).
+
+```text
+BANJO_WALK_ANIM_RESOURCE_ID: 0x56  (NOT a model)
+BANJO_LIVE_WALK_MODEL: 0x61F STRONG_HYPOTHESIS; 0x62A WEAKENED
+BANJO_SNOUT_NODE: boneAnimID 42 (0x61F idx 4; 0x62A idx 10 GeoCmd 0x02 + DL198)
+BANJO_SNOUT_CONFIDENCE: MEDIUM
+WOBBLE_PART3: boneAnimID 3 HIP
+WOBBLE_PART3_DRIVES_SNOUT: INDIRECT (descendant inherit)
+BANJO_SNOUT_USES_E2AA4: NO if 0x61F; YES if 0x62A
+SNOUT_MATRIX_GROUP_TAG: ABSENT
+PART3_TAG5_RELATION: REFUTED (identity)
+ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CANDIDATE_CONFIDENCE: LOW
+FILTER_CONFIDENCE: LOW (live model unresolved for state-vs-tagging seam)
+NEW_SNOUT_WITNESS_IMPLEMENTED: NO
+CANDIDATE_IMPLEMENTED: NO
+NEXT_SINGLE_ACTION: SUPERSEDED — do not use; see CURRENT block
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+ARTIFACT_DIRECTORY: /tmp/p09-banjo-wobble-part3-20260902T060241Z/
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Canonical writeup of that round: [[plan/evidence/p09-secondary-sway-static-root]].
+
+## SUPERSEDED (2026-09-01) — P09_FIND_REAL_BACKPACK_MODEL_PART_RENDER_PATH
+
+The visible Banjo backpack is not drawn by `func_80092444` / `LOOKUP_FUNC(0x80084500)`.
+That caller path is `REFUTED_FOR_THIS_RUNTIME_PATH` (1503/1503 `PATH_A2_ZERO_RETURN_18`,
+lookup executed 0). Overlay 113 (`babackpack`) owns a separate attached model.
+
+MATCHED overlay C (`ckpack.c`) shows:
+
+- `babackpack_entrypoint_3` is the draw entry
+- `babackpack_entrypoint_1` → `func_800D674C(unk0)` is the model pointer getter
+- `babackpack_set_state(2)` loads asset `0x621` at scale 1.0 (primary gameplay backpack)
+- draw submits `func_800DE448(position, arg2, scale, arg4, model_bin)` then common `func_800DE498`
+
+Child dual-matrix GeoCmd analog: `func_800E2AA4` → `func_800E2180` emits
+`G_MTX 0xDB060008` (prev via `func_800AF5D8`) then `G_MTX 0xDB060004` (curr via
+`func_800AF5E4`). BanjoRecomp tags the homologous GeoCmd2/bone path in
+`patches/transform_tagging.c`. Tooie has no equivalent tagging. Flap part ID is
+`UNKNOWN` until a filtered capture lists the dual-mtx nodes under model `0x621`.
+
+`TOOIE_DIAG_BACKPACK_FLAP=1` now wraps `func_800D674C` / `func_800DE448` /
+`func_800E2180` only. Obsolete `func_80092444` / `get_function` / syscall 113/3
+probes are retired. No production interpolation patch.
+
+```text
+OLD_BABACKPACK_LOOKUP_HYPOTHESIS: REFUTED_FOR_THIS_RUNTIME_PATH
+BABACKPACK_ACTUAL_DRAW_ENTRYPOINT: babackpack_entrypoint_3
+BACKPACK_MODEL_RESOURCE_ID: 0x621 (primary); 0x625/0x60A/0x61B/0x831 (tiny states); state-7 preload
+MODEL_RENDER_ENTRY: func_800DE448 → func_800DE498
+GEOCMD_CHILD_DUAL_MTX: func_800E2180
+TOOIE_MISSING_TAGGING_EQUIVALENT: YES
+CANDIDATE_IMPLEMENTED: NO
+DIAGNOSTIC_DEFAULT_OFF: YES
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+NEXT_SINGLE_ACTION: one short TOOIE_DIAG_BACKPACK_FLAP=1 capture while Banjo walks
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+ARTIFACT_DIRECTORY: /tmp/p09-backpack-real-render-path-20260901T231354Z/
+GPU_READBACK_USED: NO
+```
+
+```sh
+cd /home/wesley/projetos/N64-Recomp/TooieRecomp && \
+rm -f /tmp/tooie-backpack-flap-* && \
+TOOIE_DIAG_BACKPACK_FLAP=1 ./build/TooieRecompiled
+```
+
+Walk Banjo so the backpack flap moves. Stop. Collect
+`/tmp/tooie-backpack-flap-status.txt` and
+`/tmp/tooie-backpack-flap-witness.csv`.
 
 ## CURRENT (2026-08-31) — T_INTRO_TRUE_SOURCE_ASPECT_PRODUCTION
 
@@ -32,6 +2290,32 @@ BUILD_RESULT: PASS
 WINDOW_DISPLAY_TEST: PASS (38/38)
 PROJECTION_TEST_RESULT: PASS
 COMMIT_SCOPE: production projection policy, P08 cleanup, regression test, canonical docs
+NO_PUSH: YES
+```
+
+### P09 D674C nonmatching-resource capture — no owner witness (2026-09-02)
+
+The follow-up capture populated the bounded D674C observer: 44,620 resource
+lookups, 32 retained nonmatching resource/pointer pairs, and 18,095 evictions.
+The fixed IDs still had zero hits; DE448/DE498 had zero filtered hits; E2AA4
+had zero total hits; and all 1,167 E2180 calls were rejected for no active
+model context. Draw scope depth was 1 with no overflow. The witness and
+anomaly files remained empty.
+
+Static inspection resolves D674C's argument as a resource-table key and its
+return as the loaded resource/model pointer passed to DE448. The `0x621` and
+`0x625` values are static `babackpack` setup keys, not a universal runtime
+filter identity. The capture has no callsite/owner or frame association, so
+the affected four parts and any interpolation/tagging root remain unknown.
+
+```text
+RUNTIME_WITNESS_CAPTURED: NO
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+NEXT_SINGLE_ACTION: static MIPS/GeoCmd reverse-engineer Banjo body/snout and attached-model ownership
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
 NO_PUSH: YES
 ```
 
@@ -3432,3 +5716,557 @@ The permanent T_INTRO projection regression test remains. Confirmed open bug
 queue: (1) animated/swaying model parts — root `UNKNOWN`, priority NEXT; (2)
 intermittent audio “tic tic” — root `UNKNOWN`, after bug 1; (3) T_INTRO
 ultrawide above 16:9 — deferred, proven authored-extent residual.
+
+## P09 backpack flap witness checkpoint (2026-09-01)
+
+The P09 bounded diagnostic is implemented at the Tooie source layer.
+`TOOIE_DIAG_BACKPACK_FLAP=1` retains the resolved entry-table probe inside
+`babackpack_entrypoint_3` (overlay section 113, entrypoint 3), rather than the
+bypassed address-map key `0x80800320`. It now also wraps the proven live caller
+`func_80092444` at guest callsite `0x80092710` and observes only its
+`LOOKUP_FUNC(0x80084500)` resolution. The source-owned linker wrapper records
+the resolved pointer, symbol, `a0`–`a3`, context, `sp`, and `ra`, then delegates
+the original caller and lookup unchanged. It is default OFF, CPU-only, and
+does not modify animation, interpolation, culling, model data, or generated
+code. The static controller fields are `+0x15C`, `+0x160`, `+0x16C`, and
+`+0x170`; exact model node, DL, matrix stack, submitted matrix, and RSP
+ownership remain `UNKNOWN`. The status file flushes at startup, first caller,
+first lookup, every 60 lookups, and shutdown; the bounded CSV/anomaly report
+still flushes at sampler events plus anomaly/shutdown. The authoritative
+zero-hit capture disproved the prior section-456 filter: overlay 456 is
+`chblackeye`; `0x80084500` decodes to overlay 113. The corrected 2026-09-01
+capture still had zero hits, with `LAST_FRAME=0` and no handler
+dispatch/error witness. Static generated code shows the synthetic
+`_babackpack_entrypoint_3` stub calling `recomp_syscall_handler`, while the
+live caller emits the direct lookup. Thus 113/3 is proven as the stub identity,
+not as an observed handler invocation.
+
+The completed caller-local capture reached `func_80092444` 2,026 times but
+recorded zero requests for `0x80084500`: `CALLER_FIRST_HIT=YES`,
+`CALLER_HIT_COUNT=2026`, `LOOKUP_HIT_COUNT=0`,
+`REAL_TARGET_ARGUMENTS_CAPTURED=NO`. This proves caller entry, not execution
+of the internal guest callsite. Static control flow has an early conditional
+at `0x800926EC` that skips `0x80092710` when
+`MEM_BU(MEM_W(a0, 0x50), 0x11)==0`; earlier `+0xA2`/`+0x18` gates can also
+return. The diagnostic now records the caller `a0`, `+0x50` data pointer, and
+those gate bytes at entry, with no new global lookup hook.
+
+The stale section-90 `bsbflap_update` hook and the bypassed address-map hook
+were removed. The direct probe lives around the resolved
+`entry.entrypoints[entry_index]` call, so it survives overlay load/reload and
+does not affect other syscall behavior. The caller-local probe is the next
+runtime boundary; `babackpack_entrypoint_3` has not yet received a runtime
+call or instance. Exact flap transform/interpolation ownership remains
+`UNKNOWN` and no production root is proven.
+
+Canonical evidence: [[plan/evidence/p09-backpack-flap-witness]].
+
+`NEXT_SINGLE_ACTION: run one new caller-entry gate capture below; do not repeat
+the handler-filter capture or the prior identical caller-local run`.
+The next capture writes `/tmp/tooie-backpack-flap-*` directly.
+
+```sh
+cd /home/wesley/projetos/N64-Recomp/TooieRecomp && \
+rm -f /tmp/tooie-backpack-flap-* && \
+TOOIE_DIAG_BACKPACK_FLAP=1 ./build/TooieRecompiled
+```
+
+**Updated caller-entry capture result (2026-09-01):** the run reached the
+caller wrapper 1,299 times, with `LOOKUP_HIT_COUNT=0`. The status artifact
+persisted only `CALLER_FIRST_A0=0x801cb580`, `CALLER_LAST_A0=0x801c6580`,
+`CALLER_FIRST_T6=0x801cb94c`, and first gates `+A2=0`, `+18=0`, `+11=1`;
+the witness CSV is header-only (`SAMPLE_COUNT=0`, `ANOMALY_COUNT=0`). Thus
+the requested all-hit gate distributions, pointer clusters, and dominant
+runtime path are not captured. The first recorded branch is
+`+A2=0` → `0x80092474` → `func_800A89F8` → `func_800A4C68` /
+`func_800A940C` → `+18=0` → return at `0x8009271C`, with no transform or draw
+operation reached before the return. The `+0x50` value remains only a
+per-object secondary state-pointer candidate; backpack ownership is unknown.
+Do not add another hook or treat `0x80084500` as the observed flap path.
+
+### P09 caller population diagnostic repair (2026-09-01)
+
+The existing `func_80092444` caller diagnostic now persists one completed
+tuple per hit to `/tmp/tooie-backpack-flap-caller.csv`: hit index/frame, `A0`,
+`+0x50`, `+A2`, `+0x18`, `+0x11`, deterministic branch class, lookup
+eligibility/execution, and lookup request/resolved target when observed. It
+uses the existing caller and lookup wrappers only; generated code and
+production rendering are unchanged. The first row flushes immediately,
+subsequent rows every 60 hits, and the normal shutdown path flushes/closes the
+file. Status now reports bounded unique-pointer counts, gate histograms,
+branch counts, skip counts, lookup-eligible/executed counts, and the dominant
+branch. Static control flow is captured at
+`docs/plan/evidence/func-80092444-control-flow.txt`.
+
+`CALLER_DIAGNOSTIC_REPAIRED: YES`; `BRANCH_CLASSIFICATION_IMPLEMENTED: YES`;
+`PER_HIT_CLUSTER_KEYS_CAPTURED: YES`; `CSV_FIRST_HIT_PERSISTENCE: YES`;
+`CSV_PERIODIC_PERSISTENCE: YES`; `STATUS_HISTOGRAMS_IMPLEMENTED: YES`;
+`STATIC_CONTROL_FLOW_MAP_COMPLETE: YES`; `DIAGNOSTIC_DEFAULT_OFF: YES`.
+
+Validation passed: `TooieRecompiled` build, `window_display_test` 38/38,
+`tintro_projection_policy_test` 7/7, and `git diff --check`. The next single
+action is one fresh runtime population capture:
+
+```sh
+cd /home/wesley/projetos/N64-Recomp/TooieRecomp && \
+rm -f /tmp/tooie-backpack-flap-* && \
+TOOIE_DIAG_BACKPACK_FLAP=1 ./build/TooieRecompiled
+```
+
+After that capture, analyze the generated files directly. Do not add another
+hook or infer backpack ownership before clustering the caller rows.
+
+### P09 stage-counter capture — identity observation gap (2026-09-01)
+
+The repaired nested-draw capture reached the generic render stages but not a
+backpack-filtered scope. D674C resolved 28,639 assets, all classified as
+nonmatching; DE448 and DE498 had 17,139 and 17,955 total hits respectively,
+with zero filtered hits. E2AA4 had zero total hits. E2180 had 1,103 total hits,
+all rejected as `NO_ACTIVE_MODEL_CONTEXT`; no sample or anomaly was written.
+The draw-scope stack reported zero overflow events, so this is not a nesting
+regression.
+
+The existing D674C observer was extended with a bounded top-frequency table of
+actual nonmatching asset IDs/model pointers and explicit
+`DRAW_CONTEXT_MAX_DEPTH`/`DRAW_CONTEXT_STACK_OVERFLOW` fields. This adds no
+hook and makes the next capture discriminate wrong presumed IDs from a cached
+or unobserved model association. No production fix is authorized.
+
+```text
+RUNTIME_WITNESS_CAPTURED: NO
+LAST_PROVEN_BACKPACK_STAGE: NONE
+FIRST_MISSING_BACKPACK_STAGE: D674C_ASSET_ID_MODEL_BIN_ASSOCIATION
+FILTER_PROPAGATION_NOW_WORKING: NOT_RUNTIME_PROVEN
+CANDIDATE_IMPLEMENTED: NO
+NEXT_SINGLE_ACTION: rerun the short stage-counter capture with the repaired existing observer
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+### P09 repaired live Banjo model witness (2026-09-02)
+
+The repaired player scope is proven and the capture is usable: 2,067 accepted
+DE448 samples, all at guest callsite `0x800926D8`, with scope depth 1 and no
+overflow/wrong-callsite/other rejects. The accepted model sequence is
+`0x62A` / `0x801BEBE0` / 68 bones for frames 486–609, followed by sustained
+normal-walk `0x62B` / `0x8020E340` / 66 bones for frames 610–2552. The live
+normal-walk Banjo body is therefore `0x62B` (HIGH confidence); `0x61F` is
+REFUTED for this capture.
+
+The normal-walk snout is `GEOCMD_02` and uses `func_800E2AA4` →
+`func_800E2180`. Its static node is model-relative `0x14960`; bawobble still
+produces hip bone 3 and reaches snout bone 42 through the parent chain. The
+BanjoRecomp ExtraSegments/CPU-skinning/transform-ID path is a structural
+comparison only and is not a proven Tooie root.
+
+A default-off witness is implemented: E0B8C records bone IDs 3/42, and E2180
+records the player-scoped `0x62B` snout node's guest previous/current matrices
+to `/tmp/tooie-secondary-sway-bones.csv` and
+`/tmp/tooie-secondary-sway-snout.csv`. No production fix was made.
+
+```text
+CAPTURE_USABLE: YES
+LIVE_BANJO_BODY_RESOURCE: 0x62B
+LIVE_BANJO_MODEL_BIN: 0x8020E340
+BANJO_SNOUT_RENDER_CLASS: GEOCMD_02
+BANJO_SNOUT_USES_E2AA4_E2180: YES
+CURRENT_ROOT_CANDIDATE: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+SNOUT_TRANSFORM_WITNESS_IMPLEMENTED: YES
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+NEXT_SINGLE_ACTION: run the new default-off bone/matrix witness once and inspect its two CSVs
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+## P09 — SINGLE_G_MTX_IDENTITY_WITNESS_V2 (2026-09-03)
+
+The diagnostic repair is complete and statically validated. The V1 capture is
+usable only as proof of the old witness bug: `0x8007BCB0` was never the
+matrix cursor, and pre-call `mlMtxApply` `ctx->r5` was not its destination.
+
+```text
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_SINGLE_MTX_IDENTITY_V2
+PRIMARY_WITNESS: SNOUT_DCF48_SINGLE_G_MTX
+MATRIX_CURSOR_SOURCE: D_8007BCD0
+FUNC_80019AA0_OUTPUT: post-call D_8007BCD0 (old cursor + 0x40), after write
+MLMTXAPPLY_ENTRY_A0: guMtxF2L source
+MLMTXAPPLY_REAL_DESTINATION: D_8007BCD0 loaded at wrapper entry
+G_MTX_OPERAND: DCF48 node + 4 / mlMtxApply source pointer
+TRACE_TOKEN_COUNTERS: implemented
+ROOT_CLASS: SINGLE_G_MTX_IDENTITY_UNRESOLVED
+ROOT_CONFIDENCE: LOW
+MISSING_GROUP_CAUSAL_STATUS: HYPOTHESIS
+PRODUCTION_FIX: NOT_JUSTIFIED
+USER_MANUAL_TEST_REQUIRED_NOW: YES
+NEXT_SINGLE_ACTION: run one V2 capture and correlate guest matrix rows with RT64 identity rows
+GPU_READBACK_USED: NO
+```
+
+The V1 NaN/Inf result is invalidated by the pointer bug and must not be used
+as game evidence. No production fix, commit, or push.
+
+## P09 — V2 runtime arbitration (2026-09-03)
+
+The post-build V2 capture is usable and confirms the RT64 primary key:
+`mlMtxApply` source pointer equals the raw `G_MTX` operand for 3,063 of 3,064
+enqueued snout tokens. The F2L destination equals that operand in 0 samples.
+The captured post-call `D_8007BCD0` composition field is also not the F2L
+source and contains a trailing NaN in every persisted composition row. This
+is a diagnostic composition-witness/dataflow problem, not guest-animation
+evidence. RT64 AUTO identity is observed, but no `MATCH` event or previous
+guest matrix was captured, so semantic continuity remains UNKNOWN.
+
+```text
+V2_CAPTURE: POSTDATED_AND_USABLE
+RT64_PRIMARY_KEY: PROVEN_CORRECT
+GUMTXF2L_SOURCE_EQUALS_COMPOSED_OUTPUT: NO
+RT64_MATCH_CONTINUITY: UNKNOWN
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+PRODUCTION_FIX: NOT_JUSTIFIED
+NEXT_SINGLE_ACTION: resolve the actual 19AA0/F2L source dataflow before another capture
+GPU_READBACK_USED: NO
+```
+
+## P09 — V3 real guest matrix / match seam (2026-09-03)
+
+The preserved V3 capture proves the corrected guest matrix path:
+`DCF48/ADE2C -> 19AA0 -> D_8007BCB0 -> guMtxF2L -> G_MTX -> RT64`. The
+composed source matches in 512/512 bounded rows, the F2L destination equals
+the G_MTX operand in 512/512 rows, and all captured 16-float matrices are
+finite with stable positive determinant. The V1/V2 NaN observation is
+superseded.
+
+The RT64 match artifact is not yet a semantic previous-frame result. Its
+`UNMATCHED/NO_MATCHTRANSFORM` rows are emitted by the diagnostic flush with
+hard-coded previous sentinels; the actual failed `matchTransform()` callback
+arguments are not captured. No RT64 identity/interpolation or missing-group
+root is proven.
+
+```text
+V3_GUEST_MATRIX: VALID
+G_MTX_SUBMISSION: PROVEN_CORRECT
+RT64_PREVIOUS_MATCH: UNKNOWN
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+PRODUCTION_FIX: NOT_JUSTIFIED
+NEXT_SINGLE_ACTION: capture actual matchTransform callback arguments and token-predicate rejection reason before flush
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+```
+
+## CURRENT (2026-09-03) — P09_V5_REAL_CALL_MATCH_RESULT
+
+V4's zero CALL/candidate rows were caused by diagnostic workload ownership:
+`matrixCommon` carries `state->workloadId`, while `setVertexCommon` supplies a
+zero `workload.workloadId`. V5 preserves the non-zero matrix identity,
+separates matrix/vertex/match workload fields, and labels finalization-only
+rows as synthetic. No graphical root is established and no production fix is
+authorized.
+
+```text
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_SINGLE_MTX_IDENTITY_V5
+WORKLOAD_BINDING: MATRIX_WORKLOAD_PRESERVED
+REAL_UNMATCHED_REQUIRES_REAL_MATCH_DECISION: YES
+REAL_MATCHTRANSFORM_WITNESS_RETAINED: YES
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: NO
+NEXT_SINGLE_ACTION: identify the live Kazooie feather model/bone/transform-owner/G_MTX and reuse the generic V5 match witness
+NEXT_RECOMMENDED_MODEL: Grok 4.6 Medium
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+The V5 capture is post-executable and usable. Workload binding now reaches
+the real RT64 path: 5/5 call matches, 5/5 eligible transform prerequisites,
+77 valid candidates, 34 real `matchTransform` matches, and 5 real
+`ONE_TO_ONE_PREVIOUS_ALREADY_USED` rejections. The 2,340 finalization rows
+are synthetic cleanup. The two strict context-key mismatches are explained by
+RT64 call-hash pairing and transform-pair observation identity, not a proven
+AUTO identity failure. No snout production fix is justified; switch the next
+diagnostic target to Kazooie head feathers while carrying Banjo.
+
+## CURRENT (2026-09-04) — P09_KAZOOIE_FEATHER_V5_FULL_CHAIN
+
+The prior SIMPLE experiment was `ROOT_ONLY`: it changed only the selected
+`0x62B/+0x124A0` index-30 / anim-103 match. The user's result was `SAME`, which
+refutes that narrow experiment only. It does not test distal bones 104/105 or
+the other visible feather identities.
+
+The V5 diagnostic statically recognizes the seven proven live `0x62B`
+identities, retains the V4 token/match witness, and emits
+`/tmp/tooie-kazooie-feather-postmatch.csv`. The fresh no-interpolation capture
+corrected the runtime state: only boneAnimID 103 reached the token/match and
+override path. `secondary_sway_note_dcf48()` accepts the three Primary classes
+but rejects `Sibling62B`, so 79/100/101/102/104/105 never entered the hook.
+The V5 full-chain runtime claim is therefore superseded; no-interpolation was
+proven only for 103 and the visual result `SAME` does not close temporal
+interpolation.
+
+```text
+DIAGNOSTIC_SCHEMA: P09_SECONDARY_SWAY_KAZOOIE_FEATHER_V5
+FULL_CHAIN_V4_TOKEN_SUPPORT: STATIC_ONLY; RUNTIME_COVERAGE_INCOMPLETE
+POST_MATCH_MATRIX_WITNESS_IMPLEMENTED: YES
+INTERPOLATION_FRACTION_CPU_OBSERVABLE: YES (curFrameWeight)
+FULL_CHAIN_NO_INTERP_AB_IMPLEMENTED: PARTIAL (bone 103 runtime-covered)
+IDENTITY_MATCHING_UNCHANGED: YES
+GUEST_MATRICES_UNCHANGED: YES
+ROOT_CLASS: MORE_EVIDENCE_REQUIRED
+ROOT_CONFIDENCE: LOW
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: YES (one no-interpolation run only)
+NEXT_SINGLE_ACTION: repair the diagnostic DCF48 sibling acceptance gate; do not request an identical capture
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-kazooie-feather-v5-full-chain]],
+[[reverse-engineering/systems/transform-interpolation]],
+[[reverse-engineering/characters/kazooie]].
+
+## CURRENT (2026-09-05) — P09_V7_FRESH_CAPTURE_STATE_C
+
+The fresh V7 launch used the current direct build and produced the status
+heartbeat, proving enablement and raw hook reachability. It produced no
+combined CSV: all six target record counters and all tracked counters are zero,
+with `OBSERVED_TARGET_MASK=0x00`. Per the V7 stop rule, this is state C: the
+earliest failed gate is target/filter correlation. No append, fullSync slice,
+CPU upload, join, render-selection, or renderer root can be classified.
+
+```text
+V7_RUNTIME_STATE: C
+V7_ACTIVATION_VALID: YES
+RAW_APPEND_HOOK_COUNT: 3104629
+RAW_FULLSYNC_HOOK_COUNT: 1799
+RAW_RENDER_SELECTION_HOOK_COUNT: 3929
+TRACKED_APPEND_COUNT: 0
+TRACKED_HANDOFF_COUNT: 0
+TRACKED_RENDER_SELECTION_COUNT: 0
+CSV_PRESENT: NO
+CAPTURE_USABLE: NO
+CAPTURE_COMPLETE_FOR_CAUSAL_DECISION: NO
+MANDATORY_TARGET_COVERAGE_COMPLETE: NO
+JOIN_592_PROVENANCE_STATUS: INCOMPLETE
+JOIN_54C_PROVENANCE_STATUS: INCOMPLETE
+JOIN_564_PROVENANCE_STATUS: INCOMPLETE
+CPU_HANDOFF_STATUS: UNKNOWN
+FIRST_UNEXPLAINED_LAYER: target/filter correlation gate
+ROOT_CLASS: UNKNOWN (no target witness reached)
+ROOT_CONFIDENCE: HIGH for gate identification; NONE for rendering root
+NEXT_SINGLE_ACTION: resolve why all six target DLs are filtered out, then rerun one bounded V7 capture retaining status and CSV
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-v7-cpu-handoff-capture-analysis]]. Do not mix
+this run with V6/V6B/V6C rows.
+
+## CURRENT (2026-09-05) — V7 EXACT VALIDATION BLOCKED BY MODEL BRIDGE
+
+The first post-repair V7 capture produced both artifacts and reached all three
+raw RT64 hook sites. It found 11,740 low-page candidates, but every candidate
+was rejected by exact validation because the independent model-bin bridge
+reported `model_bin=0`. No candidate entered causal append, handoff, coverage,
+or renderer analysis. Existing model evidence shows raw getter rows with
+`RESOURCE_ID=0x62A` that are normalized to live `0x62B` after metadata checks;
+the V7 bridge currently accepts only raw `0x62B`, which is the next diagnostic
+admission blocker.
+
+```text
+V7_RUNTIME_STATE: D_EXACT_VALIDATION_BLOCKED
+RAW_APPEND_HOOK_COUNT: 4282916
+RAW_FULLSYNC_HOOK_COUNT: 2284
+RAW_RENDER_SELECTION_HOOK_COUNT: 4890
+TARGET_CANDIDATE_COUNT: 11740
+TARGET_VALIDATED_COUNT: 0
+TARGET_REJECTED_AFTER_VALIDATION_COUNT: 11740
+TRACKED_APPEND_COUNT: 0
+TRACKED_HANDOFF_COUNT: 0
+TRACKED_RENDER_SELECTION_COUNT: 0
+OBSERVED_TARGET_MASK: 0x00
+EXACT_TARGET_VALIDATION_RUNTIME_WORKING: NO
+MANDATORY_TARGET_COVERAGE_COMPLETE: NO
+CPU_HANDOFF_STATUS: UNKNOWN
+FIRST_UNEXPLAINED_LAYER: exact target validation bridge
+ROOT_CLASS: UNKNOWN (no validated target witness)
+ROOT_CONFIDENCE: HIGH for gate identification; NONE for rendering root
+NEXT_SINGLE_ACTION: repair raw-0x62A-to-live-0x62B model-bin admission, then run one bounded V7 capture
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-v7-cpu-handoff-capture-analysis]].
+
+## CURRENT (2026-09-05) — V7 ADMISSION REPAIR VALIDATED
+
+The state-C root was repaired in the RT64 target resolver: logical V6C DL
+indices remain accepted, and resolved runtime DL addresses are matched through
+the V6C model-bin entry layout's low-page offset. The append seam now records
+aggregate filter stages and a bounded eight-entry rejection sample, including
+explicit model-bin unavailability at that seam. These are diagnostic-only
+changes; face/index/matrix/upload/render/synchronization behavior is unchanged.
+
+```text
+V7_TARGET_ADMISSION_REPAIRED: YES (static resolver repair)
+APPEND_FILTER_STAGE_COUNTERS_IMPLEMENTED: YES
+BOUNDED_TARGET_REJECTION_SAMPLE_IMPLEMENTED: YES (8 entries)
+NEXT_CAPTURE_CAN_LOCALIZE_TARGET_FILTER_FAILURE: NO (identity collision remains)
+V7_TARGET_MATCH_COLLISION_SAFE_FOR_CAUSAL_USE: NO
+LOW_PAGE_MATCH_CAN_COLLIDE: YES (12-bit mask; differences of k*0x1000 collide)
+FALSE_CANDIDATE_CAN_REACH_CAUSAL_CSV_AS_VALID_TARGET: YES
+KNOWN_COLLIDING_NON_FEATHER_DLS_FOUND: UNKNOWN
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+TOOIE_DIFF_CHECK: PASS
+RT64_DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: NO (capture blocked pending identity validation)
+NEXT_SINGLE_ACTION: add an independent model/DL validation state before authorizing capture
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+## CURRENT (2026-09-05) — V7 MODEL-BIN BRIDGE REPAIRED
+
+The diagnostic model bridge keeps the proven raw `0x62B` identity and uses the
+existing metadata normalization path for raw `0x62A` representations when the
+model header proves the 66-bone `0x62B` shape. `ctx->r2` remains full-width through
+the bridge; masking occurs only at guest-RDRAM/physical-address access seams.
+Bridge counters and bounded first/last accepted raw, normalized, full guest,
+and physical-base fields are emitted in the V7 status, and rejected getter
+events clear the prior model bin.
+
+```text
+V7_EXACT_MODEL_BIN_BRIDGE_REPAIRED: YES
+RAW_RESOURCE_0X62A_TO_LIVE_0X62B_NORMALIZATION_PROVEN: YES (metadata classifier)
+USES_NORMALIZED_MODEL_IDENTITY: YES
+RAW_0X62A_BLINDLY_TREATED_AS_0X62B: NO
+MODEL_BIN_POINTER_FULL_WIDTH_PRESERVED: YES
+ANY_ZERO_EXTENSION_RISK: NO
+TARGET_VALIDATION_EXPRESSION_UNCHANGED: YES
+LOW_PAGE_REMAINS_CANDIDATE_ONLY: YES
+UNVALIDATED_CANDIDATE_CAN_REACH_CAUSAL_ANALYSIS: NO
+MODEL_BRIDGE_COUNTERS_IMPLEMENTED: YES
+NEXT_CAPTURE_CAN_DISTINGUISH_NORMALIZATION_FAILURE: YES
+TARGET_534_EXACT_VALIDATION_REACHABLE_AFTER_REPAIR: YES
+BUILD_RESULT: PASS
+WINDOW_DISPLAY_TEST: PASS (38/38)
+PROJECTION_TEST: PASS (7/7)
+TOOIE_DIFF_CHECK: PASS
+RT64_DIFF_CHECK: PASS
+USER_MANUAL_TEST_REQUIRED_NOW: YES (one bounded V7 capture)
+NEXT_SINGLE_ACTION: run the authorized bounded V7 capture and retain status plus CSV
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+## CURRENT (2026-09-05) — V7 FIRST CAPTURE STILL BLOCKED BEFORE MODEL IDENTITY
+
+The bounded capture after the bridge repair produced both V7 artifacts and
+postdates the rebuilt executable. It is usable for admission diagnostics, but
+`CAPTURE_COMPLETE=0` and no exact target entered the causal pipeline. The CSV
+has 47,574 candidate rows across five targets; every row reports
+`model_bin=0x0` and `validation_reason=1`. The bridge emitted zero raw
+`0x62A`/`0x62B` classifications, zero metadata normalizations, zero accepts,
+and 1,786 rejects. This run therefore did not exercise the proven
+raw-`0x62A`-to-live-`0x62B` path; the schema cannot distinguish the reject
+subcause before classification. No downstream handoff or renderer claim is
+authorized.
+
+```text
+V7_RUNTIME_STATE: E_EXACT_VALIDATION_BLOCKED_NO_MODEL_IDENTITY
+CAPTURE_USABLE: YES for admission diagnostics; NO for causal handoff analysis
+CAPTURE_COMPLETE: 0
+RAW_APPEND_HOOK_COUNT: 5214884
+RAW_FULLSYNC_HOOK_COUNT: 2489
+RAW_RENDER_SELECTION_HOOK_COUNT: 5223
+TARGET_CANDIDATE_COUNT: 47574
+TARGET_VALIDATED_COUNT: 0
+TARGET_REJECTED_AFTER_VALIDATION_COUNT: 47574
+MODEL_GETTER_RAW_62A_COUNT: 0
+MODEL_GETTER_RAW_62B_COUNT: 0
+MODEL_GETTER_NORMALIZED_62B_COUNT: 0
+MODEL_BIN_BRIDGE_ACCEPT_COUNT: 0
+MODEL_BIN_BRIDGE_REJECT_COUNT: 1786
+TRACKED_APPEND_COUNT: 0
+TRACKED_HANDOFF_COUNT: 0
+TRACKED_RENDER_SELECTION_COUNT: 0
+OBSERVED_TARGET_MASK: 0x00
+EXACT_TARGET_VALIDATION_RUNTIME_WORKING: NO
+UNVALIDATED_TARGET_USED_CAUSALLY: NO
+MANDATORY_TARGET_COVERAGE_COMPLETE: NO
+CPU_HANDOFF_STATUS: UNKNOWN
+FIRST_UNEXPLAINED_LAYER: model-bin bridge before exact target validation
+ROOT_CLASS: UNKNOWN (no validated target witness)
+ROOT_CONFIDENCE: HIGH for bridge-gate failure; NONE for rendering root
+NEXT_SINGLE_ACTION: resolve the 1,786 bridge rejects and rerun one bounded V7 capture retaining status plus CSV
+NEXT_RECOMMENDED_MODEL: GPT-5.6 Luna
+GPU_READBACK_USED: NO
+GPU_SYNCHRONIZATION_ADDED: NO
+NO_COMMIT: YES
+NO_PUSH: YES
+```
+
+Evidence: [[plan/evidence/p09-v7-cpu-handoff-capture-analysis]].
+
+## P09 V7 durable-bin bridge repair — state F (2026-09-07)
+
+V7 model context is now published at `secondary_sway_register_durable_bin()`
+after its existing metadata proof of normalized `0x62B` (magic `0xB`, gtype
+flag clear, 66 bones). This is the sole authoritative identity source. The
+publisher stores a sign-extended guest `uint64_t`, records the physical base,
+increments a context generation, and clears a replaced or evicted matching
+context. The `func_80092B04` getter wrapper remains non-authoritative and now
+reports explicit argument, zero-return, resource, and metadata rejection
+counters; it cannot admit or override V7 context.
+
+RT64 status exposes durable registration, normalized-`0x62B`, publish/clear,
+generation, last-context, and getter-reason counters. Exact validation remains
+`current_dl == physical(model_bin) + 0x2670 + logical_index * 8`; low-page
+matching remains candidate-only and unvalidated candidates cannot reach causal
+analysis. No game launch or V7 capture was performed. Build, 38/38 window
+tests, 7/7 projection tests, both `git diff --check`, and `graft build` pass.
+
+## P09 V7 fresh capture gate result — state G (2026-09-07)
+
+The user-generated post-repair V7 capture is fresh, enabled, and schema-valid. The durable seam is working: 1,449 registrations, 1,297 normalized `0x62B`, 1,297 context publications, zero clears; last guest bin `0xFFFFFFFF80229070`, physical base `0x229070`. Getter rejection reasons are now visible, with `GETTER_REJECT_ARG_FILTER` first.
+
+Exact target admission remains blocked. There are 5,296 candidate records and zero validated records: 2,526 reason-1 zero-model rejects and 2,770 reason-2 full-address DL mismatches. Candidates cover `OWN_105_0x534` (1,879), `JOIN_DISTAL_0x54C` (1,906), `OWN_104_0x57C` (1,216), and `OWN_103_0x5AA` (295); no `JOIN_DISTAL_0x564` or `JOIN_ROOT_0x592`. `CAPTURE_COMPLETE_FOR_CAUSAL_DECISION=NO` and `OBSERVED_TARGET_MASK=0x00`; downstream CPU handoff and join/render conclusions remain unknown by the stop rule. Next single action: repair candidate-to-full-address admission, then repeat one bounded V7 capture. No code or GPU changes were made in this analysis turn; no commit or push.
+## P09 V7 fresh capture after exact direct-DL admission repair — state H (2026-09-07)
+
+Fresh schema/version artifacts postdate the executable. Exact direct admission is PROVEN: 1485 normalized 0x62B publications and 40124 exact matches, with all six target bits observed (0x3F). Per-target exact counts: 0x534=11464; 0x54C=5732; 0x564=5732; 0x57C=5732; 0x592=5732; 0x5AA=5732.
+
+Recorded bounded pipeline coverage is 448 APPEND, 96 INITIAL_HANDOFF_OK (16 per target), and 32 RENDER_SELECTION. Face range/content and velocity-zero checks pass for sampled handoffs. All handoffs report byte_mismatch=3, whose combined counter lacks a component breakdown; CPU payload equality and first divergence are therefore UNKNOWN. JOIN expected-role provenance remains unresolved, keeping CAPTURE_COMPLETE_FOR_CAUSAL_DECISION=NO and preventing promotion of a later-renderer root.
+
+NEXT_SINGLE_ACTION: isolate byte-mismatch components and resolve JOIN expected-role provenance, then rerun one bounded V7 capture. Analysis only; no production fix, GPU readback, synchronization, commit, or push.

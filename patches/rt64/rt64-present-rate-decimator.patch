@@ -1,0 +1,95 @@
+--- a/src/hle/rt64_present_queue.cpp
++++ b/src/hle/rt64_present_queue.cpp
+@@ -7,6 +7,7 @@
+ #include "common/rt64_thread.h"
+ #include "rhi/rt64_render_hooks.h"
+ 
++#include "rt64_present_decimator.h"
+ #include "rt64_workload_queue.h"
+ 
+ #include <algorithm>
+@@ -552,6 +553,7 @@
+ 
+         int processCursor = -1;
+         bool skipPresent = false;
++        PresentDecimator presentDecimator;
+         uint32_t displayTimingRate = UINT32_MAX;
+         const bool displayTiming = ext.device->getCapabilities().displayTiming;
+         bool swapChainValid = !ext.swapChain->needsResize();
+@@ -616,6 +618,18 @@
+                     continue;
+                 }
+ 
++                if (skipPresent) {
++                    // Catch-up skip: restart the cadence.
++                    presentDecimator = PresentDecimator();
++                }
++                else {
++                    // Below-native cap: reuse the catch-up skip so the workload and its ACK still flow.
++                    // A paused present resets the decimator and is never skipped.
++                    std::scoped_lock<std::mutex> configurationLock(ext.sharedResources->configurationMutex);
++                    const bool manualRate = (ext.sharedResources->userConfig.refreshRate == UserConfiguration::RefreshRate::Manual);
++                    skipPresent = !presentDecimator.shouldPresent(manualRate, present.paused, ext.sharedResources->targetRate, ext.sharedResources->viOriginalRate);
++                }
++
+                 if (skipPresent) {
+                     skipInterpolation();
+                     notifyPresentId(present);
+--- a/src/hle/rt64_workload_queue.cpp
++++ b/src/hle/rt64_workload_queue.cpp
+@@ -1018,7 +1018,11 @@
+                     deltaTimeMs = 1.0f / float(workload.viOriginalRate);
+                 }
+ 
+-                ext.sharedResources->viOriginalRate = workload.viOriginalRate;
++                {
++                    // Read by the present thread under configurationMutex.
++                    const std::scoped_lock configurationLock(ext.sharedResources->configurationMutex);
++                    ext.sharedResources->viOriginalRate = workload.viOriginalRate;
++                }
+                 
+                 // Get the current and previous set of frame counters. The other set can be in use by the present queue. Skip if no new present event has arrived before this workload event.
+                 InterpolatedFrameCounters &prevFrameCounters = ext.sharedResources->interpolatedFrames[ext.sharedResources->interpolatedFramesIndex];
+--- /dev/null
++++ b/src/hle/rt64_present_decimator.h
+@@ -0,0 +1,40 @@
++//
++// RT64
++//
++
++#pragma once
++
++#include <cstdint>
++
++namespace RT64 {
++    // Below-native presentation cap. When the target rate is under the VI original rate, only
++    // target/original of the presents are shown. The rest take the catch-up skip path, so every
++    // workload is still consumed and the guest never waits. Integer accumulator handles
++    // non-divisor rates (45, 70, ...). Never touches the guest, VI or audio.
++    struct PresentDecimator {
++        uint32_t ticks = 0;
++        uint32_t lastTarget = 0;
++        uint32_t lastOriginal = 0;
++
++        bool shouldPresent(bool manualRate, bool paused, uint32_t targetRate, uint32_t originalRate) {
++            if (!manualRate || paused || (targetRate == 0) || (originalRate == 0) || (targetRate >= originalRate)) {
++                lastTarget = lastOriginal = 0;
++                return true;
++            }
++
++            if ((targetRate != lastTarget) || (originalRate != lastOriginal)) {
++                lastTarget = targetRate;
++                lastOriginal = originalRate;
++                ticks = originalRate - targetRate;
++            }
++
++            ticks += targetRate;
++            if (ticks >= originalRate) {
++                ticks -= originalRate;
++                return true;
++            }
++
++            return false;
++        }
++    };
++};

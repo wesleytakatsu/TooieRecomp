@@ -1,3 +1,14 @@
+---
+title: "P08 — Causal Isolation of Post-Egg Camera Eye Vector Divergence at Glidx 384"
+description: "Isolamento causal da divergência do vetor de câmera eye no attract demo de Wooded Hollow."
+status: proven
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-18
+tags: [p08, camera, eye, demo, wooded-hollow, set74, ncbapivot]
+---
+
 # P08 — Causal Isolation of the Post-Egg Camera Eye Vector Divergence at Glidx 384
 
 ## 0. Executive Summary

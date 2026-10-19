@@ -83,19 +83,24 @@ Use the repository, not chat history, as canonical state.
 - `docs/plan/evidence/*session-handoff*.md`: operational state sufficient for a fresh agent/chat.
 - `docs/plans/**`: phase/task status, gates, residual work, next action.
 - `docs/specs/**`: stable contracts only.
-- `docs/plan/evidence/**`: experiments, dumps, hypotheses, arbitration, and proof.
+- `docs/reverse-engineering/**`: current reverse-engineering knowledge (what the game is).
+- `docs/plan/evidence/**`: experiments, dumps, hypotheses, arbitration, and proof (how it was shown).
 - Git commits/patch artifacts: exact implementation history and reproducibility.
 
 Classify conclusions explicitly when documenting them:
 
 - `PROVEN`
-- `REFUTED`
-- `CORRECTED/SUPERSEDED`
+- `STRONG_INFERENCE`
+- `HYPOTHESIS`
 - `INFERENCE`
-- `DISPUTED`
 - `UNKNOWN`
+- `REFUTED`
+- `CORRECTED` / `CORRECTED/SUPERSEDED`
+- `DISPUTED`
 
-Never promote a disputed hypothesis into a spec.
+Never promote a disputed hypothesis into a spec. Canonical RE pages must never silently promote a hypothesis.
+
+Whenever an investigation proves or materially corrects knowledge about a function role or arguments, struct field/offset, resource ID, asset type, model/animation identity, overlay, bone/tag/part, GeoCmd type, matrix/render path, state machine, audio system, map structure, or reusable engine behavior, evaluate whether it belongs in `docs/reverse-engineering/`. Evidence docs remain provenance. Canonical pages hold the current best model. Do not copy full evidence logs into canonical pages.
 
 ## Generated code and ownership of fixes
 
@@ -243,3 +248,45 @@ Before handing off:
 - worktree status is explicitly reported;
 - commit/push state is recorded;
 - `NEXT_SINGLE_ACTION` is concrete and singular.
+
+<!-- graft:start -->
+## Graft — repo context graph
+
+This repo is indexed in `graft/`: small linked markdown nodes that explain each
+system and carry exact file:line spans, kept in sync with the code through git.
+
+For ANY task here — understanding how something works, finding where code lives,
+or scoping a change — get context from the graph before grepping or opening
+source files. Re-ask freely (it's cheap) and reuse literal identifiers you
+already have (symbol, error string, file name) as the query. New to this repo?
+Run `graft map` first — a token-budgeted orientation (dir clusters, hubs,
+hotspots), no LLM, no key.
+
+- Run `graft ask "<your question>" --source` → ranked nodes with the relevant
+  code spans inlined (each hit's ≤8-line crux by default; `--full` for whole
+  definitions when the crux isn't enough). Match the tool to the task shape:
+  for understanding or editing, the top node IS the answer — cite its
+  `covers:` file:line spans and edit straight from `--source`. For
+  exhaustive tasks ("every occurrence / every caller of this pattern"), ranked
+  results are top-N, not complete — run `graft grep "<literal>"` instead
+  (exhaustive over indexed files, grouped by enclosing symbol), falling back
+  to raw `grep -rn` only for unindexed files.
+- `graft skeleton <file>` → every definition's signature + span, ~10× cheaper
+  than reading the file; use it to skim an API surface.
+- `graft callers <symbol>` gives precomputed, exact edges — who calls this.
+  Add `--direction out` for what it calls, or `--depth N` to walk
+  transitively for the full blast radius. For structural questions, skip
+  ranking and use this directly.
+- Or browse: `graft/INDEX.md` lists every node; follow the links.
+- Monorepos and folders of multiple repos rank fairly across sub-projects —
+  hits carry `[scope/]` labels naming which one they're from. Narrow with
+  `graft ask "<task>" --in <scope>/` once you know where you're working.
+
+If a returned span is truncated ("+N more lines"), open the file at that exact
+range before finalizing. Only open source files when a node genuinely lacks a
+needed detail, and then at the exact file:line the node points to — never
+re-read whole files.
+
+After big code changes, refresh the graph with `graft build` (deterministic,
+no API key, $0).
+<!-- graft:end -->

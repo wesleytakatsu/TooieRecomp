@@ -1,3 +1,14 @@
+---
+title: "P08 — SIGSEGV do_dma: dynamic diagnosis"
+description: "Diagnóstico dinâmico da causa raiz do SIGSEGV em do_dma por colisão de base vram no func_map."
+status: proven
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-10
+tags: [p08, dma, segv, overlays, func-map, vram]
+---
+
 # P08 — SIGSEGV do_dma: dinamic diagnosis
 
 **HEAD:** `f865c038455da1e5fafb5257ece974e1e15c9399`

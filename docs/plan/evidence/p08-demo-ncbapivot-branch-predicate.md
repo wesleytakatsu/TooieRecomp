@@ -1,3 +1,14 @@
+---
+title: "P08 — Bounded Branch-Predicate Differential for ncbapivot at Glidx 384"
+description: "Diferencial de predicado de branch e cadeia de retorno em ncbapivot no glidx 384."
+status: proven
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-18
+tags: [p08, camera, demo, ncbapivot, branch-predicate, mips]
+---
+
 # P08 — Bounded Branch-Predicate Differential for ncbapivot at Glidx 384
 
 ## 0. Executive Summary

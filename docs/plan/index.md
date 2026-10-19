@@ -160,6 +160,11 @@ O trabalho só está concluído quando todos os critérios de
 
 ## Evidência P08 / P09 corrente
 
+- [[evidence/p08-user-demo1-movement-and-fire-egg-differential]] — **CURRENT (P08):**
+  USER_DEMO1 single-feature causality PROVEN: on unchanged C56 binary, setting ONLY
+  `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` restored 355x12 NPC prefix, 39x14 record
+  words, 14 RNG snapshots, and post 355 Fire Egg sweep hit (v0=0x80132f60); underlying
+  mechanism UNKNOWN; next action is owning-layer separation of expanded DRAW from simulation.
 - [[evidence/p08-user-demo4-800979d8-independent-review]] — **CURRENT:**
   helper contract, exact BCE84 ring-1 raw join, focused test, and bounded P60/
   ncbapivot chain match in content. The immutable log-hash gate is blocked;
@@ -173,6 +178,9 @@ O trabalho só está concluído quando todos os critérios de
   USER_DEMO_1 and USER_DEMO_5 movement residuals; Talon-Trot/locomotion link is
   an inference only. Next target is Demo 5 first divergence.
 
+- [[evidence/p09-fps-counter-and-settings-toggle]] — **CURRENT (P09-RES-05):**
+  top-left present FPS counter and Graphics settings toggle verified; RT64 present
+  success counter and RmlUi overlay hook documented; unit test PASS; runtime QA pending.
 - [[evidence/p09-user-observed-parity-residuals]] — **PROVISIONAL_PRE_P09_PARITY_EVIDENCE:**
   Demo 0 only: 765/765 input, bounded physics/behavior evidence, Blue Egg parity at
   glidx 322, and Angrylion Z-buffer/classifier result. Fire Egg report remains

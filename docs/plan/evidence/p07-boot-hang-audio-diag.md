@@ -1,3 +1,14 @@
+---
+title: "P07 boot hang + audio silence diagnosis (2026-08-09)"
+description: "Diagnóstico de silêncio de áudio e travamento de boot durante inicialização do P07."
+status: superseded
+type: evidence
+project: TooieRecomp
+phase: P07
+date: 2026-08-09
+tags: [p07, audio, boot, hang, pulseaudio, silence, rsp]
+---
+
 # P07 boot hang + audio silence diagnosis (2026-08-09)
 
 ## Audio device routing (not a false positive)

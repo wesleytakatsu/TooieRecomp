@@ -7,11 +7,184 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-08-31
-tags: [banjo-tooie-Recomp, rt64, input, frontend, linux]
+updated: 2026-10-19
+tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, attract, demo1, demo7, drift, fire-egg, movement-parity]
 ---
 
 # BT P08 — RT64, entrada e frontend
+
+## Pre-commit review, RT64 clean-pin patch replay & getter gate fix (2026-10-19)
+
+Evidência canónica: [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]].
+Revisão pré-commit do manifesto de 196 caminhos concluída com Grok 4.7 Medium terminando em `end_turn`.
+- **P1 RT64 Clean-Pin Replay (RESOLVIDO)**: 3 patches limpos (`rt64-rsp-endpoint-current.patch`, `rt64-present-fps-decimator-and-counter.patch`, `rt64-p09-exact-use-correlation-header.patch`) e patch de RecompFrontend registrados em `tools/apply_runtime_patches.sh` (+49 linhas; `bash -n` exit 0, `git diff --check` exit 0); replay validado em clone isolado; testes de host compilam e passam (`rt64_present_decimator_test` PASS, `p09_exact_use_correlation_test` 1354/1354, `p09_cpu_shader_clip_semantics` 14/14). Patches incrementais antigos permanecem no repositório como proveniência histórica, porém são SUPERSEDED para aplicação em pin limpo. Hooks C++ de patologia não reproduzidos do pin.
+- **P2 Getter Diagnostic Gate (RESOLVIDO)**: `v7_note_model_getter` chaveado por `g_getter_durable_needed` em `include/tooie_diag.h` e `src/game/tooie_diag.cpp`. No gameplay padrão retorna antes de contadores, leituras de guest, mutex e escritas em host. Validado por `tests/getter_diag_gate_test.cpp` PASS exit 0 e build `TooieRecompiled` exit 0 (SHA256 `74a0cea04a2bc3704860388673c40b2e73ee34d284f3a2afa0faebe91a9c05f5`, distinto do binário candidato A6A2 `a6a2c023...` testado pelo usuário).
+- **Confirmação visual**: Mantida a confirmação visual direta do usuário para a área testada ("Sim, continua funcionando" no binário A6A2). Não alegar confirmação visual para o novo hash `74a0cea0...`. Paridade global e mapas não testados permanecem residual.
+- **Next Single Action**: `extend oracle comparison to another attract demo when user requests next game adjustment`.
+
+## USER_DEMO1 frustum parity narrow allowlist landed & user visually confirmed for tested area (2026-10-19)
+
+Read [[../../plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[../../plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[../../plan/evidence/p08-demo-movement-precision-diagnosis]], and [[../../plan/evidence/p08-attract-movement-residuals]].
+Grok 4.7 Medium implementation session `01a15118-c738-7dd3-98ed-cc5db5021bb5` completed `end_turn` (38 turns; root observed CLI exit 0). The narrow fix landed in candidate binary A6A2 (SHA256 `a6a2c023a9e3b0688cac15249cda61b5c8b8ccdf68c7c40f91d8c512356bef5e`).
+Source edits owned in `src/game/boot_hw_stubs.cpp`, `src/game/tooie_demo1_projectile.h`, and `tests/tooie_demo1_upd_layout_test.cpp`; `RecompiledFuncs` untouched, no generated hand-edits.
+
+- **Scope Boundary & Allowlist Architecture (PROVEN)**:
+  - `tooie_wrap_func_800E3E8C` no longer opens a `TooieCacecDrawScope` (shared broad DRAW scope dropped; nested CACEC only expands if an outer scope is active).
+  - Pure draw caller `func_800B97A4` registered via `tooie_wrap_func_800B97A4` with scope kind 3 when `tooie_cacec_pure_draw_vram(kCacecPureDrawB97A4)` is true (guest VRAM `0x800B97A4`; accept path emits G_MTX / G_DL / G_MOVEMEM and matrix calls without RNG/simulation side effects).
+  - Existing `tooie_wrap_func_8011447C` scope kind 2 preserved for object visual pop culling.
+  - Mixed renderer `func_800DE498` (which stores E3E8C `v0` to `0x8012C940` and on accept executes callbacks and writes renderer context) stays on original `v0` because no scope wraps it.
+  - Unclassified callers stay on original `v0`. No default flag OFF, no RNG save/restore, no host-PC/RA production gates.
+- **Production Default-ON Parity Verification (PROVEN)**:
+  - Feature remains production default ON (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). Both fresh default-ON captures completed exit 0 with matching verification.
+  - **TARGET Capture** (`demo1-sep-target-current/target.csv`, SHA256 `016a102c92f279aef896bcab0802be27b1671adab06f8bc374bf227573b398ec`, owned PID 1776728, 66.084s, exit 0):
+    - All 355 paired trajectory samples `w0..w11` (`tgtrec`) match original flag-OFF / oracle2 bit-exact (0 mismatches; old buggy default-ON diverged post 83).
+    - All 546 ActorRecord words (`updrec` 39 words x 14 pre/post snapshots across posts 80..86) match original bit-exact.
+    - All 14 raw LCG RNG snapshots (`a2`) match original bit-exact (resolving PRE82 RNG split).
+    - All 14 `+0x60` words match original `0003006c` (was `0004006c` under buggy default-ON).
+  - **PROJECTILE Capture** (`demo1-sep-projectile-current/projectile.csv`, SHA256 `570f42e0ad8d31a883c2345afc5e0b000a3fde22baa7edc7722ab35b031d1531`, owned PID 1774174, 67.274s, exit 0):
+    - Post 355 sweep `func_800CD820` leave returns `v0 = 0x80132f60` (hit) and narrowphase `func_800CD6B4` leave returns `1`, exactly matching original hit (old buggy default-ON missed with `v0 = 0`).
+    - 22 sweep ENTER pairs and 21 `sueggmove9` ENTER pairs match original in 6 geometry words and gamespeed `gs`.
+  - **Build & Tests**: Ninja exit 0 (up-to-date); all unit test binaries (`upd_layout`, `target_selector`, `projectile`, `parity`, `demo7_drift`, `mips_rounding`, `coverage`) exit 0. Test `tooie_demo1_upd_layout_test` verifies `pure_draw_accepts=1` in harness. Unit test models old policy vs new policy; no actual old binary unit test execution exit 1 is claimed.
+- **Epistemic Boundaries & Status**:
+  - Positive draw accept exists in unit harness; runtime TARGET window recorded `cacecx = 0` (expected when mixed DE498 scope is dropped; runtime cacecx is NOT promoted from 0).
+  - Graphical QA of widescreen object-edge pop previously `NOT_TESTED` is now superseded by direct user visual confirmation: user launched `./build/TooieRecompiled` normally without flags in a previously affected gameplay area and confirmed: *"Sim, continua funcionando"*.
+  - Classification: **`VISUALLY_CONFIRMED_FOR_TESTED_AREA`**, **`USER_REPORTED`**.
+  - Epistemic scope: This confirms preservation of the observed visual expansion in the gameplay area tested by the user. Do NOT claim all maps, all objects, or global movement parity proven. Broader game parity remains an untested residual.
+- **User Direction & Next Step**:
+  - User explicitly chose KEEP VISUAL EXPANSION ACTIVE (feature stays default ON; candidate binary A6A2).
+  - User visual test closes QA for the tested area. No new action needed on the bounded Demo 1 fix. User may have the game open; do not touch running processes.
+  - Invariants maintained: P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio glitch deferral maintained.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SCOPE_BOUNDARY_FIX: PROVEN (shared E3E8C broad scope dropped; allowlist pure-draw B97A4 kind 3 + preserved 8011447C kind 2; DE498 original v0)
+DEFAULT_ON_TARGET_PARITY: PROVEN (355x12 trajectory words, 546 record words, 14 RNG snapshots, +0x60=0003006c exact original under default-ON binary A6A2)
+DEFAULT_ON_PROJECTILE_PARITY: PROVEN (post 355 Fire Egg sweep hit v0=0x80132f60, CD6B4=1, 22 sweep + 21 move pairs exact under default-ON binary A6A2)
+BUILD_AND_TEST_STATUS: PASS (ninja exit 0; layout/selector/projectile/parity/demo7/mips/coverage exit 0; pure_draw_accepts=1 in harness)
+WIDESCREEN_EDGE_QA_STATUS: VISUALLY_CONFIRMED_FOR_TESTED_AREA (USER_REPORTED: "Sim, continua funcionando" on normal noflags launch; cacecx=0 in target window unpromoted; broader game/objects untested residual)
+USER_CHOICE: RESOLVED (KEEP EXPANSION VISUAL ACTIVE; feature stays default ON; user visual QA completed for tested area)
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when continuing broader fidelity
+```
+
+## Prior: USER_DEMO1 source-proven call chain & Grok round 2 implementation (2026-10-19; SUPERSEDED BY LANDED FIX)
+
+Read [[../../plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[../../plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[../../plan/evidence/p08-demo-movement-precision-diagnosis]], and [[../../plan/evidence/p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). The primary objective is **general subtle gameplay/action parity** across movement, kinematics, and state transitions, not an artificial aim or hit steering adjustment; no global clock hack.
+**User Choice Resolved**: KEEP EXPANSION VISUAL ACTIVE while proper fix; **NO temporary OFF default**. Setting flag OFF (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`) is strictly an experimental per-process counterfactual diagnostic; NO production source or config change has been made.
+Production invariants preserved: shader CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio glitch deferral maintained.
+
+- **Single-Feature Counterfactual Causality (PROVEN)**:
+  - On the unchanged binary (`c56ce4e17b554020c36eec14a9e48861693679e9426161031e10aef4527a67e2`) with the TARGET logger (`TOOIE_DIAG_DEMO1_TARGET=1`), setting ONLY `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` (explicit-off getter at `boot_hw_stubs.cpp:4264..4267`, wrapper 4451 calling original `800CACEC` and returning before aspect-aware expansion; no other `TOOIE_TEST_*` flag combined; CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-object-original/target.csv`, SHA256 `1f43e7c570f21ec082bc7afac88cf01789cebbd8c2ec4e142f0aee9eb791f928`, 415 rows, 66.217s, exit 0/0, FINISH 357) restored:
+    - All 355 `tgtrec` posts 2..356 x 12 raw words bit-exact with the original Angrylion oracle reference (`demo1-first-writer-oracle-2`).
+    - All 14 pre/post snapshots across frames 80..86 x 39 ActorRecord words (546 words total) bit-exact with Oracle (`demo1-object-frustum-record39-comparison.json` is `[]` empty list).
+    - Record `+0x60` high 16 bits: was `0004` (curr `0004006c`) under default aspect-aware ON vs original `0003` (`0003006c`); with flag OFF, it is now `0003` (`0003006c`), matching Oracle exactly.
+    - All 14 raw RNG `D_8012C7F0` snapshots bit-exact with Oracle, completely resolving the PRE82 divergence ($k=4$ `036f8437` vs $k=5$ `c125942a`) and POST83 geometry divergence.
+    - All 14 gamespeed `gs` words exact `0x3d4cccce`.
+  - In comparison, default Current with aspect-aware ON had 274 posts (83..356) differing in position.
+- **Actual Fire Egg Collision Restored (PROVEN)**:
+  - In a dedicated PROJECTILE-only capture with the same flag OFF (`TOOIE_DIAG_DEMO1_PROJECTILE=1` and `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`, controller 1600930 / game 1600931, exit 0/0, 66.824s, 313 rows, FINISH 391, CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current-object-original/projectile.csv`, SHA256 `3d54fe91ac1bc570a95a87241322f7d58593575aac951c4b4250d397a3344258`):
+    - Actual Fire Egg sweep at post 355: `func_800CD820` sweep leave returns `v0 = 0x80132f60` (nonzero hit, matching Oracle `89a6bad1...`), whereas default Current returns `v0 = 0` (miss).
+    - Narrowphase `func_800CD6B4` LEAVE = 1 on both off-current and Oracle; default Current has no such callback at 355.
+    - All 22 sweep ENTER input pairs and 21 `sueggmove` ENTER input pairs are exact in `w0..w5` geometry and `w11` `gs`.
+    - Sweep/move counts: 44 sweep / 42 move off/oracle vs default 64 / 62 (projectile stops at hit).
+    - Bound centers at posts 354 and 355: all 6 selected `0x8008A018` LEAVE center triples exact with Oracle, including actual target post 355 `w0=c5af7c8d, w1=c401d0fa, w2=44a89e51` = `(-5615.56885, -519.265259, 1348.94739)`, completely restoring the prior ~427-unit bound center difference.
+- **Causal Verdict & Epistemic Boundaries**:
+  - `OBJECT_FRUSTUM_ASPECT_AWARE=1` is **CAUSAL** for observed RNG divergence, NPC trajectory divergence, and Fire Egg collision miss in USER_DEMO1.
+  - The underlying call consumer and side-effects remain **UNKNOWN**.
+  - Do NOT claim all NPCs globally fixed or physical fix done.
+  - Do NOT globally REFUTE widescreen capability; update prior UNTESTED statement to PROVEN at feature level with mechanism UNKNOWN.
+  - Source ABI and canonical getter roles from prior investigations are strictly preserved.
+- **Source Mechanism Discovered (`PROVEN` Call Chain & Gating)**:
+  - Broadly treating `func_800E3E8C` (`E3E8C`) as DRAW scope allows aspect-expanded accept (`v0 = 1`) inside mixed renderer routine `func_800DE498` (`0x800DE6EC`).
+  - `func_800DE498` stores `v0` to `0x8012C940`. If nonzero (accepted), it takes the visible path: dispatches registered pre-draw callback `0x800DE738: jalr $v0` with `$a0` loaded from `0x8012C9AC`, calls asset resolver `800D674C`, stores renderer processing context `s0+0x14/0x18/0x1C` (renderer processing context writes, NOT actor state writes; do not conflate), and emits display lists. If culled (`v0 == 0`), it branches to `0x800DE718`, calls cleanup `func_800DE318`, and returns 0.
+  - Standard actor draw entry `func_80101870` -> `func_80101808` calls `func_800DF47C(func_801015D0, arg0)`, registering callback `func_801015D0` at `0x8012C9A8` and `Actor*` at `0x8012C9AC`.
+  - Callback `func_801015D0` calls `func_80101934(Actor*)` at `0x80101784`, which indexes jump table `D_801243E8` via `(actor->unk74 & 0xF)`. Slot `+0x04` invokes `func_80101A50(Actor*)`.
+  - `func_80101A50` calls `func_800DC0C0` (advancing global LCG RNG seed `D_8012C7F0`, RA `0x80101AA8`), tests random float against `0.03f`, mutates guest actor state byte `sb $t2, 0x7A($a2)`, and calls `func_800DF744` with selectors 1 and 2 writing to `D_8012C850`.
+  - **Epistemic Classification**: Semantic identity as facial/eye-blink animation is **`STRONG_INFERENCE`** (suggested by 3% probability check and selectors 1/2, but without explicit asset/animation binding proof in source). Control flow gating, global LCG RNG stepping, actor byte `0x7A` mutation, and renderer array writes are strictly **`PROVEN`**.
+- **Paired Native Telemetry Arbitration (`PROVEN`)**:
+  - Telemetry (`demo1-rng-paired-native-chain-gate.json`): Current has 32 RNG steps vs Oracle 27 across posts 79..84.
+  - Sequence step gap grows monotonically across posts: Post 79: 0 (6 vs 6); Post 80: 0 (4 vs 4); Post 81: +1 (7 vs 6; **first extra step**); Post 82: +1 (5 vs 4); Post 83: +2 (6 vs 4); Post 84: +1 (4 vs 3). Cumulative delta = +5 steps across window.
+  - LCG chain exhibits **ZERO breaks** across all observed steps and snapshots (`breaks: []`). Every transition satisfies $s' = (1664525 \times s + 1013904223) \pmod{2^{32}}$.
+  - Expected oracle after-states, once calculated, never match actual observed stores once desynchronized.
+  - First extra RNG call is definitively the **SECOND `func_80101A50` call in post 81 (seq 146 in Current, before `6239b638` -> after `036f8437`)**, NOT global `func_8001608C` (which executes in both runtimes).
+  - Preceded directly by `cacecx` extra accept owner `func_800DE498` at seq 142 on position `(-2818, 300, -2237)`.
+- **Native PC Mapper & Symbol Resolution (`PROVEN`)**:
+  - Old `T/t`-only cache (`demo1-rng-ee14-nm.json`) was **INVALID and incomplete** (omitted recompiled weak `W/w` functions).
+  - Completed `nm T t W w` (`demo1-rng-ee14-origin-resolution.json`) validated binary `EE14` (`ee14d6cb1c144a09ccec7f393dc2e986ac26fb0826893d2e0d490df9d19a683c`) with positive function sizes.
+  - Return address is guest original `0x80101AA8` (`jal func_800DC0C0` at `0x80101AA0`).
+- **Background Workloads & Active Agents (2026-10-19)**:
+  - **NO SONNET**: Sonnet quota expired (no more calls); last job `DIAG_READY` (binary `ee14d6cb...` / oracle core `1172a1e1...`), no prod FIX.
+  - **Haiku**: Approaching quota limit; reserved/unused now.
+  - **Grok 4.7 Medium**: Designated **SOLE** code writer and test executor. Resumed implementation session `01a15118-c738-7dd3-98ed-cc5db5021bb5`: round 1 cap 50 exit 1 with source proof and no edit (`demo1-frustum-parity-grok-implementation-report.txt`); round 2 active budget 70 (`demo1-frustum-parity-grok-implementation-round2.json`, completed `end_turn` exit 0, landing binary A6A2).
+  - **Gemini**: Designated for **ALL** Markdown and documentation maintenance.
+  - **Native Agent `demo7_capture`**: Read-only Grok review only; NO other capture authority.
+  - **Opus**: DONE (read-only existing report `demo1-rng-consumer-opus.json`).
+  - Current code EE14 diagnostics superseded by landed fix binary A6A2; original default vis ON CURRENT palliative / FPS / audio unchanged.
+- **Main Implementation Objective**:
+  - Correct shared `func_800E3E8C` consumer selection to separate genuine visual DRAW passes from logic/simulation callbacks. (RESOLVED in candidate binary A6A2).
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SINGLE_FEATURE_CAUSALITY: PROVEN (TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0 restores 355x12 prefix, 39x14 record words, 14 RNG snapshots, and post 355 Fire Egg hit)
+SOURCE_MECHANISM: PROVEN (shared E3E8C broad DRAW scope enables mixed DE498 gate; registered callback 801015D0 -> 80101934 -> D_801243E8 -> 80101A50 steps global LCG RNG D_8012C7F0, mutates actor byte 0x7A, writes D_8012C850 selectors via DF744)
+SEMANTIC_CLASSIFICATION: facial/eye-blink animation is STRONG_INFERENCE; control flow, RNG step, byte 0x7A mutation, renderer writes are PROVEN
+FIRST_EXTRA_RNG_CALL: PROVEN (second func_80101A50 in post 81 seq 146 curr, preceded by cacecx extra accept in func_800DE498 seq 142; NOT global 8001608C)
+PAIRED_RNG_GAP: PROVEN (grows 1..4 across posts, 32 curr vs 27 oracle in posts 79..84; zero breaks in chain; oracle after calculated never matches observed store)
+NATIVE_PC_MAPPER: PROVEN (old T/t cache INVALID; completed nm T t W w validated binary EE14 with positive sizes; RA guest 80101aa8)
+USER_CHOICE: RESOLVED (KEEP EXPANSION VISUAL ACTIVE while proper fix; NO temp OFF default; env flag 0 is EXPERIMENT ONLY)
+GROK_STATUS: COMPLETED (session 01a15118-c738-7dd3-98ed-cc5db5021bb5 completed end_turn exit 0, binary A6A2)
+AGENT_ROLE_ROUTING: Grok PRIMARY code/tests; Gemini ALL Markdown; Haiku minimal/unused; Native demo7_capture read-only; Sonnet NO calls; Opus DONE
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: user visual check of widescreen edges in known affected gameplay area, feature ON; if fails narrower remaining mixed-render separation requires next task
+```
+
+## USER_DEMO1 projectile sweep branch, bound center divergence, and target prefix tracking (2026-10-18)
+
+Read [[../../plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[../../plan/evidence/p08-user-demo7-cutscene-drift-investigation]], and [[../../plan/evidence/p08-demo-movement-precision-diagnosis]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). The latest objective is general subtle gameplay/action parity across movement, physics, and state, not an artificial aim/hit correction; no global clock hack. While historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), fresh causal root on the current binary is strictly **UNKNOWN**.
+
+Prior prefix parity (consumed 1..420 exact non-clock match at `0x800151BC` ENTRY) was independently confirmed by Haiku (`demo1-actual-pair-haiku-report.txt`). VI handler cadence difference was observed (100/419 transitions, +40 oracle entries); causal role in NPC/mob timing is UNKNOWN / OPEN HYPOTHESIS, player 420 exact does NOT refute NPC timing; `--nospeedlimit` is logical only, not real-time proof. No global clock fix claim.
+
+Pair 2 owner-aware liveness tracking (`demo1-projectile-current-liveness` 189 rows 66.019s vs `demo1-projectile-oracle-liveness` 151 rows 94.215s) proved that at `post 341` Oracle aliased the same owner (`0x80133530`) at new heap address `0x801d085c`: the previous pointer freeze at 341 is **CORRECTED/SUPERSEDED** as a diagnostic stale pointer gap, not a gameplay first divergence. Return retry dedup / unmatched 0 validated. Same query vectors, radius 38, and callback `gs`. At `post 355`: Oracle `func_800CD820` sweep leave returns nonzero hit (`v0 = 0x80132f60`), whereas Current returns `v0 = 0`.
+
+Pair 3 sweep branch diagnostic (`demo1-projectile-current-sweep` 321 rows 65.994s vs `demo1-projectile-oracle-sweep` 315 rows 94.712s) proved identical query 354/355 geometry, radius 38, `gs`, and identical cell-list candidate counts (2, 4, 2, 1, 3 across 5 lists, 24 candidates total, no cap hit). First QUALIFYING candidate bound center returned by `_subaddiecustomhits_entrypoint_5` (`0x8008A018`) differs already at post 354 (delta 431.29) and post 355 (delta 427.23), while radius 279.45 matches and the other 2 qualifying centers match. Oracle proceeds through narrow-phase checks `func_800EC3C4` and `func_800CD6B4` to hit `0x80132f60` at post 355; Current fails the earlier distance bound. First list candidate is NOT first qualifying candidate! Hit marker `0x80132f60` (`lhu+14=0x0671`, `lhu+18=0x0E3F`) has component record returned by `func_80106790` (`0x801c6434` vs `0x801cf614`), which MIPS proves is `vector_at(*(0x80136EE0), lhu+1A>>5)` with stride 0x9C (actor record in global actor vector, not model/bone). Bound center world relation is UNKNOWN pending descriptor bit 1 branch proof.
+
+New target prefix diagnostic (`TOOIE_DIAG_DEMO1_TARGET=1` / `P08_DEMO1_TARGET=1` cap 500 post 1..356) implemented by Sonnet (binary `18fbfa73...`, oracle core `25c46a52...`), current run completed exit 0 (PID 1316481/1316484 HISTORICAL), oracle pending/later. Demo 7 visual PASS, generator fix, default CURRENT `tfPos`, FPS counter/toggle, and audio deferral preserved.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+CURRENT_TARGET_DIAG_BINARY_SHA256: 18fbfa735f3c11d60d989f2236f9c016eb51a6dbfbc5f7eebc98c3c6ec68f024
+ORACLE_TARGET_CORE_SHA256: 25c46a523803ad879415c55cc6dd0512aebab5947a7f2fef02b1e13c22d6e953
+CURRENT_SWEEP_CSV_SHA256: 343ba0401cd45bedcef7e84b2b90781f856038d558c8200395a0b0f5d3aa480e (321 rows)
+ORACLE_SWEEP_CSV_SHA256: 89a6bad151beed9b0d3d852f468767e1a5dae75272248ed95ce47da3d7776660 (315 rows)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_EGG_RESULT: USER_REPORTED_MISS (persists on user binary 87c5...)
+USER_DEMO1_PREFIX_PARITY: 420/420_EXACT_MATCH (consumed 1..420 independently confirmed by Haiku)
+VI_CADENCE_DELTA_ROLE: UNKNOWN/OPEN_HYPOTHESIS (cadence delta 100/419; player match does not refute NPC timing; logical only)
+PAIR2_ORACLE_ALIAS_341: PROVEN (same owner 0x80133530; freeze hypothesis CORRECTED/SUPERSEDED as stale pointer)
+SWEEP_QUERY_INPUTS: BIT_EXACT_MATCH (query 354/355 geometry/radius 38/gs exact bit-for-bit)
+FIRST_QUALIFYING_BOUND_CENTER_DELTA: 431.29 at post 354, 427.23 at post 355 (radius 279.45 matches; other 2 centers match)
+MARKER_CANDIDATE_IDENTITY: lhu14=0x0671, lhu18=0x0E3F (actor record via func_80106790 -> vector_at(*0x80136EE0, lhu1A>>5), stride 0x9C)
+BOUND_CENTER_TO_WORLD_RELATION: UNKNOWN (pending descriptor bit 1 branch proof; not proven enemy world position)
+TARGET_PREFIX_CAPTURE_STATUS: CURRENT completed exit 0 (PID 1316481/1316484 HISTORICAL); ORACLE pending/later
+PRESERVED_STATE: Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: finish paired target prefix / first state producer or branch relation before code fix; no target fake hit / global time scale
+```
+
+## USER_DEMO7 cutscene drift bounded investigation (2026-10-17)
+
+Read [[../../plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[../../plan/evidence/p08-attract-movement-residuals]], and [[../../plan/evidence/p08-provisional-follow-camera-and-egg-differential]].
+User diagnostic capture analyzed via offline streaming parser (provenance: user capture `demo7-user-capture.log` SHA256 `74f859128f586306626df1eb964e161983c6c916c9509c14b04ff8b577d99467`, 407,919 lines; analysis dump `demo7-user-capture-analysis.txt`; verdict `demo7-user-capture-verdict.txt`; Grok CLI session `01a14b7c-c6ef-7bd3-9a0b-3fef4d99acf4`, exit 0). No code, build, or runtime execution this task (`PARSED_NOT_A_GAME_PASS`; zero tests reported `PASS`). Scene identity is PROVEN as `stage = 0`, `sub = 8`, `cnt = 1245` (1,244 consecutive rows `glidx 1..1244`, `tick_delta == 2`). Logger map field (`0x80127640`) clears to 0 during mode-5 body after warp consumption (filtering `map == 282` drops 100% of body). Viewport camera (`0x8012D500`) cuts overhead at `glidx = 38` (dY 345 -> 755; `cammode` contaminated). Stick released at `glidx = 50`, but `bs = 4`, `anim = 111`, `tspd = 500`, `velxz ~ 514..520` remain. Displacement `glidx 50..90` matches `velxz * gs` (stream gate median ratio 1.000354). Motion owner is narrowed from UNKNOWN mechanism to physical integration of retained target speed in guest world displacement; root cause and interpreted guest writer of `tspd`/`vel` remain STILL UNKNOWN. Collision remains `USER_OBSERVED`; Demo 5 open residuals preserved; CURRENT/FPS/audio unchanged.
+
+```text
+USER_DEMO7_SCENE_MAPPING: PROVEN (stage 0, sub 8, glrecord 698 cnt 1245, map clears to 0 in body)
+USER_DEMO7_MOTION_OWNER: GUEST_PHYSICAL_INTEGRATION_RETAINED_TSPD (ratio 1.00035; root writer UNKNOWN)
+USER_DEMO7_ORACLE_STATIONARITY: UNKNOWN (oracle not yet run)
+USER_DEMO5_RESIDUALS: OPEN_PRESERVED
+RUNTIME_EXECUTION_THIS_TASK: NOT_RUN
+NEXT_SINGLE_ACTION: See [[../../plan/evidence/p08-user-demo7-cutscene-drift-investigation]] (locate guest state bs=4 init/update/end and physics mode/target-speed writer at bs=2->bs=4 glidx 38, trace bounded stage 0 sub 8 glidx 35..60 without map==282 filter, compare Angrylion oracle where necessary before faithful fix; avoid full-run captures)
+```
 
 ## T_INTRO production projection policy (2026-08-31)
 
@@ -503,6 +676,7 @@ Evidência corrente:
   4:3 guest dimensions are established and validated in
   [[../../plan/evidence/p08-original-timing-4x3-baseline]]. 60Hz VI, 20/30Hz logic,
   30Hz animation, and host presentation decoupling are confirmed.
+- **Top-left present FPS counter & settings toggle**: "Show Present FPS" added to `add_graphics_options` (`src/game/config.cpp`), default false, persisted in `graphics.json`. Reuses RecompFrontend render-thread overlay update hook `recompui::set_overlay_update_callback` without parallel UI. Counts actual successful `swapChain->present()` calls (`RT64::presentSuccessCount`). Verified by host unit test `tooie_fps_meter_test` PASS exit 0; patches `patches/frontend/` and `patches/rt64/` reverse-checked; runtime QA pending ([[../../plan/evidence/p09-fps-counter-and-settings-toggle]]).
 
 ### Blockers históricos fechados / DO-NOT-REOPEN
 
@@ -545,6 +719,7 @@ produção; mapping pendente preservado.
 
 | evidência | estado/finalidade |
 | --- | --- |
+| [[../../plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]] | **CURRENT:** USER_DEMO1 movement/action parity & Fire Egg discriminator; paired first-writer capture valid 415 rows / 56 updrec (exit 0/0); record +0x60 differs PRE80 (0004006c vs 0003006c; role UNKNOWN); RNG first diff PRE82; geometry first diff POST83 (norm 0.208); tracked other actor 80132f30, shot candidate 80132f60 separate; no Demo 1 fix |
 | [[../../plan/evidence/p08-user-demo4-bainput-held-state-provenance]] | **CURRENT:** USER_DEMO_4 C-Right pad MATCH; first split is native `0x800979D8` return 0 vs 2 (`A-CANDIDATE-HELPER`) |
 | [[../../plan/evidence/p08-attract-loop-after-demo2-crash]] | **RESOLVED and ACCEPTED:** DEMO2 attract SIGSEGV; bsrest 0x808003FC resolved via CreateStatic (Level A, verdict B) |
 | [[../../plan/evidence/p08-forced-cinematic-facing-diagnosis]] | historical USER_BUG_B one-actor diagnosis; corrected/superseded |
@@ -1807,4 +1982,58 @@ projection compensation remains unchanged. Static validation of the removed
 candidate had passed before deferral.
 
 `PILLARBOX_CANDIDATE_FINAL_STATUS:` `DEFERRED_AND_REMOVED_FROM_WORKTREE`.
-`NEXT_SINGLE_ACTION:` animated/swaying model-part glitch investigation.
+
+### P08 Attract Demo 7 stationary cinema drift resolution (2026-10-17)
+
+User-observed player drift during Demo 7 in the attract sequence (TDL Stomping Plains, stage 0 sub 8) was forensically isolated, root-caused, and resolved at the owning generator layer without hand-editing generated code:
+1. **Kinematics & State Struct**: Disassembly of `bs_setState` (`0x8009E5C8`) proved layout `*(player + 0x120)` maps `+0: prev`, `+4: cur`, `+8: next`. During overhead slide, Banjo executes State 116 (`0x74`, `_bsrest_entrypoint_12`) with `anim = 111` while `bs_prev = 4`.
+2. **Root Cause**: In N64 hardware, `bs_setState(116)` calls INIT ep9 (`0x808005B8`) -> `0x8080020C` -> `0x80800308` -> helper `0x80800000` (`static_344_80800000`), which sets target horizontal speed to 0 (`baphysics_set_target_horizontal_velocity`) and clears velocity vectors to (0, 0, 0). In recompiled code, `N64Recomp` static function end-detection logic truncated `static_344_80800000` to an empty function because the decompilation ELF contained zero-size NOTYPE markers (`bsrest_VRAM`, `bsrest_TEXT_START`) at `0x80800000`.
+3. **Fix & Regeneration**:
+   - Upstream patch `patches/runtime/n64recomp-zero-size-static.patch` applied to `N64Recomp/src/main.cpp` via `tools/apply_runtime_patches.sh` (skips zero-sized symbols sharing the static address).
+   - Validated via regression test `tests/n64recomp_zero_size_static_test.sh` (fixed generator PASS, old generator FAIL).
+   - Decompilation inputs restored via pinned fork `25033be6` (ROM SHA1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, ELF SHA1 `2b2d04c5b6484594f750b097daf670f7a8a24167`, size 91855676).
+   - Full regeneration executed via official tooling (`tools/run_recomp.sh` / N64Recomp); 420 files regenerated; exactly 5 files changed (2 restored helpers in `funcs_416.c`, 4 rounding aliases semantically identical). Full build exit 0; `tools/check_generated_fresh.py` exit 0.
+4. **Verification**:
+   - Independent Grok final gate on fixed runtime capture (`demo7-fixed-root.log`, 121 rows, controller 396.13s): Criterion 1 (Bounded Demo 7 drift) PASS. 119 pose pairs match N64 reference within quantized rounding tolerances; pad inputs match 120/120; glidx 38..120 is stationary at `(-80.46, 0.00, 4496.25)`, `velxz = 0.0`, `tspd = 0.0`.
+   - Criterion 2 (global real-time cadence): 90.032s serial timing test (`timing-fixed-pid-serial-90s.log`) completed exit 0 with PID-tagged serialization fix in `src/game/tooie_diag.cpp`. Guest stream (PID 938341) over 59.038s delta interval (wall 20.004s..79.042s) yielded 60.0121955 VI Hz (3543 VIs) and 24.3063789 logic Hz (1435 logic updates) across changing scenes (~20 or ~30 Hz per scene). Stream PID 938331 had 0 VIs. Bounded conclusion: NO evidence of a 2x VI clock in the measured window. This does NOT constitute universal camera/mob/campaign timing proof; user-specific non-Demo7 reproduction question remains open.
+
+`DEMO7_BOUNDED_PARITY_STATUS:` `PASS` (Criterion 1; source bug CLOSED for tested window).
+`GLOBAL_VI_CADENCE_STATUS:` `NO_2X_VI_IN_MEASURED_WINDOW` (~60.012 VI Hz; universal mob/campaign parity unproven).
+
+### P08 Attract Demo 1 subtle movement and action parity investigation (2026-10-18)
+
+Following visual resolution of Demo 7, user reported that Fire Egg still misses on the current build (`87c5...`) and directed focus to general subtle gameplay/action parity across movement, physics, and state:
+1. **Diagnostic & Build**: Claude Sonnet implemented isolated default-OFF flags `TOOIE_DIAG_DEMO1_PARITY=1` and `P08_DEMO1_PARITY=1` at PC `0x800151BC` ENTRY (start of logic update, 62 columns, unit test `tooie_demo1_parity_test` PASS exit 0, ninja build exit 0, oracle rebuild exit 0).
+2. **Paired Prefix Captures**: Current Tooie (PID 1073249/1073258, 67.68s, exit 0) and pinned Angrylion oracle (PID 1074236/1074257, 98.71s, exit 0) executed cleanly to `window_consumed_420`.
+3. **Comparator Results**: 420 exact non-clock matched pairs (`consumed = 1..420`). 0 mismatches across pad inputs `r0..r5`, gamespeed `gs`, facing and ideal yaw, position, velocity, `velxz`, `tspd`, `ptype`, `bs_prev/cur/next`, animation, and viewport camera. Both sides skip only consumed 0.
+4. **First In-Window Divergence**: VI-handler entry cadence (`0x8001443C` delta-VI mismatches on 100/419 transitions; Tooie +847 vs oracle +887 entries). Counter difference under `--nospeedlimit`; did not perturb sampled guest fields.
+5. **Pair 2 Projectile Liveness & Hit Divergence (PROVEN)**:
+   - Oracle ALIAS at post 341 recovered same owner (`0x80133530`) at new heap address `0x801d085c`, restoring trajectory. Old freeze hypothesis `CORRECTED/SUPERSEDED` as a stale pointer diagnostic artifact.
+   - 21 movement pairs (`sueggmove9`), 22 sweep input pairs (`sweep800CD820`) including gamespeed `gs` (w11) bit-exact.
+   - First different return at post 355: `func_800CD820` original `v0 = 0x80132f60` (hit) vs port `v0 = 0` (miss).
+6. **Pair 3 Sweep Branch & Qualifying Center Divergence (PROVEN)**:
+   - Query radius 38 (`0x42180000`), sweep geometry and `gs` identical bit-for-bit at posts 354 and 355 across 5 spatial lists (counts 2, 4, 2, 1, 3; 24 candidates total).
+   - First candidate center differs at both 354 and 355: post 354 delta length 431.2900595 (curr `(-5239.28, -497.95, 1552.27)` vs orig `(-5617.35, -519.25, 1345.82)`); post 355 delta length 427.2311169 (curr `(-5235.09, -496.97, 1541.99)` vs orig `(-5615.57, -519.27, 1348.95)`). Radius 279.449982 is equal on both runtimes; other 2 qualifying centers and radii match identically.
+   - Parser note: PAR3 Haiku flaw raw pointer candidate comparison marked `INVALID_PARSER`; 10 lists `NOT_TESTED` in Haiku but native check (`demo1-sweep-par3-native-check.json`) proves counts; do not call game test FAIL from parser.
+7. **Target Helper Structure & Halfword Reader Bug (PROVEN MIPS)**:
+   - `func_80106790(marker)` resolves `vector_at(*D_80136EE0, lhu(marker+0x1A) >> 5)` with stride 0x9C (actor record in global actor vector).
+   - `_subaddiecustomhits_entrypoint_5` (`0x8008A018`): if descriptor word bit 1 is set, copies actor record `+4/+8/+0xC` position floats; else branches to `func_800EC75C` custom offset. Target class identity and branch unknown until source proof.
+   - Old `tooie_d1p_hu` halfword reader had a 4-alignment bug, returning 0 for halfwords at `+2` within an aligned word (including `+0x66`, `+0x6A`, `+0x1A`). Old zero was UNTRUSTWORTHY on Tooie; fixed in diagnostic helper.
+8. **Target Selector Fix & Paired Target-2 Telemetry (PROVEN)**:
+   - Initial target selector attempt produced 0 rows (FAIL) because it required mutable `0x0E3F` in `lhu(marker+0x18)`, whereas enter rows show `0x0E21` on both runtimes.
+   - Selector fixed to `lhu(actor+0x14) == 0x0671 && (lhu(actor+0x18) & 1) != 0` (ID 0671 + active bit 0); verified on real fixtures (old FAIL / new PASS exit 0; Haiku gate PASS exit 0; E3F semantic caveat noted from source `v0+14/18` in sweep leave).
+   - Paired capture `demo1-target-{current,oracle}-2` completed exit 0, FINISH 357, 359 rows each.
+   - Capture revealed 3 handles sharing ID `0x0671`: bound first `0x80132f30` (post 2), ambiguous `0x80132f00` (post 28), actual hit actor `0x80132f60` (post 140). Thus sampler bound `0x80132f30`, not actual hit actor trajectory.
+   - First actor `0x80132f30` positions 355 pairs BIT-EXACT posts 2..82; FIRST raw position divergence at post 83 (curr `44e16cc0 c309103c c30eda4e` vs orig `44e16e09 c3090ffe c30ea630`); `gs` (w11) exact across all 355 posts; other record words first differ at post 121 (meaning unknown); first actor callback record `0x80085c98` (getter class descriptor, not update entry).
+9. **Active Background Agents & Audit Status**:
+   - Sonnet quota expired; Grok 4.7 Medium implementation session 01a15118-c738-7dd3-98ed-cc5db5021bb5 completed end_turn exit 0, landing binary A6A2.
+10. **Preserved Invariants & Non-Goals**:
+    - Demo 7 cutscene fix visually confirmed. No default flag OFF, no speed, aim, or audio modifications, no manual generated changes. P09 Phase 1 default CURRENT tfPos workaround remains default-ON (palliative); FPS counter/toggle, RT64 decimator, and audio deferral unchanged.
+11. **Frustum Parity Narrow Allowlist Landed (PROVEN)**:
+    - Shared `func_800E3E8C` broad DRAW scope dropped; allowlisted pure-draw `func_800B97A4` (scope kind 3) + preserved `func_8011447C` (kind 2). Mixed renderer `func_800DE498` stays original `v0`.
+    - Under actual default-ON binary A6A2: 355 paired trajectory samples x 12 words, 546 ActorRecord words, and 14 RNG snapshots match original bit-exact (`+0x60 = 0003006c`). Post 355 sweep returns `v0 = 0x80132f60` (hit) and `CD6B4 = 1` matching original.
+    - Test harness reports `pure_draw_accepts=1`. TARGET window recorded `cacecx = 0` (not promoted). Widescreen edge visual QA for tested area confirmed by direct user test: *"Sim, continua funcionando"* (`VISUALLY_CONFIRMED_FOR_TESTED_AREA`, `USER_REPORTED`; broader game/objects untested residual).
+
+`DEMO1_PAIRED_PARITY_STATUS:` `EXACT_355_MATCH_UNDER_DEFAULT_ON` (355x12 trajectory words, 546 record words, 14 RNG snapshots bit-exact with original under default-ON binary A6A2).
+`DEMO1_COLLISION_HIT_STATUS:` `HIT_RESTORED_UNDER_DEFAULT_ON` (oracle hit v0=0x80132f60, CD6B4=1, 22 sweep + 21 move pairs exact under default-ON binary A6A2).
+`NEXT_SINGLE_ACTION:` extend oracle comparison to another attract demo when continuing broader fidelity.

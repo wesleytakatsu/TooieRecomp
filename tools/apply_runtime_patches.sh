@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Apply versioned N64ModernRuntime patches to the external runtime checkout.
+# Also applies versioned RT64 patches to BanjoRecomp/lib/rt64.
 # Idempotent: validates expected state, dry-runs, applies; recognizes already-applied.
 # Does NOT git checkout/reset or touch other local changes.
 set -euo pipefail
@@ -77,3 +78,51 @@ apply_one_patch \
     "2b6f05688de2abc7d86da5b4a89b84c2c6acbabe" \
     "adf97c9dfe20220143939ca1aa8728afc14a4eff957e35d8d2352ef027b98dc7" \
     "generator jal+safepoints"
+
+# N64Recomp static sizing: zero-sized symbol at a static's address must not bound it
+# (empty static_*_80800000 bsrest helper = missing tspd/vel stop on state 4->116).
+# Stacked on top of n64recomp-tooie.patch (needs it applied first).
+apply_one_patch \
+    "$N64RECOMP" \
+    "$PATCH_DIR/n64recomp-zero-size-static.patch" \
+    "2b6f05688de2abc7d86da5b4a89b84c2c6acbabe" \
+    "48ca1e7710a7b6ecd2f4cfe3c8ac064c11b2307ad98f35ee53b70b3f1cfebb58" \
+    "generator zero-size static"
+
+# RT64 pin BanjoRecomp/lib/rt64 6f1c2d99. These three do not overlap.
+# Do not also apply rt64-present-rate-decimator.patch,
+# rt64-present-success-counter.patch, or p09-exact-use-pathology-correlation.patch.
+RT64="$WS/BanjoRecomp/lib/rt64"
+RT64_BASE="6f1c2d99a4ea571c139f449c326fd176ba8f3496"
+RT64_PATCH_DIR="$ROOT/patches/rt64"
+
+apply_one_patch \
+    "$RT64" \
+    "$RT64_PATCH_DIR/rt64-rsp-endpoint-current.patch" \
+    "$RT64_BASE" \
+    "49925480c2d1736c790ddf96152844951f6fe27a150ab1cc110347d557c0d813" \
+    "rt64 rsp endpoint current"
+
+apply_one_patch \
+    "$RT64" \
+    "$RT64_PATCH_DIR/rt64-present-fps-decimator-and-counter.patch" \
+    "$RT64_BASE" \
+    "6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c" \
+    "rt64 present fps decimator and counter"
+
+apply_one_patch \
+    "$RT64" \
+    "$RT64_PATCH_DIR/rt64-p09-exact-use-correlation-header.patch" \
+    "$RT64_BASE" \
+    "0d4c250a5c4950dcdb1d0835ea7347014c90893e93332caa5576c67e03459561" \
+    "rt64 p09 exact-use correlation header"
+
+# RecompFrontend overlay hook. Existing artifact; pin d0d90ba.
+# Do not apply the superseded RT64 incremental patches above.
+FRONTEND="$WS/BanjoRecomp/lib/RecompFrontend"
+apply_one_patch \
+    "$FRONTEND" \
+    "$ROOT/patches/frontend/recompfrontend-overlay-update-callback.patch" \
+    "d0d90ba49f46f4896aaeda362056c21b1e342561" \
+    "37266d0bd13d42c0b8f174c0118b6a9b2490784c5880f05e6ee37ab811cd48a7" \
+    "recompfrontend overlay update callback"

@@ -1,2 +1,2 @@
-# Unified diffs of tab-indented C trip git diff --check (space-before-tab on context lines).
-tools/oracle/angrylion-control/patches/*.patch -whitespace
+# Preserve upstream whitespace in patch context; validate applied source on replay.
+/patches/**/*.patch whitespace=-blank-at-eol,-blank-at-eof

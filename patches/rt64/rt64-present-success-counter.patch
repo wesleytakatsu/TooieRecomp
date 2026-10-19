@@ -1,0 +1,38 @@
+--- a/src/hle/rt64_present_queue.cpp
++++ b/src/hle/rt64_present_queue.cpp
+@@ -8,6 +8,7 @@
+ #include "rhi/rt64_render_hooks.h"
+ 
+ #include "rt64_present_decimator.h"
++#include "rt64_present_stats.h"
+ #include "rt64_workload_queue.h"
+ 
+ #include <algorithm>
+@@ -508,6 +509,10 @@
+                 RenderCommandSemaphore *waitSemaphore = drawSemaphores[swapChainIndex].get();
+                 presentTimestamp = Timer::current();
+                 swapChainValid = ext.swapChain->present(swapChainIndex, &waitSemaphore, 1);
++                if (swapChainValid) {
++                    presentSuccessCount.fetch_add(1, std::memory_order_relaxed);
++                }
++
+                 presentProfiler.logAndRestart();
+             }
+         }
+--- /dev/null
++++ b/src/hle/rt64_present_stats.h
+@@ -0,0 +1,14 @@
++//
++// RT64
++//
++
++#pragma once
++
++#include <atomic>
++#include <cstdint>
++
++namespace RT64 {
++    // Count of swapchain presents that returned success. Written by the present thread only, read by anyone.
++    // Presents skipped by the decimator or dropped on a failed acquire/present are not counted.
++    inline std::atomic<uint64_t> presentSuccessCount{ 0 };
++};

@@ -1,3 +1,14 @@
+---
+title: "P08 — Auditoria Estática da Semântica Interna da Transition Type-4"
+description: "Auditoria estática e snapshot clean-freeze da transição Type-4 intro para attract demo."
+status: proven
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-12
+tags: [p08, transition, type4, intro, attract, clean-freeze]
+---
+
 # P08 — Auditoria Estática da Semântica Interna da Transition Type-4 (INTRO → ATTRACT DEMO)
 
 ## HEAD OBRIGATÓRIO

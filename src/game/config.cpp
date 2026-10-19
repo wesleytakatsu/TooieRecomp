@@ -3,6 +3,7 @@
 #include "recompui/config.h"
 #include "recompinput/recompinput.h"
 #include "banjo_sound.h"
+#include "tooie_fps_overlay.h"
 #include "banjo_support.h"
 #include "ultramodern/config.hpp"
 #include "librecomp/files.hpp"
@@ -174,7 +175,19 @@ static void add_graphics_options(recomp::config::Config &config) {
         "Sets the aspect ratio limit for cutscenes. Cutscenes have been adjusted to work in <recomp-color primary>16:9</recomp-color>, which is the default option. Wider aspect ratios may show details that weren't meant to be on-screen.",
         cutscene_aspect_ratio_mode_options,
         banjo::CutsceneAspectRatioMode::Clamp16x9
-    );    
+    );
+    config.add_bool_option(
+        banjo::configkeys::graphics::show_fps_counter,
+        "Show Present FPS",
+        "Shows the rate of frames actually presented to the display in the top-left corner. This is not the game's simulation or animation rate.",
+        false
+    );
+    config.add_option_change_callback(
+        banjo::configkeys::graphics::show_fps_counter,
+        [](recomp::config::ConfigValueVariant cur_value, recomp::config::ConfigValueVariant, recomp::config::OptionChangeContext) {
+            tooie::set_fps_overlay_enabled(std::get<bool>(cur_value));
+        }
+    );
 }
 
 static void set_control_defaults() {
@@ -246,6 +259,8 @@ banjo::CutsceneAspectRatioMode banjo::get_cutscene_aspect_ratio_mode() {
 }
 
 void banjo::init_config() {
+    tooie::register_fps_overlay();
+
     std::filesystem::path recomp_dir = recompui::file::get_app_folder_path();
 
     if (!recomp_dir.empty()) {

@@ -1,15 +1,424 @@
 ---
 title: "P08 — session handoff: attract demo e render submission"
-description: "Estado autossuficiente P08: USER_DEMO_5 resolved; T_INTRO 16:9 first RT64 divergence is CLIP_X (K=4/3 AUTO on cinematic viewProj); guest presentation envelope REFUTED."
+description: "PRECOMMIT REVIEW CHECKPOINT: P1 RT64 packaging replay resolved with 3 clean-pin patches (rt64-rsp-endpoint-current.patch, rt64-present-fps-decimator-and-counter.patch, rt64-p09-exact-use-correlation-header.patch) and frontend registration in tools/apply_runtime_patches.sh; old incremental patches superseded for clean pin. P2 getter diagnostic gate resolved in include/tooie_diag.h and src/game/tooie_diag.cpp, validated by getter_diag_gate_test PASS and rebuilt binary 74a0cea0. Prior user visual confirmation ('Sim, continua funcionando') preserved on tested candidate binary A6A2 (a6a2c023); automated tests/builds distinguish latest binary 74a0cea0 without claiming user visual for new hash. Root owns final staging, commit, and push; Git commit establishes publication truth. NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment."
 status: evidence
 phase: P08
-updated: 2026-08-31
-tags: [tooie-recomp, p08, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, r-motion-oracle, rt64, intro, attract, demo2, visible-demo]
+updated: 2026-10-19
+tags: [tooie-recomp, p08, p09, precommit, review, rt64, patches, replay, clean-pin, getter-gate, handoff, zbuffer, oracle, angrylion, cxd4, lle, r-oracle, r-motion-oracle, rt64, intro, attract, demo1, demo2, visible-demo, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
 ---
 
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
 
-## CURRENT (2026-08-31) — T_INTRO_TRUE_SOURCE_ASPECT_PRODUCTION
+## CURRENT (2026-10-19) — PRECOMMIT_REVIEW_RT64_CLEAN_PIN_REPLAY_AND_GETTER_GATE_RESOLVED
+
+Read [[checkpoint-20261019-review-and-patch-replay]], [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+Pre-commit review of the 196-file working tree manifest completed with both Grok 4.7 Medium sessions ending with `end_turn`. Root owns Git staging, commit, and push. This document records pre-commit provenance; the Git commit itself identifies the final snapshot and Git log / remote verification establishes publication truth.
+
+- **P1 Resolution — RT64 Clean-Pin Patch Replay & Applicator Chain (PROVEN)**:
+  - Initial review identified that older incremental RT64 patches (`rt64-present-rate-decimator.patch`, `rt64-present-success-counter.patch`, `p09-exact-use-pathology-correlation.patch`) were based on the dirty worktree and failed `git apply --check` (exit 1) on clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
+  - Replaced for clean pin apply by 3 new non-overlapping patches in `patches/rt64/` against base `6f1c2d99`:
+    - `patches/rt64/rt64-rsp-endpoint-current.patch` (SHA256 `49925480...`, 16,629 bytes): production CURRENT `tfPos` snap and post-snap fog in `RSPProcessCS.hlsl`, push constant expansion, and CPU data path.
+    - `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256 `6d746f27...`, 5,415 bytes): cumulative presentation decimator (`rt64_present_decimator.h`, `rt64_present_stats.h`), `viOriginalRate` write protection under `configurationMutex`, and `presentSuccessCount` increment.
+    - `patches/rt64/rt64-p09-exact-use-correlation-header.patch` (SHA256 `0d4c250a...`, 43,083 bytes): diagnostic correlation header required by host unit test.
+    - `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256 `37266d0b...`, 2,732 bytes, pin `d0d90ba`): RecompFrontend overlay update hook.
+  - `tools/apply_runtime_patches.sh` registered with the 3 RT64 clean-pin patches and frontend patch (+49 insertions, SHA256 `87a6455f...`; `bash -n` exit 0, `git diff --check` exit 0). Applicator script was NOT run against live checkouts to protect uncommitted diagnostic state.
+  - Scratch replay on isolated clone `rt64-scratch-apply`: reverse `--check` exit 0; 14 covered paths verified (6 byte-identical to live, 8 differ strictly due to excluded diagnostics).
+  - Standalone tests compiled and passed against scratch: `rt64_present_decimator_test` PASS exit 0; `p09_exact_use_correlation_test` 1354/1354 PASS exit 0; `p09_cpu_shader_clip_semantics` 14/14 PASS exit 0.
+  - Old incremental patches remain in tree for historical provenance, but are SUPERSEDED for clean-pin apply. Pathology C++ hook integration was explicitly NOT reproduced from clean pin; not all diagnostics are claimed reproducible from pin.
+- **P2 Resolution — Model-Getter Diagnostic Gate Fix (PROVEN)**:
+  - In `src/game/backpack_lookup_diag.cpp`, `__wrap_func_80092B04` unconditionally called `v7_note_model_getter`, which did guest memory reads, atomic counter increments, and acquired `g_secondary_sway_mu` to write `g_durable_bins` on default gameplay.
+  - Gated in `include/tooie_diag.h` and `src/game/tooie_diag.cpp`: `v7_note_model_getter` returns early when `!g_getter_durable_needed` (evaluated in `ensure_init()` across consumers requesting durable metadata: `TOOIE_DIAG_SECONDARY_SWAY`, `TOOIE_DIAG_FEATHER_HANDOFF_V7`, `TOOIE_DIAG_FEATHER_POSTPROCESS_Q`, temporal coherency, `TOOIE_DIAG_RSP_ENDPOINT_BINDING`, and strict `TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION`).
+  - Validated by host test `tests/getter_diag_gate_test.cpp` PASS exit 0.
+  - Rebuilt binary `build/TooieRecompiled` SHA256 `74a0cea04a2bc3704860388673c40b2e73ee34d284f3a2afa0faebe91a9c05f5` (size: 29,418,200 bytes, exit 0).
+  - **Binary hash distinction**: Rebuilt binary `74a0cea0...` is distinct from prior user-tested candidate binary A6A2 (SHA256 `a6a2c023...`, size: 29,413,928 bytes). User visual confirmation ("Sim, continua funcionando") was conducted on A6A2; do NOT claim user visual confirmation for `74a0cea0...`.
+- **Preserved State & Invariants**:
+  - Aspect-aware widescreen culling remains default ON (`TOOIE_TEST_MAP_VIS_ASPECT_AWARE=1`, `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). Narrow allowlist: pure draw `func_800B97A4` (kind 3) + preserved `func_8011447C` (kind 2); mixed renderer `func_800DE498` stays on original unexpanded `v0`.
+  - Widescreen object edge pop fix is visually confirmed for the tested area on candidate binary A6A2 (`VISUALLY_CONFIRMED_FOR_TESTED_AREA`, `USER_REPORTED`). Broader maps/objects/movement parity remains an untested residual.
+  - USER_DEMO1 trajectory (355 samples), actor records (546 words), LCG RNG snapshots (14), and Fire Egg sweep hit (`v0=0x80132f60`, `func_800CD6B4=1`) match original bit-exact.
+  - Demo 7 cutscene stop fix preserved (`n64recomp-zero-size-static.patch`).
+  - CURRENT `tfPos` workaround default ON (palliative); intermediate frames repeat vertex poses above native; continuous interpolation remains `NOT_IMPLEMENTED`.
+  - Audio glitch remains deferred; 8-preset UI selector remains `PLANNED` / `NOT_IMPLEMENTED`; formal P09 phase remains `PENDING / NOT_FORMALLY_OPEN`.
+- **Operational Boundaries / What Was Not Run**:
+  - No game launch or termination during review; user may have game running.
+  - Native A6A2 gate not repeated; cited from cache.
+  - Applicator script not executed against live trees.
+  - Root owns Git stage, commit, and push; Git commit will establish publication truth.
+
+```text
+PRECOMMIT_REVIEW_STATUS: PASSED_WITH_FINDINGS_RESOLVED (P1 and P2 resolved; clean-pin replay verified; automated gates exit 0)
+P1_RT64_CLEAN_PIN_CHAIN: RESOLVED (3 new patches + frontend patch in tools/apply_runtime_patches.sh; old incremental patches SUPERSEDED)
+P2_GETTER_DIAG_GATE: RESOLVED (v7_note_model_getter gated by g_getter_durable_needed; getter_diag_gate_test PASS; binary 74a0cea0 exit 0)
+BINARY_HASH_DISTINCTION: PROVEN (latest build 74a0cea0 distinct from user-tested candidate A6A2 a6a2c023; user visual confirmation applies to A6A2 only)
+WIDESCREEN_EDGE_QA_STATUS: VISUALLY_CONFIRMED_FOR_TESTED_AREA (USER_REPORTED on candidate A6A2; broader game parity untested residual)
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment
+```
+
+## Prior (2026-10-19) — USER_DEMO1_FRUSTUM_PARITY_LANDED_AND_USER_VISUALLY_CONFIRMED_FOR_TESTED_AREA
+
+Read [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+Grok 4.7 Medium implementation session `01a15118-c738-7dd3-98ed-cc5db5021bb5` completed `end_turn` (38 turns; root observed CLI exit 0). The narrow fix landed in candidate binary A6A2 (SHA256 `a6a2c023a9e3b0688cac15249cda61b5c8b8ccdf68c7c40f91d8c512356bef5e`).
+Source edits owned in `src/game/boot_hw_stubs.cpp`, `src/game/tooie_demo1_projectile.h`, and `tests/tooie_demo1_upd_layout_test.cpp`; `RecompiledFuncs` untouched, no generated hand-edits.
+
+- **Scope Boundary & Allowlist Architecture (PROVEN)**:
+  - `tooie_wrap_func_800E3E8C` no longer opens a `TooieCacecDrawScope` (shared broad DRAW scope dropped; nested CACEC only expands if an outer scope is active).
+  - Pure draw caller `func_800B97A4` registered via `tooie_wrap_func_800B97A4` with scope kind 3 when `tooie_cacec_pure_draw_vram(kCacecPureDrawB97A4)` is true (guest VRAM `0x800B97A4`; accept path emits G_MTX / G_DL / G_MOVEMEM and matrix calls without RNG/simulation side effects).
+  - Existing `tooie_wrap_func_8011447C` scope kind 2 preserved for object visual pop culling.
+  - Mixed renderer `func_800DE498` (which stores E3E8C `v0` to `0x8012C940` and on accept executes callbacks and writes renderer context) stays on original `v0` because no scope wraps it.
+  - Unclassified callers stay on original `v0`. No default flag OFF, no RNG save/restore, no host-PC/RA production gates.
+- **Production Default-ON Parity Verification (PROVEN)**:
+  - Feature remains production default ON (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). Both fresh default-ON captures completed exit 0 with matching verification.
+  - **TARGET Capture** (`demo1-sep-target-current/target.csv`, SHA256 `016a102c92f279aef896bcab0802be27b1671adab06f8bc374bf227573b398ec`, owned PID 1776728, 66.084s, exit 0):
+    - All 355 paired trajectory samples `w0..w11` (`tgtrec`) match original flag-OFF / oracle2 bit-exact (0 mismatches; old buggy default-ON diverged post 83).
+    - All 546 ActorRecord words (`updrec` 39 words x 14 pre/post snapshots across posts 80..86) match original bit-exact.
+    - All 14 raw LCG RNG snapshots (`a2`) match original bit-exact (resolving PRE82 RNG split).
+    - All 14 `+0x60` words match original `0003006c` (was `0004006c` under buggy default-ON).
+  - **PROJECTILE Capture** (`demo1-sep-projectile-current/projectile.csv`, SHA256 `570f42e0ad8d31a883c2345afc5e0b000a3fde22baa7edc7722ab35b031d1531`, owned PID 1774174, 67.274s, exit 0):
+    - Post 355 sweep `func_800CD820` leave returns `v0 = 0x80132f60` (hit) and narrowphase `func_800CD6B4` leave returns `1`, exactly matching original hit (old buggy default-ON missed with `v0 = 0`).
+    - 22 sweep ENTER pairs and 21 `sueggmove9` ENTER pairs match original in 6 geometry words and gamespeed `gs`.
+  - **Build & Tests**: Ninja exit 0 (up-to-date); all unit test binaries (`upd_layout`, `target_selector`, `projectile`, `parity`, `demo7_drift`, `mips_rounding`, `coverage`) exit 0. Test `tooie_demo1_upd_layout_test` verifies `pure_draw_accepts=1` in harness. Unit test models old policy vs new policy; no actual old binary unit test execution exit 1 is claimed.
+- **Epistemic Boundaries & Status**:
+  - Positive draw accept exists in unit harness; runtime TARGET window recorded `cacecx = 0` (expected when mixed DE498 scope is dropped; runtime cacecx is NOT promoted from 0).
+  - Graphical QA of widescreen object-edge pop previously `NOT_TESTED` is now superseded by direct user visual confirmation: user launched `./build/TooieRecompiled` normally without flags in a previously affected gameplay area and confirmed: *"Sim, continua funcionando"*.
+  - Classification: **`VISUALLY_CONFIRMED_FOR_TESTED_AREA`**, **`USER_REPORTED`**.
+  - Epistemic scope: This confirms preservation of the observed visual expansion in the gameplay area tested by the user. Do NOT claim all maps, all objects, or global movement parity proven. Broader game parity remains an untested residual.
+- **User Direction & Next Step**:
+  - User explicitly chose KEEP VISUAL EXPANSION ACTIVE (feature stays default ON; candidate binary A6A2).
+  - User visual test closes QA for the tested area. No new action needed on the bounded Demo 1 fix. User may have the game open; do not touch running processes.
+  - Invariants maintained: P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio glitch deferral maintained.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SCOPE_BOUNDARY_FIX: PROVEN (shared E3E8C broad scope dropped; allowlist pure-draw B97A4 kind 3 + preserved 8011447C kind 2; DE498 original v0)
+DEFAULT_ON_TARGET_PARITY: PROVEN (355x12 trajectory words, 546 record words, 14 RNG snapshots, +0x60=0003006c exact original under default-ON binary A6A2)
+DEFAULT_ON_PROJECTILE_PARITY: PROVEN (post 355 Fire Egg sweep hit v0=0x80132f60, CD6B4=1, 22 sweep + 21 move pairs exact under default-ON binary A6A2)
+BUILD_AND_TEST_STATUS: PASS (ninja exit 0; layout/selector/projectile/parity/demo7/mips/coverage exit 0; pure_draw_accepts=1 in harness)
+WIDESCREEN_EDGE_QA_STATUS: VISUALLY_CONFIRMED_FOR_TESTED_AREA (USER_REPORTED: "Sim, continua funcionando" on normal noflags launch; cacecx=0 in target window unpromoted; broader game/objects untested residual)
+USER_CHOICE: RESOLVED (KEEP EXPANSION VISUAL ACTIVE; feature stays default ON; user visual QA completed for tested area)
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when continuing broader fidelity
+```
+
+## Prior (2026-10-19) — USER_DEMO1_SOURCE_PROVEN_CALL_CHAIN_AND_GROK_ROUND2 (SUPERSEDED BY LANDED FIX)
+
+Read [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+Prior single-feature counterfactual causality documentation remains SUCCESS and canonical (`demo1-frustum-causality-checkpoint-gemini.json`): setting `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` as an experimental per-process flag restored 355 NPC prefix words, all 546 ActorRecord words, 14 RNG snapshots, and post 355 Fire Egg sweep hit (`v0 = 0x80132f60`, narrowphase `func_800CD6B4` LEAVE = 1).
+User confirmed Demo 7 cutscene stopping is **VISUALLY FIXED** and Fire Egg miss persists on current default production binary (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`). User reaffirmed objective is general subtle gameplay/action parity across movement, kinematics, and state transitions, not an artificial aim or steering patch; no global clock hack.
+**User Choice Resolved**: KEEP EXPANSION VISUAL ACTIVE while proper fix; **NO temporary OFF default**. Setting flag OFF (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`) is strictly an experimental per-process counterfactual diagnostic; it is NOT a production mitigation. Production invariants preserved: shader CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio glitch deferral maintained.
+
+- **Source Findings & Gating Architecture (`PROVEN`)**:
+  - Broadly treating `func_800E3E8C` (`E3E8C`) as DRAW scope allows aspect-expanded accept (`v0 = 1`) inside mixed renderer routine `func_800DE498` (`0x800DE6EC`).
+  - `func_800DE498` stores `v0` to `0x8012C940`. If nonzero (accepted), it takes the visible path: executes registered pre-draw callback `0x800DE738: jalr $v0` with `$a0` loaded from `0x8012C9AC`, calls asset resolver `800D674C`, stores renderer processing context `s0+0x14/0x18/0x1C`, and emits display lists. If culled (`v0 == 0`), it branches to `0x800DE718`, calls cleanup helper `func_800DE318`, and returns 0.
+  - **Renderer Context vs. Actor State**: Stores to `s0+0x14`, `s0+0x18`, and `s0+0x1C` are writes to the **renderer processing context** (`s0`), NOT actor state writes (`PROVEN` distinction; do not conflate).
+  - **Registration Chain**: Standard actor draw entry `func_80101870` -> `func_80101808` calls `func_800DF47C(func_801015D0, arg0)`, registering callback `func_801015D0` at `0x8012C9A8` and `Actor*` at `0x8012C9AC`, then enters `func_800DE448` -> `func_800DE498`.
+  - **Pre-Draw Dispatch**: Callback `func_801015D0` calls `func_80101934(Actor*)` at `0x80101784`, which indexes jump table `D_801243E8` via `(actor->unk74 & 0xF)`. Table entry `+0x04` invokes `func_80101A50(Actor*)`.
+  - **RNG Stepping and Actor Mutation**: `func_80101A50` calls `func_800DC0C0` at `0x80101AA0` (RA `0x80101AA8`), advancing global LCG RNG seed `D_8012C7F0`. It tests random float `$f0 < D_80126434` (`0.03f`). On match, it directly mutates guest actor state byte `sb $t2, 0x7A($a2)` (setting bit `0x10` or `0x20` on `Actor->unk7A`). Both arms call `func_800DF744(1, ...)` and `func_800DF744(2, ...)`, writing to global renderer selector array `D_8012C850`.
+  - **Epistemic Classification**: Semantic identity as facial/eye-blink animation is **`STRONG_INFERENCE`** (suggested by 3% probability check and selectors 1/2, but without explicit asset/animation binding proof in source). Control flow gating, global LCG RNG stepping, actor byte `0x7A` mutation, and renderer array writes are strictly **`PROVEN`**.
+- **Paired Native Telemetry Arbitration (`PROVEN`)**:
+  - Telemetry (`demo1-rng-paired-native-chain-gate.json`): Current has 32 RNG steps vs Oracle 27 across posts 79..84.
+  - Sequence step gap grows monotonically across posts: Post 79: 0 (6 vs 6); Post 80: 0 (4 vs 4); Post 81: +1 (7 vs 6; **first extra step**); Post 82: +1 (5 vs 4); Post 83: +2 (6 vs 4); Post 84: +1 (4 vs 3). Cumulative delta = +5 steps across window.
+  - LCG chain exhibits **ZERO breaks** across all observed steps and snapshots (`breaks: []`). Every transition satisfies $s' = (1664525 \times s + 1013904223) \pmod{2^{32}}$.
+  - Expected oracle after-states, once calculated, never match actual observed stores once desynchronized.
+  - First extra RNG call is definitively the **SECOND `func_80101A50` call in post 81 (seq 146 in Current, before `6239b638` -> after `036f8437`)**, NOT global `func_8001608C` (which executes in both runtimes).
+  - Preceded directly by `cacecx` extra accept owner `func_800DE498` at seq 142 on position `(-2818, 300, -2237)`.
+  - Later differences are a deterministic chain shift, not independent new consumers.
+- **Native PC Mapper & Symbol Resolution (`PROVEN`)**:
+  - Old `T/t`-only cache (`demo1-rng-ee14-nm.json`) was **INVALID and incomplete** (omitted recompiled weak `W/w` functions).
+  - Completed `nm T t W w` (`demo1-rng-ee14-origin-resolution.json`) validated binary `EE14` (`ee14d6cb1c144a09ccec7f393dc2e986ac26fb0826893d2e0d490df9d19a683c`) with positive function sizes.
+  - Return address is guest original `0x80101AA8` (`jal func_800DC0C0` at `0x80101AA0`).
+- **Critical Operational & Quota Update**:
+  - **NO SONNET**: Sonnet quota is expired. All further Sonnet calls are strictly forbidden.
+  - **Haiku**: Approaching quota limit; reserved/unused now.
+  - **Grok 4.7 Medium**: Designated **SOLE** code writer and test executor. Resumed implementation session `01a15118-c738-7dd3-98ed-cc5db5021bb5`: round 1 cap 50 exit 1 with source proof and no edit (`demo1-frustum-parity-grok-implementation-report.txt`); round 2 active budget 70 (`demo1-frustum-parity-grok-implementation-round2.json`, completed `end_turn` exit 0).
+  - **Gemini**: Designated for **ALL** Markdown and documentation maintenance.
+  - **Native Agent `demo7_capture`**: Read-only Grok review only; NO other capture authority.
+  - **Opus**: DONE (read-only existing report `demo1-rng-consumer-opus.json`, not active job).
+  - Current code EE14 diagnostics is NOT a fix; original default vis ON CURRENT palliative / FPS / audio unchanged.
+- **Main Implementation Objective**:
+  - Correct shared `func_800E3E8C` consumer selection to separate genuine visual DRAW passes from logic/simulation callbacks.
+  - Preserve existing `func_8011447C` unless primary simulation harm proof is established (guest outparam write alone is NOT sim evidence).
+  - Allowed pure DRAW writes: Gfx buffers, render-only temps.
+  - `+0x60` semantic remains strictly UNKNOWN and is not necessary for this cause.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SINGLE_FEATURE_CAUSALITY: PROVEN (TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0 restores 355x12 prefix, 39x14 record words, 14 RNG snapshots, and post 355 Fire Egg hit)
+SOURCE_MECHANISM: PROVEN (shared E3E8C broad DRAW scope enables mixed DE498 gate; registered callback 801015D0 -> 80101934 -> D_801243E8 -> 80101A50 steps global LCG RNG D_8012C7F0, mutates actor byte 0x7A, writes D_8012C850 selectors via DF744)
+SEMANTIC_CLASSIFICATION: facial/eye-blink animation is STRONG_INFERENCE; control flow, RNG step, byte 0x7A mutation, renderer writes are PROVEN
+FIRST_EXTRA_RNG_CALL: PROVEN (second func_80101A50 in post 81 seq 146 curr, preceded by cacecx extra accept in func_800DE498 seq 142; NOT global 8001608C)
+PAIRED_RNG_GAP: PROVEN (grows 1..4 across posts, 32 curr vs 27 oracle in posts 79..84; zero breaks in chain; oracle after calculated never matches observed store)
+NATIVE_PC_MAPPER: PROVEN (old T/t cache INVALID; completed nm T t W w validated binary EE14 with positive sizes; RA guest 80101aa8)
+USER_CHOICE: RESOLVED (KEEP EXPANSION VISUAL ACTIVE while proper fix; NO temp OFF default; env flag 0 is EXPERIMENT ONLY)
+GROK_STATUS: COMPLETED (session 01a15118-c738-7dd3-98ed-cc5db5021bb5 completed end_turn exit 0, binary A6A2)
+AGENT_ROLE_ROUTING: Grok PRIMARY code/tests; Gemini ALL Markdown; Haiku minimal/unused; Native demo7_capture read-only; Sonnet NO calls; Opus DONE
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: user visual check of widescreen edges in known affected gameplay area, feature ON; if fails narrower remaining mixed-render separation requires next task
+```
+
+
+## Prior (2026-10-18) — USER_DEMO1_OBJECT_FRUSTUM_COUNTERFACTUAL_CAUSALITY_PROVEN
+
+Read [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User reaffirmed the objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack.
+User requires keeping the object visual pop fix production default ON (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=1`); shader CURRENT `tfPos` workaround remains default-ON (palliative); FPS counter/toggle and RT64 decimator unchanged; audio deferral maintained. Setting flag OFF (`TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`) is strictly an experimental per-process counterfactual diagnostic; NO production source or config change has been made.
+
+- **Single-Feature Counterfactual Causality (PROVEN)**:
+  - On the unchanged binary (`c56ce4e17b554020c36eec14a9e48861693679e9426161031e10aef4527a67e2`) with the TARGET logger (`TOOIE_DIAG_DEMO1_TARGET=1`), setting ONLY `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0` (explicit-off getter at `boot_hw_stubs.cpp:4264..4267`, wrapper 4451 calling original `800CACEC` and returning before aspect-aware expansion; no other `TOOIE_TEST_*` flag combined; CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-object-original/target.csv`, SHA256 `1f43e7c570f21ec082bc7afac88cf01789cebbd8c2ec4e142f0aee9eb791f928`, 415 rows, 66.217s, exit 0/0, FINISH 357) restored:
+    - All 355 `tgtrec` posts 2..356 x 12 raw words bit-exact with the original Angrylion oracle reference (`demo1-first-writer-oracle-2`).
+    - All 14 pre/post snapshots across frames 80..86 x 39 ActorRecord words (546 words total) bit-exact with Oracle (`demo1-object-frustum-record39-comparison.json` is `[]` empty list).
+    - Record `+0x60` high 16 bits: was `0004` (curr `0004006c`) under default aspect-aware ON vs original `0003` (`0003006c`); with flag OFF, it is now `0003` (`0003006c`), matching Oracle exactly.
+    - All 14 raw RNG `D_8012C7F0` snapshots bit-exact with Oracle, completely resolving the PRE82 divergence ($k=4$ `036f8437` vs $k=5$ `c125942a`) and POST83 geometry divergence.
+    - All 14 gamespeed `gs` words exact `0x3d4cccce`.
+  - In comparison, default Current with aspect-aware ON had 274 posts (83..356) differing in position.
+- **Actual Fire Egg Collision Restored (PROVEN)**:
+  - In a dedicated PROJECTILE-only capture with the same flag OFF (`TOOIE_DIAG_DEMO1_PROJECTILE=1` and `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`, controller 1600930 / game 1600931, exit 0/0, 66.824s, 313 rows, FINISH 391, CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current-object-original/projectile.csv`, SHA256 `3d54fe91ac1bc570a95a87241322f7d58593575aac951c4b4250d397a3344258`):
+    - Actual Fire Egg sweep at post 355: `func_800CD820` sweep leave returns `v0 = 0x80132f60` (nonzero hit, matching Oracle `89a6bad1...`), whereas default Current returns `v0 = 0` (miss).
+    - Narrowphase `func_800CD6B4` LEAVE = 1 on both off-current and Oracle; default Current has no such callback at 355.
+    - All 22 sweep ENTER input pairs and 21 `sueggmove` ENTER input pairs are exact in `w0..w5` geometry and `w11` `gs`.
+    - Sweep/move counts: 44 sweep / 42 move off/oracle vs default 64 / 62 (projectile stops at hit).
+    - Bound centers at posts 354 and 355: all 6 selected `0x8008A018` LEAVE center triples exact with Oracle, including actual target post 355 `w0=c5af7c8d, w1=c401d0fa, w2=44a89e51` = `(-5615.56885, -519.265259, 1348.94739)`, completely restoring the prior ~427-unit bound center difference.
+- **Causal Verdict & Epistemic Boundaries**:
+  - `OBJECT_FRUSTUM_ASPECT_AWARE=1` is **CAUSAL** for observed RNG divergence, NPC trajectory divergence, and Fire Egg collision miss in USER_DEMO1.
+  - The underlying call consumer and side-effects remain **UNKNOWN**.
+  - Do NOT claim all NPCs globally fixed or physical fix done.
+  - Do NOT globally REFUTE widescreen capability; update prior UNTESTED statement to PROVEN at feature level with mechanism UNKNOWN.
+  - Source ABI and canonical getter roles from prior investigations are strictly preserved.
+- **Background Workloads & Active Agents**:
+  - Sonnet medium code job (`demo1-frustum-parity-fix-sonnet.json` / `report.txt`): RUNNING, code writer only, default acceptance capture ONLY after READY.
+  - Grok field 60 old 30-turn audit exited with code 1 INCOMPLETE (`demo1-field60-and-rng-grok.json` and `.report.txt`), noted typo (Cpre82=Opost82) and found no field role; census stopped as feature-level causality is now established.
+  - New main Grok READONLY job (`demo1-frustum-simulation-owner-grok.json` / `report.txt`): RUNNING bounded CACEC feedback; immutable baseline copy `demo1-frustum-default-baseline.cpp`.
+  - Opus 5.5 medium READ-ONLY consumer design job (`demo1-rng-consumer-opus.json`): COMPLETED (exit 0, `is_error=false`, 14 turns, 242.8s). Proposed two entries (`func_800DC090` and `func_800DC0C0`) + writers (`800DC310`, `800DC324`, `800DC330`, `800DC354`), static coverage NOT gate tested. Opus used raw grep in violation of navigation policy, noted procedurally. Wide RNG trace proposal is now conditional, not automatically next because minimal counterfactual already isolated the feature.
+- **Preserved Invariants**:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+SINGLE_FEATURE_CAUSALITY: PROVEN (TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0 restores 355x12 prefix, 39x14 record words, 14 RNG snapshots, and post 355 Fire Egg hit)
+UNDERLYING_MECHANISM: UNKNOWN (exact call consumer / side-effects of 800CACEC aspect-aware expand in simulation still unisolated)
+CURRENT_CF_TARGET_CSV: /home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-object-original/target.csv (SHA256 1f43e7c5..., 415 rows, 56 updrec, FINISH 357)
+CURRENT_CF_PROJECTILE_CSV: /home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current-object-original/projectile.csv (SHA256 3d54fe91..., 313 rows, FINISH 391)
+CF_TARGET_PREFIX_PARITY: 355/355_EXACT_MATCH (all 12 words bit-exact with Oracle 73c1faa...)
+CF_RECORD_WORDS_PARITY: 546/546_EXACT_MATCH (14 snapshots x 39 words bit-exact; demo1-object-frustum-record39-comparison.json is [])
+CF_RECORD_PLUS_60_STATUS: RESTORED_TO_ORACLE_0003006c (was 0004006c under default aspect-aware ON)
+CF_RNG_D8012C7F0_STATUS: 14/14_EXACT_MATCH (all 14 snapshots bit-exact with Oracle; PRE82 split resolved)
+CF_FIRE_EGG_HIT_STATUS: HIT_RESTORED_AT_POST355 (v0=0x80132f60, CD6B4=1, 22/21 sweep/move pairs exact, actual target center restored)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_PRODUCTION_STATUS: USER_REPORTED_MISS (persists on production binary with default ON; OFF is experimental CF only)
+WIDESCREEN_CAPABILITY_STATUS: NOT_GLOBALLY_REFUTED (prior UNTESTED statement updated to PROVEN at feature level with mechanism UNKNOWN)
+ACTIVE_BACKGROUND_AGENTS: Sonnet job demo1-frustum-parity-fix-sonnet RUNNING; Grok job demo1-frustum-simulation-owner-grok RUNNING
+COMPLETED_BACKGROUND_AGENTS: Opus job demo1-rng-consumer-opus DONE (exit 0, 14 turns; noted raw grep limit); Grok field60 exit 1 INCOMPLETE
+PRESERVED_STATE: Object visual pop fix default ON, Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: owning-layer separation of expanded DRAW from original simulation, preserving visible object fix (awaiting Sonnet code writer / Grok simulation owner analysis)
+```
+
+## Prior (2026-10-18) — USER_DEMO1_FIRST_WRITER_PAIRED_CAPTURE_AND_RECORD_FIELD60_RNG_ANALYSIS (SUPERSEDED BY COUNTERFACTUAL CAUSAL PROOF)
+
+Read [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User reaffirmed the objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack. While the historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), the fresh causal root on the current binary is strictly **UNKNOWN**.
+
+- Prior Prefix Parity & Critical VI Cadence Wording (PROVEN & INDEPENDENTLY CONFIRMED):
+  - Prior 420 exact non-clock player/input/camera/gs/anim/phys match at EXACT PC `0x800151BC` ENTRY (consumed 1..420) independently confirmed by Haiku (`demo1-actual-pair-haiku-report.txt`, 0 field mismatches across 420 paired rows).
+  - VI handler cadence difference observed (100/419 transitions, +40 oracle entries); causal role in NPC/mob timing UNKNOWN/OPEN HYPOTHESIS, player 420 exact does NOT refute NPC timing; `--nospeedlimit` is logical only, not real-time proof. No global clock fix claim.
+- Grok First NPC Prefix Audit Completed (DONE):
+  - Grok prefix audit finished cleanly (`demo1-first-npc-prefix-grok-report.txt` and `.json`, 7 turns, stopReason `end_turn`, CLI exit 0, replacing earlier pending status).
+  - 355 `tgtrec` pairs (posts 2..356) joined on post. Trajectory handle `0x80132f30` (post 2) with callback word `w3 = 0x80085C98`.
+  - Ambiguous markers `0x80132f00` (post 28) and `0x80132f60` (post 140 projectile target) separated; `0x80132f60` is NOT the sampled trajectory.
+  - Position words `w0..w2` match posts 2..82 (81 pairs). First position diff occurs at post 83 (delta `0.207508441`).
+  - Word `w10` first differs at post 121 (`04311038` vs `04311048`), `w9` at 171, `w5..w7` at 215. `w11` (`gs`) raw exact on all 355 pairs.
+  - In-memory mutation test verified: flipping bit 0 of `w0` at post 40 shifted the first diff to post 40.
+- Preceding First-Writer Diagnostic Failure & Fix (PROVEN):
+  - Initial first-writer capture yielded 0 `updrec` rows (diagnostic FAIL).
+  - Causes:
+    1. Host RA unreliability in recomp: generated code for `func_800FF62C` calls `LOOKUP_FUNC(0x80100368)` without setting `ctx->r31` immediately before jal; guest RA is stale/caller-dependent on host; RA range guard unsound in recomp.
+    2. MARKER vs RECORD arg confusion: `func_80100368(a0)` receives actor RECORD (`s0` from `801067C4`), but wrapper checked `a0 == s_d1t_marker` (MarkerHandle), which never matched (`accepted_real_call_arg = 0`).
+    3. Post dump mistake: flush dumped 39 words at the MarkerHandle address instead of resolving the actor record.
+  - Corrected default-OFF via Sonnet: resolved record dynamically via `upd_expected_record`, direct-call SP scope (`ctx->r29 == scope_entry_r29 - 0x58`), post flush re-resolves record from marker (or emits `postmiss`).
+  - Regression fixture `tests/tooie_demo1_upd_layout_test.cpp` on `demo1_tgtrec_ident_{current,oracle}.csv` (355x2 rows): old-wrong build exits 1 (FAIL: 0/355 accepted); new build exits 0 (PASS: 355/355 accepted), covering 5 relocations on Current and 7 on Oracle.
+- Independent Haiku ABI Gate (PROVEN):
+  - `demo1-writer-record-abi-haiku-report.txt` confirmed `func_80100368` receives actor RECORD in a0 and calls `*(record+0x10)` unchanged; marker `80132f30` is invalid as a0.
+  - Direct-call SP scope (`ctx->r29 == scope_entry_r29 - 0x58`) correctly isolates direct calls from `800FF62C` while excluding nested callee calls.
+  - Haiku mapper criticism corrected to `NOT_TESTED`; independent generated source `80106790` maps `marker+0x1A >> 5` through `vector_at(*D_80136EE0)`.
+- NEW Actual FIRSTWRITER 2 Paired Capture Telemetry (PROVEN):
+  - Current: `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-2/target.csv` (SHA256 `fbb2770bc1270762849aaf25f5dacefa4b18d04976ae8c3900618a6da652c75f`, controller 1584474, game 1584475, exit 0/0, 66.459s). Binary SHA256 `c56ce4e17b554020c36eec14a9e48861693679e9426161031e10aef4527a67e2`.
+  - Oracle: `/home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-oracle-2/target.csv` (SHA256 `73c1faaace84937324c565889580c620513498971495a663ad356da70f06313c`, controller 1585301, instance 1585302, exit 0/0, 101.350s). Core SHA256 `4b782df4545ecb84a1aeee69c8159f893cfb503c5b38da78efb630d4baf8e199`.
+  - Both captures produced exactly 415 valid rows (exit 0/0), 56 `updrec` rows (posts 80..86 x pre/post x 4 chunks of 10/10/10/9 words; 39 words total).
+  - Finish diagnostics: `w5 = 0` (invalid bindings), `w7 = 7` (predumps emitted), `w8 = 0` (postmiss rows).
+  - Baseline invariance: all 355 `tgtrec` posts 2..356 x 12 words match pre-writer TARGET2 baseline bit-for-bit.
+- Proven Comparisons & Geometry Findings:
+  - **Record +0x60 First Diff**: Already differs at first available sample PRE80: Current `0004006c` vs Oracle `0003006c` (difference in upper halfword `0004` vs `0003`). Semantic meaning is strictly **UNKNOWN**; do not promote field role to state/timer/pointer/fault without owning source. All other 38 words are **BIT-EXACT** through PRE83 inclusive!
+  - **RNG `D_8012C7F0` First Diff & Step Distances**: Matches PRE/POST 80 and 81 (`1cf1d2b5`, `c91d98c4`, `28f1cd53`). Recurrence confirmed from generated source: $s' = (1664525 \times s + 1013904223) \pmod{2^{32}}$. Shared POST81 = `28f1cd53`. First sampled diff PRE82: Oracle $k=4$ (`036f8437`) vs Current $k=5$ (`c125942a`). Step distance offset (Oracle $\to$ Current) grows: PRE82 $+1$, POST82 $+1$, PRE83 $+2$, POST83 $+3$, PRE84 $+4$. These are LCG sequence step distances, NOT proven actual call counts until other writes to `D_8012C7F0` are excluded.
+  - **Gamespeed `gs`**: All 14 sampled `gs` w11 bits match `0x3d4cccce` identically across both runtimes.
+  - **Geometry First Diff**: POST83: +4/+8/+C (norm `0.207508441`), plus RAW +48/+54 (+48 cur `438c677a` vs ora `438cbb8e`, +54 cur `4389fee4` vs ora `438cbb8e`), cause UNKNOWN. Pre83 positions are exact.
+  - **Entity Identity**: Tracked stream is FIRST BOUND OTHER ACTOR `0x80132f30` (callback `0x80085C98`); actual projectile target `0x80132f60` remains separate.
+  - **Post Bracket Nuance**: Post bracket spans to the next loop getter call or logic exit; it can contain downstream actor prep/work; NOT an isolated-update proof.
+- Epistemic Corrections & Active Workload:
+  - **Sonnet Widescreen Inference Correction**: Sonnet's report asserted that because divergence occurs in pre-draw simulation state, widescreen changes are refuted. That inference is **INVALID**: prior-frame draw/visibility feedback has not been excluded, therefore a pre-draw difference alone cannot refute the hypothesis; no assertion is made that feedback actually occurs here. Widescreen feedback remains an **UNTESTED HYPOTHESIS**, NOT REFUTED.
+  - Suspect `C401C` audio still needs proof; no canonical promotion.
+  - Completed and active background jobs: Grok field 60 30-turn audit exited with code 1 INCOMPLETE; Opus 5.5 consumer design completed exit 0; Sonnet medium code job running; new main Grok simulation owner job running.
+- Preserved Invariants:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - No production fix or parity claim for Demo 1.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+CURRENT_WRITER2_CSV_PATH: /home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-current-2/target.csv (415 rows, 56 updrec, FINISH 357)
+ORACLE_WRITER2_CSV_PATH: /home/wesley/.cache/tooie-fps-investigation/demo1-first-writer-oracle-2/target.csv (415 rows, 56 updrec, FINISH 357)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_EGG_RESULT: USER_REPORTED_MISS (persists on user binary 87c5...)
+USER_DEMO1_PREFIX_PARITY: 420/420_EXACT_MATCH (consumed 1..420 independently confirmed by Haiku)
+FIRST_WRITER_DIAG_FIX: PROVEN (Sonnet host-RA / record-arg fix; 355x2 fixture old FAIL 1 / new PASS 0; covers relocations 5/7)
+FIRST_WRITER_ABI_GATE: PROVEN (Haiku 80100368 record arg confirmed, direct SP scope confirmed; mapper criticism marked NOT_TESTED)
+GROK_PREFIX_REPORT: DONE (end_turn 7 turns, CLI exit 0; replaces earlier pending; 355 tgtrec pairs, post 83 first pos diff)
+WRITER2_CAPTURE_STATUS: PROVEN (valid 415/415 rows, exit 0/0, 56 updrec, invalid_binding=0, predumps=7, postmiss=0)
+RECORD_PLUS_60_DIFF: PROVEN (current 0004006c vs orig 0003006c already PRE80; meaning UNKNOWN; other 38 words exact thru PRE83)
+RNG_D8012C7F0_DIFF: PROVEN (POST81 same 28f1cd53; LCG 1664525x+1013904223u32; orig PRE82 k=4 / curr k=5; step offset PRE83 +2, POST83 +3, PRE84 +4; sequence distances NOT proven call counts)
+GS_W11_STATUS: BIT_EXACT (all 14 sampled gs w11 bits match 3d4cccce)
+GEOMETRY_FIRST_DIFF: POST83 (+4/+8/+C pos norm 0.207508441, RAW +48/+54; pre83 positions exact; cause UNKNOWN)
+TRACKED_ACTOR_IDENTITY: FIRST BOUND OTHER ACTOR 80132f30 (callback 80085C98; actual shot candidate 80132f60 remains separate)
+SONNET_WIDESCREEN_CLAIM: CORRECTED (predraw diff refuting widescreen was INVALID INFERENCE; prior-frame draw feedback UNTESTED not REFUTED)
+ACTIVE_BACKGROUND_AGENTS: Grok job demo1-field60-and-rng-grok RUNNING; Opus job demo1-rng-consumer-opus RUNNING (both NOTPASS; no cause/fix)
+PRESERVED_STATE: Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: trace RNG consumers between POST81 and PRE82 (read-only design, no cause/fix)
+```
+
+## Prior (2026-10-18) — USER_DEMO1_PROJECTILE_DIAGNOSTIC_AND_LIVENESS_TRACKING (SUPERSEDED BY PAIR 2 & 3 SWEEP/TARGET DIAGNOSTICS)
+
+Read [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User reaffirmed the objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack. While the historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), the fresh causal root on the current binary is strictly **UNKNOWN**.
+
+- Prior Prefix Parity (PROVEN & INDEPENDENTLY CONFIRMED):
+  - Prior 420 exact non-clock player/input/camera/gs/anim/phys match at EXACT PC `0x800151BC` ENTRY (consumed 1..420) independently confirmed by Haiku (`demo1-actual-pair-haiku-report.txt`, 0 field mismatches across 420 paired rows).
+  - VI cadence delta (100/419 transitions) and +40 oracle handler entries are NOT proven root cause; possible NPC/timer cadence remains an OPEN HYPOTHESIS; `--nospeedlimit` is logical only, not wall time.
+- Sonnet Projectile Diagnostic Implementation (PROVEN):
+  - Sonnet session completed with `is_error=false` (report `demo1-projectile-diagnostic-sonnet-report.txt`, JSON `demo1-projectile-diagnostic-sonnet.json`). Build exit 0, all unit/regression tests reported 0.
+  - Isolated default-OFF flags: `TOOIE_DIAG_DEMO1_PROJECTILE=1` (Tooie) and `P08_DEMO1_PROJECTILE=1` with `P08_DEMO1_PROJECTILE_CSV` (Angrylion oracle). No typos (exact flag names verified).
+  - Five entry/return hook points: `_baeggsetup_entrypoint_5` @ `0x80084A60`, `_cheggfire_entrypoint_2` @ `0x800871F0`, `_sueggmove_entrypoint_9` @ `0x8008A480`, `_suegg_entrypoint_9` @ `0x8008A3C0`, and core2 sweep `func_800CD820`. Plus per-frame `objpoll` (37 columns) for overlay-relative callback tracking.
+  - Binary SHA256: `af0723b4b7f802446b455401b1c9e83a50aa61772ec37a598aa451df7f666705`. Oracle core SHA256: `41b59e2802be5782a2f3ab4f685bbad2fee062bd4da72e8ee01c6d6c4b7ebe88`. Diagnostic ONLY; no production behavior fix.
+- Haiku Static Gate Report (`demo1-projectile-haiku-gate-report.txt`):
+  - Evaluated static code: ABI, exactly-once original call, ctx/reg preservation, 37-col schema, and default-OFF gate: PASS.
+  - Coverage caveat: gate validates direct and `LOOKUP_FUNC` sites; indirect calls via overlay-relative descriptor/callback pointers (`0x808xxxxx`) are NOT guaranteed to be intercepted by Tooie wrappers (which is why `objpoll` exists). Missing callback alone is NOT proof of divergence.
+- Owned Controlled Projectile Captures (PROVEN):
+  - Current Tooie: Controller PID 1282788, game PID/pgid 1282791, elapsed 66.243s, exit 0/0, FINISH post 391, 189 data rows + 1 header. CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-current/projectile.csv` (SHA256 `6b5686b77b723180f08954d3573be31d73294140b22815ae39f90725432775c7`). Flag ONLY `TOOIE_DIAG_DEMO1_PROJECTILE=1`; user game check passed. Counts: setup 1 pair, fire 1 pair (post 333), movement 31 pairs, sweep 32 pairs, objpoll 57.
+  - Pinned Angrylion Oracle: Controller PID 1283584, game PID/pgid 1283587, elapsed 94.041s, exit 0/0, FINISH post 391, fresh isolated config/states/saves, `--nospeedlimit` (PERTURBED_LOGICAL_ONLY). 92 data rows + 1 header. CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-projectile-oracle/projectile.csv` (SHA256 `8bd18fd1444d6f8f6305b200f0c5afc68d0401739b6c4f10af29d42261568aab`). Counts: setup 1 pair, fire 2 enter / 1 leave, movement 7 pairs, sweep 7 pairs, objpoll 57. Controller JSONLs record exact cmd/env/hashes.
+- Bounded Telemetry Findings & Epistemic Boundaries (PROVEN):
+  - `setup_enter`/`leave` and `fire spawn_enter`/`leave` raw payloads are bit-exact between Tooie and Oracle.
+  - All 7 actually matched movement and sweep pairs (`post 333..340`) have bit-exact raw payloads.
+  - All 7 oracle sweep leave rows show `v0 = 0` (same as Current: no hit detected in this window). Baseline no-hit proven for these frames.
+  - First raw `objpoll` difference occurs at `post 341` (~40 XYZ difference), BUT on Oracle the old tracked pointer `0x801d0a2c` freezes at `341..342`, exhibits a heap link at `343`, and then MIPS code words at `388`.
+  - Object liveness, relocation, or free status is UNKNOWN (possible DEFRAG HYPOTHESIS); this is NOT proven as a first gameplay divergence! Current tracked pointer `0x801c767c` continues movement normally.
+  - Snapshot UNKNOWN: target/muzzle final normals and callback delta-time are not captured (`w11` unused). Do not infer VI root.
+- Background Workloads & Active Agents:
+  - Prior Grok main 40-turn audit PID 1274832 was interrupted via SIGINT after 13 read-only turns (redundant gates before runtime); supervisor PID 1270040 was terminated via SIGTERM. Classification: `INTERRUPTED_REDUNDANT_AUDIT_DIRECT_CAPTURE` (not PASS). Raw JSON may be empty, source transcript preserved. Not active.
+  - Grok data-only job PID 1284587 (max 12 turns, outputs `demo1-projectile-compare-grok.json` and `report.txt`), INCOMPLETE.
+  - Sonnet liveness + callback DT diagnostic job PID 1286150 (outputs `demo1-projectile-liveness-sonnet.json` and `report.txt`), COMPLETED.
+- Preserved Invariants:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - User observation that FireEgg still MISSES on user build `87c5...` preserved.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+  - No global clock, aim, or collision hypotheses promoted to specs.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+CURRENT_PROJECTILE_BINARY_SHA256: af0723b4b7f802446b455401b1c9e83a50aa61772ec37a598aa451df7f666705
+ORACLE_CORE_SHA256: 41b59e2802be5782a2f3ab4f685bbad2fee062bd4da72e8ee01c6d6c4b7ebe88
+CURRENT_PROJECTILE_CSV_SHA256: 6b5686b77b723180f08954d3573be31d73294140b22815ae39f90725432775c7 (189 rows)
+ORACLE_PROJECTILE_CSV_SHA256: 8bd18fd1444d6f8f6305b200f0c5afc68d0401739b6c4f10af29d42261568aab (92 rows)
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_EGG_RESULT: USER_REPORTED_MISS (persists on user binary 87c5...)
+USER_DEMO1_PREFIX_PARITY: 420/420_EXACT_MATCH (consumed 1..420 independently confirmed by Haiku)
+PROJECTILE_SPAWN_AND_EARLY_SWEEPS: BIT_EXACT_MATCH (setup/fire/sweeps 333..340 matched; sweep leave v0=0)
+ORACLE_TRACKED_PTR_FREEZE_AT_341: PROVEN (0x801d0a2c freezes 341..342, heap link 343; liveness/reloc UNKNOWN)
+COLLISION_HIT_STATUS: UNKNOWN (baseline no-hit proven for early window; overall hit UNKNOWN)
+ACTIVE_BACKGROUND_AGENTS: PID 1284587 (Grok compare), PID 1286150 (Sonnet liveness+DT diag)
+PRESERVED_STATE: Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: await liveness diagnostic gates and fresh bounded paired capture using stable identity; not global aim/clock fix
+```
+
+## Prior (2026-10-18) — USER_DEMO1_PAIRED_PARITY_PREFIX_MATCH_AND_HIT_UNKNOWN (SUPERSEDED BY PROJECTILE CAPTURE)
+
+Read [[p08-user-demo1-movement-and-fire-egg-differential]], [[p08-user-demo7-cutscene-drift-investigation]], [[p08-demo-movement-precision-diagnosis]], and [[p08-attract-movement-residuals]].
+User confirmed that Demo 7 cutscene stopping is **VISUALLY FIXED** and that the Fire Egg miss persists on the current corrected binary (SHA256 `87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5`). User clarified the latest objective is **general subtle gameplay/action parity** across movement, physics, and state, not an artificial aim or hit steering adjustment; no global clock hack. While the historical geometric miss was cataloged in earlier recomp studies (BASE `876d299f`, §16/17, margin +36.85), the fresh causal root on the current binary is strictly **UNKNOWN**.
+
+- Diagnostic Implementation & Build Verification (PROVEN):
+  - Sonnet CLI session 22383 implemented isolated, default-OFF flags `TOOIE_DIAG_DEMO1_PARITY=1` and `P08_DEMO1_PARITY=1` mirrored at EXACT PC `0x800151BC` ENTRY, stage 0 sub 0, glidx `0..420` (max 421 rows), player 0 only.
+  - Schema covers 62 columns: cumulative guest VI handler entries `0x8001443C` and logic counter, raw 6-byte pad (`r0..r5`), precise 9-group fields (`px,py,pz`, `vx,vy,vz`, `ptype`, `velxz`, `tspd`, `yaw`, `ideal`, `phys_yaw`, `bs_prev`/`cur`/`next`, `anim`, camera `camx,camy,camz,camctrl,sel`, gamespeed `gs`).
+  - Unit test `tests/tooie_demo1_parity_test` passed exit 0; ninja build exit 0 (diagnostic binary SHA256 `5b6fc6d069f00411cfd2ade4b94d7fa15055a44206bc100ffbd5ba569af31bc6`); oracle core rebuild exit 0 (lib SHA256 `c2a9e7fa7a3476c4a6eacb35bedc30c3d8128c16a28e190fbf0c0e96c05d9c04`).
+- Controlled Paired Captures (PROVEN):
+  - Current Tooie: Controller PID 1073249, game PID/pgid 1073258, elapsed 67.679s, exit 0, reason `window_consumed_420`. Console log `/home/wesley/.cache/tooie-fps-investigation/demo1-parity-current/console.log` (501,453 bytes, SHA256 `57920a649162c7bec4b17dd3d0e86ef41eed0fb813c98008a6323e5fe83492aa`). Header + 420 data rows.
+  - Pinned Angrylion Oracle: Controller PID 1074236, oracle PID/pgid 1074257, elapsed 98.713s, exit 0, reason `window_consumed_420`. CSV `/home/wesley/.cache/tooie-fps-investigation/demo1-parity-oracle/demo1.csv` (179,297 bytes, SHA256 `fa45b8d202a791eba76b6ef0f2b20265ed2297cddc25eb0c90b11811f55736e3`). Header + 420 data rows. Wall time under `--nospeedlimit` is perturbed; logical parity only.
+  - Owned capture processes exited cleanly; no processes relaunched; no user processes touched.
+- Paired Comparator Verdict & Divergence Analysis (PROVEN):
+  - Evaluated via `demo1-parity-compare.py` -> `demo1-parity-compare.json` and Grok final paired report `demo1-paired-main-grok-report.txt`.
+  - **420 exact non-clock matched pairs** (consumed 1..420). Both sides skip only consumed 0 (post 1), confirming identical hook boundary without port split.
+  - Zero 1-ULP differences, zero persistent geometric or action differences across sampled player and camera fields from consumed 1 through 420: raw `r0..r5`, `gs_bits` (matches at every consumed: `0x3D4CCCCE` = 0.05 and `0x3D088889` = 0.03333, including C-up row 322), `yaw`, `ideal`, `phys_yaw`, `px,py,pz` and bit words, `vx,vy,vz` and bit words, `velxz`, `tspd`, `accel`, `mult`, `ptype`, `bs_prev/cur/next`, `anim_id/timer/dur/phase`, `camx/camy/camz, camctrl, sel`.
+  - **First in-window divergence**: VI-handler entry cadence (`0x8001443C`). In-window delta-VI mismatches on 100 of 419 transitions. First step consumed 1->2: Tooie dvi 0 (vi 3134), oracle dvi 6 (vi 3414->3420). Cumulative VI growth consumed 1->420: Tooie +847, oracle +887 (+40 entries). This is an emulator/runtime entry cadence difference under `--nospeedlimit`; it did NOT move any sampled guest fields.
+  - Verdict: `player/input/camera/gs prefix MATCH through consumed 420. HIT UNKNOWN. No code fix. Not PASS. Not a visual-miss proof. Not a realtime proof. No aim, hit, or clock change.`
+- Fire-Edge & Projectile Dispatch Telemetry:
+  - Consumed 322 / post 323 (buttons `0x2008` = C-up with Z, stick `(-9, 84)`): player entry pose matches bit-exact between Tooie and oracle (`px,py,pz = -4692.11475, -426.484711, 1129.06921`, `yaw = 291.797241°`, `velxz = 287.608307`, `bs_cur = 9`, `anim_id = 42`, `cam = -4086.1438, -160.789032, 950.552246`). This entry pose differs from the later SHOT leave pose on `87c5...` due to sample phase and binary.
+  - Oracle append tail (`/tmp/p08-angrylion-attract-eggs.log`, 56,989 bytes, 426 lines) reveals `cheggfire` sys dispatch occurs at raw post 333 (consumed 332): `800871f0` overlay 535 ep 2 (`obj64 = c5932bf8` [-4709.5], `obj6c = 448e0aee` [1136.34]).
+  - Actor low-9 masking (`+0x6C & 0x1FF`) remains strictly INVALID.
+- Independent Audits & Preserved Disagreements:
+  - Grok Contract Audit (`workload-grok-parity-audit-report.txt`): PID 1065434 remains ACTIVE in background (user explicitly requested keeping agents running across quota resets). Audited compiler flags (`RecompiledFuncs` with `RECOMP_MIPS_ROUND_COMPAT=1`; `TooieRecompiled` without it), lookup table binding mechanism, native libm math overrides (`800136E4`, `800138D0`, `80013970`), stick helpers (`800BCCC0`, `800BCCD8`), and hypotheses H1-H4. Differentiated diagnostic binary `5b6fc6d0` from user-reported miss binary `87c5a08b`.
+  - Haiku Capture Audit (`workload-haiku-capture-audit-report.txt`): 20 static gates G1-G20 evaluated. Confirmed 62-column schema parity. Flagged G15 oracle CSV append mode risk (successfully averted by Grok's fresh path) and G14 run-tagging gap.
+- Active & Historical Process Tracking:
+  - Active background agent: PID 1065434 (Grok independent contract audit).
+  - Historical exited PIDs: Driver PID 1067821, Grok paired runner PID 1067822, Tooie controller PID 1073249 / game PID 1073258, Oracle controller PID 1074236 / oracle PID 1074257, earlier SHOT capture PID 1059296, user game PID 1050817.
+- Preserved Prior State:
+  - Demo 7 generator fix (`patches/runtime/n64recomp-zero-size-static.patch` and official 420-file regeneration) strictly preserved; user visual PASS maintained.
+  - User observation that FireEgg still MISSES on current build `87c5...` preserved.
+  - P09 Phase 1 default CURRENT `tfPos` workaround remains default-ON.
+  - Present FPS counter and Graphics options toggle remain verified.
+  - RT64 below-native present decimator remains operational.
+  - Audio glitch remains explicitly deferred per user directive.
+  - No global clock, aim, or collision hypotheses promoted to specs.
+
+```text
+SCENE_IDENTITY: PROVEN (stage 0, sub 0, map 335 entrance 8 mode 5, glrecord ovl 698 cnt 766)
+CURRENT_DIAGNOSTIC_BINARY_SHA256: 5b6fc6d069f00411cfd2ade4b94d7fa15055a44206bc100ffbd5ba569af31bc6
+USER_BUG_BASELINE_BINARY_SHA256: 87c5a08b96b6fbb9c29c0079ac6b7b6060af8f5da6b92147f60e5dacce85bbe5
+ORACLE_CORE_SHA256: c2a9e7fa7a3476c4a6eacb35bedc30c3d8128c16a28e190fbf0c0e96c05d9c04
+USER_DEMO7_STATUS: VISUALLY_FIXED (generator patch preserved)
+USER_DEMO1_EGG_RESULT: USER_REPORTED_MISS (persists on user binary 87c5...)
+USER_DEMO1_PAIRED_PARITY_PREFIX: 420/420_MATCH (consumed 1..420 non-clock columns bit-exact)
+VI_CADENCE_CADENCE_MISMATCHES: 100/419_STEPS (runtime/emulator delta under --nospeedlimit; 0 guest field movement)
+COLLISION_HIT_STATUS: UNKNOWN (no hit/miss event in prefix sampling)
+FRESH_CAUSAL_ROOT: UNKNOWN (downstream of logic-entry player prefix)
+ACTIVE_BACKGROUND_AGENT: PID 1065434 (Grok independent contract audit)
+PRESERVED_STATE: Demo 7 generator fix, CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: same-phase bounded diagnostic on both sides around post 333 (cheggfire 800871f0 ovl 535 ep 2 + sweep callee), default OFF
+```
+
+## Prior (2026-10-17) — USER_DEMO7_FIX_PROVEN_AND_VERIFIED
+
+Read [[p08-user-demo7-cutscene-drift-investigation]], [[p08-attract-movement-residuals]], and [[p08-provisional-follow-camera-and-egg-differential]].
+The user-observed player drift during Demo 7 in the attract sequence (TDL Stomping Plains, stage 0 sub 8) has been forensically isolated, root-caused, and resolved at the owning generator layer without hand-editing generated code. Disassembly of `bs_setState` (`0x8009E5C8`) proved layout `*(player + 0x120)` maps `+0: prev`, `+4: cur`, `+8: next`, identifying the sliding state as State 116 (`0x74`, `_bsrest_entrypoint_12`). In N64 hardware, State 116 INIT calls static helper `0x80800000` (`static_344_80800000`) to reset `tspd = 0` and clear velocity vectors. In recompiled code, `static_344_80800000` was emitted with an empty body `;}` due to zero-size ELF markers (`bsrest_VRAM`, `bsrest_TEXT_START`) at `0x80800000` truncating the static in `N64Recomp/src/main.cpp`. Fix applied via versioned patch `patches/runtime/n64recomp-zero-size-static.patch` (registered in `tools/apply_runtime_patches.sh`), verified by `tests/n64recomp_zero_size_static_test.sh` (PASS), and official tooling full regeneration executed cleanly (ROM SHA1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, ELF SHA1 `2b2d04c5b6484594f750b097daf670f7a8a24167`, size 91855676). Full build and fresh check exit 0. Independent final gate evaluation by Grok on fixed runtime capture `demo7-fixed-root.log` (121 rows, controller 396.13s) confirms **Criterion 1 (Bounded Demo 7 Drift) PASS**: 119 pose pairs match N64 reference within quantized tolerances, 120/120 pads match, glidx 38..120 is fully stationary at `(-80.46, 0.00, 4496.25)`, `velxz = 0.0`, `tspd = 0.0`. Serial 90.032s timing test (`timing-fixed-pid-serial-90s.log`) with PID-tagged serialization fix in `src/game/tooie_diag.cpp` verified guest VI cadence at ~60.012 Hz (PID 938341: 3543 VIs in 59.038 s; 24.306 logic Hz) with NO evidence of a 2x VI clock in the measured window. This does NOT prove universal camera/mob/campaign timing; user-specific non-Demo7 reproduction question remains open. Production bug is CLOSED for the tested window.
+
+```text
+USER_DEMO7_SCENE_MAPPING: PROVEN (stage 0, sub 8, glrecord 698 cnt 1245)
+USER_DEMO7_ROOT_CAUSE: PROVEN (N64Recomp zero-size ELF marker bug truncated bsrest static_344_80800000)
+USER_DEMO7_FIX_LAYER: GENERATOR_SOURCE (patches/runtime/n64recomp-zero-size-static.patch)
+USER_DEMO7_CRITERION_1: PASS (119/119 pose pairs within tol; gl38..120 stationary pos/vel/tspd=0)
+USER_DEMO7_CRITERION_2: NO_2X_VI_IN_MEASURED_WINDOW (~60.012 VI Hz; universal mobs/campaign unproven)
+USER_DEMO5_RESIDUALS: OPEN_PRESERVED
+PRESERVED_STATE: CURRENT tfPos workaround, FPS counter/toggle, RT64 decimator, audio deferral unchanged
+NEXT_SINGLE_ACTION: normal clean user visual QA Demo 7, and concrete non-Demo 7 speed reproduction if persists.
+```
+
+## Prior (2026-10-17) — USER_DEMO7_CUTSCENE_DRIFT_INVESTIGATION_BOUNDED (SUPERSEDED BY DEMO 7 FIX)
+
+
+## Prior (2026-08-31) — T_INTRO_TRUE_SOURCE_ASPECT_PRODUCTION
 
 The user visually confirmed the true-source-aspect policy on the tested 16:9
 Scene A and Scene B paths: no disappearing wall has been observed. It is now

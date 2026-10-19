@@ -2,6 +2,8 @@
 #define P08_ATTRACT_EGG_HOOK_H
 
 #include <stdio.h>
+#include <time.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2978,6 +2980,1161 @@ static inline void p08_spawn_dispatch(struct r4300_core* r4300)
     fprintf(fp, "\n");
     fflush(fp);
     (void)act184; (void)egg_byte; (void)obj70;
+}
+
+/* Demo7 (stage 0 sub 8) drift capture. Default OFF; enable with P08_DEMO7_SUB8=1.
+ * Isolated from UD4/UD5: own CSV (P08_DEMO7_CSV), glidx 0..120 only, player slot 0 only.
+ * Sampled once per logic tick at PC 0x800151BC (proven logic boundary), BEFORE this
+ * tick's player update: state = post-consume snapshot, i.e. after record glidx=post-1 was
+ * consumed by the previous tick. pc/phase/tick columns document this. bs layout:
+ * *(player+0x120) +0 prev, +4 cur, +8 next (bs_setState 0x8009E5D8). */
+static FILE* s_p08_d7 = NULL;
+static uint32_t s_p08_d7_last_post = 0xFFFFFFFFu;
+static inline int p08_demo7_on(void)
+{
+    const char* e = getenv("P08_DEMO7_SUB8");
+    return e != NULL && e[0] != '\0' && e[0] != '0';
+}
+static inline int p08_d7_guest(uint32_t a)
+{
+    return a >= 0x80000000u && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+}
+static inline uint32_t p08_d7_w(struct r4300_core* r4300, uint32_t a)
+{
+    uint32_t w = 0;
+    (void)r4300_read_aligned_word(r4300, a, &w);
+    return w;
+}
+static uint64_t s_p08_d7t_tick = 0; /* logic-tick hits (PC 0x800151BC) while P08_DEMO7_SUB8=1 */
+static inline void p08_demo7_on_logic_tick(struct r4300_core* r4300, uint32_t pc)
+{
+    if (!p08_demo7_on()) {
+        return;
+    }
+    s_p08_d7t_tick++;
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    if (mode != 5 || stage != 0 || sub != 8 || post == s_p08_d7_last_post) {
+        return;
+    }
+    const int32_t glidx = (post > 0u) ? (int32_t)post - 1 : 0;
+    if (glidx < 0 || glidx > 120) {
+        return;
+    }
+    const uint32_t ps = p08_d7_w(r4300, 0x80135490u);
+    if (!p08_d7_guest(ps)) {
+        return;
+    }
+    s_p08_d7_last_post = post;
+    if (!s_p08_d7) {
+        const char* path = getenv("P08_DEMO7_CSV");
+        if (path == NULL || path[0] == '\0') {
+            path = "/tmp/p08-angrylion-demo7_sub8.csv";
+        }
+        s_p08_d7 = fopen(path, "a");
+        if (s_p08_d7 && ftell(s_p08_d7) == 0) {
+            fprintf(s_p08_d7,
+                    "pc,phase,tick,gs,glidx,post,stage,sub,pad_x,pad_y,pad_btn,bs_prev,bs_cur,bs_next,ptype,"
+                    "px,py,pz,ppx,ppy,ppz,vx,vy,vz,tspd,anim_id,anim_timer,anim_dur,cx,cy,cz\n");
+        }
+        if (!s_p08_d7) {
+            return;
+        }
+    }
+    /* recorded pad: 6-byte record at glrecord base + glidx*6 (BE, possibly unaligned) */
+    int pad_x = 0, pad_y = 0;
+    unsigned pad_btn = 0;
+    const uint32_t gl_base = p08_d7_w(r4300, 0x8012D5B0u);
+    if (p08_d7_guest(gl_base)) {
+        const uint32_t sample = gl_base + (uint32_t)glidx * 6u;
+        const uint32_t w0 = p08_d7_w(r4300, sample & ~3u);
+        const uint32_t w1 = p08_d7_w(r4300, (sample + 4u) & ~3u);
+        uint8_t b[8];
+        b[0] = (uint8_t)(w0 >> 24); b[1] = (uint8_t)(w0 >> 16); b[2] = (uint8_t)(w0 >> 8); b[3] = (uint8_t)w0;
+        b[4] = (uint8_t)(w1 >> 24); b[5] = (uint8_t)(w1 >> 16); b[6] = (uint8_t)(w1 >> 8); b[7] = (uint8_t)w1;
+        const int off = (int)(sample & 3u);
+        pad_x = (int)(int8_t)b[off];
+        pad_y = (int)(int8_t)b[off + 1];
+        pad_btn = ((unsigned)b[off + 2] << 8) | (unsigned)b[off + 3];
+    }
+    float px = 0, py = 0, pz = 0, ppx = 0, ppy = 0, ppz = 0, vx = 0, vy = 0, vz = 0, tspd = 0;
+    int32_t bs_prev = -1, bs_cur = -1, bs_next = -1, ptype = -1;
+    const uint32_t pos = p08_d7_w(r4300, ps + 0xE4u);
+    const uint32_t phys = p08_d7_w(r4300, ps + 0xC8u);
+    const uint32_t bsp = p08_d7_w(r4300, ps + 0x120u);
+    if (p08_d7_guest(pos)) {
+        px = p08_f32(p08_d7_w(r4300, pos)); py = p08_f32(p08_d7_w(r4300, pos + 4u));
+        pz = p08_f32(p08_d7_w(r4300, pos + 8u));
+    }
+    if (p08_d7_guest(phys)) {
+        ptype = (int32_t)p08_d7_w(r4300, phys);
+        ppx = p08_f32(p08_d7_w(r4300, phys + 0x04u)); ppy = p08_f32(p08_d7_w(r4300, phys + 0x08u));
+        ppz = p08_f32(p08_d7_w(r4300, phys + 0x0Cu));
+        vx = p08_f32(p08_d7_w(r4300, phys + 0x10u)); vy = p08_f32(p08_d7_w(r4300, phys + 0x14u));
+        vz = p08_f32(p08_d7_w(r4300, phys + 0x18u)); tspd = p08_f32(p08_d7_w(r4300, phys + 0x3Cu));
+    }
+    if (p08_d7_guest(bsp)) {
+        bs_prev = (int32_t)p08_d7_w(r4300, bsp + 0x0u);
+        bs_cur = (int32_t)p08_d7_w(r4300, bsp + 0x4u);
+        bs_next = (int32_t)p08_d7_w(r4300, bsp + 0x8u);
+    }
+    int anim_id = -1;
+    float anim_timer = 0.0f, anim_dur = 0.0f;
+    const uint32_t anim_p = p08_d7_w(r4300, ps + 0x04u);
+    if (p08_d7_guest(anim_p)) {
+        const uint32_t ac = p08_d7_w(r4300, anim_p);
+        if (p08_d7_guest(ac)) {
+            anim_dur = p08_f32(p08_d7_w(r4300, ac + 0x0Cu));
+            anim_timer = p08_f32(p08_d7_w(r4300, ac + 0x2Cu));
+            anim_id = (int)(int16_t)(p08_d7_w(r4300, ac + 0x34u) >> 16);
+        }
+    }
+    float cx = 0, cy = 0, cz = 0;
+    const uint32_t vp = p08_d7_w(r4300, 0x8012D500u);
+    if (p08_d7_guest(vp)) {
+        cx = p08_f32(p08_d7_w(r4300, vp)); cy = p08_f32(p08_d7_w(r4300, vp + 4u));
+        cz = p08_f32(p08_d7_w(r4300, vp + 8u));
+    }
+    fprintf(s_p08_d7,
+            "%08x,logic_tick_start_post_consume,%llu,%.9g,%d,%u,%d,%d,%d,%d,0x%04x,%d,%d,%d,%d,"
+            "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+            pc, (unsigned long long)s_ud5_logic_tick,
+            p08_f32(p08_d7_w(r4300, 0x8012C760u)), glidx, post, stage, sub, pad_x, pad_y, pad_btn, bs_prev, bs_cur, bs_next, ptype,
+            px, py, pz, ppx, ppy, ppz, vx, vy, vz, tspd, anim_id, anim_timer, anim_dur, cx, cy, cz);
+    fflush(s_p08_d7); /* <=121 rows; never lose data to SIGINT/kill */
+}
+
+/* Demo7 write trace (P08_DEMO7_SUB8=1). PC hooks (pure_interp.c) at 0x8009B9B0
+ * baphysics_set_target_horizontal_velocity (a0=player, a1=raw float bits -> *(ps+0xC8)+0x3C) and
+ * 0x8009E5C8 bs_setState (a0=player, a1=state id; 0x8009E5D8 is only its 4th instruction).
+ * Same rows/format as Tooie [demo7-trace]: player slot 0 only, stage0 sub8, consumed glidx
+ * 32..45, max 600 rows. Read-only. tick = logic-tick (PC 0x800151BC) hit count. */
+#define P08_D7T_STK 8
+struct p08_d7t_snap { float tspd, vx, vy, vz; int32_t prev, cur, next; };
+static struct {
+    uint32_t ra, a0, a1, seq;
+    int kind, post;
+    struct p08_d7t_snap pre;
+} s_p08_d7t_stk[P08_D7T_STK];
+static int s_p08_d7t_pend = 0;
+static int s_p08_d7t_on = -1;
+static uint32_t s_p08_d7t_seq = 0, s_p08_d7t_rows = 0, s_p08_d7t_other = 0;
+
+static inline struct p08_d7t_snap p08_d7t_take(struct r4300_core* r4300, uint32_t ps)
+{
+    struct p08_d7t_snap s = { 0, 0, 0, 0, -1, -1, -1 };
+    if (!p08_d7_guest(ps)) {
+        return s;
+    }
+    const uint32_t phys = p08_d7_w(r4300, ps + 0xC8u);
+    const uint32_t bsp = p08_d7_w(r4300, ps + 0x120u);
+    if (p08_d7_guest(phys)) {
+        s.tspd = p08_f32(p08_d7_w(r4300, phys + 0x3Cu));
+        s.vx = p08_f32(p08_d7_w(r4300, phys + 0x10u));
+        s.vy = p08_f32(p08_d7_w(r4300, phys + 0x14u));
+        s.vz = p08_f32(p08_d7_w(r4300, phys + 0x18u));
+    }
+    if (p08_d7_guest(bsp)) {
+        s.prev = (int32_t)p08_d7_w(r4300, bsp + 0x0u);
+        s.cur = (int32_t)p08_d7_w(r4300, bsp + 0x4u);
+        s.next = (int32_t)p08_d7_w(r4300, bsp + 0x8u);
+    }
+    return s;
+}
+
+static inline void p08_d7t_row(const char* what, const char* ph, uint32_t seq, int post,
+                               uint32_t ra, uint32_t a0, uint32_t a1, const struct p08_d7t_snap* s)
+{
+    fprintf(stderr,
+            "[demo7-trace] seq=%u %s %s post=%d glidx=%d tick=%llu ra=%08x a0=%08x a1=%08x(%.6f) "
+            "bs=%d/%d/%d tspd=%.4f vel=(%.4f,%.4f,%.4f) other=%u\n",
+            seq, what, ph, post, (post > 0) ? post - 1 : 0, (unsigned long long)s_p08_d7t_tick,
+            ra, a0, a1, p08_f32(a1), s->prev, s->cur, s->next, s->tspd, s->vx, s->vy, s->vz,
+            s_p08_d7t_other);
+    fflush(stderr);
+}
+
+static inline void p08_demo7_trace_pc(struct r4300_core* r4300, uint32_t pc)
+{
+    if (s_p08_d7t_on < 0) {
+        s_p08_d7t_on = p08_demo7_on();
+    }
+    if (!s_p08_d7t_on) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    if (s_p08_d7t_pend > 0 && pc == s_p08_d7t_stk[s_p08_d7t_pend - 1].ra) {
+        const int i = --s_p08_d7t_pend;
+        const uint32_t a0 = s_p08_d7t_stk[i].a0, a1 = s_p08_d7t_stk[i].a1;
+        const struct p08_d7t_snap now = p08_d7t_take(r4300, a0);
+        if (s_p08_d7t_stk[i].kind == 1) {
+            p08_d7t_row("tspd_set", "pre ", s_p08_d7t_stk[i].seq, s_p08_d7t_stk[i].post,
+                        s_p08_d7t_stk[i].ra, a0, a1, &s_p08_d7t_stk[i].pre);
+            p08_d7t_row("tspd_set", "post", s_p08_d7t_stk[i].seq, s_p08_d7t_stk[i].post,
+                        s_p08_d7t_stk[i].ra, a0, a1, &now);
+        } else {
+            p08_d7t_row("bs_setState", "leave", s_p08_d7t_stk[i].seq, s_p08_d7t_stk[i].post,
+                        s_p08_d7t_stk[i].ra, a0, a1, &now);
+        }
+        return;
+    }
+    if (pc != 0x8009B9B0u && pc != 0x8009E5C8u) {
+        return;
+    }
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post);
+    const int cg = (post > 0u) ? (int)post - 1 : 0;
+    if (mode != 5 || stage != 0 || sub != 8 || cg < 32 || cg > 45) {
+        return;
+    }
+    const uint32_t a0 = (uint32_t)regs[4], a1 = (uint32_t)regs[5], ra = (uint32_t)regs[31];
+    if (a0 != p08_d7_w(r4300, 0x80135490u)) {
+        s_p08_d7t_other++;
+        return;
+    }
+    if (s_p08_d7t_rows >= 600u || s_p08_d7t_pend >= P08_D7T_STK) {
+        return;
+    }
+    s_p08_d7t_rows++;
+    const int i = s_p08_d7t_pend++;
+    s_p08_d7t_stk[i].ra = ra; s_p08_d7t_stk[i].a0 = a0; s_p08_d7t_stk[i].a1 = a1;
+    s_p08_d7t_stk[i].seq = ++s_p08_d7t_seq; s_p08_d7t_stk[i].post = (int)post;
+    s_p08_d7t_stk[i].kind = (pc == 0x8009B9B0u) ? 1 : 2;
+    s_p08_d7t_stk[i].pre = p08_d7t_take(r4300, a0);
+    if (pc == 0x8009E5C8u) {
+        p08_d7t_row("bs_setState", "enter", s_p08_d7t_stk[i].seq, (int)post, ra, a0, a1,
+                    &s_p08_d7t_stk[i].pre);
+    }
+}
+
+#define P08_DEMO1_HEADER \
+    "phase,pc,seq,elapsed_ns,vi,gs_bits,gs,mode,stage,sub,map,post,consumed,count," \
+    "r0,r1,r2,r3,r4,r5,rmx,rmy,bx,by,bang,bdist,yaw,ideal,phys_yaw,yaw_b," \
+    "px,py,pz,px_b,py_b,pz_b,ppx,ppy,ppz,vx,vy,vz,vx_b,vz_b,velxz,tspd,tspd_b,accel,mult,ptype," \
+    "bs_prev,bs_cur,bs_next,anim_id,anim_timer,anim_dur,anim_phase,camx,camy,camz,camctrl,sel"
+#define P08_DEMO1_FMT \
+    "%s,%08x,%llu,%llu,%llu,%08x,%.9g,%d,%d,%d,%d,%d,%d,%d," \
+    "%u,%u,%u,%u,%u,%u,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%08x," \
+    "%.9g,%.9g,%.9g,%08x,%08x,%08x,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%08x,%08x,%.9g,%.9g,%08x,%.9g,%.9g,%d," \
+    "%d,%d,%d,%d,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%d\n"
+
+/* USER_DEMO1 behavior parity (P08_DEMO1_PARITY=1, default OFF). Mirror of Tooie
+ * TOOIE_DIAG_DEMO1_PARITY: sampled at PC 0x800151BC (ENTRY of func_800151BC, before its first
+ * instruction), once per glrecord post for mode5 stage0 sub0, player slot 0, consumed 0..420.
+ * vi = number of entries of func_8001443C (PC 0x8001443C) seen while on; seq = entries of
+ * 0x800151BC seen. CSV path P08_DEMO1_CSV (default /tmp/p08-angrylion-demo1_parity.csv), flushed
+ * per row. Same header/format/fields as Tooie (tests/tooie_demo1_parity_test.cpp checks them). */
+static FILE* s_p08_d1 = NULL;
+static int s_p08_d1_on = -1;
+static uint64_t s_p08_d1_vi = 0, s_p08_d1_seq = 0;
+static int64_t s_p08_d1_t0 = -1;
+static int32_t s_p08_d1_last_post = -1;
+static inline int p08_demo1_on(void)
+{
+    if (s_p08_d1_on < 0) {
+        const char* e = getenv("P08_DEMO1_PARITY");
+        s_p08_d1_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+    }
+    return s_p08_d1_on;
+}
+static inline uint32_t p08_d1_byte(struct r4300_core* r4300, uint32_t a)
+{
+    uint32_t w = 0;
+    (void)r4300_read_aligned_word(r4300, a & ~3u, &w);
+    return (w >> (24 - 8 * (a & 3u))) & 0xFFu;
+}
+static inline void p08_demo1_on_vi_entry(void)
+{
+    if (p08_demo1_on()) {
+        s_p08_d1_vi++;
+    }
+}
+static inline void p08_demo1_on_logic_entry(struct r4300_core* r4300, uint32_t pc)
+{
+    if (!p08_demo1_on()) {
+        return;
+    }
+    s_p08_d1_seq++;
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post_u = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post_u);
+    const int32_t post = (int32_t)post_u;
+    if (mode != 5 || stage != 0 || sub != 0 || post <= 0 || post - 1 > 420 || post == s_p08_d1_last_post) {
+        return;
+    }
+    const uint32_t ps = p08_d7_w(r4300, 0x80135490u);
+    if (!p08_d7_guest(ps)) {
+        return;
+    }
+    s_p08_d1_last_post = post;
+    if (!s_p08_d1) {
+        const char* path = getenv("P08_DEMO1_CSV");
+        if (path == NULL || path[0] == '\0') {
+            path = "/tmp/p08-angrylion-demo1_parity.csv";
+        }
+        s_p08_d1 = fopen(path, "a");
+        if (!s_p08_d1) {
+            return;
+        }
+        if (ftell(s_p08_d1) == 0) {
+            fprintf(s_p08_d1, "%s\n", P08_DEMO1_HEADER);
+        }
+    }
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    const int64_t now = (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+    if (s_p08_d1_t0 < 0) {
+        s_p08_d1_t0 = now;
+    }
+    const int consumed = post - 1;
+    const uint32_t count = p08_d7_w(r4300, 0x8012D5BCu);
+    const uint32_t gs_b = p08_d7_w(r4300, 0x8012C760u);
+    unsigned r[6] = { 0, 0, 0, 0, 0, 0 };
+    const uint32_t gl_base = p08_d7_w(r4300, 0x8012D5B0u);
+    if (p08_d7_guest(gl_base)) {
+        const uint32_t b = gl_base + (uint32_t)consumed * 6u;
+        for (int i = 0; i < 6; i++) {
+            r[i] = p08_d1_byte(r4300, b + (uint32_t)i);
+        }
+    }
+    float bx = 0, by = 0, bang = 0, bdist = 0, yaw = 0, ideal = 0, phys_yaw = 0, accel = 0, mult = 0;
+    uint32_t yaw_b = 0, tspd_b = 0, px_b = 0, py_b = 0, pz_b = 0, vx_b = 0, vz_b = 0;
+    float px = 0, py = 0, pz = 0, ppx = 0, ppy = 0, ppz = 0, vx = 0, vy = 0, vz = 0, tspd = 0;
+    int32_t ptype = -1, bs_prev = -1, bs_cur = -1, bs_next = -1, sel = -1, anim_id = -1;
+    float anim_timer = 0, anim_dur = 0, anim_phase = 0, camx = 0, camy = 0, camz = 0, camctrl = 0;
+    const uint32_t pos_a = p08_d7_w(r4300, ps + 0xE4u);
+    const uint32_t yaw_a = p08_d7_w(r4300, ps + 0xF8u);
+    const uint32_t phys_a = p08_d7_w(r4300, ps + 0xC8u);
+    const uint32_t bs_a = p08_d7_w(r4300, ps + 0x120u);
+    const uint32_t st_a = p08_d7_w(r4300, ps + 0x128u);
+    if (p08_d7_guest(pos_a)) {
+        px_b = p08_d7_w(r4300, pos_a); py_b = p08_d7_w(r4300, pos_a + 4u);
+        pz_b = p08_d7_w(r4300, pos_a + 8u);
+        px = p08_f32(px_b); py = p08_f32(py_b); pz = p08_f32(pz_b);
+    }
+    if (p08_d7_guest(yaw_a)) {
+        yaw_b = p08_d7_w(r4300, yaw_a);
+        yaw = p08_f32(yaw_b); ideal = p08_f32(p08_d7_w(r4300, yaw_a + 4u));
+    }
+    if (p08_d7_guest(phys_a)) {
+        ptype = (int32_t)p08_d7_w(r4300, phys_a);
+        ppx = p08_f32(p08_d7_w(r4300, phys_a + 0x04u)); ppy = p08_f32(p08_d7_w(r4300, phys_a + 0x08u));
+        ppz = p08_f32(p08_d7_w(r4300, phys_a + 0x0Cu));
+        vx_b = p08_d7_w(r4300, phys_a + 0x10u); vx = p08_f32(vx_b);
+        vy = p08_f32(p08_d7_w(r4300, phys_a + 0x14u));
+        vz_b = p08_d7_w(r4300, phys_a + 0x18u); vz = p08_f32(vz_b);
+        tspd_b = p08_d7_w(r4300, phys_a + 0x3Cu); tspd = p08_f32(tspd_b);
+        phys_yaw = p08_f32(p08_d7_w(r4300, phys_a + 0x40u));
+        accel = p08_f32(p08_d7_w(r4300, phys_a + 0x44u));
+        mult = p08_f32(p08_d7_w(r4300, phys_a + 0x50u));
+    }
+    if (p08_d7_guest(bs_a)) {
+        bs_prev = (int32_t)p08_d7_w(r4300, bs_a); bs_cur = (int32_t)p08_d7_w(r4300, bs_a + 4u);
+        bs_next = (int32_t)p08_d7_w(r4300, bs_a + 8u);
+    }
+    if (p08_d7_guest(st_a)) {
+        bx = p08_f32(p08_d7_w(r4300, st_a + 0x54u)); by = p08_f32(p08_d7_w(r4300, st_a + 0x58u));
+        bang = p08_f32(p08_d7_w(r4300, st_a + 0x5Cu)); bdist = p08_f32(p08_d7_w(r4300, st_a + 0x60u));
+    }
+    const uint32_t anim_p = p08_d7_w(r4300, ps + 0x04u);
+    if (p08_d7_guest(anim_p)) {
+        const uint32_t ac = p08_d7_w(r4300, anim_p);
+        if (p08_d7_guest(ac)) {
+            anim_dur = p08_f32(p08_d7_w(r4300, ac + 0x0Cu));
+            anim_timer = p08_f32(p08_d7_w(r4300, ac + 0x2Cu));
+            anim_id = (int32_t)(int16_t)(p08_d7_w(r4300, ac + 0x34u) >> 16);
+            anim_phase = (anim_dur > 0.0f) ? (anim_timer / anim_dur) : 0.0f;
+        }
+    }
+    const uint32_t vp = p08_d7_w(r4300, 0x8012D500u);
+    if (p08_d7_guest(vp)) {
+        camx = p08_f32(p08_d7_w(r4300, vp)); camy = p08_f32(p08_d7_w(r4300, vp + 4u));
+        camz = p08_f32(p08_d7_w(r4300, vp + 8u));
+    }
+    sel = (int32_t)p08_d7_w(r4300, ps + 0x184u);
+    if (sel >= 0 && sel < 8) {
+        const uint32_t rec = p08_d7_w(r4300, 0x80127708u + (uint32_t)sel * 4u);
+        if (p08_d7_guest(rec)) {
+            camctrl = p08_f32(p08_d7_w(r4300, rec + 0x1Cu));
+        }
+    }
+    fprintf(s_p08_d1, P08_DEMO1_FMT,
+            "entry_800151BC", pc, (unsigned long long)s_p08_d1_seq,
+            (unsigned long long)(now - s_p08_d1_t0), (unsigned long long)s_p08_d1_vi,
+            gs_b, p08_f32(gs_b), mode, stage, sub, map, post, consumed, (int)count,
+            r[0], r[1], r[2], r[3], r[4], r[5],
+            p08_f32(p08_d7_w(r4300, 0x80079AF8u + 8u)), p08_f32(p08_d7_w(r4300, 0x80079AF8u + 12u)),
+            bx, by, bang, bdist, yaw, ideal, phys_yaw, yaw_b,
+            px, py, pz, px_b, py_b, pz_b, ppx, ppy, ppz, vx, vy, vz, vx_b, vz_b,
+            sqrtf(vx * vx + vz * vz), tspd, tspd_b, accel, mult, ptype,
+            bs_prev, bs_cur, bs_next, anim_id, anim_timer, anim_dur, anim_phase,
+            camx, camy, camz, camctrl, sel);
+    fflush(s_p08_d1);
+}
+
+#define P08_DEMO1P_HEADER \
+    "ev,ph,tick,seq,post,consumed,obj,a0,a1,a2,a3,v0,vmask," \
+    "w0,w1,w2,w3,w4,w5,w6,w7,w8,w9,w10,w11," \
+    "f0,f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11"
+#define P08_DEMO1P_FMT \
+    "%s,%s,%llu,%llu,%d,%d,%d,%08x,%08x,%08x,%08x,%08x,%x," \
+    "%08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x," \
+    "%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g\n"
+
+/* USER_DEMO1 projectile chain (P08_DEMO1_PROJECTILE=1, default OFF). Mirror of Tooie
+ * TOOIE_DIAG_DEMO1_PROJECTILE. PC hooks (pure_interp.c) at the SAME addresses as the Tooie wrappers:
+ *   0x80084A60 _baeggsetup_entrypoint_5   0x800871F0 _cheggfire_entrypoint_2
+ *   0x8008A3C0 _suegg_entrypoint_9        0x8008A480 _sueggmove_entrypoint_9
+ *   0x800CD820 func_800CD820 (sweep; filter a3==0x42180000 && a2-4 == tracked spawned object)
+ * Entry: a0..a3 = regs 4..7. Return: pc == saved ra (stack depth 8), v0 = reg 2. Window mode5 stage0
+ * sub0 post 306..390, max 600 rows, objects tracked by first-seen ordinal (cheggfire v0), player slot 0
+ * only for baeggsetup. CSV P08_DEMO1_PROJECTILE_CSV (fresh: file truncated on first row). Same
+ * header/format/payload as Tooie (tests/tooie_demo1_projectile_test.cpp). */
+#define P08_D1P_STK 8
+struct p08_d1p_ev { uint32_t w[12]; unsigned vmask; };
+static struct { uint32_t ra, a0, a1, a2, a3, sp; int kind, post, obj, traced; } s_p08_d1p_stk[P08_D1P_STK];
+static int s_p08_d1p_trace = 0;
+static uint32_t s_p08_d1p_trace_rows = 0, s_p08_d1p_ignore = 0, s_p08_d1p_list_a0 = 0, s_p08_d1p_list_start = 0;
+static int s_p08_d1p_pend = 0;
+static FILE* s_p08_d1p = NULL;
+static int s_p08_d1p_on = -1;
+static uint64_t s_p08_d1p_tick = 0, s_p08_d1p_seq = 0;
+static uint32_t s_p08_d1p_rows = 0, s_p08_d1p_objs[8], s_p08_d1p_owner[8];
+static uint32_t s_p08_d1p_alias = 0, s_p08_d1p_untracked = 0, s_p08_d1p_retry = 0;
+static int s_p08_d1p_nobj = 0, s_p08_d1p_started = 0, s_p08_d1p_finished = 0;
+
+static inline int p08_demo1p_on(void)
+{
+    if (s_p08_d1p_on < 0) {
+        const char* e = getenv("P08_DEMO1_PROJECTILE");
+        s_p08_d1p_on = (e != NULL && e[0] != '\0' && e[0] != '0');
+    }
+    return s_p08_d1p_on;
+}
+static inline void p08_d1p_row(struct r4300_core* r4300, const char* ev, const char* ph, int post, int obj,
+                               uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t v0,
+                               struct p08_d1p_ev e)
+{
+    if (!s_p08_d1p) {
+        const char* path = getenv("P08_DEMO1_PROJECTILE_CSV");
+        if (path == NULL || path[0] == '\0') {
+            path = "/tmp/p08-angrylion-demo1_projectile.csv";
+        }
+        s_p08_d1p = fopen(path, "w");
+        if (!s_p08_d1p) {
+            return;
+        }
+        fprintf(s_p08_d1p, "%s\n", P08_DEMO1P_HEADER);
+    }
+    s_p08_d1p_rows++;
+    if (strcmp(ph, "mark") != 0) {
+        e.w[11] = p08_d7_w(r4300, 0x8012C760u); /* gs at this callback */
+    }
+    fprintf(s_p08_d1p, P08_DEMO1P_FMT, ev, ph, (unsigned long long)s_p08_d1p_tick,
+            (unsigned long long)(++s_p08_d1p_seq), post, post - 1, obj, a0, a1, a2, a3, v0, e.vmask,
+            e.w[0], e.w[1], e.w[2], e.w[3], e.w[4], e.w[5], e.w[6], e.w[7], e.w[8], e.w[9],
+            e.w[10], e.w[11],
+            p08_f32(e.w[0]), p08_f32(e.w[1]), p08_f32(e.w[2]), p08_f32(e.w[3]), p08_f32(e.w[4]),
+            p08_f32(e.w[5]), p08_f32(e.w[6]), p08_f32(e.w[7]), p08_f32(e.w[8]), p08_f32(e.w[9]),
+            p08_f32(e.w[10]), p08_f32(e.w[11]));
+    fflush(s_p08_d1p);
+}
+static inline void p08_d1p_vec(struct r4300_core* r4300, struct p08_d1p_ev* e, int idx, uint32_t p, int bit)
+{
+    if (!p08_d7_guest(p)) {
+        return;
+    }
+    for (int i = 0; i < 3; i++) {
+        e->w[idx + i] = p08_d7_w(r4300, p + 4u * (uint32_t)i);
+    }
+    e->vmask |= 1u << bit;
+}
+static inline uint32_t p08_d1p_owner_of(struct r4300_core* r4300, uint32_t obj)
+{
+    return p08_d7_guest(obj) ? p08_d7_w(r4300, obj) : 0u;
+}
+static inline struct p08_d1p_ev p08_d1p_obj(struct r4300_core* r4300, uint32_t obj)
+{
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    if (!p08_d7_guest(obj)) {
+        return e;
+    }
+    p08_d1p_vec(r4300, &e, 0, obj + 4u, 0);
+    p08_d1p_vec(r4300, &e, 3, obj + 0x18u, 1);
+    e.w[6] = p08_d7_w(r4300, obj + 0x38u);
+    e.w[7] = p08_d7_w(r4300, obj + 0x6Cu);
+    e.w[8] = p08_d7_w(r4300, obj + 0x70u);
+    e.w[9] = p08_d1_byte(r4300, obj + 0x72u);
+    e.w[10] = p08_d7_w(r4300, obj);
+    e.vmask |= 4u;
+    return e;
+}
+/* Same rule as tooie_demo1_projectile::resolve: pointer match, else owner (*(obj)) match = alias. */
+static inline int p08_d1p_resolve(struct r4300_core* r4300, uint32_t ptr, int post)
+{
+    const uint32_t owner = p08_d1p_owner_of(r4300, ptr);
+    for (int i = 0; i < s_p08_d1p_nobj; i++) {
+        if (s_p08_d1p_objs[i] == ptr) {
+            return i;
+        }
+    }
+    if (owner != 0) {
+        for (int i = 0; i < s_p08_d1p_nobj; i++) {
+            if (s_p08_d1p_owner[i] == owner) {
+                struct p08_d1p_ev e = p08_d1p_obj(r4300, ptr);
+                e.vmask |= 8u;
+                s_p08_d1p_alias++;
+                p08_d1p_row(r4300, "alias", "mark2", post, i, ptr, s_p08_d1p_objs[i], ptr, 0, 0, e);
+                s_p08_d1p_objs[i] = ptr;
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+static inline uint32_t p08_d1p_hu(struct r4300_core* r4300, uint32_t a)
+{
+    return p08_d7_guest(a & ~3u) ? ((p08_d7_w(r4300, a & ~3u) >> ((a & 2u) ? 0 : 16)) & 0xFFFFu) : 0u;
+}
+static inline uint32_t p08_d1p_wg(struct r4300_core* r4300, uint32_t a)
+{
+    return p08_d7_guest(a) ? p08_d7_w(r4300, a) : 0u;
+}
+static inline struct p08_d1p_ev p08_d1p_snap(struct r4300_core* r4300, int kind, uint32_t a0, uint32_t a1,
+                                             uint32_t a2, uint32_t a3, uint32_t v0)
+{
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    (void)a3;
+    if (kind == 1) {
+        if (p08_d7_guest(a0)) {
+            const uint32_t P = p08_d7_w(r4300, a0 + 0x70u);
+            p08_d1p_vec(r4300, &e, 0, P, 0);
+            p08_d1p_vec(r4300, &e, 3, P + 0xCu, 1);
+            p08_d1p_vec(r4300, &e, 6, P + 0x18u, 2);
+            if (p08_d7_guest(P)) {
+                e.w[9] = p08_d1_byte(r4300, P + 0x24u);
+            }
+            e.w[10] = p08_d7_w(r4300, a0 + 0x184u);
+        }
+    } else if (kind == 5) {
+        p08_d1p_vec(r4300, &e, 0, a1, 0);
+        p08_d1p_vec(r4300, &e, 3, a2, 1);
+        e.w[6] = (v0 != 0 && v0 == p08_d7_w(r4300, 0x80135490u)) ? 1u : 0u;
+        e.w[7] = a0;
+        if (v0 != 0 && p08_d7_guest(v0)) {
+            e.w[8] = p08_d7_w(r4300, v0 + 0x10u);
+            e.w[9] = p08_d7_w(r4300, v0 + 0x28u);
+            e.w[10] = (p08_d1p_hu(r4300, v0 + 0x14u) << 16) | p08_d1p_hu(r4300, v0 + 0x18u);
+        }
+    } else {
+        return p08_d1p_obj(r4300, a0);
+    }
+    return e;
+}
+
+/* ---- first-branch trace of func_800CD820 (mirror of tooie_d1p_hp / tooie_d1p_helper) ---- */
+static const char* p08_d1p_hname(int kind)
+{
+    static const char* n[] = { "", "", "", "", "", "", "s_BE444", "s_E9E88", "s_E9EB4", "s_106790",
+                               "s_8A018", "s_EEB40", "s_EC3C4", "s_CD6B4", "s_CB854" };
+    return n[kind];
+}
+static inline struct p08_d1p_ev p08_d1p_hp(struct r4300_core* r4300, int kind, int leave, uint32_t a0, uint32_t a1,
+                                           uint32_t a2, uint32_t a3, uint32_t sp, uint32_t v0, uint32_t f0bits)
+{
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    (void)a2;
+    switch (kind) {
+    case 6:
+        if (!leave) {
+            p08_d1p_vec(r4300, &e, 0, a0, 0);
+        } else {
+            e.w[0] = v0;
+            if (p08_d7_guest(v0)) {
+                for (int i = 0; i < 6; i++) {
+                    e.w[1 + i] = p08_d1p_wg(r4300, v0 + 4u * (uint32_t)i);
+                }
+                e.vmask |= 1;
+            }
+        }
+        break;
+    case 7:
+    case 8:
+        if (!leave) {
+            p08_d1p_vec(r4300, &e, 0, a0, 0);
+        } else {
+            e.w[0] = v0;
+            if (kind == 8) {
+                e.w[1] = (s_p08_d1p_list_a0 == a0 && v0 >= s_p08_d1p_list_start)
+                             ? (v0 - s_p08_d1p_list_start) / 12u : 0xFFFFFFFFu;
+            }
+        }
+        break;
+    case 9:
+        if (!leave) {
+            e.w[0] = p08_d1p_wg(r4300, a0 + 0x28u);
+            e.w[1] = p08_d1p_hu(r4300, a0 + 0x14u);
+            e.w[2] = p08_d1p_hu(r4300, a0 + 0x18u);
+            e.w[3] = (a0 == s_p08_d1p_ignore) ? 1u : 0u;
+        } else {
+            e.w[0] = p08_d1p_wg(r4300, v0 + 0x64u);
+            e.w[1] = p08_d1p_hu(r4300, v0 + 0x66u);
+        }
+        break;
+    case 10:
+        if (leave) {
+            p08_d1p_vec(r4300, &e, 0, a1, 0);
+            e.w[3] = f0bits;
+        }
+        break;
+    case 11:
+        if (!leave) {
+            p08_d1p_vec(r4300, &e, 0, a0, 0);
+            p08_d1p_vec(r4300, &e, 3, a1, 1);
+        } else {
+            e.w[0] = f0bits;
+        }
+        break;
+    case 12:
+        if (leave) {
+            e.w[0] = p08_d1p_wg(r4300, v0 + 0x10u);
+        }
+        break;
+    case 13:
+        if (!leave) {
+            p08_d1p_vec(r4300, &e, 0, a1, 0);
+            e.w[3] = p08_d1p_wg(r4300, sp + 0x10u);
+        } else {
+            p08_d1p_vec(r4300, &e, 0, a3, 0);
+            e.w[3] = f0bits;
+        }
+        break;
+    default:
+        break;
+    }
+    return e;
+}
+static inline void p08_d1p_cand_rows(struct r4300_core* r4300, int post, uint32_t list_a0, uint32_t end)
+{
+    if (!(s_p08_d1p_list_a0 == list_a0 && p08_d7_guest(s_p08_d1p_list_start) && end >= s_p08_d1p_list_start)) {
+        return;
+    }
+    uint32_t n = (end - s_p08_d1p_list_start) / 12u;
+    if (n > 12u) {
+        n = 12u;
+    }
+    for (uint32_t i = 0; i < n && s_p08_d1p_trace_rows < 300u; i++) {
+        const uint32_t ent = s_p08_d1p_list_start + 12u * i;
+        const uint32_t actor = p08_d1p_wg(r4300, ent);
+        struct p08_d1p_ev e;
+        memset(&e, 0, sizeof(e));
+        e.w[0] = p08_d1p_wg(r4300, ent + 8u);
+        if (p08_d7_guest(actor)) {
+            e.w[1] = p08_d1p_wg(r4300, actor + 0x28u);
+            e.w[2] = p08_d1p_hu(r4300, actor + 0x14u);
+            e.w[3] = p08_d1p_hu(r4300, actor + 0x18u);
+            e.w[5] = p08_d1p_wg(r4300, actor + 4u);
+            e.w[6] = p08_d1p_wg(r4300, actor + 8u);
+            e.w[7] = p08_d1p_wg(r4300, actor + 12u);
+            e.vmask |= 1;
+        }
+        e.w[4] = (actor == s_p08_d1p_ignore) ? 1u : 0u;
+        s_p08_d1p_trace_rows++;
+        p08_d1p_row(r4300, "s_cand", "entry", post, 0, actor, ent, i, 0, 0, e);
+    }
+}
+
+
+/* USER_DEMO1 target producer prefix (P08_DEMO1_TARGET=1, default OFF). Mirror of TOOIE_DIAG_DEMO1_TARGET.
+ * PC hooks: 0x80106790 entry (marker recognised by lhu(+0x14)==0x0671 && lhu(+0x18)==0x0E3F, no actor scan)
+ * and 0x800151BC entry (poll once per post 1..356 of the marker's actor record computed with the vector_at
+ * formula from *(0x80136EE0): begin=*(vec+4), elem=*(vec), idx=lhu(marker+0x1A)>>5). Memory reads only.
+ * Same 37 columns/format; CSV P08_DEMO1_TARGET_CSV (default /tmp/p08-angrylion-demo1_target.csv, "w"). */
+static FILE* s_p08_d1t = NULL;
+static int s_p08_d1t_active = -1;
+static uint64_t s_p08_d1t_tick = 0, s_p08_d1t_seq = 0;
+static uint32_t s_p08_d1t_rows = 0, s_p08_d1t_marker = 0, s_p08_d1t_first_post = 0;
+static int32_t s_p08_d1t_last_post = -1;
+static int s_p08_d1t_finished = 0;
+static uint32_t s_p08_d1t_handles[8];
+static int s_p08_d1t_nhandles = 0, s_p08_d1t_ambig = 0;
+static inline int p08_demo1t_on(void)
+{
+    if (s_p08_d1t_active < 0) {
+        const char* e = getenv("P08_DEMO1_TARGET");
+        s_p08_d1t_active = (e != NULL && e[0] != '\0' && e[0] != '0');
+    }
+    return s_p08_d1t_active;
+}
+static inline void p08_d1t_row(struct r4300_core* r4300, const char* ev, const char* ph, int post, uint32_t a0,
+                               uint32_t a1, uint32_t a2, uint32_t a3, uint32_t v0, struct p08_d1p_ev e)
+{
+    if (!s_p08_d1t) {
+        const char* path = getenv("P08_DEMO1_TARGET_CSV");
+        if (path == NULL || path[0] == '\0') {
+            path = "/tmp/p08-angrylion-demo1_target.csv";
+        }
+        s_p08_d1t = fopen(path, "w");
+        if (!s_p08_d1t) {
+            return;
+        }
+        fprintf(s_p08_d1t, "%s\n", P08_DEMO1P_HEADER);
+    }
+    s_p08_d1t_rows++;
+    if (strcmp(ph, "mark") != 0) {
+        e.w[11] = p08_d7_w(r4300, 0x8012C760u);
+    }
+    fprintf(s_p08_d1t, P08_DEMO1P_FMT, ev, ph, (unsigned long long)s_p08_d1t_tick,
+            (unsigned long long)(++s_p08_d1t_seq), post, post - 1, -1, a0, a1, a2, a3, v0, e.vmask,
+            e.w[0], e.w[1], e.w[2], e.w[3], e.w[4], e.w[5], e.w[6], e.w[7], e.w[8], e.w[9], e.w[10], e.w[11],
+            p08_f32(e.w[0]), p08_f32(e.w[1]), p08_f32(e.w[2]), p08_f32(e.w[3]), p08_f32(e.w[4]),
+            p08_f32(e.w[5]), p08_f32(e.w[6]), p08_f32(e.w[7]), p08_f32(e.w[8]), p08_f32(e.w[9]),
+            p08_f32(e.w[10]), p08_f32(e.w[11]));
+    fflush(s_p08_d1t);
+}
+static inline int p08_d1t_gate(struct r4300_core* r4300, int* post_out)
+{
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post_u = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post_u);
+    *post_out = (int32_t)post_u;
+    return (mode == 5 && stage == 0 && sub == 0 && *post_out >= 1 && *post_out <= 356);
+}
+static inline int p08_d1t_comp(struct r4300_core* r4300, uint32_t marker, uint32_t* vb, uint32_t* el,
+                               uint32_t* ix, uint32_t* comp)
+{
+    const uint32_t vec = p08_d7_w(r4300, 0x80136EE0u);
+    if (!p08_d7_guest(vec) || !p08_d7_guest(marker & ~1u)) {
+        return 0;
+    }
+    *el = p08_d7_w(r4300, vec);
+    *vb = p08_d7_w(r4300, vec + 4u);
+    *ix = p08_d1p_hu(r4300, marker + 0x1Au) >> 5;
+    *comp = *vb + *ix * *el;
+    return *el != 0 && p08_d7_guest(*comp);
+}
+/* Same rule as tooie_demo1_projectile::TargetSelector: id halfword 0x0671 at +0x14 AND bit0 of lhu(+0x18)
+ * (CD820 P6); +0x18/+0x28 state bits are logged, never required. First match binds; a different matching
+ * handle is an ambiguity row ("tgtambig", max 8) and never rebinds. */
+static inline void p08_demo1t_note106790(struct r4300_core* r4300)
+{
+    if (!p08_demo1t_on() || s_p08_d1t_rows >= 500u) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t a0 = (uint32_t)regs[4];
+    if (!p08_d7_guest(a0)) {
+        return;
+    }
+    const uint32_t l14 = p08_d1p_hu(r4300, a0 + 0x14u), l18 = p08_d1p_hu(r4300, a0 + 0x18u);
+    if (l14 != 0x0671u || (l18 & 1u) == 0) {
+        return;
+    }
+    for (int i = 0; i < s_p08_d1t_nhandles; i++) {
+        if (s_p08_d1t_handles[i] == a0) {
+            return;
+        }
+    }
+    if (s_p08_d1t_nhandles < 8) {
+        s_p08_d1t_handles[s_p08_d1t_nhandles++] = a0;
+    }
+    int post = 0;
+    (void)p08_d1t_gate(r4300, &post);
+    const int first = (s_p08_d1t_marker == 0);
+    if (first) {
+        s_p08_d1t_marker = a0;
+        s_p08_d1t_first_post = (uint32_t)post;
+    } else {
+        s_p08_d1t_ambig++;
+        if (s_p08_d1t_ambig > 8) {
+            return;
+        }
+    }
+    uint32_t vb = 0, el = 0, ix = 0, comp = 0;
+    const int ok = p08_d1t_comp(r4300, a0, &vb, &el, &ix, &comp);
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    e.w[0] = p08_d1p_hu(r4300, a0 + 0x1Au);
+    e.w[1] = p08_d1p_wg(r4300, a0 + 0x28u);
+    e.w[2] = p08_d1p_wg(r4300, a0 + 0x10u);
+    e.w[3] = (l14 << 16) | l18;
+    const uint32_t d = p08_d1p_wg(r4300, a0);
+    e.w[4] = d;
+    e.w[5] = p08_d1p_wg(r4300, d + 8u);
+    e.w[6] = ix;
+    e.vmask = ok ? 1u : 0u;
+    p08_d1t_row(r4300, first ? "tgtfound" : "tgtambig", "mark2", post, a0, ix, comp, vb, 0, e);
+}
+/* First-writer prefix, mirror of tooie_demo1_projectile.h kUpd* (same flag/CSV, rows "updrec"). PC hook 0x80100368
+ * (func_80100368, a0 = ActorRecordAddress). DIRECT loop call = real MIPS ra equals the return address of the two jal sites of the
+ * func_800FF62C actor loop (jal 0x800FF6D4 -> ra 0x800FF6DC, jal 0x800FF710 -> ra 0x800FF718); nested getter calls
+ * inside the actor callback return elsewhere. Same phase contract as the host (pre at the direct call, post at the
+ * next direct call or logic entry; post v0 = flush source 1 getter / 2 logic entry; a3 = ra here, SP on the host). */
+static int s_p08_d1t_upd_pend = 0;
+static int s_p08_d1t_upd_post = 0;
+static uint32_t s_p08_d1t_upd_rows = 0;
+/* counters (tgtfinish w4..w8, same meaning as the host): direct calls / unresolved record / a0==record / pre dumps / postmiss */
+static uint32_t s_p08_d1t_upd_direct = 0, s_p08_d1t_upd_invalid = 0, s_p08_d1t_upd_match = 0, s_p08_d1t_upd_pre = 0,
+                s_p08_d1t_upd_miss = 0;
+/* ABI: func_80100368 a0 is the ActorRecordAddress (vector_at(*D_80136EE0, lhu(MarkerHandle+0x1A)>>5)), NOT the MarkerHandle.
+ * Memory-only, begin/stride re-read each call; 0 if the vector is unusable or the marker no longer has class id 0x0671. */
+static inline uint32_t p08_d1t_expected_record(struct r4300_core* r4300, uint32_t marker)
+{
+    if (marker == 0 || !p08_d7_guest(marker)) {
+        return 0;
+    }
+    const uint32_t vec = p08_d7_w(r4300, 0x80136EE0u);
+    if (!p08_d7_guest(vec)) {
+        return 0;
+    }
+    const uint32_t el = p08_d7_w(r4300, vec), vb = p08_d7_w(r4300, vec + 4u);
+    if (p08_d1p_hu(r4300, marker + 0x14u) != 0x0671u || vb == 0 || el == 0) {
+        return 0;
+    }
+    const uint32_t rec = vb + (p08_d1p_hu(r4300, marker + 0x1Au) >> 5) * el;
+    return p08_d7_guest(rec) ? rec : 0u;
+}
+static inline void p08_d1t_upd_dump(struct r4300_core* r4300, const char* ph, int post, uint32_t record, uint32_t marker,
+                                    uint32_t a3, uint32_t v0)
+{
+    const uint32_t rng = p08_d1p_wg(r4300, 0x8012C7F0u);
+    for (uint32_t c = 0; c < 4u; c++) {
+        struct p08_d1p_ev e;
+        memset(&e, 0, sizeof(e));
+        const uint32_t n = (c < 3u) ? 10u : 9u; /* 39 words = 10+10+10+9; w10 = MarkerHandle */
+        for (uint32_t i = 0; i < n; i++) {
+            e.w[i] = p08_d1p_wg(r4300, record + 4u * (c * 10u + i));
+        }
+        e.w[10] = marker;
+        e.vmask = 1u;
+        p08_d1t_row(r4300, "updrec", ph, post, record, c, rng, a3, v0, e);
+    }
+}
+static inline void p08_d1t_upd_flush(struct r4300_core* r4300, uint32_t source)
+{
+    if (!s_p08_d1t_upd_pend) {
+        return;
+    }
+    s_p08_d1t_upd_pend = 0;
+    const uint32_t rec = p08_d1t_expected_record(r4300, s_p08_d1t_marker);
+    if (rec != 0) {
+        p08_d1t_upd_dump(r4300, "post", s_p08_d1t_upd_post, rec, s_p08_d1t_marker, 0, source);
+        return;
+    }
+    s_p08_d1t_upd_miss++;
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    e.w[10] = s_p08_d1t_marker;
+    p08_d1t_row(r4300, "updrec", "postmiss", s_p08_d1t_upd_post, 0, 0, p08_d1p_wg(r4300, 0x8012C7F0u), 0, source, e);
+}
+static inline void p08_demo1t_note100368(struct r4300_core* r4300)
+{
+    if (!p08_demo1t_on()) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t record_arg = (uint32_t)regs[4], ra = (uint32_t)regs[31];
+    if ((ra != 0x800FF6DCu && ra != 0x800FF718u) || s_p08_d1t_marker == 0) {
+        return;
+    }
+    s_p08_d1t_upd_direct++;
+    p08_d1t_upd_flush(r4300, 1u);
+    const uint32_t expected = p08_d1t_expected_record(r4300, s_p08_d1t_marker);
+    if (expected == 0) {
+        s_p08_d1t_upd_invalid++;
+    } else if (record_arg == expected) {
+        s_p08_d1t_upd_match++;
+    }
+    int post = 0;
+    if (expected == 0 || record_arg != expected || !p08_d1t_gate(r4300, &post) || post < 80 || post > 86 ||
+        s_p08_d1t_upd_rows + 8u > 80u) {
+        return;
+    }
+    s_p08_d1t_upd_rows += 8u;
+    s_p08_d1t_upd_pre++;
+    p08_d1t_upd_dump(r4300, "pre", post, record_arg, s_p08_d1t_marker, ra, p08_d1p_wg(r4300, record_arg + 0x10u));
+    s_p08_d1t_upd_pend = 1;
+    s_p08_d1t_upd_post = post;
+}
+/* RNG-consumer trace mirror (kRng*, rows rngcall/e3e8c; no cacecx: the original has no expansion). PC hooks 0x800DC0C0,
+ * 0x800DC090 (entry; a3/scope kind 0; after = LCG(before) computed, w3 = 1 by construction) and 0x800E3E8C (entry; v0 = 0 as
+ * the result is unknown at entry). a2/a1 origin = real MIPS ra. Rows do not count towards the 500-row cap. */
+static uint32_t s_p08_d1x_seq = 0, s_p08_d1x_rng_rows = 0, s_p08_d1x_e3_rows = 0;
+static inline void p08_demo1t_note_rng(struct r4300_core* r4300, uint32_t pcnow)
+{
+    if (!p08_demo1t_on()) {
+        return;
+    }
+    int post = 0;
+    if (!p08_d1t_gate(r4300, &post) || post < 79 || post > 84) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    const uint32_t ra = (uint32_t)regs[31];
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    e.vmask = 1u;
+    if (pcnow == 0x800E3E8Cu) {
+        if (s_p08_d1x_e3_rows >= 100u) {
+            return;
+        }
+        s_p08_d1x_e3_rows++;
+        e.w[0] = ++s_p08_d1x_seq;
+        p08_d1t_row(r4300, "e3e8c", "enter", post, (uint32_t)regs[4], (uint32_t)regs[5], ra, 0, 0, e);
+        s_p08_d1t_rows--;
+        return;
+    }
+    if (s_p08_d1x_rng_rows >= 300u) {
+        return;
+    }
+    s_p08_d1x_rng_rows++;
+    const uint32_t before = p08_d1p_wg(r4300, 0x8012C7F0u);
+    const uint32_t after = before * 1664525u + 1013904223u;
+    e.w[0] = ++s_p08_d1x_seq;
+    e.w[3] = 1u;
+    p08_d1t_row(r4300, "rngcall", pcnow == 0x800DC0C0u ? "dc0c0" : "dc090", post, before, after, ra, 0, 0, e);
+    s_p08_d1t_rows--;
+}
+static inline void p08_demo1t_on_logic_entry(struct r4300_core* r4300)
+{
+    if (!p08_demo1t_on()) {
+        return;
+    }
+    s_p08_d1t_tick++;
+    p08_d1t_upd_flush(r4300, 2u);
+    int post = 0;
+    const int in = p08_d1t_gate(r4300, &post);
+    if (s_p08_d1t_marker == 0) {
+        return;
+    }
+    if (in && post != s_p08_d1t_last_post && s_p08_d1t_rows < 500u) {
+        s_p08_d1t_last_post = post;
+        uint32_t vb = 0, el = 0, ix = 0, comp = 0;
+        const int ok = p08_d1t_comp(r4300, s_p08_d1t_marker, &vb, &el, &ix, &comp);
+        struct p08_d1p_ev e;
+        memset(&e, 0, sizeof(e));
+        if (ok) {
+            static const uint32_t offs[11] = { 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x28, 0x6C, 0x70 };
+            for (int i = 0; i < 11; i++) {
+                e.w[i] = p08_d7_w(r4300, comp + offs[i]);
+            }
+            e.vmask = 1u;
+        }
+        p08_d1t_row(r4300, "tgtrec", "entry", post, comp, ix, vb, el, s_p08_d1t_marker, e);
+    } else if (!in && !s_p08_d1t_finished && post > 356) {
+        s_p08_d1t_finished = 1;
+        struct p08_d1p_ev e;
+        memset(&e, 0, sizeof(e));
+        e.w[0] = s_p08_d1t_rows;
+        e.w[1] = s_p08_d1t_first_post;
+        e.w[2] = (uint32_t)s_p08_d1t_ambig;
+        e.w[3] = (uint32_t)s_p08_d1t_nhandles;
+        e.w[4] = s_p08_d1t_upd_direct;
+        e.w[5] = s_p08_d1t_upd_invalid;
+        e.w[6] = s_p08_d1t_upd_match;
+        e.w[7] = s_p08_d1t_upd_pre;
+        e.w[8] = s_p08_d1t_upd_miss;
+        p08_d1t_row(r4300, "tgtfinish", "mark", post, 0, 0, 0, 0, 0, e);
+    }
+}
+
+static inline void p08_demo1p_on_logic_entry(struct r4300_core* r4300)
+{
+    if (!p08_demo1p_on()) {
+        return;
+    }
+    s_p08_d1p_tick++;
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post_u = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post_u);
+    const int post = (int32_t)post_u;
+    const int in = (mode == 5 && stage == 0 && sub == 0 && post >= 306 && post <= 390);
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    if (in && !s_p08_d1p_started) {
+        s_p08_d1p_started = 1;
+        p08_d1p_row(r4300, "START", "mark", post, -1, 0, 0, 0, 0, 0, e);
+    } else if (s_p08_d1p_started && !s_p08_d1p_finished && !in) {
+        s_p08_d1p_finished = 1;
+        e.w[0] = s_p08_d1p_rows;
+        e.w[1] = (uint32_t)s_p08_d1p_pend; /* unmatched pending entries at window end */
+        e.w[2] = s_p08_d1p_alias;
+        e.w[3] = s_p08_d1p_untracked;
+        e.w[4] = s_p08_d1p_retry; /* load-stub retry entries deduped */
+        p08_d1p_row(r4300, "FINISH", "mark", post, -1, 0, 0, 0, 0, 0, e);
+    }
+    if (in) {
+        for (int i = 0; i < s_p08_d1p_nobj && s_p08_d1p_rows < 600u; i++) {
+            p08_d1p_row(r4300, "objpoll", "entry", post, i, s_p08_d1p_objs[i], 0, 0, 0, 0,
+                        p08_d1p_obj(r4300, s_p08_d1p_objs[i]));
+        }
+    }
+}
+static inline const char* p08_d1p_name(int kind)
+{
+    static const char* n[] = { "", "baeggsetup5", "cheggfire2", "suegg9", "sueggmove9", "sweep800CD820" };
+    return n[kind];
+}
+static inline void p08_demo1p_trace_pc(struct r4300_core* r4300, uint32_t pc)
+{
+    if (!p08_demo1p_on()) {
+        return;
+    }
+    const int64_t* regs = r4300_regs(r4300);
+    if (s_p08_d1p_pend > 0 && pc == s_p08_d1p_stk[s_p08_d1p_pend - 1].ra) {
+        const int i = --s_p08_d1p_pend;
+        const uint32_t v0 = (uint32_t)regs[2];
+        int obj = s_p08_d1p_stk[i].obj;
+        struct p08_d1p_ev e;
+        if (s_p08_d1p_stk[i].traced) {
+            s_p08_d1p_trace--;
+        }
+        if (s_p08_d1p_stk[i].kind >= 6) {
+            const int hk = s_p08_d1p_stk[i].kind;
+            const uint32_t f0 = p08_fpr_bits(r4300, 0);
+            s_p08_d1p_trace_rows++;
+            p08_d1p_row(r4300, p08_d1p_hname(hk), "leave", s_p08_d1p_stk[i].post, 0, s_p08_d1p_stk[i].a0,
+                        s_p08_d1p_stk[i].a1, s_p08_d1p_stk[i].a2, s_p08_d1p_stk[i].a3, v0,
+                        p08_d1p_hp(r4300, hk, 1, s_p08_d1p_stk[i].a0, s_p08_d1p_stk[i].a1, s_p08_d1p_stk[i].a2,
+                                   s_p08_d1p_stk[i].a3, s_p08_d1p_stk[i].sp, v0, f0));
+            if (hk == 7) {
+                s_p08_d1p_list_a0 = s_p08_d1p_stk[i].a0;
+                s_p08_d1p_list_start = v0;
+            } else if (hk == 8) {
+                p08_d1p_cand_rows(r4300, s_p08_d1p_stk[i].post, s_p08_d1p_stk[i].a0, v0);
+            }
+            return;
+        }
+        if (s_p08_d1p_stk[i].kind == 2) {
+            if (obj < 0) {
+                obj = p08_d1p_resolve(r4300, v0, s_p08_d1p_stk[i].post);
+            }
+            if (obj < 0 && p08_d7_guest(v0) && s_p08_d1p_nobj < 8) {
+                obj = s_p08_d1p_nobj;
+                s_p08_d1p_objs[s_p08_d1p_nobj] = v0;
+                s_p08_d1p_owner[s_p08_d1p_nobj] = p08_d1p_owner_of(r4300, v0);
+                s_p08_d1p_nobj++;
+            }
+            e = p08_d1p_obj(r4300, v0);
+        } else {
+            e = p08_d1p_snap(r4300, s_p08_d1p_stk[i].kind, s_p08_d1p_stk[i].a0, s_p08_d1p_stk[i].a1,
+                             s_p08_d1p_stk[i].a2, s_p08_d1p_stk[i].a3, v0);
+        }
+        p08_d1p_row(r4300, p08_d1p_name(s_p08_d1p_stk[i].kind), "leave", s_p08_d1p_stk[i].post, obj,
+                    s_p08_d1p_stk[i].a0, s_p08_d1p_stk[i].a1, s_p08_d1p_stk[i].a2, s_p08_d1p_stk[i].a3, v0, e);
+        return;
+    }
+    int kind = 0;
+    switch (pc) {
+    case 0x80084A60u: kind = 1; break;
+    case 0x800871F0u: kind = 2; break;
+    case 0x8008A3C0u: kind = 3; break;
+    case 0x8008A480u: kind = 4; break;
+    case 0x800CD820u: kind = 5; break;
+    case 0x800BE444u: kind = 6; break;
+    case 0x800E9E88u: kind = 7; break;
+    case 0x800E9EB4u: kind = 8; break;
+    case 0x80106790u: kind = 9; break;
+    case 0x8008A018u: kind = 10; break;
+    case 0x800EEB40u: kind = 11; break;
+    case 0x800EC3C4u: kind = 12; break;
+    case 0x800CD6B4u: kind = 13; break;
+    case 0x800CB854u: kind = 14; break;
+    default: return;
+    }
+    if (kind >= 6 && (s_p08_d1p_trace <= 0 || s_p08_d1p_trace_rows >= 300u || s_p08_d1p_rows >= 600u)) {
+        return;
+    }
+    int mode = 0, map = 0, stage = 0, sub = 0;
+    uint32_t post_u = 0;
+    p08_read_attract(r4300, &mode, &map, &stage, &sub, &post_u);
+    const int post = (int32_t)post_u;
+    if (!(mode == 5 && stage == 0 && sub == 0 && post >= 306 && post <= 390)) {
+        return;
+    }
+    const uint32_t a0 = (uint32_t)regs[4], a1 = (uint32_t)regs[5], a2 = (uint32_t)regs[6], a3 = (uint32_t)regs[7];
+    const uint32_t ra = (uint32_t)regs[31];
+    const uint32_t sp = (uint32_t)regs[29];
+    /* Load-stub retry: same kind, same ra, identical args while the first entry is still pending. */
+    if (s_p08_d1p_pend > 0) {
+        const int t = s_p08_d1p_pend - 1;
+        if (s_p08_d1p_stk[t].kind == kind && s_p08_d1p_stk[t].ra == ra && s_p08_d1p_stk[t].a0 == a0 &&
+            s_p08_d1p_stk[t].a1 == a1 && s_p08_d1p_stk[t].a2 == a2 && s_p08_d1p_stk[t].a3 == a3) {
+            s_p08_d1p_retry++;
+            struct p08_d1p_ev re;
+            memset(&re, 0, sizeof(re));
+            p08_d1p_row(r4300, p08_d1p_name(kind), "retry", post, s_p08_d1p_stk[t].obj, a0, a1, a2, a3, 0, re);
+            return;
+        }
+    }
+    if (s_p08_d1p_rows >= 600u || s_p08_d1p_pend >= P08_D1P_STK) {
+        return;
+    }
+    int obj = -1;
+    if (kind >= 6) {
+        s_p08_d1p_trace_rows++;
+        p08_d1p_row(r4300, p08_d1p_hname(kind), "enter", post, 0, a0, a1, a2, a3, 0,
+                    p08_d1p_hp(r4300, kind, 0, a0, a1, a2, a3, sp, 0, 0));
+        const int hi = s_p08_d1p_pend++;
+        s_p08_d1p_stk[hi].ra = ra; s_p08_d1p_stk[hi].a0 = a0; s_p08_d1p_stk[hi].a1 = a1;
+        s_p08_d1p_stk[hi].a2 = a2; s_p08_d1p_stk[hi].a3 = a3; s_p08_d1p_stk[hi].sp = sp;
+        s_p08_d1p_stk[hi].kind = kind; s_p08_d1p_stk[hi].post = post; s_p08_d1p_stk[hi].obj = 0;
+        s_p08_d1p_stk[hi].traced = 0;
+        return;
+    }
+    if (kind == 1 && a0 != p08_d7_w(r4300, 0x80135490u)) {
+        return;
+    }
+    if (kind == 3 || kind == 4) {
+        obj = p08_d1p_resolve(r4300, a0, post);
+        if (obj < 0) {
+            if (s_p08_d1p_nobj == 0 || s_p08_d1p_untracked >= 64u) {
+                return;
+            }
+            s_p08_d1p_untracked++;
+        }
+    }
+    if (kind == 5) {
+        if (a3 != 0x42180000u) {
+            return;
+        }
+        for (int i = 0; i < s_p08_d1p_nobj && obj < 0; i++) {
+            if (s_p08_d1p_owner[i] == a0 || s_p08_d1p_objs[i] == a2 - 4u) {
+                obj = i;
+            }
+        }
+        if (obj < 0) {
+            if (s_p08_d1p_nobj == 0 || s_p08_d1p_untracked >= 64u) {
+                return;
+            }
+            s_p08_d1p_untracked++;
+        }
+    }
+    struct p08_d1p_ev e;
+    memset(&e, 0, sizeof(e));
+    if (kind == 2) {
+        p08_d1p_vec(r4300, &e, 0, a1, 0);
+        p08_d1p_vec(r4300, &e, 3, a2, 1);
+        p08_d1p_vec(r4300, &e, 6, a3, 2);
+    } else {
+        e = p08_d1p_snap(r4300, kind, a0, a1, a2, a3, 0);
+    }
+    p08_d1p_row(r4300, p08_d1p_name(kind), "enter", post, obj, a0, a1, a2, a3, 0, e);
+    const int i = s_p08_d1p_pend++;
+    s_p08_d1p_stk[i].ra = ra; s_p08_d1p_stk[i].a0 = a0; s_p08_d1p_stk[i].a1 = a1;
+    s_p08_d1p_stk[i].a2 = a2; s_p08_d1p_stk[i].a3 = a3; s_p08_d1p_stk[i].kind = kind;
+    s_p08_d1p_stk[i].post = post; s_p08_d1p_stk[i].obj = obj;
+    s_p08_d1p_stk[i].sp = sp; s_p08_d1p_stk[i].traced = 0;
+    if (kind == 5 && obj >= 0 && post >= 354 && post <= 355) {
+        s_p08_d1p_stk[i].traced = 1;
+        s_p08_d1p_ignore = a0;
+        s_p08_d1p_trace++;
+    }
 }
 
 static inline void p08_motion_on_glrecord(struct r4300_core* r4300)

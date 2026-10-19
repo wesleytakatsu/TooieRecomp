@@ -1,5 +1,5 @@
 diff --git a/src/device/r4300/pure_interp.c b/src/device/r4300/pure_interp.c
-index db5a596f..84fe43a0 100644
+index db5a596f..1f9569a3 100644
 --- a/src/device/r4300/pure_interp.c
 +++ b/src/device/r4300/pure_interp.c
 @@ -31,6 +31,7 @@
@@ -10,7 +10,7 @@ index db5a596f..84fe43a0 100644
  
  #ifdef DBG
  #include "debugger/dbg_debugger.h"
-@@ -168,6 +169,168 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -168,6 +169,195 @@ void InterpretOpcode(struct r4300_core* r4300)
  	if (op_address == NULL)
  		return;
  	uint32_t op = *op_address;
@@ -22,6 +22,9 @@ index db5a596f..84fe43a0 100644
 +			p08_spawn_dispatch(r4300);
 +		} else if (pcnow == 0x8080042Cu || pcnow == 0x808005C4u) {
 +			p08_baegg_pc(r4300, pcnow);
++		}
++		if (pcnow == 0x8009B9B0u || pcnow == 0x8009E5C8u || s_p08_d7t_pend > 0) {
++			p08_demo7_trace_pc(r4300, pcnow);
 +		}
 +		if (pcnow == 0x800CA628u || pcnow == 0x800CA65Cu || pcnow == 0x800CA660u ||
 +		    pcnow == 0x8010FC38u || pcnow == 0x8010FE14u || pcnow == 0x800CA8B4u ||
@@ -102,8 +105,32 @@ index db5a596f..84fe43a0 100644
 +		    pcnow == 0x808004B0u || pcnow == 0x80087920u) {
 +			p08_ud5_fdec(r4300, pcnow);
 +		}
++		if (pcnow == 0x80084A60u || pcnow == 0x800871F0u || pcnow == 0x8008A3C0u ||
++		    pcnow == 0x8008A480u || pcnow == 0x800CD820u || s_p08_d1p_pend > 0 ||
++		    (s_p08_d1p_trace > 0 &&
++		     (pcnow == 0x800BE444u || pcnow == 0x800E9E88u || pcnow == 0x800E9EB4u || pcnow == 0x80106790u ||
++		      pcnow == 0x8008A018u || pcnow == 0x800EEB40u || pcnow == 0x800EC3C4u || pcnow == 0x800CD6B4u ||
++		      pcnow == 0x800CB854u))) {
++			p08_demo1p_trace_pc(r4300, pcnow);
++		}
++		if (s_p08_d1t_active != 0 && pcnow == 0x80106790u) {
++			p08_demo1t_note106790(r4300);
++		}
++		if (s_p08_d1t_active != 0 && pcnow == 0x80100368u) {
++			p08_demo1t_note100368(r4300);
++		}
++		if (s_p08_d1t_active != 0 && (pcnow == 0x800DC0C0u || pcnow == 0x800DC090u || pcnow == 0x800E3E8Cu)) {
++			p08_demo1t_note_rng(r4300, pcnow);
++		}
++		if (pcnow == 0x8001443Cu) {
++			p08_demo1_on_vi_entry();
++		}
 +		if (pcnow == 0x800151BCu) {
 +			p08_ud5_on_logic_tick(r4300);
++			p08_demo1_on_logic_entry(r4300, pcnow);
++			p08_demo1p_on_logic_entry(r4300);
++			p08_demo1t_on_logic_entry(r4300);
++			p08_demo7_on_logic_tick(r4300, pcnow);
 +			p08_ud5_dump_node3c_checkpoint(r4300, "start-logic-tick", pcnow);
 +		}
 +		if (pcnow == 0x800A8E9Cu) {
@@ -179,7 +206,7 @@ index db5a596f..84fe43a0 100644
  
  	switch ((op >> 26) & 0x3F) {
  	case 0: /* SPECIAL prefix */
-@@ -203,7 +366,10 @@ void InterpretOpcode(struct r4300_core* r4300)
+@@ -203,7 +393,10 @@ void InterpretOpcode(struct r4300_core* r4300)
  			 * using this as a reference for a JIT, do check Rd == 0 in it. */
  			JALR(r4300, op);
  			break;

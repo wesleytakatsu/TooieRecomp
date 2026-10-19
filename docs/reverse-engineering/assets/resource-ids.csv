@@ -1,0 +1,25 @@
+id,type,owner,role,status,evidence,notes
+0x56,ANIMATION,Banjo/BK,walk animation,PROVEN,plan/evidence/p09-secondary-sway-static-root,NOT geometry; D_80801448[6]; magic 000000c8 flag 0x16; previously misidentified as Banjo model
+0xEC,ANIMATION,Mumbo,Mumbo locomotion/move animation,PROVEN,plan/evidence/p09-secondary-sway-static-root,NOT Mumbo model; magic 00000028 flag 0x16
+0x13A,ANIMATION,Kazooie,ASSET_13A_ANIM_BSKAZPADDLE_UNKNOWN,PROVEN,ba/assets.h + STATIC_ROM,NOT Kazooie model; magic 0000003f
+0x61C,MODEL,Kazooie,solo Kazooie geometry / TRANSFORM_B store,PROVEN,STATIC_ROM + ovl118 8080C014,gtype=0 bones=58; crest GeoCmd02 +0xF558 idx11 anim69
+0x83A,MODEL,Kazooie,reduced Kazooie alternate of 0x61C,PROVEN,ovl118 8080BFAC,gtype=0 bones=47; crest +0xD408 idx8 anim69; NOT ExtraSegments 0x61F
+0x61F,MODEL,Banjo/BK,BK body ExtraSegments candidate for land walk,STRONG_INFERENCE,STATIC_ROM + ovl118 +0xC160,gtype=0x40 bones=47; ZERO GeoCmd 0x02; live walk id not runtime-proven
+0x621,MODEL,Banjo,gameplay backpack,PROVEN,plan/evidence/p09-backpack-flap-witness,babackpack_set_state(2); bones=14
+0x625,MODEL,Banjo,backpack tiny/state variant,PROVEN,plan/evidence/p09-backpack-flap-witness,babackpack states
+0x60A,MODEL,Banjo,backpack state variant,PROVEN,plan/evidence/p09-backpack-flap-witness,
+0x61B,MODEL,Banjo,backpack state variant,PROVEN,plan/evidence/p09-backpack-flap-witness,
+0x831,MODEL,Banjo,backpack state variant,PROVEN,plan/evidence/p09-backpack-flap-witness,
+0x62A,MODEL,Banjo,high-detail Banjo GeoCmd 0x02 body,PROVEN,STATIC_ROM,gtype=0 bones=68; snout GeoCmd 0x02 @ 0x14960; absent from ovl118 first 256KB
+0x62B,MODEL,Banjo/Kazooie,Banjo GeoCmd body + on-back Kazooie type-2 (live walk),PROVEN,STATIC_ROM + live capture,gtype=0 bones=66; snout 0x11CB8 idx11 anim42; Kazooie head 0x12330 anim108; plume 0x124A0 idx30 anim103
+0x665,MODEL,Mumbo,Mumbo-in-Skull geometry,PROVEN,STATIC_ROM,gtype=0 bones=41; GeoCmd 0x02 feathers
+0x854,MODEL,Mumbo,Mumbo ExtraSegments pair,PROVEN,STATIC_ROM,gtype=0x40 bones=41; no GeoCmd 0x02; ovl118 +0xC184 low/high with 0x665
+0x613,MODEL,Bee,bee transform body candidate,STRONG_INFERENCE,ovl118 +0xC168,near BK 0x61F in transform model list
+0x60C,MODEL,Washing machine,washing transform candidate,STRONG_INFERENCE,ovl118 +0xC16C,
+0x61D,MODEL,Stony,stony transform candidate,STRONG_INFERENCE,ovl118 +0xC170,
+0x626,MODEL,Sub,sub transform candidate,STRONG_INFERENCE,ovl118 +0xC180,
+0x623,MODEL,Detonator,detonator transform candidate,STRONG_INFERENCE,ovl118 +0xC18C,
+0x624,MODEL,Van/truck,van transform candidate,STRONG_INFERENCE,ovl118 +0xC190,
+0x60E,MODEL,Clockwork,clockwork transform candidate,STRONG_INFERENCE,ovl118 +0xC194,
+0x609,MODEL,T-rex,T-rex small candidate,STRONG_INFERENCE,ovl118 +0xC198,
+0x60D,MODEL,T-rex,T-rex large candidate,STRONG_INFERENCE,ovl118 +0xC19C,

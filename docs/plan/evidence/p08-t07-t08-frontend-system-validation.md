@@ -1,3 +1,14 @@
+---
+title: "P08-T07 & P08-T08 Frontend and System Integration Validation"
+description: "Especificação e validação automatizada de integração de janela, escala e fallback Vulkan."
+status: validated
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-14
+tags: [p08, frontend, window, display, vulkan, error-handling, validation]
+---
+
 # P08-T07 & P08-T08 Frontend and System Integration Validation
 
 ## Overview

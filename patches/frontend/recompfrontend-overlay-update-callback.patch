@@ -1,0 +1,63 @@
+diff --git a/recompui/include/recompui/recompui.h b/recompui/include/recompui/recompui.h
+index 30c463b..c85338b 100644
+--- a/recompui/include/recompui/recompui.h
++++ b/recompui/include/recompui/recompui.h
+@@ -55,6 +55,10 @@ namespace recompui {
+     void show_context(ContextId context, std::string_view param);
+     void hide_context(ContextId context);
+     void hide_all_contexts();
++    // Always-on overlay hook, called on the render thread once per presented frame. It is not a shown context:
++    // hide_all_contexts does not affect it and it never captures input. Return true to have the frame's UI drawn.
++    // Called with true when the UI is shutting down; drop any context handles.
++    void set_overlay_update_callback(std::function<bool(bool shutting_down)> callback);
+     bool is_context_shown(ContextId context);
+     bool is_context_capturing_input();
+     bool is_context_capturing_mouse();
+diff --git a/recompui/src/base/ui_state.cpp b/recompui/src/base/ui_state.cpp
+index 277a421..c9e2a3d 100644
+--- a/recompui/src/base/ui_state.cpp
++++ b/recompui/src/base/ui_state.cpp
+@@ -494,6 +494,8 @@ public:
+ 
+ std::unique_ptr<UIState> ui_state;
+ std::recursive_mutex ui_state_mutex{};
++// Always-on overlay, drawn on the render thread even when no context is shown. Guarded by ui_state_mutex.
++static std::function<bool(bool)> overlay_update_callback;
+ 
+ // TODO make this not be global
+ extern SDL_Window* window;
+@@ -859,7 +861,8 @@ void draw_hook(plume::RenderCommandList* command_list, plume::RenderFramebuffer*
+     ui_state->update_primary_input(mouse_moved, non_mouse_interacted);
+     ui_state->update_focus(mouse_moved, non_mouse_interacted);
+ 
+-    if (recompui::is_any_context_shown()) {
++    const bool overlay_visible = overlay_update_callback && overlay_update_callback(false);
++    if (recompui::is_any_context_shown() || overlay_visible) {
+         if (recompui::is_context_shown(recompui::get_launcher_context_id())) {
+             recompui::update_launcher_menu();
+         }
+@@ -890,6 +893,12 @@ void draw_hook(plume::RenderCommandList* command_list, plume::RenderFramebuffer*
+ }
+ 
+ void deinit_hook() {
++    {
++        std::lock_guard lock{ui_state_mutex};
++        if (overlay_update_callback) {
++            overlay_update_callback(true);
++        }
++    }
+     recompui::destroy_all_contexts();
+ 
+     std::lock_guard lock {ui_state_mutex};
+@@ -899,6 +908,11 @@ void deinit_hook() {
+     ui_state.reset();
+ }
+ 
++void recompui::set_overlay_update_callback(std::function<bool(bool)> callback) {
++    std::lock_guard lock{ui_state_mutex};
++    overlay_update_callback = std::move(callback);
++}
++
+ void recompui::set_render_hooks() {
+     RT64::SetRenderHooks(init_hook, draw_hook, deinit_hook);
+ }

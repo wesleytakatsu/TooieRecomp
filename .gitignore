@@ -54,3 +54,6 @@ docs/**/*.sample.log
 # ANGRYLION_CONTROL local prefix/src. Tracked: pins, patch, cfg template, scripts.
 # Relocated from /tmp/p08-m64p and /tmp/p08-m64p-lle; never vendor ROM or .so.
 tools/oracle/angrylion-control/work/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

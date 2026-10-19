@@ -117,6 +117,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/register_patches.cpp
     ${CMAKE_SOURCE_DIR}/src/main/theme.cpp
     ${CMAKE_SOURCE_DIR}/src/game/config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/fps_overlay.cpp
     ${CMAKE_SOURCE_DIR}/src/game/debug.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_api.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_extension_api.cpp
@@ -126,9 +127,11 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_rsp_endpoint_current.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
 )
@@ -189,6 +192,32 @@ target_link_libraries(TooieRecompiled PRIVATE
     ${CMAKE_DL_LIBS}
     atomic
 )
+
+# P09 backpack + player-model witnesses. Wrappers are inert unless
+# TOOIE_DIAG_BACKPACK_FLAP=1 / TOOIE_DIAG_SECONDARY_SWAY=1.
+# Generated functions remain untouched.
+if (UNIX AND NOT APPLE)
+    target_link_options(TooieRecompiled PRIVATE
+        -Wl,--wrap=func_800D674C
+        -Wl,--wrap=func_800DE448
+        -Wl,--wrap=func_800DE498
+        -Wl,--wrap=func_800E2AA4
+        -Wl,--wrap=func_800DE2A4
+        -Wl,--wrap=func_800DCF48
+        -Wl,--wrap=func_800ADE2C
+        -Wl,--wrap=func_80019AA0
+        -Wl,--wrap=mlMtxApply
+        -Wl,--wrap=func_800E2180
+        -Wl,--wrap=func_800E0B8C
+        -Wl,--wrap=func_800E0E94
+        -Wl,--wrap=func_800AE8A8
+        -Wl,--wrap=func_800AE820
+        -Wl,--wrap=babackpack_entrypoint_3
+        -Wl,--wrap=func_80098BA8
+        -Wl,--wrap=func_80092444
+        -Wl,--wrap=func_80092B04
+    )
+endif()
 
 # Keep controller recognition identical to BanjoRecomp. Make the canonical DB
 # an explicit build dependency so updates are recopied even when the executable
@@ -403,6 +432,116 @@ target_compile_options(tintro_projection_policy_test PRIVATE
     -Wno-unused-parameter
 )
 set_target_properties(tintro_projection_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Demo7 drift diagnostic: capture gate (stage0 sub8 glidx 0..120) and bs layout.
+add_executable(tooie_demo7_drift_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_demo7_drift_test.cpp
+)
+target_include_directories(tooie_demo7_drift_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/game
+)
+set_target_properties(tooie_demo7_drift_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# USER_DEMO1 parity diagnostic: Tooie row layout/gate must equal the oracle hook mirror.
+add_executable(tooie_demo1_parity_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_demo1_parity_test.cpp
+)
+target_include_directories(tooie_demo1_parity_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/game
+)
+set_target_properties(tooie_demo1_parity_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# USER_DEMO1 projectile diagnostic: Tooie row layout/gate must equal the oracle hook mirror.
+add_executable(tooie_demo1_projectile_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_demo1_projectile_test.cpp
+)
+target_include_directories(tooie_demo1_projectile_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/game
+)
+set_target_properties(tooie_demo1_projectile_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# USER_DEMO1 target selector regression (real PAR3 s_106790 fixtures).
+add_executable(tooie_demo1_target_selector_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_demo1_target_selector_test.cpp
+)
+target_include_directories(tooie_demo1_target_selector_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/game
+)
+set_target_properties(tooie_demo1_target_selector_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# USER_DEMO1 first-writer prefix layout contract (kUpd* constants).
+add_executable(tooie_demo1_upd_layout_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_demo1_upd_layout_test.cpp
+)
+target_include_directories(tooie_demo1_upd_layout_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/game
+)
+set_target_properties(tooie_demo1_upd_layout_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P09 default CURRENT tfPos palliative: same production function as the
+# TooieRecompiled startup path. Env unset/0/1 plus static call order.
+add_executable(tooie_rsp_endpoint_current_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_rsp_endpoint_current_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_rsp_endpoint_current.cpp
+)
+target_include_directories(tooie_rsp_endpoint_current_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_definitions(tooie_rsp_endpoint_current_test PRIVATE
+    TOOIE_MAIN_SOURCE_PATH="${CMAKE_SOURCE_DIR}/src/main/main.cpp"
+)
+target_compile_options(tooie_rsp_endpoint_current_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(tooie_rsp_endpoint_current_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# RT64 below-native present decimator: host test of the header-only helper.
+add_executable(rt64_present_decimator_test
+    ${CMAKE_SOURCE_DIR}/tests/rt64_present_decimator_test.cpp
+)
+target_include_directories(rt64_present_decimator_test PRIVATE
+    ${RT64_ROOT}/src
+)
+set_target_properties(rt64_present_decimator_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Top-left present-rate meter: host test of the header-only helper.
+add_executable(tooie_fps_meter_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_fps_meter_test.cpp
+)
+target_include_directories(tooie_fps_meter_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(tooie_fps_meter_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P09 CPU clip helper: SPIR-V-equivalent row-vector action, offline only.
+add_executable(p09_cpu_shader_clip_semantics_test
+    ${CMAKE_SOURCE_DIR}/tests/p09_cpu_shader_clip_semantics.cpp
+    ${RT64_ROOT}/src/common/rt64_math.cpp
+)
+target_include_directories(p09_cpu_shader_clip_semantics_test PRIVATE
+    ${RT64_ROOT}/src
+    ${RT64_ROOT}/src/contrib/hlslpp/include
+)
+target_compile_options(p09_cpu_shader_clip_semantics_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(p09_cpu_shader_clip_semantics_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P09 exact-use pathology correlation: host test of the production RT64
+# header-only classifier/key/budget helper. Offline CPU only.
+add_executable(p09_exact_use_correlation_test
+    ${CMAKE_SOURCE_DIR}/tests/p09_exact_use_correlation_test.cpp
+)
+target_include_directories(p09_exact_use_correlation_test PRIVATE
+    ${RT64_ROOT}/src
+)
+target_compile_options(p09_exact_use_correlation_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(p09_exact_use_correlation_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # P08-T08 graphics failure regression test: proves error classification, message formatting, and simulated failure safety.
 add_executable(graphics_failure_test

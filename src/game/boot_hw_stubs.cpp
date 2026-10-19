@@ -21,11 +21,25 @@
 #include "recompui/recompui.h"
 #include "tooie_window.h"
 #include "tooie_diag.h"
+#include "tooie_demo7_drift.h"
+#include "tooie_demo1_parity.h"
+#include "tooie_demo1_projectile.h"
 #include "generated/overlay_dispatch.inc.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
 }
+
+extern "C" void __wrap_func_800E0B8C(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800E0E94(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800AE8A8(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800AE820(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800E2AA4(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800DE2A4(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800DE498(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800DCF48(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800ADE2C(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __wrap_func_800E2180(uint8_t* rdram, recomp_context* ctx);
 
 // MEM_* expects KSEG0 addresses sign-extended into gpr (same as recomp codegen).
 static inline gpr kseg0_gpr(uint32_t addr) {
@@ -75,6 +89,7 @@ extern "C" void func_800CAA24(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800CACEC(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800E3E8C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8011447C(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800B97A4(uint8_t* rdram, recomp_context* ctx);
 
 // Declared in syscall_handler.cpp
 extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr);
@@ -4109,6 +4124,114 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
     std::fflush(stderr);
 }
 
+// Demo7 drift diagnostic (TOOIE_DIAG_DEMO7_DRIFT=1), default OFF, isolated from
+// TOOIE_DIAG_DEMO_SYNC / movement diagnostics. Called at the leave of glrecord
+// overlay 698 ep0: the recorded pad for consumed_glidx was already read, the
+// guest player update for that frame has not run yet (values = state at start
+// of the interval, same convention as [demo-sync]). Player slot 0 only, no
+// actor scan. One row per consumed glidx, max 121 rows per cycle.
+// bs ids: prev/cur/next are +0/+4/+8 of *(player+0x120) (see tooie_demo7_drift.h).
+// bstick ang is 90 when stick is neutral (not a real heading).
+// Counts glrecord overlay-698 ep0 leaves (all stages) while the flag is on; used by [demo7-trace].
+static uint64_t s_d7_logic_tick = 0;
+extern "C" void tooie_demo7_drift_tick(uint8_t* rdram) {
+    ++s_d7_logic_tick;
+    const int stage_v = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    static int32_t s_last_glidx = -1;
+    if (stage_v != tooie_demo7_drift::kStage || sub_v != tooie_demo7_drift::kSub) {
+        s_last_glidx = -1;
+        return;
+    }
+    auto bits_f32 = [](int32_t bits) -> float {
+        float f = 0.0f;
+        const uint32_t u = static_cast<uint32_t>(bits);
+        std::memcpy(&f, &u, sizeof(f));
+        return f;
+    };
+    auto is_guest = [](uint32_t a) {
+        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+    };
+    const gpr gl = kseg0_gpr(0x8012D5B0u);
+    const uint32_t gl_base = static_cast<uint32_t>(MEM_W(0, gl));
+    const int32_t post = static_cast<int32_t>(MEM_W(0x8, gl));
+    const int32_t cg = (post > 0) ? (post - 1) : 0;
+    if (!tooie_demo7_drift::in_window(stage_v, sub_v, cg) || cg == s_last_glidx) {
+        return;
+    }
+    const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
+    if (!is_guest(ps_addr)) {
+        return;
+    }
+    s_last_glidx = cg;
+    const gpr ps = kseg0_gpr(ps_addr);
+    const uint32_t pos_a = static_cast<uint32_t>(MEM_W(0xE4, ps));
+    const uint32_t phys_a = static_cast<uint32_t>(MEM_W(0xC8, ps));
+    const uint32_t bs_a = static_cast<uint32_t>(MEM_W(0x120, ps));
+    const uint32_t st_a = static_cast<uint32_t>(MEM_W(0x128, ps));
+    float px = 0, py = 0, pz = 0, ppx = 0, ppy = 0, ppz = 0, vx = 0, vy = 0, vz = 0, tspd = 0;
+    float bsx = 0, bsy = 0, bsang = 0, bsd = 0;
+    int32_t bs_prev = -1, bs_cur = -1, bs_next = -1, ptype = -1;
+    if (is_guest(pos_a)) {
+        const gpr p = kseg0_gpr(pos_a);
+        px = bits_f32(MEM_W(0x0, p)); py = bits_f32(MEM_W(0x4, p)); pz = bits_f32(MEM_W(0x8, p));
+    }
+    if (is_guest(phys_a)) {
+        const gpr p = kseg0_gpr(phys_a);
+        ptype = static_cast<int32_t>(MEM_W(0x0, p));
+        ppx = bits_f32(MEM_W(0x04, p)); ppy = bits_f32(MEM_W(0x08, p)); ppz = bits_f32(MEM_W(0x0C, p));
+        vx = bits_f32(MEM_W(0x10, p)); vy = bits_f32(MEM_W(0x14, p)); vz = bits_f32(MEM_W(0x18, p));
+        tspd = bits_f32(MEM_W(0x3C, p));
+    }
+    if (is_guest(bs_a)) {
+        const gpr b = kseg0_gpr(bs_a);
+        bs_prev = static_cast<int32_t>(MEM_W(tooie_demo7_drift::kBsPrevOff, b));
+        bs_cur = static_cast<int32_t>(MEM_W(tooie_demo7_drift::kBsCurOff, b));
+        bs_next = static_cast<int32_t>(MEM_W(tooie_demo7_drift::kBsNextOff, b));
+    }
+    if (is_guest(st_a)) {
+        const gpr s = kseg0_gpr(st_a);
+        bsx = bits_f32(MEM_W(0x54, s)); bsy = bits_f32(MEM_W(0x58, s));
+        bsang = bits_f32(MEM_W(0x5C, s)); bsd = bits_f32(MEM_W(0x60, s));
+    }
+    int rec_x = 0, rec_y = 0, rec_btn = 0;
+    if (is_guest(gl_base)) {
+        const gpr r = kseg0_gpr(gl_base + static_cast<uint32_t>(cg) * 6u);
+        rec_x = int8_t(MEM_B(0, r)); rec_y = int8_t(MEM_B(1, r)); rec_btn = int(MEM_HU(2, r));
+    }
+    const gpr remap = kseg0_gpr(0x80079AF8u);
+    int16_t anim_id = -1;
+    float anim_timer = 0.0f, anim_dur = 0.0f;
+    const uint32_t anim_p = static_cast<uint32_t>(MEM_W(0x04, ps));
+    if (is_guest(anim_p)) {
+        const uint32_t ac_p = static_cast<uint32_t>(MEM_W(0x00, kseg0_gpr(anim_p)));
+        if (is_guest(ac_p)) {
+            const gpr ac = kseg0_gpr(ac_p);
+            anim_dur = bits_f32(MEM_W(0x0C, ac));
+            anim_timer = bits_f32(MEM_W(0x2C, ac));
+            anim_id = static_cast<int16_t>(MEM_H(0x34, ac));
+        }
+    }
+    float cx = 0, cy = 0, cz = 0;
+    const uint32_t vp_a = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x8012D500u)));
+    if (is_guest(vp_a)) {
+        const gpr vp = kseg0_gpr(vp_a);
+        cx = bits_f32(MEM_W(0x0, vp)); cy = bits_f32(MEM_W(0x4, vp)); cz = bits_f32(MEM_W(0x8, vp));
+    }
+    const float gs = bits_f32(MEM_W(0, kseg0_gpr(0x8012C760u)));
+    std::fprintf(stderr,
+                 "[demo7-drift] stage=%d sub=%d glidx=%d post=%d pad=(%d,%d,%04x) "
+                 "remap=(%.2f,%.2f) bstick=(%.2f,%.2f,ang=%.1f,dist=%.2f) "
+                 "bs_prev=%d bs_cur=%d bs_next=%d ptype=%d "
+                 "pos=(%.2f,%.2f,%.2f) ppos=(%.2f,%.2f,%.2f) vel=(%.2f,%.2f,%.2f) velxz=%.2f tspd=%.1f "
+                 "anim=(%d,%.3f,%.3f) cam=(%.2f,%.2f,%.2f) gs=%.5f\n",
+                 stage_v, sub_v, cg, post, rec_x, rec_y, unsigned(rec_btn),
+                 bits_f32(MEM_W(8, remap)), bits_f32(MEM_W(12, remap)),
+                 bsx, bsy, bsang, bsd, bs_prev, bs_cur, bs_next, ptype,
+                 px, py, pz, ppx, ppy, ppz, vx, vy, vz, std::sqrt(vx * vx + vz * vz), tspd,
+                 anim_id, anim_timer, anim_dur, cx, cy, cz, gs);
+}
+
 // No-op capture ABI. Production frustum correction does not log.
 extern "C" uint64_t tooie_get_monotonic_ns() { return 0; }
 extern "C" uint32_t tooie_get_current_guest_frame() { return 0; }
@@ -4126,8 +4249,11 @@ extern "C" void tooie_ws_log_prim_emit(uint32_t, uint32_t, uint64_t,
 
 // Production widescreen frustum correction (P08 gameplay maps + models).
 // 800CAA24: horizontal-only aspect-aware AABB retest. k = target/source.
-// 800CACEC: same H-expand for DRAW consumers only; original v0 is kept for
-// occupancy/demo/lighting. Disable with TOOIE_TEST_*_ASPECT_AWARE=0.
+// 800CACEC: same H-expand only while a draw scope is open. Open scopes:
+// func_8011447C (kind 2, preserved object-pop path) and func_800B97A4
+// (kind 3, pure-draw allowlist in tooie_demo1_projectile.h). func_800E3E8C
+// does not open a scope, so func_800DE498 and unclassified logic/FX keep
+// the original v0. Disable with TOOIE_TEST_*_ASPECT_AWARE=0.
 // Does not write expanded planes back into guest volume memory.
 static bool tooie_ws_env_explicit_off(const char* name) {
     const char* val = std::getenv(name);
@@ -4145,11 +4271,37 @@ static bool tooie_object_frustum_aspect_aware_enabled() {
 }
 
 static thread_local int s_cacec_draw_consumer = 0;
+// Diagnostic-only context of the innermost expansion scope (2 = func_8011447C, 3 = func_800B97A4) and the origin of its caller.
+// Kind 1 (func_800E3E8C) is retired: that wrapper no longer opens a scope.
+static thread_local int s_cacec_scope_kind = 0;
+static thread_local int32_t s_cacec_scope_origin = 0;
 
 struct TooieCacecDrawScope {
-    TooieCacecDrawScope() { ++s_cacec_draw_consumer; }
-    ~TooieCacecDrawScope() { --s_cacec_draw_consumer; }
+    int saved_kind;
+    int32_t saved_origin;
+    TooieCacecDrawScope(int kind, int32_t origin) : saved_kind(s_cacec_scope_kind), saved_origin(s_cacec_scope_origin) {
+        ++s_cacec_draw_consumer;
+        s_cacec_scope_kind = kind;
+        s_cacec_scope_origin = origin;
+    }
+    ~TooieCacecDrawScope() {
+        --s_cacec_draw_consumer;
+        s_cacec_scope_kind = saved_kind;
+        s_cacec_scope_origin = saved_origin;
+    }
 };
+
+// TOOIE_DIAG_DEMO1_TARGET RNG/CACEC trace hooks (defined with the other d1t code below; no-ops while the flag is off).
+extern "C" __attribute__((noinline, used)) void tooie_d1x_anchor() {}
+static int32_t tooie_d1x_origin(const void* ret) {
+    return static_cast<int32_t>(reinterpret_cast<intptr_t>(ret) - reinterpret_cast<intptr_t>(&tooie_d1x_anchor));
+}
+namespace banjo {
+static void tooie_d1x_cacec_extra(uint8_t* rdram, uint32_t vp, int32_t origin, uint32_t radius_bits, float px, float py, float pz);
+static void tooie_d1x_e3e8c(uint8_t* rdram, uint32_t pos_ptr, uint32_t radius_bits, int32_t origin, uint32_t result,
+                            uint32_t extra_before);
+static uint32_t tooie_d1x_extra_count();
+}  // namespace banjo
 
 static inline bool tooie_ws_guest_safe(uint32_t a, size_t size = 1) {
     const uint32_t p = a & 0x1FFFFFFFu;
@@ -4341,20 +4493,939 @@ static void tooie_wrap_func_800CACEC(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t expanded = tooie_cacec_eval_sphere(rdram, vp, px, py, pz, radius, k);
     if (expanded == 1) {
         ctx->r2 = 1;
+        banjo::tooie_d1x_cacec_extra(rdram, vp, tooie_d1x_origin(__builtin_return_address(0)), r6_u, px, py, pz);
     }
 }
 
-static void tooie_wrap_func_800E3E8C(uint8_t* rdram, recomp_context* ctx) {
-    TooieCacecDrawScope draw_scope;
+__attribute__((noinline)) static void tooie_wrap_func_800E3E8C(uint8_t* rdram, recomp_context* ctx) {
+    const int32_t origin = tooie_d1x_origin(__builtin_return_address(0));
+    const uint32_t pos_ptr = static_cast<uint32_t>(ctx->r4), radius_bits = static_cast<uint32_t>(ctx->r5);
+    const uint32_t extra_before = banjo::tooie_d1x_extra_count();
     func_800E3E8C(rdram, ctx);
+    banjo::tooie_d1x_e3e8c(rdram, pos_ptr, radius_bits, origin, static_cast<uint32_t>(ctx->r2), extra_before);
 }
 
-static void tooie_wrap_func_8011447C(uint8_t* rdram, recomp_context* ctx) {
-    TooieCacecDrawScope draw_scope;
+__attribute__((noinline)) static void tooie_wrap_func_8011447C(uint8_t* rdram, recomp_context* ctx) {
+    TooieCacecDrawScope draw_scope(2, tooie_d1x_origin(__builtin_return_address(0)));
     func_8011447C(rdram, ctx);
 }
 
+// LOOKUP-only model draw (funcs_123.c). Scope opens only when the shared allowlist names this VRAM.
+__attribute__((noinline)) static void tooie_wrap_func_800B97A4(uint8_t* rdram, recomp_context* ctx) {
+    if (tooie_demo1_projectile::tooie_cacec_pure_draw_vram(tooie_demo1_projectile::kCacecPureDrawB97A4)) {
+        TooieCacecDrawScope draw_scope(tooie_demo1_projectile::kCacecScopeKindB97A4,
+                                       tooie_d1x_origin(__builtin_return_address(0)));
+        func_800B97A4(rdram, ctx);
+        return;
+    }
+    func_800B97A4(rdram, ctx);
+}
+
 namespace banjo {
+// Demo7 write trace (TOOIE_DIAG_DEMO7_DRIFT=1 only; wrappers are NOT registered otherwise).
+// Wraps original 0x8009B9B0 baphysics_set_target_horizontal_velocity (a0=player, a1=raw float
+// bits stored to *(ps+0xC8)+0x3C) and 0x8009E5C8 bs_setState (a0=player, a1=state id; the
+// function starts at 0x8009E5C8, 0x8009E5D8 is only its 4th instruction). Each wrapper calls
+// the generated original exactly once with the untouched ctx. Rows only for player slot 0
+// inside stage0/sub8 consumed glidx tooie_demo7_drift::kTraceLoGlidx..kTraceHiGlidx.
+struct tooie_d7_snap {
+    float tspd = 0, vx = 0, vy = 0, vz = 0;
+    int32_t prev = -1, cur = -1, next = -1;
+};
+static uint32_t s_d7t_seq = 0;
+static uint32_t s_d7t_rows = 0;
+static uint32_t s_d7t_other = 0;
+
+static float tooie_d7_f32(uint32_t u) {
+    float f = 0.0f;
+    std::memcpy(&f, &u, sizeof(f));
+    return f;
+}
+
+static bool tooie_d7_is_guest(uint32_t a) {
+    return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+}
+
+static tooie_d7_snap tooie_d7_take(uint8_t* rdram, uint32_t ps_addr) {
+    tooie_d7_snap s;
+    if (!tooie_d7_is_guest(ps_addr)) {
+        return s;
+    }
+    const gpr ps = kseg0_gpr(ps_addr);
+    const uint32_t phys = static_cast<uint32_t>(MEM_W(0xC8, ps));
+    const uint32_t bs = static_cast<uint32_t>(MEM_W(0x120, ps));
+    if (tooie_d7_is_guest(phys)) {
+        const gpr p = kseg0_gpr(phys);
+        s.tspd = tooie_d7_f32(static_cast<uint32_t>(MEM_W(0x3C, p)));
+        s.vx = tooie_d7_f32(static_cast<uint32_t>(MEM_W(0x10, p)));
+        s.vy = tooie_d7_f32(static_cast<uint32_t>(MEM_W(0x14, p)));
+        s.vz = tooie_d7_f32(static_cast<uint32_t>(MEM_W(0x18, p)));
+    }
+    if (tooie_d7_is_guest(bs)) {
+        const gpr b = kseg0_gpr(bs);
+        s.prev = static_cast<int32_t>(MEM_W(tooie_demo7_drift::kBsPrevOff, b));
+        s.cur = static_cast<int32_t>(MEM_W(tooie_demo7_drift::kBsCurOff, b));
+        s.next = static_cast<int32_t>(MEM_W(tooie_demo7_drift::kBsNextOff, b));
+    }
+    return s;
+}
+
+// True when this call must be traced; counts player-slot-0 mismatches in the window.
+static bool tooie_d7_gate(uint8_t* rdram, uint32_t a0, int* post_out) {
+    const int stage = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    const int post = static_cast<int32_t>(MEM_W(0x8, kseg0_gpr(0x8012D5B0u)));
+    if (!tooie_demo7_drift::in_trace_window(stage, sub, post)) {
+        return false;
+    }
+    if (a0 != static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)))) {
+        ++s_d7t_other;
+        return false;
+    }
+    if (s_d7t_rows >= static_cast<uint32_t>(tooie_demo7_drift::kTraceMaxRows)) {
+        return false;
+    }
+    ++s_d7t_rows;
+    *post_out = post;
+    return true;
+}
+
+static void tooie_d7_row(const char* what, const char* ph, uint32_t seq, int post, uint32_t ra,
+                         uint32_t a0, uint32_t a1, const tooie_d7_snap& s) {
+    std::fprintf(stderr,
+                 "[demo7-trace] seq=%u %s %s post=%d glidx=%d tick=%llu ra=%08x a0=%08x a1=%08x(%.6f) "
+                 "bs=%d/%d/%d tspd=%.4f vel=(%.4f,%.4f,%.4f) other=%u\n",
+                 seq, what, ph, post, (post > 0) ? post - 1 : 0,
+                 static_cast<unsigned long long>(s_d7_logic_tick), ra, a0, a1,
+                 tooie_d7_f32(a1), s.prev, s.cur, s.next, s.tspd, s.vx, s.vy, s.vz, s_d7t_other);
+}
+
+static void tooie_d7_wrap_tspd_set(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    int post = 0;
+    const bool on = tooie_d7_gate(rdram, a0, &post);
+    uint32_t seq = 0;
+    tooie_d7_snap pre;
+    if (on) {
+        seq = ++s_d7t_seq;
+        pre = tooie_d7_take(rdram, a0);
+    }
+    baphysics_set_target_horizontal_velocity(rdram, ctx);
+    if (on) {
+        const tooie_d7_snap post_s = tooie_d7_take(rdram, a0);
+        tooie_d7_row("tspd_set", "pre ", seq, post, ra, a0, a1, pre);
+        tooie_d7_row("tspd_set", "post", seq, post, ra, a0, a1, post_s);
+    }
+}
+
+static void tooie_d7_wrap_bs_setstate(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t ra = static_cast<uint32_t>(ctx->r31);
+    const uint32_t a0 = static_cast<uint32_t>(ctx->r4);
+    const uint32_t a1 = static_cast<uint32_t>(ctx->r5);
+    int post = 0;
+    const bool on = tooie_d7_gate(rdram, a0, &post);
+    uint32_t seq = 0;
+    if (on) {
+        seq = ++s_d7t_seq;
+        tooie_d7_row("bs_setState", "enter", seq, post, ra, a0, a1, tooie_d7_take(rdram, a0));
+    }
+    bs_setState(rdram, ctx);
+    if (on) {
+        tooie_d7_row("bs_setState", "leave", seq, post, ra, a0, a1, tooie_d7_take(rdram, a0));
+    }
+}
+
+// USER_DEMO1 behavior parity (TOOIE_DIAG_DEMO1_PARITY=1, default OFF, isolated flag).
+// Called at the ENTRY of func_800151BC (before the original runs, ctx untouched); one row per
+// glrecord post for stage0/sub0/mode5, player slot 0 only, consumed glidx 0..420 (421 rows max).
+// vi = entries of func_8001443C seen while the flag is on; seq = entries of 800151BC seen.
+// elapsed_ns is host-monotonic and auxiliary only. Pure memory reads: no OSGetCount, no ctx use.
+static bool s_d1_on = false;
+static uint64_t s_d1_vi = 0;
+static uint64_t s_d1_seq = 0;
+static uint32_t s_d1_rows = 0;
+static int32_t s_d1_last_post = -1;
+
+static float tooie_d1_f(uint32_t u) {
+    float f = 0.0f;
+    std::memcpy(&f, &u, sizeof(f));
+    return f;
+}
+
+static void tooie_demo1_parity_entry(uint8_t* rdram) {
+    ++s_d1_seq;
+    static bool s_hdr = false;
+    static bool s_have_t0 = false;
+    static std::chrono::steady_clock::time_point s_t0;
+    const auto w = [&](uint32_t a) { return static_cast<uint32_t>(MEM_W(0, kseg0_gpr(a))); };
+    const int mode = int(int16_t(MEM_H(0x2, kseg0_gpr(0x80127630u))));
+    const int map = int(int16_t(MEM_H(0x10, kseg0_gpr(0x80127630u))));
+    const int stage = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    const int32_t post = static_cast<int32_t>(w(0x8012D5B8u));
+    if (!tooie_demo1_parity::in_window(mode, stage, sub, post) || post == s_d1_last_post) {
+        return;
+    }
+    const uint32_t ps_a = w(0x80135490u);
+    if (!tooie_d7_is_guest(ps_a)) {
+        return;
+    }
+    s_d1_last_post = post;
+    if (!s_hdr) {
+        s_hdr = true;
+        std::fprintf(stderr, "[demo1-parity-header] %s\n", tooie_demo1_parity::kCsvHeader);
+    }
+    if (!s_have_t0) {
+        s_t0 = std::chrono::steady_clock::now();
+        s_have_t0 = true;
+    }
+    const unsigned long long elapsed = static_cast<unsigned long long>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - s_t0).count());
+    const int consumed = post - 1;
+    const uint32_t count = w(0x8012D5BCu);
+    const uint32_t gs_b = w(0x8012C760u);
+    // recorded raw 6 bytes at glrecord base + consumed*6 (last u16 meaning unknown, logged raw)
+    unsigned r[6] = {0, 0, 0, 0, 0, 0};
+    const uint32_t gl_base = w(0x8012D5B0u);
+    if (tooie_d7_is_guest(gl_base)) {
+        const gpr b = kseg0_gpr(gl_base + static_cast<uint32_t>(consumed) * 6u);
+        for (int i = 0; i < 6; ++i) r[i] = unsigned(MEM_BU(i, b));
+    }
+    const uint32_t remap = 0x80079AF8u;
+    float bx = 0, by = 0, bang = 0, bdist = 0;
+    float yaw = 0, ideal = 0, phys_yaw = 0, accel = 0, mult = 0;
+    uint32_t yaw_b = 0, tspd_b = 0, px_b = 0, py_b = 0, pz_b = 0, vx_b = 0, vz_b = 0;
+    float px = 0, py = 0, pz = 0, ppx = 0, ppy = 0, ppz = 0, vx = 0, vy = 0, vz = 0, tspd = 0;
+    int32_t ptype = -1, bs_prev = -1, bs_cur = -1, bs_next = -1, sel = -1, anim_id = -1;
+    float anim_timer = 0, anim_dur = 0, anim_phase = 0, camx = 0, camy = 0, camz = 0, camctrl = 0;
+    const gpr ps = kseg0_gpr(ps_a);
+    const uint32_t pos_a = static_cast<uint32_t>(MEM_W(0xE4, ps));
+    const uint32_t yaw_a = static_cast<uint32_t>(MEM_W(0xF8, ps));
+    const uint32_t phys_a = static_cast<uint32_t>(MEM_W(0xC8, ps));
+    const uint32_t bs_a = static_cast<uint32_t>(MEM_W(0x120, ps));
+    const uint32_t st_a = static_cast<uint32_t>(MEM_W(0x128, ps));
+    if (tooie_d7_is_guest(pos_a)) {
+        const gpr p = kseg0_gpr(pos_a);
+        px_b = static_cast<uint32_t>(MEM_W(0, p)); py_b = static_cast<uint32_t>(MEM_W(4, p));
+        pz_b = static_cast<uint32_t>(MEM_W(8, p));
+        px = tooie_d1_f(px_b); py = tooie_d1_f(py_b); pz = tooie_d1_f(pz_b);
+    }
+    if (tooie_d7_is_guest(yaw_a)) {
+        const gpr p = kseg0_gpr(yaw_a);
+        yaw_b = static_cast<uint32_t>(MEM_W(0, p));
+        yaw = tooie_d1_f(yaw_b); ideal = tooie_d1_f(static_cast<uint32_t>(MEM_W(4, p)));
+    }
+    if (tooie_d7_is_guest(phys_a)) {
+        const gpr p = kseg0_gpr(phys_a);
+        ptype = static_cast<int32_t>(MEM_W(0, p));
+        ppx = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x04, p)));
+        ppy = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x08, p)));
+        ppz = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x0C, p)));
+        vx_b = static_cast<uint32_t>(MEM_W(0x10, p));
+        vx = tooie_d1_f(vx_b);
+        vy = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x14, p)));
+        vz_b = static_cast<uint32_t>(MEM_W(0x18, p));
+        vz = tooie_d1_f(vz_b);
+        tspd_b = static_cast<uint32_t>(MEM_W(0x3C, p));
+        tspd = tooie_d1_f(tspd_b);
+        phys_yaw = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x40, p)));
+        accel = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x44, p)));
+        mult = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x50, p)));
+    }
+    if (tooie_d7_is_guest(bs_a)) {
+        const gpr b = kseg0_gpr(bs_a);
+        bs_prev = static_cast<int32_t>(MEM_W(0, b)); bs_cur = static_cast<int32_t>(MEM_W(4, b));
+        bs_next = static_cast<int32_t>(MEM_W(8, b));
+    }
+    if (tooie_d7_is_guest(st_a)) {
+        const gpr s = kseg0_gpr(st_a);
+        bx = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x54, s)));
+        by = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x58, s)));
+        bang = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x5C, s)));
+        bdist = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x60, s)));
+    }
+    const uint32_t anim_p = static_cast<uint32_t>(MEM_W(0x04, ps));
+    if (tooie_d7_is_guest(anim_p)) {
+        const uint32_t ac_p = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(anim_p)));
+        if (tooie_d7_is_guest(ac_p)) {
+            const gpr ac = kseg0_gpr(ac_p);
+            anim_dur = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x0C, ac)));
+            anim_timer = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x2C, ac)));
+            anim_id = int32_t(int16_t(MEM_H(0x34, ac)));
+            anim_phase = (anim_dur > 0.0f) ? (anim_timer / anim_dur) : 0.0f;
+        }
+    }
+    const uint32_t vp_a = w(0x8012D500u);
+    if (tooie_d7_is_guest(vp_a)) {
+        const gpr vp = kseg0_gpr(vp_a);
+        camx = tooie_d1_f(static_cast<uint32_t>(MEM_W(0, vp)));
+        camy = tooie_d1_f(static_cast<uint32_t>(MEM_W(4, vp)));
+        camz = tooie_d1_f(static_cast<uint32_t>(MEM_W(8, vp)));
+    }
+    sel = static_cast<int32_t>(MEM_W(0x184, ps));
+    if (sel >= 0 && sel < 8) {
+        const uint32_t rec = w(0x80127708u + static_cast<uint32_t>(sel) * 4u);
+        if (tooie_d7_is_guest(rec)) {
+            camctrl = tooie_d1_f(static_cast<uint32_t>(MEM_W(0x1C, kseg0_gpr(rec))));
+        }
+    }
+    ++s_d1_rows;
+    std::fprintf(stderr, "[demo1-parity] ");
+    std::fprintf(stderr, tooie_demo1_parity::kRowFmt,
+                 "entry_800151BC", 0x800151BCu, static_cast<unsigned long long>(s_d1_seq), elapsed,
+                 static_cast<unsigned long long>(s_d1_vi), gs_b, tooie_d1_f(gs_b),
+                 mode, stage, sub, map, post, consumed, int(count),
+                 r[0], r[1], r[2], r[3], r[4], r[5],
+                 tooie_d1_f(static_cast<uint32_t>(MEM_W(8, kseg0_gpr(remap)))),
+                 tooie_d1_f(static_cast<uint32_t>(MEM_W(12, kseg0_gpr(remap)))),
+                 bx, by, bang, bdist, yaw, ideal, phys_yaw, yaw_b,
+                 px, py, pz, px_b, py_b, pz_b, ppx, ppy, ppz, vx, vy, vz, vx_b, vz_b,
+                 std::sqrt(vx * vx + vz * vz), tspd, tspd_b, accel, mult, ptype,
+                 bs_prev, bs_cur, bs_next, anim_id, anim_timer, anim_dur, anim_phase,
+                 camx, camy, camz, camctrl, sel);
+}
+
+// USER_DEMO1 projectile chain (TOOIE_DIAG_DEMO1_PROJECTILE=1, default OFF, isolated flag).
+// Wrappers are registered ONLY when the flag is on (register_boot_lookup_stubs). Each wrapper reads
+// ctx->r4..r7 (a0..a3), calls the generated original EXACTLY ONCE with the untouched ctx, then reads
+// ctx->r2 (v0). No RA logged (recomp ctx->r31 is not a trustworthy caller). Pure memory reads.
+// Coverage: all generated callers of these five functions go through LOOKUP_FUNC (no direct named
+// calls; tests/demo1_projectile_coverage_test.sh); overlay-relative callback pointers are NOT covered.
+// Liveness: objects are identified by ordinal; stable key = owner word *(obj+0) (sweep a0). A call with a
+// new pointer but a known owner is an ALIAS (relocation candidate): tracked pointer is updated and an
+// "alias" row is logged. Untracked sueggmove9/sweep38 calls are logged (obj=-1) up to kMaxUntracked.
+static bool s_d1p_on = false;
+static uint64_t s_d1p_tick = 0;
+static uint64_t s_d1p_seq = 0;
+static uint32_t s_d1p_rows = 0;
+static uint32_t s_d1p_objs[tooie_demo1_projectile::kMaxObjs] = {};
+static uint32_t s_d1p_owner[tooie_demo1_projectile::kMaxObjs] = {};
+static int s_d1p_nobj = 0;
+static uint32_t s_d1p_alias = 0, s_d1p_untracked = 0;
+static bool s_d1p_started = false, s_d1p_finished = false, s_d1p_hdr = false;
+
+struct tooie_d1p_ev {
+    uint32_t w[12] = {};
+    unsigned vmask = 0;
+};
+
+static bool tooie_d1p_gate(uint8_t* rdram, int* post_out) {
+    const int mode = int(int16_t(MEM_H(0x2, kseg0_gpr(0x80127630u))));
+    const int stage = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    const int post = static_cast<int32_t>(MEM_W(0, kseg0_gpr(0x8012D5B8u)));
+    *post_out = post;
+    return tooie_demo1_projectile::in_window(mode, stage, sub, post);
+}
+
+static void tooie_d1p_row(uint8_t* rdram, const char* ev, const char* ph, int post, int obj, uint32_t a0,
+                          uint32_t a1, uint32_t a2, uint32_t a3, uint32_t v0, tooie_d1p_ev e) {
+    if (!s_d1p_hdr) {
+        s_d1p_hdr = true;
+        std::fprintf(stderr, "[demo1-proj-header] %s\n", tooie_demo1_projectile::kCsvHeader);
+    }
+    ++s_d1p_rows;
+    if (std::strcmp(ph, "mark") != 0) {
+        e.w[11] = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x8012C760u)));  // gs at this callback
+    }
+    std::fprintf(stderr, "[demo1-proj] ");
+    std::fprintf(stderr, tooie_demo1_projectile::kRowFmt, ev, ph,
+                 static_cast<unsigned long long>(s_d1p_tick), static_cast<unsigned long long>(++s_d1p_seq),
+                 post, post - 1, obj, a0, a1, a2, a3, v0, e.vmask,
+                 e.w[0], e.w[1], e.w[2], e.w[3], e.w[4], e.w[5], e.w[6], e.w[7], e.w[8], e.w[9], e.w[10], e.w[11],
+                 tooie_d7_f32(e.w[0]), tooie_d7_f32(e.w[1]), tooie_d7_f32(e.w[2]), tooie_d7_f32(e.w[3]),
+                 tooie_d7_f32(e.w[4]), tooie_d7_f32(e.w[5]), tooie_d7_f32(e.w[6]), tooie_d7_f32(e.w[7]),
+                 tooie_d7_f32(e.w[8]), tooie_d7_f32(e.w[9]), tooie_d7_f32(e.w[10]), tooie_d7_f32(e.w[11]));
+}
+
+// 3 raw words at guest pointer p -> e.w[idx..idx+2]; sets vmask bit when p is a guest pointer.
+static void tooie_d1p_vec(uint8_t* rdram, tooie_d1p_ev& e, int idx, uint32_t p, int bit) {
+    if (!tooie_d7_is_guest(p)) return;
+    const gpr g = kseg0_gpr(p);
+    for (int i = 0; i < 3; ++i) e.w[idx + i] = static_cast<uint32_t>(MEM_W(4 * i, g));
+    e.vmask |= 1u << bit;
+}
+
+static uint32_t tooie_d1p_owner_of(uint8_t* rdram, uint32_t obj) {
+    return tooie_d7_is_guest(obj) ? static_cast<uint32_t>(MEM_W(0, kseg0_gpr(obj))) : 0u;
+}
+
+// Spawned-object layout: +4..0xC, +0x18..0x20, +0x38, +0x6C (raw; NOT an id), +0x70 raw, +0x72 byte,
+// w10 = owner word *(obj+0).
+static tooie_d1p_ev tooie_d1p_obj(uint8_t* rdram, uint32_t obj) {
+    tooie_d1p_ev e;
+    if (!tooie_d7_is_guest(obj)) return e;
+    const gpr g = kseg0_gpr(obj);
+    tooie_d1p_vec(rdram, e, 0, obj + 4, 0);
+    tooie_d1p_vec(rdram, e, 3, obj + 0x18, 1);
+    e.w[6] = static_cast<uint32_t>(MEM_W(0x38, g));
+    e.w[7] = static_cast<uint32_t>(MEM_W(0x6C, g));
+    e.w[8] = static_cast<uint32_t>(MEM_W(0x70, g));
+    e.w[9] = static_cast<uint32_t>(MEM_BU(0x72, g));
+    e.w[10] = static_cast<uint32_t>(MEM_W(0, g));
+    e.vmask |= 4u;
+    return e;
+}
+
+// Resolve (pointer|owner) to an ordinal; on alias updates the tracked pointer and logs an "alias" row.
+static int tooie_d1p_resolve(uint8_t* rdram, uint32_t ptr, int post) {
+    const uint32_t owner = tooie_d1p_owner_of(rdram, ptr);
+    const auto r = tooie_demo1_projectile::resolve(s_d1p_objs, s_d1p_owner, s_d1p_nobj, ptr, owner);
+    if (r.idx >= 0 && r.alias) {
+        ++s_d1p_alias;
+        tooie_d1p_ev e = tooie_d1p_obj(rdram, ptr);
+        e.vmask |= 8u;
+        tooie_d1p_row(rdram, "alias", "mark2", post, r.idx, ptr, s_d1p_objs[r.idx], ptr, 0, 0, e);
+        s_d1p_objs[r.idx] = ptr;
+    }
+    return r.idx;
+}
+
+static void tooie_d1p_logic_entry(uint8_t* rdram) {
+    ++s_d1p_tick;
+    int post = 0;
+    const bool in = tooie_d1p_gate(rdram, &post);
+    tooie_d1p_ev e;
+    if (in && !s_d1p_started) {
+        s_d1p_started = true;
+        tooie_d1p_row(rdram, "START", "mark", post, -1, 0, 0, 0, 0, 0, e);
+    } else if (s_d1p_started && !s_d1p_finished && !in) {
+        s_d1p_finished = true;
+        e.w[0] = s_d1p_rows;
+        e.w[1] = 0;  // unmatched pending: wrappers return exactly once, always 0 here
+        e.w[2] = s_d1p_alias;
+        e.w[3] = s_d1p_untracked;
+        e.w[4] = 0;  // retry entries: not observable in the recomp wrapper
+        tooie_d1p_row(rdram, "FINISH", "mark", post, -1, 0, 0, 0, 0, 0, e);
+    }
+    // Per-frame poll of tracked spawned objects (their update callbacks may be overlay-relative).
+    if (in) {
+        for (int i = 0; i < s_d1p_nobj && s_d1p_rows < tooie_demo1_projectile::kMaxRows; ++i) {
+            tooie_d1p_row(rdram, "objpoll", "entry", post, i, s_d1p_objs[i], 0, 0, 0, 0,
+                          tooie_d1p_obj(rdram, s_d1p_objs[i]));
+        }
+    }
+}
+
+static void tooie_d1p_wrap_baegg5(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t a0 = uint32_t(ctx->r4), a1 = uint32_t(ctx->r5), a2 = uint32_t(ctx->r6), a3 = uint32_t(ctx->r7);
+    int post = 0;
+    const bool on = tooie_d1p_gate(rdram, &post) && s_d1p_rows < tooie_demo1_projectile::kMaxRows &&
+                    a0 == static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
+    auto snap = [&]() {
+        tooie_d1p_ev e;
+        if (tooie_d7_is_guest(a0)) {
+            const gpr ps = kseg0_gpr(a0);
+            const uint32_t P = static_cast<uint32_t>(MEM_W(0x70, ps));
+            tooie_d1p_vec(rdram, e, 0, P, 0);
+            tooie_d1p_vec(rdram, e, 3, P + 0xC, 1);
+            tooie_d1p_vec(rdram, e, 6, P + 0x18, 2);
+            if (tooie_d7_is_guest(P)) e.w[9] = static_cast<uint32_t>(MEM_BU(0x24, kseg0_gpr(P)));
+            e.w[10] = static_cast<uint32_t>(MEM_W(0x184, ps));
+        }
+        return e;
+    };
+    if (on) tooie_d1p_row(rdram, "baeggsetup5", "enter", post, -1, a0, a1, a2, a3, 0, snap());
+    _baeggsetup_entrypoint_5(rdram, ctx);
+    if (on) tooie_d1p_row(rdram, "baeggsetup5", "leave", post, -1, a0, a1, a2, a3, uint32_t(ctx->r2), snap());
+}
+
+static void tooie_d1p_wrap_chegg2(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t a0 = uint32_t(ctx->r4), a1 = uint32_t(ctx->r5), a2 = uint32_t(ctx->r6), a3 = uint32_t(ctx->r7);
+    int post = 0;
+    const bool on = tooie_d1p_gate(rdram, &post) && s_d1p_rows < tooie_demo1_projectile::kMaxRows;
+    if (on) {
+        tooie_d1p_ev e;
+        tooie_d1p_vec(rdram, e, 0, a1, 0);
+        tooie_d1p_vec(rdram, e, 3, a2, 1);
+        tooie_d1p_vec(rdram, e, 6, a3, 2);
+        tooie_d1p_row(rdram, "cheggfire2", "enter", post, -1, a0, a1, a2, a3, 0, e);
+    }
+    _cheggfire_entrypoint_2(rdram, ctx);
+    if (on) {
+        const uint32_t v0 = uint32_t(ctx->r2);
+        int idx = tooie_d1p_resolve(rdram, v0, post);
+        if (idx < 0 && tooie_d7_is_guest(v0) && s_d1p_nobj < tooie_demo1_projectile::kMaxObjs) {
+            idx = s_d1p_nobj;
+            s_d1p_objs[s_d1p_nobj] = v0;
+            s_d1p_owner[s_d1p_nobj] = tooie_d1p_owner_of(rdram, v0);
+            ++s_d1p_nobj;
+        }
+        tooie_d1p_row(rdram, "cheggfire2", "leave", post, idx, a0, a1, a2, a3, v0, tooie_d1p_obj(rdram, v0));
+    }
+}
+
+// sueggmove9/suegg9 (a0 = object). Tracked by pointer or owner (alias); untracked calls are logged with
+// obj=-1 up to kMaxUntracked.
+static void tooie_d1p_wrap_obj_update(uint8_t* rdram, recomp_context* ctx, const char* ev,
+                                      void (*orig)(uint8_t*, recomp_context*)) {
+    const uint32_t a0 = uint32_t(ctx->r4), a1 = uint32_t(ctx->r5), a2 = uint32_t(ctx->r6), a3 = uint32_t(ctx->r7);
+    int post = 0;
+    bool on = tooie_d1p_gate(rdram, &post) && s_d1p_rows < tooie_demo1_projectile::kMaxRows;
+    int idx = -1;
+    if (on) {
+        idx = tooie_d1p_resolve(rdram, a0, post);
+        if (idx < 0) {
+            on = s_d1p_nobj > 0 && s_d1p_untracked < uint32_t(tooie_demo1_projectile::kMaxUntracked);
+            if (on) ++s_d1p_untracked;
+        }
+    }
+    if (on) tooie_d1p_row(rdram, ev, "enter", post, idx, a0, a1, a2, a3, 0, tooie_d1p_obj(rdram, a0));
+    orig(rdram, ctx);
+    if (on) tooie_d1p_row(rdram, ev, "leave", post, idx, a0, a1, a2, a3, uint32_t(ctx->r2), tooie_d1p_obj(rdram, a0));
+}
+static void tooie_d1p_wrap_suegg9(uint8_t* rdram, recomp_context* ctx) {
+    tooie_d1p_wrap_obj_update(rdram, ctx, "suegg9", _suegg_entrypoint_9);
+}
+static void tooie_d1p_wrap_sueggmove9(uint8_t* rdram, recomp_context* ctx) {
+    tooie_d1p_wrap_obj_update(rdram, ctx, "sueggmove9", _sueggmove_entrypoint_9);
+}
+
+
+static uint32_t tooie_d1p_w(uint8_t* rdram, uint32_t a) {
+    return tooie_d7_is_guest(a) ? static_cast<uint32_t>(MEM_W(0, kseg0_gpr(a))) : 0u;
+}
+static uint32_t tooie_d1p_hu(uint8_t* rdram, uint32_t a) {
+    return tooie_d7_is_guest(a & ~3u) ? static_cast<uint32_t>(MEM_HU(0, kseg0_gpr(a))) : 0u;  // halfword may sit at +2 of an aligned word
+}
+// USER_DEMO1 target producer prefix (TOOIE_DIAG_DEMO1_TARGET=1, default OFF, own flag + header/rows
+// "[demo1-tgt-header]"/"[demo1-tgt]" with the same 37 columns). The marker (id halfwords 0x0671/0x0E3F) is
+// recognised at func_80106790 calls (callback filter, no actor scan); its actor record (the "component"
+// whose +4 vec is the bound center used by _subaddiecustomhits_entrypoint_5) is computed with the
+// vector_at formula from memory only (no extra guest calls) and polled once per post at the 800151BC entry.
+static bool s_d1t_on = false;
+static uint64_t s_d1t_tick = 0, s_d1t_seq = 0;
+static uint32_t s_d1t_rows = 0, s_d1t_marker = 0, s_d1t_first_post = 0;
+static int s_d1t_last_post = -1;
+static bool s_d1t_hdr = false, s_d1t_finished = false;
+static tooie_demo1_projectile::TargetSelector s_d1t_sel;
+
+static void tooie_d1t_row(uint8_t* rdram, const char* ev, const char* ph, int post, uint32_t a0, uint32_t a1,
+                          uint32_t a2, uint32_t a3, uint32_t v0, tooie_d1p_ev e) {
+    if (!s_d1t_hdr) {
+        s_d1t_hdr = true;
+        std::fprintf(stderr, "[demo1-tgt-header] %s\n", tooie_demo1_projectile::kCsvHeader);
+    }
+    ++s_d1t_rows;
+    if (std::strcmp(ph, "mark") != 0) e.w[11] = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x8012C760u)));
+    std::fprintf(stderr, "[demo1-tgt] ");
+    std::fprintf(stderr, tooie_demo1_projectile::kRowFmt, ev, ph,
+                 static_cast<unsigned long long>(s_d1t_tick), static_cast<unsigned long long>(++s_d1t_seq),
+                 post, post - 1, -1, a0, a1, a2, a3, v0, e.vmask,
+                 e.w[0], e.w[1], e.w[2], e.w[3], e.w[4], e.w[5], e.w[6], e.w[7], e.w[8], e.w[9], e.w[10], e.w[11],
+                 tooie_d7_f32(e.w[0]), tooie_d7_f32(e.w[1]), tooie_d7_f32(e.w[2]), tooie_d7_f32(e.w[3]),
+                 tooie_d7_f32(e.w[4]), tooie_d7_f32(e.w[5]), tooie_d7_f32(e.w[6]), tooie_d7_f32(e.w[7]),
+                 tooie_d7_f32(e.w[8]), tooie_d7_f32(e.w[9]), tooie_d7_f32(e.w[10]), tooie_d7_f32(e.w[11]));
+}
+
+static bool tooie_d1t_gate(uint8_t* rdram, int* post_out) {
+    const int mode = int(int16_t(MEM_H(0x2, kseg0_gpr(0x80127630u))));
+    const int stage = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
+    const int sub = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
+    const int post = static_cast<int32_t>(MEM_W(0, kseg0_gpr(0x8012D5B8u)));
+    *post_out = post;
+    return tooie_demo1_projectile::in_tgt_window(mode, stage, sub, post);
+}
+
+// returns false if the vector header is unusable
+static bool tooie_d1t_comp(uint8_t* rdram, uint32_t marker, uint32_t* vec_begin, uint32_t* elem, uint32_t* idx,
+                           uint32_t* comp) {
+    const uint32_t vec = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80136EE0u)));
+    if (!tooie_d7_is_guest(vec) || !tooie_d7_is_guest(marker & ~1u)) return false;
+    *elem = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(vec)));
+    *vec_begin = static_cast<uint32_t>(MEM_W(4, kseg0_gpr(vec)));
+    *idx = tooie_d1p_hu(rdram, marker + 0x1A) >> 5;
+    *comp = tooie_demo1_projectile::vector_at(*vec_begin, *elem, *idx);
+    return *elem != 0 && tooie_d7_is_guest(*comp);
+}
+
+// called at the ENTRY of func_80106790 (a0 = actor); memory reads only. Selector: tooie_demo1_projectile::
+// TargetSelector (id halfword 0x0671 + P6 bit0); first match binds, other distinct matches = ambiguity row.
+static void tooie_d1t_note106790(uint8_t* rdram, uint32_t a0) {
+    if (s_d1t_rows >= uint32_t(tooie_demo1_projectile::kTgtMaxRows) || !tooie_d7_is_guest(a0)) return;
+    const uint32_t l14 = tooie_d1p_hu(rdram, a0 + 0x14), l18 = tooie_d1p_hu(rdram, a0 + 0x18);
+    const int r = s_d1t_sel.feed(a0, l14, l18);
+    if (r == 0) return;
+    int post = 0;
+    tooie_d1t_gate(rdram, &post);
+    if (r == 1) {
+        s_d1t_marker = a0;
+        s_d1t_first_post = uint32_t(post);
+    } else if (s_d1t_sel.ambiguous > 8) {
+        return;
+    }
+    uint32_t vb = 0, el = 0, ix = 0, comp = 0;
+    const bool ok = tooie_d1t_comp(rdram, a0, &vb, &el, &ix, &comp);
+    tooie_d1p_ev e;
+    e.w[0] = tooie_d1p_hu(rdram, a0 + 0x1A);
+    e.w[1] = tooie_d1p_w(rdram, a0 + 0x28);
+    e.w[2] = tooie_d1p_w(rdram, a0 + 0x10);
+    e.w[3] = (l14 << 16) | l18;
+    const uint32_t d = tooie_d1p_w(rdram, a0);
+    e.w[4] = d;
+    e.w[5] = tooie_d1p_w(rdram, d + 8);
+    e.w[6] = ix;
+    e.vmask = ok ? 1u : 0u;
+    tooie_d1t_row(rdram, r == 1 ? "tgtfound" : "tgtambig", "mark2", post, a0, ix, comp, vb, 0, e);
+}
+
+// First-writer prefix (see tooie_demo1_projectile.h kUpd*): whole-record dump of the tracked actor around its
+// per-frame update call. Memory reads only; the update itself runs unmodified between "pre" and "post".
+static bool s_d1t_upd_pend = false;
+static int s_d1t_upd_post = 0;
+static uint32_t s_d1t_upd_rows = 0;
+// counters (reported in tgtfinish w4..w8): direct getter calls seen / bound marker without a resolvable record /
+// direct calls whose a0 equals the resolved record / "pre" dumps emitted / "postmiss" rows emitted
+static uint32_t s_d1t_upd_direct = 0, s_d1t_upd_invalid = 0, s_d1t_upd_match = 0, s_d1t_upd_pre = 0, s_d1t_upd_miss = 0;
+static thread_local tooie_demo1_projectile::UpdLoopScope s_d1t_loop_scope;
+
+// ActorRecordAddress of the bound MarkerHandle, resolved from memory only (begin/stride re-read each call); 0 if unusable.
+static uint32_t tooie_d1t_expected_record(uint8_t* rdram, uint32_t marker) {
+    if (marker == 0 || !tooie_d7_is_guest(marker)) return 0;
+    const uint32_t vec = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80136EE0u)));
+    if (!tooie_d7_is_guest(vec)) return 0;
+    const uint32_t rec = tooie_demo1_projectile::upd_expected_record(
+        tooie_d1p_hu(rdram, marker + 0x14), static_cast<uint32_t>(MEM_W(4, kseg0_gpr(vec))),
+        static_cast<uint32_t>(MEM_W(0, kseg0_gpr(vec))), tooie_d1p_hu(rdram, marker + 0x1A) >> 5);
+    return tooie_d7_is_guest(rec) ? rec : 0u;
+}
+
+static void tooie_d1t_upd_dump(uint8_t* rdram, const char* ph, int post, uint32_t record, uint32_t marker, uint32_t sp,
+                               uint32_t v0) {
+    const uint32_t rng = tooie_d1p_w(rdram, 0x8012C7F0u);
+    for (int c = 0; c < tooie_demo1_projectile::kUpdChunks; ++c) {
+        tooie_d1p_ev e;
+        const int n = tooie_demo1_projectile::upd_chunk_words(c);
+        for (int i = 0; i < n; ++i) {
+            e.w[i] = tooie_d1p_w(rdram, record + 4u * uint32_t(c * tooie_demo1_projectile::kUpdChunkWords + i));
+        }
+        e.w[10] = marker;
+        e.vmask = 1u;
+        tooie_d1t_row(rdram, "updrec", ph, post, record, uint32_t(c), rng, sp, v0, e);
+    }
+}
+
+// "post" resolves the record again from the stable MarkerHandle (the vector may have relocated since "pre"); if the marker no
+// longer resolves, one "postmiss" row is emitted instead of dumping freed/stale memory.
+static void tooie_d1t_upd_flush(uint8_t* rdram, uint32_t source) {
+    if (!s_d1t_upd_pend) return;
+    s_d1t_upd_pend = false;
+    const uint32_t rec = tooie_d1t_expected_record(rdram, s_d1t_marker);
+    if (rec != 0) {
+        tooie_d1t_upd_dump(rdram, "post", s_d1t_upd_post, rec, s_d1t_marker, 0, source);
+        return;
+    }
+    ++s_d1t_upd_miss;
+    tooie_d1p_ev e;
+    e.w[10] = s_d1t_marker;
+    tooie_d1t_row(rdram, "updrec", "postmiss", s_d1t_upd_post, 0, 0, tooie_d1p_w(rdram, 0x8012C7F0u), 0, source, e);
+}
+
+// Call-local scope around the original func_800FF62C (its only generated caller is one LOOKUP_FUNC site). The generated
+// body never assigns r31 before its func_80100368 calls, so the direct loop calls are identified by SP: entry SP - 0x58.
+// Saved/restored (nesting-safe); ctx is not modified.
+static void tooie_d1t_w_ff62c(uint8_t* rdram, recomp_context* ctx) {
+    const tooie_demo1_projectile::UpdLoopScope saved = s_d1t_loop_scope;
+    s_d1t_loop_scope = tooie_demo1_projectile::UpdLoopScope::enter(uint32_t(ctx->r29));
+    func_800FF62C(rdram, ctx);
+    s_d1t_loop_scope = saved;
+}
+
+// Wrapper of func_80100368 (a0 = ActorRecordAddress, NOT the MarkerHandle; all generated callers use LOOKUP_FUNC). Only DIRECT
+// loop calls (scope + SP) flush the pending "post" dump or start a "pre" dump; getter calls nested inside the actor callback
+// are ignored.
+static void tooie_d1t_w_100368(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t record_arg = uint32_t(ctx->r4), sp = uint32_t(ctx->r29);
+    if (s_d1t_loop_scope.direct(sp) && s_d1t_marker != 0) {
+        ++s_d1t_upd_direct;
+        tooie_d1t_upd_flush(rdram, 1u);
+        const uint32_t expected = tooie_d1t_expected_record(rdram, s_d1t_marker);
+        if (expected == 0) ++s_d1t_upd_invalid;
+        else if (record_arg == expected) ++s_d1t_upd_match;
+        int post = 0;
+        if (tooie_d1t_gate(rdram, &post) &&
+            tooie_demo1_projectile::upd_accept(s_d1t_loop_scope, sp, record_arg, expected, post, s_d1t_upd_rows)) {
+            s_d1t_upd_rows += tooie_demo1_projectile::kUpdRowsPerCall;
+            ++s_d1t_upd_pre;
+            tooie_d1t_upd_dump(rdram, "pre", post, record_arg, s_d1t_marker, sp, tooie_d1p_w(rdram, record_arg + 0x10));
+            s_d1t_upd_pend = true;
+            s_d1t_upd_post = post;
+        }
+    }
+    func_80100368(rdram, ctx);
+}
+
+// ---- RNG-consumer / CACEC extra-accept trace (kRng*; rows do not count towards the tgtrec row cap) ----
+static uint32_t s_d1x_seq = 0, s_d1x_rng_rows = 0, s_d1x_cx_rows = 0, s_d1x_extra = 0;
+
+static uint32_t tooie_d1x_extra_count() { return s_d1x_extra; }
+
+static bool tooie_d1x_gate(uint8_t* rdram, int* post) {
+    return s_d1t_on && tooie_d1t_gate(rdram, post) && tooie_demo1_projectile::in_rng_window(*post);
+}
+
+static void tooie_d1x_row(uint8_t* rdram, const char* ev, const char* ph, int post, uint32_t a0, uint32_t a1, uint32_t a2,
+                          uint32_t a3, uint32_t v0, const tooie_d1p_ev& e) {
+    tooie_d1t_row(rdram, ev, ph, post, a0, a1, a2, a3, v0, e);
+    --s_d1t_rows;  // diagnostic rows must not starve tgtrec/tgtfinish
+}
+
+static void tooie_d1x_cacec_extra(uint8_t* rdram, uint32_t vp, int32_t origin, uint32_t radius_bits, float px, float py,
+                                  float pz) {
+    if (!s_d1t_on) return;
+    ++s_d1x_extra;
+    int post = 0;
+    if (!tooie_d1x_gate(rdram, &post) || s_d1x_cx_rows >= uint32_t(tooie_demo1_projectile::kCacecMaxRows)) return;
+    ++s_d1x_cx_rows;
+    tooie_d1p_ev e;
+    std::memcpy(&e.w[0], &px, 4);
+    std::memcpy(&e.w[1], &py, 4);
+    std::memcpy(&e.w[2], &pz, 4);
+    e.w[3] = uint32_t(s_cacec_scope_origin);
+    e.w[4] = ++s_d1x_seq;
+    e.w[5] = tooie_d1p_w(rdram, 0x8012C7F0u);
+    e.vmask = 1u;
+    tooie_d1x_row(rdram, "cacecx", "extra", post, vp, uint32_t(origin), radius_bits, uint32_t(s_cacec_scope_kind), 1u, e);
+}
+
+static void tooie_d1x_e3e8c(uint8_t* rdram, uint32_t pos_ptr, uint32_t radius_bits, int32_t origin, uint32_t result,
+                            uint32_t extra_before) {
+    int post = 0;
+    if (!tooie_d1x_gate(rdram, &post) || s_d1x_cx_rows >= uint32_t(tooie_demo1_projectile::kCacecMaxRows)) return;
+    ++s_d1x_cx_rows;
+    tooie_d1p_ev e;
+    e.w[0] = ++s_d1x_seq;
+    e.w[1] = s_d1x_extra - extra_before;
+    e.vmask = 1u;
+    tooie_d1x_row(rdram, "e3e8c", "enter", post, pos_ptr, radius_bits, uint32_t(origin), 0, result, e);
+}
+
+// func_800DC0C0 (float result, ctx->f0) and func_800DC090 (raw new state, v0): same state word D_8012C7F0.
+__attribute__((noinline)) static void tooie_d1x_rng_common(uint8_t* rdram, recomp_context* ctx, bool is_float, const void* ret) {
+    int post = 0;
+    const bool on = tooie_d1x_gate(rdram, &post) && s_d1x_rng_rows < uint32_t(tooie_demo1_projectile::kRngMaxRows);
+    const uint32_t before = on ? tooie_d1p_w(rdram, 0x8012C7F0u) : 0u;
+    if (is_float) func_800DC0C0(rdram, ctx);
+    else func_800DC090(rdram, ctx);
+    if (!on) return;
+    ++s_d1x_rng_rows;
+    const uint32_t after = tooie_d1p_w(rdram, 0x8012C7F0u);
+    tooie_d1p_ev e;
+    e.w[0] = ++s_d1x_seq;
+    e.w[1] = s_d1x_extra;
+    e.w[2] = uint32_t(s_cacec_scope_origin);
+    e.w[3] = (tooie_demo1_projectile::lcg_next(before) == after) ? 1u : 0u;
+    e.vmask = 1u;
+    tooie_d1x_row(rdram, "rngcall", is_float ? "dc0c0" : "dc090", post, before, after, uint32_t(tooie_d1x_origin(ret)),
+                  uint32_t(s_cacec_scope_kind), is_float ? ctx->f0.u32l : uint32_t(ctx->r2), e);
+}
+__attribute__((noinline)) static void tooie_d1x_w_dc0c0(uint8_t* rdram, recomp_context* ctx) {
+    tooie_d1x_rng_common(rdram, ctx, true, __builtin_return_address(0));
+}
+__attribute__((noinline)) static void tooie_d1x_w_dc090(uint8_t* rdram, recomp_context* ctx) {
+    tooie_d1x_rng_common(rdram, ctx, false, __builtin_return_address(0));
+}
+
+static void tooie_d1t_logic_entry(uint8_t* rdram) {
+    ++s_d1t_tick;
+    tooie_d1t_upd_flush(rdram, 2u);
+    int post = 0;
+    const bool in = tooie_d1t_gate(rdram, &post);
+    if (s_d1t_marker == 0) return;
+    if (in && post != s_d1t_last_post && s_d1t_rows < uint32_t(tooie_demo1_projectile::kTgtMaxRows)) {
+        s_d1t_last_post = post;
+        uint32_t vb = 0, el = 0, ix = 0, comp = 0;
+        const bool ok = tooie_d1t_comp(rdram, s_d1t_marker, &vb, &el, &ix, &comp);
+        tooie_d1p_ev e;
+        if (ok) {
+            const gpr c = kseg0_gpr(comp);
+            const int offs[11] = {0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x28, 0x6C, 0x70};
+            for (int i = 0; i < 11; ++i) e.w[i] = static_cast<uint32_t>(MEM_W(offs[i], c));
+            e.vmask = 1u;
+        }
+        tooie_d1t_row(rdram, "tgtrec", "entry", post, comp, ix, vb, el, s_d1t_marker, e);
+    } else if (!in && !s_d1t_finished && post > tooie_demo1_projectile::kTgtPostHi) {
+        s_d1t_finished = true;
+        tooie_d1p_ev e;
+        e.w[0] = s_d1t_rows;
+        e.w[1] = s_d1t_first_post;
+        e.w[2] = uint32_t(s_d1t_sel.ambiguous);
+        e.w[3] = uint32_t(s_d1t_sel.nhandles);
+        e.w[4] = s_d1t_upd_direct;
+        e.w[5] = s_d1t_upd_invalid;
+        e.w[6] = s_d1t_upd_match;
+        e.w[7] = s_d1t_upd_pre;
+        e.w[8] = s_d1t_upd_miss;
+        tooie_d1t_row(rdram, "tgtfinish", "mark", post, 0, 0, 0, 0, 0, e);
+    }
+}
+
+// ---- first-branch trace of func_800CD820 (tracked object, posts kSweepTraceLo..Hi) ----
+static int s_d1p_trace = 0;            // >0 while inside a traced sweep
+static uint32_t s_d1p_trace_rows = 0;
+static uint32_t s_d1p_ignore = 0;      // sweep a0 of the traced call
+static uint32_t s_d1p_list_a0 = 0, s_d1p_list_start = 0;
+enum { D1P_BE444 = 6, D1P_E9E88, D1P_E9EB4, D1P_106790, D1P_8A018, D1P_EEB40, D1P_EC3C4, D1P_CD6B4, D1P_CB854 };
+static const char* const kD1pHelperName[] = {"", "", "", "", "", "", "s_BE444", "s_E9E88", "s_E9EB4", "s_106790",
+                                             "s_8A018", "s_EEB40", "s_EC3C4", "s_CD6B4", "s_CB854"};
+
+
+// Payload per helper kind (layout shared with the oracle hook p08_d1p_hp).
+static tooie_d1p_ev tooie_d1p_hp(uint8_t* rdram, int kind, bool leave, uint32_t a0, uint32_t a1, uint32_t a2,
+                                 uint32_t a3, uint32_t sp, uint32_t v0, uint32_t f0bits) {
+    tooie_d1p_ev e;
+    switch (kind) {
+    case D1P_BE444:
+        if (!leave) tooie_d1p_vec(rdram, e, 0, a0, 0);
+        else {
+            e.w[0] = v0;
+            if (tooie_d7_is_guest(v0)) { for (int i = 0; i < 6; ++i) e.w[1 + i] = tooie_d1p_w(rdram, v0 + 4u * i); e.vmask |= 1; }
+        }
+        break;
+    case D1P_E9E88:
+    case D1P_E9EB4:
+        if (!leave) tooie_d1p_vec(rdram, e, 0, a0, 0);
+        else {
+            e.w[0] = v0;
+            if (kind == D1P_E9EB4) e.w[1] = (s_d1p_list_a0 == a0 && v0 >= s_d1p_list_start) ? (v0 - s_d1p_list_start) / 12u : 0xFFFFFFFFu;
+        }
+        break;
+    case D1P_106790:
+        if (!leave) {
+            e.w[0] = tooie_d1p_w(rdram, a0 + 0x28);
+            e.w[1] = tooie_d1p_hu(rdram, a0 + 0x14);
+            e.w[2] = tooie_d1p_hu(rdram, a0 + 0x18);
+            e.w[3] = (a0 == s_d1p_ignore) ? 1u : 0u;
+        } else {
+            e.w[0] = tooie_d1p_w(rdram, v0 + 0x64);
+            e.w[1] = tooie_d1p_hu(rdram, v0 + 0x66);
+        }
+        break;
+    case D1P_8A018:
+        if (leave) { tooie_d1p_vec(rdram, e, 0, a1, 0); e.w[3] = f0bits; }
+        break;
+    case D1P_EEB40:
+        if (!leave) { tooie_d1p_vec(rdram, e, 0, a0, 0); tooie_d1p_vec(rdram, e, 3, a1, 1); }
+        else e.w[0] = f0bits;
+        break;
+    case D1P_EC3C4:
+        if (leave) e.w[0] = tooie_d1p_w(rdram, v0 + 0x10);
+        break;
+    case D1P_CD6B4:
+        if (!leave) { tooie_d1p_vec(rdram, e, 0, a1, 0); e.w[3] = tooie_d1p_w(rdram, sp + 0x10); }
+        else { tooie_d1p_vec(rdram, e, 0, a3, 0); e.w[3] = f0bits; }
+        break;
+    default: break;
+    }
+    return e;
+}
+
+static void tooie_d1p_helper(uint8_t* rdram, recomp_context* ctx, int kind, void (*orig)(uint8_t*, recomp_context*)) {
+    if (s_d1p_trace <= 0 || s_d1p_trace_rows >= uint32_t(tooie_demo1_projectile::kMaxTraceRows) ||
+        s_d1p_rows >= uint32_t(tooie_demo1_projectile::kMaxRows)) {
+        orig(rdram, ctx);
+        return;
+    }
+    const uint32_t a0 = uint32_t(ctx->r4), a1 = uint32_t(ctx->r5), a2 = uint32_t(ctx->r6), a3 = uint32_t(ctx->r7);
+    const uint32_t sp = uint32_t(ctx->r29);
+    int post = 0;
+    tooie_d1p_gate(rdram, &post);
+    ++s_d1p_trace_rows;
+    tooie_d1p_row(rdram, kD1pHelperName[kind], "enter", post, 0, a0, a1, a2, a3, 0,
+                  tooie_d1p_hp(rdram, kind, false, a0, a1, a2, a3, sp, 0, 0));
+    orig(rdram, ctx);
+    const uint32_t v0 = uint32_t(ctx->r2), f0 = ctx->f0.u32l;
+    ++s_d1p_trace_rows;
+    tooie_d1p_row(rdram, kD1pHelperName[kind], "leave", post, 0, a0, a1, a2, a3, v0,
+                  tooie_d1p_hp(rdram, kind, true, a0, a1, a2, a3, sp, v0, f0));
+    if (kind == D1P_E9E88) {
+        s_d1p_list_a0 = a0;
+        s_d1p_list_start = v0;
+    } else if (kind == D1P_E9EB4 && s_d1p_list_a0 == a0 && tooie_d7_is_guest(s_d1p_list_start) && v0 >= s_d1p_list_start) {
+        uint32_t n = (v0 - s_d1p_list_start) / 12u;
+        if (n > uint32_t(tooie_demo1_projectile::kMaxCandEntries)) n = tooie_demo1_projectile::kMaxCandEntries;
+        for (uint32_t i = 0; i < n && s_d1p_trace_rows < uint32_t(tooie_demo1_projectile::kMaxTraceRows); ++i) {
+            const uint32_t ent = s_d1p_list_start + 12u * i;
+            const uint32_t actor = tooie_d1p_w(rdram, ent);
+            tooie_d1p_ev e;
+            e.w[0] = tooie_d1p_w(rdram, ent + 8);
+            if (tooie_d7_is_guest(actor)) {
+                e.w[1] = tooie_d1p_w(rdram, actor + 0x28);
+                e.w[2] = tooie_d1p_hu(rdram, actor + 0x14);
+                e.w[3] = tooie_d1p_hu(rdram, actor + 0x18);
+                e.w[5] = tooie_d1p_w(rdram, actor + 4);
+                e.w[6] = tooie_d1p_w(rdram, actor + 8);
+                e.w[7] = tooie_d1p_w(rdram, actor + 12);
+                e.vmask |= 1;
+            }
+            e.w[4] = (actor == s_d1p_ignore) ? 1u : 0u;
+            ++s_d1p_trace_rows;
+            tooie_d1p_row(rdram, "s_cand", "entry", post, 0, actor, ent, i, 0, 0, e);
+        }
+    }
+}
+#define D1P_HELPER_WRAP(NAME, KIND, FN) \
+    static void tooie_d1p_w_##NAME(uint8_t* rdram, recomp_context* ctx) { tooie_d1p_helper(rdram, ctx, KIND, FN); }
+D1P_HELPER_WRAP(be444, D1P_BE444, func_800BE444)
+D1P_HELPER_WRAP(e9e88, D1P_E9E88, func_800E9E88)
+D1P_HELPER_WRAP(e9eb4, D1P_E9EB4, func_800E9EB4)
+static void tooie_d1p_w_c106790(uint8_t* rdram, recomp_context* ctx) {
+    if (s_d1t_on) tooie_d1t_note106790(rdram, uint32_t(ctx->r4));
+    tooie_d1p_helper(rdram, ctx, D1P_106790, func_80106790);
+}
+D1P_HELPER_WRAP(c8a018, D1P_8A018, _subaddiecustomhits_entrypoint_5)
+D1P_HELPER_WRAP(eeb40, D1P_EEB40, func_800EEB40)
+D1P_HELPER_WRAP(ec3c4, D1P_EC3C4, func_800EC3C4)
+D1P_HELPER_WRAP(cd6b4, D1P_CD6B4, func_800CD6B4)
+D1P_HELPER_WRAP(cb854, D1P_CB854, func_800CB854)
+
+// func_800CD820: a0 = owner word (*(obj)), a1/a2 raw vec3 pointers, a3 = radius bits (suegg callers
+// pass 0x42180000 and a2 = object+4). Logged when a3 == 38.0f bits AND (a0 is a tracked owner OR a2-4 is a
+// tracked pointer); otherwise radius-38 calls are logged as untracked (capped). Hit normal/result beyond v0
+// is NOT logged (out-parameters not ABI-proven). w6 = (v0 == player slot0 ps), w7 = a0 owner raw.
+static void tooie_d1p_wrap_sweep(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t a0 = uint32_t(ctx->r4), a1 = uint32_t(ctx->r5), a2 = uint32_t(ctx->r6), a3 = uint32_t(ctx->r7);
+    int post = 0;
+    bool on = false;
+    int idx = -1;
+    if (a3 == tooie_demo1_projectile::kSweepRadiusBits && tooie_d1p_gate(rdram, &post) &&
+        s_d1p_rows < tooie_demo1_projectile::kMaxRows) {
+        for (int i = 0; i < s_d1p_nobj && idx < 0; ++i) {
+            if (s_d1p_owner[i] == a0 || s_d1p_objs[i] == a2 - 4) idx = i;
+        }
+        on = idx >= 0;
+        if (!on && s_d1p_nobj > 0 && s_d1p_untracked < uint32_t(tooie_demo1_projectile::kMaxUntracked)) {
+            on = true;
+            ++s_d1p_untracked;
+        }
+    }
+    auto snap = [&](uint32_t v0) {
+        tooie_d1p_ev e;
+        tooie_d1p_vec(rdram, e, 0, a1, 0);
+        tooie_d1p_vec(rdram, e, 3, a2, 1);
+        e.w[6] = (v0 != 0 && v0 == static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)))) ? 1u : 0u;
+        e.w[7] = a0;
+        if (v0 != 0 && tooie_d7_is_guest(v0)) {  // returned hit: raw identity words (w8=+0x10 sys word, w9=+0x28, w10=lhu14<<16|lhu18)
+            e.w[8] = tooie_d1p_w(rdram, v0 + 0x10);
+            e.w[9] = tooie_d1p_w(rdram, v0 + 0x28);
+            e.w[10] = (tooie_d1p_hu(rdram, v0 + 0x14) << 16) | tooie_d1p_hu(rdram, v0 + 0x18);
+        }
+        return e;
+    };
+    if (on) tooie_d1p_row(rdram, "sweep800CD820", "enter", post, idx, a0, a1, a2, a3, 0, snap(0));
+    const bool traced = on && idx >= 0 && tooie_demo1_projectile::in_sweep_trace(post);
+    if (traced) {
+        s_d1p_ignore = a0;
+        ++s_d1p_trace;
+    }
+    func_800CD820(rdram, ctx);
+    if (traced) --s_d1p_trace;
+    if (on) tooie_d1p_row(rdram, "sweep800CD820", "leave", post, idx, a0, a1, a2, a3, uint32_t(ctx->r2), snap(uint32_t(ctx->r2)));
+}
+
 void register_boot_lookup_stubs() {
     // Prefer real ultramodern/libultra recomp hooks at Tooie VRAMs.
     for (const UltraLookupHook& hook : kUltraLookupHooks) {
@@ -4370,14 +5441,54 @@ void register_boot_lookup_stubs() {
                                           tooie_helper_800BCCC0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCCD8),
                                           tooie_helper_800BCCD8);
+    s_d1_on = tooie_diag::demo1_parity_enabled();
+    s_d1p_on = tooie_diag::demo1_projectile_enabled();
+    s_d1t_on = tooie_diag::demo1_target_enabled();
+    if (s_d1t_on && !s_d1p_on) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80106790), tooie_d1p_w_c106790);
+    }
+    if (s_d1t_on) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800FF62C), tooie_d1t_w_ff62c);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80100368), tooie_d1t_w_100368);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DC0C0), tooie_d1x_w_dc0c0);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DC090), tooie_d1x_w_dc090);
+    }
+    if (s_d1p_on) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80084A60), tooie_d1p_wrap_baegg5);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800871F0), tooie_d1p_wrap_chegg2);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8008A3C0), tooie_d1p_wrap_suegg9);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8008A480), tooie_d1p_wrap_sueggmove9);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CD820), tooie_d1p_wrap_sweep);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BE444), tooie_d1p_w_be444);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E9E88), tooie_d1p_w_e9e88);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E9EB4), tooie_d1p_w_e9eb4);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80106790), tooie_d1p_w_c106790);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8008A018), tooie_d1p_w_c8a018);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40), tooie_d1p_w_eeb40);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EC3C4), tooie_d1p_w_ec3c4);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CD6B4), tooie_d1p_w_cd6b4);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CB854), tooie_d1p_w_cb854);
+    }
     // Boundary wrappers for live timing baseline measurement (TOOIE_DIAG_TIMING=1).
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8001443C),
         [](uint8_t* rdram, recomp_context* ctx) {
+            if (s_d1_on) {
+                ++s_d1_vi;
+            }
             tooie_diag::note_guest_vi();
             func_8001443C(rdram, ctx);
         });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800151BC),
         [](uint8_t* rdram, recomp_context* ctx) {
+            if (s_d1_on) {
+                tooie_demo1_parity_entry(rdram);
+            }
+            if (s_d1p_on) {
+                tooie_d1p_logic_entry(rdram);
+            }
+            if (s_d1t_on) {
+                tooie_d1t_logic_entry(rdram);
+            }
             int32_t divisor = MEM_W(0, kseg0_gpr(0x80078488));
             tooie_diag::note_game_logic(divisor);
             tooie_diag::note_guest_logic_tick();
@@ -4392,8 +5503,13 @@ void register_boot_lookup_stubs() {
         });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8008C894),
         [](uint8_t* rdram, recomp_context* ctx) {
+            const gpr player = ctx != nullptr ? ctx->r4 : 0;
             tooie_diag::note_animation_update();
             baanim_update(rdram, ctx);
+            if (tooie_diag::feather_anim_sample_time_enabled()) {
+                tooie_diag::feather_anim_note_baanim_update(
+                    rdram, static_cast<uint32_t>(player));
+            }
         });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80097C3C),
         [](uint8_t* rdram, recomp_context* ctx) {
@@ -4413,6 +5529,28 @@ void register_boot_lookup_stubs() {
                                           tooie_wrap_ca8b4);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E1A58),
                                           tooie_wrap_e1a58);
+    // Address-taken LOOKUP_FUNC calls bypass linker --wrap for these core2
+    // helpers; bind the diagnostic wrappers into the runtime function map.
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E0B8C),
+                                          __wrap_func_800E0B8C);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E0E94),
+                                          __wrap_func_800E0E94);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800AE8A8),
+                                          __wrap_func_800AE8A8);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800AE820),
+                                          __wrap_func_800AE820);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E2AA4),
+                                          __wrap_func_800E2AA4);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DE2A4),
+                                          __wrap_func_800DE2A4);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DE498),
+                                          __wrap_func_800DE498);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DCF48),
+                                          __wrap_func_800DCF48);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800ADE2C),
+                                          __wrap_func_800ADE2C);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E2180),
+                                          __wrap_func_800E2180);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009C914),
                                           tooie_wrap_yaw_set_ideal);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011607C), tooie_wrap_func_8011607C);
@@ -4459,6 +5597,10 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80097990), tooie_wrap_func_80097990);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80097978), tooie_wrap_func_80097978);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCE84), tooie_wrap_func_800BCE84);
+    if (tooie_diag::demo7_drift_enabled()) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009B9B0), tooie_d7_wrap_tspd_set);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009E5C8), tooie_d7_wrap_bs_setstate);
+    }
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80098140), tooie_wrap_bainput_enable);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80098024), tooie_wrap_bainput_isEnabled);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009811C), tooie_wrap_bainput_init);
@@ -4485,6 +5627,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CACEC), tooie_wrap_func_800CACEC);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E3E8C), tooie_wrap_func_800E3E8C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }

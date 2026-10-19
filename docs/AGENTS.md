@@ -74,8 +74,41 @@ Cada tarefa técnica deve terminar revisando:
 - indexes/vault quando necessário.
 
 Specs = contratos estáveis.
-Evidence = investigação e hipóteses.
+Evidence = investigação e hipóteses (`docs/plan/evidence/`).
 Handoff = estado corrente para novo chat.
+Canonical reverse-engineering = o que sabemos do jogo agora
+(`docs/reverse-engineering/`). Evidence responde “como
+provamos/refutamos”. RE canónico responde “o que o jogo é”.
+
+Toda conclusão deve usar estado de verdade explícito. No conhecimento
+canónico use pelo menos: `PROVEN`, `STRONG_INFERENCE`, `HYPOTHESIS`,
+`UNKNOWN`, `REFUTED`, `CORRECTED`. Proveniência quando útil:
+`STATIC_ROM`, `STATIC_MIPS`, `RUNTIME_CPU`, `USER_OBSERVED`,
+`BANJORECOMP_STRUCTURAL_ANALOG`, `OTHER`. Nunca promover hipótese em
+silêncio.
+
+### Regra de promoção para a base canónica
+
+Sempre que uma investigação provar ou corrigir materialmente
+conhecimento sobre:
+
+- papel de função / argumentos
+- campo / offset de struct
+- resource ID / tipo de asset
+- identidade de modelo ou animação
+- overlay
+- bone / tag / part
+- tipo GeoCmd
+- caminho de matriz / render
+- state machine
+- sistema de áudio
+- estrutura de mapa
+- comportamento reutilizável do engine
+
+o agente deve avaliar se isso pertence a `docs/reverse-engineering/`.
+Evidence permanece a fonte/proveniência. Páginas canónicas guardam o
+melhor modelo corrente. Não duplicar logs completos de evidência nas
+páginas canónicas.
 
 P08 `WIDESCREEN_EDGE_GEOMETRY` current: `800CAA24` production ON;
 `800CACEC` object frustum production ON (user visual confirmed). Two
@@ -164,9 +197,12 @@ DRAW-only). `ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED`.
 `TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED`. Intro walls
 `STILL_PRESENT` as two named scenes (SCENE_A first-visible T_INTRO,
 SCENE_B new-game replay). Class `CAMERA_FRAMING_EXPOSES_OUTSIDE_MODEL`
-as current 16:9 root is `CORRECTED/SUPERSEDED`. Next is SCENE_A opening
-type-13 reject plane, not 819F8. `CLEAN_PINNED_BUILD_VALIDATION:
-PASS` (Tooie `23c070a9`, RT64 `6f1c2d99`; artifact
-`/tmp/p08-clean-milestone-validation-20260830T035059Z/`). Wording
+as current 16:9 root is `CORRECTED/SUPERSEDED`. Prior "Next is SCENE_A opening
+type-13 reject plane" is `CORRECTED/SUPERSEDED` (opening leaves are not the
+visible hole owner; `SOURCE_REJECT_TARGET_ACCEPT: NO`; P08 widescreen edge
+geometry is closed for current scope with ultrawide residual deferred; see
+[[specs/Tooie/graphics-and-presentation]], [[plans/BT/index]] and [[HANDOFF]]).
+`CLEAN_PINNED_BUILD_VALIDATION: PASS` (Tooie `23c070a9`, RT64 `6f1c2d99`;
+artifact `/tmp/p08-clean-milestone-validation-20260830T035059Z/`). Wording
 “GeoCmd intra-model untested” is `CORRECTED/SUPERSEDED`: era
 `800E3DC0`/`800CAB70`. Não voltar à GPU. Não combinar flags de vis.

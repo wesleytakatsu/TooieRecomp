@@ -1,3 +1,14 @@
+---
+title: "P08 — Bounded Four-Query Clearance Differential for func_80113D30 at Glidx 384"
+description: "Isolamento de quatro amostras de projeção em func_80113D30 no Wooded Hollow attract demo."
+status: superseded
+type: evidence
+project: TooieRecomp
+phase: P08
+date: 2026-08-18
+tags: [p08, camera, demo, clearance, ncbapivot, sol-review]
+---
+
 # P08 — Bounded Four-Query Clearance Differential for `func_80113D30` at Glidx 384
 
 ## 0. Executive Summary

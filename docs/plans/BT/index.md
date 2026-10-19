@@ -123,6 +123,8 @@ twice, so the bounded immutable checkpoint is accepted. See
 `ANGRYLION_CONTROL` lives in `tools/oracle/angrylion-control/`
 ([[../../specs/BT/angrylion-control-oracle]]); TooieRecomp stays RT64.
 Evidência:
+[[../../plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]],
+[[../../plan/evidence/p08-user-demo7-cutscene-drift-investigation]],
 [[../../plan/evidence/p08-user-demo4-sincos-semantics-fix]],
 [[../../plan/evidence/p08-user-demo4-post-round-full-state-discriminator]],
 [[../../plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]],

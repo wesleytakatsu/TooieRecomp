@@ -8,6 +8,7 @@
 #include "recompui/recompui.h"
 #include "recompui/renderer.h"
 #include "banjo_sound.h"
+#include "banjo_game.h"
 #include "tooie_diag.h"
 #include "tooie_window.h"
 #include "librecomp/helpers.hpp"
