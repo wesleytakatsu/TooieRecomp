@@ -234,6 +234,21 @@ add_custom_command(
 add_custom_target(TooieControllerDB DEPENDS "${TOOIE_CONTROLLER_DB}")
 add_dependencies(TooieRecompiled TooieControllerDB)
 
+# Tooie-owned launcher wordmark. build/assets points at the shared BanjoRecomp
+# assets, so the SVG is copied next to it (<build>/ui_assets) and referenced
+# from launcher_animation.cpp as "../ui_assets/TooieLogo.svg".
+set(TOOIE_LAUNCHER_LOGO "${CMAKE_CURRENT_BINARY_DIR}/ui_assets/TooieLogo.svg")
+add_custom_command(
+    OUTPUT "${TOOIE_LAUNCHER_LOGO}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/ui_assets/TooieLogo.svg"
+        "${TOOIE_LAUNCHER_LOGO}"
+    DEPENDS "${CMAKE_SOURCE_DIR}/ui_assets/TooieLogo.svg"
+    VERBATIM
+)
+add_custom_target(TooieLauncherLogo DEPENDS "${TOOIE_LAUNCHER_LOGO}")
+add_dependencies(TooieRecompiled TooieLauncherLogo)
+
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")

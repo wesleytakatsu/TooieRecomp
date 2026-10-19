@@ -13,9 +13,25 @@ tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, attract, demo1, demo7, 
 
 # BT P08 — RT64, entrada e frontend
 
-## Pre-commit review, RT64 clean-pin patch replay & getter gate fix (2026-10-19)
+## Host launcher Banjo-Tooie wordmark & asset isolation (2026-10-19)
+
+Evidência canónica: [[../../plan/evidence/menu-title-tooie-wordmark-20261019]].
+Conclusão da substituição do wordmark do launcher host por asset SVG próprio do Tooie, desacoplado dos assets compartilhados do Banjo-Kazooie:
+- **Identidade do Wordmark & Isolamento de Assets (PROVEN)**:
+  - SVG dedicado em duas linhas: "BANJO-TOOIE" (azul com contorno amarelo) e "RECOMPILED" (vermelho com contorno amarelo) gerado por `tools/make_tooie_launcher_logo.py` (SHA256 `d13cb8d9...`) lendo `BanjoRecomp/assets/Logo.svg` em modo somente-leitura; `BanjoRecomp/assets/Logo.svg` permanece inalterado e rastreado (limpo, não untracked).
+  - Asset Tooie `ui_assets/TooieLogo.svg` (viewBox `0 0 7300 2450`, SHA256 `036d3cb20c97b2b37a427e16c2fa4190b6bc676aae1655a037d7bf4785d5c5b7`) copiado via CMake para `${CMAKE_CURRENT_BINARY_DIR}/ui_assets/TooieLogo.svg` (alvo `TooieLauncherLogo`, dependência de `TooieRecompiled`), preservando os assets compartilhados de `BanjoRecomp/assets/` intactos.
+  - `src/main/launcher_animation.cpp` referencia `"../ui_assets/TooieLogo.svg"` com dimensões escaladas `7300.0f * 0.106f` x `2450.0f * 0.106f` (~774x260 dp).
+- **Build & Verificação Visual (PROVEN / VISUALLY_CONFIRMED)**:
+  - Compilação incremental via `cmake --build build --target TooieRecompiled -j2` exit 0 (não compilação limpa), gerando executável `build/TooieRecompiled` (SHA256 `ffe3d7a52e2e4b97d159e79fb156ab27e3a909dfa73a44633f7ff15b8bfb46d4`).
+  - Verificação visual independente realizada por Claude Haiku 5.5 medium (exit 0; capturas 1600x900 `frame_1.png`..`frame_6.png` e 1024x768 `resize_1024x768_4x3.png`); confirmado título em duas linhas legível, ausência de clipping, espaçamento entre letras sem colisões, arte de personagens e botões de menu íntegros. Root inspecionou visualmente apenas `frame_1.png` (1600x900); Haiku inspecionou 4:3 (`resize_1024x768_4x3.png`), sem alegação de inspeção 4:3 por root.
+  - Animação de entrada do launcher: follow-up de Claude Haiku 5.5 medium (exit 0; `menu-title-haiku-animation-addendum.txt`) inspecionou 5 imagens discretas (0.28s, 0.79s, 1.42s, 2.57s, 5.87s); composição de entrada do logo PASS, fluidez/interpolação NOT_TESTED (frames discretos). Layouts estáveis em 1600x900 e 1024x768 preservados PASS. Sem QA de gameplay.
+  - Modificação não commitada no repositório local; estado pré-existente de ferramentas/configurações locais preservado. Checkpoint anterior publicado com sucesso como commit `2c52af0c7d8287d9003db839ffbe636d585e900a` em `origin/main`.
+- **Next Single Action**: `extend oracle comparison to another attract demo when user requests next game adjustment`.
+
+## Checkpoint publicado (2c52af0c): RT64 clean-pin patch replay & getter gate fix (2026-10-19)
 
 Evidência canónica: [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]].
+Checkpoint publicado com sucesso em `origin/main` (commit `2c52af0c7d8287d9003db839ffbe636d585e900a`, 199 caminhos, verificado por `checkpoint-publication-proof.json`).
 Revisão pré-commit do manifesto de 196 caminhos concluída com Grok 4.7 Medium terminando em `end_turn`.
 - **P1 RT64 Clean-Pin Replay (RESOLVIDO)**: 3 patches limpos (`rt64-rsp-endpoint-current.patch`, `rt64-present-fps-decimator-and-counter.patch`, `rt64-p09-exact-use-correlation-header.patch`) e patch de RecompFrontend registrados em `tools/apply_runtime_patches.sh` (+49 linhas; `bash -n` exit 0, `git diff --check` exit 0); replay validado em clone isolado; testes de host compilam e passam (`rt64_present_decimator_test` PASS, `p09_exact_use_correlation_test` 1354/1354, `p09_cpu_shader_clip_semantics` 14/14). Patches incrementais antigos permanecem no repositório como proveniência histórica, porém são SUPERSEDED para aplicação em pin limpo. Hooks C++ de patologia não reproduzidos do pin.
 - **P2 Getter Diagnostic Gate (RESOLVIDO)**: `v7_note_model_getter` chaveado por `g_getter_durable_needed` em `include/tooie_diag.h` e `src/game/tooie_diag.cpp`. No gameplay padrão retorna antes de contadores, leituras de guest, mutex e escritas em host. Validado por `tests/getter_diag_gate_test.cpp` PASS exit 0 e build `TooieRecompiled` exit 0 (SHA256 `74a0cea04a2bc3704860388673c40b2e73ee34d284f3a2afa0faebe91a9c05f5`, distinto do binário candidato A6A2 `a6a2c023...` testado pelo usuário).

@@ -42,6 +42,7 @@ RT64 Viewport & Swapchain Presentation
 | **REQ-WIN-04** | Aspect Ratio Safeguards | Prevents zero-division; maintains 4:3 baseline for original mode. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-WIN-05** | Vulkan Error Fallback | Displays structured error dialog on Vulkan failure without crashing. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-WIN-06** | Configuration Persistence| Serializes settings as JSON and restores them on startup. | `IMPLEMENTED` / `VALIDATED` |
+| **REQ-WIN-07** | Launcher Wordmark & Asset Isolation | Host launcher presents a native two-line "Banjo-Tooie" / "Recompiled" wordmark from a repository-owned SVG (`ui_assets/TooieLogo.svg`), copied to `build/ui_assets/` via CMake to preserve shared BanjoRecomp assets without in-place mutation. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/menu-title-tooie-wordmark-20261019]]) |
 
 ---
 
@@ -116,3 +117,9 @@ Configuration files are stored in the user application data directory:
 ### 4.2 Invariants & Pacing Boundaries
 - The UI manual selector allows inputs between 20 and 240 FPS.
 - As specified in [[graphics-and-presentation]], setting a value below native VI rates (e.g. 20 or 30) currently presents at native speed because RT64 does not implement presentation decimation for below-native targets.
+
+### 4.3 Launcher Wordmark & Asset Isolation Contract
+- **Wordmark Identity**: The host launcher title displays exactly two lines: "Banjo-Tooie" (line 1, blue with yellow outline) and "Recompiled" (line 2, red with yellow outline), with artist-styled caps.
+- **Repository Asset Ownership**: The vector asset is defined in `ui_assets/TooieLogo.svg` (viewBox `0 0 7300 2450`), generated via `tools/make_tooie_launcher_logo.py`.
+- **Isolation Contract**: Upstream assets in `BanjoRecomp/assets/` remain pristine. A CMake custom command copies `ui_assets/TooieLogo.svg` to `${CMAKE_CURRENT_BINARY_DIR}/ui_assets/TooieLogo.svg` under target `TooieLauncherLogo`, and `src/main/launcher_animation.cpp` references `"../ui_assets/TooieLogo.svg"` with scaled dimensions `7300.0f * 0.106f` x `2450.0f * 0.106f`.
+- **Evidence**: Validated for settled layouts at 1600x900 and 1024x768, and entry animation composition bounded PASS across discrete frames (smoothness/easing NOT_TESTED), in [[../../plan/evidence/menu-title-tooie-wordmark-20261019]].

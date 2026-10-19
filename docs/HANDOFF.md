@@ -1,11 +1,11 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "PRECOMMIT REVIEW CHECKPOINT: P1 RT64 packaging replay resolved with 3 clean-pin patches (rt64-rsp-endpoint-current.patch, rt64-present-fps-decimator-and-counter.patch, rt64-p09-exact-use-correlation-header.patch) and frontend registration in tools/apply_runtime_patches.sh; old incremental patches superseded for clean pin. P2 getter diagnostic gate resolved in include/tooie_diag.h and src/game/tooie_diag.cpp, validated by getter_diag_gate_test PASS and rebuilt binary 74a0cea0. Prior user visual confirmation ('Sim, continua funcionando') preserved on tested candidate binary A6A2 (a6a2c023); automated tests/builds distinguish latest binary 74a0cea0 without claiming user visual for new hash. Root owns final staging, commit, and push; Git commit establishes publication truth. NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment."
+description: "CHECKPOINT PUBLISHED & HOST LAUNCHER WORDMARK COMPLETE: Prior checkpoint published on origin/main as 2c52af0c (199 paths). Host launcher wordmark replaced by Tooie-owned two-line SVG logo (ui_assets/TooieLogo.svg, viewBox 0 0 7300 2450) and CMake isolated copy rule to build/ui_assets preserving shared BanjoRecomp assets (tracked, clean). Incremental build ffe3d7a5 exit 0. Claude Haiku 5.5 medium exit 0 visual QA confirmed 1600x900 and 1024x768 settled layouts; root visually inspected ONLY frame_1.png (1600x900). Animation addendum bounded PASS on entry composition across 5 discrete frames (smoothness/easing NOT_TESTED). Pre-existing local tool/config state preserved. Ongoing parity NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment."
 status: current
 type: handoff
 project: TooieRecomp
 updated: 2026-10-19
-tags: [tooie-recomp, handoff, p08, p09, precommit, review, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, settings, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
+tags: [tooie-recomp, handoff, p08, p09, checkpoint-published, launcher, wordmark, logo, ui_assets, visual-verification, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, settings, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
 ---
 
 # Handoff — TooieRecomp
@@ -14,10 +14,22 @@ Registro operacional vivo do P09-RES-05: [[plan/evidence/p09-current-work]].
 Atualizar ao iniciar/encerrar sessões e após resultados relevantes; confirmar
 build atual antes da próxima captura V2. Esta referência não altera os gates.
 
-## CURRENT (2026-10-19) — PRECOMMIT_REVIEW_RT64_CLEAN_PIN_REPLAY_AND_GETTER_GATE_RESOLVED
+## CURRENT (2026-10-19) — HOST_LAUNCHER_TOOIE_WORDMARK_AND_CHECKPOINT_PUBLICATION_CONFIRMED
+
+Read [[plan/evidence/menu-title-tooie-wordmark-20261019]], [[plan/evidence/checkpoint-20261019-review-and-patch-replay]], and [[plan/evidence/p08-attract-movement-residuals]]. Details in canonical evidence.
+
+- **Checkpoint 2c52af0c Published (PROVEN)**: Published exact on `origin/main` (199 paths, exit 0, `checkpoint-publication-proof.json`).
+- **Launcher Wordmark & Asset Isolation (PROVEN)**: Two-line vector logo ("BANJO-TOOIE" blue/yellow, "RECOMPILED" red/yellow) via `tools/make_tooie_launcher_logo.py` (`d13cb8d9...`) into `ui_assets/TooieLogo.svg` (`036d3cb2...`). CMake target `TooieLauncherLogo` copies to `build/ui_assets/`; `BanjoRecomp/assets/Logo.svg` remains unchanged and tracked (clean).
+- **Build (PROVEN)**: Incremental build `cmake --build build --target TooieRecompiled -j2` exit 0 (NOT clean build), binary `build/TooieRecompiled` (`ffe3d7a5...`).
+- **Settled Visual QA (VISUALLY_CONFIRMED)**: Claude Haiku 5.5 medium (exit 0) confirmed 1600x900 and 1024x768 4:3 settled layouts (legible, no clipping). Root visually inspected ONLY `frame_1.png` (1600x900); no root 4:3 claim.
+- **Entry Animation Follow-up (BOUNDED_PASS)**: Claude Haiku 5.5 medium (exit 0, `menu-title-haiku-animation-addendum.txt`) viewed 5 discrete frames at 0.28/0.79/1.42/2.57/5.87s (`t_0_2s.png`..`t_5s.png`). Logo entry composition PASS; smoothness/easing NOT_TESTED (discrete frames); no gameplay QA.
+- **Repository & Runtime State**: Wordmark task uncommitted; pre-existing local tool/config state preserved; gameplay invariants intact.
+- **Next Single Action**: `extend oracle comparison to another attract demo when user requests next game adjustment`.
+
+## Checkpoint publicado (2c52af0c) (2026-10-19) — RT64_CLEAN_PIN_REPLAY_AND_GETTER_GATE_RESOLVED
 
 Read [[plan/evidence/checkpoint-20261019-review-and-patch-replay]], [[plan/evidence/p08-user-demo1-movement-and-fire-egg-differential]], [[plan/evidence/p08-user-demo7-cutscene-drift-investigation]], [[plan/evidence/p08-demo-movement-precision-diagnosis]], and [[plan/evidence/p08-attract-movement-residuals]].
-Pre-commit review of the 196-file working tree manifest completed with both Grok 4.7 Medium sessions ending with `end_turn`. Root owns Git staging, commit, and push. This document records pre-commit provenance; the Git commit itself identifies the final snapshot and Git log / remote verification establishes publication truth.
+Checkpoint published to origin/main as commit 2c52af0c7d8287d9003db839ffbe636d585e900a (199 paths, verified by checkpoint-publication-proof.json). Pre-commit review completed with both Grok 4.7 Medium sessions ending with `end_turn`; findings P1 and P2 resolved.
 
 - **P1 Resolution — RT64 Clean-Pin Patch Replay & Applicator Chain (PROVEN)**:
   - Initial review identified that older incremental RT64 patches (`rt64-present-rate-decimator.patch`, `rt64-present-success-counter.patch`, `p09-exact-use-pathology-correlation.patch`) were based on the dirty worktree and failed `git apply --check` (exit 1) on clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
