@@ -59,6 +59,7 @@ extern char** environ;
 #include "banjo_game.h"
 #include "banjo_launcher.h"
 #include "tooie_diag.h"
+#include "tooie_audio_capture.h"
 #include "tooie_rsp_endpoint_current.h"
 #include "tooie_window.h"
 #include "tooie_error.h"
@@ -398,13 +399,31 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
         throw std::runtime_error("Error using SDL audio converter");
     }
 
-    uint64_t cur_queued_microseconds = uint64_t(SDL_GetQueuedAudioSize(audio_device)) / bytes_per_frame * 1000000 / sample_rate;
+    const uint32_t sdl_queued_bytes_before =
+        static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device));
+    uint64_t cur_queued_microseconds = uint64_t(sdl_queued_bytes_before) / (output_channels * sizeof(float)) * 1000000 / output_sample_rate;
     uint32_t num_bytes_to_queue = audio_convert.len_cvt - output_channels * discarded_output_frames * sizeof(swap_buffer[0]);
     float* samples_to_queue = swap_buffer.data() + output_channels * discarded_output_frames / 2;
 
     // Prevent audio latency from building up by skipping samples in incoming audio when too many samples are already queued.
     // Skip samples based on how many microseconds of samples are queued already.
     uint32_t skip_factor = cur_queued_microseconds / 100000;
+    const uint32_t pre_skip_bytes = num_bytes_to_queue;
+    bool audio_cap = false;
+    if (tooie_audio_capture::hot()) {
+        tooie_audio_capture::Pre cap_pre;
+        cap_pre.guest = audio_data;
+        cap_pre.guest_s16_samples = sample_count;
+        cap_pre.pre_skip = samples_to_queue;
+        cap_pre.pre_skip_bytes = pre_skip_bytes;
+        cap_pre.input_rate = sample_rate;
+        cap_pre.output_rate = output_sample_rate;
+        cap_pre.skip_factor = skip_factor;
+        cap_pre.sdl_queued_bytes_before = sdl_queued_bytes_before;
+        cap_pre.discarded_output_frames = discarded_output_frames;
+        cap_pre.pipeline_volume = cur_main_volume;
+        audio_cap = tooie_audio_capture::begin_and_stash(cap_pre);
+    }
     if (skip_factor != 0) {
         uint32_t skip_ratio = 1 << skip_factor;
         num_bytes_to_queue /= skip_ratio;
@@ -416,7 +435,16 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
 
     // Queue the swapped audio data.
     // Offset the data start by only half the discarded frame count as the other half of the discarded frames are at the end of the buffer.
-    SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
+    const int sdl_queue_result = SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
+    if (audio_cap) {
+        tooie_audio_capture::Post cap_post;
+        cap_post.post_skip = samples_to_queue;
+        cap_post.post_skip_bytes = num_bytes_to_queue;
+        cap_post.sdl_queued_bytes_after =
+            static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device));
+        cap_post.sdl_queue_result = sdl_queue_result;
+        tooie_audio_capture::commit(cap_post);
+    }
     int16_t peak = 0;
     size_t nonzero = 0;
     for (size_t i = 0; i < sample_count; ++i) {
@@ -1156,6 +1184,7 @@ int main(int argc, char** argv) {
                      "[tooie] rsp endpoint current workaround: continuing without the default\n");
     }
     activate_tooie_guest_preemption();
+    tooie_audio_capture::init_from_env();
 
     try {
         recomp::start(
@@ -1184,11 +1213,13 @@ int main(int argc, char** argv) {
             e.what()
         });
         stop_launcher_music_preview();
+        tooie_audio_capture::shutdown();
         NFD_Quit();
         return EXIT_FAILURE;
     }
 
     stop_launcher_music_preview();
+    tooie_audio_capture::shutdown();
 
     NFD_Quit();
 

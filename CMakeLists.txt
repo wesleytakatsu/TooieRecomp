@@ -113,6 +113,7 @@ target_include_directories(PatchesLib PRIVATE
 add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/launcher_animation.cpp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_audio_capture.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_patches.cpp
     ${CMAKE_SOURCE_DIR}/src/main/theme.cpp
@@ -578,3 +579,20 @@ target_link_libraries(graphics_failure_test PRIVATE
     SDL2::SDL2
 )
 set_target_properties(graphics_failure_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P07 audio capture diagnostic. Host-only; no SDL and no guest.
+add_executable(tooie_audio_capture_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_audio_capture_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_audio_capture.cpp
+)
+target_include_directories(tooie_audio_capture_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_options(tooie_audio_capture_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+target_link_libraries(tooie_audio_capture_test PRIVATE
+    Threads::Threads
+)
+set_target_properties(tooie_audio_capture_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

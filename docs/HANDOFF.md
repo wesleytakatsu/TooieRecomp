@@ -7,12 +7,18 @@ project: TooieRecomp
 updated: 2026-10-19
 tags: [tooie-recomp, handoff, p08, p09, checkpoint-published, launcher, wordmark, logo, ui_assets, visual-verification, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, settings, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
 ---
-
 # Handoff — TooieRecomp
 
-Registro operacional vivo do P09-RES-05: [[plan/evidence/p09-current-work]].
-Atualizar ao iniciar/encerrar sessões e após resultados relevantes; confirmar
-build atual antes da próxima captura V2. Esta referência não altera os gates.
+## Áudio tic tic — fix de fila e validação de intro (2026-10-19)
+
+- **Contexto**: Correção do tempo de fila SDL na intro ([[plan/evidence/p07-audio-tic-tic-investigation-20261019]]).
+- **Commit HEAD**: `5af4510744ddc90d25f9223ab48e9cff76f5baca` | Status: `USER_CONFIRMED_FOR_TESTED_INTRO_RECORDING`.
+- **Fix de Produção (Default)**: `main.cpp` divide bytes SDL por taxa e canais host (48 kHz float32). Sem flag de teste.
+- **Diagnóstico (Default OFF)**: `TOOIE_AUDIO_CAPTURE_DIR` com worker pós-janela e caps rigorosos (24 MiB / 2400 chunks).
+- **Evidência Runtime**: Pré-fix apresentava 47 skips espúrios (filas reais de 46–59 ms). Pós-fix obteve 0/579 skips e pre/post idênticos.
+- **Validação do Usuário**: Usuário escutou `intro-queue-time-fix.wav` (33s Pulse) e atestou que o ruído "Desapareceu".
+- **Rastreabilidade**: REQ-AUD-05 parcialmente validado para intro; P07-T06 parcial; P07-T07 PENDING/UNTESTED.
+- **NEXT_SINGLE_ACTION**: QA focado de áudio em gameplay real (SFX/voz/pausa) via `./build/TooieRecompiled` padrão.
 
 ## CURRENT (2026-10-19) — HOST_LAUNCHER_TOOIE_WORDMARK_AND_CHECKPOINT_PUBLICATION_CONFIRMED
 

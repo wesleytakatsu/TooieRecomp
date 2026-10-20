@@ -122,3 +122,14 @@ Ferramentas:
 ## Próxima etapa
 
 [[08-rt64-input-and-frontend]]
+
+## Investigação e Fix do tic tic — 2026-10-19
+
+- **Fase**: Investigação de Áudio P07 (P07-T06 parcial, P07-T07 aberto) — ref: [[plan/evidence/p07-audio-tic-tic-investigation-20261019]].
+- **Status Geral**: Fix de produção aplicado e `USER_CONFIRMED_FOR_TESTED_INTRO_RECORDING` (sem claim global de campanha).
+- **Causa Raiz & Correção**: Cálculo de fila em `main.cpp` usava parâmetros guest; corrigido para taxa e canais host.
+- **Evidência Runtime**: Diagnóstico capturou 47 skips espúrios antes do fix; pós-fix registrou 0/579 skips (SHA pré/pós idêntico).
+- **Validação Auditiva**: Usuário ouviu clipe corrigido gravado via Pulse (`intro-queue-time-fix.wav`) e atestou sumiço do tic na intro.
+- **Diagnóstico Integrado**: Infraestrutura bounded default-off validada via unit tests (`tooie_audio_capture_test` exit 0).
+- **Rastreabilidade**: REQ-AUD-05 parcialmente validado para a intro; P07-T07 PENDING/UNTESTED (soak de longo prazo pendente).
+- **Próximo Passo**: Testes focados em gameplay ativo (SFX, diálogos, pausa) com binário limpo sem diagnósticos.
