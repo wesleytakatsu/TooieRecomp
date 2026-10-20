@@ -133,3 +133,22 @@ Ferramentas:
 - **Diagnóstico Integrado**: Infraestrutura bounded default-off validada via unit tests (`tooie_audio_capture_test` exit 0).
 - **Rastreabilidade**: REQ-AUD-05 parcialmente validado para a intro; P07-T07 PENDING/UNTESTED (soak de longo prazo pendente).
 - **Próximo Passo**: Testes focados em gameplay ativo (SFX, diálogos, pausa) com binário limpo sem diagnósticos.
+
+## Integração do Controle de Volume BGM (Delimitado) — 2026-10-19
+
+- **Fase**: P07 / P08 Funcionalidade de Áudio Delimitada — ref: [[../../plan/evidence/p08-settings-functionality-20261019]], [[../../reverse-engineering/systems/audio-sequence-volume]].
+- **Status da Funcionalidade**: `IMPLEMENTED` e `VALIDATED` para escalonamento de volume de música (BGM).
+- **Portão de Fase P07**: **NÃO ENCERRADO GLOBALMENTE**. A tarefa de soak test `P07-T07` permanece `PENDING / UNTESTED`. O roteamento de clipes de voz (se usam sequence player ou SoundPlayer) permanece `UNKNOWN`. O caminho de efeitos sonoros (`func_80020BE0`, SoundPlayer, evento 3) permanece intocado. Nenhuma alegação de paridade global de áudio de campanha é feita.
+- **Arquitetura Integrada (PROVEN)**:
+  - 6 players de sequência em `0x80079FA0` (stride `0x274`, `seqp+0x1E0`); volume autorado s16 em `player+0`; 6 tracks em `0x801357D0` (stride `0x50`, track id s16 em `+0x28`).
+  - Despacho CSP em `func_80025ED0` (`AL_SEQP_VOL_EVT`, tipo 10 para música). Proposta anterior de disparo duplo em `17404` REFUTADA.
+  - Overrides em `src/game/boot_hw_stubs.cpp`:
+    1. `tooie_bgm_on_csp_set_vol` (`80025ED0`): wrapper que intercepta chamadas CSP e escala `r5` uma única vez para os 6 seqps reconhecidos via `apply_unscaled(authored, percent)`. Ponteiros desconhecidos passam sem modificação.
+    2. `tooie_bgm_on_update` (`800FB968`): executado após o update guest original; lê `player+0` dos slots ativos (`track+0x28 >= 0`) e reposta via `func_80025ED0` usando cópia local de `recomp_context` estritamente quando o ganho live sofre alteração. Em 100% contínuo, zero eventos adicionais são gerados. Fades autorados nunca são mutados em RDRAM.
+- **IPC do Launcher & Validação em Runtime**:
+  - Processo filho do preview de música no launcher Linux consome volume via datagram `socketpair` (`CLOEXEC`, stdin dup 0, monitor pai de 5ms com envio de 1 byte via `MSG_NOSIGNAL`).
+  - Validação acústica via null sink dedicado `tooie_bgm_menu_qa`:
+    - Preview de launcher (mesmo processo ativo mantido): `preview-100.wav` (RMS .0522), `preview-0-real.wav` (RMS .0000017, peak 1 LSB), `preview-50-real.wav` (RMS .0167), `preview-100-restored.wav` (RMS .0373).
+    - Restauração ao vivo em gameplay: `game-0.wav` (RMS 0, peak 0) restaurado ao vivo para `game-100-restored.wav` (RMS .0528, peak .3998) sem reiniciar o executável.
+- **Confirmação auditiva (2026-10-20)**: em `final-game-0.wav` com BGM 0%, o usuário confirmou "Apenas efeitos/vozes" (`USER_OBSERVED / USER_CONFIRMED_FOR_TESTED_DEMO_CLIP`); conclusão restrita ao trecho testado.
+- **Próxima Ação Única da tarefa delimitada**: concluir revisão e publicar o checkpoint autorizado; P07-T07 permanece pendente.

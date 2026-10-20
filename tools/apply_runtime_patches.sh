@@ -70,6 +70,14 @@ apply_one_patch \
     "8959055e6c51767fcd7c58b403a2c6ce8bc7aa0ab6c23ffab9dc181905eacd6b" \
     "preemption runtime service"
 
+# Resolution Original3x/Original4x enum + JSON (config.hpp only).
+apply_one_patch \
+    "$RUNTIME" \
+    "$PATCH_DIR/n64modernruntime-resolution-3x-4x.patch" \
+    "ca568b6ad79b9029d14077f0c3ffa757727c5559" \
+    "6955ca324fa255ffbe0e61806cb500c602a5818638ddd13bcc05d076e3e18b91" \
+    "resolution 3x/4x runtime enum"
+
 # N64Recomp Tooie generator patch — same-section JAL + PATCH 3 safepoints.
 # Historical n64recomp-same-section-jal.patch is inactive (superseded).
 apply_one_patch \
@@ -88,6 +96,23 @@ apply_one_patch \
     "2b6f05688de2abc7d86da5b4a89b84c2c6acbabe" \
     "48ca1e7710a7b6ecd2f4cfe3c8ac064c11b2307ad98f35ee53b70b3f1cfebb58" \
     "generator zero-size static"
+
+# Resolution 3x/4x frontend options + RT64 manual scale/downsample (2 files, disjoint from the overlay patch).
+FRONTEND="$WS/BanjoRecomp/lib/RecompFrontend"
+apply_one_patch \
+    "$FRONTEND" \
+    "$ROOT/patches/frontend/recompfrontend-resolution-3x-4x.patch" \
+    "d0d90ba49f46f4896aaeda362056c21b1e342561" \
+    "60eb31406dc9ac6f88368e492dcbd65f22fc00ccb0529c43fdd9c211d07a6faa" \
+    "recompfrontend resolution 3x/4x"
+
+# Disabled config options must not change via any widget path (slider click/drag/nav, radio, toggle).
+apply_one_patch \
+    "$FRONTEND" \
+    "$ROOT/patches/frontend/recompfrontend-disabled-option-guard.patch" \
+    "d0d90ba49f46f4896aaeda362056c21b1e342561" \
+    "9298ec60e89f4bb282b98d850e953285cf76af6fa0947d56a4f6d70c2eecc20c" \
+    "recompfrontend disabled option guard"
 
 # RT64 pin BanjoRecomp/lib/rt64 6f1c2d99. These three do not overlap.
 # Do not also apply rt64-present-rate-decimator.patch,

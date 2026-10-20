@@ -25,6 +25,8 @@
 #include "tooie_demo1_parity.h"
 #include "tooie_demo1_projectile.h"
 #include "generated/overlay_dispatch.inc.h"
+#include "tooie_bgm_hooks.h"
+#include "tooie_bgm_volume.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -5627,6 +5629,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CACEC), tooie_wrap_func_800CACEC);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E3E8C), tooie_wrap_func_800E3E8C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kCspSetVolVram), tooie_bgm_on_csp_set_vol);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kUpdateVram), tooie_bgm_on_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);

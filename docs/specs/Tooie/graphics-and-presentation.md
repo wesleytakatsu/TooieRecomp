@@ -3,8 +3,8 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Comprehensive technical specification for RT64 integration, widescreen culling hooks, projection policies, the shader-local CURRENT tfPos workaround, and planned FPS presets."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-17
-tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps]
+updated: 2026-10-19
+tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
 # Graphics, Presentation and High-Framerate Interpolation Specification
@@ -33,6 +33,7 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 |                      RT64 Workload Queue & Transform Processor                  |
 |  - Matrix matching across successive workloads                                  |
 |  - Target Rate vs viOriginalRate evaluation (pacing constraint)                 |
+|  - Target Rate Policy: Forced 30 FPS cap (tooie_menu::kForcedRefreshRate = 30)  |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
@@ -55,9 +56,11 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 | **REQ-GFX-03** | Cutscene Aspect Policy | Preconditions projection matrix via `compensation_factor`. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-GFX-04** | tfPos CURRENT Workaround | Defaults `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT="1"` before start. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-GFX-05** | Diagnostic Rollback Rule | Explicit `"0"` restores interpolation for diagnostic evaluation. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-06** | Exact FPS Presets | User selector for {20, 30, 45, 60, 70, 100, 120, 144} FPS. | `PLANNED` / `NOT_IMPLEMENTED` |
+| **REQ-GFX-06** | Forced 30 FPS Policy Lock | Locks presentation to Manual 30 FPS (`kForcedRefreshRate = 30`) due to CURRENT workaround repeating vertex poses above native. (RT64 supports 60+ Hz presentation; cap is a user policy palliative). | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
 | **REQ-GFX-07** | Below-Native Presentation Decimation | Present-only decimation preserving guest updates, audio, and ACK signals. | `IMPLEMENTED` / `STATICALLY_VERIFIED` |
 | **REQ-GFX-08** | Intro Cinematic Walls | Eliminates geometry edge holes in SCENE_A and SCENE_B. | `PLANNED` / `NOT_IMPLEMENTED` |
+| **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. Auto resolution uses integer window VI scale and disables downsampling. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
+| **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode, keeping current height. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
 
 ---
 
@@ -134,9 +137,10 @@ namespace tooie_rsp_endpoint_current {
 
 ## 4. Phase 2 Exact FPS Presets & Below-Native Presentation Decimation
 
-### 4.1 Target Presets
+### 4.1 Target Presets & Forced 30 FPS Policy Lock
 Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
-- **Frontend UI Option (REQ-GFX-06)**: RecompFrontend config tab currently accepts arbitrary manual integer 20..240 (`ui_config_tab_graphics.cpp:311-313`); dedicated 8-preset selector widget remains `PLANNED` / `NOT_IMPLEMENTED`.
+- **Frontend UI Option & Policy Enforcement (REQ-GFX-06)**: While RT64 technically supports presentation at arbitrary display refresh rates (60..240 Hz), intermediate presents repeat vertex poses under the palliative `tfPos` CURRENT workaround (`tooie_rsp_endpoint_current`). To match user policy, presentation is temporarily locked to Manual 30 FPS (`kForcedRefreshRate = 30`) via `tooie_menu::install_forced_refresh`.
+- **Policy Enforcement Contract**: Forced 30 FPS applies on configuration load, temporary UI change, and permanent apply/save. Callbacks dynamically resolve `recompui::config::get_graphics_config()` per call to prevent dangling pointers from `std::vector` reallocation. The UI option is disabled with a warning note: `"Temporarily capped at 30 FPS in Banjo-Tooie."` (see [[../../plan/evidence/p08-settings-functionality-20261019]]). Dedicated 8-preset selector widget remains `PLANNED` / `NOT_IMPLEMENTED`.
 
 ### 4.2 Below-Native Presentation Decimation (REQ-GFX-07)
 - **Problem**: In upstream RT64 (`rt64_workload_queue.cpp:1175`), when `targetRate <= viOriginalRate` (e.g. 20 or 30 FPS target on a 60 Hz VI scene), RT64 emitted one presentation per native workload with `displayFrames = 1` and no sleep or pacing. Below-native target was an effective no-op.
@@ -189,7 +193,26 @@ Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
   - Reverse patch application: `git apply --reverse --check` exit 0.
   - Status: `IMPLEMENTED`, `UNIT_TESTED`. (Separate from the unimplemented 8-preset selector widget `REQ-GFX-06`; in-game runtime QA is NOT performed).
 
-### 4.5 Remaining Gates
+### 4.5 Resolution 3x, 4x and Downsampling Scaling (REQ-GFX-09)
+- **Resolution Enums**: `Original3x` (base 720p) and `Original4x` (base 960p) are defined in `ultramodern::renderer::Resolution` and registered in config serialization (`patches/runtime/n64modernruntime-resolution-3x-4x.patch`).
+- **Downsample Multiplier Math**:
+  - Base multiplier: `Original` = 1x, `Original2x` = 2x, `Original3x` = 3x, `Original4x` = 4x.
+  - Downsampling multiplies on top: `resolutionMultiplier = base * ds`, `downsampleMultiplier = ds`.
+  - For example, Original 3x with Downsampling 2x renders internally at 1440p and downsamples to 720p.
+- **Auto Resolution**: Uses integer window VI scaling (not adaptive framerate); downsampling is disabled when Auto is active.
+- **Verification**: Host unit tests `tests/tooie_menu_policy_test.cpp` and runtime screenshots (`general-disabled-fixed.png`, `graphics-16x9-4x.png`, `intro-4x-30fps.png`) in [[../../plan/evidence/p08-settings-functionality-20261019]].
+
+### 4.6 Aspect Ratio Window Auto-Resize (REQ-GFX-10)
+- **User Confirmed Preference**: Selecting `Original (4:3)` or `Expand (16:9)` in the Aspect Ratio option automatically resizes the application window in windowed mode while retaining current height.
+- **Thread Boundary Architecture**:
+  - UI callbacks cannot invoke SDL functions directly without risking deadlocks or race conditions.
+  - Callbacks queue the target aspect ratio into an atomic slot (`tooie_menu::request_window_aspect`).
+  - Consumed on the SDL event thread during `update_gfx` (`src/main/main.cpp`).
+  - Derives dimensions via `tooie_menu::aspect_window_size`, accounting for window decorations (`SDL_GetWindowBordersSize`), and clamps within display usable bounds (`SDL_GetDisplayUsableBounds`).
+  - Ignored when in Fullscreen or Borderless mode.
+- **Verification**: Validated by `tests/tooie_menu_policy_test.cpp` PASS exit 0 and runtime screenshots (`graphics-4x3.png`, `graphics-16x9-4x.png`, `fullscreen-original.png`).
+
+### 4.7 Remaining Gates
 1. Implement the 8-preset user selector widget in RecompFrontend UI (`REQ-GFX-06`).
 2. Perform runtime QA to verify presentation intervals against pose-change intervals, confirming audio and guest timing stability without clock distortion. (Runtime QA not performed; no actual in-game FPS measurements or speed guarantees claimed).
 3. Perform runtime visual QA of the top-left FPS counter overlay across gameplay maps and menus.

@@ -1,13 +1,53 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "CHECKPOINT PUBLISHED & HOST LAUNCHER WORDMARK COMPLETE: Prior checkpoint published on origin/main as 2c52af0c (199 paths). Host launcher wordmark replaced by Tooie-owned two-line SVG logo (ui_assets/TooieLogo.svg, viewBox 0 0 7300 2450) and CMake isolated copy rule to build/ui_assets preserving shared BanjoRecomp assets (tracked, clean). Incremental build ffe3d7a5 exit 0. Claude Haiku 5.5 medium exit 0 visual QA confirmed 1600x900 and 1024x768 settled layouts; root visually inspected ONLY frame_1.png (1600x900). Animation addendum bounded PASS on entry composition across 5 discrete frames (smoothness/easing NOT_TESTED). Pre-existing local tool/config state preserved. Ongoing parity NEXT_SINGLE_ACTION: extend oracle comparison to another attract demo when user requests next game adjustment."
+description: "BOUNDED SETTINGS TASK COMPLETE: menu policy, BGM live control, Resolution 3x/4x and window aspect resize validated. Build and four tests passed; final binary e2059b51, tested base d4d10740. User confirmed only effects/voices with BGM 0% in final demo clip on 2026-10-20; campaign-wide audio parity remains unknown. P08 controller gate pending. Commit/push explicitly authorized on 2026-10-20. NEXT_SINGLE_ACTION: verify published HEAD against origin/main after authorized push."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-19
-tags: [tooie-recomp, handoff, p08, p09, checkpoint-published, launcher, wordmark, logo, ui_assets, visual-verification, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, settings, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
+updated: 2026-10-20
+tags: [tooie-recomp, handoff, p08, p09, settings, menu, forced-refresh, resolution, aspect-ratio, config, sdl2, bgm-volume, checkpoint-published, launcher, wordmark, logo, ui_assets, visual-verification, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
 ---
 # Handoff — TooieRecomp
+
+## CURRENT (2026-10-19) — BOUNDED_SETTINGS_AND_BGM_VOLUME_INTEGRATED_AND_VALIDATED
+
+Read [[plan/evidence/p08-settings-functionality-20261019]], [[plan/evidence/menu-title-tooie-wordmark-20261019]], and [[plan/evidence/checkpoint-20261019-review-and-patch-replay]]. Details in canonical evidence.
+
+- **Task Status & Base State (BOUNDED_TASK_COMPLETED / PROVEN)**:
+  - Canonical tested base HEAD: `d4d1074016a819d7150923c2b19a91e69889b7a9`.
+  - Bounded settings task finished. Phase P08 controller gate remains pending; no global phase closure.
+  - Commit and push explicitly authorized on 2026-10-20 for this bounded checkpoint. Pre-existing local dirty tooling and config state stay outside the commit. External dependencies (`RecompFrontend` `d0d90ba`, `N64ModernRuntime` `ca568b6`) remain protected dirty; changes are versioned through the project patches. No generated hand-edits.
+  - Full build: `cmake --build build --target TooieRecompiled tooie_bgm_volume_test tooie_bgm_hooks_test tooie_menu_policy_test tooie_menu_config_test -j2` exit 0 (13.1s).
+  - Binary SHA256: `e2059b516a90f09e50e77f0622218014798f6a155f6ffe0d2b6a66735427f9f9`. All 4 tests PASS exit 0.
+- **Menu Settings Policy & Disabled Numeric Style Fix (PROVEN)**:
+  - Note & Jinjo Saving safely hidden (`hidden = true`, default `Off`, schema preserved for compatibility).
+  - Non-trivial BT options disabled in UI with `"Currently unavailable in Banjo-Tooie."` (`UI_DISABLED / NOT_IMPLEMENTED_BT_CONSUMER`): Analog Camera, Sensitivity, 3 Inverts, Cutscene Aspect, HUD Placement (`hr_option`).
+  - Generic frontend disabled guard + numeric style fix: `ConfigOptionNumber::update_disabled` now calls `slider->set_enabled(!disabled)`; `Slider::do_step` blocks mouse/keyboard stepping.
+  - Visual pass confirmed by Claude Haiku session `a7c1b458-e32c-4f51-9d80-eaf5f6b57aef` exit 0 on `general-disabled-final.png` and `graphics-locked-final.png` (interaction strictly performed by root). Real drags preserve Sensitivity 3 and Framerate 30; Analog Off.
+  - Forced 30 FPS cap (`tooie_menu::kForcedRefreshRate = 30`): deliberate user policy cap due to CURRENT workaround repeating vertex poses above native; RT64 supports 60+ Hz, not a technical lack of 60Hz support.
+  - Resolution 3x (720p base) and 4x (960p base) added with multiplicative downsampling (3x DS 2x = 1440p downsampled to 720p). Auto resolution uses integer window VI scale and disables downsampling.
+  - Aspect ratio window auto-resize on SDL event thread: 1600x900 -> 1200x900 (Original 4:3) -> 1600x900 (Expand 16:9), preserving height 900 and usable display bounds; ignored in fullscreen (1920x1080 unchanged).
+- **BGM Volume Control Architecture & Live Integration (PROVEN)**:
+  - Banjo-Tooie audio contract: 6 sequence players at `0x80079FA0` (stride `0x274`, `seqp = player + 0x1E0`), authored s16 volume at `player + 0x0`, 6 tracks at `0x801357D0` (stride `0x50`, active id s16 at `+0x28`).
+  - CSP event dispatch `func_80025ED0` (type 10, music) vs SoundPlayer `func_80020BE0` (type 3, SFX - untouched).
+  - Setter `func_80017404` stores unscaled volume then calls CSP; start `func_80016ED0` calls CSP directly; frame fade in `func_800FB968`.
+  - Double-event proposal from `17404` REFUTED. Integrated architecture uses lookup overrides in `boot_hw_stubs.cpp`:
+    1. Single-scale CSP wrapper (`tooie_bgm_on_csp_set_vol`) scales once for the 6 known sequence player pointers; unknown pointers pass unchanged.
+    2. Post-update hook (`tooie_bgm_on_update`) on `800FB968` reads `player + 0x0` for active tracks (`track + 0x28 >= 0`) and reposts scaled volume via original `func_80025ED0` using a local `recomp_context` copy ONLY when live gain changed. Steady 100% emits zero extra events; authored fades are never mutated.
+    3. UI atomic percent default 100 with no `Config` pointer captures.
+- **Launcher IPC & Practical Audio QA (PROVEN)**:
+  - Separate child launcher preview process connected via datagram `socketpair` (`CLOEXEC`, child stdin dup with `SO_TYPE` check, parent 5ms monitor 1-byte send `MSG_NOSIGNAL`, child `update_gfx` drains atomic gain). No filesystem polling or hot telemetry; no SDL queue changes.
+  - Practical audio captured via owned null sink `tooie_bgm_menu_qa` in `/home/wesley/.cache/tooie-menu-settings-20261019/`:
+    - Preview stream (SAME child alive across volume shifts): `preview-100.wav` (RMS .0522), `preview-0-real.wav` (RMS .0000017, peak 1 LSB, zero after 0.5s), `preview-50-real.wav` (RMS .0167), `preview-100-restored.wav` (RMS .0373).
+    - In-game live volume restoration (no restart): `game-0.wav` (RMS 0, peak 0) -> `game-100-restored.wav` (RMS .0528, peak .3998).
+    - Epistemic note: Songs differ across passages; do NOT claim exact PCM 50% ratio; math verified in unit tests. Early captures renamed `preview-*-ui-not-applied.wav` are invalid UI_NOT_APPLIED (click not drag, UI still 100) and excluded.
+    - Scope: user confirmed only effects/voices in the final 0% demo clip on 2026-10-20; voice IDs using sequence player vs SoundPlayer remain UNKNOWN; global audio parity NOT claimed. PulseAudio null sink module `536870913` unloaded.
+- **Clean Pin Patches & Review**:
+  - 3 clean patches: `n64modernruntime-resolution-3x-4x.patch` (SHA256 `6955ca32...`), `recompfrontend-resolution-3x-4x.patch` (SHA256 `60eb3140...`), `recompfrontend-disabled-option-guard.patch` (SHA256 `9298ec60...`, superseding old hash).
+  - Clean-base replay verified on temp fixtures (both apply and reverse match exactly). Full applicator script live NOT_RUN. Original config hashes unchanged.
+  - Claude Sonnet final STATIC review `c4500e0c-e5c9-4b1b-bcf4-5a054a8fe733` exit 0 (zero blockers in helper/context/socket scope; not independent MIPS reaudit; process 143 discarded, not quota).
+- **User confirmation (2026-10-20, USER_OBSERVED / USER_CONFIRMED_FOR_TESTED_DEMO_CLIP)**: with BGM at 0% in `final-game-0.wav`, user reported “Apenas efeitos/vozes”. Music removal and preserved effects/voices confirmed for this clip; campaign-wide voice classification remains UNKNOWN.
+- **Next Single Action**: `verify published HEAD against origin/main after authorized push`.
 
 ## Áudio tic tic — fix de fila e validação de intro (2026-10-19)
 

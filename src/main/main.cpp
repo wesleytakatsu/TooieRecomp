@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <spawn.h>
 #include <sys/prctl.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -60,8 +61,10 @@ extern char** environ;
 #include "banjo_launcher.h"
 #include "tooie_diag.h"
 #include "tooie_audio_capture.h"
+#include "tooie_bgm_volume.h"
 #include "tooie_rsp_endpoint_current.h"
 #include "tooie_window.h"
+#include "tooie_menu_policy.h"
 #include "tooie_error.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
@@ -95,6 +98,7 @@ bool launcher_music_preview_started = false;
 
 #if defined(__linux__)
 std::atomic<pid_t> launcher_music_pid{-1};
+bool launcher_music_control = false;
 
 void stop_launcher_music_preview() {
     const pid_t child = launcher_music_pid.exchange(-1);
@@ -150,11 +154,37 @@ bool start_launcher_music_preview() {
     }
     executable[static_cast<size_t>(length)] = '\0';
 
-    char child_flag[] = "--launcher-music-child";
-    char* child_argv[] = {executable.data(), child_flag, nullptr};
-    pid_t child = -1;
-    const int result = posix_spawn(&child, executable.data(), nullptr, nullptr, child_argv, environ);
+    // Keep the ROM-backed preview's music gain in sync without polling config files.
+    int control[2];
+    if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, control) != 0) {
+        std::fprintf(stderr, "[tooie] launcher music: control channel failed (%d)\n", errno);
+        return false;
+    }
+    posix_spawn_file_actions_t actions;
+    int result = posix_spawn_file_actions_init(&actions);
     if (result != 0) {
+        close(control[0]);
+        close(control[1]);
+        return false;
+    }
+    result = posix_spawn_file_actions_adddup2(&actions, control[0], STDIN_FILENO);
+    if (result == 0 && control[0] != STDIN_FILENO) {
+        result = posix_spawn_file_actions_addclose(&actions, control[0]);
+    }
+    if (result == 0) {
+        result = posix_spawn_file_actions_addclose(&actions, control[1]);
+    }
+    char child_flag[] = "--launcher-music-child";
+    char control_flag[] = "--launcher-music-control";
+    char* child_argv[] = {executable.data(), child_flag, control_flag, nullptr};
+    pid_t child = -1;
+    if (result == 0) {
+        result = posix_spawn(&child, executable.data(), &actions, nullptr, child_argv, environ);
+    }
+    posix_spawn_file_actions_destroy(&actions);
+    close(control[0]);
+    if (result != 0) {
+        close(control[1]);
         std::fprintf(stderr, "[tooie] launcher music: posix_spawn failed (%d)\n", result);
         return false;
     }
@@ -165,12 +195,23 @@ bool start_launcher_music_preview() {
 
     // start_game is single-shot in ModernRuntime. Keep the preview in its own
     // process, then stop it as soon as the visible instance starts from boot.
-    std::thread([child]() {
-        while (!ultramodern::is_game_started()) {
+    std::thread([child, fd = control[1]]() {
+        int last_percent = -1;
+        while (!ultramodern::is_game_started() && launcher_music_pid.load() == child) {
+            const int percent = tooie_bgm::get_percent();
+            if (percent != last_percent) {
+                const uint8_t value = static_cast<uint8_t>(percent);
+                if (send(fd, &value, sizeof(value), MSG_DONTWAIT | MSG_NOSIGNAL) == sizeof(value)) {
+                    last_percent = percent;
+                } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+                    break;
+                }
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
+        close(fd);
         if (launcher_music_pid.load() == child) {
-            std::fprintf(stderr, "[tooie] launcher music: restarting with visible game boot\n");
+            std::fprintf(stderr, "[tooie] launcher music: stopping preview\n");
             stop_launcher_music_preview();
         }
     }).detach();
@@ -332,6 +373,45 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 
 void update_gfx(void*) {
     recompinput::handle_events();
+#if defined(__linux__)
+    if (launcher_music_child && launcher_music_control) {
+        uint8_t percent;
+        while (recv(STDIN_FILENO, &percent, sizeof(percent), MSG_DONTWAIT) == sizeof(percent)) {
+            tooie_bgm::set_percent(percent);
+        }
+    }
+#endif
+    // UI callbacks enqueue the request; SDL window operations stay on the event thread.
+    const double target_aspect = tooie_menu::take_window_aspect_request();
+    if (target_aspect > 0.0 && window != nullptr &&
+        ultramodern::renderer::get_graphics_config().wm_option == ultramodern::renderer::WindowMode::Windowed &&
+        !(SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP))) {
+        if (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED) {
+            SDL_RestoreWindow(window);
+        }
+        SDL_Rect usable{};
+        const int display = SDL_GetWindowDisplayIndex(window);
+        const bool have_bounds = display >= 0 && SDL_GetDisplayUsableBounds(display, &usable) == 0;
+        int top = 0, left = 0, bottom = 0, right = 0;
+        if (SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right) != 0) {
+            top = left = bottom = right = 0;
+        }
+        int width = 0, height = 0;
+        SDL_GetWindowSize(window, &width, &height);
+        const auto size = tooie_menu::aspect_window_size(target_aspect, width, height,
+            have_bounds ? std::max(1, usable.w - left - right) : 0,
+            have_bounds ? std::max(1, usable.h - top - bottom) : 0);
+        if (size.w != width || size.h != height) {
+            SDL_SetWindowSize(window, size.w, size.h);
+        }
+        if (have_bounds) {
+            int x = 0, y = 0;
+            SDL_GetWindowPosition(window, &x, &y);
+            SDL_SetWindowPosition(window,
+                std::clamp(x, usable.x, std::max(usable.x, usable.x + usable.w - size.w - left - right)),
+                std::clamp(y, usable.y, std::max(usable.y, usable.y + usable.h - size.h - top - bottom)));
+        }
+    }
     tooie_diag::note_host_update_gfx();
     tooie_diag::tick();
 }
@@ -890,9 +970,22 @@ int main(int argc, char** argv) {
         if (std::strcmp(argv[i], "--launcher-music-child") == 0) {
             launcher_music_child = true;
         }
+#if defined(__linux__)
+        if (std::strcmp(argv[i], "--launcher-music-control") == 0) {
+            launcher_music_control = true;
+        }
+#endif
     }
 
 #if defined(__linux__)
+    if (launcher_music_child && launcher_music_control) {
+        int type = 0;
+        socklen_t length = sizeof(type);
+        if (getsockopt(STDIN_FILENO, SOL_SOCKET, SO_TYPE, &type, &length) != 0 || type != SOCK_DGRAM) {
+            launcher_music_control = false;
+            std::fprintf(stderr, "[tooie] launcher music: invalid control channel\n");
+        }
+    }
     if (launcher_music_child) {
         // Never leave an invisible audio/runtime process behind if the launcher
         // is closed or crashes before Start Game is selected.

@@ -3,8 +3,8 @@ title: "TooieRecomp Spec — Input and Controller Subsystem"
 description: "Comprehensive technical specification for SDL2 controller mapping, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-16
-tags: [specs, tooierecomp, input, controller, sdl2, stick-angle, demo]
+updated: 2026-10-19
+tags: [specs, tooierecomp, input, controller, sdl2, stick-angle, demo, camera-invert]
 ---
 
 # Input and Controller Subsystem Specification
@@ -43,7 +43,7 @@ Banjo-Tooie Player Physics & Attract Demo Engine
 | **REQ-INP-03** | Bidirectional Input | WASD keyboard and modern analog sticks navigate in all 360 degrees. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-INP-04** | Input Helper Contract | `0x800979D8` evaluates held state and ring-1 buffer `0x800BCE84`. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-INP-05** | Attract Mode Parity | Demos reproduce recorded input streams from ROM without desync. | `PARTIAL` / `OPEN_RESIDUALS` |
-| **REQ-INP-06** | Camera Inversion Modes | Supports independent axis inversion for standard, 3rd, and 1st-person. | `IMPLEMENTED` / `VALIDATED` |
+| **REQ-INP-06** | Camera Inversion Modes | Supports independent axis inversion for standard, 3rd, and 1st-person. | `UI_DISABLED` / `NOT_IMPLEMENTED_BT_CONSUMER` |
 
 ---
 
@@ -76,6 +76,7 @@ Banjo-Tooie Player Physics & Attract Demo Engine
 - `recomp_get_gyro_deltas(uint8_t* rdram, recomp_context* ctx)`: Exposes host motion controls for first-person aiming.
 - `recomp_get_mouse_deltas(uint8_t* rdram, recomp_context* ctx)`: Exposes raw mouse delta input.
 - `recomp_get_inverted_axes(...)`: Returns inversion flags based on user configuration (`banjo::CameraInvertMode`).
+  - *Consumer Integration Status*: While the host-side hook and configuration schema exist, Banjo-Tooie does not yet feature the guest-side consumer hooks required for camera inversion, analog camera control, or camera sensitivity. Because this requires a non-trivial Banjo-Tooie engine integration, these options are disabled in the user interface (`UI_DISABLED / NOT_IMPLEMENTED_BT_CONSUMER`, see `src/game/config.cpp` and [[../../plan/evidence/p08-settings-functionality-20261019]]).
 
 ---
 

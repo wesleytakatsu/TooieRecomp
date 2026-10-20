@@ -8,6 +8,8 @@
 #include "ultramodern/config.hpp"
 #include "librecomp/files.hpp"
 #include "librecomp/config.hpp"
+#include "tooie_menu_policy.h"
+#include "tooie_bgm_volume.h"
 #include "util/file.h"
 #include <filesystem>
 #include <fstream>
@@ -35,9 +37,10 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::note_saving_mode,
         "Note & Jinjo Saving",
-        "Saves collected notes and jinjos so that you don't need to collect them again when revisiting a level. <recomp-color primary>Both</recomp-color> is the default, while <recomp-color primary>off</recomp-color> matches the original game.<br /><br />Changing this setting will only take effect when entering/exiting a level, or restarting the game.",
+        "Currently unavailable in Banjo-Tooie.",
         note_saving_mode_options,
-        banjo::NoteSavingMode::Both
+        banjo::NoteSavingMode::Off,
+        true
     );
     static EnumOptionVector analog_cam_mode_options = {
         {banjo::AnalogCamMode::Off, "Off", "Off"},
@@ -46,20 +49,15 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::analog_cam_mode,
         "Analog Camera",
-        "Enables the analog camera.",
+        "Currently unavailable in Banjo-Tooie.",
         analog_cam_mode_options,
         banjo::AnalogCamMode::Off
     );
     config.add_number_option(
         banjo::configkeys::general::analog_camera_sensitivity,
         "Analog Camera Sensitivity",
-        "Sets the sensitivity of the right stick analog camera, if enabled.",
+        "Currently unavailable in Banjo-Tooie.",
         1, 10, 1, 0, false, 3
-    );
-    config.add_option_hidden_dependency(
-        banjo::configkeys::general::analog_camera_sensitivity,
-        banjo::configkeys::general::analog_cam_mode,
-        banjo::AnalogCamMode::Off
     );
     static EnumOptionVector camera_invert_mode_options = {
         {banjo::CameraInvertMode::InvertNone, "InvertNone", "None"},
@@ -70,7 +68,7 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::third_person_camera_invert_mode,
         "Invert Camera",
-        "Inverts the camera controls for the third person camera if it's enabled. <recomp-color primary>Invert X</recomp-color> is the default and matches the original game.<br /><br />If analog camera is off, only the <recomp-color primary>Invert X</recomp-color> setting will take effect.",
+        "Currently unavailable in Banjo-Tooie.",
         camera_invert_mode_options,
         banjo::CameraInvertMode::InvertX
     );
@@ -83,7 +81,7 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::first_person_invert_mode,
         "Invert First Person View",
-        "Inverts the camera controls in first person view. <recomp-color primary>Invert Y</recomp-color> is the default and matches the original game.",
+        "Currently unavailable in Banjo-Tooie.",
         first_person_invert_mode_options,
         banjo::CameraInvertMode::InvertY
     );
@@ -96,10 +94,19 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::flying_and_swimming_invert_mode,
         "Invert Flying & Swimming",
-        "Inverts the controls for swimming and flying. <recomp-color primary>Invert Y</recomp-color> is the default and matches the original game.",
+        "Currently unavailable in Banjo-Tooie.",
         flying_and_swimming_invert_options,
         banjo::CameraInvertMode::InvertY
     );
+    for (const char* id : {
+        banjo::configkeys::general::analog_cam_mode.c_str(),
+        banjo::configkeys::general::analog_camera_sensitivity.c_str(),
+        banjo::configkeys::general::third_person_camera_invert_mode.c_str(),
+        banjo::configkeys::general::first_person_invert_mode.c_str(),
+        banjo::configkeys::general::flying_and_swimming_invert_mode.c_str(),
+    }) {
+        config.update_option_disabled(id, true);
+    }
 }
 
 template <typename T = uint32_t>
@@ -117,7 +124,8 @@ banjo::NoteSavingMode banjo::get_note_saving_mode() {
 }
 
 banjo::CameraInvertMode banjo::get_camera_invert_mode() {
-    return get_general_config_enum_value<banjo::CameraInvertMode>(banjo::configkeys::general::camera_invert_mode);
+    // Legacy key is not registered; alias the registered third-person option.
+    return get_third_person_camera_mode();
 }
 
 banjo::CameraInvertMode banjo::get_third_person_camera_mode() {
@@ -146,11 +154,21 @@ T get_graphics_config_enum_value(const std::string& option_id) {
 }
 
 static void add_sound_options(recomp::config::Config &config) {
+    tooie_bgm::set_percent(100);
     config.add_percent_number_option(
         banjo::configkeys::sound::bgm_volume,
         "Background Music Volume",
         "Controls the overall volume of background music.",
         100.0f
+    );
+    // cur_value only. Do not capture Config&: the frontend vector moves it.
+    config.add_option_change_callback(
+        banjo::configkeys::sound::bgm_volume,
+        [](recomp::config::ConfigValueVariant cur, recomp::config::ConfigValueVariant, recomp::config::OptionChangeContext) {
+            if (const auto* percent = std::get_if<double>(&cur)) {
+                tooie_bgm::set_percent(*percent);
+            }
+        }
     );
 }
 template <typename T = uint32_t>
@@ -172,10 +190,11 @@ static void add_graphics_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::graphics::cutscene_aspect_ratio_mode,
         "Cutscene Aspect Ratio",
-        "Sets the aspect ratio limit for cutscenes. Cutscenes have been adjusted to work in <recomp-color primary>16:9</recomp-color>, which is the default option. Wider aspect ratios may show details that weren't meant to be on-screen.",
+        "Currently unavailable in Banjo-Tooie.",
         cutscene_aspect_ratio_mode_options,
         banjo::CutsceneAspectRatioMode::Clamp16x9
     );
+    config.update_option_disabled(banjo::configkeys::graphics::cutscene_aspect_ratio_mode, true);
     config.add_bool_option(
         banjo::configkeys::graphics::show_fps_counter,
         "Show Present FPS",
@@ -188,6 +207,36 @@ static void add_graphics_options(recomp::config::Config &config) {
             tooie::set_fps_overlay_enabled(std::get<bool>(cur_value));
         }
     );
+
+    namespace gfx = recompui::config::graphics::options;
+    using AR = ultramodern::renderer::AspectRatio;
+
+    // Window aspect: queue only on an applied change; the SDL thread (update_gfx) consumes it.
+    config.add_option_change_callback(
+        gfx::ar_option,
+        [](recomp::config::ConfigValueVariant cur_value, recomp::config::ConfigValueVariant, recomp::config::OptionChangeContext ctx) {
+            if (ctx != recomp::config::OptionChangeContext::Permanent) {
+                return;
+            }
+            double target = tooie_menu::window_aspect_target(static_cast<AR>(std::get<uint32_t>(cur_value)));
+            if (target > 0.0) {
+                tooie_menu::request_window_aspect(target);
+            }
+        }
+    );
+
+    // Presentation is forced to 30 (Manual) on every load/change. Config is resolved per call (see policy header).
+    tooie_menu::install_forced_refresh([]() -> recomp::config::Config& { return recompui::config::get_graphics_config(); }, gfx::rr_option, gfx::rr_manual_value);
+
+    const std::string fr_note = "<recomp-color warning>Temporarily capped at 30 FPS in Banjo-Tooie.</recomp-color><br /><br />";
+    config.update_option_enum_details(gfx::rr_option, "Locked to 30 FPS");
+    config.update_option_disabled(gfx::rr_option, true);
+    config.update_option_disabled(gfx::rr_manual_value, true);
+    config.update_option_description(gfx::rr_option, fr_note + "Sets the game's output framerate. This option does not affect gameplay.");
+    config.update_option_description(gfx::rr_manual_value, fr_note + "Sets the game's output framerate. This option does not affect gameplay.");
+
+    config.update_option_disabled(gfx::hr_option, true);
+    config.update_option_description(gfx::hr_option, "Currently unavailable in Banjo-Tooie.");
 }
 
 static void set_control_defaults() {

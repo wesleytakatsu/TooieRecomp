@@ -1,0 +1,46 @@
+diff --git a/recompui/src/config/ui_config_option.cpp b/recompui/src/config/ui_config_option.cpp
+index 86428c9..25ebf63 100644
+--- a/recompui/src/config/ui_config_option.cpp
++++ b/recompui/src/config/ui_config_option.cpp
+@@ -227,6 +227,7 @@ void ConfigOptionNumber::update_value() {
+ void ConfigOptionNumber::update_disabled() {
+     bool disabled = get_disabled();
+     set_enabled(!disabled);
++    slider->set_enabled(!disabled);
+ };
+ 
+ // ConfigOptionString
+diff --git a/recompui/src/config/ui_config_page_options_menu.cpp b/recompui/src/config/ui_config_page_options_menu.cpp
+index 6ba64e2..60819a4 100644
+--- a/recompui/src/config/ui_config_page_options_menu.cpp
++++ b/recompui/src/config/ui_config_page_options_menu.cpp
+@@ -148,6 +148,15 @@ void ConfigPageOptionsMenu::render_confirmation_footer() {
+ }
+ 
+ void ConfigPageOptionsMenu::on_set_option_value(const std::string &option_id, recomp::config::ConfigValueVariant value) {
++    // Disabled options must not change through any widget path (mouse, drag, navigation). Snap the widget back.
++    auto &options_by_id = config->get_config_schema().options_by_id;
++    auto option_it = options_by_id.find(option_id);
++    if (option_it != options_by_id.end() && config->is_config_option_disabled(option_it->second)) {
++        if (auto *element = get_element_from_option_id(option_id)) {
++            element->update_value();
++        }
++        return;
++    }
+     config->set_option_value(option_id, value);
+     if (config->requires_confirmation && apply_button != nullptr) {
+         apply_button->set_enabled(config->is_dirty());
+diff --git a/recompui/src/elements/ui_slider.cpp b/recompui/src/elements/ui_slider.cpp
+index 7a50da4..faef7cd 100644
+--- a/recompui/src/elements/ui_slider.cpp
++++ b/recompui/src/elements/ui_slider.cpp
+@@ -236,6 +236,9 @@ namespace recompui {
+     }
+ 
+     void Slider::do_step(bool increment) {
++        if (!is_enabled()) {
++            return;
++        }
+         double new_value = value;
+         if (increment) {
+             new_value += step_value;

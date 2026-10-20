@@ -126,6 +126,8 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
     ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_rsp_endpoint_current.cpp
@@ -435,6 +437,39 @@ target_link_libraries(window_display_test PRIVATE
 )
 set_target_properties(window_display_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# Tooie menu/window policy (forced 30, window aspect sizing, Resolution enum/JSON).
+add_executable(tooie_menu_policy_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_menu_policy_test.cpp
+)
+target_include_directories(tooie_menu_policy_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+)
+set_target_properties(tooie_menu_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Real librecomp Config integration (loaded 240 -> 30, registry reallocation, load callback, saved JSON).
+add_executable(tooie_menu_config_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_menu_config_test.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_menu_config_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/include
+    ${N64MR}/thirdparty
+    ${N64MR}/thirdparty/concurrentqueue
+    ${N64MR}/thirdparty/miniz
+    ${N64MR}/N64Recomp/include
+    ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz
+)
+set_target_properties(tooie_menu_config_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 # T_INTRO projection-policy regression: proves source aspect comes from the
 # cinematic matrix and rejects the old VI 304/228 compensation at 16:9.
 add_executable(tintro_projection_policy_test
@@ -596,3 +631,26 @@ target_link_libraries(tooie_audio_capture_test PRIVATE
     Threads::Threads
 )
 set_target_properties(tooie_audio_capture_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_bgm_volume_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_bgm_volume_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
+)
+target_include_directories(tooie_bgm_volume_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(tooie_bgm_volume_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_bgm_hooks_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_bgm_hooks_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
+)
+target_include_directories(tooie_bgm_hooks_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+)
+target_compile_options(tooie_bgm_hooks_test PRIVATE
+    -fno-strict-aliasing
+)
+set_target_properties(tooie_bgm_hooks_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

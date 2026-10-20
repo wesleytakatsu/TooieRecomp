@@ -46,7 +46,7 @@ Optional provenance tags: `STATIC_ROM`, `STATIC_MIPS`, `RUNTIME_CPU`,
 - [[systems/resource-system]] / [[systems/animation]] /
   [[systems/secondary-animation]] / [[systems/model-renderer]] /
   [[systems/geocmd]] / [[systems/transform-interpolation]] /
-  [[systems/overlays]]
+  [[systems/overlays]] / [[systems/audio-sequence-volume]]
 - [[p09-v3-real-guest-matrix-match]] — distilled V3 guest-matrix proof; its temporal seam is superseded by the V4 real-match witness.
 - [[characters/kazooie]] — live `0x62B` right/left plumes + crest DLs; V7 VERSION=3 admits all 14; downstream closed; guest compose `parent⊗child` XYZW; clip/sample time open
 - [[systems/geocmd]] — compact DCF48 + type-0x11/`0x18`; plume GeoCmd parent 107

@@ -44,6 +44,7 @@ SDL2 Audio Device Sink (SDL_QueueAudio, src/main/main.cpp (queue_samples/reset_a
 | **REQ-AUD-04** | SoundManager Delta Events| SoundManager delta queue processes event dismissals on schedule. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-AUD-05** | Audio Glitch Resolution | Eliminate intermittent "tic tic" popping artifact. | `PARTIALLY VALIDATED` (Intro fix confirmed; global campaign UNTESTED) |
 | **REQ-AUD-06** | Soak & Buffer Stability | P07-T07 soak test detects underrun, drift, and buffer leak. | `PENDING` / `UNTESTED` |
+| **REQ-AUD-07** | BGM Volume Control | Scale sequence player volume linearly (0–100%) via single-scale wrapper and live fade updates without mutating authored fades in RDRAM. | `IMPLEMENTED` / `VALIDATED (SCOPED)` |
 
 ---
 
@@ -89,6 +90,22 @@ SDL2 Audio Device Sink (SDL_QueueAudio, src/main/main.cpp (queue_samples/reset_a
   - In TooieRecomp, `func_800C2AB8` yields CPU execution via `ultramodern::yield_self_1ms()`.
   - Without this yield, `Thread 4` starves, `table[2].word0` is never cleared, `func_8001EE34` stays pending, and Slot 7 events dead-end (`p08-slot7-scheduled-event-validation.md`).
 
+### 3.4 BGM Sequence Player Volume Contract (`include/tooie_bgm_volume.h`, `include/tooie_bgm_hooks.h`)
+- **Memory Layout & Game Structures**:
+  - Six sequence players located at `0x80079FA0` (stride `0x274`, `seqp = player + 0x1E0`).
+  - Authored master volume (`int16_t`) stored at `player + 0x0`.
+  - Six music tracks located at `0x801357D0` (stride `0x50`). Active track id (`int16_t`) at `track + 0x28` (`< 0` indicates inactive/cleared track).
+- **Event Dispatch Paths**:
+  - Music sequence player: `func_80025ED0` (`AL_SEQP_VOL_EVT`, event type 10).
+  - Sound effect player: `func_80020BE0` (event type 3) — left untouched.
+- **Lookup Overrides (`src/game/boot_hw_stubs.cpp`)**:
+  - `0x80025ED0` -> `tooie_bgm_on_csp_set_vol`: Scales incoming `r5` once if `r4` matches one of the 6 known sequence player pointers (`tooie_bgm::slot_for_seqp`), replacing with `apply_unscaled(authored, percent)`. Unknown `seqp` passes through unmodified.
+  - `0x800FB968` -> `tooie_bgm_on_update`: Runs after original `func_800FB968`. For active tracks (`track + 0x28 >= 0`), reads unscaled volume from `player + 0x0` and reposts scaled volume via original `func_80025ED0` using a local copy of `recomp_context` strictly when live target gain changed. Steady 100% emits zero extra events. Authored fades are never mutated in RDRAM.
+- **Launcher Preview IPC**:
+  - Linux launcher preview child process connects via datagram `socketpair` (`CLOEXEC`). Child dups read fd to `stdin` (fd 0) with `SO_TYPE` validation (`SOCK_DGRAM`). Parent 5ms monitor loop sends 1 byte only on percent change (`MSG_NOSIGNAL`). Child `update_gfx` drains atomic gain.
+- **Verification**:
+  - Validated by unit tests (`tooie_bgm_volume_test`, `tooie_bgm_hooks_test`) and acoustic captures via owned null sink `tooie_bgm_menu_qa` (preview 100/0/50/100 restored) and live in-game dynamic restoration (0 to 100 without restart).
+
 ---
 
 ## 4. Operational Defect Status: Audio Deferral and Testing Scope
@@ -106,3 +123,7 @@ SDL2 Audio Device Sink (SDL_QueueAudio, src/main/main.cpp (queue_samples/reset_a
    - REQ-AUD-05 is partially validated for intro playback; full-game audio campaign parity remains UNTESTED.
    - P07-T06 remains partially validated.
    - Task `P07-T07` soak testing (measuring buffer drift, underrun frequency, and long-term queue stability during sustained execution) remains **PENDING / UNTESTED**.
+
+3. **BGM Volume Control Validation Scope**:
+   - Sequence player volume attenuation (0–100%) is verified in unit tests, launcher preview IPC, and live in-game restoration.
+   - Scope boundaries: Static sequence players 0..5, tracks 0..5, and CSP event 10 are PROVEN. Whether all character voice clips route through sequence players or SoundPlayer remains `UNKNOWN`; SoundPlayer path (`80020BE0`) is left untouched. On 2026-10-20 the user confirmed only effects/voices in the tested final demo clip with BGM at 0% (`USER_OBSERVED / USER_CONFIRMED_FOR_TESTED_DEMO_CLIP`); global audio parity is NOT claimed.

@@ -1,0 +1,100 @@
+diff --git a/recompui/src/config/ui_config_tab_graphics.cpp b/recompui/src/config/ui_config_tab_graphics.cpp
+index 4fdf81f..bb80863 100644
+--- a/recompui/src/config/ui_config_tab_graphics.cpp
++++ b/recompui/src/config/ui_config_tab_graphics.cpp
+@@ -22,6 +22,8 @@ namespace recompui {
+         static EnumOptionVector resolution_options = {
+             {ultramodern::renderer::Resolution::Original, "Original", "Original"},
+             {ultramodern::renderer::Resolution::Original2x, "Original2x", "Original 2x"},
++            {ultramodern::renderer::Resolution::Original3x, "Original3x", "Original 3x"},
++            {ultramodern::renderer::Resolution::Original4x, "Original4x", "Original 4x"},
+             {ultramodern::renderer::Resolution::Auto, "Auto", "Auto"},
+         };
+ 
+@@ -96,25 +98,19 @@ namespace recompui {
+         };
+ 
+         static const std::string get_downsampling_details(ultramodern::renderer::Resolution res_option, DownsamplingOption ds_option) {
++            int base;
+             switch (res_option) {
+-                default:
+-                case ultramodern::renderer::Resolution::Auto:
+-                    return "Downsampling is not available at auto resolution";
+-                case ultramodern::renderer::Resolution::Original:
+-                    if (ds_option == DownsamplingOption::X2) {
+-                        return "Rendered in 480p and scaled to 240p";
+-                    } else if (ds_option == DownsamplingOption::X4) {
+-                        return "Rendered in 960p and scaled to 240p";
+-                    }
+-                    return "";
+-                case ultramodern::renderer::Resolution::Original2x:
+-                    if (ds_option == DownsamplingOption::X2) {
+-                        return "Rendered in 960p and scaled to 480p";
+-                    } else if (ds_option == DownsamplingOption::X4) {
+-                        return "Rendered in 4K and scaled to 480p";
+-                    }
+-                    return "";
++                case ultramodern::renderer::Resolution::Original: base = 1; break;
++                case ultramodern::renderer::Resolution::Original2x: base = 2; break;
++                case ultramodern::renderer::Resolution::Original3x: base = 3; break;
++                case ultramodern::renderer::Resolution::Original4x: base = 4; break;
++                default: return "Downsampling is not available at auto resolution";
++            }
++            int ds = static_cast<int>(ds_option);
++            if (ds < 2) {
++                return "";
+             }
++            return "Rendered in " + std::to_string(240 * base * ds) + "p and scaled to " + std::to_string(240 * base) + "p";
+         }
+ 
+         using OptionChangeContext = recomp::config::OptionChangeContext;
+@@ -235,7 +231,7 @@ namespace recompui {
+             config.add_enum_option(
+                 graphics::options::res_option,
+                 "Resolution",
+-                "Sets the output resolution of the game. <recomp-color primary>Original</recomp-color> matches the game's original 240p resolution. <recomp-color primary>Original 2x</recomp-color> will render at 480p. <recomp-color primary>Auto</recomp-color> will scale based on the game window's resolution.",
++                "Sets the output resolution of the game. <recomp-color primary>Original</recomp-color> matches the game's original 240p resolution. <recomp-color primary>Original 2x</recomp-color>, <recomp-color primary>3x</recomp-color> and <recomp-color primary>4x</recomp-color> render at 480p, 720p and 960p. <recomp-color primary>Auto</recomp-color> will scale based on the game window's resolution.",
+                 resolution_options,
+                 ultramodern::renderer::Resolution::Auto
+             );
+@@ -252,10 +248,10 @@ namespace recompui {
+             config.add_enum_option(
+                 graphics::options::ds_option,
+                 "Downsampling Quality",
+-                "Renders at a higher resolution and scales it down to the output resolution for increased quality. Only available in <recomp-color primary>Original</recomp-color> and <recomp-color primary>Original 2x</recomp-color> resolution."
++                "Renders at a higher resolution and scales it down to the output resolution for increased quality. Not available in <recomp-color primary>Auto</recomp-color> resolution. It multiplies the selected Original resolution."
+                 "<br />"
+                 "<br />"
+-                "Note: <recomp-color primary>4x</recomp-color> downsampling quality at <recomp-color primary>Original 2x</recomp-color> resolution may cause performance issues on low end devices, as it will cause the game to render <recomp-color warning>at almost 4k internal resolution</recomp-color>.",
++                "Note: high downsampling quality combined with high Original resolutions may cause performance issues on low end devices, as the internal resolution is the product of both.",
+                 downsampling_options,
+                 DownsamplingOption::Off
+             );
+diff --git a/recompui/src/renderer/rt64_render_context.cpp b/recompui/src/renderer/rt64_render_context.cpp
+index a7954c7..8103cb2 100644
+--- a/recompui/src/renderer/rt64_render_context.cpp
++++ b/recompui/src/renderer/rt64_render_context.cpp
+@@ -146,15 +146,17 @@ void set_application_user_config(RT64::Application* application, const ultramode
+             application->userConfig.downsampleMultiplier = 1;
+             break;
+         case ultramodern::renderer::Resolution::Original:
+-            application->userConfig.resolution = RT64::UserConfiguration::Resolution::Manual;
+-            application->userConfig.resolutionMultiplier = std::max(config.ds_option, 1);
+-            application->userConfig.downsampleMultiplier = std::max(config.ds_option, 1);
+-            break;
+         case ultramodern::renderer::Resolution::Original2x:
++        case ultramodern::renderer::Resolution::Original3x:
++        case ultramodern::renderer::Resolution::Original4x: {
++            // Base scale 1x..4x; downsampling is a multiplier on top of it.
++            int base = config.res_option == ultramodern::renderer::Resolution::Original ? 1 : config.res_option == ultramodern::renderer::Resolution::Original2x ? 2 : config.res_option == ultramodern::renderer::Resolution::Original3x ? 3 : 4;
++            int ds = std::max(config.ds_option, 1);
+             application->userConfig.resolution = RT64::UserConfiguration::Resolution::Manual;
+-            application->userConfig.resolutionMultiplier = 2.0 * std::max(config.ds_option, 1);
+-            application->userConfig.downsampleMultiplier = std::max(config.ds_option, 1);
++            application->userConfig.resolutionMultiplier = base * ds;
++            application->userConfig.downsampleMultiplier = ds;
+             break;
++        }
+     }
+ 
+     switch (config.hr_option) {

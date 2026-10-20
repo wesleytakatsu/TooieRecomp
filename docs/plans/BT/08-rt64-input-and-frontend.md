@@ -7,11 +7,54 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-10-19
-tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, attract, demo1, demo7, drift, fire-egg, movement-parity]
+updated: 2026-10-20
+tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, attract, demo1, demo7, drift, fire-egg, movement-parity, menu, settings, config, forced-refresh, resolution, aspect-ratio]
 ---
 
 # BT P08 — RT64, entrada e frontend
+
+## Menu settings functionality, policy enforcement, window management & BGM volume (2026-10-19)
+
+Evidência canónica: [[../../plan/evidence/p08-settings-functionality-20261019]].
+Tarefa delimitada de configurações e volume BGM concluída com sucesso (`BOUNDED_TASK_COMPLETED`). Ajustes de política de menu, proteção de opções desabilitadas com correção de estilo numérico, resoluções 3x/4x, redimensionamento automático de janela, canal IPC de preview e controle de volume BGM integrados e validados. O portão de controles de P08 permanece pendente; sem encerramento global da fase.
+
+- **Canonical Tested Base & Escopo (PROVEN)**:
+  - HEAD base testada: `d4d1074016a819d7150923c2b19a91e69889b7a9`. Commit e push deste checkpoint explicitamente autorizados pelo usuário em 2026-10-20.
+  - Submódulos e tooling locais protegidos dirty (`RecompFrontend` `d0d90ba`, `N64ModernRuntime` `ca568b6`). Sem edições manuais em arquivos gerados ou recompilados.
+- **Ajustes de Política de Menu Autorizados pelo Usuário (PROVEN)**:
+  - *Note & Jinjo Saving*: Removido da interface gráfica de forma segura (`hidden = true`, default `Off`, schema de configuração mantido para compatibilidade).
+  - *Opções Desabilitadas (Integração Não-Trivial BT)*: Opções sem suporte downstream direto no guest engine Tooie foram desabilitadas na UI com a descrição `"Currently unavailable in Banjo-Tooie."` (`UI_DISABLED / NOT_IMPLEMENTED_BT_CONSUMER`): Câmera Analógica, Sensibilidade, 3 Inversões de Eixo (Terceira Pessoa, Primeira Pessoa, Nado/Voo), Proporção de Cutscenes e Posicionamento do HUD (`hr_option`, HUD Placement). Testes de arrasto real mantêm Sensibilidade 3, Framerate 30 e Câmera Analógica Desligada.
+  - *Trava de 30 FPS*: Taxa de quadros forçada para `Manual` 30 FPS (`tooie_menu::kForcedRefreshRate = 30`). Opção na UI desabilitada com aviso de cap temporário. Classificação: cap decorrente de política do usuário pelo uso do paliativo `tfPos` CURRENT (que repete poses de vértices acima de 30 Hz); o RT64 possui capacidade técnica de apresentar a 60+ Hz, não se tratando de limitação de falta de suporte a 60 Hz.
+  - *Resoluções 3x e 4x com Downsampling Multiplicativo*: `Original3x` (base 720p) e `Original4x` (base 960p) adicionadas ao runtime e frontend. Fatores de downsampling multiplicam a base selecionada (ex: 3x com DS 2x renderiza a 1440p e reduz para 720p). Resolução `Auto` utiliza escalonamento inteiro de VI de janela (não adaptativo de framerate) e desativa downsampling.
+  - *Redimensionamento de Janela por Proporção (Preferência Confirmada do Usuário)*: Selecionar `Original` (4:3) ou `Expand` (16:9) redimensiona a janela em modo janela mantendo a altura atual (1600x900 -> 1200x900 -> 1600x900 mantendo 900) e limitando a largura às dimensões úteis do display (subtraindo bordas/decorações via `SDL_GetWindowBordersSize`). Em modo tela cheia, a solicitação de redimensionamento é ignorada.
+- **Diagnóstico e Resolução de Defeito Real no App (CORRECTED / PROVEN)**:
+  - *Sintoma*: Configurações antigas salvas com `rr_manual_value: 240` permaneciam a 240 FPS; opções numéricas desabilitadas podiam ser incrementadas (ex: sensibilidade 3 -> 9).
+  - *Refutação da Hipótese de Haiku*: Hipótese de risco de ordem de carga REFUTADA como incorreta/incompleta.
+  - *Causa Raiz Comprovada*: Realocação de vetor em `recompui`. O frontend armazena as configurações em um `std::vector<std::pair<std::string, Config>>`. Ao registrar abas subsequentes, o vetor realocou memória, transformando a referência `Config&` capturada em um ponteiro dangling!
+  - *Correção*: `tooie_menu::install_forced_refresh` resolve `recompui::config::get_graphics_config()` dinamicamente a cada execução. Patch `recompfrontend-disabled-option-guard.patch` bloqueia alterações via `Slider::do_step` e `ConfigPageOptionsMenu::on_set_option_value`. Adicionalmente, `ConfigOptionNumber::update_disabled` agora chama `slider->set_enabled(!disabled)` corrigindo o estilo numérico desabilitado (sessão final Haiku `a7c1b458-e32c-4f51-9d80-eaf5f6b57aef` exit 0 VISUALPASS em `general-disabled-final.png` e `graphics-locked-final.png`; interação por root).
+  - *Teste de Regressão*: `tests/tooie_menu_config_test.cpp` simula realocações com 16 configurações fictícias e comprova leitura de 240 forçada para 30 em temp, permanent e save.
+- **Thread Safety de Janela SDL (PROVEN)**:
+  - Callbacks da interface gráfica não chamam funções SDL diretamente; apenas enfileiram a proporção em um slot atômico (`tooie_menu::request_window_aspect`).
+  - A thread de eventos SDL consome a requisição dentro de `update_gfx` (`src/main/main.cpp`), garantindo ausência de concorrência ou deadlocks.
+- **Build e Testes Automatizados (PROVEN)**:
+  - Compilação completa: `cmake --build build --target TooieRecompiled tooie_bgm_volume_test tooie_bgm_hooks_test tooie_menu_policy_test tooie_menu_config_test -j2` exit 0 (13.1s).
+  - Binário SHA256: `e2059b516a90f09e50e77f0622218014798f6a155f6ffe0d2b6a66735427f9f9`.
+  - Execução de testes: todos os 4 testes PASS exit 0 (`tooie_menu_policy_test`, `tooie_menu_config_test`, `tooie_bgm_volume_test`, `tooie_bgm_hooks_test`).
+- **Evidência Visual, Launcher Preview IPC e Áudio em Runtime (PROVEN)**:
+  - Execução isolada fora do repositório com `APP_FOLDER_PATH=/home/wesley/.cache/tooie-menu-settings-20261019/config` (hashes originais preservados).
+  - Processo filho de preview do launcher conectado via `socketpair` datagrama nonblocking `CLOEXEC` (dup stdin 0 com validação `SO_TYPE`, monitor pai 5ms com envio de 1 byte via `MSG_NOSIGNAL`).
+  - Áudio prático validado com null sink `tooie_bgm_menu_qa` em `/home/wesley/.cache/tooie-menu-settings-20261019/`:
+    - Preview de menu (mesmo processo filho ativo): `preview-100.wav` (RMS .0522), `preview-0-real.wav` (RMS .0000017, peak 1 LSB), `preview-50-real.wav` (RMS .0167), `preview-100-restored.wav` (RMS .0373).
+    - Restauração ao vivo em gameplay (sem reiniciar): `game-0.wav` (RMS 0, peak 0) -> `game-100-restored.wav` (RMS .0528, peak .3998).
+    - Disciplina epistêmica: Músicas variam entre passagens; não alegar proporção exata de 50% em PCM; atenuador linear verificado nos testes unitários. Capturas iniciais com clique renomeadas para `preview-*-ui-not-applied.wav` (inválidas). Vozes em sequence player permanecem UNKNOWN; SoundPlayer intocado; sem alegação de paridade global de áudio. Módulo null sink 536870913 descarregado.
+- **Patches Versionados e Aplicador**:
+  - Três patches registrados em `tools/apply_runtime_patches.sh`: `n64modernruntime-resolution-3x-4x.patch` (`6955ca32...`), `recompfrontend-resolution-3x-4x.patch` (`60eb3140...`) e `recompfrontend-disabled-option-guard.patch` (`9298ec60...` superando hash 867 anterior).
+  - Replay em fixture de base limpa verificado exit 0 em apply e reverse. Script completo live NOT_RUN. Revisão estática Sonnet `c4500e0c-e5c9-4b1b-bcf4-5a054a8fe733` exit 0 (sem bloqueadores no escopo; processo 143 descartado, não cota).
+- **Integração de BGM no Guest de BT (PROVEN)**:
+  - Contrato BT: 6 players em `0x80079FA0` (stride `0x274`, `seqp+0x1E0`), volume s16 em `player+0`, 6 tracks em `0x801357D0` (stride `0x50`, id s16 em `+0x28`). Despacho CSP `80025ED0` (tipo 10, música) vs SoundPlayer `80020BE0` (tipo 3, SFX).
+  - Overrides registrados em `boot_hw_stubs.cpp`: `tooie_bgm_on_csp_set_vol` (`80025ED0`) escala uma única vez os 6 seqps conhecidos; `tooie_bgm_on_update` (`800FB968`) atualiza live gain pós-fade usando cópia local de contexto apenas quando alterado (zero eventos em 100% constante; fades originais intactos).
+- **User confirmation (2026-10-20, USER_OBSERVED / USER_CONFIRMED_FOR_TESTED_DEMO_CLIP)**: with BGM at 0% in `final-game-0.wav`, user reported “Apenas efeitos/vozes”. Music removal and preserved effects/voices confirmed for this clip; campaign-wide voice classification remains UNKNOWN.
+- **Next Single Action**: `verify published HEAD against origin/main after authorized push`.
 
 ## Host launcher Banjo-Tooie wordmark & asset isolation (2026-10-19)
 
