@@ -36,6 +36,7 @@ Sob a arquitetura standalone da P10, todas as fontes necessárias de decompilaç
 | 08 | [[08-rt64-input-and-frontend]] | renderização, entrada e UI integradas | active |
 | 09 | [[09-gameplay-parity-and-enhancements]] | campanha e timing aprovados | pending |
 | 10 | [[10-linux-packaging-and-release]] | release Linux reproduzível | pending |
+| 11 | [[11-windows-native-build]] | build nativo Windows 11 x64 sem WSL | active |
 
 ## Convenções
 
@@ -182,3 +183,7 @@ Investigação causal de interpolação articulada (iteração 3): Mecanismo A (
 ### Nota P10 (2026-10-21)
 
 Auditoria de clonagem limpa e empacotamento para Windows 11 x64 e Linux: (**SUPERSEDED 2026-10-21 pelo projeto standalone e pipeline kit-free**: `tools/deps.lock`/`bootstrap_deps.sh` aposentados; dependências vendorizadas em `lib/`/`decomp/`/`assets/`, ver [[plan/evidence/p10-standalone-vendor-20261021]] e [[plan/evidence/p10-kitfree-generation-and-ui-restoration-20261021]]) dependências vendorizadas no repositório como arquivos regulares; pacote Linux final verificado `TooieRecompiled-linux-x86_64-73bfd43-dirty-private-local.tar.gz` (SHA-256 `4f702d2ba0a0472345f6f1317bfe75eb0df462e96b2352d6d875edaa5c4ebcf9`, 104 arquivos regulares, verify 0, UI exata, zero ROM, preflight kit-free exit 0; binário `0cfcd792…` com rebuild da UI restaurada exit 0 e visual do launcher inspecionado com exit 0; supersedendo os interinos `b6475879…`, `64f130aa…` e `a327666f…`). Prova limpa kit-free (neutral 5c2) separada do build da UI restaurada. Windows 11 x64 classificado como `WINDOWS_BUILD_PENDING_NATIVE_HOST` (sem binário PE do jogo; TUs cross-host falharam em limites de cabeçalhos de terceiros; configure WIN32 passou; requer host nativo com VS 2022 Build Tools [clang-cl] e Windows 11 SDK; suporte a transferência direta de código gerado sem WSL2). P10 e P09 seguem **`pending / abertos`**; o gate técnico de interpolação permanece FAILED. Detalhe: [[10-linux-packaging-and-release]] e [[../../plan/evidence/p10-kitfree-generation-and-ui-restoration-20261021]].
+
+### Nota P11 (2026-10-22)
+
+Fase aberta para o pipeline de build nativo independente no Windows 11 x64 sem WSL. Tarefas W0.1 (verificação das CLIs) e W0.3 (clone LF em `E:\projetos\TooieRecomp-win`, HEAD `b59ddae`) concluídas. O status Windows permanece `WINDOWS_BUILD_PENDING_NATIVE_HOST` até a conclusão e validação dos estágios nativos. Detalhe: [[11-windows-native-build]].

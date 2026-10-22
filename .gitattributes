@@ -1,3 +1,6 @@
+# Force LF for every text file so Windows clones (core.autocrlf=true) stay byte-stable. Later rules override.
+* text=auto eol=lf
+
 # Preserve upstream whitespace in patch context; validate applied source on replay.
 /vendor/patches-*/**/*.patch whitespace=-blank-at-eol,-blank-at-eof
 

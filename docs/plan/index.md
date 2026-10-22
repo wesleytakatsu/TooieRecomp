@@ -82,6 +82,7 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; USER_DEMO_4 `0x800979D8 → BCE84 → P60 → ncbapivot` helper chain proven in bounded paired scope; USER_DEMO_1/5 movement residuals remain open; `ANGRYLION_CONTROL` in `tools/oracle/angrylion-control/` ([[../specs/BT/angrylion-control-oracle]]); manual validation pending |
 | Interpolação P09 | **pending** | investigação causal ativa; opção Interpolation no menu ESC integrada e persistida; gate técnico Haiku 5.5 reprovado (FAILED); padrão estrito CURRENT/30 |
 | Empacotamento P10 | **pending** | **standalone**: dependências vendorizadas em `lib/`/`decomp/`/`assets/` (proveniência em `vendor/`; pipeline kit-free provado com 420 arquivos idênticos, 1159 passos e 8 testes PASS; UI restaurada concluída com binário `0cfcd792…` exit 0; pacote Linux final `4f702d2b…` com 104 arquivos verificado exit 0); Windows 11 x64 classificado `WINDOWS_BUILD_PENDING_NATIVE_HOST` |
+| Build Windows P11 | **active** | pipeline nativo no Windows 11 x64 sem WSL e sem checkouts externos; plano aprovado em [[../plans/BT/11-windows-native-build|11-windows-native-build]] |
 
 O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream histórico de decompilação.
 No TooieRecomp standalone, essas fontes residem vendorizadas diretamente em `decomp/`.
