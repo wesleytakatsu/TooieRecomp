@@ -62,7 +62,6 @@ extern char** environ;
 #include "tooie_diag.h"
 #include "tooie_audio_capture.h"
 #include "tooie_bgm_volume.h"
-#include "tooie_rsp_endpoint_current.h"
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
 #include "tooie_error.h"
@@ -1266,16 +1265,6 @@ int main(int argc, char** argv) {
     // Register the .rtz texture pack file format with the previous content type as its only allowed content type.
     recomp::mods::register_mod_container_type("rtz", std::vector{ texture_pack_content_type_id }, false);
 
-    // Before recomp::start / ultramodern::preinit / any guest OSThread.
-    // Renderer init runs inside recomp::start. RT64 caches this flag on first
-    // getenv, so the default has to be installed before that start. setenv
-    // failure is printed and startup continues, same as other non-fatal
-    // startup warnings; the cached flag then stays off until the next launch.
-    if (tooie_rsp_endpoint_current::apply_default_before_renderer_init() ==
-        tooie_rsp_endpoint_current::ApplyResult::SetenvFailed) {
-        std::fprintf(stderr,
-                     "[tooie] rsp endpoint current workaround: continuing without the default\n");
-    }
     activate_tooie_guest_preemption();
     tooie_audio_capture::init_from_env();
 

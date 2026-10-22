@@ -4,13 +4,97 @@ description: "Articulated WORLD attachments break under decomposed lerp; a gener
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-16
-tags: [reverse-engineering, interpolation, rt64]
+updated: 2026-10-21
+tags: [reverse-engineering, interpolation, rt64, grok-quota, plume-patch, technical-gate]
 ---
 
 # Transform interpolation
 
-## Current (2026-10-16) — Tooie-only default-ON workaround (Phase 1)
+## Current (2026-10-21) — Continuação pós-cota Grok, diagnóstico ong2, cadeia de 7 patches e gate técnico Haiku 5.5
+
+Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]], `/home/wesley/.cache/tooie-glitch-doc-audit-and-fix/` (`continuation-status.json`, `technical-sonnet-report.md`, `technical-haiku-review.md`, `technical-gate.json`).
+Inspeção visual direta do burst F8 (`interpolated-burst-20261020-175030/`, peso 0.5, 60/30 Hz) e pares casados na GPU (`runs/off1..off3` vs `runs/on1..on8` e série limpa `cp_pair_1628_1623.png`):
+- `PROVEN_RENDERED_DEFECT`: Hastes finas alaranjadas/amarelas ("rods") estendendo-se da crista da cabeça da Kazooie (`image_001`…`016`, wl 1604, 1619, 1621, 1625, 1628, 1635).
+- `PROVEN_RENDERED_DEFECT`: Faixa/prisma triangular azul pontiagudo saindo da borda superior esquerda da mochila do Banjo em `image_018.png` (wl 1889 e wl 1890).
+
+Discriminação causal e classificação formal atualizada:
+- **Mecanismo A (Portão AUTO com amplificação de cosseno antes da tolerância): `PROVEN`** (`STATIC_SOURCE` e `RUNTIME_CPU`). Em `RT64/src/hle/rt64_rigid_body.cpp:30-34`, `curVelMag /= dotCurVel` executa antes de checar `VelocityTolerance=5`. Com `dotCurVel` limitado a $10^{-6}$ para curvas $\ge 90^\circ$, reversões ou mudanças de direção na oscilação esquelética inflam artificialmente a magnitude da velocidade, desarmando `lerpTranslation = false`. A matriz fica retida no valor `CURRENT`, mas seus vértices rotacionam via slerp ao redor da origem de `CURRENT`, enquanto os ossos vizinhos interpolam a translação PREV-CUR. Triângulos跨-WORLD esticam em hastes ("rods"), e peças rígidas desacopladas (faixa da mochila) voam para fora da trajetória. No run OFF, 38.6% das linhas retidas possuem velocidade bruta $< 5$.
+- **Correção no Owning Layer (`PROVEN` estrutural / `PASS` unitário)**: Introduzido `lerpTranslationSpeedOnly` em `rt64_rigid_body.{h,cpp}`, avaliando o mesmo portão sobre velocidades lineares puras. Em `rt64_p09_world_interpolation_guard.h` (e `rt64_p09_translation_coherence.h::gateSpeedOnlyEnabled`), matrizes WORLD retidas exclusivamente pela amplificação por cosseno são liberadas para interpolação. Spikes reais de velocidade ($\ge 10\times$ e $\ge 5$ unidades) continuam retidos.
+- **Mecanismo B (Fechamento articular por recuo elementwise): `HYPOTHESIS / CLASS-LEVEL HEURISTIC`**. A interpolação linear elemento a elemento (`lerpMatrix`) garante que vértices permaneçam dentro da combinação convexa dos endpoints (evitando separação de juntas), mas não é rígida (encolhe sutilmente o osso sob rotações grandes). O acionamento sob `1.25 * refLength + 1.0` é um controle heurístico a nível de classe, não um modelo físico exato de restrição óssea.
+- **Correção da mochila (`image_018.png`): `PARTIAL_PROVEN` em GPU**. Pares casados GPU renderizados (`final_backpack_1889_1890.png`) comprovam a recolocação da faixa azul nas costas do Banjo em wl 1889 e wl 1890, restando pequeno resíduo pontual em wl 1890. Não medido continuamente em gameplay.
+- **Correção do plume (`patches/rt64/rt64-plume-texture-to-buffer-copy.patch`, SHA256 `49c218ef`): `PROVEN_SOURCE`**. O código de upstream `plume` suportava apenas cópia buffer->texture; a captura de burst requer texture->buffer via `vkCmdCopyImageToBuffer`. Essa edição local existia desversionada na árvore suja e foi versionada e integrada na cadeia de patches limpos.
+- **Diagnóstico do crash `ong2` (SIGSEGV `rc=-11`): `PROVEN_SOURCE` (teardown race)**. Análise de coredump do PID 1659795 confirmou que o thread hóspede falhou em `unload_overlays` durante a destruição de tabelas estáticas em `exit()` no thread principal (`librecomp/src/recomp.cpp`). É uma corrida de encerramento, independente das guardas. Mitigação aplicada apenas nos scripts de teste.
+- **Identidade anatômica de ossos/recursos: `UNKNOWN`**. As guardas operam estritamente sobre a topologia de triângulos (`faceIndices` e `worldIndices`), sem mapear IDs de ossos ou de modelos.
+- **Estado do Gate Técnico pós-Sonnet (`technical-gate.json`): `passed: false`**. Revisão independente por Claude Haiku 5.5 reprovou o gate devido a 7 bloqueadores concretos: (B1) critério de estiramento zero circular; (B2) escopo mislabeled (a guarda é inerte no caminho padrão de produção CURRENT/30, fix afeta apenas opt-in 60 FPS com FORCE=0); (B3) ausência de par GPU casado de não-jogadores (Klungo, Mumbo/Bottles); (B4) vínculo do crash ong2 a core de árvore suja; (B5) testes unitários não re-executados pós-patch do plume; (B6) distinção das ~14k linhas sujas pré-existentes no checkout de trabalho RT64; e (B7) ausência de teste visual pelo usuário (`USER_OBSERVED`) a 60 FPS. O caminho padrão de produção **permanece estritamente CURRENT/30** (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`).
+
+## Histórico — investigação causal iteração 3 (2026-10-20/21)
+
+Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]], `/home/wesley/.cache/tooie-glitch-cause-and-fix/resumed-cause-and-fix.md`, `resumed-haiku-review.md` e `resumed-gate.json`.
+Inspeção visual direta do burst F8 (`interpolated-burst-20261020-175030/`, peso 0.5, 60/30 Hz) e pares casados na GPU na iteração 3 (`runs/off1..off3` vs `runs/on1..on8`):
+- `PROVEN_RENDERED_DEFECT`: Hastes finas alaranjadas/amarelas ("rods") estendendo-se da crista da cabeça da Kazooie (`image_001`…`016`, wl 1604, 1619, 1621, 1625, 1628, 1635).
+- `PROVEN_RENDERED_DEFECT`: Faixa/prisma triangular azul pontiagudo saindo da borda superior esquerda da mochila do Banjo em `image_018.png` (wl 1889 e wl 1890).
+
+Discriminação causal e classificação formal atualizada (iteração 3):
+- **Mecanismo A (Portão AUTO com amplificação de cosseno antes da tolerância): `PROVEN`** (`STATIC_SOURCE` e `RUNTIME_CPU`). Em `RT64/src/hle/rt64_rigid_body.cpp:30-34`, `curVelMag /= dotCurVel` executa antes de checar `VelocityTolerance=5`. Com `dotCurVel` limitado a $10^{-6}$ para curvas $\ge 90^\circ$, reversões ou mudanças de direção na oscilação esquelética inflam artificialmente a magnitude da velocidade, desarmando `lerpTranslation = false`. A matriz fica retida no valor `CURRENT`, mas seus vértices rotacionam via slerp ao redor da origem de `CURRENT`, enquanto os ossos vizinhos interpolam a translação PREV-CUR. Triângulos跨-WORLD esticam em hastes ("rods"), e peças rígidas desacopladas (faixa da mochila) voam para fora da trajetória. No run OFF, 38.6% das linhas retidas possuem velocidade bruta $< 5$.
+- **Correção no Owning Layer (`PROVEN` estrutural / `PASS` unitário)**: Introduzido `lerpTranslationSpeedOnly` em `rt64_rigid_body.{h,cpp}`, avaliando o mesmo portão sobre velocidades lineares puras. Em `rt64_p09_world_interpolation_guard.h` (e `rt64_p09_translation_coherence.h::gateSpeedOnlyEnabled`), matrizes WORLD retidas exclusivamente pela amplificação por cosseno são liberadas para interpolação. Spikes reais de velocidade ($\ge 10\times$ e $\ge 5$ unidades) continuam retidos.
+- **Mecanismo B (Fechamento articular por recuo elementwise): `HYPOTHESIS / CLASS-LEVEL HEURISTIC`**. A interpolação linear elemento a elemento (`lerpMatrix`) garante que vértices permaneçam dentro da combinação convexa dos endpoints (evitando separação de juntas), mas não é rígida (encolhe sutilmente o osso sob rotações grandes). O acionamento sob `1.25 * refLength + 1.0` é um controle heurístico a nível de classe, não um modelo físico exato de restrição óssea.
+- **Correção da mochila (`image_018.png`): `PARTIAL_PROVEN` em GPU**. Pares casados GPU renderizados (`final_backpack_1889_1890.png`) comprovam a recolocação da faixa azul nas costas do Banjo em wl 1889 e wl 1890, restando pequeno resíduo pontual em wl 1890. Não medido continuamente em gameplay.
+- **Identidade anatômica de ossos/recursos: `UNKNOWN`**. As guardas operam estritamente sobre a topologia de triângulos (`faceIndices` e `worldIndices`), sem mapear IDs de ossos ou de modelos.
+- **Estado do Gate da Iteração 3 (`resumed-gate.json`): `passed: false`**. Revisão independente por Claude Haiku 5.5 reprovou o gate devido a: (1) exits de compilação da iteração 3 não verificados em disco; (2) contradição de saídas de jogo com crash `ong2` `rc=-11` (SIGSEGV) não explicado em attract demo gameplay e 6 runs com `rc=None`; (3) árvore de trabalho contendo código de diagnóstico unversioned (14.263 linhas em 32 arquivos eram preexistentes de fases anteriores como P08 sob preservação de worktree, enquanto a iteração 3 introduziu apenas 5 inserções em rt64_rigid_body.{h,cpp} e rt64_workload_queue.cpp; o binário validado deriva desse estado de árvore suja); (4) ausência de teste em objetos articulados não-jogadores (F3); e (5) ausência de gameplay real pelo usuário a 60 FPS (F4). O caminho padrão de produção **permanece estritamente CURRENT/30** (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`).
+
+## Limite histórico — guardas de interpolação articulada iteração 1/2 (2026-10-20)
+
+Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]] e [[../../plan/evidence/p09-interpolated-frame-burst-20261020]].
+Inspeção visual direta do burst F8 (`interpolated-burst-20261020-175030/`, todos com peso de frame `0.5`, 60/30 Hz) confirmou os artefatos apontados pelo usuário nas 14 imagens marcadas:
+- `PROVEN_RENDERED_DEFECT`: Hastes finas alaranjadas/amarelas ("rods") estendendo-se da crista da cabeça da Kazooie (`image_001`, `002`, `005`, `006`, `007`, `008`, `009`, `010`, `012`, `013`, `014`, `015`, `016`, `018`).
+- `PROVEN_RENDERED_DEFECT`: Faixa/prisma triangular azul pontiagudo saindo da borda superior esquerda da mochila do Banjo em `image_018.png`.
+
+## Limite corrente — host aprovado, captura real pendente
+
+Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Infraestrutura de snapshot passou pelos gates host finais; jogo aguarda aviso de cena para armar captura. Isso supera o estado de blockers host abaixo, mas ainda não há captura runtime nem nova promoção de identidade anatômica/modelo/bone. Focinho Banjo e penas **da cabeça** Kazooie permanecem prioridades `USER_OBSERVED`; cobertura física viva `UNKNOWN`. Correção permanente `NOT_IMPLEMENTED`; CURRENT/30 normal preservado.
+
+## CURRENT (2026-10-20) — VISUAL_TEST_MODE_AUTHORIZED_AND_LAUNCHED
+
+Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Nova autorização do usuário permite
+retirar o paliativo **nos testes**. Opt-in `TOOIE_TEST_INTERPOLATION_FPS=60`
+(ou 120) desativa CURRENT quando não explicitamente definido e força a taxa
+manual escolhida; sem opt-in, caminho estável CURRENT/30 preservado.
+Build e testes de configuração/endpoint passaram; revisões Sonnet/Haiku sem
+bloqueios para este modo. Jogo aberto em teste 60 FPS sem coletores pesados;
+resultado visual e taxa efetiva **PENDING / UNKNOWN**.
+Reprodução: Demo 1 pós-intro; gameplay lateral para focinho; Talon Trot
+`Z + C-Esquerda` lateral para penas da **cabeça** da Kazooie.
+`NEXT_SINGLE_ACTION`: obter relato visual desta execução. Snapshot CPU segue
+parcial/não aceito para captura. Esta entrada prevalece sobre próximos passos
+históricos abaixo; P09 não abre formalmente e nenhum commit/push foi feito.
+
+## Limite da continuação delegada — implementação parcial
+
+Ver [[../../plan/evidence/p09-interpolation-resumption-20261020]]. O novo diagnóstico CPU default-OFF ainda é `NOT_ACCEPTED_FOR_GAME_CAPTURE`; não promove novo conhecimento canônico sobre identidade de resource/bone, região anatômica ou correção permanente. Focinho Banjo e penas **da cabeça** Kazooie são testemunhas prioritárias `USER_OBSERVED`, sem excluir outros glitches. Cobertura viva dos filtros e aceitação do último código permanecem `UNKNOWN`. CURRENT/Manual 30 preservados. Os mecanismos estáticos já provados abaixo não são refutados pela ausência deste gate.
+
+## Current (2026-10-20) — shared WORLD consumers and diagnostic boundary
+
+`PROVEN` (`OTHER`, `STATIC_SOURCE`): in RT64,
+`src/render/rt64_transform_processor.cpp:3194-3204,3231` writes selected
+elementwise matrices into `lerpWorldTransforms`.
+`src/shaders/RSPProcessCS.hlsl:60,72,106,116-125` uses that same `worldMat`
+for position, enabled texture generation, and enabled lighting. This mechanism
+is also labelled `PROVEN_STATIC` in the review reports.
+
+`HYPOTHESIS`: changing those non-position consumers may contribute to the
+selective candidate's Klungo/Mumbo regressions. Their actual per-incident
+`lightCount` and `lookAtIndex` gates remain `UNKNOWN`. A position-only policy
+with rigid lighting/texgen is an unimplemented discriminator, not a proven
+attachment fix. Prior rejection of texgen as the original feather geometry
+root is unchanged. CURRENT remains Tooie default-ON and presentation stays
+Manual 30; permanent interpolation is not implemented.
+
+Provenance and next bounded CPU snapshot/replay:
+[[../../plan/evidence/p09-interpolation-resumption-20261020]]. No new GPU
+or visual evidence was collected. Historical entries below retain their
+original dates and test scope.
+
+## Prior (2026-10-16) — Tooie-only default-ON workaround (Phase 1)
 
 As of 2026-10-16, TooieRecomp installs `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1` by default prior to renderer initialization (`apply_default_before_renderer_init()` in `main.cpp`) whenever the environment variable is unset. This enables the shader-local `tfPos` CURRENT bypass as an operational presentation workaround for normal gameplay runs without requiring manual flags. Note that the upstream RT64 codebase default remains OFF; this default-ON behavior is exclusive to Tooie integration. Older evidence documenting the control as default-OFF reflects pre-workaround historical state. Any explicit environment value (including `"0"` to rollback to original interpolation, or `""`) is preserved. Full details, rollback instructions, and Phase 2 FPS preset plans are documented in [[../../plan/evidence/p09-default-current-workaround-and-fps-plan]].
 

@@ -8,7 +8,53 @@ tags: [tooie-recomp, p08, p09, settings, menu, forced-refresh, resolution, aspec
 ---
 # P08 — session handoff: ATTRACT DEMO & RENDER SUBMISSION
 
-## CURRENT (2026-10-19) — BOUNDED_SETTINGS_AND_BGM_VOLUME_INTEGRATED_AND_VALIDATED
+## CURRENT — `WAITING_USER_SCENE`, snapshot host aprovado
+
+Ver [[p09-visual-test-mode-20261020]]. Build/revisões host **PASS**, unidade123/123, I/O entre processos e 13 negativos semânticos rejeitados; captura real `NOT_EXECUTED`. Novo jogo isolado PID inicial `1188686`, configurado60 + novo snapshot sem heavy, taxa efetiva `UNKNOWN`, marcador inexistente. **`NEXT_SINGLE_ACTION`: aguardar aviso do usuário de cena pronta, depois armar uma vez; não por cronômetro.** Anatomia/cobertura viva `UNKNOWN`, correção permanente `NOT_IMPLEMENTED`; CURRENT/30 normal preservado, sem commit/push, P08 não encerrado. Execução sempre delegada; estados abaixo históricos.
+
+## CURRENT — glitches reproduzidos; jogo fechado, contador não conferido
+
+Ver [[p09-visual-test-mode-20261020]]. Relato **“Os glitches reapareceram”** (`USER_OBSERVED / USER_CONFIRMED_FOR_TESTED_RUN`), depois **“Jogo fechado; não conferi contador”**. Opt-in **configurado** 60, CURRENT desligado, sem flags pesadas; FPS efetivos `UNKNOWN`, sem confirmação individual de focinho/penas nem cena exata. Snapshot **`NOT_ACCEPTED_FOR_GAME_CAPTURE`**, correção permanente `NOT_IMPLEMENTED`; CURRENT/30 normal preservado, sem novo teste visual posterior/commit/push. `NEXT_SINGLE_ACTION`: concluir gates independentes de snapshot-only, alcance, persistência, corrupção e novo I/O antes de relançar captura. Execução sempre delegada; P08 continua pendente, estados abaixo históricos.
+
+## CURRENT (2026-10-20) — VISUAL_TEST_MODE_AUTHORIZED_AND_LAUNCHED
+
+Ver [[p09-visual-test-mode-20261020]]. Nova autorização do usuário permite
+retirar o paliativo **nos testes**. Opt-in `TOOIE_TEST_INTERPOLATION_FPS=60`
+(ou 120) desativa CURRENT quando não explicitamente definido e força a taxa
+manual escolhida; sem opt-in, caminho estável CURRENT/30 preservado.
+Build e testes de configuração/endpoint passaram; revisões Sonnet/Haiku sem
+bloqueios para este modo. Jogo aberto em teste 60 FPS sem coletores pesados;
+resultado visual e taxa efetiva **PENDING / UNKNOWN**.
+Reprodução: Demo 1 pós-intro; gameplay lateral para focinho; Talon Trot
+`Z + C-Esquerda` lateral para penas da **cabeça** da Kazooie.
+`NEXT_SINGLE_ACTION`: obter relato visual desta execução. Snapshot CPU segue
+parcial/não aceito para captura. Esta entrada prevalece sobre próximos passos
+históricos abaixo; P09 não abre formalmente e nenhum commit/push foi feito.
+
+## CURRENT — diagnóstico CPU parcial, revisão final pendente
+
+Ver [[p09-interpolation-resumption-20261020]]. Grok via Cursor implementou snapshot/replay CPU default-OFF limitado; último build reportado exit 0, snapshot 97/97. **`NOT_ACCEPTED_FOR_GAME_CAPTURE`**: último ajuste ainda sem gate independente completo após blockers anteriores; novo teste I/O Haiku criado mas `NOT_RUN`. Agentes Codex root/builder/reviewer atingiram cota, sem prova de esgotamento Cursor/agy. Nenhum jogo/captura/aceite 60+ FPS; CURRENT/Manual 30 preservados, correção permanente `NOT_IMPLEMENTED`, sem commit/push. P08 formal continua pendente; P09 não aberto formalmente. Focinho Banjo e penas **da cabeça** Kazooie são prioridades `USER_OBSERVED`, sem excluir demais glitches nem presumir resources/bones.
+
+`NEXT_SINGLE_ACTION`: retomar gate independente final de snapshot-only, alcançabilidade de hooks, persistência e rejeição de corrupção, incluindo novo teste I/O em processos separados, antes de captura. Execução sempre delegada, root orquestra/arbitra; estados abaixo são históricos.
+
+## CURRENT (2026-10-20) — INTERPOLATION_RESEARCH_RESUMED
+
+Continuação delegada `IN_PROGRESS`: testemunhas prioritárias são focinho do
+Banjo e penas **da cabeça** de Kazooie (`USER_OBSERVED`), sem excluir outros
+glitches ou presumir identidades de recursos/bones. Estado detalhado na
+seção de continuação da evidência abaixo; CURRENT/Manual 30 preservados.
+
+Read [[p09-interpolation-resumption-20261020]]. Current bounded objective is
+P09-RES-05 investigation, with CURRENT default-ON and Manual 30 preserved.
+No game launch or new capture; four supporting host tests passed again.
+Lighting/texgen share the selected WORLD matrix (`PROVEN_STATIC`); impact on
+Klungo/Mumbo regressions remains `HYPOTHESIS`, with actual gates `UNKNOWN`.
+Prior settings, BGM, audio and demo fixes remain accepted within their tested scope.
+`NEXT_SINGLE_ACTION`: implement a bounded default-OFF CPU snapshot/replay
+diagnostic for exact local edge provenance and lighting/texgen gates, then audit
+offline. No production interpolation fix implemented; no commit/push this task.
+
+## Prior (2026-10-19) — BOUNDED_SETTINGS_AND_BGM_VOLUME_INTEGRATED_AND_VALIDATED
 
 Read [[p08-settings-functionality-20261019]], [[menu-title-tooie-wordmark-20261019]], and [[checkpoint-20261019-review-and-patch-replay]]. Details in canonical evidence.
 

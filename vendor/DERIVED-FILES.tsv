@@ -1,0 +1,44 @@
+# Tooie application files that share their path with BanjoRecomp@ec859632cfa584e2272d32e46051543429a2baf4 (GPL-3.0; vendor/licenses/BanjoRecomp-COPYING).
+# Measured by exact path + byte comparison at export time (a LOWER BOUND of derivation; headers are NOT rewritten and no authorship is claimed).
+# status: identical = byte-identical to upstream; modified = differs (diff_lines = unified diff length vs upstream)
+path	status	diff_lines
+include/banjo_config.h	modified	22
+include/banjo_debug.h	identical	0
+include/banjo_game.h	modified	10
+include/banjo_launcher.h	identical	0
+include/banjo_sound.h	identical	0
+include/banjo_support.h	identical	0
+include/overloaded.h	identical	0
+include/ovl_patches.hpp	modified	20
+include/promptfont.h	identical	0
+include/recomp_data.h	identical	0
+include/recomp_files.h	identical	0
+patches/bk_api.h	identical	0
+patches/graphics.h	identical	0
+patches/input.h	identical	0
+patches/jinjo_saving.h	identical	0
+patches/misc_funcs.h	identical	0
+patches/note_saving.h	identical	0
+patches/object_extension_funcs.h	identical	0
+patches/overlay_loading.h	identical	0
+patches/patch_helpers.h	identical	0
+patches/patches.h	identical	0
+patches/recompui_event_structs.h	identical	0
+patches/save_extension.h	identical	0
+patches/sound.h	identical	0
+patches/transform_ids.h	identical	0
+patches/ui_funcs.h	identical	0
+patches/ultra_extensions.h	identical	0
+patches/xstdio.h	identical	0
+src/game/config.cpp	modified	200
+src/game/debug.cpp	identical	0
+src/game/recomp_api.cpp	modified	76
+src/game/recomp_data_api.cpp	identical	0
+src/game/recomp_extension_api.cpp	identical	0
+src/game/rom_decompression.cpp	modified	162
+src/main/launcher_animation.cpp	modified	12
+src/main/main.cpp	modified	744
+src/main/register_overlays.cpp	modified	11
+src/main/register_patches.cpp	modified	23
+src/main/theme.cpp	identical	0
+src/main/theme.h	identical	0

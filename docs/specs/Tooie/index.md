@@ -51,9 +51,9 @@ tags: [specs, tooierecomp, index, architecture]
 
 ## Specification Domain Suite
 
-The TooieRecomp system is specified across 12 core functional domains:
+The TooieRecomp system is specified across 13 core functional domains:
 
-1. **[Build System & Recompiler Generator](build-and-generator.md)**: CMake configuration, N64Recomp/RSPRecomp pipelines, metadata manifests, and symbols.
+1. **[Build System & Recompiler Generator](build-and-generator.md)**: CMake configuration, N64Recomp/RSPRecomp pipelines, metadata manifests, vendored standalone dependency closure (`vendor/`, `tools/vendor_verify.sh`), and symbols.
 2. **[Runtime, Overlays & Guest Preemption](runtime-and-overlays.md)**: ModernRuntime integration, 884 dynamic overlays, syscall table dispatch, and Hybrid F' guest preemption.
 3. **[Graphics, Presentation & Interpolation](graphics-and-presentation.md)**: RT64 renderer, aspect-aware culling (800CAA24/800CACEC), cinematic wall handling, shader-local CURRENT tfPos workaround, below-native presentation decimation, and top-left present FPS counter.
 4. **[Input & Controller Subsystem](input-and-controllers.md)**: SDL2 input mapping, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback.
@@ -63,8 +63,9 @@ The TooieRecomp system is specified across 12 core functional domains:
 8. **[Gameplay Parity & Verification](gameplay-parity.md)**: Parity contracts, attract sequence verification, camera mechanics, and physics invariants.
 9. **[Diagnostics & Telemetry](diagnostics-and-telemetry.md)**: Default-OFF runtime telemetry, dry-run collectors, and diagnostic safety constraints.
 10. **[Testing Framework & Measurement Oracle](testing-and-oracle.md)**: Unit test suite and ANGRYLION_CONTROL software-rendered ground truth oracle.
-11. **[Packaging & Dependency Boundaries](packaging-and-dependencies.md)**: Linux standalone packaging, dependency boundaries, and clean-room asset extraction.
+11. **[Packaging & Dependency Boundaries](packaging-and-dependencies.md)**: Linux standalone packaging, dependency boundaries, candidate verification, and clean-room asset extraction.
 12. **[Modding, Extensions & Asset Customization](modding-and-extensions.md)**: Extended object data, slot maps, texture pack container formats (.rtz), and mod callback hooks.
+13. **[Asset Ownership & Licensing Manifest](asset-and-licensing-manifest.md)**: Copyright boundaries, legal ROM requirements, ROM-derived code classification, third-party component licenses, and package distribution policies.
 
 ---
 

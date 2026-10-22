@@ -1,0 +1,55 @@
+diff --git a/src/render/rt64_p09_local_pair_snapshot.h b/src/render/rt64_p09_local_pair_snapshot.h
+--- a/src/render/rt64_p09_local_pair_snapshot.h
++++ b/src/render/rt64_p09_local_pair_snapshot.h
+@@ -12,7 +12,9 @@
+ #include <cstddef>
+ #include <cstdint>
+ #include <cstdio>
++#include <cstdlib>
+ #include <cstring>
++#include <string>
+ 
+ #include "render/rt64_p09_exact_use_correlation.h"
+ 
+@@ -23,8 +25,28 @@
+     constexpr uint32_t kP09LocalPairMaxBytes = 256u * 1024u;
+     constexpr uint32_t kP09LocalPairMaxAttempts = 4u;
+ 
++    // Diagnostic output directory (default-off feature, TOOIE_DIAG_P09_LOCAL_PAIR_SNAPSHOT): explicit override
++    // TOOIE_DIAG_P09_LOCAL_PAIR_DIR, else the platform temp dir. Never a developer-specific absolute path.
++    inline const std::string &p09LocalPairDir() {
++        static const std::string dir = []() -> std::string {
++            const char *v = std::getenv("TOOIE_DIAG_P09_LOCAL_PAIR_DIR");
++            if (v == nullptr || v[0] == '\0') v = std::getenv("TMPDIR");
++#ifdef _WIN32
++            if (v == nullptr || v[0] == '\0') v = std::getenv("TEMP");
++            if (v == nullptr || v[0] == '\0') v = std::getenv("TMP");
++            std::string d = (v != nullptr && v[0] != '\0') ? v : ".";
++#else
++            std::string d = (v != nullptr && v[0] != '\0') ? v : "/tmp";
++#endif
++            while (d.size() > 1 && (d.back() == '/' || d.back() == '\\')) d.pop_back();
++            return d;
++        }();
++        return dir;
++    }
++
+     inline const char *p09LocalPairArmMarkerDefault() {
+-        return "/home/wesley/.cache/tooie-interpolation-next-20261020/p09-local-pair-snapshot.arm";
++        static const std::string path = p09LocalPairDir() + "/p09-local-pair-snapshot.arm";
++        return path.c_str();
+     }
+ 
+     // Four attempts start only after an explicit scene arm. A busy or frozen slot is not shared.
+@@ -35,9 +57,8 @@
+ 
+     inline int p09LocalPairOutputName(char *dst, size_t cap, long pid, uint64_t generation) {
+         if (dst == nullptr || cap == 0) return -1;
+-        return std::snprintf(dst, cap,
+-            "/home/wesley/.cache/tooie-interpolation-next-20261020/p09-local-pair-%ld-%llu.bin",
+-            pid, static_cast<unsigned long long>(generation));
++        return std::snprintf(dst, cap, "%s/p09-local-pair-%ld-%llu.bin",
++            p09LocalPairDir().c_str(), pid, static_cast<unsigned long long>(generation));
+     }
+     constexpr float kP09LocalPairEdgeFrac = 1.0e-4f;
+     constexpr char kP09LocalPairMagic[8] = {'P', '0', '9', 'L', 'P', 'S', 'N', '1'};

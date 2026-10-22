@@ -21,10 +21,13 @@ ELF MIPS e reconstrução matching.
 
 ## Entradas
 
-- ROM válida definida em [[00-baseline-and-decisions]]
+- ROM canônica válida definida em [[00-baseline-and-decisions]]: `Banjo-Tooie (USA).z64` (tamanho `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`)
 - [[../../specs/BT/compression|Compressão BT]]
 - [[../../specs/BT/splat|Splat BT]]
 - [[../../specs/BT/build|Build BT]]
+
+> [!NOTE]
+> No pipeline standalone atual (P10+), a extração e descompressão da ROM são automatizadas pelo utilitário `tools/extract_rom.sh` (ou `tools/build_linux.sh extract`), gerando `build-linux/extract/decompressed.us.z64` (tamanho `35098224`, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`), sem necessitar de build manual no diretório `decomp/`.
 
 ## Tarefas
 
@@ -43,7 +46,7 @@ Registrado em 2026-08-09. Logs em `docs/plan/evidence/p02-*`.
 
 | Check | Resultado |
 | --- | --- |
-| baserom copiado | SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`; arquivo arquivado intacto |
+| baserom copiado | `Banjo-Tooie (USA).z64` (MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`); arquivo intacto |
 | `make setup` | **exit 0** (~32s após tools) — decompress + Splat split 35 MB |
 | decompressed SHA-1 | **`af479771ff5e91ce3732f3d84146614ab71d8d79`** (tamanho 35098224) |
 | mapas | symbol/ovl/reloc/syscall + `overlays.us.toml` presentes |

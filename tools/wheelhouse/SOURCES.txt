@@ -1,0 +1,6 @@
+Wheelhouse provenance (one-time acquisition, 2026-10-21, pip 24.0, Python 3.12.3, Linux x86_64; NOT a build-time download).
+- 18 wheels: `pip download --only-binary=:all: -r <decomp/tools/requirements.txt + decomp/tools/splat/requirements.txt>` from PyPI (pylibyaml removed from the list).
+- pylibyaml 0.1.0 publishes only an sdist (sdist sha256 3b58dea061903c04689e35fab63ec149f7cf5e82f0808bd3425fb3ab3950623e, kept in sources/): the wheel here was built locally with
+  `pip wheel --no-deps` from sources/pylibyaml-0.1.0.tar.gz. The shipped wheel bytes are the pinned artefact (SHA256SUMS); rebuilding may yield different bytes.
+- Per-package licences are inside each wheel (*.dist-info). Verified by SHA256SUMS and requirements.lock (--require-hashes).
+- Only cp312 / manylinux x86_64 wheels are included. Another Python minor version or OS needs a new, separately reviewed wheelhouse.

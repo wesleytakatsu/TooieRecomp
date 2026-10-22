@@ -1,0 +1,22 @@
+# Hash-pinned decomp/generation Python tooling (Python 3.12, Linux x86_64 manylinux). Installed ONLY from tools/wheelhouse:
+#   pip install --no-index --find-links tools/wheelhouse --only-binary=:all: --require-hashes -r tools/requirements.lock
+# Provenance: tools/wheelhouse/SOURCES.txt. Top-level inputs: decomp/tools/requirements.txt + decomp/tools/splat/requirements.txt.
+certifi==2026.10.19 --hash=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b
+charset-normalizer==3.5.2 --hash=sha256:3d31298449090ab8d47b7b1b2a555ff73cac7ed438a08b7ac160980c7ebed649
+colorama==0.4.6 --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
+decomp-settings==0.0.10 --hash=sha256:583f6038ef802019d5c127c2541656780d5695f16f9b02c25329788a928beac7
+idna==3.20 --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+intervaltree==3.2.1 --hash=sha256:a8a8381bbd35d48ceebee932c77ffc988492d22fb1d27d0ba1d74a7694eb8f0b
+mapfile-parser==2.13.2 --hash=sha256:76fcbed09087de1592c57db816e3ec08b9ec419556a7edbbe4c0d813804f7542
+n64img==0.3.3 --hash=sha256:5db569e3300f3404b875a319822221704ffaf7c1d8f1db874b85702a16947921
+pygfxd==1.0.5 --hash=sha256:f6574df3cce49105d3841d3fb47f7ad1a61afe18ba3d0c1c2bade1437778728c
+pylibyaml==0.1.0 --hash=sha256:8cf38bb1808c3a1f7c02ff141050ec57cbf612ea7953a65b22aa80634f12af94
+pypng==0.20220715.0 --hash=sha256:4a43e969b8f5aaafb2a415536c1a8ec7e341cd6a3f957fd5b5f32a4cfeed902c
+pyyaml==6.0.3 --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc
+rabbitizer==1.16.2 --hash=sha256:eafe91e07c9f400d2abc44c029c3b380cb68e65d2c32eb7e2015d391a51d2182
+requests==2.34.2 --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
+sortedcontainers==2.4.0 --hash=sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0
+spimdisasm==1.35.0 --hash=sha256:55fe3927dfd9c50fd2977889d9ef321e94cc01abb21c7637343f423b091d9b29
+toml==0.10.2 --hash=sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b
+tqdm==4.70.1 --hash=sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73
+urllib3==2.8.0 --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3

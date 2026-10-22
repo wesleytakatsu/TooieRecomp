@@ -9,9 +9,9 @@ import struct
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-TOOIE = ROOT / "TooieRecomp"
-BT = ROOT / "banjo-tooie-Recomp"
+from tooie_paths import DECOMP as BT, TOOIE
+
+ROOT = TOOIE
 ROM = BT / "decompressed.us.z64"
 
 CORE2_RAM = 0x800815C0

@@ -1,9 +1,12 @@
-# Auto-generated recomp config (P04)
+# Recomp config (P04): kit-free generation. Input = decompressed ROM + committed symbols file (no ELF).
+# metadata/tooie.us.syms.toml is the lossless N64Recomp context dump of the decomp ELF (tools/generate_metadata.py, maintainer-only); it needs the
+# patched generator (vendor/patches-local/n64recomp-symbols-file-fidelity.patch). `rom_name` keeps the former get_rom_name() string.
 [input]
 entrypoint = 0x80000400
 output_func_path = "RecompiledFuncs"
-rom_file_path = "../banjo-tooie-Recomp/decompressed.us.z64"
-elf_path = "../banjo-tooie-Recomp/build/us/banjotooie_decompressed.elf"
+rom_file_path = "decomp/decompressed.us.z64"
+symbols_file_path = "metadata/tooie.us.syms.toml"
+rom_name = "banjotooie_decompressed.z64"
 relocatable_sections_path = "metadata/relocatable_sections.recomp.txt"
 bss_section_suffix = "_bss"
 unpaired_lo16_warnings = true

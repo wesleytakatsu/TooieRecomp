@@ -1,0 +1,30 @@
+# What was deliberately NOT vendored from the upstream closure (and why). Nothing here is needed to configure/build/generate/package.
+# Export source: clean pinned+patched proof tree (E1 closure check), copied with symlinks skipped; destination-relative deny-list below.
+
+[repositories not vendored]
+lib/rt64/src/contrib/mupen64plus-win32-deps  de8111fdcb89144abc16c85650ce4e21e028bfb5  Windows SDL/zlib bundle; replaced by lib/SDL2-windows (official SDL2 2.30.3 devel zip). No licence file at its root.
+lib/rt64/src/contrib/spirv-cross             6173e24b31f09a0c3217103a130e74c4ddec14a6  macOS-only path (rt64 builds it only on Apple); TooieRecomp targets Linux + Windows x64.
+
+[files removed from vendored trees after export (unneeded prebuilt executables / sample binaries)]
+lib/rt64/src/contrib/ddspp/premake/{linux,osx}/premake5, premake/win/premake5.exe        project generator binaries, unused by CMake
+lib/rt64/src/contrib/hlslpp/premake/{linux,osx}/premake5, premake/win/premake5.exe       idem
+lib/rt64/src/contrib/imgui/examples/libs/glfw/lib-vc2010-{32,64}/glfw3.lib               imgui example prebuilt libs, unused
+lib/rt64/src/contrib/plume/contrib/D3D12MemoryAllocator/bin/D3D12Sample.exe              sample program
+lib/rt64/src/contrib/plume/contrib/VulkanMemoryAllocator/bin/VmaSample_Release_vs2022.exe sample program
+lib/rt64/src/contrib/stb/tests/oversample/oversample.exe                                 test program
+
+[deny-list applied during export (regex on destination-relative path; this is the literal list used)]
+^lib/rt64/src/contrib/dxc/(bin|lib)/arm64/                       Windows-arm64 DXC (target is x86_64 only; CMake FATAL_ERRORs on other arches)
+^lib/rt64/src/contrib/dxc/.*(dxc-macos|\.dylib)$                 macOS DXC
+^lib/rt64/src/contrib/mupen64plus-win32-deps/  ^lib/rt64/src/contrib/spirv-cross/   (see repositories above)
+^lib/rt64/src/contrib/zstd/tests/   ^lib/rt64/src/contrib/plume/examples/   ^lib/N64ModernRuntime/N64Recomp/lib/ELFIO/(tests|examples)/
+^decomp/tools/elfio/(tests|examples)/   ^decomp/tools/toml11/(docs|tests)/        test/example/doc trees (some embed nested submodules)
+^lib/RecompFrontend/recompui/lib/freetype-windows-binaries/(.*/)?(win32|demos)/   32-bit + demo binaries
+(^|/)\.git(attributes|ignore|modules|hub|keep)?(/|$)             upstream VCS metadata (private-file rules re-expressed in the root .gitignore)
+(^|/)\.gitrepo$                                                                  git-subrepo metadata file (asm_differ). Removed; its origin text is kept in vendor/provenance/ (informational)
+Also: only git-visible files of each upstream worktree (tracked + untracked-not-ignored) were exported, so upstream build outputs, decomp/build,
+decomp/baserom*.z64, extracted assets and the legacy compiler kit were never copied. Symlinks were skipped (see task evidence skipped-symlinks.txt);
+the old assets -> BanjoRecomp symlink was replaced by a real assets/ directory. Verified post-export: no ELF/PE/ar under decomp/ or assets/.
+
+[never in the repository]
+Banjo-Tooie ROM, extracted assets, saves, core dumps, the generated RecompiledFuncs/ bundle (private, reproducible via tools/build_linux.sh decomp recomp), IDO/gcc/binutils kit bytes.

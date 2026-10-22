@@ -152,8 +152,8 @@ Todos os producers existem e estão corretos. NÃO é missing wakeup.
 ## Local N64ModernRuntime diff
 
 BASE COMMIT:
-`ca568b6ad79b9029d14077f0c3ffa757727c5559` (HEAD detached de
-`../BanjoRecomp/lib/N64ModernRuntime`)
+`ca568b6ad79b9029d14077f0c3ffa757727c5559` (HEAD detached histórico de
+`../BanjoRecomp/lib/N64ModernRuntime`; atualmente vendorizado em `lib/N64ModernRuntime/`)
 
 FILES DIRTY:
 - `ultramodern/src/threadqueue.cpp` (**M**, +26/−1) — patch anti-duplicata local
@@ -268,7 +268,7 @@ Justificativa:
 **NONE — diagnosis only.** Nenhum código alterado nesta microetapa.
 
 Dependência externa (para reprodução futura):
-- `../BanjoRecomp/lib/N64ModernRuntime/ultramodern/src/threadqueue.cpp`
+- `lib/N64ModernRuntime/ultramodern/src/threadqueue.cpp` (historicamente `../BanjoRecomp/lib/N64ModernRuntime/ultramodern/src/threadqueue.cpp`)
 - base `ca568b6`, upstream `origin/main` `589bbf0`.
 - Patch exato provável (estreito): em `thread_queue_remove`, limpar
   `TO_PTR(OSThread, t_)->queue = NULLPTR;` após desvincular (simétrico ao

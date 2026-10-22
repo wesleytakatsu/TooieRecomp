@@ -5,8 +5,8 @@
 entrypoint = 0x80000400
 # Relative to this config file (TooieRecomp/).
 output_func_path = "RecompiledFuncs"
-rom_file_path = "../banjo-tooie-Recomp/decompressed.us.z64"
-elf_path = "../banjo-tooie-Recomp/build/us/banjotooie_decompressed.elf"
+rom_file_path = "decomp/decompressed.us.z64"
+elf_path = "decomp/build/us/banjotooie_decompressed.elf"
 # symbols_file_path is filled after dump for recomp mode (mutually exclusive with elf_path).
 # symbols_file_path = "metadata/tooie.us.syms.toml"
 relocatable_sections_path = "metadata/relocatable_sections.txt"

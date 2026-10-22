@@ -21,8 +21,7 @@ Execute as notas na ordem. Cada uma define entradas, tarefas, artefatos,
 verificação e gate de saída; checkboxes são deliberadamente usados para que
 `markdown_vault_extract_tasks` produza a fila de trabalho.
 
-A fonte BT ativa é o fork em `banjo-tooie-Recomp/`. O repositório original
-`Mr-Wiseguy/banjo-tooie` é o remote `upstream`, não um segundo checkout local.
+Sob a arquitetura standalone da P10, todas as fontes necessárias de decompilação, runtimes e assets estão vendorizadas diretamente em `decomp/`, `lib/` e `assets/`. O build normal é 100% kit-free (`tools/build_linux.sh preflight verify extract recomp configure build test package`), não usando checkouts externos.
 
 | Ordem | Etapa | Resultado | Status |
 | ---: | --- | --- | --- |
@@ -175,3 +174,11 @@ Evidência:
   movement failures; see [[../../plan/evidence/p08-attract-movement-residuals]].
 - The Demo 0 parity result is `PROVISIONAL_PRE_P09_PARITY_EVIDENCE`; Demo 1,
   Demo 2, and Demo 3 remain `UNTESTED`.
+
+### Nota P09 (2026-10-20/21)
+
+Investigação causal de interpolação articulada (iteração 3): Mecanismo A (amplificação angular por cosseno antes da tolerância de velocidade) provado no fonte (`rt64_rigid_body.cpp:30-34`); correção no owning layer via `lerpTranslationSpeedOnly`. Gate independente (`resumed-gate.json`): `passed: false` (bloqueadores: compilação sem log salvo, crash `ong2` com SIGSEGV -11 não explicado, árvore RT64 com diagnósticos preexistentes, ausência de teste em objetos não-jogadores e sem gameplay a 60 FPS). P09 formal permanece **`PENDING / NOT_FORMALLY_OPEN`**; caminho estável CURRENT/30 mantido estritamente como padrão. Detalhe: [[09-gameplay-parity-and-enhancements]].
+
+### Nota P10 (2026-10-21)
+
+Auditoria de clonagem limpa e empacotamento para Windows 11 x64 e Linux: (**SUPERSEDED 2026-10-21 pelo projeto standalone e pipeline kit-free**: `tools/deps.lock`/`bootstrap_deps.sh` aposentados; dependências vendorizadas em `lib/`/`decomp/`/`assets/`, ver [[plan/evidence/p10-standalone-vendor-20261021]] e [[plan/evidence/p10-kitfree-generation-and-ui-restoration-20261021]]) dependências vendorizadas no repositório como arquivos regulares; pacote Linux final verificado `TooieRecompiled-linux-x86_64-73bfd43-dirty-private-local.tar.gz` (SHA-256 `4f702d2ba0a0472345f6f1317bfe75eb0df462e96b2352d6d875edaa5c4ebcf9`, 104 arquivos regulares, verify 0, UI exata, zero ROM, preflight kit-free exit 0; binário `0cfcd792…` com rebuild da UI restaurada exit 0 e visual do launcher inspecionado com exit 0; supersedendo os interinos `b6475879…`, `64f130aa…` e `a327666f…`). Prova limpa kit-free (neutral 5c2) separada do build da UI restaurada. Windows 11 x64 classificado como `WINDOWS_BUILD_PENDING_NATIVE_HOST` (sem binário PE do jogo; TUs cross-host falharam em limites de cabeçalhos de terceiros; configure WIN32 passou; requer host nativo com VS 2022 Build Tools [clang-cl] e Windows 11 SDK; suporte a transferência direta de código gerado sem WSL2). P10 e P09 seguem **`pending / abertos`**; o gate técnico de interpolação permanece FAILED. Detalhe: [[10-linux-packaging-and-release]] e [[../../plan/evidence/p10-kitfree-generation-and-ui-restoration-20261021]].

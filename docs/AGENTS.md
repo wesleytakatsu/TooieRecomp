@@ -15,13 +15,15 @@ Abra o CLI/IDE em `TooieRecomp/` (este repositório git). Não use
 `N64-Recomp/` como raiz do agente: as configs de MCP/vault agora vivem
 aqui (`docs/MARKDOWN_VAULT_TOOLS.md`).
 
-Irmãos no disco, fora deste git, que o **build** ainda usa:
-
-- `../BanjoRecomp` — RT64, N64ModernRuntime, assets (`CMakeLists.txt` `BK_ROOT`)
-- `../Banjo-Tooie (USA).z64` — cartucho do oráculo Angrylion (`TOOIE_CART_Z64`)
-- `../banjo-tooie-Recomp` — decomp; não é o executável Tooie
-
-Não copie `.venv` do pai. Não trate `BanjoRecomp` como o jogo.
+O projeto é **standalone**: RT64, N64ModernRuntime/N64Recomp, RecompFrontend, SlotMap, SDL2 (Windows), assets de interface, decomp e wheels
+estão vendorizados neste repositório (`lib/`, `decomp/`, `assets/`, `tools/wheelhouse/`; proveniência em `vendor/`). O build **não** usa
+checkouts irmãos, submódulos, checkout do BanjoRecomp, `third_party/` nem downloads. O build normal é 100% kit-free (`tools/build_linux.sh preflight verify extract recomp configure build test package`). Pré-requisitos explícitos fora do git: sua ROM canônica
+(`Banjo-Tooie (USA).z64` na raiz ou `TOOIE_ROM`, tamanho `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`, git-ignored),
+a imagem descompactada (`35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, gerada por `tools/extract_rom.sh` e estritamente exigida pelo launcher) e pacotes do SO. O kit de compiladores legado IDO/gcc (`TOOIE_TOOLCHAIN_KIT`, 34 arquivos em `tools/toolchain.sha256`) é restrito exclusivamente ao estágio de manutenção (`decomp`) para regenerar metadados. O diretório `assets/`
+contém todos os recursos de interface restaurados (artes vetoriais de menu/personagens, animações, ícones, fontes tipográficas e estilos), nunca dados de jogo. Oráculo Angrylion
+(`tools/oracle/…`, `TOOIE_CART_Z64`) continua opcional e usa a ROM do usuário. Código vendorizado é editável, mas toda mudança local vira
+patch em `vendor/patches-local/` + `tools/vendor_manifest.sh` (`vendor/UPDATING.md`). Não trate `lib/` como código gerado nem copie
+`.venv` do pai.
 
 ## Ordem de leitura
 
@@ -57,9 +59,10 @@ Depois, marque o checkbox, atualize o `status` da fase quando aplicável e rode
 ## Fontes de verdade
 
 - Critérios finais: [[plan/definition-of-done]]
-- Reutilização BK: [[specs/BK/reuse-contract]]
+- Reutilização BK (referência arquitetural apenas, sem checkout externo): [[specs/BK/reuse-contract]]
 - Prontidão BT: [[specs/BT/recomp-readiness]]
-- ROM de entrada: SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`
+- ROM canônica de entrada: `Banjo-Tooie (USA).z64` (tamanho `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`)
+- Imagem ROM descomprimida exigida pelo launcher: `35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79` (XXH3 `9F843AD3455EA395`)
 - Oráculo de medição `ANGRYLION_CONTROL`: [[specs/BT/angrylion-control-oracle]] (`tools/oracle/angrylion-control/run.sh`). Angrylion não substitui o RT64.
 
 ## Contrato de continuidade entre agentes

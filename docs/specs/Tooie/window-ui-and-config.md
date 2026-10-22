@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Comprehensive technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-19
+updated: 2026-10-21
 tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution]
 ---
 
@@ -44,9 +44,9 @@ RT64 Viewport & Swapchain Presentation
 | **REQ-WIN-04** | Aspect Ratio Safeguards | Prevents zero-division; maintains 4:3 baseline for original mode. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-WIN-05** | Vulkan Error Fallback | Displays structured error dialog on Vulkan failure without crashing. | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-WIN-06** | Configuration Persistence| Serializes settings as JSON and restores them on startup. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-WIN-07** | Launcher Wordmark & Asset Isolation | Host launcher presents a native two-line "Banjo-Tooie" / "Recompiled" wordmark from a repository-owned SVG (`ui_assets/TooieLogo.svg`), copied to `build/ui_assets/` via CMake to preserve shared BanjoRecomp assets without in-place mutation. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/menu-title-tooie-wordmark-20261019]]) |
+| **REQ-WIN-07** | Launcher Wordmark & UI Asset Architecture | Host launcher presents the restored two-line wordmark ("Banjo-Tooie" / "Recompiled") from `ui_assets/TooieLogo.svg` (viewBox `0 0 7300 2450`), copied via CMake target `TooieLauncherLogo`; local UI menu assets, animations, icons, character art, and typography fonts are fully standalone and vendored in `assets/`, managed on each build via `TooieUIAssets`. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/menu-title-tooie-wordmark-20261019]]) |
 | **REQ-WIN-08** | Aspect Ratio Window Auto-Resize | Selecting `Original` (4:3) or `Expand` (16:9) in windowed mode resizes the window, preserving height and clamping within display usable bounds on the SDL event thread. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
-| **REQ-CFG-01** | Menu Policy Enforcement & Disabled Protection | Disabled options cannot be stepped/clicked via widgets; forced 30 FPS cap is enforced on load/set/save paths, surviving frontend config vector relocations. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
+| **REQ-CFG-01** | Menu Policy Enforcement & Disabled Protection | Disabled options cannot be stepped/clicked via widgets; Interpolation OFF (default) enforces Manual 30 on load/set/save paths and ON unlocks the rate controls (min 60), surviving frontend config vector relocations; applied state reaches RT64 at runtime without restart. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
 | **REQ-CFG-02** | Resolution 3x/4x & Downsample Multiplier | Exposes `Original3x` (720p) and `Original4x` (960p) in UI and config serialization, multiplying downsampling correctly while disabling DS in Auto. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
 
 ---
@@ -125,9 +125,13 @@ namespace tooie_menu {
     void request_window_aspect(double target);
     double take_window_aspect_request();
 
-    // Enforces forced refresh rate on load and modification callbacks.
+    // Interpolation option policy: OFF -> Manual/30 locked; ON -> controls unlocked, rate coerced to a usable >=60 when needed.
+    // sink(bool) receives the APPLIED state on load and when the option is applied (RT64 request in the game).
     // resolve functor looks up Config on each call to prevent dangling references across std::vector reallocations.
-    void install_forced_refresh(std::function<recomp::config::Config&()> resolve, const std::string& rr_id, const std::string& rr_manual_id);
+    constexpr uint32_t kInterpolationDefaultRate = 60;
+    RefreshChoice coerce_refresh(bool interpolation_on, RefreshChoice cur);
+    void install_interpolation_policy(std::function<recomp::config::Config&()> resolve, const std::string& rr_id, const std::string& rr_manual_id,
+                                      const std::string& interp_id, std::function<void(bool)> sink);
 }
 ```
 *Verification*: Validated by `tests/tooie_menu_policy_test.cpp` and `tests/tooie_menu_config_test.cpp` (both PASS exit 0).
@@ -148,6 +152,7 @@ namespace tooie_menu {
   - `hr_option`: HUD Placement, desativado.
   - `cutscene_aspect_ratio_mode`: proporção de cutscenes, desativada.
   - `show_fps_counter`: booleano.
+  - `interpolation`: booleano (padrão `false`; ausente/inválido = `false`).
   - Configurações internas de frontend ocultas: `api_option`, `hpfb_option`, `developer_mode`.
 - **controls.json**: perfis de controle e mapeamentos de entrada.
 - **general.json**: `rumble_strength`, `joystick_deadzone`, `background_input_mode`, além de chaves legadas preservadas (ocultas/desativadas).
@@ -156,16 +161,16 @@ namespace tooie_menu {
 
 
 ### 4.2 Invariants & Policy Boundaries
-- **30 FPS Policy Lock**: Refresh rate is forced to Manual 30 FPS on all config load, change, and save operations. This is a user policy cap due to the CURRENT `tfPos` workaround (`tooie_rsp_endpoint_current`), which repeats vertex poses above native rates. RT64 is capable of 60+ Hz presentation, but higher rates are capped until continuous interpolation is implemented.
+- **Interpolation Option (supersedes the 30 FPS Policy Lock, user-authorised 2026-10-21)**: graphics key `interpolation` (bool, `graphics.json`; missing/invalid = OFF). OFF keeps Manual 30 and locks the Framerate controls (the CURRENT `tfPos` workaround repeats poses above native). ON unlocks them and selects Manual 60 when the stored rate would generate nothing (Original, or Manual <= 30); a stored Manual 120 survives boot. The option is a `requires_confirmation` graphics option: toggling is pending until Apply, Cancel restores the applied state, Apply sinks the state to RT64 (latched per workload, no restart). The `Interpolation` toggle is the last entry of the Graphics list (scroll). Spec: [[graphics-and-presentation]] REQ-GFX-06; evidence [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]].
 - **Config Pointer Relocation Protection**: RecompUI stores configuration sections in a `std::vector<std::pair<std::string, Config>>`. Capturing a `Config&` reference at registration time leads to a dangling pointer when the vector reallocates as subsequent tabs are added. Enforcement routines must resolve `recompui::config::get_graphics_config()` dynamically on every invocation.
 - **Disabled Option Guard & Numeric Style Fix**: Options flagged as disabled are intercepted by `ConfigPageOptionsMenu::on_set_option_value` and `Slider::do_step`, preventing values from changing on click, drag, or keyboard navigation and snapping UI elements back. Additionally, `ConfigOptionNumber::update_disabled` calls `slider->set_enabled(!disabled)` to guarantee that numeric sliders visually render disabled rather than retaining active styling.
 - **Cross-Thread Window Operations**: UI callbacks enqueue window aspect requests via `tooie_menu::request_window_aspect(target)`. SDL window functions (`SDL_SetWindowSize`, `SDL_SetWindowPosition`, `SDL_RestoreWindow`) are executed strictly on the SDL event thread in `update_gfx` (`src/main/main.cpp`). Fullscreen and borderless modes ignore window resize requests.
 
-### 4.3 Launcher Wordmark & Asset Isolation Contract
-- **Wordmark Identity**: The host launcher title displays exactly two lines: "Banjo-Tooie" (line 1, blue with yellow outline) and "Recompiled" (line 2, red with yellow outline), with artist-styled caps.
+### 4.3 Launcher Wordmark & UI Asset Architecture
+- **Wordmark Identity**: The host launcher title displays the restored two-line wordmark: "Banjo-Tooie" (line 1, blue with yellow outline) and "Recompiled" (line 2, red with yellow outline), with artist-styled caps.
 - **Repository Asset Ownership**: The vector asset is defined in `ui_assets/TooieLogo.svg` (viewBox `0 0 7300 2450`), generated via `tools/make_tooie_launcher_logo.py`.
-- **Isolation Contract**: Upstream assets in `BanjoRecomp/assets/` remain pristine. A CMake custom command copies `ui_assets/TooieLogo.svg` to `${CMAKE_CURRENT_BINARY_DIR}/ui_assets/TooieLogo.svg` under target `TooieLauncherLogo`, and `src/main/launcher_animation.cpp` references `"../ui_assets/TooieLogo.svg"` with scaled dimensions `7300.0f * 0.106f` x `2450.0f * 0.106f`.
-- **Evidence**: Validated for settled layouts at 1600x900 and 1024x768, and entry animation composition bounded PASS across discrete frames (smoothness/easing NOT_TESTED), in [[../../plan/evidence/menu-title-tooie-wordmark-20261019]].
+- **Standalone Asset & Build Management**: All UI menu assets, animations, icons, character art (including `Banjo.svg`, `Kazooie.svg`, `Cloud1-4.svg`, `JiggyColor.svg`, `JiggyHole.svg`, `JiggyShine.svg`), and typography fonts (`Suplexmentary Comic NC.ttf`, `InterVariable.ttf`, `NotoEmoji-Regular.ttf`, `promptfont.ttf`) are hosted locally in `assets/` (zero game data; honest attribution of origin and unknown licenses preserved; permissive font notices retained). The CMake target `TooieUIAssets` refreshes `<build>/assets` on every build (with out-of-source build guard and removal of retired assets). Target `TooieLauncherLogo` copies `ui_assets/TooieLogo.svg` to `${CMAKE_CURRENT_BINARY_DIR}/ui_assets/TooieLogo.svg`, and `src/main/launcher_animation.cpp` references `"../ui_assets/TooieLogo.svg"` with scaled dimensions `7300.0f * 0.106f` x `2450.0f * 0.106f`. No external assets checkout is referenced or used.
+- **Evidence**: Validated for settled layouts at 1600x900 and 1024x768, and entry animation composition bounded PASS across discrete frames (smoothness/easing NOT_TESTED), in [[../../plan/evidence/menu-title-tooie-wordmark-20261019]]. Root restored original 44 files from candidate-backup; the interim neutral UI (774x272) is superseded.
 
 ### 4.4 Menu Option Availability & Status
 The following options are specifically managed in `src/game/config.cpp`:

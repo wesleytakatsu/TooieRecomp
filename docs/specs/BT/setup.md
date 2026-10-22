@@ -11,13 +11,16 @@ tags:
   - setup
 ---
 
-# BT — Setup
+# BT — Setup (Historical Reference Specification)
 
-## Checkout ativo
+> [!WARNING]
+> **Reference Specification Only:** This document records the original standalone decompilation setup from August 2026. **Do NOT execute these commands for building TooieRecomp.** Under the current standalone architecture (P10), decompilation sources are vendored in `decomp/` and no external checkout, sibling, or clone of `banjo-tooie-Recomp` is required or used. To build TooieRecomp, refer directly to [`README.md`](../../../README.md) and [`tools/BUILDING.md`](../../../tools/BUILDING.md).
+
+## Historical Checkout Context
 
 | Item | Valor verificado em 2026-08-09 |
 | ---- | ---- |
-| Caminho local | `banjo-tooie-Recomp/` |
+| Caminho histórico | `banjo-tooie-Recomp/` (agora vendorizado em `decomp/`) |
 | `origin` | `https://github.com/wesleytakatsu/banjo-tooie-Recomp.git` |
 | `upstream` | `https://github.com/Mr-Wiseguy/banjo-tooie.git` |
 | Branch | `master`, acompanhando `origin/master` |
@@ -43,19 +46,13 @@ Place a Banjo-Tooie NTSC-U ROM in the repo root as `baserom.us.z64`.
 > (`af479771ff5e91ce3732f3d84146614ab71d8d79`); that is the checksum of the
 > split/build target. The README asks for the SHA1 above.
 
-## Clone recursively
+## Historical Clone & Submodule Structure
 
-```sh
-git clone --recurse-submodules \
-  https://github.com/wesleytakatsu/banjo-tooie-Recomp.git \
-  banjo-tooie-Recomp
-```
+*Historical reference only — in TooieRecomp, these sources are already vendored under `decomp/` and submodule updates are unnecessary:*
 
-O clone atual foi feito sem materializar os submódulos. Corrija-o sem mover os
-gitlinks para versões mais novas:
-
-```sh
-git -C banjo-tooie-Recomp submodule update --init --recursive
+```text
+Historical repository origin:
+https://github.com/wesleytakatsu/banjo-tooie-Recomp.git
 ```
 
 ## Submodules (`.gitmodules`)
@@ -104,6 +101,4 @@ Performs:
 
 `make distclean` resets `build/` `asm/` `assets/`.
 
-From the workspace root, use `make -C banjo-tooie-Recomp setup`, then compile
-with `make -C banjo-tooie-Recomp -j$(nproc)` and validate matching with
-`make -C banjo-tooie-Recomp check`. See [Build](build.md).
+*Historical reference only:* Originally executed via `make -C banjo-tooie-Recomp setup`, `make -C banjo-tooie-Recomp -j$(nproc)`, and `make -C banjo-tooie-Recomp check`. In TooieRecomp, decompilation and extraction are handled via `tools/extract_rom.sh` and `tools/build_linux.sh` (see [`tools/BUILDING.md`](../../../tools/BUILDING.md)).

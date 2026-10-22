@@ -144,7 +144,7 @@ DLs have zero `G_MODIFYVTX`. Nested `G_DL 0x03000010` runs **before**
 Address: `model_bin+0x2670+idx*8`. Plume type-0x11 DLs contain `G_VTX`
 directly after nested `G_DL 0x03000040`. Crest uses nested `0x03000010`.
 Bone 103's first GeoCmd child is nested type-2 104, not a DL. See
-[[systems/geocmd]].
+[[../systems/geocmd]].
 
 All fourteen plus `0x48F`/`0xBC` start with `G_GEOMETRYMODE and=0xC0FFFB`
 then `and=0xFFFFFF set=0x00200004`. That **preserves** `G_CULL_*` and

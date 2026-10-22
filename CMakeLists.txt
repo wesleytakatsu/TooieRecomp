@@ -5,10 +5,16 @@ project(TooieRecomp LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(BK_ROOT "${CMAKE_SOURCE_DIR}/../BanjoRecomp")
-set(N64MR "${BK_ROOT}/lib/N64ModernRuntime")
-set(RT64_ROOT "${BK_ROOT}/lib/rt64")
-set(RECOMP_FRONTEND "${BK_ROOT}/lib/RecompFrontend")
+# Standalone: rt64, N64ModernRuntime (+N64Recomp), RecompFrontend, SlotMap and SDL2 (Windows) are vendored as regular
+# files under lib/ (provenance, pins and patch chain: vendor/UPSTREAMS.tsv; integrity: tools/vendor_verify.sh).
+# No sibling checkout, submodule or download is used. assets/ and recompcontrollerdb.txt live in this repository.
+set(TOOIE_LIB "${CMAKE_SOURCE_DIR}/lib")
+set(N64MR "${TOOIE_LIB}/N64ModernRuntime")
+set(RT64_ROOT "${TOOIE_LIB}/rt64")
+set(RECOMP_FRONTEND "${TOOIE_LIB}/RecompFrontend")
+if(NOT EXISTS "${RT64_ROOT}/CMakeLists.txt" OR NOT EXISTS "${N64MR}/CMakeLists.txt" OR NOT EXISTS "${RECOMP_FRONTEND}/CMakeLists.txt")
+  message(FATAL_ERROR "vendored tree incomplete under ${TOOIE_LIB}: run tools/vendor_verify.sh")
+endif()
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -27,13 +33,38 @@ endif()
 # Must be CMake variables (not only compile defs) before add_subdirectory(rt64).
 set(RT64_SDL_WINDOW_VULKAN TRUE)
 set(RT64_STATIC TRUE CACHE BOOL "Build RT64 as a static library" FORCE)
-set(PLUME_SDL_VULKAN_ENABLED TRUE CACHE BOOL "Enable SDL Vulkan integration" FORCE)
-add_compile_definitions("PLUME_SDL_VULKAN_ENABLED")
-add_compile_definitions("RT64_SDL_WINDOW_VULKAN")
+if(NOT WIN32) # BanjoRecomp sets these on Linux only; Windows keeps its D3D12 default.
+  set(PLUME_SDL_VULKAN_ENABLED TRUE CACHE BOOL "Enable SDL Vulkan integration" FORCE)
+  add_compile_definitions("PLUME_SDL_VULKAN_ENABLED")
+  add_compile_definitions("RT64_SDL_WINDOW_VULKAN")
+endif()
 
-find_package(SDL2 REQUIRED)
+if(WIN32)
+  # Vendored official SDL2-devel 2.30.3 VC contents (lib/SDL2-windows; provenance vendor/UPSTREAMS.tsv). No FetchContent.
+  # RecompFrontend reads sdl2_SOURCE_DIR; rt64 (local seam patch) consumes the SDL2::SDL2/SDL2::SDL2main targets below.
+  # UNVERIFIED on a native Windows host (no Windows toolchain on the authoring host): see tools/BUILDING.md.
+  set(sdl2_SOURCE_DIR "${TOOIE_LIB}/SDL2-windows")
+  if(NOT EXISTS "${sdl2_SOURCE_DIR}/lib/x64/SDL2.lib")
+    message(FATAL_ERROR "lib/SDL2-windows is incomplete: run tools/vendor_verify.sh")
+  endif()
+  set(SDL2_INCLUDE_DIRS "${sdl2_SOURCE_DIR}/include")
+  add_library(SDL2::SDL2 INTERFACE IMPORTED)
+  set_target_properties(SDL2::SDL2 PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${sdl2_SOURCE_DIR}/include"
+    INTERFACE_LINK_LIBRARIES "${sdl2_SOURCE_DIR}/lib/x64/SDL2.lib;Winmm.lib")
+  add_library(SDL2::SDL2main INTERFACE IMPORTED)
+  set_target_properties(SDL2::SDL2main PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${sdl2_SOURCE_DIR}/lib/x64/SDL2main.lib")
+  add_compile_definitions(NOMINMAX HLSL_CPU __PRFCHWINTRIN_H)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-everything /W4")
+  endif()
+else()
+  find_package(SDL2 REQUIRED)
+endif()
 
-# --- RT64 + N64ModernRuntime + RecompFrontend (from BanjoRecomp tree) ---
+# --- RT64 + N64ModernRuntime + RecompFrontend (vendored under lib/) ---
 add_subdirectory(${RT64_ROOT} ${CMAKE_BINARY_DIR}/rt64)
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(${N64MR} ${CMAKE_BINARY_DIR}/N64ModernRuntime)
@@ -50,10 +81,12 @@ set(DXC_PS_OPTS ${DXC_COMMON_OPTS} "-E" "PSMain" "-T" "ps_6_0" "-D" "DYNAMIC_REN
 set(DXC_VS_OPTS ${DXC_COMMON_OPTS} "-E" "VSMain" "-T" "vs_6_0" "-D" "DYNAMIC_RENDER_PARAMS" "-fvk-invert-y")
 set(DXC_CS_OPTS ${DXC_COMMON_OPTS} "-E" "CSMain" "-T" "cs_6_0")
 set(DXC_GS_OPTS ${DXC_COMMON_OPTS} "-E" "GSMain" "-T" "gs_6_0")
-if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+if(WIN32)
+  set(DXC "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc.exe")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   set(DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
 else()
-  set(DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/arm64" "${RT64_ROOT}/src/contrib/dxc/bin/arm64/dxc-linux")
+  message(FATAL_ERROR "Only x86_64 Linux/Windows DXC is vendored (arm64/macOS DXC trees were excluded, see vendor/EXCLUDES.txt)")
 endif()
 
 add_subdirectory(${RECOMP_FRONTEND} ${CMAKE_BINARY_DIR}/RecompFrontend)
@@ -130,7 +163,6 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
-    ${CMAKE_SOURCE_DIR}/src/game/tooie_rsp_endpoint_current.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
@@ -158,11 +190,11 @@ target_include_directories(TooieRecompiled PRIVATE
     ${RECOMP_FRONTEND}/recompui/include
     ${RECOMP_FRONTEND}/recompui/src
     ${RT64_ROOT}/src/contrib/nativefiledialog-extended/src/include
-    ${BK_ROOT}/lib/SlotMap
+    ${TOOIE_LIB}/SlotMap
 )
 
-# Fix Banjo-relative stb include in main.cpp by also adding Banjo-style path
-target_include_directories(TooieRecompiled PRIVATE ${BK_ROOT})
+# main.cpp includes "stb/stb_image.h" (rt64 contrib).
+target_include_directories(TooieRecompiled PRIVATE ${RT64_ROOT}/src/contrib)
 
 target_compile_options(TooieRecompiled PRIVATE
     -fno-strict-aliasing
@@ -174,27 +206,70 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|
     target_compile_options(TooieRecompiled PRIVATE -march=nehalem)
 endif()
 
-find_package(SDL2 REQUIRED)
-find_package(Freetype REQUIRED)
 find_package(Threads REQUIRED)
 
-target_include_directories(TooieRecompiled PRIVATE ${SDL2_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+if(WIN32)
+    # freetype comes from RecompFrontend (freetype-windows-binaries); SDL2 from the vendored lib/SDL2-windows.
+    target_include_directories(TooieRecompiled PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(TooieRecompiled PRIVATE
+        PatchesLib
+        RecompiledFuncs
+        recompui
+        recompinput
+        librecomp
+        ultramodern
+        rt64
+        nfd
+        SDL2::SDL2
+        Threads::Threads
+    )
+    # Identical-code folding would merge functions and break mod function patching (as in BanjoRecomp).
+    target_link_options(TooieRecompiled PRIVATE /OPT:NOICF)
+    set_target_properties(TooieRecompiled PROPERTIES
+        LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
+        LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+        LINK_FLAGS_RELWITHDEBINFO "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+        LINK_FLAGS_MINSIZEREL "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+    add_custom_command(TARGET TooieRecompiled POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${sdl2_SOURCE_DIR}/lib/x64/SDL2.dll"
+            "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxil.dll"
+            "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxcompiler.dll"
+            $<TARGET_FILE_DIR:TooieRecompiled>)
+else()
+    find_package(SDL2 REQUIRED)
+    find_package(Freetype REQUIRED)
 
-target_link_libraries(TooieRecompiled PRIVATE
-    PatchesLib
-    RecompiledFuncs
-    recompui
-    recompinput
-    librecomp
-    ultramodern
-    rt64
-    nfd
-    ${FREETYPE_LIBRARIES}
-    SDL2::SDL2
-    Threads::Threads
-    ${CMAKE_DL_LIBS}
-    atomic
+    target_include_directories(TooieRecompiled PRIVATE ${SDL2_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+
+    target_link_libraries(TooieRecompiled PRIVATE
+        PatchesLib
+        RecompiledFuncs
+        recompui
+        recompinput
+        librecomp
+        ultramodern
+        rt64
+        nfd
+        ${FREETYPE_LIBRARIES}
+        SDL2::SDL2
+        Threads::Threads
+        ${CMAKE_DL_LIBS}
+        atomic
+    )
+endif()
+
+# Runtime resolves <exe dir>/assets. Refresh this managed copy on every app build,
+# including deletions, so incremental packages cannot retain retired UI resources.
+if(CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
+    message(FATAL_ERROR "Use an out-of-source build directory (cmake -S . -B build-linux).")
+endif()
+add_custom_target(TooieUIAssets
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_BINARY_DIR}/assets"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets" "${CMAKE_BINARY_DIR}/assets"
+    VERBATIM
 )
+add_dependencies(TooieRecompiled TooieUIAssets)
 
 # P09 backpack + player-model witnesses. Wrappers are inert unless
 # TOOIE_DIAG_BACKPACK_FLAP=1 / TOOIE_DIAG_SECONDARY_SWAY=1.
@@ -222,23 +297,22 @@ if (UNIX AND NOT APPLE)
     )
 endif()
 
-# Keep controller recognition identical to BanjoRecomp. Make the canonical DB
+# Keep controller recognition identical to the upstream DB (provenance: vendor/UPSTREAMS.tsv). Make the canonical DB
 # an explicit build dependency so updates are recopied even when the executable
 # itself does not need relinking.
 set(TOOIE_CONTROLLER_DB "${CMAKE_CURRENT_BINARY_DIR}/recompcontrollerdb.txt")
 add_custom_command(
     OUTPUT "${TOOIE_CONTROLLER_DB}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${BK_ROOT}/recompcontrollerdb.txt"
+        "${CMAKE_SOURCE_DIR}/recompcontrollerdb.txt"
         "${TOOIE_CONTROLLER_DB}"
-    DEPENDS "${BK_ROOT}/recompcontrollerdb.txt"
+    DEPENDS "${CMAKE_SOURCE_DIR}/recompcontrollerdb.txt"
     VERBATIM
 )
 add_custom_target(TooieControllerDB DEPENDS "${TOOIE_CONTROLLER_DB}")
 add_dependencies(TooieRecompiled TooieControllerDB)
 
-# Tooie-owned launcher wordmark. build/assets points at the shared BanjoRecomp
-# assets, so the SVG is copied next to it (<build>/ui_assets) and referenced
+# Tooie-owned launcher wordmark. The SVG is copied next to <build>/assets (<build>/ui_assets) and referenced
 # from launcher_animation.cpp as "../ui_assets/TooieLogo.svg".
 set(TOOIE_LAUNCHER_LOGO "${CMAKE_CURRENT_BINARY_DIR}/ui_assets/TooieLogo.svg")
 add_custom_command(
@@ -254,10 +328,12 @@ add_dependencies(TooieRecompiled TooieLauncherLogo)
 
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")
-if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+if(WIN32)
+    set (DXC "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc.exe")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
     set (DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
 else()
-    set (DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/arm64" "${RT64_ROOT}/src/contrib/dxc/bin/arm64/dxc-linux")
+    message(FATAL_ERROR "Only x86_64 Linux/Windows DXC is vendored (arm64/macOS DXC trees were excluded, see vendor/EXCLUDES.txt)")
 endif()
 
 set_property(TARGET TooieRecompiled PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -529,23 +605,14 @@ target_include_directories(tooie_demo1_upd_layout_test PRIVATE
 )
 set_target_properties(tooie_demo1_upd_layout_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-# P09 default CURRENT tfPos palliative: same production function as the
-# TooieRecompiled startup path. Env unset/0/1 plus static call order.
-add_executable(tooie_rsp_endpoint_current_test
-    ${CMAKE_SOURCE_DIR}/tests/tooie_rsp_endpoint_current_test.cpp
-    ${CMAKE_SOURCE_DIR}/src/game/tooie_rsp_endpoint_current.cpp
+# RT64 host endpoint-current switch (runtime interpolation toggle): header-only precedence/latch test.
+add_executable(rt64_host_endpoint_current_test
+    ${CMAKE_SOURCE_DIR}/tests/rt64_host_endpoint_current_test.cpp
 )
-target_include_directories(tooie_rsp_endpoint_current_test PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+target_include_directories(rt64_host_endpoint_current_test PRIVATE
+    ${RT64_ROOT}/src
 )
-target_compile_definitions(tooie_rsp_endpoint_current_test PRIVATE
-    TOOIE_MAIN_SOURCE_PATH="${CMAKE_SOURCE_DIR}/src/main/main.cpp"
-)
-target_compile_options(tooie_rsp_endpoint_current_test PRIVATE
-    -fno-strict-aliasing
-    -Wno-unused-parameter
-)
-set_target_properties(tooie_rsp_endpoint_current_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+set_target_properties(rt64_host_endpoint_current_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # RT64 below-native present decimator: host test of the header-only helper.
 add_executable(rt64_present_decimator_test
@@ -593,6 +660,61 @@ target_compile_options(p09_exact_use_correlation_test PRIVATE
     -Wno-unused-parameter
 )
 set_target_properties(p09_exact_use_correlation_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P09 PREV/CUR local-pair snapshot: host test of the header-only capture/replay.
+add_executable(p09_local_pair_snapshot_test
+    ${CMAKE_SOURCE_DIR}/tests/p09_local_pair_snapshot_test.cpp
+)
+target_include_directories(p09_local_pair_snapshot_test PRIVATE
+    ${RT64_ROOT}/src
+)
+target_compile_options(p09_local_pair_snapshot_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(p09_local_pair_snapshot_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(p09_local_pair_snapshot_io_test
+    ${CMAKE_SOURCE_DIR}/tests/p09_local_pair_snapshot_io_test.cpp
+)
+target_include_directories(p09_local_pair_snapshot_io_test PRIVATE
+    ${RT64_ROOT}/src
+)
+target_compile_options(p09_local_pair_snapshot_io_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(p09_local_pair_snapshot_io_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P09 articulated WORLD interpolation guards (translation coherence + closure guard): host test on real captured bones.
+add_executable(p09_world_interpolation_guard_test
+    ${CMAKE_SOURCE_DIR}/tests/p09_world_interpolation_guard_test.cpp
+    ${RT64_ROOT}/src/common/rt64_math.cpp
+    ${RT64_ROOT}/src/hle/rt64_rigid_body.cpp
+)
+target_include_directories(p09_world_interpolation_guard_test PRIVATE
+    ${RT64_ROOT}/src
+    ${RT64_ROOT}/src/contrib/hlslpp/include
+)
+target_compile_options(p09_world_interpolation_guard_test PRIVATE
+    -fno-strict-aliasing
+    -Wno-unused-parameter
+)
+set_target_properties(p09_world_interpolation_guard_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# P09 interpolated-frame burst (hotkey removed; capture infrastructure retained): host test of the header-only controller (miniz from the RT64 pin).
+add_executable(p09_interp_burst_test
+    ${CMAKE_SOURCE_DIR}/tests/p09_interp_burst_test.cpp
+    ${RT64_ROOT}/src/contrib/miniz/miniz.c
+)
+target_include_directories(p09_interp_burst_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${RT64_ROOT}/src
+)
+if(NOT WIN32)
+    target_link_libraries(p09_interp_burst_test PRIVATE pthread)
+endif()
+set_target_properties(p09_interp_burst_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # P08-T08 graphics failure regression test: proves error classification, message formatting, and simulated failure safety.
 add_executable(graphics_failure_test

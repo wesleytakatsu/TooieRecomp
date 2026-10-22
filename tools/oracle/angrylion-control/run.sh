@@ -28,16 +28,7 @@ resolve_rom() {
         printf '%s' "$TOOIE_CART_Z64"
         return
     fi
-    local candidate
-    for candidate in \
-        "$TOOIE_ROOT/../Banjo-Tooie (USA).z64" \
-        "$TOOIE_ROOT/../Banjo-Tooie (USA).n64"
-    do
-        if [[ -f "$candidate" ]]; then
-            printf '%s' "$candidate"
-            return
-        fi
-    done
+    # No implicit sibling/parent-directory ROM lookup: the cartridge is an explicit, private input.
     fail "set TOOIE_CART_Z64 to the NTSC-U Rev. 0 cartridge (SHA-1 $ROM_SHA1). Do not use the decompressed TooieRecomp build ROM."
 }
 

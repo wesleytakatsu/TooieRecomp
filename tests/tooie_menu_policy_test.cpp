@@ -51,6 +51,38 @@ int main() {
     s = aspect_window_size(16.0 / 9.0, 1280, 720, 1920, 1080);
     CHECK(s.w == 1280 && s.h == 720);
 
+    // Interpolation policy (pure). Legacy env override must be absent for the table below.
+#if defined(_WIN32)
+    _putenv_s("TOOIE_TEST_INTERPOLATION_FPS", "");
+#else
+    unsetenv("TOOIE_TEST_INTERPOLATION_FPS");
+#endif
+    constexpr uint32_t kOrig = static_cast<uint32_t>(ultramodern::renderer::RefreshRate::Original);
+    constexpr uint32_t kDisp = static_cast<uint32_t>(ultramodern::renderer::RefreshRate::Display);
+    constexpr uint32_t kMan = static_cast<uint32_t>(ultramodern::renderer::RefreshRate::Manual);
+    CHECK(kInterpolationDefaultRate == 60);
+    // OFF always yields Manual/30, whatever was stored.
+    CHECK((coerce_refresh(false, {kDisp, 144.0}) == RefreshChoice{kMan, 30.0}));
+    CHECK((coerce_refresh(false, {kMan, 240.0}) == RefreshChoice{kMan, 30.0}));
+    CHECK((coerce_refresh(false, {kOrig, 60.0}) == RefreshChoice{kMan, 30.0}));
+    // ON picks a usable 60 when the stored rate would generate nothing; otherwise keeps the user's choice.
+    CHECK((coerce_refresh(true, {kMan, 30.0}) == RefreshChoice{kMan, 60.0}));
+    CHECK((coerce_refresh(true, {kMan, 20.0}) == RefreshChoice{kMan, 60.0}));
+    CHECK((coerce_refresh(true, {kOrig, 30.0}) == RefreshChoice{kMan, 60.0}));
+    CHECK((coerce_refresh(true, {kMan, 45.0}) == RefreshChoice{kMan, 45.0}));
+    CHECK((coerce_refresh(true, {kMan, 120.0}) == RefreshChoice{kMan, 120.0}));
+    CHECK((coerce_refresh(true, {kDisp, 30.0}) == RefreshChoice{kDisp, 30.0}));
+    // Legacy env override: forces ON at 60/120 only; anything else is ignored.
+    CHECK(!interpolation_effective(false) && interpolation_effective(true));
+#if !defined(_WIN32)
+    setenv("TOOIE_TEST_INTERPOLATION_FPS", "120", 1);
+    CHECK(interpolation_effective(false));
+    CHECK((coerce_refresh(true, {kMan, 30.0}) == RefreshChoice{kMan, 120.0}));
+    setenv("TOOIE_TEST_INTERPOLATION_FPS", "90", 1);
+    CHECK(!interpolation_effective(false));
+    unsetenv("TOOIE_TEST_INTERPOLATION_FPS");
+#endif
+
     std::puts("tooie_menu_policy_test PASS");
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "tooie_diag.h"
 #include "recomp.h"
+#include "render/rt64_p09_local_pair_snapshot.h"
 
 #include <atomic>
 #include <array>
@@ -13,9 +14,15 @@
 #include <string>
 #include <unordered_set>
 #include <thread>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#include <SDL.h>
+#else
 #include <unistd.h>
 
 #include <SDL2/SDL.h>
+#endif
 
 namespace tooie_diag {
 
@@ -50,6 +57,7 @@ std::atomic<bool> g_forced_facing_enabled{false};
 std::atomic<bool> g_attract_enabled{false};
 std::atomic<bool> g_backpack_flap_enabled{false};
 std::atomic<bool> g_secondary_sway_enabled{false};
+std::atomic<bool> g_p09_local_pair_snapshot{false};
 std::atomic<bool> g_getter_durable_needed{false};
 std::atomic<bool> g_secondary_sway_interp_simple_enabled{false};
 std::atomic<bool> g_secondary_sway_no_interpolation_enabled{false};
@@ -2516,6 +2524,10 @@ void ensure_init() {
     g_secondary_sway_enabled.store(sway != nullptr && sway[0] != '\0' &&
                                        sway[0] != '0',
                                    std::memory_order_relaxed);
+    const char* pair_snap = std::getenv("TOOIE_DIAG_P09_LOCAL_PAIR_SNAPSHOT");
+    g_p09_local_pair_snapshot.store(
+        pair_snap != nullptr && pair_snap[0] != '\0' && pair_snap[0] != '0',
+        std::memory_order_relaxed);
     const char* interp_simple = std::getenv("TOOIE_DIAG_FEATHER_INTERP_SIMPLE");
     g_secondary_sway_interp_simple_enabled.store(
         interp_simple != nullptr && interp_simple[0] != '\0' &&
@@ -3779,6 +3791,11 @@ void tick() {
 bool secondary_sway_enabled() {
     ensure_init();
     return g_secondary_sway_enabled.load(std::memory_order_relaxed);
+}
+
+bool p09_local_pair_provenance_enabled() {
+    ensure_init();
+    return g_p09_local_pair_snapshot.load(std::memory_order_relaxed);
 }
 
 bool secondary_sway_player_table_slot(uint8_t* rdram, uint32_t player,
@@ -6067,8 +6084,9 @@ float feather_quaternion_angle(const float a[4], const float b[4]) {
 
 bool secondary_sway_note_dcf48(uint8_t* rdram, void* raw_ctx) {
     ensure_init();
-    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed) ||
-        rdram == nullptr || raw_ctx == nullptr) {
+    const bool sway = g_secondary_sway_enabled.load(std::memory_order_relaxed);
+    const bool pairSnap = g_p09_local_pair_snapshot.load(std::memory_order_relaxed);
+    if ((!sway && !pairSnap) || rdram == nullptr || raw_ctx == nullptr) {
         return false;
     }
     auto* const ctx = static_cast<recomp_context*>(raw_ctx);
@@ -6082,51 +6100,59 @@ bool secondary_sway_note_dcf48(uint8_t* rdram, void* raw_ctx) {
     {
         std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
         in_range = secondary_sway_lookup_durable_bin(node_ptr, &matched, &rel);
-        if (in_range) {
-            ++g_secondary_sway_dcf48_in_range;
-        }
         const bool pointer_ok = node_ptr != 0 && (node_ptr & 3u) == 0u;
-        const uint32_t type =
-            pointer_ok ? backpack_guest_word(rdram, node_ptr, 0) : 0;
         bone_index =
             pointer_ok ? backpack_guest_byte(rdram, node_ptr, 9) : 0;
         bone_anim =
             pointer_ok ? backpack_guest_hword(rdram, node_ptr, 0xA) : 0;
-        if (in_range && rel == kSecondarySwaySnoutNodeOffset) {
-            ++g_secondary_sway_dcf48_rel_11cb8;
-        }
-        const KazooieFeatherClass feather = in_range
-            ? classify_kazooie_feather(rel, type, bone_index, bone_anim)
-            : KazooieFeatherClass::None;
-        if (feather == KazooieFeatherClass::Sibling62B) {
-            ++g_kazooie_feather_sibling_hits;
-        }
-        const bool targeted_62b = is_targeted_kazooie_62b_transform(
-            matched, feather, bone_anim);
-        accept = targeted_62b ||
-                 feather == KazooieFeatherClass::Primary61C ||
-                 feather == KazooieFeatherClass::Primary83A;
-        if (accept) {
-            ++g_secondary_sway_dcf48_accept;
-            ++g_kazooie_feather_primary_hits;
-            if (feather == KazooieFeatherClass::Primary62B) {
-                ++g_kazooie_feather_62b_primary_hits;
-            } else if (feather == KazooieFeatherClass::Primary61C) {
-                ++g_kazooie_feather_61c_primary_hits;
-            } else {
-                ++g_kazooie_feather_83a_primary_hits;
+        if (sway) {
+            const uint32_t type =
+                pointer_ok ? backpack_guest_word(rdram, node_ptr, 0) : 0;
+            if (in_range) {
+                ++g_secondary_sway_dcf48_in_range;
             }
-            if (targeted_62b) {
-                ++g_feather_guest_seen[static_cast<uint32_t>(bone_anim)];
+            if (in_range && rel == kSecondarySwaySnoutNodeOffset) {
+                ++g_secondary_sway_dcf48_rel_11cb8;
+            }
+            const KazooieFeatherClass feather = in_range
+                ? classify_kazooie_feather(rel, type, bone_index, bone_anim)
+                : KazooieFeatherClass::None;
+            if (feather == KazooieFeatherClass::Sibling62B) {
+                ++g_kazooie_feather_sibling_hits;
+            }
+            const bool targeted_62b = is_targeted_kazooie_62b_transform(
+                matched, feather, bone_anim);
+            accept = targeted_62b ||
+                     feather == KazooieFeatherClass::Primary61C ||
+                     feather == KazooieFeatherClass::Primary83A;
+            if (accept) {
+                ++g_secondary_sway_dcf48_accept;
+                ++g_kazooie_feather_primary_hits;
+                if (feather == KazooieFeatherClass::Primary62B) {
+                    ++g_kazooie_feather_62b_primary_hits;
+                } else if (feather == KazooieFeatherClass::Primary61C) {
+                    ++g_kazooie_feather_61c_primary_hits;
+                } else {
+                    ++g_kazooie_feather_83a_primary_hits;
+                }
+                if (targeted_62b) {
+                    ++g_feather_guest_seen[static_cast<uint32_t>(bone_anim)];
+                }
             }
         }
         TreeWalkScope tree{};
-        if (tree_scope_active(&tree) && in_range &&
+        if (sway && tree_scope_active(&tree) && in_range &&
             g_secondary_sway_tree_rows < kTreeMaxRows) {
             secondary_sway_write_tree_row(
                 rdram, guest_logic_tick(), "DCF48", tree.model_bin, tree.root,
                 node_ptr, node_ptr, rel, false);
         }
+    }
+    if (pairSnap && in_range &&
+        RT64::p09LocalPairCandidateClass(
+            matched.resource_id, rel, bone_index,
+            static_cast<uint32_t>(bone_anim)) != RT64::P09LocalPairCandidateNone) {
+        accept = true;
     }
     g_dcf48_snout_scope = accept;
     if (accept) {
@@ -6201,10 +6227,12 @@ void secondary_sway_note_ade2c(uint8_t* rdram, void* raw_ctx) {
 void secondary_sway_note_19aa0(uint8_t* rdram, uint32_t parent_ptr,
                                uint32_t local_ptr) {
     ensure_init();
-    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed) ||
-        rdram == nullptr || !g_dcf48_snout_scope) {
+    const bool sway = g_secondary_sway_enabled.load(std::memory_order_relaxed);
+    const bool pairSnap = g_p09_local_pair_snapshot.load(std::memory_order_relaxed);
+    if ((!sway && !pairSnap) || rdram == nullptr || !g_dcf48_snout_scope) {
         return;
     }
+    (void)sway;
     g_snout_composition = {};
     g_snout_composition.valid = true;
     g_snout_composition.frame = guest_logic_tick();
@@ -6236,8 +6264,9 @@ void secondary_sway_note_19aa0(uint8_t* rdram, uint32_t parent_ptr,
 void secondary_sway_note_18c28(uint8_t* rdram, uint32_t gfx_mtx_ptr,
                                uint32_t float_src_ptr) {
     ensure_init();
-    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed) ||
-        rdram == nullptr || !g_dcf48_snout_scope) {
+    const bool sway = g_secondary_sway_enabled.load(std::memory_order_relaxed);
+    const bool pairSnap = g_p09_local_pair_snapshot.load(std::memory_order_relaxed);
+    if ((!sway && !pairSnap) || rdram == nullptr || !g_dcf48_snout_scope) {
         return;
     }
     uint32_t fixed_words[16]{};
@@ -6256,7 +6285,7 @@ void secondary_sway_note_18c28(uint8_t* rdram, uint32_t gfx_mtx_ptr,
     secondary_sway_format_words(fixed_hex, sizeof(fixed_hex), fixed_words);
 
     std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
-    if (g_single_mtx_guest_matrix_rows < kSingleMtxTraceRows) {
+    if (sway && g_single_mtx_guest_matrix_rows < kSingleMtxTraceRows) {
         if (g_single_mtx_matrix_csv == nullptr) {
             g_single_mtx_matrix_csv = std::fopen(
                 "/tmp/tooie-kazooie-feather-matrix.csv", "a");
@@ -6329,13 +6358,14 @@ void secondary_sway_note_18c28(uint8_t* rdram, uint32_t gfx_mtx_ptr,
                 sizeof(trace.composed_float_bits));
     std::memcpy(trace.fixed_words, fixed_words, sizeof(trace.fixed_words));
     ++g_single_mtx_token_enqueued;
-    if (is_full_kazooie_feather_trace(trace)) {
+    if (sway && is_full_kazooie_feather_trace(trace)) {
         ++g_feather_matrix_seen[feather_stat_index(trace)];
     }
     g_snout_composition.valid = false;
 }
 
 void secondary_sway_identity_header() {
+    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed)) return;
     if (g_single_mtx_identity_csv == nullptr) {
         g_single_mtx_identity_csv = std::fopen(
             "/tmp/tooie-kazooie-feather-rt64-identity.csv", "a");
@@ -6354,6 +6384,7 @@ void secondary_sway_identity_header() {
 }
 
 void secondary_sway_match_header() {
+    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed)) return;
     if (g_single_mtx_match_csv == nullptr) {
         g_single_mtx_match_csv = std::fopen(
             "/tmp/tooie-kazooie-feather-rt64-match.csv", "a");
@@ -6621,7 +6652,9 @@ uint64_t secondary_sway_rt64_matrix_event(
     uint32_t group_index, uint32_t explicit_group, uint64_t workload_id,
     uint32_t display_list_address, uint64_t display_list_counter) {
     ensure_init();
-    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed)) {
+    const bool sway = g_secondary_sway_enabled.load(std::memory_order_relaxed);
+    const bool pairSnap = g_p09_local_pair_snapshot.load(std::memory_order_relaxed);
+    if (!RT64::p09LocalPairRunProvenance(sway, pairSnap)) {
         return 0;
     }
     std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
@@ -6682,7 +6715,7 @@ uint64_t secondary_sway_rt64_matrix_event(
         }
         ++g_single_mtx_token_consumed;
         found->rt64_stack_after = stack_after;
-        if (is_full_kazooie_feather_trace(*found)) {
+        if (RT64::p09LocalPairRunHeavySway(sway) && is_full_kazooie_feather_trace(*found)) {
             ++g_feather_gmtx_seen[feather_stat_index(*found)];
         }
     }
@@ -6700,8 +6733,8 @@ uint64_t secondary_sway_rt64_matrix_event(
     }
     found->rt64_matrix_id = matrix_id;
     found->rt64_group_index = group_index;
-    secondary_sway_identity_header();
-    if (g_single_mtx_identity_csv != nullptr &&
+    if (RT64::p09LocalPairRunHeavySway(sway)) secondary_sway_identity_header();
+    if (RT64::p09LocalPairRunHeavySway(sway) && g_single_mtx_identity_csv != nullptr &&
         g_single_mtx_identity_rows < kSingleMtxIdentityRows) {
         std::fprintf(
             g_single_mtx_identity_csv,
@@ -6733,7 +6766,9 @@ void secondary_sway_rt64_vertex_event(
     uint32_t draw_max_matrix, uint32_t projection_type,
     uint32_t projection_index, uint32_t other_mode_h) {
     ensure_init();
-    if (!g_secondary_sway_enabled.load(std::memory_order_relaxed)) {
+    const bool sway = g_secondary_sway_enabled.load(std::memory_order_relaxed);
+    const bool pairSnap = g_p09_local_pair_snapshot.load(std::memory_order_relaxed);
+    if (!RT64::p09LocalPairRunProvenance(sway, pairSnap)) {
         return;
     }
     std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
@@ -6775,7 +6810,7 @@ void secondary_sway_rt64_vertex_event(
     SingleMtxTraceToken& trace = *found;
     const bool first_vertex = !trace.vertex_seen;
     trace.vertex_seen = true;
-    if (first_vertex && is_full_kazooie_feather_trace(trace)) {
+    if (RT64::p09LocalPairRunHeavySway(sway) && first_vertex && is_full_kazooie_feather_trace(trace)) {
         ++g_feather_vertex_seen[feather_stat_index(trace)];
     }
         trace.vertex_start = vertex_start;
@@ -6810,9 +6845,11 @@ void secondary_sway_rt64_vertex_event(
         trace.rt64_projection_type = projection_type;
         trace.rt64_projection_index = projection_index;
         trace.rt64_other_mode_h = other_mode_h;
-        remember_feather_world_hit(trace);
-        secondary_sway_identity_header();
-        if (g_single_mtx_identity_csv != nullptr &&
+        if (RT64::p09LocalPairRunHeavySway(sway)) {
+            remember_feather_world_hit(trace);
+            secondary_sway_identity_header();
+        }
+        if (RT64::p09LocalPairRunHeavySway(sway) && g_single_mtx_identity_csv != nullptr &&
             g_single_mtx_identity_rows < kSingleMtxIdentityRows) {
             std::fprintf(
                 g_single_mtx_identity_csv,
@@ -7295,7 +7332,74 @@ void secondary_sway_rt64_feather_tri_event(
     }
 }
 
+uint32_t p09_local_pair_collect_witnesses(
+    uint64_t workload_id, uint32_t* world_index, uint32_t* resource_id,
+    uint32_t* node_rel, uint32_t* bone_index, uint32_t* bone_anim_id,
+    uint8_t* candidate_class, uint32_t cap) {
+    if (!g_p09_local_pair_snapshot.load(std::memory_order_relaxed) ||
+        workload_id == 0 || world_index == nullptr || resource_id == nullptr ||
+        node_rel == nullptr || bone_index == nullptr || bone_anim_id == nullptr ||
+        candidate_class == nullptr) {
+        return 0;
+    }
+    struct Row {
+        uint8_t vertexSeen;
+        uint32_t transform;
+        uint32_t resource;
+        uint32_t node;
+        uint32_t bone;
+        uint32_t anim;
+        uint8_t cls;
+    };
+    std::vector<Row> rows;
+    {
+        std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
+        for (const SingleMtxTraceToken& trace : g_single_mtx_tokens) {
+            if (trace.token == 0 || trace.vertex_workload_id != workload_id) continue;
+            const uint8_t cls = RT64::p09LocalPairCandidateClass(
+                trace.resource_id, trace.node_rel, trace.bone_index, trace.bone_anim_id);
+            if (cls == RT64::P09LocalPairCandidateNone) continue;
+            Row row;
+            row.vertexSeen = trace.vertex_seen ? 1u : 0u;
+            row.transform = trace.rt64_transform_index;
+            row.resource = trace.resource_id;
+            row.node = trace.node_rel;
+            row.bone = trace.bone_index;
+            row.anim = trace.bone_anim_id;
+            row.cls = cls;
+            rows.push_back(row);
+        }
+    }
+    uint32_t n = 0;
+    bool missing = false;
+    for (const Row& row : rows) {
+        if (!RT64::p09LocalPairWitnessIndexMatch(workload_id, workload_id, row.vertexSeen)) {
+            missing = true;
+            continue;
+        }
+        if (n >= cap) return cap + 1u;
+        world_index[n] = row.transform;
+        resource_id[n] = row.resource;
+        node_rel[n] = row.node;
+        bone_index[n] = row.bone;
+        bone_anim_id[n] = row.anim;
+        candidate_class[n] = row.cls;
+        n += 1u;
+    }
+    if (missing) return 0xFFFFFFFFu;
+    return n;
+}
+
 } // namespace tooie_diag
+
+extern "C" uint32_t tooie_diag_p09_local_pair_witnesses(
+    uint64_t workload_id, uint32_t* world_index, uint32_t* resource_id,
+    uint32_t* node_rel, uint32_t* bone_index, uint32_t* bone_anim_id,
+    uint8_t* candidate_class, uint32_t cap) {
+    return tooie_diag::p09_local_pair_collect_witnesses(
+        workload_id, world_index, resource_id, node_rel, bone_index,
+        bone_anim_id, candidate_class, cap);
+}
 
 extern "C" uint64_t tooie_diag_rt64_matrix(
     uint32_t command_address, uint32_t matrix_address,

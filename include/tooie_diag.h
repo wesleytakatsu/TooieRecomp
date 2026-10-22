@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 
 // Runtime diagnostics for boot hang + audio path (P07 residual).
 // Enable with TOOIE_DIAG=1 (or any non-empty/non-zero value).
@@ -275,6 +276,10 @@ inline bool getter_durable_metadata_requested(
     if (secondary_sway) {
         return true;
     }
+    const char* pair_snap = std::getenv("TOOIE_DIAG_P09_LOCAL_PAIR_SNAPSHOT");
+    if (pair_snap != nullptr && pair_snap[0] != '\0' && pair_snap[0] != '0') {
+        return true;
+    }
     if (tooie_diag_legacy_flag_on(handoff_v7) ||
         tooie_diag_legacy_flag_on(postprocess_q)) {
         return true;
@@ -289,6 +294,7 @@ inline bool getter_durable_metadata_requested(
 }
 
 bool secondary_sway_enabled();
+bool p09_local_pair_provenance_enabled();
 void secondary_sway_note_98ba8(uint8_t* rdram, uint32_t player);
 bool secondary_sway_player_draw_begin(uint8_t* rdram, uint32_t player);
 void secondary_sway_player_draw_end();
@@ -375,6 +381,13 @@ extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick);
 extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx,
                                        uint32_t ovl, uint32_t ep, int leaving);
 
+// Default-off P09 PREV/CUR snapshot witness list. Count, cap+1 on overflow,
+// or 0xFFFFFFFF if a matched static candidate has no bound world.
+// Candidate class is not a visual identity.
+extern "C" uint32_t tooie_diag_p09_local_pair_witnesses(
+    uint64_t workload_id, uint32_t* world_index, uint32_t* resource_id,
+    uint32_t* node_rel, uint32_t* bone_index, uint32_t* bone_anim_id,
+    uint8_t* candidate_class, uint32_t cap);
 extern "C" uint64_t tooie_diag_rt64_matrix(
     uint32_t command_address, uint32_t matrix_address,
     uint32_t physical_address, uint32_t params, uint32_t stack_before,

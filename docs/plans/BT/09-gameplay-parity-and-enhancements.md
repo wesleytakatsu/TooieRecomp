@@ -7,11 +7,120 @@ project: TooieRecomp
 phase: P09
 order: 9
 depends_on: P08
-updated: 2026-10-17
-tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen, fps, overlay]
+updated: 2026-10-21
+tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen, fps, overlay, grok-quota, plume-patch, technical-gate]
 ---
 
 # BT P09 — Paridade de gameplay e melhorias
+
+## CURRENT — opção Interpolation no menu ESC e F8 removido (2026-10-21)
+
+Ver [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]] e [[../../HANDOFF]]. Opção persistida `interpolation` (padrão/legado/inválido = OFF = Manual 30 + CURRENT) com aplicação em runtime via `RT64::requestHostEndpointCurrent` (latch por workload, patch `rt64-p09-host-endpoint-current-toggle.patch`); ON libera Framerate e escolhe 60 quando preciso. F8 de captura desativado a pedido do usuário (infra RT64 dormente). Build/testes host exit 0 e jogo isolado ON→OFF→ON/relaunch provados em cena de título/attract. **Não** fecha o gate técnico (`passed: false`, B1–B7 abertos) nem prova correção de glitch; P09 formal segue `PENDING / NOT_FORMALLY_OPEN`. `NEXT_SINGLE_ACTION`: relato visual do usuário com Interpolation ON em gameplay real.
+
+## CURRENT — continuação técnica pós-cota Grok concluída; gate técnico Haiku 5.5 PENDING / FAILED (2026-10-21)
+
+Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]], `/home/wesley/.cache/tooie-glitch-doc-audit-and-fix/` (`continuation-status.json`, `technical-sonnet-report.md`, `technical-haiku-review.md`, `technical-gate.json`).
+- **Registro de transição por cota do Grok e prova de build retida**:
+  - Esgotamento de cota da API do Grok (`status 402 Payment Required: Grok Build usage balance exhausted`) registrado em `continuation-status.json`.
+  - Prova de build retida: árvore limpa `rt64-clean-pin` com `cleanpin-build` exit 0 (log de 136 KB, binário SHA256 `43e070abb80c5a9272d2945354c652578a09366d0ca7fbf9ec5c9b322ee4942f`).
+  - Durante a primeira captura de burst (`cpon1`), ocorreu SIGSEGV em `plume` por dereferência nula de `dstTexture`. A ramificação texture->buffer necessária existia como alteração local desversionada de 31 linhas em `plume_vulkan.cpp` (mtime 2026-08-27).
+  - Versionado o patch `patches/rt64/rt64-plume-texture-to-buffer-copy.patch` (SHA256 `49c218efa703a8946d65652474b209934cd8ec96a55c2053b93826cf8d070852`), registrado em `tools/apply_runtime_patches.sh`.
+  - Recompilação do pin limpo (`cleanpin-build2.log`, exit 0) gerou o binário auditado final SHA256 `965bbabbc3938ac833fd11b0ccb8b198f27e2108f95ebb51c405f4b4924aec05`.
+- **Diagnóstico do crash fatal `ong2` (SIGSEGV `rc=-11`)**:
+  - Coredump do PID 1659795 (`gdb -batch`): thread hóspede falhou em `unload_overlays ← ovl_unload` ao ler nó de `unordered_map` desalocado, enquanto o thread principal executava destruidores estáticos de `~unordered_map` a partir de `exit()`.
+  - Causa (`PROVEN_SOURCE`): em `librecomp/src/recomp.cpp` (`recomp::start`), o encerramento do processo destrói tabelas estáticas enquanto threads OSThread do hóspede ainda estão rodando. Teardown race no encerramento, independente das guardas. Mitigação aplicada apenas nos scripts de teste (`run_ab.py` e `play.py`).
+- **Métricas GPU reproduzidas**:
+  - `tools/vover.py` re-executado sobre os logs do binário limpo `965bbabb`: na title scene, overshoot de vértice caiu de 38.115 (OFF) para 3.178 (ON), e triângulos esticados cruzando WORLD caíram de 19.374 para 0.
+  - Scripted input com `tools/play.py` cobriu atores não-jogadores (Klungo wl 2600-3000, Mumbo e Bottles wl 3200-3900).
+- **Veredito do gate técnico independente Haiku 5.5 (`technical-gate.json`): `passed: false`**:
+  - **B1 (Critério circular)**: `crossStretchedTris = 0` avalia o próprio critério de recuo elementwise da guarda; como o lerp elementwise é convexo, matrizes chaveadas não esticam por construção. A métrica não pode ser citada como prova independente da correção.
+  - **B2 (Mislabeled default path / escopo do fix)**: os scripts de teste (`run_ab.py:31` e `play.py:26`) configuram `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0`. No Tooie de produção, o padrão é definir `"1"` (`include/tooie_diag.h:102-104`). No caminho padrão de produção, a guarda de interpolação permanece **inerte**. Logo, o fix afeta unicamente o modo opt-in 60 FPS com FORCE=0; o run `nat1` foi incorretamente rotulado como "default path" porque também usou FORCE=0.
+  - **B3 (Prova visual não-jogador ausente)**: sem par GPU casado com fase alinhada para atores não-jogadores (Klungo, Mumbo/Bottles). Linhas de auditoria não carregam identidade de objeto. O streak alaranjado de penas do Mumbo em `hA_3593.png` aparece em OFF, ON e `nat1`, sendo geometria de fonte da pose (`HYPOTHESIS`), sem prova visual de correção para não-jogadores.
+  - **B4 (Vínculo de binário do crash `ong2`)**: o core do `ong2` proveio do build de árvore suja (`build/TooieRecompiled`), de modo que o hash exato daquele binário permanece `UNKNOWN`. A explicação de hang em SIGTERM é `STRONG_INFERENCE` (caminho de eventos SDL2 não inspecionado).
+  - **B5 (Testes unitários pós-patch plume)**: os testes unitários (`cleanpin-tests.exits`) precedem a aplicação do patch do plume e não foram re-executados contra o binário final `965bbabb`.
+  - **B6 (Distinção da árvore suja do RT64)**: as ~14k linhas não versionadas no RT64 continuavam existindo no antigo checkout de trabalho (`BanjoRecomp/lib/rt64`), pré-existentes de fases anteriores (P08/diagnósticos); no TooieRecomp standalone atual, o RT64 vive em `lib/rt64` com patches integrados; o binário validado deriva estritamente da cadeia de pin limpo com patches.
+  - **B7 (Validação de gameplay pelo usuário)**: ausência de teste visual pelo usuário (`USER_OBSERVED`) a 60 FPS com o binário reproduzível.
+- **Invariante de produção**: CURRENT/30 permanece estritamente ativo por padrão (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`). P09 formal segue **`PENDING / NOT_FORMALLY_OPEN`**. Nenhuma alteração de código gerado, sem commit/push.
+- **`NEXT_SINGLE_ACTION`: resolver os bloqueadores B2 e B5 do gate técnico validando o build de pin limpo (binário `965bbabb`) sob o escopo explícito de opt-in (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0`) e registrando o log limpo de execução dos testes unitários pós-plume, antes de qualquer teste de gameplay dirigido pelo usuário a 60 FPS.**
+
+## Histórico — investigação causal iteração 3 concluída; gate independente Haiku 5.5 PENDING / FAILED (2026-10-20/21)
+
+Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]], `/home/wesley/.cache/tooie-glitch-cause-and-fix/resumed-cause-and-fix.md`, `resumed-haiku-review.md` e `resumed-gate.json`.
+- **Causa raiz A (`PROVEN` no fonte)**: em `RT64/src/hle/rt64_rigid_body.cpp:30-34`, o portão AUTO de translação linear divide `curVelMag /= dotCurVel` antes de testar `VelocityTolerance=5`. Com `dotCurVel` limitado a $10^{-6}$ para curvas $\ge 90^\circ$, mudanças de sentido desativam `lerpTranslation` retendo a translação no valor `CURRENT` enquanto a rotação interpola. Em malhas articuladas esqueléticas, ossos adjacentes interpolando suavemente esticam a junta跨-WORLD em hastes ("rods"), e partes rígidas desacopladas (como a aba da mochila em `image_018.png`) saem da trajetória.
+- **Correção no owning layer**: novo `lerpTranslationSpeedOnly` avaliado em velocidade linear bruta em `rt64_rigid_body.{h,cpp}`. Em `rt64_p09_world_interpolation_guard.h` (e `rt64_p09_translation_coherence.h::gateSpeedOnlyEnabled`), translações travadas puramente pela amplificação angular (`!lerpTranslation && lerpTranslationSpeedOnly`) são liberadas para interpolação para matrizes WORLD. Spikes reais de velocidade ($\ge 10\times$ e $\ge 5$) permanecem retidos. `TOOIE_TEST_P09_GATE_SPEED_ONLY=0` restaura a decisão original para teste A/B.
+- **Pares de frames GPU casados e métricas independentes**:
+  - Renderização direta na GPU (shots em `runs/off1..off3` vs `runs/on1..on8`) alinhada por offset determinístico de conteúdo; controle OFF vs OFF com zero pixels divergentes (`diffpix>8 = 0`).
+  - Métrica de overshoot de vértice independente do critério da guarda (`tools/vover.py`, teste de corda $>0.5\times\text{chord}+3$): redução de 26.185 para 2.673 no intervalo de título wl 1000-2500; triângulos esticados cruzando matrizes zerados.
+  - Correção da mochila do Banjo (`image_018.png` / `final_backpack_1889_1890.png`): renderização GPU mostra a faixa azul recolocada no corpo em wl 1889 e wl 1890, restando pequeno resíduo pontual em 1890.
+  - Vértices retidos em CURRENT caíram de 4.6% para 0.6% (abaixo do baseline OFF 0.8%), e vértices próximos do ponto médio (30-70%) subiram para 97.6%.
+- **Veredito do gate independente Haiku 5.5 (`resumed-gate.json`): `passed: false`**:
+  - F1 (par GPU casado): PARCIAL-FECHADO para a cena de título.
+  - F2 (estiramento zero): PARCIAL (métrica de corda apoia, mas `crossStretched=0` segue critério da própria guarda).
+  - F3 (snapping de articulações held): ABERTO (avaliado apenas em Banjo/Kazooie wl1604; corte de cena wl4226 retém 56 matrizes; objetos não-jogadores não medidos).
+  - F4 (gameplay real): ABERTO (apenas attract demo wl3000-9000 avaliado; sem teste pelo usuário a 60 FPS).
+  - F7 (fechamento elementwise): HEURÍSTICA A NÍVEL DE CLASSE (não prova anatômica).
+  - F8 (mochila): PARCIAL (confirmado em 2 frames GPU, resíduo visível em wl1890).
+  - **Bloqueadores formais do Gate**:
+    1. Exits de build da iteração 3 não verificados (sem logs de compilação em disco; ninja dry-run inconclusivo).
+    2. Contradição nos códigos de saída dos runs de jogo: `runs/ong2/meta.json` terminou com `rc=-11` (SIGSEGV) não explicado/não mencionado no documento da causa; 6 runs terminaram com `rc=None` (não recolhidos após SIGTERM).
+    3. Árvore de trabalho carrega código de diagnóstico RT64 unversioned (14.263 linhas em 32 arquivos eram preexistentes de fases anteriores como P08 sob preservação de worktree, enquanto a iteração 3 introduziu apenas 5 inserções em rt64_rigid_body.{h,cpp} e rt64_workload_queue.cpp); o replay em pin limpo `6f1c2d99` aplica os 6 patches, mas não reproduz a árvore compilada suja.
+    4. Ausência de teste em objetos articulados não-jogadores (F3).
+    5. Ausência de teste de gameplay dirigido pelo usuário a 60 FPS (F4).
+- **Invariante de produção**: CURRENT/30 permanece estritamente ativo por padrão (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`). P09 formal segue **`PENDING / NOT_FORMALLY_OPEN`**. Nenhuma alteração de código gerado, sem commit/push.
+- **`NEXT_SINGLE_ACTION`: investigar e reproduzir em ambiente isolado a causa do crash SIGSEGV (`rc=-11`) no run `ong2` (attract demo gameplay em workload 4200) e verificar a reprodutibilidade do build com log salvo antes de qualquer teste de gameplay pelo usuário.**
+
+## Histórico — guardas de interpolação articulada iteração 1/2 (2026-10-20)
+
+Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]] e [[../../plan/evidence/p09-interpolated-frame-burst-20261020]].
+- **Inspeção de glitches do usuário**: 14 imagens marcadas em `interpolated-burst-20261020-175030/` (todas peso 0.5): hastes esticadas na crista da cabeça da Kazooie (`image_001`…`016`) e faixa azul pontiaguda na mochila do Banjo (`image_018.png`) inspecionadas e confirmadas via leitor de imagem como defeitos renderizados reais.
+- **Implementação de guardas no RT64**: `patches/rt64/rt64-p09-world-interpolation-guard.patch` (SHA256 `1b771a1ab9205f6ffba0c1f8085e53979f38fed031319aedfe04d8cf8bb520d6`) integra coerência de translação articulada e guarda de fechamento articular (recuo elementwise). As guardas são genéricas (sem modelo/osso hardcoded) e permanecem **inertes** no caminho padrão CURRENT/30 (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`).
+- **Validação de build e host**: Build `TooieRecompiled` exit 0 (SHA256 `ebf5924cfd1dfd1471e44a0ae438e022a779ac3e32f6e9c8211bbb18da140b76`), teste unitário `./build/p09_world_interpolation_guard_test` PASS 27/27 (iteração 1/2 histórica; expandido para PASS 35/35 na iteração 3), replay limpo em pin RT64 `6f1c2d99` PASS via `tools/apply_runtime_patches.sh`.
+- **Revisão e Gate Independente (`gate.json` / `haiku-review.md`)**: **`passed: false`**. O mecanismo A (desarme de translação AUTO quebrando junta com rotação ativa) foi provado na reconstrução CPU (~79% dos triângulos esticados removidos). Porém, o gate foi reprovado por:
+  1. Falta de par casado renderizado na GPU com guardas ON (workload 1619 só tem GPU original vs CPU reprojetada; F1);
+  2. Métrica de estiramento zero é o próprio critério de convergência da guarda (F2);
+  3. Conjuntos inteiros articulados held são forçados a CURRENT (`heldMatrix`), congelando rotação sem medição de falsos positivos vs teleporte real (F3);
+  4. Gameplay real (fora do Title Attract) e correção da mochila em `018` não comprovados (F4, F8).
+- **Invariante**: P09 formal permanece **`PENDING / NOT_FORMALLY_OPEN`**. Caminho estável CURRENT/Manual 30 inalterado por padrão.
+- **`NEXT_SINGLE_ACTION`: renderizar um par casado GPU do workload 1619 com guardas OFF vs ON, auditar o defeito da mochila em 018 e obter teste visual de gameplay antes de qualquer alteração de padrão.**
+
+## Histórico — burst F8 comprovado em execução isolada (hotkey `REMOVED` 2026-10-21)
+
+Ferramenta **F8** implementada, host PASS e prova real 20 PNGs/manifest INTERPOLATED/DONE20/20, estágio pré-VI. Ver [[../../plan/evidence/p09-interpolated-frame-burst-20261020]]. Binário `7fb2d73e…de0cc`, PID isolado `1431958`; configurações/saves pessoais preservados. Não é correção de interpolação nem aceite geral de gameplay/P09. `NEXT_SINGLE_ACTION`: usuário capturar a cena desejada e informar pasta+números dos PNGs com glitch. Snapshot/espera abaixo são históricos.
+
+## Histórico — `WAITING_USER_SCENE`
+
+Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Gates host do snapshot aprovados (build/revisões, unidade 123/123, I/O separado e negativos semânticos); captura real `NOT_EXECUTED`. Novo jogo isolado PID inicial `1188686`, configurado 60 + novo snapshot sem heavy; FPS efetivos `UNKNOWN`, marcador inexistente. `NEXT_SINGLE_ACTION`: aguardar usuário avisar cena pronta e só então armar uma vez, não por cronômetro. Não é aceite de gameplay ou correção permanente; P09 `PENDING / NOT_FORMALLY_OPEN`. CURRENT/30 normal preservado; sem commit/push; estados abaixo históricos.
+
+## CURRENT (2026-10-20) — VISUAL_TEST_MODE_AUTHORIZED_AND_LAUNCHED
+
+Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Nova autorização do usuário permite
+retirar o paliativo **nos testes**. Opt-in `TOOIE_TEST_INTERPOLATION_FPS=60`
+(ou 120) desativa CURRENT quando não explicitamente definido e força a taxa
+manual escolhida; sem opt-in, caminho estável CURRENT/30 preservado.
+Build e testes de configuração/endpoint passaram; revisões Sonnet/Haiku sem
+bloqueios para este modo. Jogo aberto em teste 60 FPS sem coletores pesados;
+resultado visual e taxa efetiva **PENDING / UNKNOWN**.
+Reprodução: Demo 1 pós-intro; gameplay lateral para focinho; Talon Trot
+`Z + C-Esquerda` lateral para penas da **cabeça** da Kazooie.
+`NEXT_SINGLE_ACTION`: obter relato visual desta execução. Snapshot CPU segue
+parcial/não aceito para captura. Esta entrada prevalece sobre próximos passos
+históricos abaixo; P09 não abre formalmente e nenhum commit/push foi feito.
+
+## Continuação delegada — snapshot parcial, gate final pendente
+
+Ver [[../../plan/evidence/p09-interpolation-resumption-20261020]]. Grok via Cursor implementou diagnóstico CPU default-OFF limitado; último build reportado exit 0, snapshot 97/97. **`NOT_ACCEPTED_FOR_GAME_CAPTURE`**: revisão independente final e novo teste I/O pendentes. Root/builder/reviewer Codex atingiram cota; nenhuma captura/aceite 60+ FPS, CURRENT/Manual 30 preservados, correção permanente `NOT_IMPLEMENTED`. Focinho Banjo e penas **da cabeça** Kazooie priorizados (`USER_OBSERVED`) sem excluir outros glitches. P09 segue `PENDING / NOT_FORMALLY_OPEN`; sem commit/push. `NEXT_SINGLE_ACTION`: retomar gate independente final de snapshot-only, alcance de hooks, persistência e corrupção, incluindo novo teste I/O em processos separados, antes de captura. Execução sempre delegada; root orquestra/arbitra. Estados abaixo são históricos.
+
+## Estado corrente (P09-RES-05 — investigação retomada, 2026-10-20)
+
+Ver [[../../plan/evidence/p09-interpolation-resumption-20261020]]. Esta entrada
+prevalece sobre as ações históricas abaixo. P09 permanece `PENDING /
+NOT_FORMALLY_OPEN`; CURRENT padrão e trava Manual 30 continuam ativos.
+Código/patches não alterados; jogo/captura/aceite visual não executados.
+Quatro testes de apoio passaram novamente. Iluminação/texgen compartilham a
+WORLD selecionada (`PROVEN_STATIC`), com impacto nas regressões `HYPOTHESIS`.
+`NEXT_SINGLE_ACTION`: implementar snapshot/replay CPU default-OFF e limitado
+para proveniência local de arestas e gates de iluminação/texgen, sem busca
+pesada no render. Diagnóstico e correção permanente ainda não implementados.
 
 Registro operacional vivo: [[../../plan/evidence/p09-current-work]]. Manter
 sincronizado com os handoffs a cada mudança; confirmar build atual antes da

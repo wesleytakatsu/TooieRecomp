@@ -10,6 +10,7 @@
 #include "librecomp/config.hpp"
 #include "tooie_menu_policy.h"
 #include "tooie_bgm_volume.h"
+#include "hle/rt64_host_endpoint_current.h"
 #include "util/file.h"
 #include <filesystem>
 #include <fstream>
@@ -225,13 +226,22 @@ static void add_graphics_options(recomp::config::Config &config) {
         }
     );
 
-    // Presentation is forced to 30 (Manual) on every load/change. Config is resolved per call (see policy header).
-    tooie_menu::install_forced_refresh([]() -> recomp::config::Config& { return recompui::config::get_graphics_config(); }, gfx::rr_option, gfx::rr_manual_value);
+    // Interpolation OFF (default) = native 30 cadence + CURRENT endpoint; ON = real intermediate frames.
+    // Persisted like any graphics option; missing/invalid values load as OFF. The policy keeps the refresh-rate
+    // options coherent and hands the APPLIED state to RT64 (latched per workload, no restart, no setenv).
+    config.add_bool_option(
+        banjo::configkeys::graphics::interpolation,
+        "Interpolation",
+        "Generates intermediate frames between game updates (needs a refresh rate above 30 FPS; 60 is selected when needed). "
+        "Off keeps the original 30 FPS cadence. <recomp-color warning>Experimental: animated parts can show glitches.</recomp-color>",
+        false
+    );
+    tooie_menu::install_interpolation_policy(
+        []() -> recomp::config::Config& { return recompui::config::get_graphics_config(); },
+        gfx::rr_option, gfx::rr_manual_value, banjo::configkeys::graphics::interpolation,
+        [](bool enabled) { RT64::requestHostEndpointCurrent(!enabled); });
 
-    const std::string fr_note = "<recomp-color warning>Temporarily capped at 30 FPS in Banjo-Tooie.</recomp-color><br /><br />";
-    config.update_option_enum_details(gfx::rr_option, "Locked to 30 FPS");
-    config.update_option_disabled(gfx::rr_option, true);
-    config.update_option_disabled(gfx::rr_manual_value, true);
+    const std::string fr_note = "Locked to 30 FPS while Interpolation is off.<br /><br />";
     config.update_option_description(gfx::rr_option, fr_note + "Sets the game's output framerate. This option does not affect gameplay.");
     config.update_option_description(gfx::rr_manual_value, fr_note + "Sets the game's output framerate. This option does not affect gameplay.");
 

@@ -9,9 +9,10 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-META = ROOT / "TooieRecomp" / "metadata"
-SNAP = ROOT / "TooieRecomp" / "tests" / "snapshots"
+from tooie_paths import DECOMP, TOOIE as ROOT
+
+META = ROOT / "metadata"
+SNAP = ROOT / "tests" / "snapshots"
 
 KNOWN_RELOC = frozenset({"R_MIPS_HI16", "R_MIPS_LO16", "R_MIPS_26"})
 
@@ -84,7 +85,7 @@ def main() -> None:
     # semantic equality check (not just existence): a missing section silently
     # drops relocations (P08 readelf-truncation regression), so the set must
     # match the ELF-derived expectation one-for-one.
-    elf = ROOT / "banjo-tooie-Recomp" / "build" / "us" / "banjotooie_decompressed.elf"
+    elf = DECOMP / "build" / "us" / "banjotooie_decompressed.elf"
     if elf.is_file():
         import subprocess
 

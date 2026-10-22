@@ -35,7 +35,7 @@ Linux sem símbolo ausente.
 
 | Item | Valor |
 | --- | --- |
-| Path | `BanjoRecomp/lib/N64ModernRuntime/N64Recomp` |
+| Path | `lib/N64ModernRuntime/N64Recomp` (vendorizado localmente; histórico P04 utilizava `BanjoRecomp/lib/N64ModernRuntime/N64Recomp`) |
 | Commit (submodule) | `2b6f05688de2abc7d86da5b4a89b84c2c6acbabe` (CI BK default) |
 | Binary | `…/N64Recomp/build/N64Recomp` |
 | Política local | `context.use_lookup_for_all_function_calls = true` em `src/main.cpp` |

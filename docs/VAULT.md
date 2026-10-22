@@ -24,6 +24,7 @@ proof lives under `docs/plan/evidence/`. Do not silently promote hypotheses.
 - [[reverse-engineering/assets/models]] — Model identities
 - [[reverse-engineering/characters/banjo]] — Banjo
 - [[reverse-engineering/characters/kazooie]] — Kazooie
+- [[plan/evidence/p09-menu-interpolation-toggle-20261021]] — P09 — Interpolation ON/OFF no menu ESC (persistido, runtime via patch RT64), F8 removido; não corrige glitch
 - [[plan/evidence/p09-kazooie-carry-banjo-head-feathers]] — P09 — Kazooie carry-Banjo head feathers; V1 token on V5 match
 - [[plan/evidence/p09-kazooie-feather-v1-capture]] — P09 — V1 live identity + matrix CSV
 - [[plan/evidence/p09-kazooie-feather-v2-producer-witness]] — P09 — bone103 scale reanalysis + AE820 dump
@@ -180,6 +181,8 @@ proof lives under `docs/plan/evidence/`. Do not silently promote hypotheses.
 - [[plan/evidence/p08-title-input-eeprom]] — P08 — input title/file select — **CORRECTED/SUPERSEDED** by [[plan/evidence/p08-title-file-select-validation]]; historical blocked wording retained for history only.
 - [[plan/evidence/p08-title-file-select-validation]] — P08-T10 — title/file-select — **VALIDATED / COMPLETE**; intro -> file select -> slot navigation -> confirmation -> Spiral Mountain PASS.
 - [[plan/evidence/p08-visual-validation/README]] — P08 — visual validation: intro → attract handoff — Inventário das capturas e interpretação humana validada da abertura até a tela preta pós-Jiggy.
+- [[plan/evidence/p10-windows-linux-clean-clone-readiness-20261021]] — P10 — Windows 11 x64 and Linux Clean-Clone Readiness and Packaging Verification — Forensic evidence, independent audit results, and reproducible build proof for standalone clean-clone readiness on Linux and native Windows 11 x64 preparation.
+- [[plan/evidence/p10-standalone-vendor-20261021]] — P10 — Standalone repository: Banjo Recomp dependencies vendored (`vendor/`), offline Linux generate/build/test/package proof, Windows pending native host
 - [[plan/index]] — Plano mestre — Banjo-Tooie nativo no Linux — Plano executável para transformar os insumos BanjoRecomp e banjo-tooie-Recomp em um port nativo completo de Banjo-Tooie para Linux.
 
 ## plans
@@ -199,7 +202,7 @@ proof lives under `docs/plan/evidence/`. Do not silently promote hypotheses.
 
 ## roadmap
 
-- [[roadmap/tooie-recomp]] — TooieRecomp Roadmap — > [!NOTE] > Este roadmap histórico foi substituído pelo [[../plan/index|Plano mestre]] e > pelas [[../plans/BT/index|etapas de implementação]]. Ele permanece como > registro do raciocínio inicial.
+- [[roadmap/tooie-recomp]] — TooieRecomp Roadmap — > [!NOTE] > Este roadmap histórico foi substituído pelo [[plan/index|Plano mestre]] e > pelas [[plans/BT/index|etapas de implementação]]. Ele permanece como > registro do raciocínio inicial.
 
 ## specs
 
@@ -233,5 +236,6 @@ proof lives under `docs/plan/evidence/`. Do not silently promote hypotheses.
 - [[specs/BT/symbols]] — BT — Symbols and Relocations — The repo ships plain-text symbol and relocation maps used by Splat at build time. These are the raw material for a static-recomp symbol table.
 - [[specs/BT/syscalls]] — BT — Overlay Syscall Dispatch — Generates `overlay_syscalls.s` from `overlays.us.toml` (banjo-tooie-Recomp):
 - [[specs/BT/tools]] — BT — Tooling — C++ and Python tools under `banjo-tooie-Recomp/tools/`, built by `tools/Makefile` and used by the main Makefile.
+- [[specs/Tooie/asset-and-licensing-manifest]] — TooieRecomp Spec — Asset Ownership and Licensing Manifest — Comprehensive specification of copyright boundaries, ROM-derived code classification, third-party component licenses, and distribution restrictions.
 - [[plan/evidence/p08-widescreen-edge-geometry]] — P08 — Widescreen edge geometry: gameplay map/object vis production ON; intro WALL7799 skip original AABB TOP cull; 819F8 post-AABB skip OPEN.
 - [[specs/index]] — Specifications Index — Technical specifications for the two reference projects used to build a Banjo-Tooie static recompilation.

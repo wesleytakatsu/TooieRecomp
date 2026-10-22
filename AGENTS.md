@@ -9,9 +9,10 @@ The detailed project workflow lives in [`docs/AGENTS.md`](docs/AGENTS.md). Read 
 Start CLI and IDE agents in **this directory** (`TooieRecomp/`). Project MCP
 configs (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`,
 `.agents/mcp_config.json`) bind markdown-vault to `docs/`. Do not open
-`N64-Recomp/` as the workspace. Sibling checkouts (`BanjoRecomp`, ROM,
-`banjo-tooie-Recomp`) stay next to this folder for CMake and the Angrylion
-oracle; they are not this git repository.
+`N64-Recomp/` as the workspace. Shared sources are vendored under `lib/`, `decomp/` and `assets/`; normal
+builds require no sibling checkout, no BanjoRecomp checkout, and no submodules.
+
+The canonical ROM is strictly an explicit private input (`Banjo-Tooie (USA).z64`, size `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`), git-ignored and never versioned. The repository contains zero game data; game assets are read from the verified decompressed ROM image (`35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`), which the runtime launcher strictly requires. `assets/` contains all restored native UI menu resources, animations, character vector art, typography fonts, and styling (managed via `TooieUIAssets`). The normal build is completely kit-free; the legacy IDO/gcc compiler kit is strictly an optional maintainer-only prerequisite for decomp/metadata regeneration (`TOOIE_TOOLCHAIN_KIT`, 34 files verified against `tools/toolchain.sha256`). The optional Angrylion oracle retains its separately documented setup; it is not required to build the game.
 
 ## Required read order
 
@@ -142,7 +143,7 @@ git stash
 
 Do not silently fold unrelated dirty files into a new patch or commit.
 
-When dependency changes are part of a TooieRecomp fix, follow the repository's existing patch/versioning mechanism (for example `patches/runtime/` plus `tools/apply_runtime_patches.sh`) unless the active task explicitly defines another policy.
+When dependency changes are part of a TooieRecomp fix, follow the repository's vendoring mechanism: dependencies are vendored regular files under `lib/` and `decomp/` (provenance in `vendor/`); record a local change as `vendor/patches-local/*.patch` and refresh `vendor/MANIFEST.sha256` with `tools/vendor_manifest.sh` (see `vendor/UPDATING.md`) unless the active task explicitly defines another policy. The retired `tools/apply_runtime_patches.sh`/`tools/bootstrap_deps.sh` no longer exist.
 
 Do not push changes to upstream third-party repositories unless explicitly requested and consistent with project policy.
 

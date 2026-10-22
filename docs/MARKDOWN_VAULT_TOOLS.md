@@ -34,9 +34,12 @@ O servidor Node continua fora do repo
 (`markdown-vault-mcp-standalone`). Cópias antigas no pai `N64-Recomp/`
 (`cwd` no monorepo) ficam só para sessões velhas; não as edite.
 
-`BanjoRecomp/`, `banjo-tooie-Recomp/` e a ROM NTSC-U continuam **irmãos**
-do TooieRecomp no disco (CMake, `assets`, patches, oráculo). Não entram no
-vault nem no git do Tooie.
+Sob a arquitetura standalone da fase P10, todas as dependências (`lib/`,
+`decomp/`, `assets/`, `recompcontrollerdb.txt`, `tools/wheelhouse/`) vivem
+vendorizadas diretamente em `TooieRecomp/`. O CMake e o build normal não usam
+checkouts irmãos externos nem o BanjoRecomp. A ROM canônica (`Banjo-Tooie (USA).z64`,
+git-ignored) fica na raiz do repositório ou indicada por `TOOIE_ROM`. Nenhuma ROM,
+dado proprietário ou diretório vendorizado entra no vault de documentação.
 
 ## list_files
 

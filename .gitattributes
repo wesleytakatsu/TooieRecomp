@@ -1,2 +1,15 @@
 # Preserve upstream whitespace in patch context; validate applied source on replay.
-/patches/**/*.patch whitespace=-blank-at-eol,-blank-at-eof
+/vendor/patches-*/**/*.patch whitespace=-blank-at-eol,-blank-at-eof
+
+# Windows clones (core.autocrlf=true): shell scripts and the sourced lock file must stay LF; vendored trees and patches are
+# hashed byte-exact (vendor/MANIFEST.sha256), so no EOL conversion may touch them. Nested upstream .gitattributes were not imported.
+*.sh text eol=lf
+/tools/toolchain.lock text eol=lf
+/tools/*.sha256 text eol=lf
+/tools/requirements.lock text eol=lf
+/lib/** -text
+/decomp/** -text
+/assets/** -text
+/recompcontrollerdb.txt -text
+/tools/wheelhouse/** -text
+/vendor/** -text

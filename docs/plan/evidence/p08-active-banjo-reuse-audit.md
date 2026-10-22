@@ -20,7 +20,7 @@ tags: [banjo-tooie-recomp, p08, audit, banjorecomp, reuse, threadqueue, n64moder
 
 ## Active external dependencies
 
-Deps entram no executável via `CMakeLists.txt:8-11, 27-49` (path relativo `../BanjoRecomp`).
+Deps entram no executável via `CMakeLists.txt:8-11, 27-49` (path relativo histórico `../BanjoRecomp`; no P10 standalone, as dependências foram vendorizadas localmente em `lib/`, `decomp/` e `assets/`).
 
 | ITEM | PATH | CLEAN? | GENERIC? | LOCAL PATCH? | RISK |
 |---|---|---|---|---|---|
@@ -69,7 +69,7 @@ Cadeia de prova: o código recompilado do Tooie (`RecompiledFuncs/`, 417 .c) cha
 | N64Recomp submodule dirty (`use_lookup_for_all_function_calls=true`) | geração do RecompiledFuncs muda |
 | `RecompiledPatches/` gitignored mas necessário ao CMake (`CMakeLists.txt:72-74`) | build falha sem ele |
 | `RecompiledFuncs/` gitignored (417 .c → `.a` 14.8M) | artefato gerado não versionado |
-| deps por path relativo `../BanjoRecomp` + symlink `assets →` | revisão não pinada |
+| deps por path relativo histórico `../BanjoRecomp` + symlink `assets →` (superados no P10 standalone) | revisão não pinada |
 
 ## Scheduler bug relation
 

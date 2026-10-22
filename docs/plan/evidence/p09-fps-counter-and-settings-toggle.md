@@ -143,8 +143,10 @@ Both external dependency patches apply cleanly and are verified reverse-checkabl
 
 - **Reverse Application Check**:
   ```bash
-  git -C ../BanjoRecomp/lib/RecompFrontend apply --reverse --check /home/wesley/projetos/N64-Recomp/TooieRecomp/patches/frontend/recompfrontend-overlay-update-callback.patch
-  git -C ../BanjoRecomp/lib/rt64 apply --reverse --check /home/wesley/projetos/N64-Recomp/TooieRecomp/patches/rt64/rt64-present-success-counter.patch
+  # Historical reverse application check executed during P09 (prior to standalone vendoring):
+  # git -C ../BanjoRecomp/lib/RecompFrontend apply --reverse --check /home/wesley/projetos/N64-Recomp/TooieRecomp/patches/frontend/recompfrontend-overlay-update-callback.patch
+  # git -C ../BanjoRecomp/lib/rt64 apply --reverse --check /home/wesley/projetos/N64-Recomp/TooieRecomp/patches/rt64/rt64-present-success-counter.patch
+  # (Result then: Exit code 0 for both. Current standalone equivalent: check against lib/RecompFrontend and lib/rt64)
   ```
   Result: Exit code `0` for both.
 

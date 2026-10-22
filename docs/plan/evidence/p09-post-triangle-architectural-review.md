@@ -434,7 +434,7 @@ Prior evidence: [[p09-kazooie-feather-v5-full-chain]],
 - Offline CSV analysis above: completed successfully through context-mode Python;
   observed counts/invariants match the report. No new runtime observation.
 - `rtk proxy git diff --check` in TooieRecomp: **PASS**, exit 0.
-- `rtk proxy git -C ../BanjoRecomp/lib/rt64 diff --check`: **PASS**, exit 0.
+- Historical RT64 whitespace check: **PASS**, exit 0; current sources are vendored under `lib/rt64/`.
 - `markdown_vault_audit` on each of the eight documentation paths changed here:
   zero errors and zero lint issues. Both new evidence files and phase/RE pages
   have zero warnings. The two pre-existing large handoff files retain their

@@ -53,7 +53,7 @@ In addition, the implementation isolates Tooie-owned UI assets from the shared `
 ## 3. Implementation Details
 
 ### 3.1 SVG Logo Generator (`tools/make_tooie_launcher_logo.py`)
-- Script reads `../BanjoRecomp/assets/Logo.svg` read-only.
+- Script reads `assets/Logo.svg` read-only (historicamente `../BanjoRecomp/assets/Logo.svg`).
 - Reuses per-letter vector path groups for `B`, `A`, `N`, `J`, `O`, `-`, `O`, `O`, `R`, `E`, `C`, `O`, `M`, `P`, `I`, `L`, `E`, `D`.
 - Recolors source letters to the Tooie palette (blue line 1, red line 2, yellow outline).
 - Inserts a hand-drawn vector polygon for the letter `T`.

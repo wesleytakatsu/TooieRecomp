@@ -16,6 +16,8 @@ import struct
 import sys
 from pathlib import Path
 
+from tooie_paths import DECOMP
+
 # From banjo-tooie-Recomp/baserom.us.yaml (decompressed layout)
 TOOIE_TEXT_OFF = 0x1E4F3B0
 TOOIE_TEXT_END = 0x1E50B80  # rspboot
@@ -48,11 +50,10 @@ def halfword_table(data: bytes, start: int = 0x0E, count: int = 17) -> list[int]
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     root = Path(__file__).resolve().parents[1]
-    ws = root.parent
     ap.add_argument(
         "--tooie-rom",
         type=Path,
-        default=ws / "banjo-tooie-Recomp" / "decompressed.us.z64",
+        default=DECOMP / "decompressed.us.z64",
     )
     ap.add_argument(
         "--bk-rom",

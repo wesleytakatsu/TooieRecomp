@@ -33,7 +33,7 @@ descartado.
   era inválido (callback nulo); esta etapa resolve a origem desse 0.
 - [[p08-session-handoff]] — handoff pré-fix: a decisão era investigar o
   mapeamento de data de overlays no `ovl_load` host.
-- Etapa [[../plans/BT/03-recompiler-metadata|P03 — metadados do recompilador]]:
+- Etapa [[../../plans/BT/03-recompiler-metadata|P03 — metadados do recompilador]]:
   camada onde o bug foi corrigido (gerador de metadados).
 
 ## Cadeia exata da causa raiz

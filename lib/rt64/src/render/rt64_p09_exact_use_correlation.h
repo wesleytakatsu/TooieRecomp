@@ -1,0 +1,924 @@
+//
+// RT64 - P09 exact-use pathology correlation (pure CPU helpers, no GPU/RT64 types).
+//
+// Diagnostic only. Shared by the RSP endpoint producer, the on-demand seam plan
+// builder in the transform processor and the Tooie host test. Nothing here
+// changes interpolation, aliases, remaps or clones.
+//
+
+#pragma once
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <map>
+#include <vector>
+
+namespace RT64 {
+    // Exact render use. One key = one face corner of one triangle of one game
+    // call of one workload. WORLD slot alone is never an identity.
+    struct P09SeamExactUseKey {
+        uint64_t workloadId = 0;
+        uint32_t fbPair = 0;
+        uint32_t projection = 0;
+        uint32_t gameCall = 0;
+        uint32_t triangleLocal = 0;
+        uint8_t cornerInTriangle = 0;
+        uint32_t faceCornerIndex = 0;
+        uint32_t storedVertexId = 0;
+        uint16_t originalWorldIndex = 0;
+    };
+
+    inline bool p09ExactUseLess(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) {
+        if (a.workloadId != b.workloadId) return a.workloadId < b.workloadId;
+        if (a.fbPair != b.fbPair) return a.fbPair < b.fbPair;
+        if (a.projection != b.projection) return a.projection < b.projection;
+        if (a.gameCall != b.gameCall) return a.gameCall < b.gameCall;
+        if (a.triangleLocal != b.triangleLocal) return a.triangleLocal < b.triangleLocal;
+        if (a.cornerInTriangle != b.cornerInTriangle) return a.cornerInTriangle < b.cornerInTriangle;
+        if (a.faceCornerIndex != b.faceCornerIndex) return a.faceCornerIndex < b.faceCornerIndex;
+        if (a.storedVertexId != b.storedVertexId) return a.storedVertexId < b.storedVertexId;
+        return a.originalWorldIndex < b.originalWorldIndex;
+    }
+
+    inline bool p09ExactUseEqual(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) {
+        return !p09ExactUseLess(a, b) && !p09ExactUseLess(b, a);
+    }
+
+    // Real source indices of one corner as seen by the producer loops.
+    struct P09ExactUseKeyInput {
+        uint64_t workloadId = 0;
+        uint32_t fbPair = 0;          // f
+        uint32_t projection = 0;      // pr
+        uint32_t gameCall = 0;        // d
+        uint32_t triangleLocal = 0;   // t
+        uint32_t cornerInTriangle = 0; // c
+        uint32_t faceStart = 0;       // start of the call in faceIndices
+        uint32_t storedVertexId = 0;  // faceIndices[faceStart + t * 3 + c]
+        uint32_t worldIndex = 0;      // worldIndices[storedVertexId]
+        uint32_t vertexCount = 0;     // drawData.vertexCount()
+    };
+
+    // Returns false (key unusable) on any invalid/incomplete field. The key is
+    // never inferred from WORLD or GameCall+WORLD.
+    inline bool p09ExactUseKeyMake(const P09ExactUseKeyInput &in, P09SeamExactUseKey &out) {
+        out = P09SeamExactUseKey();
+        if (in.workloadId == 0 || in.cornerInTriangle > 2u) return false;
+        if (in.storedVertexId >= in.vertexCount) return false;
+        if (in.worldIndex > 0xFFFFu) return false;
+        const uint64_t faceCorner = uint64_t(in.faceStart) + uint64_t(in.triangleLocal) * 3u + in.cornerInTriangle;
+        if (faceCorner >= 0xFFFFFFFFull) return false;
+        out.workloadId = in.workloadId;
+        out.fbPair = in.fbPair;
+        out.projection = in.projection;
+        out.gameCall = in.gameCall;
+        out.triangleLocal = in.triangleLocal;
+        out.cornerInTriangle = uint8_t(in.cornerInTriangle);
+        out.faceCornerIndex = uint32_t(faceCorner);
+        out.storedVertexId = in.storedVertexId;
+        out.originalWorldIndex = uint16_t(in.worldIndex);
+        return true;
+    }
+
+    // Same-workload plan produced by the on-demand seam builder. A default
+    // constructed result is inactive and can only yield Unknown.
+    struct P09ExactUsePlanResult {
+        std::vector<P09SeamExactUseKey> uses; // sorted by p09ExactUseLess, unique
+        uint64_t workloadId = 0;
+        uint8_t active = 0;
+        uint8_t exhaustive = 0;
+        uint8_t prevFrameValid = 0;
+        double cpuMs = 0.0;
+    };
+
+    enum class P09ExactUseMember : uint8_t { Selected = 0, NotSelected, Unknown };
+
+    enum class P09ExactUseUnknownReason : uint8_t {
+        None = 0,
+        PlanInactive,
+        PlanNotExhaustive,
+        WrongWorkload,
+        WrongGeneration,
+        KeyIncomplete,
+        Tie,
+        DuplicateMember,
+        Count
+    };
+
+    inline const char *p09ExactUseUnknownReasonName(P09ExactUseUnknownReason r) {
+        switch (r) {
+        case P09ExactUseUnknownReason::None: return "NONE";
+        case P09ExactUseUnknownReason::PlanInactive: return "PLAN_INACTIVE";
+        case P09ExactUseUnknownReason::PlanNotExhaustive: return "PLAN_NOT_EXHAUSTIVE";
+        case P09ExactUseUnknownReason::WrongWorkload: return "WRONG_WORKLOAD";
+        case P09ExactUseUnknownReason::WrongGeneration: return "WRONG_GENERATION";
+        case P09ExactUseUnknownReason::KeyIncomplete: return "KEY_INCOMPLETE";
+        case P09ExactUseUnknownReason::Tie: return "TIE";
+        case P09ExactUseUnknownReason::DuplicateMember: return "DUPLICATE_MEMBER";
+        default: return "UNKNOWN";
+        }
+    }
+
+    // Plan-level validity shared by every member of a pair.
+    inline P09ExactUseUnknownReason p09ExactUsePlanReason(const P09ExactUsePlanResult &plan,
+        uint64_t expectedWorkloadId, uint64_t planGeneration, uint64_t expectedGeneration) {
+        if (plan.active == 0) return P09ExactUseUnknownReason::PlanInactive;
+        if (plan.workloadId != expectedWorkloadId) return P09ExactUseUnknownReason::WrongWorkload;
+        // Defensive same-call check. The plan is built and consumed together.
+        // This is not a cache invalidation scheme.
+        if (planGeneration != expectedGeneration) return P09ExactUseUnknownReason::WrongGeneration;
+        if (plan.exhaustive == 0) return P09ExactUseUnknownReason::PlanNotExhaustive;
+        return P09ExactUseUnknownReason::None;
+    }
+
+    // Selected only when the key is in the plan. NotSelected is a definitive
+    // miss and requires a valid, exhaustive, same-workload/generation plan.
+    inline P09ExactUseMember p09ExactUseClassifyMember(const P09ExactUsePlanResult &plan,
+        uint64_t planGeneration, uint64_t expectedGeneration,
+        const P09SeamExactUseKey &key, bool keyComplete, P09ExactUseUnknownReason *reasonOut = nullptr) {
+        P09ExactUseUnknownReason reason = P09ExactUseUnknownReason::None;
+        if (!keyComplete) {
+            reason = P09ExactUseUnknownReason::KeyIncomplete;
+        }
+        else {
+            reason = p09ExactUsePlanReason(plan, key.workloadId, planGeneration, expectedGeneration);
+        }
+        if (reasonOut != nullptr) *reasonOut = reason;
+        if (reason != P09ExactUseUnknownReason::None) return P09ExactUseMember::Unknown;
+        const auto found = std::lower_bound(plan.uses.begin(), plan.uses.end(), key, p09ExactUseLess);
+        const bool hit = (found != plan.uses.end()) && p09ExactUseEqual(*found, key);
+        return hit ? P09ExactUseMember::Selected : P09ExactUseMember::NotSelected;
+    }
+
+    enum class P09PairCoverage : uint8_t { Full = 0, OneSided, NotCovered, Ambiguous };
+
+    // Fully covered only when BOTH member keys are in the same exhaustive plan.
+    // Ties, incomplete keys, duplicate members and invalid plans are Ambiguous.
+    inline P09PairCoverage p09ExactUseClassifyPair(const P09ExactUsePlanResult &plan,
+        uint64_t planGeneration, uint64_t expectedGeneration,
+        const P09SeamExactUseKey &a, bool aComplete,
+        const P09SeamExactUseKey &b, bool bComplete, bool tie,
+        P09ExactUseUnknownReason *reasonOut = nullptr) {
+        auto ambiguous = [&](P09ExactUseUnknownReason r) {
+            if (reasonOut != nullptr) *reasonOut = r;
+            return P09PairCoverage::Ambiguous;
+        };
+        if (reasonOut != nullptr) *reasonOut = P09ExactUseUnknownReason::None;
+        if (tie) return ambiguous(P09ExactUseUnknownReason::Tie);
+        if (!aComplete || !bComplete) return ambiguous(P09ExactUseUnknownReason::KeyIncomplete);
+        if (p09ExactUseEqual(a, b)) return ambiguous(P09ExactUseUnknownReason::DuplicateMember);
+        P09ExactUseUnknownReason ra = P09ExactUseUnknownReason::None;
+        P09ExactUseUnknownReason rb = P09ExactUseUnknownReason::None;
+        const P09ExactUseMember ma = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, a, true, &ra);
+        const P09ExactUseMember mb = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, b, true, &rb);
+        if (ma == P09ExactUseMember::Unknown) return ambiguous(ra);
+        if (mb == P09ExactUseMember::Unknown) return ambiguous(rb);
+        if ((ma == P09ExactUseMember::Selected) && (mb == P09ExactUseMember::Selected)) return P09PairCoverage::Full;
+        if ((ma == P09ExactUseMember::Selected) || (mb == P09ExactUseMember::Selected)) return P09PairCoverage::OneSided;
+        return P09PairCoverage::NotCovered;
+    }
+
+    struct P09ExactUseKeyLess {
+        bool operator()(const P09SeamExactUseKey &a, const P09SeamExactUseKey &b) const {
+            return p09ExactUseLess(a, b);
+        }
+    };
+
+    // Units, all explicit:
+    //   PAIR        one emitted nearest-join pair (child, parent).
+    //   OCCURRENCE  one member key of one pair (2 per pair, repeats counted).
+    //   UNIQUE_KEY  distinct P09SeamExactUseKey (bounded table, overflow flagged).
+    // Observed sampled universe = nearest-join pairs from boneVerts (per-slot
+    // vertex cap and pending-pair cap) in attempts that had a pathological pair.
+    // The plan built for that attempt classifies them. An inactive or
+    // non-exhaustive plan is Unknown/Ambiguous, not a definitive miss.
+    // Not an all-plan exposure and not global game coverage.
+    constexpr size_t kP09ExactUseMaxUniqueKeys = 4096;
+    constexpr size_t kP09ExactUseMaxPendingPairs = 2048;
+
+    // Shared store. A full table drops the new item and does not overwrite.
+    template <typename T>
+    inline bool p09ExactUseAppendCapped(std::vector<T> &dst, size_t cap, uint64_t &dropped, const T &item) {
+        if (dst.size() >= cap) {
+            dropped++;
+            return false;
+        }
+        dst.push_back(item);
+        return true;
+    }
+
+    struct P09ExactUseCorrelation {
+        uint64_t pathPairs = 0;
+        uint64_t pathFull = 0;
+        uint64_t pathOneSided = 0;
+        uint64_t pathNotCovered = 0;
+        uint64_t pathAmbiguous = 0;
+        uint64_t ambiguousByReason[size_t(P09ExactUseUnknownReason::Count)] = {};
+        uint64_t pathOccurrences = 0;
+        uint64_t pathOccurrencesSelected = 0;
+        uint64_t pathOccurrencesNotSelected = 0;
+        uint64_t pathOccurrencesUnknown = 0;
+        uint64_t nonPathPairs = 0;
+        uint64_t nonPathOccurrences = 0;
+        uint64_t nonPathOccurrencesSelected = 0;
+        uint64_t nonPathOccurrencesNotSelected = 0;
+        uint64_t nonPathOccurrencesUnknown = 0;
+        uint64_t uniqueTableOverflow = 0;
+        // bit0 path, bit1 nonpath, bit2 selected, bit3 notSelected, bit4 unknown
+        std::map<P09SeamExactUseKey, uint8_t, P09ExactUseKeyLess> keys;
+    };
+
+    struct P09ExactUseUniqueSummary {
+        uint64_t pathKeys = 0;
+        uint64_t pathKeysSelected = 0;
+        uint64_t pathKeysNotSelected = 0;
+        uint64_t pathKeysUnknown = 0;
+        uint64_t nonPathKeys = 0;
+        uint64_t nonPathKeysSelected = 0;
+        uint64_t nonPathKeysNotSelected = 0;
+        uint64_t nonPathKeysUnknown = 0;
+        uint64_t keysOnBoth = 0;
+    };
+
+    inline void p09ExactUseNoteMember(P09ExactUseCorrelation &c, const P09SeamExactUseKey &key,
+        bool keyComplete, P09ExactUseMember m, bool pathological) {
+        if (!keyComplete) {
+            return; // incomplete keys have no identity; occurrence counters still count them
+        }
+        uint8_t bits = pathological ? 1u : 2u;
+        bits |= (m == P09ExactUseMember::Selected) ? 4u : ((m == P09ExactUseMember::NotSelected) ? 8u : 16u);
+        auto found = c.keys.find(key);
+        if (found != c.keys.end()) {
+            found->second |= bits;
+        }
+        else if (c.keys.size() < kP09ExactUseMaxUniqueKeys) {
+            c.keys.emplace(key, bits);
+        }
+        else {
+            c.uniqueTableOverflow++;
+        }
+    }
+
+    // Records one emitted pair. Member and pair verdicts come from the same
+    // classifier used for coverage.
+    inline P09PairCoverage p09ExactUseNotePair(P09ExactUseCorrelation &c, const P09ExactUsePlanResult &plan,
+        uint64_t planGeneration, uint64_t expectedGeneration,
+        const P09SeamExactUseKey &a, bool aComplete,
+        const P09SeamExactUseKey &b, bool bComplete, bool tie, bool pathological) {
+        P09ExactUseUnknownReason reason = P09ExactUseUnknownReason::None;
+        const P09PairCoverage cov = p09ExactUseClassifyPair(plan, planGeneration, expectedGeneration,
+            a, aComplete, b, bComplete, tie, &reason);
+        const P09ExactUseMember ma = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, a, aComplete);
+        const P09ExactUseMember mb = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration, b, bComplete);
+        auto occ = [&](P09ExactUseMember m, uint64_t &sel, uint64_t &miss, uint64_t &unk) {
+            if (m == P09ExactUseMember::Selected) sel++;
+            else if (m == P09ExactUseMember::NotSelected) miss++;
+            else unk++;
+        };
+        if (pathological) {
+            c.pathPairs++;
+            c.pathOccurrences += 2;
+            occ(ma, c.pathOccurrencesSelected, c.pathOccurrencesNotSelected, c.pathOccurrencesUnknown);
+            occ(mb, c.pathOccurrencesSelected, c.pathOccurrencesNotSelected, c.pathOccurrencesUnknown);
+            switch (cov) {
+            case P09PairCoverage::Full: c.pathFull++; break;
+            case P09PairCoverage::OneSided: c.pathOneSided++; break;
+            case P09PairCoverage::NotCovered: c.pathNotCovered++; break;
+            default:
+                c.pathAmbiguous++;
+                c.ambiguousByReason[size_t(reason)]++;
+                break;
+            }
+        }
+        else {
+            c.nonPathPairs++;
+            c.nonPathOccurrences += 2;
+            occ(ma, c.nonPathOccurrencesSelected, c.nonPathOccurrencesNotSelected, c.nonPathOccurrencesUnknown);
+            occ(mb, c.nonPathOccurrencesSelected, c.nonPathOccurrencesNotSelected, c.nonPathOccurrencesUnknown);
+        }
+        p09ExactUseNoteMember(c, a, aComplete, ma, pathological);
+        p09ExactUseNoteMember(c, b, bComplete, mb, pathological);
+        return cov;
+    }
+
+    inline P09ExactUseUniqueSummary p09ExactUseSummarize(const P09ExactUseCorrelation &c) {
+        P09ExactUseUniqueSummary s;
+        for (const auto &kv : c.keys) {
+            const uint8_t v = kv.second;
+            const bool path = (v & 1u) != 0;
+            const bool non = (v & 2u) != 0;
+            const bool sel = (v & 4u) != 0;
+            const bool miss = (v & 8u) != 0;
+            const bool unk = (v & 16u) != 0;
+            if (path) {
+                s.pathKeys++;
+                if (sel) s.pathKeysSelected++;
+                if (miss) s.pathKeysNotSelected++;
+                if (unk) s.pathKeysUnknown++;
+            }
+            if (non) {
+                s.nonPathKeys++;
+                if (sel) s.nonPathKeysSelected++;
+                if (miss) s.nonPathKeysNotSelected++;
+                if (unk) s.nonPathKeysUnknown++;
+            }
+            if (path && non) s.keysOnBoth++;
+        }
+        return s;
+    }
+
+    inline uint64_t p09ExactUseAllObservedPathPairs(const P09ExactUseCorrelation &c) {
+        return c.pathFull + c.pathOneSided + c.pathNotCovered + c.pathAmbiguous;
+    }
+
+    // Secondary metric. Full / (Full + OneSided + NotCovered). Ambiguous pairs
+    // are excluded. This is not a readiness signal. valid=false if the
+    // definitive denominator is zero.
+    inline double p09ExactUsePairCoverageRate(const P09ExactUseCorrelation &c, bool &valid) {
+        const uint64_t denom = c.pathFull + c.pathOneSided + c.pathNotCovered;
+        valid = denom != 0;
+        return valid ? double(c.pathFull) / double(denom) : 0.0;
+    }
+
+    // Primary metric: proven-full fraction of ALL observed pathological pairs.
+    // Ambiguous pairs stay in the denominator. They are not definitive misses.
+    // A value of 1 is not readiness. valid=false when nothing was observed.
+    inline double p09ExactUsePairFullOfAllObserved(const P09ExactUseCorrelation &c, bool &valid) {
+        const uint64_t total = p09ExactUseAllObservedPathPairs(c);
+        valid = total != 0;
+        return valid ? double(c.pathFull) / double(total) : 0.0;
+    }
+
+    // Recorded-data truncation: caps, overflow, or a plan that cannot prove a miss.
+    // Sampling and attempt/seam budgets are a different field (capture-run incomplete).
+    inline bool p09RecordedCohortTruncated(uint64_t pairsDroppedCap, uint64_t vertsDroppedCap,
+        uint64_t uniqueTableOverflow, uint64_t planNotExhaustive, uint64_t planInactive) {
+        return (pairsDroppedCap > 0) || (vertsDroppedCap > 0) || (uniqueTableOverflow > 0) ||
+            (planNotExhaustive > 0) || (planInactive > 0);
+    }
+
+    // True only when every observed pathological pair is Full, the total is
+    // non-zero, and the recorded cohort was not truncated. NOT production
+    // readiness and NOT global game coverage.
+    inline bool p09ObservedCohortReadyForReview(const P09ExactUseCorrelation &c, bool recordedCohortTruncated) {
+        const uint64_t total = p09ExactUseAllObservedPathPairs(c);
+        if (total == 0 || recordedCohortTruncated) return false;
+        if (c.pathAmbiguous != 0 || c.pathOneSided != 0 || c.pathNotCovered != 0) return false;
+        return c.pathFull == total;
+    }
+
+    // ---- capture lifecycle (default OFF; waits for an explicit request) ----
+    inline bool p09CorrelationTokenEq(const char *value, const char *literal) {
+        for (; *literal != '\0'; ++literal, ++value) {
+            if (*value == '\0') return false;
+            unsigned char c = static_cast<unsigned char>(*value);
+            if (c >= 'A' && c <= 'Z') c = static_cast<unsigned char>(c - 'A' + 'a');
+            if (c != static_cast<unsigned char>(*literal)) return false;
+        }
+        return *value == '\0';
+    }
+
+    // Fail closed. Only 1 / true / yes / on, case-insensitive. Legacy flags do not use this.
+    inline bool p09CorrelationFlagTruthy(const char *value) {
+        if ((value == nullptr) || (value[0] == '\0')) return false;
+        return p09CorrelationTokenEq(value, "1") || p09CorrelationTokenEq(value, "true") ||
+            p09CorrelationTokenEq(value, "yes") || p09CorrelationTokenEq(value, "on");
+    }
+
+    enum class P09CorrelationSkip : uint8_t {
+        None = 0,         // eligible
+        NoWorkload,       // no queue/workload/frame (includes non-queue callers)
+        NoGeometry,       // empty/boot workload: no vertices, faces or triangles
+        NoFrameMatch,     // previous frame not matched/mapped: no endpoint data
+        NotIntermediate,  // endpoint scan is skipped for weight 0/1
+        NoModelBin,       // upstream model bin not published yet
+        NoTargetCall,     // no gameCall matched an exact target DL
+        Count
+    };
+
+    inline const char *p09CorrelationSkipName(P09CorrelationSkip s) {
+        switch (s) {
+        case P09CorrelationSkip::None: return "ELIGIBLE";
+        case P09CorrelationSkip::NoWorkload: return "NO_WORKLOAD";
+        case P09CorrelationSkip::NoGeometry: return "NO_GEOMETRY";
+        case P09CorrelationSkip::NoFrameMatch: return "NO_FRAME_MATCH";
+        case P09CorrelationSkip::NotIntermediate: return "NOT_INTERMEDIATE";
+        case P09CorrelationSkip::NoModelBin: return "NO_MODEL_BIN";
+        case P09CorrelationSkip::NoTargetCall: return "NO_TARGET_CALL";
+        default: return "UNKNOWN";
+        }
+    }
+
+    struct P09CorrelationEligibilityInput {
+        bool hasWorkload = false;
+        bool hasGeometry = false;
+        bool frameMatched = false;
+        bool intermediate = false;
+        bool hasModelBin = false;
+        bool hasTargetCall = false;
+    };
+
+    inline P09CorrelationSkip p09CorrelationEligibility(const P09CorrelationEligibilityInput &in) {
+        if (!in.hasWorkload) return P09CorrelationSkip::NoWorkload;
+        if (!in.hasGeometry) return P09CorrelationSkip::NoGeometry;
+        if (!in.frameMatched) return P09CorrelationSkip::NoFrameMatch;
+        if (!in.intermediate) return P09CorrelationSkip::NotIntermediate;
+        if (!in.hasModelBin) return P09CorrelationSkip::NoModelBin;
+        if (!in.hasTargetCall) return P09CorrelationSkip::NoTargetCall;
+        return P09CorrelationSkip::None;
+    }
+
+    // One budget covers both expensive walks. Ineligible dispatches consume
+    // nothing. Every cadence-th eligible dispatch is one attempt (cohort scan).
+    // Heavy attempts are also spaced by kP09CorrelationAttemptIntervalMs when
+    // the caller injects a timestamp. A seam search runs at most once per
+    // attempt and only after a pathological pair exists, bounded by maxSeamSearches.
+    // nowMs == nullptr keeps the original cadence-only behavior for callers and
+    // tests that do not inject a clock.
+    constexpr uint64_t kP09CorrelationAttemptIntervalMs = 2000;
+
+    struct P09CorrelationBudget {
+        uint32_t maxAttempts = 24;
+        uint32_t cadence = 4;
+        uint32_t maxSeamSearches = 8;
+        uint64_t eligibleSeen = 0;
+        uint64_t attempts = 0;
+        uint64_t seamSearches = 0;
+        uint64_t skippedCadence = 0;
+        uint64_t skippedWallClock = 0;
+        uint64_t skippedBudget = 0;
+        uint64_t lastHeavyAttemptMs = 0;
+        uint64_t skippedIneligible[size_t(P09CorrelationSkip::Count)] = {};
+    };
+
+    enum class P09CorrelationDecision : uint8_t {
+        Collect = 0, SkipIneligible, SkipCadence, SkipBudgetExhausted, SkipWallClock
+    };
+
+    inline P09CorrelationDecision p09CorrelationDecide(P09CorrelationBudget &b, P09CorrelationSkip eligibility,
+        const uint64_t *nowMs = nullptr) {
+        if ((b.attempts >= b.maxAttempts) || (b.seamSearches >= b.maxSeamSearches)) {
+            b.skippedBudget++;
+            return P09CorrelationDecision::SkipBudgetExhausted;
+        }
+        if (eligibility != P09CorrelationSkip::None) {
+            b.skippedIneligible[size_t(eligibility)]++;
+            return P09CorrelationDecision::SkipIneligible;
+        }
+        const uint64_t index = b.eligibleSeen;
+        if (b.cadence > 1u && (index % b.cadence) != 0u) {
+            b.eligibleSeen++;
+            b.skippedCadence++;
+            return P09CorrelationDecision::SkipCadence;
+        }
+        if ((nowMs != nullptr) && (b.attempts > 0) &&
+            (*nowMs < b.lastHeavyAttemptMs + kP09CorrelationAttemptIntervalMs)) {
+            b.skippedWallClock++;
+            return P09CorrelationDecision::SkipWallClock;
+        }
+        b.eligibleSeen++;
+        b.attempts++;
+        if (nowMs != nullptr) {
+            b.lastHeavyAttemptMs = *nowMs;
+        }
+        return P09CorrelationDecision::Collect;
+    }
+
+    inline bool p09CorrelationSeamSearchAllowed(const P09CorrelationBudget &b) {
+        return b.seamSearches < b.maxSeamSearches;
+    }
+
+    // Attempts or seam-search budget. Either one stops further costly work.
+    inline bool p09CorrelationBudgetExhausted(const P09CorrelationBudget &b) {
+        return (b.attempts >= b.maxAttempts) || (b.seamSearches >= b.maxSeamSearches);
+    }
+
+    enum class P09CapturePhase : uint8_t { WaitingForRequest = 0, Capturing, Exhausted };
+
+    inline const char *p09CapturePhaseName(P09CapturePhase phase) {
+        switch (phase) {
+        case P09CapturePhase::WaitingForRequest: return "WAITING_FOR_REQUEST";
+        case P09CapturePhase::Capturing: return "CAPTURING";
+        case P09CapturePhase::Exhausted: return "EXHAUSTED";
+        default: return "UNKNOWN";
+        }
+    }
+
+    enum class P09ArmEvent : uint8_t { None = 0, StaleIgnored, Armed, Rearmed };
+
+    // Request-marker lifecycle. `consumed` is the caller's removal result.
+    // Phase, arm, rearm, and stale counts change only after a successful
+    // removal. A failed removal latches until the path is absent or a later
+    // removal succeeds, and does not increment again while latched.
+    // Rearmed means the caller may reset correlation counters and generation
+    // only, then stay in CAPTURING. The RSP session wipe is not this function.
+    struct P09CaptureControl {
+        P09CapturePhase phase = P09CapturePhase::WaitingForRequest;
+        bool observedMarkerAbsent = false;
+        bool consumeFailedLatched = false;
+        uint64_t staleIgnored = 0;
+        uint64_t arms = 0;
+        uint64_t rearms = 0;
+        uint64_t consumeFailures = 0;
+    };
+
+    inline P09ArmEvent p09CaptureObserveMarker(P09CaptureControl &ctl, bool markerVisible, bool consumed) {
+        if (!markerVisible) {
+            ctl.consumeFailedLatched = false;
+            if (!ctl.observedMarkerAbsent) {
+                ctl.observedMarkerAbsent = true;
+            }
+            return P09ArmEvent::None;
+        }
+        if (!consumed) {
+            if (!ctl.consumeFailedLatched) {
+                ctl.consumeFailedLatched = true;
+                ctl.consumeFailures++;
+            }
+            return P09ArmEvent::None;
+        }
+        ctl.consumeFailedLatched = false;
+        if (!ctl.observedMarkerAbsent) {
+            ctl.staleIgnored++;
+            return P09ArmEvent::StaleIgnored;
+        }
+        if (ctl.phase == P09CapturePhase::WaitingForRequest) {
+            ctl.phase = P09CapturePhase::Capturing;
+            ctl.arms++;
+            return P09ArmEvent::Armed;
+        }
+        ctl.phase = P09CapturePhase::Capturing;
+        ctl.rearms++;
+        return P09ArmEvent::Rearmed;
+    }
+
+    inline bool p09CorrelationCostlyWorkAllowed(P09CapturePhase phase, const P09CorrelationBudget &b) {
+        if (phase != P09CapturePhase::Capturing) return false;
+        if (p09CorrelationBudgetExhausted(b)) return false;
+        return true;
+    }
+
+    // Caller runs the fb/projection/game-call walk only for Walk.
+    // Cooldown counts skippedWallClock once and does not consume an attempt
+    // or an eligible slot. Exhausted does not classify eligibility.
+    enum class P09PreWalk : uint8_t { Waiting = 0, Exhausted, Cooldown, Walk };
+
+    inline P09PreWalk p09CorrelationPreWalk(P09CapturePhase phase, P09CorrelationBudget &b, const uint64_t *nowMs) {
+        if (phase == P09CapturePhase::WaitingForRequest) {
+            return P09PreWalk::Waiting;
+        }
+        if ((phase != P09CapturePhase::Capturing) || p09CorrelationBudgetExhausted(b)) {
+            return P09PreWalk::Exhausted;
+        }
+        if ((nowMs != nullptr) && (b.attempts > 0) &&
+            (*nowMs < b.lastHeavyAttemptMs + kP09CorrelationAttemptIntervalMs)) {
+            b.skippedWallClock++;
+            return P09PreWalk::Cooldown;
+        }
+        return P09PreWalk::Walk;
+    }
+
+    // A finished observed sample is not a finished eligible run, and neither is
+    // global game coverage. Waiting and exhaustion are incomplete runs. Cadence
+    // above 1 is sampling by design.
+    inline bool p09CaptureRunIncomplete(P09CapturePhase phase, const P09CorrelationBudget &b,
+        uint64_t seamSearchSkippedBudget) {
+        if (phase != P09CapturePhase::Capturing) return true;
+        if (b.cadence > 1u) return true;
+        if ((b.skippedCadence > 0) || (b.skippedBudget > 0) || (b.skippedWallClock > 0) ||
+            (seamSearchSkippedBudget > 0)) {
+            return true;
+        }
+        if ((b.attempts >= b.maxAttempts) || (b.seamSearches >= b.maxSeamSearches)) return true;
+        return false;
+    }
+
+    // First-20 pathological tie groups that already feed this correlation.
+    // A group is one child plus every parent whose prevXY+curXY gap tied the
+    // selected parent. Recording does not change selection or coverage counters
+    // and does not suppress the tie. DISTINCT_EXACT_USES means the stored
+    // 9-field keys are complete and not all equal. It is not proof that any
+    // of those uses is a legitimate seam.
+    constexpr size_t kP09TieGroupCap = 20;
+    constexpr size_t kP09TieMemberCap = 96;
+
+    enum class P09TieIdentity : uint8_t {
+        SameExactUseRepeat = 0,
+        DistinctExactUses,
+        Unknown
+    };
+
+    inline const char *p09TieIdentityName(P09TieIdentity id) {
+        switch (id) {
+        case P09TieIdentity::SameExactUseRepeat: return "SAME_EXACT_USE_REPEAT";
+        case P09TieIdentity::DistinctExactUses: return "DISTINCT_EXACT_USES";
+        default: return "UNKNOWN";
+        }
+    }
+
+    inline const char *p09ExactUseMemberName(P09ExactUseMember m) {
+        switch (m) {
+        case P09ExactUseMember::Selected: return "SELECTED";
+        case P09ExactUseMember::NotSelected: return "NOT_SELECTED";
+        default: return "UNKNOWN";
+        }
+    }
+
+    struct P09TieMemberRec {
+        P09SeamExactUseKey key{};
+        bool keyComplete = false;
+        bool selected = false;
+        float gap = 0.0f;
+        bool gapEqualsBest = false;
+        float prevNdcX = 0.0f;
+        float prevNdcY = 0.0f;
+        float curNdcX = 0.0f;
+        float curNdcY = 0.0f;
+        bool prevNdcOk = false;
+        bool curNdcOk = false;
+        float prevWorldX = 0.0f;
+        float prevWorldY = 0.0f;
+        float prevWorldZ = 0.0f;
+        float curWorldX = 0.0f;
+        float curWorldY = 0.0f;
+        float curWorldZ = 0.0f;
+        bool prevWorldOk = false;
+        bool curWorldOk = false;
+        P09ExactUseMember membership = P09ExactUseMember::Unknown;
+        P09ExactUseUnknownReason reason = P09ExactUseUnknownReason::PlanInactive;
+    };
+
+    struct P09TieMemberInput {
+        P09SeamExactUseKey key{};
+        bool keyComplete = false;
+        bool selected = false;
+        float gap = 0.0f;
+        bool gapEqualsBest = false;
+        float prevNdcX = 0.0f;
+        float prevNdcY = 0.0f;
+        float curNdcX = 0.0f;
+        float curNdcY = 0.0f;
+        bool prevNdcOk = false;
+        bool curNdcOk = false;
+        float prevWorldX = 0.0f;
+        float prevWorldY = 0.0f;
+        float prevWorldZ = 0.0f;
+        float curWorldX = 0.0f;
+        float curWorldY = 0.0f;
+        float curWorldZ = 0.0f;
+        bool prevWorldOk = false;
+        bool curWorldOk = false;
+    };
+
+    struct P09TieGroupRec {
+        P09SeamExactUseKey child{};
+        bool childComplete = false;
+        P09ExactUseMember childMembership = P09ExactUseMember::Unknown;
+        P09ExactUseUnknownReason childReason = P09ExactUseUnknownReason::PlanInactive;
+        float bestGap = 0.0f;
+        uint32_t multiplicity = 0;
+        uint32_t stored = 0;
+        bool membersTruncated = false;
+        int32_t selectedStoredIndex = -1;
+        P09TieIdentity identity = P09TieIdentity::Unknown;
+        bool planQueried = false;
+        uint8_t planActive = 0;
+        uint8_t planExhaustive = 0;
+        uint64_t planWorkloadId = 0;
+        uint64_t planGeneration = 0;
+        uint64_t expectedGeneration = 0;
+        uint64_t attemptGeneration = 0;
+        P09TieMemberRec members[kP09TieMemberCap];
+    };
+
+    struct P09TieGroupInput {
+        P09SeamExactUseKey child{};
+        bool childComplete = false;
+        float bestGap = 0.0f;
+        uint32_t multiplicity = 0;
+        uint64_t attemptGeneration = 0;
+        const P09TieMemberInput *members = nullptr;
+        uint32_t memberCount = 0;
+    };
+
+    struct P09TieSample {
+        P09TieGroupRec groups[kP09TieGroupCap];
+        uint32_t storedGroups = 0;
+        uint64_t observedPathologicalTieGroups = 0;
+        uint64_t skippedGroups = 0;
+        uint64_t memberTruncationEvents = 0;
+    };
+
+    // Complete enumeration of complete keys only. Truncation, a short list,
+    // or any incomplete key stays UNKNOWN. Coordinate equality is not used.
+    inline P09TieIdentity p09TieClassifyIdentity(const P09TieMemberRec *members, uint32_t stored,
+        uint32_t multiplicity, bool truncated) {
+        if (truncated || (members == nullptr) || (stored < 2u) || (stored != multiplicity)) {
+            return P09TieIdentity::Unknown;
+        }
+        for (uint32_t i = 0; i < stored; i++) {
+            if (!members[i].keyComplete) {
+                return P09TieIdentity::Unknown;
+            }
+        }
+        for (uint32_t i = 1; i < stored; i++) {
+            if (!p09ExactUseEqual(members[0].key, members[i].key)) {
+                return P09TieIdentity::DistinctExactUses;
+            }
+        }
+        return P09TieIdentity::SameExactUseRepeat;
+    }
+
+    // Appends one group. Past the group cap, counts a skip and does not replace
+    // an earlier group. Does not touch coverage counters.
+    inline void p09TieSampleRecord(P09TieSample &sample, const P09TieGroupInput &in) {
+        sample.observedPathologicalTieGroups++;
+        if (sample.storedGroups >= kP09TieGroupCap) {
+            sample.skippedGroups++;
+            return;
+        }
+        P09TieGroupRec &g = sample.groups[sample.storedGroups];
+        g = P09TieGroupRec{};
+        g.child = in.child;
+        g.childComplete = in.childComplete;
+        g.bestGap = in.bestGap;
+        g.multiplicity = in.multiplicity;
+        g.attemptGeneration = in.attemptGeneration;
+        const uint32_t provided = (in.members == nullptr) ? 0u : in.memberCount;
+        const uint32_t store = (provided < uint32_t(kP09TieMemberCap)) ? provided : uint32_t(kP09TieMemberCap);
+        g.stored = store;
+        g.membersTruncated = (in.multiplicity > store);
+        for (uint32_t i = 0; i < store; i++) {
+            const P09TieMemberInput &src = in.members[i];
+            P09TieMemberRec &dst = g.members[i];
+            dst.key = src.key;
+            dst.keyComplete = src.keyComplete;
+            dst.selected = src.selected;
+            dst.gap = src.gap;
+            dst.gapEqualsBest = src.gapEqualsBest;
+            dst.prevNdcX = src.prevNdcX;
+            dst.prevNdcY = src.prevNdcY;
+            dst.curNdcX = src.curNdcX;
+            dst.curNdcY = src.curNdcY;
+            dst.prevNdcOk = src.prevNdcOk;
+            dst.curNdcOk = src.curNdcOk;
+            if (src.prevWorldOk) {
+                dst.prevWorldX = src.prevWorldX;
+                dst.prevWorldY = src.prevWorldY;
+                dst.prevWorldZ = src.prevWorldZ;
+                dst.prevWorldOk = true;
+            }
+            if (src.curWorldOk) {
+                dst.curWorldX = src.curWorldX;
+                dst.curWorldY = src.curWorldY;
+                dst.curWorldZ = src.curWorldZ;
+                dst.curWorldOk = true;
+            }
+            if (src.selected && (g.selectedStoredIndex < 0)) {
+                g.selectedStoredIndex = int32_t(i);
+            }
+        }
+        g.identity = p09TieClassifyIdentity(g.members, g.stored, g.multiplicity, g.membersTruncated);
+        if (g.membersTruncated) {
+            sample.memberTruncationEvents++;
+        }
+        sample.storedGroups++;
+    }
+
+    // Membership against the caller-supplied plan only. An inactive plan stays
+    // Unknown / PLAN_INACTIVE. This does not read any other plan.
+    inline void p09TieSampleApplyLocalPlan(P09TieSample &sample, uint64_t attemptGeneration,
+        const P09ExactUsePlanResult &plan, uint64_t planGeneration, uint64_t expectedGeneration) {
+        for (uint32_t gi = 0; gi < sample.storedGroups; gi++) {
+            P09TieGroupRec &g = sample.groups[gi];
+            if (g.attemptGeneration != attemptGeneration) {
+                continue;
+            }
+            g.planQueried = true;
+            g.planActive = plan.active;
+            g.planExhaustive = plan.exhaustive;
+            g.planWorkloadId = plan.workloadId;
+            g.planGeneration = planGeneration;
+            g.expectedGeneration = expectedGeneration;
+            g.childMembership = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration,
+                g.child, g.childComplete, &g.childReason);
+            for (uint32_t i = 0; i < g.stored; i++) {
+                P09TieMemberRec &m = g.members[i];
+                m.membership = p09ExactUseClassifyMember(plan, planGeneration, expectedGeneration,
+                    m.key, m.keyComplete, &m.reason);
+            }
+        }
+    }
+
+    inline void p09TieFormatKey(std::FILE *out, const P09SeamExactUseKey &k) {
+        std::fprintf(out,
+            "workload=%llu fbPair=%u projection=%u gameCall=%u triangleLocal=%u corner=%u faceCorner=%u storedVertex=%u world=%u",
+            static_cast<unsigned long long>(k.workloadId), k.fbPair, k.projection, k.gameCall,
+            k.triangleLocal, static_cast<unsigned>(k.cornerInTriangle), k.faceCornerIndex,
+            k.storedVertexId, static_cast<unsigned>(k.originalWorldIndex));
+    }
+
+    inline void p09TieFormatCoord2(std::FILE *out, bool ok, float x, float y) {
+        if (!ok) {
+            std::fprintf(out, "NA");
+            return;
+        }
+        std::fprintf(out, "%.9g,%.9g", x, y);
+    }
+
+    inline void p09TieFormatCoord3(std::FILE *out, bool ok, float x, float y, float z) {
+        if (!ok) {
+            std::fprintf(out, "NA");
+            return;
+        }
+        std::fprintf(out, "%.9g,%.9g,%.9g", x, y, z);
+    }
+
+    // Bounded text: stored groups only, stored members only. No seam search.
+    inline void p09TieFormatSample(std::FILE *out, const P09TieSample &sample) {
+        if (out == nullptr) {
+            return;
+        }
+        std::fprintf(out,
+            "SCHEMA=P09_SEAM_EDGE_PATHOLOGY_TIE_GROUPS_V1\n"
+            "FLAG=TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION\n"
+            "GROUP_CAP=%u\n"
+            "MEMBER_CAP=%u\n"
+            "SAMPLED_SCOPE=PATHOLOGICAL_NEAREST_JOIN_TIES_FEEDING_EXACT_USE_CORRELATION_FIRST_20_PER_ARMED_SESSION\n"
+            "SELECTION_UNCHANGED=YES\n"
+            "TIE_SUPPRESSION=NO\n"
+            "OBSERVED_PATHOLOGICAL_TIE_GROUPS=%llu\n"
+            "STORED_GROUPS=%u\n"
+            "SKIPPED_GROUPS=%llu\n"
+            "MEMBER_TRUNCATION_EVENTS=%llu\n"
+            "ORIGINAL_PAIR_CLASSIFICATION=AMBIGUOUS_UNTIL_INDEPENDENT_REVIEW\n"
+            "IDENTITY_NOTE=DISTINCT_EXACT_USES means complete 9-field keys differ. It does not prove seam legitimacy.\n"
+            "COORDINATE_NOTE=Identical NDC is not exact-use identity.\n"
+            "PLAN_NOTE=Membership uses only the attempt-local plan passed with the group. PLAN_QUERIED=NO or PLAN_ACTIVE=0 is UNKNOWN and is not a miss.\n",
+            static_cast<unsigned>(kP09TieGroupCap),
+            static_cast<unsigned>(kP09TieMemberCap),
+            static_cast<unsigned long long>(sample.observedPathologicalTieGroups),
+            sample.storedGroups,
+            static_cast<unsigned long long>(sample.skippedGroups),
+            static_cast<unsigned long long>(sample.memberTruncationEvents));
+        for (uint32_t gi = 0; gi < sample.storedGroups && gi < kP09TieGroupCap; gi++) {
+            const P09TieGroupRec &g = sample.groups[gi];
+            std::fprintf(out, "GROUP index=%u attemptGeneration=%llu\n", gi,
+                static_cast<unsigned long long>(g.attemptGeneration));
+            std::fprintf(out, "CHILD ");
+            p09TieFormatKey(out, g.child);
+            std::fprintf(out, "\n");
+            std::fprintf(out,
+                "CHILD_COMPLETE=%s\n"
+                "CHILD_MEMBERSHIP=%s\n"
+                "CHILD_REASON=%s\n"
+                "BEST_GAP=%.9g\n"
+                "EXACT_EQUALITY=gap==bestGap\n"
+                "MULTIPLICITY=%u\n"
+                "STORED=%u\n"
+                "TRUNCATED=%s\n"
+                "IDENTITY=%s\n"
+                "SELECTED_STORED_INDEX=%d\n"
+                "PLAN_QUERIED=%s\n"
+                "PLAN_ACTIVE=%u\n"
+                "PLAN_EXHAUSTIVE=%u\n"
+                "PLAN_WORKLOAD=%llu\n"
+                "PLAN_GENERATION=%llu\n"
+                "EXPECTED_GENERATION=%llu\n"
+                "DO_NOT_INFER_MISS=YES\n",
+                g.childComplete ? "YES" : "NO",
+                p09ExactUseMemberName(g.childMembership),
+                p09ExactUseUnknownReasonName(g.childReason),
+                g.bestGap,
+                g.multiplicity,
+                g.stored,
+                g.membersTruncated ? "YES" : "NO",
+                p09TieIdentityName(g.identity),
+                static_cast<int>(g.selectedStoredIndex),
+                g.planQueried ? "YES" : "NO",
+                static_cast<unsigned>(g.planActive),
+                static_cast<unsigned>(g.planExhaustive),
+                static_cast<unsigned long long>(g.planWorkloadId),
+                static_cast<unsigned long long>(g.planGeneration),
+                static_cast<unsigned long long>(g.expectedGeneration));
+            const uint32_t n = (g.stored < uint32_t(kP09TieMemberCap)) ? g.stored : uint32_t(kP09TieMemberCap);
+            for (uint32_t i = 0; i < n; i++) {
+                const P09TieMemberRec &m = g.members[i];
+                std::fprintf(out, "MEMBER index=%u selected=%s gap=%.9g gapEqualsBest=%s ",
+                    i, m.selected ? "YES" : "NO", m.gap, m.gapEqualsBest ? "YES" : "NO");
+                p09TieFormatKey(out, m.key);
+                std::fprintf(out, " PREV_NDC=");
+                p09TieFormatCoord2(out, m.prevNdcOk, m.prevNdcX, m.prevNdcY);
+                std::fprintf(out, " CUR_NDC=");
+                p09TieFormatCoord2(out, m.curNdcOk, m.curNdcX, m.curNdcY);
+                std::fprintf(out, " PREV_WORLD=");
+                p09TieFormatCoord3(out, m.prevWorldOk, m.prevWorldX, m.prevWorldY, m.prevWorldZ);
+                std::fprintf(out, " CUR_WORLD=");
+                p09TieFormatCoord3(out, m.curWorldOk, m.curWorldX, m.curWorldY, m.curWorldZ);
+                std::fprintf(out, " MEMBERSHIP=%s REASON=%s\n",
+                    p09ExactUseMemberName(m.membership), p09ExactUseUnknownReasonName(m.reason));
+            }
+        }
+    }
+}

@@ -62,14 +62,18 @@ eventos e símbolos manuais. Tooie precisa gerar equivalentes próprios.
 - Introduzir patches apenas com bug/limitação reproduzível e teste associado.
 - Manter o preset fiel sem melhorias como referência de paridade.
 
-## Fontes locais
+## Linhagem de arquivos e proveniência arquitetural
 
-- [`src/main/main.cpp`](../../../../BanjoRecomp/src/main/main.cpp)
-- [`src/main/register_overlays.cpp`](../../../../BanjoRecomp/src/main/register_overlays.cpp)
-- [`src/main/register_patches.cpp`](../../../../BanjoRecomp/src/main/register_patches.cpp)
-- [`src/game/rom_decompression.cpp`](../../../../BanjoRecomp/src/game/rom_decompression.cpp)
-- [`banjo.us.rev0.toml`](../../../../BanjoRecomp/banjo.us.rev0.toml)
-- [`BUILDING.md`](../../../../BanjoRecomp/BUILDING.md)
+Os seguintes caminhos arquiteturais do upstream BanjoRecomp serviram de referência histórica para a estrutura do TooieRecomp (proveniência e derivação registradas em `vendor/DERIVED-FILES.tsv`):
+
+- `src/main/main.cpp` (ponto de entrada do executável, adaptado para Tooie)
+- `src/main/register_overlays.cpp` (registro de tabelas de overlays geradas)
+- `src/main/register_patches.cpp` (registro de hooks e patches nativos)
+- `src/game/rom_decompression.cpp` (descompressão e registro de stubs de lookup da ROM)
+- Arquivo de configuração de recompilação (original `banjo.us.rev0.toml` substituído por `tooie.us.rev0.recomp.toml`)
+- Guia de compilação (substituído por [`tools/BUILDING.md`](../../../tools/BUILDING.md))
+
+TooieRecomp não depende de checkouts externos; todos os arquivos necessários estão no próprio repositório.
 
 ## Relações
 

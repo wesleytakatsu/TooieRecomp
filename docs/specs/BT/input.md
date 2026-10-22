@@ -15,12 +15,11 @@ um segundo sistema de input específico de Tooie.
 
 ## Fonte de verdade
 
-- Framework: `BanjoRecomp/lib/RecompFrontend/recompinput`.
-- Referência de integração: `BanjoRecomp/src/main/main.cpp` e
-  `BanjoRecomp/src/game/config.cpp`.
-- Integração Tooie: `TooieRecomp/src/main/main.cpp`,
-  `TooieRecomp/src/game/config.cpp` e `TooieRecomp/src/game/recomp_api.cpp`.
-- Banco SDL: `BanjoRecomp/recompcontrollerdb.txt`.
+- Framework: `lib/RecompFrontend/recompinput` (vendorizado localmente).
+- Referência upstream de integração: BanjoRecomp `src/main/main.cpp` e
+  `src/game/config.cpp` (linhagem documentada em `vendor/DERIVED-FILES.tsv`).
+- Integração Tooie: `src/main/main.cpp`, `src/game/config.cpp` e `src/game/recomp_api.cpp`.
+- Banco SDL: `recompcontrollerdb.txt` (vendorizado localmente a partir de SDL_GameControllerDB).
 
 ## Contrato de runtime
 
@@ -102,11 +101,9 @@ alterado. Não se deve criar um arquivo vazio artificialmente.
 
 ## Banco SDL
 
-O TooieRecomp não mantém uma cópia independente do banco de gamepads. O target
-CMake copia `BanjoRecomp/recompcontrollerdb.txt` para a pasta do executável em
-todo build, usando `copy_if_different`.
+O banco de gamepads é vendorizado diretamente na raiz do repositório (`recompcontrollerdb.txt`, proveniência SDL_GameControllerDB / upstream). O target CMake `TooieControllerDB` copia `${CMAKE_SOURCE_DIR}/recompcontrollerdb.txt` para a pasta do executável em todo build, usando `copy_if_different`. Nenhum checkout irmão ou externo é utilizado.
 
-Hash verificado na origem e no build:
+Hash verificado na raiz do repositório e no build:
 
 ```text
 a0659f8fb5c1398365d1280034f39350259cd169c79c0e12002da0df92adcc7c
@@ -118,7 +115,7 @@ smoke executado a partir de `TooieRecomp/build`.
 ## Critérios de paridade
 
 - Não alterar defaults de Tooie sem alterar conscientemente o contrato com BK.
-- Não duplicar `recompcontrollerdb.txt`.
+- Não depender de checkouts externos para `recompcontrollerdb.txt` (manter a cópia vendorizada na raiz).
 - Remapeamento deve sobreviver ao reinício quando houver `controls.json`.
 - Reconexão e rumble devem usar somente os callbacks do RecompFrontend.
 - O caminho host de polling/leitura está comprovado, mas o title/file select do

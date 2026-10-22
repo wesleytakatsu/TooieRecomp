@@ -4,11 +4,8 @@
 # usage: n64recomp_zero_size_static_test.sh <N64Recomp binary> <decompressed rom>
 # Runs the generator twice in symbols mode on COPIES of metadata:
 #   A = metadata as is, B = metadata + zero-sized func_80800000_bsrest.
-# Generator exit codes are checked (no failure masking). Symbols mode does not emit two data-only
-# relocatable sections (.cosection, .dbpalette) and the generator then exits 1 *after* writing
-# funcs but while writing recomp_overlays.inl ("Failed to find written section index of
-# relocatable section: ..."). That observed quirk is avoided by dropping exactly those two names
-# from the COPY of the relocatable list; any other generator failure fails the test.
+# Generator exit codes are checked (no failure masking). The committed symbols file is lossless (vendor/patches-local/n64recomp-symbols-file-fidelity.patch):
+# the full relocatable list is used unchanged, so any generator failure fails the test.
 # Requires: bsrest static helper (the one called by bsrest_entrypoint_9's 0x8080020C) has its body,
 # and output A == output B (the zero-size symbol must not change anything).
 set -euo pipefail
@@ -19,8 +16,6 @@ T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 gen() { # gen <name> <extra zero-size symbol 0|1>
     local n="$1" z="$2" d="$T/$1"
     mkdir -p "$d/out"; cp -r "$ROOT/metadata" "$d/meta"
-    grep -vxF -e '.cosection' -e '.dbpalette' "$d/meta/relocatable_sections.recomp.txt" > "$d/r.tmp" || true
-    mv "$d/r.tmp" "$d/meta/relocatable_sections.recomp.txt"
     if [[ "$z" == 1 ]]; then
         python3 - "$d/meta/tooie.us.syms.toml" <<'PY'
 import sys

@@ -1,0 +1,19 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -286,9 +286,13 @@
+ 
+ # Point cmake at src/contrib/mupen64plus-win32-deps/SDL2-2.26.3 for SDL2 on windows, look for an installed package on other systems
+ if (WIN32)
+-    set(SDL2_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src/contrib/mupen64plus-win32-deps/SDL2-2.26.3/include")
+-    set(SDL2_LIBRARIES "SDL2" "SDL2main")
+-    link_directories("${PROJECT_SOURCE_DIR}/src/contrib/mupen64plus-win32-deps/SDL2-2.26.3/lib/x64")
++    # TooieRecomp local seam (vendor/patches-local/rt64-use-host-sdl2-target.patch): mupen64plus-win32-deps is not vendored;
++    # the host project must provide SDL2::SDL2 (+ SDL2::SDL2main) so headers, import lib and DLL come from ONE SDL2 version.
++    if (NOT TARGET SDL2::SDL2 OR NOT TARGET SDL2::SDL2main)
++        message(FATAL_ERROR "rt64 (TooieRecomp vendored): define imported targets SDL2::SDL2 and SDL2::SDL2main before add_subdirectory(rt64) (lib/SDL2-windows)")
++    endif()
++    get_target_property(SDL2_INCLUDE_DIRS SDL2::SDL2 INTERFACE_INCLUDE_DIRECTORIES)
++    set(SDL2_LIBRARIES SDL2::SDL2 SDL2::SDL2main)
+ else()
+     find_package(SDL2 REQUIRED)
+ endif()

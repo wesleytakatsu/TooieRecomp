@@ -41,9 +41,7 @@ Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
 
 - Projeto em fase de pesquisa/engenharia reversa.
 - `instruções.md` (raiz) contém a análise de viabilidade do `TooieRecomp`.
-- Sub-projetos: `BanjoRecomp/` (implementação de referência) e
-  `banjo-tooie-Recomp/` (fork local; `origin` de Wesley Takatsu e `upstream`
-  do decomp do Mr-Wiseguy). O checkout antigo `banjo-tooie/` não é usado.
+- Proveniência e linhagem: `BanjoRecomp/` serviu como projeto de referência inicial e `banjo-tooie-Recomp/` (fork local; `origin` de Wesley Takatsu e `upstream` do decomp do Mr-Wiseguy) como fonte de decompilação; sob a arquitetura standalone da P10, as fontes e runtimes necessários estão vendorizados diretamente em `lib/`, `decomp/` e `assets/`. O checkout antigo `banjo-tooie/` não é usado.
 
 ## Regra de manutenção
 

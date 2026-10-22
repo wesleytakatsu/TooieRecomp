@@ -23,13 +23,13 @@ O upstream permanece referência para sincronização. Veja [[setup|Setup BT]].
 
 ## ROMs e hashes
 
-| Artefato | Papel | SHA-1 esperado |
-| --- | --- | --- |
-| `baserom.us.z64` | ROM original NTSC-U Rev. 0 fornecida pelo usuário | `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` |
-| `decompressed.us.z64` | alvo decomposto consumido pelo Splat | `af479771ff5e91ce3732f3d84146614ab71d8d79` |
+| Artefato | Papel | Tamanho (bytes) | MD5 | SHA-1 esperado |
+| --- | --- | --- | --- | --- |
+| `Banjo-Tooie (USA).z64` (histórico `baserom.us.z64`) | ROM original de cartucho NTSC-U Rev. 0 fornecida pelo usuário | 33554432 | `40e98faa24ac3ebe1d25cb5e5ddf49e4` | `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3` |
+| `decompressed.us.z64` | Imagem ROM descompactada gerada por `tools/extract_rom.sh`; exigida pelo launcher | 35098224 | — | `af479771ff5e91ce3732f3d84146614ab71d8d79` |
 
-A ROM validada no workspace corresponde ao primeiro hash, tem 32 MiB, byte
-order `.z64`, ID `NB7E` e revisão `00`.
+A ROM validada no workspace corresponde aos hashes acima, tem exatamente 32 MiB (33.554.432 bytes), byte
+order `.z64` (big-endian), ID `NB7E` e revisão `00`. O launcher em runtime exige estritamente a imagem descompactada (`decompressed.us.z64`, XXH3 `9F843AD3455EA395`), rejeitando a ROM de cartucho original comprimida.
 
 ## Insumos definidos pelo fork
 
@@ -149,12 +149,12 @@ Estado parcial (2026-08-09): P00–P05 fechados no workspace; **P06 parcial**
 
 ## Fontes locais
 
-- [`README.md`](../../../../banjo-tooie-Recomp/README.md)
-- [`baserom.us.yaml`](../../../../banjo-tooie-Recomp/baserom.us.yaml)
-- [`tools/rom_decompressor.cpp`](../../../../banjo-tooie-Recomp/tools/rom_decompressor.cpp)
-- [`tools/tooie_utils.cpp`](../../../../banjo-tooie-Recomp/tools/tooie_utils.cpp)
-- [`src/core2/overlays.c`](../../../../banjo-tooie-Recomp/src/core2/overlays.c)
-- [`overlays.us.toml`](../../../../banjo-tooie-Recomp/overlays.us.toml)
+- [`README.md`](../../../decomp/README.md)
+- [`baserom.us.yaml`](../../../decomp/baserom.us.yaml)
+- [`tools/rom_decompressor.cpp`](../../../decomp/tools/rom_decompressor.cpp)
+- [`tools/tooie_utils.cpp`](../../../decomp/tools/tooie_utils.cpp)
+- [`src/core2/overlays.c`](../../../decomp/src/core2/overlays.c)
+- [`overlays.us.toml`](../../../decomp/overlays.us.toml)
 
 ## Relações
 

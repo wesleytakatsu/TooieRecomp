@@ -22,6 +22,7 @@ build-cmake/
 # Input ROM/ELF (user-provided; never ship)
 *.elf
 *.z64
+/Banjo-Tooie (USA).z64
 *.n64
 *.v64
 
@@ -57,3 +58,57 @@ tools/oracle/angrylion-control/work/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Generated configs, build trees and release staging (tools/build_linux.sh, tools/package_linux.sh, tools/windows/Build-Tooie.ps1)
+/dist/
+.tooie.recomp.gen.toml
+.n_aspMain.gen.toml
+build-linux/
+build-win/
+build-ci/
+
+# --- Standalone vendoring (vendor/README.md) ---------------------------------------------------------------------------
+# lib/, decomp/, assets/ and tools/wheelhouse/ are REGULAR tracked content (no submodules/gitlinks/third_party clones).
+# The upstream Git-only control files (.gitignore/.gitattributes/.gitmodules/.github) were intentionally NOT imported; the
+# rules that kept private / generated / proprietary-toolchain files out of git upstream are translated to the new prefix here.
+# decomp/ is vendored SOURCE ONLY. tools/build_linux.sh runs it in <build>/decomp-work, but guard in-tree runs too:
+/decomp/baserom*.z64
+# rom_decompressor writes ROM-derived assets/overlays/*/relocs.bin relative to its CWD (tools/extract_rom.sh runs it in a work dir): never versioned
+/assets/overlays/
+/decomp/baseroms/
+/decomp/decompressed*
+/decomp/asm/
+/decomp/assets/
+/decomp/build/
+/decomp/bin/
+/decomp/mod/
+/decomp/banjotooie.ld
+/decomp/*.map
+/decomp/*auto*.txt
+/decomp/.splat_cache*
+/decomp/.venv/
+/decomp/venv/
+/decomp/tools/ido/
+/decomp/tools/rom_decompressor
+/decomp/tools/syscall_builder
+/decomp/tools/overlay_processor
+/decomp/tools/rom_compressor
+/decomp/tools/n64crc
+/decomp/tools/*.o
+/decomp/lib/ultralib/tools/ido/
+/decomp/lib/ultralib/tools/gcc/
+/decomp/lib/ultralib/build/
+/decomp/lib/ultralib/extracted/
+/decomp/lib/ultralib/base_*/
+# Legacy MIPS compiler kit (licence UNVERIFIED, explicit input): never inside the repo
+/toolchain-kit/
+# Required prebuilt tool assets are allowlisted (vendor/BINARIES.tsv); the global *.so/*.a/*.dll rules above stay for everything else.
+!/lib/rt64/src/contrib/dxc/lib/x64/*.so
+!/lib/rt64/src/contrib/dxc/lib/x64/*.lib
+!/lib/rt64/src/contrib/dxc/bin/x64/*.dll
+!/lib/SDL2-windows/lib/x64/*.lib
+!/lib/SDL2-windows/lib/x64/*.dll
+!/lib/RecompFrontend/recompui/lib/freetype-windows-binaries/**/*.lib
+!/lib/RecompFrontend/recompui/lib/freetype-windows-binaries/**/*.dll
+!/lib/rt64/src/contrib/zstd/build/
+!/lib/N64ModernRuntime/thirdparty/o1heap/tests/.idea/

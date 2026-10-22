@@ -57,7 +57,7 @@ def poly_glyph(points, x, y, s, fill, outline=30):
 
 
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else "../BanjoRecomp/assets/Logo.svg"
+    src = sys.argv[1] if len(sys.argv) > 1 else "assets/Logo.svg"
     out = sys.argv[2] if len(sys.argv) > 2 else "ui_assets/TooieLogo.svg"
     root = ET.parse(src).getroot()
     flat = next(e for e in root.iter(Q + "g") if e.get("id") == "Logo_Straight_Flat")

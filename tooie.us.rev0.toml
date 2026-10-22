@@ -4,7 +4,7 @@
 [input]
 entrypoint = 0x80000400
 output_func_path = "RecompiledFuncs"
-rom_file_path = "../banjo-tooie-Recomp/decompressed.us.z64"
+rom_file_path = "decomp/decompressed.us.z64"
 symbols_file_path = "metadata/tooie.us.syms.toml"
 relocatable_sections_path = "metadata/relocatable_sections.txt"
 bss_section_suffix = "_bss"

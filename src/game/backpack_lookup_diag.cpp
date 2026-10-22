@@ -24,6 +24,33 @@ extern "C" void __real_func_800E0E94(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800AE8A8(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800AE820(uint8_t* rdram, recomp_context* ctx);
 
+#ifdef _WIN32
+// lld-link has no GNU --wrap: here __real_<f> is simply the original generated <f> (the wrappers are still bound
+// through recomp::overlays::add_loaded_function in boot_hw_stubs.cpp). Keep this list equal to the -Wl,--wrap list.
+#define TOOIE_REAL_SHIM(f) \
+    extern "C" void f(uint8_t*, recomp_context*); \
+    extern "C" void __real_##f(uint8_t* rdram, recomp_context* ctx) { f(rdram, ctx); }
+TOOIE_REAL_SHIM(func_800D674C)
+TOOIE_REAL_SHIM(func_800DE448)
+TOOIE_REAL_SHIM(func_800DE498)
+TOOIE_REAL_SHIM(func_800E2AA4)
+TOOIE_REAL_SHIM(func_800DE2A4)
+TOOIE_REAL_SHIM(func_800DCF48)
+TOOIE_REAL_SHIM(func_800ADE2C)
+TOOIE_REAL_SHIM(func_80019AA0)
+TOOIE_REAL_SHIM(mlMtxApply)
+TOOIE_REAL_SHIM(func_800E2180)
+TOOIE_REAL_SHIM(babackpack_entrypoint_3)
+TOOIE_REAL_SHIM(func_80098BA8)
+TOOIE_REAL_SHIM(func_80092444)
+TOOIE_REAL_SHIM(func_80092B04)
+TOOIE_REAL_SHIM(func_800E0B8C)
+TOOIE_REAL_SHIM(func_800E0E94)
+TOOIE_REAL_SHIM(func_800AE8A8)
+TOOIE_REAL_SHIM(func_800AE820)
+#undef TOOIE_REAL_SHIM
+#endif
+
 namespace {
 
 uint32_t guest_word(uint8_t* rdram, uint32_t guest_ptr, uint32_t offset) {
@@ -134,8 +161,12 @@ extern "C" void __wrap_func_800DE2A4(uint8_t* rdram, recomp_context* ctx) {
 
 extern "C" void __wrap_func_800DCF48(uint8_t* rdram, recomp_context* ctx) {
     bool snout_scope = false;
-    if (tooie_diag::secondary_sway_enabled() && ctx != nullptr) {
-        tooie_diag::secondary_sway_note_dcf48_entry();
+    const bool sway = tooie_diag::secondary_sway_enabled();
+    const bool provenance = tooie_diag::p09_local_pair_provenance_enabled();
+    if ((sway || provenance) && ctx != nullptr) {
+        if (sway) {
+            tooie_diag::secondary_sway_note_dcf48_entry();
+        }
         snout_scope = tooie_diag::secondary_sway_note_dcf48(rdram, ctx);
     }
     __real_func_800DCF48(rdram, ctx);
@@ -145,7 +176,8 @@ extern "C" void __wrap_func_800DCF48(uint8_t* rdram, recomp_context* ctx) {
 }
 
 extern "C" void __wrap_func_800ADE2C(uint8_t* rdram, recomp_context* ctx) {
-    const bool snout_scope = tooie_diag::secondary_sway_enabled() &&
+    const bool snout_scope = (tooie_diag::secondary_sway_enabled() ||
+                              tooie_diag::p09_local_pair_provenance_enabled()) &&
                              tooie_diag::secondary_sway_dcf48_snout_scope_active();
     __real_func_800ADE2C(rdram, ctx);
     if (snout_scope) {
@@ -154,7 +186,8 @@ extern "C" void __wrap_func_800ADE2C(uint8_t* rdram, recomp_context* ctx) {
 }
 
 extern "C" void __wrap_func_80019AA0(uint8_t* rdram, recomp_context* ctx) {
-    const bool snout_scope = tooie_diag::secondary_sway_enabled() &&
+    const bool snout_scope = (tooie_diag::secondary_sway_enabled() ||
+                              tooie_diag::p09_local_pair_provenance_enabled()) &&
                              tooie_diag::secondary_sway_dcf48_snout_scope_active() &&
                              ctx != nullptr;
     const uint32_t parent_ptr = snout_scope ? static_cast<uint32_t>(ctx->r4) : 0;
@@ -166,7 +199,8 @@ extern "C" void __wrap_func_80019AA0(uint8_t* rdram, recomp_context* ctx) {
 }
 
 extern "C" void __wrap_mlMtxApply(uint8_t* rdram, recomp_context* ctx) {
-    const bool snout_scope = tooie_diag::secondary_sway_enabled() &&
+    const bool snout_scope = (tooie_diag::secondary_sway_enabled() ||
+                              tooie_diag::p09_local_pair_provenance_enabled()) &&
                              tooie_diag::secondary_sway_dcf48_snout_scope_active() &&
                              ctx != nullptr;
     // mlMtxApply: a1 = entry a0 (Gfx Mtx dest / G_MTX operand);

@@ -1,0 +1,16 @@
+# Allowlisted prebuilt tool/runtime binaries inside lib/ (DXC compiler, SDL2 + FreeType Windows x64). THIRD-PARTY, not a TooieRecompiled build and not game data.
+# Any other ELF/PE/ar file found under lib/ fails the audit (tools/vendor_verify.sh --binaries). path<TAB>sha256<TAB>bytes<TAB>origin<TAB>licence_status
+lib/RecompFrontend/recompui/lib/freetype-windows-binaries/release dll/win64/freetype.dll	ca895bd9e3907aed56a7ac25ee143a3dbed6470309d75976a4ddd5ad70ea3ebc	698368	ubawurinna/freetype-windows-binaries@9124a207	FTL/GPLv2 dual per LICENSE.TXT (text present; not a clearance)
+lib/RecompFrontend/recompui/lib/freetype-windows-binaries/release dll/win64/freetype.lib	754d5a0b682dc5d4b709978be40898bf9c280aa2bcbc374f4c96322466562642	49398	ubawurinna/freetype-windows-binaries@9124a207	FTL/GPLv2 dual per LICENSE.TXT (text present; not a clearance)
+lib/RecompFrontend/recompui/lib/freetype-windows-binaries/release static/vs2015-2022/win64/freetype.lib	b5263d58893c670a6f59de39e51f641544183b30aaee075f7cdbbbcbc6388116	4557050	ubawurinna/freetype-windows-binaries@9124a207	FTL/GPLv2 dual per LICENSE.TXT (text present; not a clearance)
+lib/SDL2-windows/lib/x64/SDL2.dll	68e36533f0184b533ec79aa01e835641a099880f63eaefe9425859574a739790	2531328	SDL2-devel-2.30.3-VC.zip (sha256 89999a6f...)	zlib-style per COPYING.txt
+lib/SDL2-windows/lib/x64/SDL2.lib	593661df214c94252f73e6c2f226102d7a6d2cde36d7edfe7bca385c812c2afe	183824	SDL2-devel-2.30.3-VC.zip (sha256 89999a6f...)	zlib-style per COPYING.txt
+lib/SDL2-windows/lib/x64/SDL2main.lib	314de329a2d8da9ad8c47881d3adea37ede92f03e024d00eb1826ed418d63f5a	36644	SDL2-devel-2.30.3-VC.zip (sha256 89999a6f...)	zlib-style per COPYING.txt
+lib/SDL2-windows/lib/x64/SDL2test.lib	86f5435f79c983e24503c59c3673a868b60546e449fb54fe109abd4510e77789	966202	SDL2-devel-2.30.3-VC.zip (sha256 89999a6f...)	zlib-style per COPYING.txt
+lib/rt64/src/contrib/dxc/bin/x64/dxc-linux	4e6f4e52989aca69739880b40b9f988357f15d10ca03284377b81f1502463ff5	771496	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)
+lib/rt64/src/contrib/dxc/bin/x64/dxc.exe	94cf9978834c5d44fd42f3a5ee964e2293a57efa455d05e3a13482c46b714b6f	1076736	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)
+lib/rt64/src/contrib/dxc/bin/x64/dxcompiler.dll	15304a82c8a61db615a83961d8967a5c468ae7ce77b86d8e9b3dec60f7ae2166	20484608	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)
+lib/rt64/src/contrib/dxc/bin/x64/dxil.dll	2c70d034d38b06c6a1161efb9246cce296be248ff52eff6c1b587ce150e5f36d	1370000	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)
+lib/rt64/src/contrib/dxc/lib/x64/dxcompiler.lib	34237369336dd9a08916349449e7f8ee525a1cd17657c1fc40fd52bf8bb960f2	2002	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)
+lib/rt64/src/contrib/dxc/lib/x64/libdxcompiler.so	f875d0a52f4e69e9de999b7f749414bdc529aa04e9b1bc75802453f81fcd20df	29324584	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)
+lib/rt64/src/contrib/dxc/lib/x64/libdxil.so	27bed3596bebd053dd56c5542233e83b87820ccb531fbf5438d54de1d9952acd	4791432	rt64/dxc-bin@cc15e715	UNKNOWN (no licence file in the submodule)

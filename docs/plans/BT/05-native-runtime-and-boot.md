@@ -44,13 +44,13 @@ RSP, renderer, áudio, entrada, janela, erros e threads antes de chamar
 | Item | Path |
 | --- | --- |
 | Executável | `TooieRecomp/build/TooieRecompiled` (~27 MB) |
-| CMake | `TooieRecomp/CMakeLists.txt` (RT64 static, RecompFrontend, N64ModernRuntime via `BanjoRecomp/lib`) |
+| CMake | `TooieRecomp/CMakeLists.txt` (RT64 estático, RecompFrontend, N64ModernRuntime vendorizados sob `lib/`; histórico P05 utilizava paths via `BanjoRecomp/lib`) |
 | GameEntry | `bt.n64.us.1.0`, XXH3 `0x9F843AD3455EA395` (decompressed) |
 | Overlays | `register_overlays.cpp` ← `RecompiledFuncs/recomp_overlays.inl` |
 | Syscall stub | `src/game/syscall_handler.cpp` (dispatch real = P06) |
 | RSP stub | `rsp/n_aspMain.cpp` (ucode real = P07) |
 | ROM CLI | `build/validate_rom` |
-| Assets | symlink `assets` → `BanjoRecomp/assets` (fonts/UI) |
+| Assets | `assets/` (diretório real de UI vendorizado no repositório; o antigo symlink para BanjoRecomp foi aposentado no standalone) |
 | Config dir | `~/.config/TooieRecompiled/` |
 
 ### Build
@@ -63,7 +63,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
 cmake --build build -j$(nproc) --target TooieRecompiled
 # run from TooieRecomp/ so assets/ resolves
 ./build/TooieRecompiled
-./build/validate_rom ../banjo-tooie-Recomp/decompressed.us.z64
+./build/validate_rom build-linux/extract/decompressed.us.z64 # histórico: ../banjo-tooie-Recomp/decompressed.us.z64
 ```
 
 ### ROM policy (P05)

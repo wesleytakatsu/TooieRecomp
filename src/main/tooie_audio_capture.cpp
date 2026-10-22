@@ -13,8 +13,15 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <direct.h>
+#include <process.h>
+#define getpid _getpid
+#define mkdir(path, mode) _wmkdir(path) // std::filesystem::path::c_str() is wchar_t* on Windows
+#else
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 namespace tooie_audio_capture {
 namespace {

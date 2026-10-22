@@ -1,0 +1,24 @@
+/* These get replaced during compression */
+core1_compressed_ROM_START = 0x1E29B60;
+core1_compressed_ROM_END = 0x1E42550;
+core2_compressed_ROM_START = 0x1E42550;
+core2_compressed_ROM_END = 0x1E899B0;
+overlay_table_compressed_ROM_START = 0x1E899B0;
+
+/* Unknown */
+D_1FFFF = 0x1FFFF;
+
+/* Hardware Regs */
+D_A4040010 = 0xA4040010;
+D_A4100000 = 0xA4100000;
+D_A410000C = 0xA410000C;
+D_A4600010 = 0xA4600010;
+
+/* CPU Segments */
+func_80000000 = 0x80000000;
+D_B0000000 = 0xB0000000;
+D_B0000040 = 0xB0000040;
+
+/* IPL3 RSP RDRAM writes */
+D_A02FB1F4 = 0xA02FB1F4;
+D_A02FE1C0 = 0xA02FE1C0;

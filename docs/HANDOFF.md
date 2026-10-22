@@ -1,15 +1,216 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "BOUNDED SETTINGS TASK COMPLETE: menu policy, BGM live control, Resolution 3x/4x and window aspect resize validated. Build and four tests passed; final binary e2059b51, tested base d4d10740. User confirmed only effects/voices with BGM 0% in final demo clip on 2026-10-20; campaign-wide audio parity remains unknown. P08 controller gate pending. Commit/push explicitly authorized on 2026-10-20. NEXT_SINGLE_ACTION: verify published HEAD against origin/main after authorized push."
+description: "P10 FINAL KIT-FREE PIPELINE AND RESTORED UI ARCHITECTURE: Default Linux build is 100% kit-free (tools/build_linux.sh preflight verify extract recomp configure build test package; no legacy IDO kit, no MIPS tools, no ELF, no network, no external checkouts); generation proven byte-identical across 420 RecompiledFuncs files to ELF baseline in offline bubblewrap sandbox (1159 build steps, 8 host tests PASS); user clarification confirmed own/free constraint applies only to ROM game data; root restored all 44 original candidate-backup UI files (Banjo/Kazooie/Cloud/Jiggy vector art, full animations, Suplexmentary Comic NC font, and 7300x2450 Tooie logo); interim neutral UI (774x272) is SUPERSEDED; interim binary 5c2... superseded by restored UI rebuild (binary 0cfcd792... equals original, rebuild exit 0, launcher-restored-menu.png inspected exit 0); final Linux package verified (4f702d2b..., 104 regular files, verify exit 0, UI exact / no ROM); root kit-free preflight exit 0; clean kit-free proof (neutral 5c2) separate from restored UI build; runtime requires build-linux/extract/decompressed.us.z64 (35098224 bytes, SHA-1 af479771...), raw cart rejected; Windows status WINDOWS_BUILD_PENDING_NATIVE_HOST (WSL generation is kit-free, imported via ImportGenerated; native VS Build Tools strictly required); P09 FAILED remains, interpolation default OFF CURRENT 30, F8 disabled; reviewed standalone scope committed and pushed under user authorization (receipt kept outside Git). NEXT_SINGLE_ACTION: Windows native build after source transfer; no commit/push."
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-20
-tags: [tooie-recomp, handoff, p08, p09, settings, menu, forced-refresh, resolution, aspect-ratio, config, sdl2, bgm-volume, checkpoint-published, launcher, wordmark, logo, ui_assets, visual-verification, rt64, patches, replay, clean-pin, getter-gate, attract, demo1, demo7, drift, fire-egg, projectile, sweep-branch, target-prefix, first-writer, updrec, custom-hits, liveness, movement-parity, generator-fix, n64recomp, fps, counter, overlay, recompfrontend, present-cadence, counterfactual, object-frustum, aspect-aware, causality, rng-consumers, grok-implementation]
+updated: 2026-10-21
+tags: [tooie-recomp, handoff, p08, p09, p10, packaging, release, clean-clone, windows, linux, kitfree, restored-ui, n64recomp, rt64, interpolation, settings, menu, candidate-package]
 ---
 # Handoff — TooieRecomp
 
-## CURRENT (2026-10-19) — BOUNDED_SETTINGS_AND_BGM_VOLUME_INTEGRATED_AND_VALIDATED
+## CURRENT — Geração 100% Kit-Free provada e Restauração Integral da UI autorizada pelo usuário (2026-10-21)
+
+Ver [[plan/evidence/p10-kitfree-generation-and-ui-restoration-20261021]].
+- **Contrato Kit-Free Validado (`PROVEN`)**:
+  - O pipeline de build padrão do Linux é **100% livre do compilador legado**: `tools/build_linux.sh` executa por padrão os estágios `preflight verify extract recomp configure build test package`.
+  - Zero IDO 5.3, zero MIPS GCC 2.7.2, zero MIPS binutils, zero binários ELF, zero rede e zero checkouts externos no build normal.
+  - Prova executada por Sonnet em sandbox estrita bubblewrap (`tools/offline_sandbox.sh`, sem rede, `/home` vazio, sem irmãos, árvore extraída de tarball fonte limpo sem `.git`, único input = cópia da ROM do usuário):
+    - `extract` + `recomp` (90s): gerou os 420 arquivos em `RecompiledFuncs/`, **todos os 420 idênticos byte a byte à linha de base da rota ELF** (`new_gen.sha256 == baseline_gen.sha256`; `diff -rq` vazio). Sem `.elf` e sem `decomp-work` na árvore.
+    - `tools/run_rsprecomp.sh`: microcode `rsp/n_aspMain.cpp` idêntico byte a byte ao rastreado no git (`31d946c6...`).
+    - `configure` + `build` + `test`: 1159/1159 passos de compilação Clang/Ninja exit 0; 8 testes unitários host executados com PASS.
+    - Smoke test em ambiente isolado (20s cada): processo vivo sem ROM; processo vivo com ROM descompactada e `TOOIE_AUTO_START=1` registrando "TOOIE_AUTO_START: starting game".
+    - Testes negativos: ausência ou zeração de ROM descompactada falha com exit 1 e deixa `RecompiledFuncs` intocado (420 antes e depois).
+    - `tests/n64recomp_zero_size_static_test.sh`: PASS (quirk de `.cosection`/`.dbpalette` contornado sem perda da numeração `static_344`).
+  - Causa raiz da falha da rota antiga de símbolos e correção no owning layer: N64Recomp upstream perdia a flag relocatable em seções sem relocação, a numeração de seções ELF, a ordem de emissão de funções, 74.613 de 104.964 entradas de relocação de runtime (seções cruzadas e R_MIPS_32) e o nome da ROM. Corrigido via `vendor/patches-local/n64recomp-symbols-file-fidelity.patch` (19 patches aplicados e verificados com `--reverse-check`). Metadados `metadata/tooie.us.syms.toml` (10,8 MB) regenerados via `generate_metadata.py --dump-context` e manifesto de saída `metadata/recomp-output.sha256` adicionado para verificação automatizada (`tools/verify_generated.sh`).
+  - Disciplina epistêmica: A igualdade de saída C prova a fidelidade dos metadados e a equivalência do gerador; ela **não** prova por si só que o payload `.text` do ELF é idêntico a fatias da ROM (já que o gerador lê palavras da ROM em ambas as rotas). A falha do teste inicial de símbolos decorreu de aborto parcial (falta da flag relocatable em `.cosection`), não de defasagem de idade de metadados. Sonnet corrige relatório de investigação privada.
+- **Restauração Integral da Interface de Usuário (User Clarification D1 & D2)**:
+  - O usuário esclareceu formalmente que a restrição de recursos livres/próprios se aplica **exclusivamente aos dados de jogo da ROM** (texturas, áudio, geometria, scripts). Todos os assets de menu, artes, fontes tipográficas, animações completas e o logo Tooie previamente concluídos devem ser preservados e mantidos localmente no repositório.
+  - Root restaurou a partir de `candidate-backup` todos os 44 arquivos originais da interface: artes vetoriais (`Banjo.svg`, `Kazooie.svg`, `Cloud1-4.svg`, `JiggyColor/Hole/Shine.svg`, `Logo.svg`), ícones de menu e controle (`assets/icons/`), fontes tipográficas (`Suplexmentary Comic NC.ttf`, `InterVariable.ttf`, `NotoEmoji-Regular.ttf`, `promptfont.ttf`), stylesheet (`recomp.rcss`), animação (`src/main/launcher_animation.cpp`) e o logo Tooie original (`ui_assets/TooieLogo.svg` viewBox `0 0 7300 2450`).
+  - A interface neutra interina (774x272 / 29 assets / Inter-only) e o binário gerado durante o teste neutro (`5c2c8df2...`) foram formalmente **SUPERSEDED**. O rebuild da UI restaurada foi concluído pelo root com sucesso (`root-restored-ui-build-result.json` exit 0): 43/43 arquivos de fonte/recursos e 40 recursos de UI idênticos ao backup de candidatos, binário SHA-256 `0cfcd79206efc74b74e26836ce468c69bcadaf2c3950b40eb31971946026892b` rigorosamente idêntico ao original pré-redesenho, e visual do launcher inspecionado (`launcher-restored-menu.png` / `root-restored-menu-visual.json`, captura do próprio PID com exit 0). O pacote Linux final foi gerado e verificado: `TooieRecompiled-linux-x86_64-73bfd43-dirty-private-local.tar.gz` (SHA-256 `4f702d2ba0a0472345f6f1317bfe75eb0df462e96b2352d6d875edaa5c4ebcf9`, 104 arquivos regulares, `tools/verify_package.sh` exit 0, UI exata, zero ROM). Preflight kit-free do root exit 0. A prova limpa kit-free (420 arquivos idênticos, 1159 passos, 8 testes PASS) utilizou o interim neutro 5c2 em sandbox isolada, separada da prova do rebuild da UI restaurada (sem fusão indevida de escopos).
+  - Target gerenciado CMake `TooieUIAssets`: limpa e recopia `assets/` para `<build>/assets` em cada build do aplicativo (com guarda out-of-source), tratando incrementalidade e deleções de assets.
+  - Honestidade de licenciamento: `Suplexmentary Comic NC.ttf` mantém proveniência (SMWCNC / Jayvee D. Enaguas) e status de licença desconhecida/não verificada preservados honestamente sem bloquear a restauração; avisos das fontes OFL 1.1 e controller DB zlib retidos. Zero dados de jogo no repositório.
+- **Requisitos de ROM e Launcher**:
+  - ROM de entrada: `Banjo-Tooie (USA).z64` na raiz (MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, tamanho `33554432` bytes, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`, estritamente git-ignored).
+  - Launcher exige estritamente a imagem descompactada: `build-linux/extract/decompressed.us.z64` (tamanho `35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, XXH3 `9F843AD3455EA395`, gerada por `tools/extract_rom.sh`). ROMs brutas de cartucho (XXH3 `00F70DE5F2D70EA2`) são rejeitadas.
+- **Estágio Mantenedor (Separado do Build Normal)**:
+  - Estágio `decomp` (`tools/build_linux.sh decomp`, `tools/preflight.sh decomp` e `tools/generate_metadata.py`) é estritamente **maintainer-only**, necessário somente para quem altera fontes de decompilação ou regenera `tooie.us.syms.toml`. Exige `TOOIE_TOOLCHAIN_KIT` (34 arquivos verificados contra `tools/toolchain.sha256`) e pacotes MIPS (`gcc-mips-linux-gnu`, `binutils-mips-linux-gnu`, `libtoml11-dev`, `python3-venv`).
+- **Windows 11 x64**:
+  - Status: `WINDOWS_BUILD_PENDING_NATIVE_HOST`. Nenhum executável Tooie PE/DLL existe nos artefatos. Geração local no WSL2 usa o pipeline kit-free (`tools/build_linux.sh preflight verify extract recomp`, sem IDO), importado no Windows com `.\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated`.
+- **Invariantes de Glitch e Gameplay**:
+  - Portão técnico P09 permanece **FAILED** (`passed: false`). P09 e P10 permanecem formalmente abertos.
+  - Interpolation menu default é CURRENT 30 FPS (OFF). F8 screenshot hotkey permanece desativada.
+- **Disciplina de Git e Entrega**:
+  - Checkpoint autorizado pelo usuário (2026-10-21): o escopo standalone revisado é commitado e enviado a `origin/main`; o hash do commit e o recibo do push ficam fora do Git (diretório da tarefa), sem autorreferência. Estado dirty anterior (sem commit/push) é histórico. Arquivos locais de agentes, ROM, `RecompiledFuncs/`, `dist/` e `build-*` permanecem não versionados.
+  - Arquivo-fonte final será exportado após finalização documental, com checksum gerado em sidecar externo adjacente (sem embedding de hash autorreferencial).
+- `NEXT_SINGLE_ACTION`: Transferir o código-fonte final e o bundle privado de código gerado para máquina física Windows 11 x64 para validação do build nativo (Check/ImportGenerated/Build/Package).
+
+## SUPERSEDED (2026-10-21) — projeto standalone: dependências do BanjoRecomp vendorizadas, build offline provado
+
+Ver [[plan/evidence/p10-standalone-vendor-20261021]] (substitui o desenho de bootstrap externo da seção seguinte, mantida como histórico).
+- **Estado**: `lib/` (rt64, N64ModernRuntime+N64Recomp, RecompFrontend, SlotMap, SDL2-windows), `assets/` (diretório real de UI; symlink removido; zero dados de jogo), `recompcontrollerdb.txt`, `decomp/` (só fontes) e `tools/wheelhouse/` estão no repositório como arquivos regulares; proveniência/pins/licenças/patches integrados em `vendor/` (`MANIFEST.sha256` cobre os arquivos vendorizados; patches reverse-applied via `tools/vendor_verify.sh --reverse-check`). `tools/deps.lock`, `bootstrap_deps.sh`, `apply_runtime_patches.sh` e `third_party/` foram aposentados. Sem checkouts de outros projetos. Pré-requisitos explícitos: ROM canônica `Banjo-Tooie (USA).z64` (tamanho `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`), imagem ROM descompactada (`35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, gerada por `tools/extract_rom.sh` e estritamente exigida pelo launcher), kit IDO/gcc (`TOOIE_TOOLCHAIN_KIT`, 34 arquivos em `tools/toolchain.sha256`), pacotes do SO.
+- **Prova Linux offline (`PROVEN`)**: árvore candidata materializada em sandbox (`tools/offline_sandbox.sh`, bwrap, sem rede, HOME vazio, irmãos invisíveis): geração offline (420 arquivos `RecompiledFuncs`: 417 C + `lookup.cpp` + `funcs.h` + `recomp_overlays.inl`, idênticos byte a byte ao bundle `e7bb66d4` e à árvore de prova; RSP `n_aspMain.cpp` separado no git), build `-j2` (1158 passos, exit 0), 8/8 testes host PASS, pacote corrigido (`TooieRecompiled-linux-x86_64-nogit-private-local.tar.gz`, SHA-256 `b6475879582aba0fc8b2d3c5d7b39805f08912fb272c71b17c67a959b8d1fa74`, 101 arquivos regulares no tar (99 na auditoria), 100 no manifesto, F1 ldconfig resolvido para 0 avisos; supersedendo o inicial `64f130aa…` com 90 avisos). Binário `0cfcd79206efc74b74e26836ce468c69bcadaf2c3950b40eb31971946026892b`. Smoke isolado: processo vivo por 20s em X11/RADV sob loader padrão e sob override do sistema (`TOOIE_SMOKE_LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu`, `zlib1g 1:1.3.dfsg-3.1ubuntu2.2`) com envio de SIGTERM ao próprio PID (exit 0). Limitação: teste de liveness apenas; sem avaliação de gameplay ou renderização. Teste limpo de zlib segue pendente (`docs/plans/BT/10-linux-packaging-and-release.md:47`).
+- **Arquivo-fonte de entrega:** `dist/standalone-20261021/TooieRecomp-source-73bfd430-dirty.tar.gz`, exportado após a revisão final dos guias, acompanhado de `.sha256`; inclui fontes locais e documentação revisada, sem ROM, `RecompiledFuncs/` ou configs pessoais de agentes. O hash `4aab8d21…` identifica apenas a prova anterior à documentação, preservada como histórico.
+- **Windows (`WINDOWS_BUILD_PENDING_NATIVE_HOST`)**: **Nenhum executável Tooie (.exe ou .dll) do jogo existe** nos artefatos (binários de SDK como `dxc.exe` e DLLs SDL2 vendorizados sob `lib/` não contam como build do jogo). O configure WIN32 cross-host passou via alvos locais de SDL2, mas sondas de unidades de tradução (TUs) no Linux falharam em cabeçalhos de terceiros (`plume_d3d12.cpp`, `plume_vulkan.cpp`), de modo que não há alegação de compilação de todas as TUs (bloqueador B1 resolvido). Exige máquina nativa Windows 11 x64 com VS 2022 Build Tools (clang-cl) e Windows 11 SDK. Invocação PowerShell requer argumentos individuais por estágio no ValidateSet (`Check`, `ImportGenerated -GeneratedFrom <dir>`, `Build`, `Package`).
+- **B2 arbitrado pela raiz (`CORRECTED/SUPERSEDED`)**: a preocupação inicial da revisão independente (`independent-review.initial.md` / `gate.initial.json`) foi arbitrada em `root-baseline-arbitration.md`: o diff completo de início de tarefa e o diff E0 compartilham o mesmo SHA-256 (`1b8f7b96f9d23a0629c43b8d4446b5a78c407d7e429833ebc08e1ab73ba7c462`); todos os 91 arquivos protegidos de `src/`, `include/`, `tests/` são idênticos byte a byte; todos os 21 corpos de patches antigos estão preservados sob `vendor/`. Não há bloqueador de confirmação de backup pelo dono.
+- **P09/P10 inalterados**: gate de glitch `FAILED`; Interpolation OFF/`CURRENT30`; F8 desativado; diagnósticos de burst mantidos.
+- **Decisões do dono abertas**: licença do projeto (nenhuma inventada); linhas `UNKNOWN`/`UNVERIFIED` em `vendor/UPSTREAMS.tsv` (RecompFrontend raiz, DXC, decomp/ultralib, fonte Suplexmentary, screenshots) bloqueiam redistribuição pública; compatibilidade com o GPL-3.0 do BanjoRecomp (40 arquivos de linhagem comum em `vendor/DERIVED-FILES.tsv`); commit do delta (120 entradas de status; nada foi staged/commitado/pushado). C3 corrigido: export sem Git informa contagem indisponível, não zero. Permissões POSIX são verificadas no Linux e explicitamente SKIPPED no MSYS; Python 3.8+ é pré-requisito do verificador no Windows.
+- `NEXT_SINGLE_ACTION`: transferir o arquivo-fonte final e o bundle privado gerado da pasta `dist/standalone-20261021/` para Windows 11 x64, seguir `LEIA-ME.md` (VS/SDK + Git + Python) e registrar o resultado nativo de Check/ImportGenerated/Build/Package. O clone remoto só conterá este delta depois de publicação; nada foi commitado/enviado.
+
+## SUPERSEDED (histórico; ver seção CURRENT acima) — prontidão para clone limpo Windows 11 x64 + Linux: auditoria, materialização, resolução de gate e verificação final (2026-10-21)
+
+Ver [[plan/evidence/p10-windows-linux-clean-clone-readiness-20261021]]. Investigação forense multi-agente e resolução técnica de gate concluídas sobre por que o clone em outra máquina (Windows 11 x64) falha ou está incompleto. Diagnosticadas 6 causas raiz (dependência implícita dos irmãos `../BanjoRecomp` [superada subsequentemente pelo standalone vendoring em `lib/`, `decomp/`, `assets/`], deltas de features locais não commitados no `HEAD` remoto `73bfd43`, ausência de manifesto/bootstrap de dependências, CMake Linux-only, ausência de shims `--wrap` GNU ld no Windows, e symlink de assets).
+- **Solução implementada**: manifesto de pins `tools/deps.lock` + script `tools/bootstrap_deps.sh` (fetch shallow por SHA em `third_party/`), shims `_WIN32` para `__real_*` em `backpack_lookup_diag.cpp`, guards `<unistd.h>`/`getpid()`, CMake branch `WIN32` com fetch SDL2 2.30.3 VC, script PowerShell `tools/windows/Build-Tooie.ps1`.
+- **Prova de materialização limpa Linux (`LINUX_CANDIDATE_PACKAGE_VERIFIED`)**: árvore limpa em `/home/wesley/tooie-proof/tooie` (sem substring `.c` no caminho) executou bootstrap, 17 patches idempotentes (incluindo `rt64-p09-local-pair-snapshot-portable-paths.patch`), decompilação, recompilação (420 arquivos `RecompiledFuncs` idênticos byte a byte ao desenvolvedor: 417 `funcs_*.c` + `lookup.cpp` + `funcs.h` + `recomp_overlays.inl`), build `-j2` (1158 passos, exit 0), 8 testes de unidade host PASS (exit 0), e empacotamento (`TooieRecompiled-linux-x86_64-73bfd43-dirty-private-local.tar.gz`, SHA-256 final `a327666f8baff1ce1134803563d5eb4d5ad1c50edf3359e0a419de5a22a6996f`, 105 arquivos auditados, 31 MB; binário `24e47b02fdf2288d4f59f6bff9f6bda43422b4810b6220a9aee0a4f648a9c148` com 0 strings `/home/`; zero ROM/ELF). Verificação de integridade via `tools/verify_package.sh` PASS (106 arquivos no `MANIFEST.sha256`, zero ROM). Smoke tests isolados: processo vivo por 20s em X11/RADV sob loader padrão e sob override de biblioteca do sistema (`TOOIE_SMOKE_LD_LIBRARY_PATH=/lib/x86_64-linux-gnu`, mapeando `zlib1g 1:1.3.dfsg-3.1ubuntu2.2`) com saída limpa e `interpolation: false` (CURRENT 30 FPS).
+- **Status Windows 11 x64 (`WINDOWS_BUILD_PENDING_NATIVE_HOST`)**: **Nenhum executável (.exe ou .dll) do jogo existe** em nenhum artefato. Sondas preliminares cross-host de `-fsyntax-only` haviam sido executadas na prova anterior, mas foram superadas: sondas cross-host subsequentes no Linux falharam em cabeçalhos de terceiros (`plume_d3d12.cpp`, `plume_vulkan.cpp`), de modo que não há alegação de compilação de todas as TUs (bloqueador B1 resolvido). O configure WIN32 passou, mas compilar 90 MB de C gerado e linkar requer máquina nativa Windows 11 x64 com VS 2022 Build Tools (clang-cl) e Windows 11 SDK (com aceitação da licença da MS pelo usuário). Todas as instruções para Windows permanecem classificadas como **não verificadas** até execução nativa.
+- **Suplemento de entrada gerada (transferência direta privada)**: pacote `TooieRecomp-generated-private-local.tar.gz` (SHA-256 `e7bb66d40d6f6c499f6d5e5567bdd9cbad2bd3fffb9483900a5fc2d11e379680`, 420 arquivos) preparado para transferência direta privada. No Windows, `Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom C:\path\RecompiledFuncs` dispensa o uso de WSL2. Arquivo fonte candidato `TooieRecomp-source-candidate-73bfd43-plus-delta.tar.gz` (SHA-256 `ea0606998192b17a4696ba80546436c002948b48e938e16eaf9a85772d617582`, 512 arquivos regulares, sem ROM/binários).
+- **Política de Git CRLF**: proibida recomendação de configuração global; usar estritamente por clone `git -c core.autocrlf=false clone ...`.
+- **Arbitragem e verificação final do gate técnico independente Haiku 5.5 (`final-gate.json`)**:
+  - `linux.accepted: true` (apenas como pacote candidato dirty local privado, testado neste host Linux; não é release pública).
+  - `windows.accepted: false` (`WINDOWS_BUILD_PENDING_NATIVE_HOST`).
+  - `repositoryCompleteness.accepted: false` (`REPOSITORY_NOT_COMPLETE`, commit do delta é decisão do usuário).
+  - B3 (libz): RESOLVIDO no mapeamento (`DEPENDENCIES.txt` mapeia `zlib1g` com nota `HOST-SHADOW`); smoke com zlib do sistema verificado PASS 20s.
+  - B4 (paths pessoais): RESOLVIDO no binário (0 strings `/home/` via patch de snapshot portátil); ressalva documentada: configs de agentes no arquivo fonte candidate contêm caminhos locais do HEAD do git.
+  - B5 (manifesto de licenças): MECANISMO RESOLVIDO (`THIRD-PARTY-MANIFEST.tsv` gerado automaticamente com 106 arquivos e 41 linhas UNKNOWN/UNVERIFIED; `package_licenses.tsv` falha se houver arquivo sem regra); decisões de licenciamento permanecem com o proprietário.
+  - B7 (contagens): RECONCILIADO (46 arquivos no proof tree e BUILD-INFO; 38 no delta de materialização; 85 no working tree raiz).
+- **Invariantes preservados**: toggle Graphics **Interpolation** (default OFF / 30 FPS / CURRENT) preservado; F8 screenshot hotkey permanece removida (mecanismos de diagnóstico RT64 subjacentes permanecem disponíveis via flags explícitas); portão técnico de interpolação P09 segue **FAILED**; fases P09 e P10 **NÃO estão fechadas**. Sem commit/push; modificações uncommitted no worktree preservadas.
+
+`NEXT_SINGLE_ACTION`: Em um host Windows 11 x64 nativo com Visual Studio 2022 Build Tools (clang-cl, Windows 11 SDK) e Git for Windows instalados, clonar com CRLF por clone (`git -c core.autocrlf=false clone ...`), importar o bundle de código gerado (`TooieRecomp-generated-private-local.tar.gz`) via `.\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom C:\path\RecompiledFuncs`, executar `.\tools\windows\Build-Tooie.ps1 -Stage Build` e `.\tools\windows\Build-Tooie.ps1 -Stage Package`, e registrar os códigos de saída, o SHA-256 do `TooieRecompiled.exe` e o smoke test de execução.
+
+## Histórico (2026-10-21, anterior) — opção Interpolation no menu ESC + F8 removido (2026-10-21)
+
+Ver [[plan/evidence/p09-menu-interpolation-toggle-20261021]]. Pedido explícito do usuário substitui a trava de 30 FPS: Graphics ganhou o toggle persistido **Interpolation** (`graphics.json` chave `interpolation`; ausente/inválido/legado = OFF = Manual 30 + CURRENT, caminho estável). ON libera Framerate (Manual 60 quando o valor salvo não geraria frames) e passa `endpointCurrent=0` ao RT64 em runtime (Apply, latch por workload, sem restart/setenv); Manual 120 salvo sobrevive ao boot. Novo patch `patches/rt64/rt64-p09-host-endpoint-current-toggle.patch` (SHA256 `b96e2b70…d8f15`, registrado em `tools/apply_runtime_patches.sh`). **F8 desativado**: hotkey, `tooie_interp_burst.cpp` e módulo `tooie_rsp_endpoint_current` removidos; infra de captura RT64 dormente; instruções “apertar F8” abaixo são históricas e `SUPERSEDED`. Provas: build `-j2` exit 0 (binário `3589d734…8ab2`), 9 testes host exit 0, jogo isolado ON→OFF→ON + relaunch persistido nos dois modos + F8 sem artefato (cena de título/attract, não save jogado). **Não** corrige glitch e **não** aprova o gate técnico: ligar ON expõe os glitches articulados abertos; padrão permanece OFF. Sem commit/push; worktree sujo preservado (RT64/N64ModernRuntime/RecompFrontend/plume só com o delta do patch novo).
+
+`NEXT_SINGLE_ACTION`: usuário ligar Interpolation em gameplay real (ESC → Graphics → rolar → Interpolation → Apply) e relatar visualmente; só depois retomar os blockers B1–B7 do gate técnico abaixo.
+
+## Histórico (2026-10-21, anterior) — continuação técnica pós-cota Grok concluída; gate técnico Haiku 5.5 PENDING / FAILED (2026-10-21)
+
+Continuação técnica executada após esgotamento de saldo da API do Grok (`status 402 Payment Required: Grok Build usage balance exhausted`) registrada em `/home/wesley/.cache/tooie-glitch-doc-audit-and-fix/` (`continuation-status.json`, `technical-sonnet-report.md`, `technical-haiku-review.md`, `technical-gate.json`):
+- **Registro de transição por cota do Grok e prova de build retida**:
+  - Execução interrompida do Grok preservou a árvore limpa `rt64-clean-pin` e build serial `cleanpin-build` (log de 136 KB, exit 0, binário `cleanpin-build/TooieRecompiled` SHA256 `43e070abb80c5a9272d2945354c652578a09366d0ca7fbf9ec5c9b322ee4942f`).
+  - Durante o primeiro burst de captura na árvore limpa (`cpon1`), ocorreu SIGSEGV na biblioteca plume (`plume::VulkanCommandList::copyTextureRegion` dereferenciando `dstTexture` nulo). Identificado que o código de `plume` upstream suportava apenas buffer->texture, e uma edição desversionada de 31 linhas existia no submódulo sujo de plume (`plume_vulkan.cpp`, mtime 2026-08-27) adicionando a ramificação texture->buffer (`vkCmdCopyImageToBuffer`).
+  - Sonnet extraiu e versionou o patch `patches/rt64/rt64-plume-texture-to-buffer-copy.patch` (SHA256 `49c218efa703a8946d65652474b209934cd8ec96a55c2053b93826cf8d070852`, base `d890ac899e505fb30040e037a4037cdeca68f033`), registrando-o em `tools/apply_runtime_patches.sh`.
+  - Recompilação do pin limpo (`cleanpin-build2.log`, exit 0) gerou o binário auditado final SHA256 `965bbabbc3938ac833fd11b0ccb8b198f27e2108f95ebb51c405f4b4924aec05`.
+- **Diagnóstico do crash fatal `ong2` (SIGSEGV `rc=-11`)**:
+  - Análise do coredump do PID 1659795 (`gdb -batch`): o thread hóspede falhou em `unload_overlays ← ovl_unload ← func_8008160C ← func_800123F4 ← func_800124EC` lendo nó de `unordered_map` já desalocado, enquanto o thread principal executava os destruidores estáticos de `~unordered_map` a partir de `exit()`.
+  - Mecanismo (`PROVEN_SOURCE`): em `librecomp/src/recomp.cpp` (`recomp::start`), o loop `while(!exited){sleep(1ms); update_gfx}` aguarda `exited` (definido apenas em `ultramodern::quit()`) e junta apenas threads de início/evento/limpeza/salvamento; threads OSThread do hóspede não são parados antes do retorno de `main()`. É uma condição de corrida no encerramento do processo, independente das guardas de interpolação.
+  - Mitigação de harness aplicada em `run_ab.py` e `play.py` (SIGTERM → espera 30s → SIGABRT → SIGKILL com `wait()`). O produto em si mantém a condição de corrida em aberto (correção pertence ao `N64ModernRuntime`, fora de escopo).
+- **Métricas GPU e controles contrafactuais reproduzidos**:
+  - `tools/vover.py` re-executado sobre os logs de auditoria do binário de pin limpo: na title scene, overshoot de vértice caiu de 38.115 (OFF) para 3.178 (ON), e triângulos esticados cruzando WORLD caíram de 19.374 para 0.
+  - No attract loop completo (workloads até 14438), overshoot caiu de ~210k cumulativo para ~20k.
+  - Scripted input com `tools/play.py` navegou até o New Game intro cobrindo atores não-jogadores (Klungo wl 2600-3000, Mumbo e Bottles wl 3200-3900).
+- **Veredito do gate técnico independente Haiku 5.5 (`technical-gate.json`): `passed: false`**:
+  - **B1 (Critério de estiramento circular)**: `crossStretchedTris = 0` avalia o próprio critério de recuo elementwise da guarda (`rt64-p09-world-interpolation-guard.patch` `auditTriangles`); como o lerp elementwise é convexo, matrizes chaveadas não esticam por construção. A métrica não pode ser citada como prova independente da correção.
+  - **B2 (Mislabeled default path / escopo do fix)**: os scripts de teste (`run_ab.py:31` e `play.py:26`) configuram `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0`. No Tooie de produção, o padrão é definir `"1"` (`include/tooie_diag.h:102-104`). No caminho padrão de produção, a guarda de interpolação permanece **inerte**. Logo, o fix afeta unicamente o modo opt-in 60 FPS com FORCE=0; o run `nat1` foi incorretamente rotulado como "default path" porque também usou FORCE=0.
+  - **B3 (Prova visual não-jogador ausente)**: sem par GPU casado com fase alinhada para atores não-jogadores (Klungo, Mumbo/Bottles). Linhas de auditoria não carregam identidade de objeto. O streak alaranjado de penas do Mumbo em `hA_3593.png` aparece em OFF, ON e `nat1`, sendo geometria de fonte da pose (`HYPOTHESIS`), sem prova visual de correção para não-jogadores.
+  - **B4 (Vínculo de binário do crash `ong2`)**: o core do `ong2` proveio do build de árvore suja (`build/TooieRecompiled`), de modo que o hash exato daquele binário permanece `UNKNOWN`. A explicação de hang em SIGTERM é `STRONG_INFERENCE` (caminho de eventos SDL2 não inspecionado).
+  - **B5 (Testes unitários pós-patch plume)**: os testes unitários (`cleanpin-tests.exits`) precedem a aplicação do patch do plume e não foram re-executados contra o binário final `965bbabb`.
+  - **B6 (Distinção da árvore suja do RT64)**: as ~14k linhas não versionadas no RT64 continuam existindo no checkout de trabalho (`BanjoRecomp/lib/rt64`), pré-existentes de fases anteriores (P08/diagnósticos); a documentação deve registrar claramente que o binário validado deriva estritamente da cadeia de pin limpo com patches.
+  - **B7 (Validação de gameplay pelo usuário)**: ausência de teste visual pelo usuário (`USER_OBSERVED`) a 60 FPS com o binário reproduzível.
+- **Invariante de produção** (histórico; `CORRECTED` 2026-10-21: o padrão segue OFF=CURRENT/30, mas agora é o valor padrão da opção Interpolation, não uma trava fixa nem um `setenv`): o caminho padrão de produção **permanece CURRENT/30**. P09 formal segue **`PENDING / NOT_FORMALLY_OPEN`**. Nenhuma alteração de código gerado, sem commit/push.
+- **`NEXT_SINGLE_ACTION` (histórico): resolver os bloqueadores B2 e B5 do gate técnico validando o build de pin limpo (binário `965bbabb`) sob o escopo explícito de opt-in (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0`) e registrando o log limpo de execução dos testes unitários pós-plume, antes de qualquer teste de gameplay dirigido pelo usuário a 60 FPS.**
+
+## Histórico — investigação causal iteração 3 (2026-10-20/21)
+
+Iteração 3 retomada após reset de cota de sessão (`/home/wesley/.cache/tooie-glitch-cause-and-fix/resumed-cause-and-fix.md`, `resumed-haiku-review.md`, `resumed-gate.json`):
+- **Causa raiz A (`PROVEN` na fonte)**: em `RT64/src/hle/rt64_rigid_body.cpp:30-34`, o portão de translação linear divide `curVelMag /= dotCurVel` antes de checar `VelocityTolerance=5`. Com `dotCurVel` limitado inferiormente a $10^{-6}$ para curvas $\ge 90^\circ$, qualquer reversão/mudança de sentido desativa `lerpTranslation` retendo a translação no valor `CURRENT` independentemente da velocidade real. Triângulos entre ossos adjacentes (onde um inverte e trava enquanto vizinhos interpolam) esticam em hastes ("rods"), e peças rígidas desacopladas (faixa da mochila do Banjo, `image_018.png`) saem da trajetória.
+- **Correção no owning layer**: introduzido `lerpTranslationSpeedOnly` avaliando a velocidade linear bruta em `rt64_rigid_body.{h,cpp}`. Em `rt64_p09_world_interpolation_guard.h` (e `rt64_p09_translation_coherence.h::gateSpeedOnlyEnabled`), translações travadas exclusivamente pela amplificação por cosseno (`!lerpTranslation && lerpTranslationSpeedOnly`) são liberadas para interpolação. Spikes reais de velocidade ($\ge 10\times$ e $\ge 5$ unidades) continuam retidos. Opt-in de teste `TOOIE_TEST_P09_GATE_SPEED_ONLY=0` restaura a decisão antiga para teste A/B.
+- **Evidência primária em GPU e métricas independentes**:
+  - Pares de frames GPU casados (OFF vs ON) renderizados na title scene (`runs/off1..off3` vs `runs/on1..on8`), alinhados por offset determinístico de conteúdo; controle OFF vs OFF comprovou identidade total de pixels (`diffpix>8 = 0`).
+  - Métrica de overshoot de vértice independente do critério da guarda (`tools/vover.py`, teste de corda $>0.5\times\text{chord}+3$): redução de 26.185 para 2.673 vértices no intervalo de título wl 1000-2500; triângulos esticados cruzando matrizes zerados.
+  - Mochila do Banjo (`image_018.png` / `final_backpack_1889_1890.png`): renderização GPU mostra a faixa azul recolocada no corpo em wl 1889 e wl 1890, restando pequeno resíduo pontual em 1890.
+  - Taxa de vértices congelados em CURRENT caiu de 4.6% para 0.6% (abaixo do baseline OFF 0.8%), e vértices próximos do ponto médio (30-70%) subiram para 97.6%.
+- **Veredito do gate independente Haiku 5.5 (`resumed-gate.json`): `passed: false`**.
+  - **F1 (par GPU casado)**: PARCIAL-CLOSED para title scene.
+  - **F2 (estiramento zero)**: PARCIAL (métrica independente de corda apoia, mas `crossStretched=0` segue critério próprio).
+  - **F3 (snapping de articulações held)**: ABERTO (avaliado apenas em Banjo/Kazooie wl1604; corte de cena wl4226 ainda retém 56 matrizes; objetos não-jogadores não medidos).
+  - **F4 (gameplay real)**: ABERTO (apenas attract demo wl3000-9000 avaliado; sem teste pelo usuário a 60 FPS).
+  - **F7 (fechamento elementwise)**: HEURÍSTICA A NÍVEL DE CLASSE (não prova anatômica).
+  - **F8 (mochila)**: PARCIAL (confirmado em 2 frames GPU, resíduo visível em wl1890).
+  - **Bloqueadores formais do Gate**:
+    1. Exits de build da iteração 3 não verificados (sem logs de compilação em disco; ninja dry-run inconclusivo).
+    2. Contradição nos códigos de saída dos runs de jogo: `runs/ong2/meta.json` terminou com `rc=-11` (SIGSEGV) não explicado/não mencionado no documento da causa; 6 runs terminaram com `rc=None` (não recolhidos após SIGTERM).
+    3. Árvore de trabalho carrega código de diagnóstico RT64 unversioned (14.263 linhas em 32 arquivos eram preexistentes de fases anteriores como P08 sob preservação de worktree, enquanto a iteração 3 introduziu apenas 5 inserções em rt64_rigid_body.{h,cpp} e rt64_workload_queue.cpp); o replay em pin limpo `6f1c2d99` aplica os 6 patches, mas não reproduz a árvore compilada suja.
+    4. Ausência de teste em objetos articulados não-jogadores (F3).
+    5. Ausência de teste de gameplay dirigido pelo usuário a 60 FPS (F4).
+- **Invariante de produção**: o caminho padrão de produção **permanece estritamente CURRENT/30** (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`). P09 formal segue **`PENDING / NOT_FORMALLY_OPEN`**. Nenhuma alteração de código gerado, sem commit/push.
+- **`NEXT_SINGLE_ACTION`: investigar e reproduzir em ambiente isolado a causa do crash SIGSEGV (`rc=-11`) no run `ong2` (attract demo gameplay em workload 4200) e verificar a reprodutibilidade do build com log salvo antes de qualquer teste de gameplay pelo usuário.**
+
+## Histórico — guardas de interpolação articulada iteração 1/2 (2026-10-20)
+
+Usuário marcou 14 PNGs com glitches na pasta `/home/wesley/Imagens/TooieRecomp/interpolated-burst-20261020-175030/` (`001,002,005,006,007,008,009,010,012,013,014,015,016,018`; todas `curW = 0.500000`, 60/30 Hz, `PRE_VI_RESOLVED_COLOR_TARGET`). Leitor de imagem confirmou: hastes esticadas ("rods") na crista da cabeça da Kazooie (`image_001`…`016`) e faixa/prisma azul na mochila do Banjo (`image_018.png`). Causa A provada na CPU (portão AUTO desarmando translação enquanto rotação slerps estica juntas跨-WORLD; forçar coerência remove ~79% dos triângulos esticados no wl 1594/1619). Guarda de fechamento articular (recuo elementwise) atua como cura heurística não-rígida a nível de classe. Guardas implementadas no RT64 (`patches/rt64/rt64-p09-world-interpolation-guard.patch`, SHA256 `1b771a1ab9205f6ffba0c1f8085e53979f38fed031319aedfe04d8cf8bb520d6`), inertes no caminho padrão CURRENT/30 (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`). Build `TooieRecompiled` exit 0 (SHA256 `ebf5924cfd1dfd1471e44a0ae438e022a779ac3e32f6e9c8211bbb18da140b76`), unit test `./build/p09_world_interpolation_guard_test` PASS 27/27, replay limpo em pin RT64 `6f1c2d99` PASS. **Gate independente (`gate.json` / `haiku-review.md`): `passed: false`**. Pendente: F1 (par GPU casado renderizado com guardas ON; wl 1619 só tem GPU original vs CPU reprojetada), F2 (métrica de estiramento zero circular), F3 (congelamento não medido de rotação em held multi-slot), F4 (gameplay não testado), e F8 (mochila em 018 não provada corrigida). P09 formal segue `PENDING / NOT_FORMALLY_OPEN`. Sem commit/push. Estados abaixo históricos.
+
+## Histórico — burst F8 de PNGs interpolados implementado (2026-10-20)
+
+Atalho **F8** salva 20 PNGs (`image_001..020.png`, estágio `PRE_VI_RESOLVED_COLOR_TARGET`) para o usuário apontar glitches. **`RUNTIME_SHORTCUT_20_PNG_PASS`**: pasta `/home/wesley/Imagens/TooieRecomp/interpolated-burst-20261020-174942/`, 20 PNGs distintos/decodificados e 20 linhas de manifesto INTERPOLATED (pesos 1/3 ou 2/3), DONE20/20; root verificou title upright/cores em image010. Não prova glitch capturado/corrigido nem pixels desktop/VI/UI. Teste isolado atual PID `1431958` / ticks `10790476`, opt-in60/CURRENT0 sem heavy, SHA256 binário `7fb2d73e1bb883e96510a84d5e7acbb76374df99cd2f4c089eef883d7d9de0cc`; configuração/saves pessoais preservados. Build serial final0, unitPASS0; patch `af9cd9d9…4767b`, replay reportado e caveat memória não coerente na evidence [[plan/evidence/p09-interpolated-frame-burst-20261020]]. **`NEXT_SINGLE_ACTION` (`SUPERSEDED` 2026-10-21: F8 foi removido a pedido do usuário): ~~usuário apertar F8 na cena desejada~~.** Sem commit/push; estados abaixo históricos, snapshot antigo foi substituído por esta tarefa.
+
+## CURRENT — captura vazia, gap de observabilidade de admissão (2026-10-20)
+
+Último estado substitui blocker de fechamento abaixo: root autorizou término somente do PID isolado `1365219`, identidade reverificada; SIGKILL desse PID e saída comprovada. Nova instância aprovada PID `1375991` / ticks `10284012`, cache `snapshot-recovery-20261020T192455Z`. Retry acoplado executado (pré→arm 0.370768 ms, arm→pós 20.252024 ms), mas screenshots pré/pós mostram transição caverna/cobra sem alvo: **`DISCARDED_AS_TARGETED_CAPTURE / SCENE_TRANSITION`**, snapshot válido `NO_WITNESS`/zero pares. Sem terceira captura. **`NEXT_SINGLE_ACTION`: implementar telemetria mínima default-OFF de cena/workload e admissão no snapshot existente, antes de mais capturas**, com map/demo phase de fonte real identificada. Ainda não existe vazio com alvo válido ao armar, nem prova de falha de admissão nesse alvo; telemetria não implementada. PID novo permanece ativo, marcador ausente/frozen. Sem alteração código/produção/commit/push.
+
+Retry único correlacionado **`NOT_EXECUTED / OWNED_PROCESS_CLOSE_BLOCKED`**: captura é one-shot por processo; PID isolado `1365219` / ticks `10225543` permaneceu ativo após SIGTERM e `WM_DELETE_WINDOW` na janela própria verificada, ambos com espera 3 s. Guardas recusaram nova instância; nenhum force/SIGKILL. Helper acoplado preparado em cache, não executado. **`NEXT_SINGLE_ACTION`: resolver encerramento da instância isolada congelada, depois executar retry único numa instância nova antes de qualquer edição diagnóstica.** Fonte/proveniência na evidence; não houve segunda captura.
+
+Ver [[plan/evidence/p09-visual-test-mode-20261020]]. Autorização nova permite capturas autônomas. Isolado aprovado PID `1365219` / start_ticks `10225543`, cache `snapshot-recovery-20261020T191510Z`. Janela do PID mostrou Mumbo/água/penas visíveis, mas armamento ocorreu 21.45 s após screenshot e pós-screenshot já era título: cena ao armar `NOT_PROVEN`, nenhum glitch provado. Captura única sem timer: inspetor exit 0, bounds válidos, `NO_WITNESS`, zero pares; não repetida. Sonnet real `claude-sonnet-5-5-medium`, sessão `6df435e2-ffe9-4988-a7b2-75675a3d12dd`, exit 0: modo snapshot-only não exporta razões finas de rejeição dos tokens; vazio não distingue gate de admissão/cena/workload. **`NEXT_SINGLE_ACTION`: arbitrar diagnóstico mínimo por-armamento de admissão com linha única ao freeze**, antes de nova captura com screenshot/marcador acoplados. Proposta e fontes na evidence; não implementada. Código/produção/config pessoal preservados; sem commit/push. Entradas seguintes históricas.
+
+## Histórico — recuperação isolada `WAITING_USER_SCENE` (2026-10-20 18:00 UTC)
+
+Parecer Sonnet solicitado concluído via Cursor, `claude-sonnet-5-5-medium`, sessão `6df435e2-ffe9-4988-a7b2-75675a3d12dd`, exit 0 / JSON success. Hipóteses ranqueadas e limites em [[plan/evidence/p09-visual-test-mode-20261020]]; nova hipótese auxiliar: gate AUTO de translação versus rotação no balanço. Sem novo proof runtime ou cobertura anatômica; snapshot CPU não discrimina sozinho essas causas. Usuário: **“Ainda não está pronta”**; captura permanece desarmada, sem cronômetro. Nenhuma implementação/novo teste/lançamento/armamento neste parecer.
+
+Suplemento Sonnet único, mesma sessão/modelo, exit 0: corrigiu o mecanismo potencial para **translação em CURRENT enquanto rotação interpola**, condicionado a flags/`AUTO` ainda desconhecidos nas testemunhas. Corrigiu `NO_WITNESS` como insuficiente para atribuir causa ao filtro e retirou exclusões anatômicas. Relatório permanece estático auxiliar com ressalva de navegação incompleta; não é causa runtime comprovada.
+
+Novo `USER_OBSERVED`: glitches em partes que balançam durante movimentos — focinho e aba da mochila do Banjo, penas da cabeça da Kazooie e do Mumbo, entre outras. Ocorrência no frame intermediário é impressão do usuário (`USER_HYPOTHESIS / HYPOTHESIS`), sem correlação de frame renderizado nem identidade resource/bone inferida. Snapshot CPU não equivale a prova do frame apresentado pela GPU; ver limites e próximo discriminador na evidence. Estado de espera e protocolo de armamento preservados.
+
+Ver [[plan/evidence/p09-visual-test-mode-20261020]]. Execução isolada PID `1321557` / start_ticks `9775814`, binário aprovado, configurada 60 FPS + snapshot somente; marcador inexistente, sem watcher/cronômetro, configuração pessoal preservada. Metadata/log `/home/wesley/.cache/tooie-interpolation-next-20261020/snapshot-recovery-20261020T180013Z/`. Duas capturas antigas encontradas e decodificadas: `NO_WITNESS`, zero pares; última armada por timer de 90 s, cena `UNKNOWN`, `NOT_ACCEPTED_AS_TARGETED_GLITCH_EVIDENCE`. Não provam correção ou ausência do glitch. **`NEXT_SINGLE_ACTION`: aguardar confirmação de cena pronta; então armar uma vez.** Gates host anteriores mantidos; sem código/produção/commit/push. Estados seguintes históricos.
+
+## Histórico — `WAITING_USER_SCENE`, snapshot host aprovado
+
+Ver [[plan/evidence/p09-visual-test-mode-20261020]]. Snapshot: build/revisões host **PASS**, unidade123/123, I/O entre processos e 13 negativos semânticos rejeitados; não validado em gameplay. Novo jogo isolado PID inicial `1188686` aberto, configurado60 + novo snapshot sem heavy; FPS medidos `UNKNOWN`. Marcador inexistente. **`NEXT_SINGLE_ACTION`: aguardar usuário avisar cena pronta e só então armar uma vez; não armar por cronômetro.** Captura real `NOT_EXECUTED`; anatomia/proveniência das testemunhas `UNKNOWN`; correção permanente `NOT_IMPLEMENTED`. Caminho normalCURRENT/30 preservado, sem commit/push; execução sempre delegada. Estados abaixo são históricos, inclusive primeiro jogo fechado e gates antigos pendentes.
+
+## CURRENT — glitches reproduzidos no teste opt-in; jogo fechado
+
+Ver [[plan/evidence/p09-visual-test-mode-20261020]]. Usuário: **“Os glitches reapareceram”** (`USER_OBSERVED / USER_CONFIRMED_FOR_TESTED_RUN`) no modo **configurado** opt-in 60, CURRENT desligado, sem coletores pesados. Depois: **“Jogo fechado; não conferi contador”**. FPS efetivos `UNKNOWN`; regiões individuais e cena exata não foram confirmadas nesse relato. Focinho Banjo/penas **da cabeça** Kazooie continuam prioridades, demais glitches incluídos. Snapshot CPU parcial **`NOT_ACCEPTED_FOR_GAME_CAPTURE`**; CURRENT/30 normal preservado; correção permanente `NOT_IMPLEMENTED`, sem novo teste visual posterior, commit/push ou encerramento/abertura formal de fases.
+
+`NEXT_SINGLE_ACTION`: concluir gates independentes do diagnóstico snapshot-only, alcance dos hooks, persistência, corrupção e novo I/O antes de relançar captura. Execução sempre delegada; root orquestra/arbitra. Estados abaixo são históricos.
+
+## CURRENT (2026-10-20) — VISUAL_TEST_MODE_AUTHORIZED_AND_LAUNCHED
+
+Ver [[plan/evidence/p09-visual-test-mode-20261020]]. Nova autorização do usuário permite
+retirar o paliativo **nos testes**. Opt-in `TOOIE_TEST_INTERPOLATION_FPS=60`
+(ou 120) desativa CURRENT quando não explicitamente definido e força a taxa
+manual escolhida; sem opt-in, caminho estável CURRENT/30 preservado.
+Build e testes de configuração/endpoint passaram; revisões Sonnet/Haiku sem
+bloqueios para este modo. Jogo aberto em teste 60 FPS sem coletores pesados;
+resultado visual e taxa efetiva **PENDING / UNKNOWN**.
+Reprodução: Demo 1 pós-intro; gameplay lateral para focinho; Talon Trot
+`Z + C-Esquerda` lateral para penas da **cabeça** da Kazooie.
+`NEXT_SINGLE_ACTION`: obter relato visual desta execução. Snapshot CPU segue
+parcial/não aceito para captura. Esta entrada prevalece sobre próximos passos
+históricos abaixo; P09 não abre formalmente e nenhum commit/push foi feito.
+
+## CURRENT — diagnóstico CPU parcial, revisão final pendente
+
+Ver [[plan/evidence/p09-interpolation-resumption-20261020]]. Grok via Cursor implementou snapshot/replay CPU default-OFF limitado; último build reportado exit 0 e teste 97/97. **`NOT_ACCEPTED_FOR_GAME_CAPTURE`**: revisões anteriores acharam blockers e último ajuste não recebeu gate independente completo; novo teste I/O Haiku criado mas `NOT_RUN`. Root/builder/reviewer Codex atingiram cota; nenhum esgotamento da conta Cursor/agy foi comprovado. Não houve jogo/captura/aceite visual/60+ FPS. CURRENT/Manual 30 preservados; correção permanente `NOT_IMPLEMENTED`; P09 não aberto formalmente, P08 pendente; sem commit/push. Testemunhas prioritárias `USER_OBSERVED`: focinho do Banjo e penas **da cabeça** de Kazooie, sem excluir outros glitches nem presumir anatomia de resources.
+
+`NEXT_SINGLE_ACTION`: retomar gate independente final de snapshot-only, alcançabilidade de hooks, persistência e rejeição de corrupção, incluindo novo teste I/O em processos separados, antes de captura. Execução sempre delegada: Grok código/testes Cursor; Sonnet/Haiku revisão Cursor; Gemini Markdown `agy`; root orquestra/arbitra. Seções seguintes preservam estados históricos.
+
+## CURRENT (2026-10-20) — INTERPOLATION_RESEARCH_RESUMED
+
+Continuação `IN_PROGRESS`, delegada aos agentes: testemunhas prioritárias
+`USER_OBSERVED` são focinho do Banjo e penas **da cabeça** de Kazooie; outros
+glitches permanecem no escopo. Não inferir modelo/bone/resource dessas descrições.
+
+Read [[plan/evidence/p09-interpolation-resumption-20261020]]. Investigation only;
+no production code/patch changes, game launch, new capture, commit or push.
+Published baseline: `73bfd430`; CURRENT `tfPos` default-ON and Manual 30 remain.
+Four supporting host tests passed again; this is not GPU/visual acceptance.
+The old tie-capture files in `/tmp` are absent. The selective WORLD path also
+feeds lighting/texgen (`PROVEN_STATIC`); its role in regressions is `HYPOTHESIS`.
+P09 remains `PENDING / NOT_FORMALLY_OPEN`; P08 formal gates are not closed here.
+`NEXT_SINGLE_ACTION`: implement a bounded default-OFF CPU snapshot/replay
+diagnostic for local edge provenance and lighting/texgen gates; no heavy global
+pair search, alias, remap or shader change. This diagnostic is not implemented yet.
+
+## Prior (2026-10-19) — BOUNDED_SETTINGS_AND_BGM_VOLUME_INTEGRATED_AND_VALIDATED
 
 Read [[plan/evidence/p08-settings-functionality-20261019]], [[plan/evidence/menu-title-tooie-wordmark-20261019]], and [[plan/evidence/checkpoint-20261019-review-and-patch-replay]]. Details in canonical evidence.
 
@@ -3646,7 +3847,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-texture-tmem-setup-20260
 ARTIFACT_CHECKSUM_MANIFEST:   d91118158d0753c17e1ad0370e6150834255ffebffc67b02554692f39ad8b782
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. Performance cleanup completed:
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. Performance cleanup completed:
 software vertex/bounding box calculations in `rt64_framebuffer_renderer.cpp`
 are gated under `tooieWsAnyDiagEnabled()`, per-draw `std::filesystem::exists`
 calls removed, and file logging uses persistent handles. Standalone flag
@@ -3710,7 +3911,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-raster-user-arbitration-
 ARTIFACT_CHECKSUM_MANIFEST:   a8ce5b47e43ca92986ce19628cc1c1084e6ff2fa22079dc4f17197bcf8636190
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. USER capture at the missing-wall
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. USER capture at the missing-wall
 pose with `TOOIE_DIAG_WS_FOCAL_RASTER=1`. Focal TRI1 is geometric FRONT, survives
 cull, intersects scissor, and is GPU-submitted on proj=2 with depth test/write
 LESS. Do not inherit proj=1 depth-off. Explicit fragment discard, alpha,
@@ -3763,7 +3964,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-targeted-raster-state-setup-20
 ARTIFACT_CHECKSUM_MANIFEST:   fbd3366d1a666196a77c536779cd3b087a0957382ac60bee2cbffe334c81fc14
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. Targeted raster state telemetry
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. Targeted raster state telemetry
 implemented in RT64 `FramebufferRenderer::addDrawCall` with dedicated log sink
 `/tmp/tooie-ws-focal-raster-state.log` and unified tag `[ws-focal-raster-state]`.
 Shader/PSO mapping proves specialized `RasterVS`/`RasterPS` pipeline is identical
@@ -3808,7 +4009,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-winding-user-arbitration
 ARTIFACT_CHECKSUM_MANIFEST:   d0d993e6e015d482e6807350b8d65de993d6348b7f8d96287972e9d1ee13e489
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. New USER capture at the same
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. New USER capture at the same
 missing-wall location with `TOOIE_DIAG_WS_FOCAL_WINDING=1`. Real V0/V1/V2
 match the prior extra-left TRI1. Focal TRI1 faces the camera, source/target
 winding match (generic Sx=0.702785 for this ~1920x1012 window vs 4:3), and
@@ -3851,7 +4052,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-winding-user-arbitration
 ARTIFACT_CHECKSUM_MANIFEST:   f1499333a0fcdb1395f550848e8539026419058f8935c4c8c6b3a9092943667c
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. USER capture with
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. USER capture with
 `TOOIE_DIAG_WS_FOCAL_WINDING=1` supplies real V0/V1/V2. Focal TRI1 faces the
 camera, source/target winding match, and the compensated RT64 cull expects
 survival. Same-DL FRONT TRI2 cluster shares that signature. Do not pursue
@@ -3886,7 +4087,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-focal-vertex-winding-setup-202
 ARTIFACT_CHECKSUM_MANIFEST:   d29cce81fc78995a14de11979ef1933cbcfa8fb0dbf158cbeb1bddf5cdcacc15
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. CPU-side telemetry hooked into `FramebufferRenderer::addDrawCall` extracts real $V_0, V_1, V_2$ object, world, clip, and NDC coordinates, model determinant, signed areas, world normals, camera positions, geometric dot products, and clip masks without any GPU memory readbacks or queue synchronization.
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. CPU-side telemetry hooked into `FramebufferRenderer::addDrawCall` extracts real $V_0, V_1, V_2$ object, world, clip, and NDC coordinates, model determinant, signed areas, world normals, camera positions, geometric dot products, and clip masks without any GPU memory readbacks or queue synchronization.
 
 `NEXT_SINGLE_ACTION:` Execute safe focal vertex telemetry capture (or process captured telemetry) to record real $V_0/V_1/V_2$ parameters for `00349d38` extra-left TRI1 vs controls. No GPU readback. No fix. No bypass.
 `NEXT_RECOMMENDED_MODEL:` Gemini 3.7 Flash High.
@@ -3920,7 +4121,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-targeted-cull-winding-20260827
 ARTIFACT_CHECKSUM_MANIFEST:   c260d0fd338f4b14039e65bc70a33601318682f7686ba5c72441cc18e0d2eb56
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]]. Screenshot crop is approximate;
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]]. Screenshot crop is approximate;
 semantic join stays PARTIAL. Aspect expansion is generic `target_aspect /
 source_aspect` (positive X scale). Next is a focal vertex/signed-area dump,
 not a cull bypass and not GPU readback.
@@ -3966,7 +4167,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-user-wall-bounds-arbitration-2
 ARTIFACT_CHECKSUM_MANIFEST:   cd50d98a55c0ab24bb1ed3d982ae4b648ba148b3bdc2ed0182f31189dd6018b4
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]].
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]].
 New USER_SELECTED capture + screenshot join the left hole to MAP_RAM
 `00349d38` extra-left TRI1 (nearby vertical opaque, proj=2, depth on). That
 draw reaches GPU while the hole is visible. Smoke DLs `0031f6d8` are not this
@@ -4022,7 +4223,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-post-submission-composite-audi
 ARTIFACT_CHECKSUM_MANIFEST:   444e33af976f32ba2c4f94409a2210bf80871346281554e9891c66291bb2a2d2
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]].
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]].
 Pixel probe caused three Vulkan GPU/session incidents and is abandoned. Do not
 retry GPU readback. Extra-band proj=1 draws reach GPU during the glitch;
 the missing wall mesh is **not** proven to be among them. Static+CPU composite
@@ -4070,7 +4271,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-gpu-depth-user-arbitration-202
 ARTIFACT_CHECKSUM_MANIFEST:   6996bd3bcf9974c86d95fc4650f08bc8b061faf407b5fa80ed39288aa94c2eca
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]].
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]].
 USER_SELECTED capture while the lateral wall was visibly missing and the
 camera was fully static. Extra-band proj=1 DrawCalls reach GPU submit. That
 does **not** prove the missing wall mesh itself is submitted.
@@ -4109,7 +4310,7 @@ ARTIFACT_DIRECTORY:           /tmp/p08-widescreen-extra-band-depth-visibility-se
 ARTIFACT_CHECKSUM_MANIFEST:   386063613e37c2b2272957489a0f0b740c05d803b8745503137dc126ab44d712
 ```
 
-Canonical: [[p08-widescreen-edge-geometry]].
+Canonical: [[plan/evidence/p08-widescreen-edge-geometry]].
 Artifact: `/tmp/p08-widescreen-extra-band-depth-visibility-setup-20260827T032333Z/`
 (manifest `386063613e37c2b2272957489a0f0b740c05d803b8745503137dc126ab44d712`).
 Dual verification: PASS. All extra-band draws survive 100% to final GPU draw submission.

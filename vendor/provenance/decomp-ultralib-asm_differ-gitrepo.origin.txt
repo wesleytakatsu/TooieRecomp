@@ -1,0 +1,16 @@
+# Informational provenance only (not read by any build or tool).
+# Removed from the vendored tree: decomp/lib/ultralib/tools/asm_differ/.gitrepo is git-subrepo metadata (Git-only, see vendor/EXCLUDES.txt).
+# Its original content follows verbatim. sha256 of the removed file: f7b942e8e672299e6d0af134f74f59a4ab705dcc10ec3d52f8ca22a5e5f1ba3e
+#
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/simonlindholm/asm-differ
+	branch = main
+	commit = 4b38c884c1efdc3bfa8b14f13015a69368a8d3a2
+	parent = 32a1a8061de197c4f10d4904cd72a22dd7cf905c
+	method = merge
+	cmdver = 0.4.3

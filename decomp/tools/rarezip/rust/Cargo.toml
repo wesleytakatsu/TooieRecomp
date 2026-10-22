@@ -1,0 +1,18 @@
+[package]
+name = "rarezip"
+version = "0.1.0"
+edition = "2021"
+crate-type = ["lib"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "rarezip"
+path = "./src/rarezip.rs"
+
+[[bin]]
+name = "bk_zip"
+path = "./src/bk_zip.rs"
+
+[dependencies]
+libc = "0.2"
+inflate = "0.4.5"

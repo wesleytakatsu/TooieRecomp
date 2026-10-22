@@ -9,7 +9,10 @@ tags:
   - launcher
 ---
 
-# BK — UI Layer
+# BK — UI Layer (Historical Reference Specification)
+
+> [!WARNING]
+> **Reference Specification Only:** This document describes the upstream Banjo-Kazooie (`BanjoRecomp`) UI contracts for architectural and design reference. **In TooieRecomp, no external BanjoRecomp checkout is used.** All UI assets, fonts, icons, stylesheets, and launcher animations are vendored locally in `assets/` and `ui_assets/` (managed by CMake target `TooieUIAssets`). For the active TooieRecomp UI specification, see [`docs/specs/Tooie/window-ui-and-config.md`](../Tooie/window-ui-and-config.md).
 
 User-facing UI: the launcher menu, the animated intro, the in-game config
 tabs, theming and fonts. All built on `RecompFrontend`'s **recompui**
@@ -101,7 +104,7 @@ RecompUI builds the in-game settings menu programmatically:
 - `register_primary_font("InterVariable.ttf", "Inter Variable")` +
   `register_extra_font("Suplexmentary Comic NC.ttf")` (used for launcher
   options).
-- Bundled SVGs and fonts live in `BanjoRecomp/assets/`; `promptfont.h`
+- Bundled SVGs and fonts lived in upstream `BanjoRecomp/assets/` (in TooieRecomp, these are vendored locally in `assets/`); `promptfont.h`
   embeds the prompt bitmap font for in-game text. Launcher icons include a
   random-seeded easter egg (`std::srand`).
 

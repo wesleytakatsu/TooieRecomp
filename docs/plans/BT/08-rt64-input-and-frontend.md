@@ -13,6 +13,39 @@ tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, attract, demo1, demo7, 
 
 # BT P08 — RT64, entrada e frontend
 
+## CURRENT — `WAITING_USER_SCENE`
+
+Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Gates host do snapshot aprovados (build/revisões, unidade 123/123, I/O separado e negativos semânticos); captura real `NOT_EXECUTED`. Novo jogo isolado PID inicial `1188686`, configurado 60 + novo snapshot sem heavy; FPS efetivos `UNKNOWN`, marcador inexistente. `NEXT_SINGLE_ACTION`: aguardar usuário avisar cena pronta e só então armar uma vez, não por cronômetro. Não é aceite de gameplay ou correção permanente; P08 não encerrado/P09 não aberto formalmente. CURRENT/30 normal preservado; sem commit/push; estados abaixo históricos.
+
+## CURRENT (2026-10-20) — VISUAL_TEST_MODE_AUTHORIZED_AND_LAUNCHED
+
+Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Nova autorização do usuário permite
+retirar o paliativo **nos testes**. Opt-in `TOOIE_TEST_INTERPOLATION_FPS=60`
+(ou 120) desativa CURRENT quando não explicitamente definido e força a taxa
+manual escolhida; sem opt-in, caminho estável CURRENT/30 preservado.
+Build e testes de configuração/endpoint passaram; revisões Sonnet/Haiku sem
+bloqueios para este modo. Jogo aberto em teste 60 FPS sem coletores pesados;
+resultado visual e taxa efetiva **PENDING / UNKNOWN**.
+Reprodução: Demo 1 pós-intro; gameplay lateral para focinho; Talon Trot
+`Z + C-Esquerda` lateral para penas da **cabeça** da Kazooie.
+`NEXT_SINGLE_ACTION`: obter relato visual desta execução. Snapshot CPU segue
+parcial/não aceito para captura. Esta entrada prevalece sobre próximos passos
+históricos abaixo; P09 não abre formalmente e nenhum commit/push foi feito.
+
+## Continuação delegada — snapshot parcial, gate final pendente
+
+Ver [[../../plan/evidence/p09-interpolation-resumption-20261020]]. Último build Grok reportado exit 0, snapshot 97/97; diagnóstico default-OFF **`NOT_ACCEPTED_FOR_GAME_CAPTURE`**, revisão final e novo teste I/O ainda pendentes. CURRENT/Manual 30 preservados, nenhuma captura/aceite 60+ FPS. Focinho Banjo e penas **da cabeça** Kazooie priorizados (`USER_OBSERVED`), demais glitches incluídos. Root/builder/reviewer Codex atingiram cota; sem encerramento P08 ou abertura formal P09, sem commit/push. `NEXT_SINGLE_ACTION`: retomar gate independente final de snapshot-only, alcance de hooks, persistência e corrupção, incluindo novo teste I/O em processos separados, antes de captura. Execução sempre delegada; estados abaixo preservam histórico.
+
+## Investigação retomada de interpolação (2026-10-20)
+
+Ver [[../../plan/evidence/p09-interpolation-resumption-20261020]]. Objetivo
+delimitado: investigar P09-RES-05 e decidir o discriminador seguinte. CURRENT
+`tfPos` padrão e Manual 30 preservados; quatro testes de apoio passaram.
+Sem código/patch alterado, jogo, captura nova ou validação visual nesta etapa.
+`NEXT_SINGLE_ACTION`: implementar snapshot/replay CPU limitado e default-OFF
+de proveniência de arestas e gates de iluminação/texgen; não implementado ainda.
+Esta investigação não fecha os gates formais P08 nem abre formalmente P09.
+
 ## Menu settings functionality, policy enforcement, window management & BGM volume (2026-10-19)
 
 Evidência canónica: [[../../plan/evidence/p08-settings-functionality-20261019]].
@@ -57,6 +90,9 @@ Tarefa delimitada de configurações e volume BGM concluída com sucesso (`BOUND
 - **Next Single Action**: `verify published HEAD against origin/main after authorized push`.
 
 ## Host launcher Banjo-Tooie wordmark & asset isolation (2026-10-19)
+
+> [!NOTE]
+> **Histórico / Reconciliação com a restauração de UI (2026-10-21):** O texto abaixo documenta a criação do asset de launcher em 2026-10-19. Em 2026-10-21, o usuário esclareceu formalmente que a restrição de recursos livres/próprios se aplica estritamente aos dados do jogo extraídos da ROM (texturas, áudio, geometria, scripts). Todos os assets de menu, artes, fontes tipográficas (incluindo `Suplexmentary Comic NC.ttf`), animações completas e o logo Tooie original (`ui_assets/TooieLogo.svg` 7300x2450) foram preservados e restaurados localmente pelo root a partir do backup de candidatos (`candidate-backup`), superando completamente a substituição interina neutra (774x272). Sob a arquitetura standalone da P10, esses assets vivem localmente em `assets/` e `ui_assets/`, gerenciados a cada compilação pelo alvo CMake `TooieUIAssets`, sem qualquer dependência de checkouts externos.
 
 Evidência canónica: [[../../plan/evidence/menu-title-tooie-wordmark-20261019]].
 Conclusão da substituição do wordmark do launcher host por asset SVG próprio do Tooie, desacoplado dos assets compartilhados do Banjo-Kazooie:

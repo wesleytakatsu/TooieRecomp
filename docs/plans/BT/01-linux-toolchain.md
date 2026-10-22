@@ -14,6 +14,9 @@ tags: [banjo-tooie-Recomp, linux, toolchain, dependencies]
 
 # BT P01 — Toolchain Linux
 
+> [!NOTE]
+> **Histórico / Fase Concluída:** Esta fase inicial (agosto de 2026) utilizou a toolchain do repositório de referência BanjoRecomp para validar as ferramentas de recompilação. A partir de 2026-10-21 (fase P10), o projeto TooieRecomp tornou-se completamente **standalone**: todas as dependências e ferramentas vivem vendorizadas em `lib/`, `decomp/`, `assets/` e `tools/wheelhouse/`. Não é necessário nem suportado clonar ou compilar o repositório BanjoRecomp. Os comandos abaixo são preservados estritamente como registro histórico da validação original da toolchain. Para compilar o projeto atual, consulte [`README.md`](../../../README.md) e [`tools/BUILDING.md`](../../../tools/BUILDING.md).
+
 ## Resultado esperado
 
 Um ambiente Linux capaz de construir o decomp Tooie, gerar código com
@@ -29,7 +32,7 @@ N64Recomp/RSPRecomp e compilar o runtime nativo.
 
 ## Tarefas
 
-- [x] `P01-T01` Executar `git -C banjo-tooie-Recomp submodule update --init --recursive` e inicializar também os submódulos de `BanjoRecomp`.
+- [x] `P01-T01` (Histórico 2026-08) Executar `git -C banjo-tooie-Recomp submodule update --init --recursive` e inicializar também os submódulos de `BanjoRecomp` (SUPERSEDED em 2026-10-21: repositório tornou-se standalone com fontes vendorizados em `lib/` e `decomp/`; submódulos eliminados).
 - [x] `P01-T02` Instalar `libfmt-dev`, `libtoml11-dev` e `gcc-mips-linux-gnu`.
 - [x] `P01-T03` Instalar `cmake`, `ninja-build`, `libsdl2-dev`, `libgtk-3-dev`, `lld`, `llvm` e `clang`.
 - [x] `P01-T04` Criar ambiente Python isolado e instalar os requirements do Splat e do projeto BT.
@@ -59,7 +62,7 @@ Registrado em 2026-08-09. Logs e dumps em `docs/plan/evidence/`.
 | N64Recomp / RSPRecomp | build Release out-of-tree **exit 0** |
 | CMake BanjoRecomp | detecta Clang/SDL2/GTK/Freetype/Vulkan; **generate falha** sem `RecompiledFuncs/` e `rsp/n_aspMain.cpp` (esperado até P04) |
 
-### Comandos reproduzíveis
+### Comandos reproduzíveis históricos (agosto de 2026 — NÃO EXECUTAR no TooieRecomp standalone)
 
 ```sh
 # T01 / T09

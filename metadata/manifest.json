@@ -10,10 +10,11 @@
   "empty_overlays": 33,
   "syscalls": 4234,
   "reloc_type_counts": {
-    "R_MIPS_26": 12224,
-    "R_MIPS_HI16": 9062,
-    "R_MIPS_LO16": 9065
+    "R_MIPS_26": 66323,
+    "R_MIPS_HI16": 9835,
+    "R_MIPS_LO16": 9839,
+    "R_MIPS_32": 18967
   },
-  "syms_sha256": "f7daf3308588bf95ed858616e51f9b8550dc98631e6b35fef09d4c72f942fd71",
+  "syms_sha256": "4e0845ca12735ade3ba30be1ec29cae878154dcf8d4fc8d16d5bfd80ce1c45f1",
   "datasyms_sha256": "7ab77a7b68d81ce59ae8142c3813a97887c7ff3f8848f3ac642d795549c69ea4"
 }

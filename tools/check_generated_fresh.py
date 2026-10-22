@@ -5,12 +5,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-WS = ROOT.parent
+from tooie_paths import DECOMPRESSED_ROM, TOOIE as ROOT
 
 INPUTS = [
-    WS / "banjo-tooie-Recomp/build/us/banjotooie_decompressed.elf",
-    WS / "banjo-tooie-Recomp/decompressed.us.z64",
+    DECOMPRESSED_ROM,
+    ROOT / "metadata/tooie.us.syms.toml",
     ROOT / "tooie.us.rev0.recomp.toml",
     ROOT / "metadata/recomp_stubs.txt",
     ROOT / "metadata/relocatable_sections.recomp.txt",

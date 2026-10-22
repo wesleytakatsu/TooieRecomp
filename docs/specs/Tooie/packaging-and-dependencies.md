@@ -53,15 +53,19 @@ Under [[../../plan/definition-of-done|Definition of Done]], TooieRecomp must pro
 ## 3. Clean-Room Asset Separation & Legal ROM Contract
 
 To ensure strict compliance with copyright law and project invariants:
-1. **Zero Copyrighted Assets**:
+1. **Zero Copyrighted Game Assets**:
    - The compiled executable and repository do not contain copyrighted textures, audio samples, dialog text, model geometry, or level maps.
+   - Machine-translated C code (`RecompiledFuncs/`) and translated microcode (`rsp/n_aspMain.cpp`) embed ROM-derived logic and are strictly designated for private local testing.
+   - User-interface resources (`assets/` and `ui_assets/`) contain all restored menu assets, character vector art, animations, icons, typography fonts (including `Suplexmentary Comic NC.ttf`, `InterVariable.ttf`, `NotoEmoji-Regular.ttf`, and `promptfont.ttf`), and the 7300x2450 Tooie logo; zero ROM game data is bundled.
 2. **User-Provided ROM**:
    - End users must provide their own legally acquired cartridge dump:
      - Format: Big-Endian `.z64`.
      - Region & Revision: NTSC-U Rev. 0.
      - Internal Header ID: `NB7E`.
      - File Size: Exactly 33,554,432 bytes (32 MiB).
+     - Expected MD5: `40e98faa24ac3ebe1d25cb5e5ddf49e4`.
      - Expected SHA-1: `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`.
+     - Launcher Decompressed Image Requirement: `tools/extract_rom.sh` decompresses the cartridge into `decompressed.us.z64` (size `35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`), which the launcher requires at startup (raw cartridge ROMs are rejected).
 3. **Asset Pipeline (`src/game/rom_decompression.cpp`)**:
    - Initial boot identifies user ROM file path.
    - Verifies hash against `GameEntry.rom_hash`.
@@ -75,10 +79,33 @@ TooieRecomp links dynamically only against ubiquitous system libraries to ensure
 
 | Dependency | Minimum Version | Shared Library (`.so`) | Invariant / Boundary |
 | :--- | :--- | :--- | :--- |
-| `glibc` | 2.31+ | `libc.so.6`, `libm.so.6`, `libpthread.so.0` | Intended reference target (Ubuntu 20.04+, Debian 11+); unvalidated until P10 artifact build. |
+| `glibc` | 2.31+ | `libc.so.6`, `libm.so.6`, `libpthread.so.0` | Intended reference target (Ubuntu 20.04+, Debian 11+); tested on Linux Mint 22.2 (glibc 2.39). |
 | `libvulkan` | 1.2+ | `libvulkan.so.1` | Modern Vulkan loader. Fallback dialog on failure. |
 | `libSDL2` | 2.0.12+ | `libSDL2-2.0.so.0` | X11/Wayland windowing and GameController subsystem. |
+| `libz` | 1.2.11+ | `libz.so.1` | Compression library. **Portability Blocker B3**: current candidate dynamically bound to `/usr/local/lib/libz.so.1`; must be rebuilt against standard system `zlib1g` before distribution. |
 | `libasound / libpulse` | Any | Interfaced via SDL2 | Host sound output; no direct host driver binding. |
 | Modern C++ Runtime | GCC 11+ / Clang 14+ | `libstdc++.so.6` or `libc++.so.1` | Requires full C++20 standard library support. |
 
 Static components (`RT64`, `N64ModernRuntime`, `ultramodern`, `fmt`, `toml11`, `xxHash`) are compiled directly into the binary to avoid external dynamic dependency conflicts. Note that while glibc >= 2.31 is the targeted distribution baseline, production validation requires an actual release package produced and tested on a clean glibc 2.31 container or VM during phase P10.
+
+---
+
+## 5. Candidate Packaging Verification (October 2026)
+
+- **Linux Candidate:** Package `TooieRecompiled-linux-x86_64-73bfd43-dirty-private-local.tar.gz` (SHA-256 `4f702d2ba0a0472345f6f1317bfe75eb0df462e96b2352d6d875edaa5c4ebcf9`, 104 regular archive files, binary SHA-256 `0cfcd79206efc74b74e26836ce468c69bcadaf2c3950b40eb31971946026892b` equals original binary, launcher visual verified, zero ROM, UI exact) generated and verified by `tools/package_linux.sh` and `tools/verify_package.sh` (exit 0). Supersedes initial packages `b6475879...`, `64f130aa...` and historical pre-standalone candidates. Status: `LINUX_CANDIDATE_PACKAGE_VERIFIED` (candidate local package; P10 not closed). F1 `ldconfig` resolution fixed (0 warnings). 20-second launch smoke verified process liveness on X11/RADV under both default loader and distro zlib override (`TOOIE_SMOKE_LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu`). Note: smoke verifies process liveness only; gameplay and rendering were not evaluated. Root kit-free preflight exit 0. Clean kit-free proof (neutral 5c2) is separate from restored UI build.
+- **Windows Candidate:** Status is `WINDOWS_BUILD_PENDING_NATIVE_HOST`. No PE binary or game DLL exists in any artifact (third-party SDK binaries such as `dxc.exe` intentionally vendored under `lib/` do not count as a game build). Cross translation unit (TU) probes on Linux failed on third-party header edges (`plume_d3d12.cpp`, `plume_vulkan.cpp`), so no all-TUs-pass claim is made (B1 resolved). CMake WIN32 cross-configure passed. Dual build pathways established: Direct Private Input Transfer (importing `TooieRecomp-generated-private-local.tar.gz`, SHA-256 `e7bb66d4...`, without WSL2) and Full Local Generation via WSL2. Native Windows host execution with Visual Studio 2022 Build Tools (clang-cl) and the Windows 11 SDK is required.
+- **Source Archive:** Final delivery is `dist/standalone-20261021/TooieRecomp-source-73bfd430-dirty.tar.gz`, exported after documentation finalization; its checksum is supplied in the adjacent `.sha256` sidecar (avoids a self-referential archive hash). Snapshot `4aab8d213dfe77c411db91d68441c6b34dce7b0bc8b3b3cb7528b23c2d1ee16f` is historical pre-doc evidence, not the final delivery.
+- **Asset Ownership and Legal Manifest:** Detailed legal boundaries, ROM-derived code classification, and third-party asset licenses are cataloged in [[asset-and-licensing-manifest|Asset and Licensing Manifest]].
+
+## 6. Standalone Source Archive and Vendored Closure Contract (2026-10-21)
+
+Contract (stable parts only; measured results live in `docs/plan/evidence/p10-standalone-vendor-20261021.md`):
+1. **One checkout.** All source dependencies are regular files in the repository (`lib/`, `decomp/`, `assets/`, `recompcontrollerdb.txt`, `tools/wheelhouse/`); no submodule, gitlink, symlink, sibling checkout, `third_party/` cache or build-time download. `tools/vendor_verify.sh` proves it offline against `vendor/MANIFEST.sha256` (8266 files, 118 exec bits). Reverse-check verifies all 18 patches (17 prior integrated + 1 local SDL target seam).
+2. **Explicit prerequisites** (not in git): the ROM (`TOOIE_ROM`), the legacy IDO/gcc/binutils kit (`TOOIE_TOOLCHAIN_KIT`; hashes in `tools/toolchain.sha256`), OS packages. Python tooling comes from the hash-pinned wheelhouse (`pip --no-index --require-hashes`).
+3. **Source archive** = `tools/package_source.sh`: the git-visible tree as regular files, **excluding** personal agent/editor configs (`.claude .cursor .gemini .grok .serena .opencode .agents .codex graft GEMINI.md .ignore opencode* .mcp.json .vscode/mcp.json`), local scratch (`cpu_math_check`, `dist/`, `build*/`), and refusing any ROM-type file, `RecompiledFuncs/`, decomp build outputs or compiler-kit paths. It may include the allowlisted third-party DXC/SDL2/FreeType binaries (`vendor/BINARIES.tsv`), never the game binary, the private generated input or build outputs. `assets/` is a real directory in the archive. Policy note on C2: 10 HEAD-tracked agent/MCP configuration files (`.mcp.json`, etc.) contain machine-local absolute paths (`/home/wesley/...`) and are deliberately excluded from source archives to protect user privacy and portability.
+4. **Provenance** lives in `vendor/` (pins, licence status, integrated patch chain, derived-file list, binary allowlist, excludes). The 17 historical patches are integrated; builds never apply patches. F5 resolution: nested `.gitrepo` metadata in `decomp/lib/ultralib/tools/asm_differ/` removed; exclusion rule `(^|/)\.gitrepo$` added to `vendor/EXCLUDES.txt`; origin details preserved in `vendor/provenance/decomp-ultralib-asm_differ-gitrepo.origin.txt`.
+5. **Network isolation proof** uses `tools/offline_sandbox.sh` (bubblewrap: no network, no host filesystem except system dirs and the checkout). F1 resolution: `tools/package_linux.sh` uses fallback chain `/sbin/ldconfig` to resolve library mappings cleanly under restricted PATH without warnings.
+6. **Packaging metadata C3 (FIXED):** When Git metadata is absent, `BUILD-INFO.txt` reports `tooie_tree_dirty_files: unavailable (source export without Git metadata)`, rather than a false zero. The exported tree and the dirty working checkout have distinct provenance scopes.
+7. Public redistribution of the source archive or packages stays blocked while `UNKNOWN`/`UNVERIFIED` licence rows in `vendor/UPSTREAMS.tsv` / `asset-and-licensing-manifest.md` are unresolved (owner decision).
+
+Windows integrity prerequisites: Python 3.8+ available to Git Bash (`python3`, `python`, or `py -3`). On MSYS/MINGW/CYGWIN only the POSIX executable-bit checks are explicitly skipped; all byte and binary-allowlist checks remain required. This prepared path still needs native Windows validation.

@@ -63,13 +63,13 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 
 | Item | Estado | Evidência |
 | --- | --- | --- |
-| ROM NTSC-U Rev. 0 em `.z64` | pronto | SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`, 32 MiB, ID `NB7E` |
+| ROM NTSC-U Rev. 0 em `.z64` | pronto | `Banjo-Tooie (USA).z64` (33554432 bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`, ID `NB7E`); launcher exige imagem descompactada gerada por `tools/extract_rom.sh` (35098224 bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`) |
 | Fork `banjo-tooie-Recomp` | presente | `origin` = `wesleytakatsu/banjo-tooie-Recomp`, `upstream` = `Mr-Wiseguy/banjo-tooie` |
 | Baseline BT | verificada | `master`/`origin/master`, commit `25033be6ec9e35975483f064d086391d2381ca4c`, 0 ahead/0 behind do `upstream/master`, worktree limpo |
 | Insumos BT | presentes no fork | decompressor, Splat, definições de ELF, símbolos, relocations, overlays e syscalls; artefatos gerados ainda dependem de setup/build |
 | Fonte `BanjoRecomp` | presente | runtime, RT64, RSP, frontend, patches e build Linux de referência |
 | Toolchain host básica | **pronta (P01)** | MIPS cross, fmt/toml11/SDL2/lld, venv Python, tools BT, N64Recomp/RSPRecomp |
-| Submódulos BT + BK | **inicializados** | pins do baseline; 0 não inicializados em BT |
+| Submódulos BT + BK | **aposentados / vendorizados** | substituídos por árvores regulares em `lib/`, `decomp/`, `assets/`, `tools/wheelhouse/` (0 submódulos no git) |
 | Projeto `TooieRecomp` | **scaffold P03** | `TooieRecomp/` com configs, gerador e metadata; executável ainda em P05 |
 | Baseline P00 | **done** | [[baseline-manifest|manifesto]] + `scripts/validate-baseline.sh` PASS |
 | Toolchain P01 | **done** | [[../plans/BT/01-linux-toolchain|etapa]] + `docs/plan/evidence/p01-*` |
@@ -80,11 +80,11 @@ Veja [[../specs/BK/reuse-contract|Contrato de reutilização do BanjoRecomp]] e
 | Overlays P06 | **done** | overlays/syscalls funcionais; lifecycle pós-P06 corrigido, mas gameplay ainda não alcançado |
 | RSP/áudio P07 | **active** | intro áudio OK; soak/SFX residual |
 | RT64/input P08 | **active** | RT64 presentation, input mapping, windowing (T07), graphics error fallback (T08), launcher preview, and static calls integrated; USER_DEMO_4 `0x800979D8 → BCE84 → P60 → ncbapivot` helper chain proven in bounded paired scope; USER_DEMO_1/5 movement residuals remain open; `ANGRYLION_CONTROL` in `tools/oracle/angrylion-control/` ([[../specs/BT/angrylion-control-oracle]]); manual validation pending |
+| Interpolação P09 | **pending** | investigação causal ativa; opção Interpolation no menu ESC integrada e persistida; gate técnico Haiku 5.5 reprovado (FAILED); padrão estrito CURRENT/30 |
+| Empacotamento P10 | **pending** | **standalone**: dependências vendorizadas em `lib/`/`decomp/`/`assets/` (proveniência em `vendor/`; pipeline kit-free provado com 420 arquivos idênticos, 1159 passos e 8 testes PASS; UI restaurada concluída com binário `0cfcd792…` exit 0; pacote Linux final `4f702d2b…` com 104 arquivos verificado exit 0); Windows 11 x64 classificado `WINDOWS_BUILD_PENDING_NATIVE_HOST` |
 
-O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream. Os caminhos e comandos
-locais deste plano devem usar `banjo-tooie-Recomp/`. Desenvolvimento e
-pushes devem ocorrer no fork (`origin`); o remote `upstream` serve para
-sincronização e comparação.
+O nome `Mr-Wiseguy/banjo-tooie` identifica o upstream histórico de decompilação.
+No TooieRecomp standalone, essas fontes residem vendorizadas diretamente em `decomp/`.
 
 ## Definição de “rodar perfeitamente”
 
@@ -158,7 +158,13 @@ O trabalho só está concluído quando todos os critérios de
 - Baseline P00: [[baseline-manifest]]
 - Registro anterior, agora supersedido: [[../roadmap/tooie-recomp]]
 
-## Evidência P08 / P09 corrente
+## Evidência P08 / P09 / P10 corrente
+
+- [[evidence/p10-kitfree-generation-and-ui-restoration-20261021]] — **CURRENT (P10, 2026-10-21):**
+  Geração 100% Kit-Free comprovada em sandbox bubblewrap (Sonnet, 420/420 arquivos de `RecompiledFuncs/` byte a byte idênticos à rota ELF, 1159 passos de build Clang/Ninja, 8 testes unitários host PASS; sem kit IDO/gcc, sem MIPS tools, sem ELF no build normal). Interface de usuário, artes vetoriais (`Banjo.svg`, `Kazooie.svg`, `Cloud*.svg`, `Jiggy*.svg`), animações, ícones, fontes tipográficas (`Suplexmentary Comic NC.ttf`, OFL) e logo Tooie original (7300x2450) restaurados localmente pelo root a partir do backup de candidatos (correção formal do usuário D1/D2; UI neutra interina superada). Target gerenciado `TooieUIAssets` sincroniza `assets/` a cada build.
+
+- [[evidence/p10-standalone-vendor-20261021]] — **P10 (anterior):**
+  Dependências do BanjoRecomp vendorizadas como arquivos regulares (`lib/`, `decomp/`, `assets/`, `tools/wheelhouse/`); proveniência em `vendor/`; scripts legados aposentados.
 
 - [[evidence/p08-user-demo1-movement-and-fire-egg-differential]] — **CURRENT (P08):**
   USER_DEMO1 single-feature causality PROVEN: on unchanged C56 binary, setting ONLY
@@ -178,6 +184,17 @@ O trabalho só está concluído quando todos os critérios de
   USER_DEMO_1 and USER_DEMO_5 movement residuals; Talon-Trot/locomotion link is
   an inference only. Next target is Demo 5 first divergence.
 
+- [[evidence/p09-menu-interpolation-toggle-20261021]] — **CURRENT (2026-10-21):** opção Interpolation ON/OFF
+  no menu ESC (persistida, padrão OFF, runtime sem restart via patch RT64 host-endpoint-current) e F8 removido;
+  build/testes host e jogo isolado provados; não corrige glitch nem aprova o gate técnico.
+
+- [[evidence/p09-articulated-world-guard-cause-and-fix-20261020]] — **P09 Iteration 3 (anterior):**
+  RigidBody AUTO linear speed gate cosine amplification root cause A PROVEN in source
+  (rt64_rigid_body.cpp:30-34); owning-layer fix lerpTranslationSpeedOnly; matched GPU frame
+  pairs and chord overshoot metric 26,185->2,673; independent gate (resumed-gate.json) FAILED
+  (unverified build logs, fatal ong2 SIGSEGV rc=-11 crash, unversioned diagnostic state in
+  RT64 working tree, missing non-player articulated and 60 FPS gameplay check); production
+  default strictly CURRENT/30.
 - [[evidence/p09-fps-counter-and-settings-toggle]] — **CURRENT (P09-RES-05):**
   top-left present FPS counter and Graphics settings toggle verified; RT64 present
   success counter and RmlUi overlay hook documented; unit test PASS; runtime QA pending.

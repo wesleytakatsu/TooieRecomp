@@ -2,85 +2,39 @@
 title: "BK — Build"
 status: current
 area: "specs/BK"
-updated: 2026-08-08
+updated: 2026-10-21
 tags:
   - banjo-recomp
   - build
+  - reference
 ---
 
-# BK — Build
+# BK — Build (Historical Reference Specification)
 
-Full pipeline to go from the Banjo-Kazooie US ROM to a native executable,
-based on `BUILDING.md`.
+> [!WARNING]
+> **Reference Specification Only:** This document describes the historical Banjo-Kazooie (`BanjoRecomp`) reference port build pipeline for architectural context. **Do NOT execute these commands for TooieRecomp.** TooieRecomp is fully standalone; its build pipeline lives in [`README.md`](../../../README.md) and [`tools/BUILDING.md`](../../../tools/BUILDING.md) and requires no external repository checkouts or submodules.
 
-## 1. Clone
+---
 
-```sh
-git clone --recurse-submodules
-```
+## 1. Upstream BanjoRecomp Pipeline (Reference Architecture)
 
-## 2. Dependencies
+In the upstream reference project (Banjo-Kazooie), the build proceeded from a clean clone with submodules:
 
-| OS | Packages |
-| ------ | -------------------------------------------------------- |
-| Ubuntu (Linux) | `cmake ninja-build libsdl2-dev libgtk-3-dev lld llvm clang` |
-| Windows | Visual Studio 2022 with C++, Clang for Windows, CMake tools; `make` via Chocolatey |
+1. **Submodules:** Upstream cloned submodules (`N64ModernRuntime`, `RT64`, `RecompFrontend`). In TooieRecomp, all shared sources are vendored as regular files under `lib/` and `decomp/`.
+2. **Decompression:** Banjo-Kazooie used `bk_rom_compressor` to decompress the ROM for offline static recompilation. In TooieRecomp, `tools/extract_rom.sh` decompresses `Banjo-Tooie (USA).z64` into `decompressed.us.z64`.
+3. **Static Generation:** Upstream ran `N64Recomp banjo.us.rev0.toml` and `RSPRecomp n_aspMain.us.rev0.toml`. TooieRecomp runs `tools/run_recomp.sh` and `tools/run_rsprecomp.sh` over Tooie-specific configurations.
+4. **Host Compilation:** Upstream built the `BanjoRecompiled` executable. TooieRecomp builds `TooieRecompiled` via CMake and `tools/build_linux.sh` (or `tools/windows/Build-Tooie.ps1`).
 
-## 3. Decompress the ROM
+---
 
-Requires the NTSC-U 1.0 Banjo-Kazooie ROM
-(SHA1 `1fe1632098865f639e22c11b9a81ee8f29c75d7a`).
+## 2. Supporting Pieces & Provenance
 
-Two ways to decompress:
+- `patches/` — upstream native C patch overrides.
+- `CMakeLists.txt` — links vendored `lib/rt64`, `lib/N64ModernRuntime`, `lib/RecompFrontend`, plus recompiled C code and native shims.
+- Provenance and license tracking for all borrowed runtime elements are maintained in [`vendor/`](../../../vendor/README.md).
 
-- Set up the Banjo-Kazooie decompilation (gitlab) — decompresses during its
-  build.
-- Use `bk_rom_compressor --decompress` (MittenzHugg).
+---
 
-Copy result as `banjo.us.v10.decompressed.z64` in repo root.
+## 3. Tooie Relevance
 
-## 4. Generate C code
-
-Build `N64Recomp` and `RSPRecomp`, copy the binaries to repo root, then:
-
-```sh
-./N64Recomp banjo.us.rev0.toml
-./RSPRecomp n_aspMain.us.rev0.toml
-```
-
-- `N64Recomp` → `RecompiledFuncs/`
-- `RSPRecomp` → `rsp/n_aspMain.cpp`
-
-## 5. Build project
-
-```sh
-cmake -S . -B build-cmake \
-  -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang \
-  -G Ninja -DCMAKE_BUILD_TYPE=Release      # or Debug
-cmake --build build-cmake --target BanjoRecompiled -j$(nproc) --config Release
-```
-
-Windows: open in VS, build/run/debug from IDE.
-
-## 6. Result
-
-- `build-cmake/BanjoRecompiled` (CMake) or `out/build/x64-<Config>` (VS).
-- Run from repo root, or copy `assets/` next to the executable.
-
-> The game itself, in the running app, must use a standard (not decompressed)
-> ROM. The decompressed ROM is only for building.
-
-## Supporting pieces
-
-- `patches/Makefile` — builds `patches/patches.elf` (see [Patches](patches.md))
-- `CMakeLists.txt` — wires `lib/rt64`, `lib/N64ModernRuntime`,
-  `lib/RecompFrontend`, plus the recompiled funcs/patches.
-- `banjo.us.rev0.toml` — see [Config](config.md).
-
-## Tooie relevance
-
-Tooie needs its own `tooie.us.rev0.toml`, decompressed ROM, symbol map and
-RSP ucode config. The `banjo-tooie-Recomp` repo gives the symbol/overlay raw
-material; the pipeline scaffolding is copied from BK.
-
-See [TooieRecomp roadmap](../../roadmap/tooie-recomp.md).
+Tooie uses its own `tooie.us.rev0.toml`, `tooie.us.rev0.recomp.toml`, decompressed ROM image (`decompressed.us.z64`), and RSP microcode config. While architectural patterns (static table generation, overlay registration, RT64 integration) were borrowed from BanjoRecomp, TooieRecomp does not depend on or build any other checkout.

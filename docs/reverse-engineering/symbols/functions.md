@@ -26,5 +26,5 @@ known at `PROVEN` / `STRONG_INFERENCE` / useful `HYPOTHESIS`.
 Subsystems: `PLAYER` `ANIMATION` `MODEL` `GEOCMD` `RENDER` `RESOURCE`
 `AUDIO` `MAP` `OVERLAY` `OTHER`.
 
-Production symbols stay as `func_*`. Readable names in [[glossary]] are
+Production symbols stay as `func_*`. Readable names in [[../glossary]] are
 `PROPOSED_ALIAS` only.

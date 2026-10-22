@@ -1,0 +1,32 @@
+# Explicit, hash-verified INPUTS that are NOT vendored in this repository (category B). Shell-sourceable KEY=value.
+# KIT-FREE NORMAL BUILD: only the ROM entries below are needed. The legacy-compiler-kit / Python-wheelhouse entries further down are MAINTAINER-ONLY
+# (tools/build_linux.sh decomp, regenerating metadata/ with tools/generate_metadata.py) and are not used by the default pipeline.
+# Nothing here is downloaded by any build/generate script. Consumed by tools/preflight.sh, tools/toolchain_kit.sh, tools/build_linux.sh.
+# (Replaces the superseded tools/deps.lock: upstream SHAs/URLs of vendored sources now live in vendor/UPSTREAMS.tsv.)
+
+# Input ROM (private, never stored in git/packages): Banjo-Tooie (USA) rev 0, big-endian .z64
+ROM_BASENAME="Banjo-Tooie (USA).z64"      # canonical file name; default location is the repository root (git-ignored by *.z64 and /Banjo-Tooie (USA).z64)
+ROM_SIZE=33554432
+ROM_MD5=40e98faa24ac3ebe1d25cb5e5ddf49e4
+ROM_SHA1=af1a89e12b638b8d82cc4c085c8e01d4cba03fb3
+# Decompressed image (tools/extract_rom.sh): the ONLY ROM layout the runtime launcher accepts (XXH3-64 9F843AD3455EA395 in src/main/main.cpp)
+DECOMPRESSED_ROM_SIZE=35098224
+DECOMPRESSED_ROM_SHA1=af479771ff5e91ce3732f3d84146614ab71d8d79
+
+# Legacy MIPS compilers used by the decomp (licence UNVERIFIED => not vendored). Kit layout: <kit>/ido/* (IDO 5.3), <kit>/gcc/* (gcc 2.7.2, binutils 2.6/2.7).
+# tools/toolchain.sha256 lists sha256 of every EXTRACTED file (34). Hashes of the original release tarballs are UNKNOWN (deleted after extraction by the
+# prior proof; only the IDO tarball size, 4810948 bytes, was logged). Manual acquisition (maintainer, outside the build), then tools/toolchain_kit.sh verify:
+#   https://github.com/decompals/ido-static-recomp/releases/download/v1.1/ido-5.3-recomp-linux.tar.gz        -> <kit>/ido/
+#   https://github.com/decompals/mips-gcc-2.7.2/releases/download/main/gcc-2.7.2-linux.tar.gz                -> <kit>/gcc/
+#   https://github.com/decompals/mips-binutils-2.6/releases/download/main/binutils-2.6-linux.tar.gz           -> <kit>/gcc/
+#   https://github.com/decompals/mips-binutils-2.7/releases/download/release/binutils-2.7.tar.gz              -> <kit>/gcc/
+TOOLCHAIN_FILES_SHA256=tools/toolchain.sha256
+
+# Python generation tooling: hash-pinned wheelhouse inside the repo (tools/wheelhouse + tools/requirements.lock), cp312 manylinux x86_64 only.
+PYTHON_TOOLING_ABI=cp312-manylinux_x86_64
+
+# Provenance of the vendored lib/SDL2-windows (official SDL2-devel VC zip; libsdl publishes no digest, trust-on-first-use 2026-10-21). Not used at build time.
+SDL2_WINDOWS_VERSION=2.30.3
+SDL2_WINDOWS_VC_ZIP_SHA256=89999a6f3dc8f5e4fb03aaea6b4ad01747d9a81690f9f9a0674806e750483a38
+# Optional Windows cross compile-check toolchain (maintainer-only; sha256 = GitHub release asset digest). Not a build dependency.
+LLVM_MINGW_SHA256=55064b60b991a1e1e8090b8c2f84e82b22cfe5903d12c159d65064cf5e8ae335

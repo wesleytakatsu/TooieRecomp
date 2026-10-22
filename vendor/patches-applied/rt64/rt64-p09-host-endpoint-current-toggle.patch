@@ -1,0 +1,169 @@
+--- /dev/null
++++ b/src/hle/rt64_host_endpoint_current.h
+@@ -0,0 +1,104 @@
++//
++// RT64
++//
++// Host-controlled switch for the shader-local "CURRENT endpoint" tfPos path (RSPProcessCS forceEndpointCurrent) and
++// everything that must agree with it (P09 WORLD guards, burst classification).
++//
++// Precedence: explicit TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT in the environment (legacy test override) > host request
++// > off (Banjo and any host that never calls requestHostEndpointCurrent). The environment is read once; the host
++// request is an atomic that the render thread latches once per game workload, so a runtime change takes effect at a
++// workload boundary and never splits one workload between the two paths.
++//
++
++#pragma once
++
++#include <atomic>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++
++namespace RT64 {
++    // -1: no host request, 0: interpolate, 1: CURRENT endpoint.
++    inline std::atomic<int> &hostEndpointCurrentRequestSlot() {
++        static std::atomic<int> slot{ -1 };
++        return slot;
++    }
++
++    inline std::atomic<int> &hostEndpointCurrentLatchedSlot() {
++        static std::atomic<int> slot{ -1 };
++        return slot;
++    }
++
++    // Any thread (UI/config callback). Takes effect at the next latch.
++    inline void requestHostEndpointCurrent(bool endpointCurrent) {
++        hostEndpointCurrentRequestSlot().store(endpointCurrent ? 1 : 0, std::memory_order_release);
++    }
++
++    // Render thread only, once at the start of each workload.
++    inline void latchHostEndpointCurrent() {
++        hostEndpointCurrentLatchedSlot().store(hostEndpointCurrentRequestSlot().load(std::memory_order_acquire), std::memory_order_release);
++    }
++
++    // -1: variable absent or empty (host decides), otherwise 0/1 with the historical "empty/0 = off" parse.
++    inline int endpointCurrentEnvState() {
++        static const int state = [] {
++            const char *env = std::getenv("TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT");
++            if ((env == nullptr) || (env[0] == '\0')) {
++                return -1;
++            }
++            return (env[0] != '0') ? 1 : 0;
++        }();
++        return state;
++    }
++
++    inline bool endpointCurrentActive() {
++        const int env = endpointCurrentEnvState();
++        if (env >= 0) {
++            return env != 0;
++        }
++        return hostEndpointCurrentLatchedSlot().load(std::memory_order_acquire) == 1;
++    }
++
++    // Host-visible interpolation state: one stderr line per change (never per frame). Render thread only.
++    struct HostInterpState {
++        bool valid = false;
++        bool endpointCurrent = false;
++        bool generate = false;
++        uint32_t targetRate = 0;
++        uint32_t viRate = 0;
++        bool loggedInterpolatedRender = false;
++    };
++
++    inline HostInterpState &hostInterpState() {
++        static HostInterpState state;
++        return state;
++    }
++
++    // First frame of each game workload: latch the host request, log when the state changed.
++    inline void hostInterpBeginWorkload(uint64_t workloadId, bool generate, uint32_t targetRate, uint32_t viRate, uint32_t displayFrames) {
++        latchHostEndpointCurrent();
++        const bool endpointCurrent = endpointCurrentActive();
++        HostInterpState &s = hostInterpState();
++        if (s.valid && (s.endpointCurrent == endpointCurrent) && (s.generate == generate) && (s.targetRate == targetRate) && (s.viRate == viRate)) {
++            return;
++        }
++
++        s.valid = true;
++        s.endpointCurrent = endpointCurrent;
++        s.generate = generate;
++        s.targetRate = targetRate;
++        s.viRate = viRate;
++        s.loggedInterpolatedRender = false;
++        std::fprintf(stderr, "[tooie-interp] workload=%llu endpointCurrent=%d generate=%d targetRate=%u viRate=%u displayFrames=%u\n",
++            static_cast<unsigned long long>(workloadId), endpointCurrent ? 1 : 0, generate ? 1 : 0, targetRate, viRate, displayFrames);
++    }
++
++    inline void hostInterpNoteRender(uint32_t frame, float curWeight, float prevWeight) {
++        HostInterpState &s = hostInterpState();
++        if (!s.loggedInterpolatedRender && s.generate && (curWeight < 1.0f)) {
++            s.loggedInterpolatedRender = true;
++            std::fprintf(stderr, "[tooie-interp] first interpolated render since last state change: frame=%u curW=%.3f prevW=%.3f endpointCurrent=%d\n",
++                frame, static_cast<double>(curWeight), static_cast<double>(prevWeight), s.endpointCurrent ? 1 : 0);
++        }
++    }
++};
+--- a/src/hle/rt64_interp_burst.h
++++ b/src/hle/rt64_interp_burst.h
+@@ -36,2 +36,4 @@
+ 
++#include "hle/rt64_host_endpoint_current.h"
++
+ // Declared here instead of including miniz.h: RecompFrontend TUs also see N64ModernRuntime's own miniz.h and the two clash.
+@@ -86,7 +88,3 @@
+     inline bool forceEndpointEnv() {
+-        static const bool v = [] {
+-            const char *e = std::getenv("TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT");
+-            return (e != nullptr) && (e[0] != '\0') && (e[0] != '0');
+-        }();
+-        return v;
++        return endpointCurrentActive();
+     }
+--- a/src/hle/rt64_workload_queue.cpp
++++ b/src/hle/rt64_workload_queue.cpp
+@@ -1263,2 +1263,6 @@
+                 for (uint32_t frame = 0; (frame < displayFrames) && !skipWorkloadNow; frame++) {
++                    if (frame == 0) {
++                        // One latch per game workload (frame 0 is never skipped): all its sub-frames share the endpoint-CURRENT state.
++                        hostInterpBeginWorkload(workload.workloadId, generateInterpolatedFrames, workloadConfig.targetRate, workload.viOriginalRate, displayFrames);
++                    }
+                     // Evaluate if this frame should be skipped. Measure the current time and compare it to what frame is estimated should be have been rendered by now.
+@@ -1323,2 +1327,3 @@
+ 
++                    hostInterpNoteRender(frame, curFrameWeight, prevFrameWeight);
+                     interpBurst::requestAtWorkload(workload.workloadId);
+--- a/src/render/rt64_p09_world_interpolation_guard.h
++++ b/src/render/rt64_p09_world_interpolation_guard.h
+@@ -27,2 +27,3 @@
+ #include "hle/rt64_game_frame.h"
++#include "hle/rt64_host_endpoint_current.h"
+ #include "hle/rt64_workload.h"
+@@ -48,8 +49,3 @@
+     inline bool p09WorldGuardEndpointCurrentActive() {
+-        static int cached = -1;
+-        if (cached < 0) {
+-            const char *env = std::getenv("TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT");
+-            cached = ((env != nullptr) && (env[0] != '\0') && (env[0] != '0')) ? 1 : 0;
+-        }
+-        return cached != 0;
++        return endpointCurrentActive();
+     }
+--- a/src/render/rt64_rsp_processor.cpp
++++ b/src/render/rt64_rsp_processor.cpp
+@@ -9,2 +9,3 @@
+ #include "rt64_buffer_uploader.h"
++#include "hle/rt64_host_endpoint_current.h"
+ 
+@@ -60,8 +61,4 @@
+         bool p09RspForceEndpointCurrentEnabled() {
+-            static int cached = -1;
+-            if (cached < 0) {
+-                const char *env = std::getenv("TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT");
+-                cached = ((env != nullptr) && (env[0] != '\0') && (env[0] != '0')) ? 1 : 0;
+-            }
+-            return cached != 0;
++            // Env override > host request latched per workload (hle/rt64_host_endpoint_current.h).
++            return endpointCurrentActive();
+         }

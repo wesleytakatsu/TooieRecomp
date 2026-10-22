@@ -168,7 +168,7 @@ cmake --build build --target TooieRecompiled  # exit 0; rebuilt rt64_rsp_process
 ./build/window_display_test                 # exit 0; PASS 38/38
 ./build/tintro_projection_policy_test       # exit 0; PASS 7/7
 git diff --check                            # Tooie exit 0
-git -C ../BanjoRecomp/lib/rt64 diff --check # RT64 exit 0
+Historical RT64 whitespace check: exit 0 (record only; current sources are vendored under lib/rt64/).
 ```
 
 Status write path, ~1 Hz, mutex, atomic tmp+rename, and bounded accumulators

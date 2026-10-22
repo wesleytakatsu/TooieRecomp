@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Comprehensive technical specification for RT64 integration, widescreen culling hooks, projection policies, the shader-local CURRENT tfPos workaround, and planned FPS presets."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-19
+updated: 2026-10-21
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -33,15 +33,15 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 |                      RT64 Workload Queue & Transform Processor                  |
 |  - Matrix matching across successive workloads                                  |
 |  - Target Rate vs viOriginalRate evaluation (pacing constraint)                 |
-|  - Target Rate Policy: Forced 30 FPS cap (tooie_menu::kForcedRefreshRate = 30)  |
+|  - Target Rate Policy: Interpolation OFF = Manual 30; ON = user rate (min 60)    |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
 +---------------------------------------------------------------------------------+
 |                     RSPProcess Compute Shader (RSPProcessCS.hlsl)               |
-|  - TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1 (Tooie default-ON workaround)        |
+|  - endpoint-CURRENT via RT64::endpointCurrentActive() (Interpolation OFF = on)   |
 |  - tfPos bypassed to CURRENT vertex positions; fog derives from tfPos.z/w       |
-|  - Explicit "0" restores experimental interpolation                             |
+|  - Interpolation option ON = off; explicit env value still overrides            |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -54,9 +54,9 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 | **REQ-GFX-01** | Aspect-Aware Map Culling | `func_800CAA24` scales horizontal culling plane (`n_cam_x /= k`). | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-GFX-02** | Aspect-Aware Object Culling | `func_800CACEC` expands culling planes during draw passes (pure `func_800B97A4` + preserved `func_8011447C`). | `IMPLEMENTED` / `VALIDATED` |
 | **REQ-GFX-03** | Cutscene Aspect Policy | Preconditions projection matrix via `compensation_factor`. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-04** | tfPos CURRENT Workaround | Defaults `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT="1"` before start. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-05** | Diagnostic Rollback Rule | Explicit `"0"` restores interpolation for diagnostic evaluation. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-06** | Forced 30 FPS Policy Lock | Locks presentation to Manual 30 FPS (`kForcedRefreshRate = 30`) due to CURRENT workaround repeating vertex poses above native. (RT64 supports 60+ Hz presentation; cap is a user policy palliative). | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
+| **REQ-GFX-04** | tfPos CURRENT Workaround | Active whenever the Interpolation graphics option is OFF (default); host-controlled via `RT64::requestHostEndpointCurrent`, no setenv. See §3.3. | `IMPLEMENTED` / `VALIDATED` (2026-10-21 runtime; supersedes the startup `setenv` default) |
+| **REQ-GFX-05** | Diagnostic Env Override | An explicit `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` (`0`/`1`) in the environment overrides the Interpolation option; unset/empty defers to the option. | `IMPLEMENTED` / `VALIDATED` |
+| **REQ-GFX-06** | Interpolation Graphics Option | Graphics option `interpolation` (bool, persisted in `graphics.json`, default/missing/invalid = OFF). OFF locks presentation to Manual 30 (`kForcedRefreshRate`) with the CURRENT endpoint; ON unlocks the Framerate controls and selects Manual 60 when the stored rate would generate no intermediate frames; applies at runtime on Apply without restart. User-authorised 2026-10-21 (supersedes the old frozen 30 FPS lock). Does not claim the articulated-glitch gate passed. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]]) |
 | **REQ-GFX-07** | Below-Native Presentation Decimation | Present-only decimation preserving guest updates, audio, and ACK signals. | `IMPLEMENTED` / `STATICALLY_VERIFIED` |
 | **REQ-GFX-08** | Intro Cinematic Walls | Eliminates geometry edge holes in SCENE_A and SCENE_B. | `PLANNED` / `NOT_IMPLEMENTED` |
 | **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. Auto resolution uses integer window VI scale and disables downsampling. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
@@ -99,26 +99,19 @@ namespace tooie_tintro_projection_policy {
 ```
 Validated via `tests/tintro_projection_policy_test.cpp` (7/7 assertions PASS).
 
-### 3.3 Shader-Local CURRENT `tfPos` Workaround (P09 Phase 1)
+### 3.3 Shader-Local CURRENT `tfPos` Workaround (P09 Phase 1) and Host Switch
 ```cpp
-namespace tooie_rsp_endpoint_current {
-    inline constexpr const char* kEnvName = "TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT";
-    inline constexpr const char* kDefaultValue = "1";
-
-    enum class ApplyResult {
-        AppliedDefault,
-        PreservedExplicit,
-        SetenvFailed,
-    };
-
-    ApplyResult apply_default_before_renderer_init();
+// RT64 (patches/rt64/rt64-p09-host-endpoint-current-toggle.patch): src/hle/rt64_host_endpoint_current.h
+namespace RT64 {
+    void requestHostEndpointCurrent(bool endpointCurrent); // any thread (config callback)
+    void latchHostEndpointCurrent();                       // render thread, once per game workload
+    bool endpointCurrentActive();                          // env override > latched host request > off
 }
 ```
-- **Execution Hook**: Called in `src/main/main.cpp:1153` before `activate_tooie_guest_preemption()` and `recomp::start()`.
-- **Environment Precedence**:
-  - `UNSET`: Sets `"1"`. Normal runs require no flags.
-  - `"0"` or `""`: Preserved as OFF (enables experimental interpolation for diagnostics).
-  - `"1"`: Preserved as ON.
+- **Owner**: `install_interpolation_policy` (`include/tooie_menu_policy.h`) sinks the APPLIED `interpolation` value; `src/game/config.cpp` forwards it as `requestHostEndpointCurrent(!enabled)`. No startup `setenv`; `tooie_rsp_endpoint_current` (module, test, CMake target) was removed.
+- **Readers (all use `endpointCurrentActive()`)**: `RSPProcessor::process` (`processCB.forceEndpointCurrent`), `p09WorldGuardEndpointCurrentActive`, `interpBurst::forceEndpointEnv`. The old per-site static getenv caches no longer exist.
+- **Environment Precedence**: `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` explicit `0`/`1` wins over the option (legacy test override, read once); unset/empty defers to the host. `TOOIE_TEST_INTERPOLATION_FPS=60|120` forces Interpolation ON at that rate regardless of the option and logs `[tooie] TOOIE_TEST_INTERPOLATION_FPS=... overrides the Interpolation setting`.
+- **Runtime telemetry**: RT64 prints `[tooie-interp] workload=N endpointCurrent=E generate=G targetRate=T viRate=V displayFrames=D` on every change of that tuple and one `first interpolated render ... curW=` line per change; never per frame. `endpointCurrent=1` with `curW<1` is masked interpolation (CURRENT repeats poses); real interpolation is `endpointCurrent=0`.
 - **Shader Effect (`RSPProcessCS.hlsl:78-93`)**:
   - `tfPos` bypasses temporal interpolation, evaluating directly at CURRENT vertex positions:
     `tfPos = mul(mul(endpointViewProj[...], endpointWorld[...]), endpointPos);`
@@ -126,12 +119,12 @@ namespace tooie_rsp_endpoint_current {
     `const float fogAlpha = ((max(tfPos.z, 0) / tfPos.w) * rspFog.mul + rspFog.offset);`
     Because `tfPos` also drives fog, snapping `tfPos` to CURRENT ensures fog depth remains perfectly aligned with current mesh geometry without temporal lag or shearing.
   - View, projection, and texgen continue normal temporal handling.
-- **Verification**: Tested by `tests/tooie_rsp_endpoint_current_test.cpp` (20/20 assertions PASS, exit 0).
-- **Versioned Clean-Pin Patch**: `patches/rt64/rt64-rsp-endpoint-current.patch` (SHA256: `49925480c2d1736c790ddf96152844951f6fe27a150ab1cc110347d557c0d813`), registered in `tools/apply_runtime_patches.sh` against clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
+- **Verification**: `tests/rt64_host_endpoint_current_test.cpp` (env unset/0/1, latch semantics) and `tests/tooie_menu_config_test.cpp`; runtime proof in [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]]. The former `tooie_rsp_endpoint_current_test` was removed with its module.
+- **Versioned Clean-Pin Patches & Provenance**: `patches/rt64/rt64-p09-host-endpoint-current-toggle.patch` (SHA256 `b96e2b703ae0d4782b2debf1178584355590865a7a17d7d74a128745cd5d8f15`, stacked after the guard/burst patches; replay-checked with `git apply --check` on the clean chain) and `patches/rt64/rt64-rsp-endpoint-current.patch` (SHA256: `49925480c2d1736c790ddf96152844951f6fe27a150ab1cc110347d557c0d813`), integrated into vendored `lib/rt64` against clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496` (`tools/apply_runtime_patches.sh` retired; provenance tracked in `vendor/patches-applied/ORDER.tsv`, verified via `tools/vendor_verify.sh --reverse-check`).
 - **Workaround vs. Permanent Fix Classification**:
-  - The default-ON `tfPos` CURRENT bypass is strictly a **palliative workaround**. It prevents visible mesh tearing (such as Kazooie's wing feathers and Banjo's backpack/snout) by evaluating vertex positions at CURRENT.
+  - The `tfPos` CURRENT bypass (active while Interpolation is OFF, the default) is strictly a **palliative workaround**. It prevents visible mesh tearing (such as Kazooie's wing feathers and Banjo's backpack/snout) by evaluating vertex positions at CURRENT.
   - **Continuous vertex position interpolation at 60+ FPS is NOT IMPLEMENTED**.
-  - The permanent architectural fix resolving `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS` remains **NOT IMPLEMENTED**.
+  - The permanent architectural fix resolving `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS` remains **NOT IMPLEMENTED**. Experimental articulated guards (translation coherence and closure guard in `patches/rt64/rt64-p09-world-interpolation-guard.patch`, with Mechanism A linear speed gate in `rt64_rigid_body.{h,cpp}`) were evaluated across iterations 1-3 in October 2026. While Mechanism A is `PROVEN_SOURCE` and matched GPU pairs exist for the title scene (wl 1000-2500), independent verification gates remain failed (`gate.json: passed = false`, `resumed-gate.json: passed = false`) due to unverified build logs, a fatal SIGSEGV (-11) crash in `runs/ong2` during attract demo gameplay, unversioned working tree diagnostic state, and absent non-player articulated and 60 FPS gameplay verification. The default (Interpolation OFF) keeps the CURRENT endpoint and Manual 30 FPS (`kForcedRefreshRate = 30`); turning Interpolation ON is an explicit user choice that exposes those experimental, still-gated glitches (`NOT` a fix, technical gate `passed: false`).
 
 ---
 
@@ -139,8 +132,8 @@ namespace tooie_rsp_endpoint_current {
 
 ### 4.1 Target Presets & Forced 30 FPS Policy Lock
 Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
-- **Frontend UI Option & Policy Enforcement (REQ-GFX-06)**: While RT64 technically supports presentation at arbitrary display refresh rates (60..240 Hz), intermediate presents repeat vertex poses under the palliative `tfPos` CURRENT workaround (`tooie_rsp_endpoint_current`). To match user policy, presentation is temporarily locked to Manual 30 FPS (`kForcedRefreshRate = 30`) via `tooie_menu::install_forced_refresh`.
-- **Policy Enforcement Contract**: Forced 30 FPS applies on configuration load, temporary UI change, and permanent apply/save. Callbacks dynamically resolve `recompui::config::get_graphics_config()` per call to prevent dangling pointers from `std::vector` reallocation. The UI option is disabled with a warning note: `"Temporarily capped at 30 FPS in Banjo-Tooie."` (see [[../../plan/evidence/p08-settings-functionality-20261019]]). Dedicated 8-preset selector widget remains `PLANNED` / `NOT_IMPLEMENTED`.
+- **Frontend UI Option & Policy Enforcement (REQ-GFX-06)**: `tooie_menu::install_interpolation_policy` ties the persisted `interpolation` bool to the Framerate options. OFF: Manual/30, rate controls disabled with `Locked to 30 FPS`. ON: controls enabled; `coerce_refresh` keeps the stored rate unless it is Original or Manual <= 30, which becomes Manual 60. Legacy `TOOIE_TEST_INTERPOLATION_FPS` remains an explicit override.
+- **Policy Enforcement Contract**: The UI (temporary) view is coerced on every change and is reverted to the applied rate on cancel; the applied view is coerced and sunk to RT64 on load (after the last of the three options has loaded, so a stored 120 survives boot) and when the `interpolation` option is applied (Apply button, graphics `requires_confirmation`). Callbacks resolve `recompui::config::get_graphics_config()` per call (vector reallocation). The RT64 request is latched at the next workload boundary: no restart and no `setenv`. Dedicated 8-preset selector widget remains `PLANNED` / `NOT_IMPLEMENTED`. Host test: `tests/tooie_menu_config_test.cpp`.
 
 ### 4.2 Below-Native Presentation Decimation (REQ-GFX-07)
 - **Problem**: In upstream RT64 (`rt64_workload_queue.cpp:1175`), when `targetRate <= viOriginalRate` (e.g. 20 or 30 FPS target on a 60 Hz VI scene), RT64 emitted one presentation per native workload with `displayFrames = 1` and no sleep or pacing. Below-native target was an effective no-op.
@@ -159,12 +152,12 @@ Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
   - Paused presents pass `paused == true` into `shouldPresent()`, resetting cadence so the first unpaused frame displays immediately without dropping.
 - **Verification & Status**:
   - Validated by host test `tests/rt64_present_decimator_test.cpp` (`rt64_present_decimator_test` PASS exit 0).
-  - Versioned patch: `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256: `6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c`), registered in `tools/apply_runtime_patches.sh` against clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`. (Supersedes the older incremental `patches/rt64/rt64-present-rate-decimator.patch` for clean-pin apply; see [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]]).
+  - Versioned patch: `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256: `6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c`), integrated into vendored `lib/rt64` against clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496` (`tools/apply_runtime_patches.sh` retired; provenance tracked in `vendor/patches-applied/ORDER.tsv`). (Supersedes the older incremental `patches/rt64/rt64-present-rate-decimator.patch` for clean-pin apply; see [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]]).
   - Status: `IMPLEMENTED`, `STATICALLY_VERIFIED`.
 
 ### 4.3 Above-Native Rates & Motion Smoothness Limit
 - When `targetRate > viOriginalRate`, RT64 generates interpolated frames (`displayFrames > 1`).
-- **Palliative Workaround Interaction**: Because the default-ON palliative workaround (`tooie_rsp_endpoint_current`) forces vertex positions to CURRENT (`tfPos`), intermediate presents repeat the current vertex pose. Higher presentation rates (e.g. 100, 120, 144 FPS) present at the higher rate but cannot produce smooth motion for articulated meshes until the permanent interpolation fix is implemented.
+- **Palliative Workaround Interaction**: While Interpolation is OFF the CURRENT endpoint forces vertex positions to CURRENT (`tfPos`) and intermediate presents repeat the current vertex pose; with Interpolation ON (`endpointCurrent=0`) real interpolated poses are rendered, with the open glitch gate. Higher presentation rates (e.g. 100, 120, 144 FPS) present at the higher rate but cannot produce smooth motion for articulated meshes until the permanent interpolation fix is implemented.
 
 ### 4.4 Top-Left Present FPS Counter & Graphics Settings Toggle (REQ-GFX-08)
 - **Purpose**: Provides an unobtrusive, on-screen display of the rate of frames actually presented to the display swapchain in the top-left corner.
@@ -172,8 +165,8 @@ Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
   - Counts only calls where `swapChain->present(...)` successfully returns `true` (`RT64::presentSuccessCount`).
   - Decimator skips and failed presents are excluded.
   - Does NOT display the user-selected target rate (`recomp_get_target_framerate`), does NOT display the guest VI rate (`viOriginalRate`), and does NOT represent game simulation or animation speed.
-- **Pose Repeat Limitation under CURRENT Workaround**:
-  - Because the default-ON `tfPos` CURRENT workaround evaluates vertex positions at the current guest state, presentation rates above the native guest update rate repeat the same vertex pose across intermediate presents.
+- **Pose Repeat Limitation under CURRENT Workaround** (Interpolation OFF):
+  - Because the `tfPos` CURRENT workaround evaluates vertex positions at the current guest state, presentation rates above the native guest update rate repeat the same vertex pose across intermediate presents.
   - The counter reading near 60 FPS while visible character motion updates at ~30 Hz reflects actual swapchain presentation cadence, not high-framerate motion interpolation.
 - **User Configuration & Directions**:
   - Setting key: `banjo::configkeys::graphics::show_fps_counter` in `include/banjo_config.h`.
@@ -184,9 +177,9 @@ Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
   - RecompFrontend hook: `recompui::set_overlay_update_callback` (`ui_state.cpp`), executing in `draw_hook()` on the render thread. It is an always-on render-thread overlay, unaffected by `hide_all_contexts()` and capturing zero input.
   - Sliding meter: `tooie::PresentRateMeter` (`include/tooie_fps_meter.h`) computes rounded integer presents per second over a 1000 ms sliding window. Stalls > 3 s reset the window and display `"-- FPS"`.
   - Render style: 16 dp from top-left, dark backing (`rgba(0,0,0,160)`), text updated only when rounded integer changes.
-- **Versioned Patches & Clean-Pin Applicator**:
-  - `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256: `37266d0bd13d42c0b8f174c0118b6a9b2490784c5880f05e6ee37ab811cd48a7`): Registered in `tools/apply_runtime_patches.sh` against RecompFrontend pin `d0d90ba49f46f4896aaeda362056c21b1e342561`.
-  - `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256: `6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c`): Cumulative clean-pin patch registered in `tools/apply_runtime_patches.sh` against RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
+- **Versioned Patches & Provenance**:
+  - `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256: `37266d0bd13d42c0b8f174c0118b6a9b2490784c5880f05e6ee37ab811cd48a7`): Integrated into vendored `lib/RecompFrontend` against pin `d0d90ba49f46f4896aaeda362056c21b1e342561` (`tools/apply_runtime_patches.sh` retired; provenance tracked in `vendor/patches-applied/ORDER.tsv`).
+  - `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256: `6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c`): Integrated into vendored `lib/rt64` against pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
   - Historical provenance note: The older incremental patch `patches/rt64/rt64-present-success-counter.patch` is SUPERSEDED for clean-pin apply (fails with exit 1 on clean pin); the cumulative decimator-and-counter patch replaces it for clean clones. See [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]].
 - **Verification & Status**:
   - Unit test: `tests/tooie_fps_meter_test.cpp` (`tooie_fps_meter_test` PASS exit 0).
@@ -219,13 +212,24 @@ Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
 
 ---
 
+## 4.8 Interpolated-Frame PNG Burst (F8 hotkey REMOVED 2026-10-21)
+
+- **User-disabled**: the F8 hotkey (SDL event watch, `tooie::register_interp_burst`, `src/game/tooie_interp_burst.cpp`) was removed at user request; nothing requests a burst now, there is no replacement hotkey or capture UI, and `TooieRecompiled` registers no capture key. The RT64 capture infrastructure (`rt64_interp_burst.h`, `rt64-p09-interp-burst-capture.patch`) and its host test `p09_interp_burst_test` are retained as dormant diagnostics; `include/tooie_interp_burst.h` keeps only the pure `pictures_dir_from` helper.
+- Historical (still true when the hotkey existed): one bounded burst of 20 numbered `PRE_VI_RESOLVED_COLOR_TARGET` PNGs with manifest/status, only for frame-level generated, matched, intermediate-weight frames without forced CURRENT; readbacks perturb timing. Evidence: [[../../plan/evidence/p09-interpolated-frame-burst-20261020]]. Removal proof (no artifact after F8): [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]].
+
 ## 5. Architectural Causal Knowledge & Refuted Hypotheses
 
-Investigation across 86 P09 evidence documents proven the following ground truth:
-1. **Proven Root Cause**:
-   - `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`.
-   - Independent matrix interpolation across multi-transform meshes shears articulated attachments (feathers, snout).
-2. **Refuted Hypotheses**:
+Investigation across P09 evidence documents has established the following ground truth:
+1. **Proven Root Causes**:
+   - `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`: Independent matrix interpolation across multi-transform meshes shears articulated attachments (feathers, snout).
+   - `MECHANISM_A_COSINE_AMPLIFICATION_HOLDS_TRANSLATION` (`PROVEN_SOURCE` in `rt64_rigid_body.cpp:30-34`): `curVelMag /= dotCurVel` executes before `VelocityTolerance=5`. When directional changes reach $\ge 90^\circ$, `dotCurVel` clamps to $10^{-6}$, artificially amplifying velocity and disabling `lerpTranslation`. The bone holds translation at `CURRENT` while rotation slerps, tearing joint triangles跨-WORLD into elongated rods ("rods"). Fixed in owning layer via `lerpTranslationSpeedOnly` and world interpolation guard.
+   - `PLUME_BURST_TEXTURE_TO_BUFFER_COPY_MISSING` (`PROVEN_SOURCE` in `patches/rt64/rt64-plume-texture-to-buffer-copy.patch`): Upstream `plume` lacked texture->buffer branch in `copyTextureRegion`, crashing burst readback on clean pin. Resolved via versioned patch.
+   - `ONG2_TEARDOWN_RACE` (`PROVEN_SOURCE` in `librecomp/src/recomp.cpp`): Guest OSThreads continue overlay unload during static destructor execution in `exit()`, causing race condition crash on shutdown. Harness mitigation applied; product race remains open.
+2. **Heuristics & Boundaries**:
+   - `MECHANISM_B_ELEMENTWISE_CLOSURE_GUARD`: `HYPOTHESIS / CLASS-LEVEL HEURISTIC`. Convex elementwise lerp prevents joint edges from stretching $>1.25\times\text{refLength}+1.0$; acts as a class-level boundary, not an anatomical constraint solver.
+   - `TECHNICAL_GATE_STATUS`: `passed: false` (`technical-gate.json`, Claude Haiku 5.5, 7 blockers B1-B7: circular stretch metric, scope mislabel with guard inert under default CURRENT/30, lack of non-player GPU pair, dirty core crash binding, post-plume unit tests unlogged, ~14k dirty RT64 lines distinction, and absent 60 FPS USER_OBSERVED gameplay check).
+   - `PRODUCTION_INVARIANT`: Default presentation remains strictly CURRENT/30 (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`). P09 remains `PENDING / NOT_FORMALLY_OPEN`.
+3. **Refuted Hypotheses**:
    - *Hierarchy Interpolation*: `REFUTED` (live world-space JOINs preserve attachments).
    - *World-Matrix Non-Rigidity*: `REFUTED` as dominant cause (rigidity decomposes cleanly 123630/0).
    - *Cross-Stream Temporal Cohort Mismatch*: `REFUTED` (pathologies occur on cohort-aligned workloads).
