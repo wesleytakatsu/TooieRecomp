@@ -1,16 +1,59 @@
 ---
 title: "Transform interpolation"
-description: "Articulated WORLD attachments break under decomposed lerp; a generic multi-world GameCall selector can target 16-entry lerp. Default-off; not shipped."
+description: "O pareamento WORLD automático por custo de origem no RT64 é a causa raiz dominante dos glitches de interpolação articulada (rods); a correção ordered match reduz 94% dos triângulos esticados; guardas de translação/fechamento continuam necessárias."
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-21
+updated: 2026-10-22
 tags: [reverse-engineering, interpolation, rt64, grok-quota, plume-patch, technical-gate]
 ---
 
 # Transform interpolation
 
-## Current (2026-10-21) — Continuação pós-cota Grok, diagnóstico ong2, cadeia de 7 patches e gate técnico Haiku 5.5
+## Current (2026-10-22) — pareamento WORLD automático do RT64 é a causa raiz dos rods
+
+Ver [[../../plan/evidence/p09-ordered-transform-match-20261022]].
+
+O modelo causal dos artefatos geométricos de interpolação ("rods", espigões e descolamento de malha em modelos articulados como penas da crista da Kazooie e mochila do Banjo) foi resolvido no algoritmo de casamento temporal de transformações do RT64:
+
+- **Causa raiz dominante comprovada (`PROVEN` no fonte + runtime)**:
+  - O Banjo-Tooie não associa identificadores gEX às transformações (todas as matrizes WORLD recebem a anotação `G_EX_ID_AUTO`).
+  - O pareamento temporal atual↔anterior no RT64 (`GameFrame::matchScene` em `lib/rt64/src/hle/rt64_game_frame.cpp`) opera de forma gulosa com base no custo `computeTransformMatch`:
+    $$\text{custo} = |\Delta \text{origem predita}| + \text{orientação (máx 6)} + \text{distância em tela}$$
+    com predição $\text{prevPos} + \text{linearVelocity}$. A diferença de origem domina amplamente a decisão.
+  - Ossos que compartilham pivô geométrico (como as penas individuais da crista da cabeça da Kazooie) e cópias instanciadas da mesma malha possuem origens praticamente coincidentes, tornando-se indistinguíveis perante o custo de origem.
+  - Uma atribuição errada retroalimenta a `linearVelocity` para o frame seguinte, invertendo a escolha ótima (efeito cascata): em 794 pares errados graves medidos, 355 seriam escolhidos corretamente sem a predição.
+  - O pareamento de um osso com um osso vizinho incorreto força a interpolação de vértices entre bases espaciais distintas, projetando arestas esticadas gigantescas ("rods").
+  - A ferramenta de diagnóstico `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>` (`lib/rt64/src/render/rt64_p09_rod_classify.h`, default-OFF) comprovou que **94% dos triângulos esticados** (6268 de 6640 no baseline do attract demo) pertencem à categoria P (inconsistência PREV vs CURRENT decorrente de pareamento incorreto).
+
+- **Ponto cego das abordagens anteriores (`PROVEN`)**:
+  - As guardas preexistentes (`p09ClosureGuard`, coerência de translação) e o auditor `TOOIE_DIAG_P09_WORLD_LERP_AUDIT` adotavam $\max(\text{aresta PREV}, \text{aresta CURRENT})$ como comprimento de referência.
+  - Quando o endpoint `PREV` proveio de um par errado, a aresta `PREV` já se encontrava artificialmente esticada, mascarando a deformação e impedindo o acionamento corretivo da guarda.
+
+- **Mecanismo A (Portão AUTO de translação) segue `PROVEN` e guardas necessárias**:
+  - O Mecanismo A (desarme do portão de translação por amplificação de cosseno em curvas $\ge 90^\circ$ em `rt64_rigid_body.cpp:30-34`) continua estritamente `PROVEN` no código-fonte.
+  - Contudo, a medição diagnóstica provou que ele **não era a causa dominante dos rods** (apenas 27 de 6640 triângulos esticados eram puramente categoria N da lei de interpolação; 94% eram pareamento incorreto categoria P).
+  - Apesar de não ser dominante nos rods, **as guardas continuam estritamente necessárias**: com o pareamento corrigido (ordered match) mas guardas desativadas (`TOOIE_TEST_P09_TRANSLATION_COHERENCE=0 TOOIE_TEST_P09_CLOSURE_GUARD=0 TOOIE_TEST_P09_GATE_SPEED_ONLY=0`), surgem **N = 7939** triângulos esticados, pois o gate AUTO ainda desliga a translação em ~17% das matrizes WORLD.
+
+- **Alternativas refutadas (`REFUTED`)**:
+  - *Custo por geometria de vértices*: `REFUTED` (piorou $4\times$, 24215 triângulos esticados; ossos esqueléticos de 3 a 4 vértices encaixam geometricamente em matrizes alheias).
+  - *Identidade por endereço RDRAM do buffer de vértices*: `REFUTED` (o mesmo buffer RDRAM é compartilhado entre matrizes distintas para instanciar peças; 720 de 1073 casos fortes compartilhavam o mesmo ponteiro).
+
+- **Modelo de correção por Identidade Estrutural (Ordered Match) (`PROVEN` estrutural / métrico)**:
+  - O display list emite as chamadas de desenho na mesma ordem determinística frame a frame.
+  - Para cada hash de chamada (`Call::hash`) com contagem idêntica de chamadas nos dois frames, a $k$-ésima chamada atual pareia com a $k$-ésima anterior ("ordered pairs", estendendo-se a multi-WORLD via `minWorld + w`).
+  - Ordenação em dois níveis (`std::stable_partition`): pares ordenados primeiro, seguidos pelo fallback original de custo.
+  - Rejeição de candidatos cujo determinante $| \det 3\times 3 |$ varie por $\ge 8\times$ (mudança linear $\ge 2\times$, `scaleCompatible`).
+  - Eficácia: redução de 6640 para 378 triângulos esticados (−94%; P=338, U=28, N=12, I=0; `PROVEN` métrico). Padrão ON (`TOOIE_TEST_P09_ORDERED_MATCH=0` desativa).
+
+- **Apoio visual e limitações (`STRONG_INFERENCE` visual)**:
+  - Auditoria visual cega (240 capturas anonimizadas, 4 agentes Sonnet 5.5): na base (OFF), 1 glitch evidente sev 3 (espigão laranja grande na crista da Kazooie, wl 1698) + 3 incertos; na correção (ON), 0 glitches claros e no instante correspondente (wl 1699) o espigão não existe. Devido ao baixo poder estatístico amostral, o apoio visual classifica-se como `STRONG_INFERENCE`.
+
+- **Resíduos anatômicos e hipótese de pop de osso (`HYPOTHESIS`)**:
+  - Dos 378 triângulos esticados restantes, 338 pertencem à categoria P, frequentemente apresentando deslocamento contíguo consistente no índice de chamada (ex.: 39→40, 40→41). Levanta-se a hipótese (`HYPOTHESIS`) de que isso reflita "pop" real de osso ou ativação condicional de nós esqueléticos do próprio jogo entre frames consecutivos.
+  - Grupos de hash com contagem de chamadas divergente entre frames continuam recaindo no fallback original de custo.
+
+## Prior (2026-10-21) — Continuação pós-cota Grok, diagnóstico ong2, cadeia de 7 patches e gate técnico Haiku 5.5
 
 Ver [[../../plan/evidence/p09-articulated-world-guard-cause-and-fix-20261020]], `/home/wesley/.cache/tooie-glitch-doc-audit-and-fix/` (`continuation-status.json`, `technical-sonnet-report.md`, `technical-haiku-review.md`, `technical-gate.json`).
 Inspeção visual direta do burst F8 (`interpolated-burst-20261020-175030/`, peso 0.5, 60/30 Hz) e pares casados na GPU (`runs/off1..off3` vs `runs/on1..on8` e série limpa `cp_pair_1628_1623.png`):

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Comprehensive technical specification for RT64 integration, widescreen culling hooks, projection policies, the shader-local CURRENT tfPos workaround, and planned FPS presets."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-21
+updated: 2026-10-22
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -111,6 +111,9 @@ namespace RT64 {
 - **Owner**: `install_interpolation_policy` (`include/tooie_menu_policy.h`) sinks the APPLIED `interpolation` value; `src/game/config.cpp` forwards it as `requestHostEndpointCurrent(!enabled)`. No startup `setenv`; `tooie_rsp_endpoint_current` (module, test, CMake target) was removed.
 - **Readers (all use `endpointCurrentActive()`)**: `RSPProcessor::process` (`processCB.forceEndpointCurrent`), `p09WorldGuardEndpointCurrentActive`, `interpBurst::forceEndpointEnv`. The old per-site static getenv caches no longer exist.
 - **Environment Precedence**: `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` explicit `0`/`1` wins over the option (legacy test override, read once); unset/empty defers to the host. `TOOIE_TEST_INTERPOLATION_FPS=60|120` forces Interpolation ON at that rate regardless of the option and logs `[tooie] TOOIE_TEST_INTERPOLATION_FPS=... overrides the Interpolation setting`.
+- **Interpolation Matching & Diagnostic Controls (P09)**:
+  - `TOOIE_TEST_P09_ORDERED_MATCH`: Controls structural draw call sequence matching for untagged (`G_EX_ID_AUTO`) WORLD transforms in RT64 `GameFrame::matchScene`. Default ON; setting `0` restores the original greedy origin-cost matching.
+  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: Diagnostic output file path (default-OFF). When configured, evaluates every triangle of interpolated workloads after guard processing and classifies stretched geometry (rendered edge $> 2\times$ CURRENT edge and $> 4$ units) across categories I, U, P, C, and N into the specified file. Strictly read-only; never alters rendering.
 - **Runtime telemetry**: RT64 prints `[tooie-interp] workload=N endpointCurrent=E generate=G targetRate=T viRate=V displayFrames=D` on every change of that tuple and one `first interpolated render ... curW=` line per change; never per frame. `endpointCurrent=1` with `curW<1` is masked interpolation (CURRENT repeats poses); real interpolation is `endpointCurrent=0`.
 - **Shader Effect (`RSPProcessCS.hlsl:78-93`)**:
   - `tfPos` bypasses temporal interpolation, evaluating directly at CURRENT vertex positions:
@@ -221,6 +224,7 @@ Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
 
 Investigation across P09 evidence documents has established the following ground truth:
 1. **Proven Root Causes**:
+   - `UNTAGGED_WORLD_GREEDY_TRANSFORM_MATCH_WRONG_PAIRING` (`PROVEN_SOURCE` in `lib/rt64/src/hle/rt64_game_frame.cpp`): Tooie does not tag matrices with gEX (`G_EX_ID_AUTO`). RT64 origin-dominated greedy cost matching in `GameFrame::matchScene` cannot distinguish bones sharing geometric pivots (e.g., Kazooie crest feathers) or instanced mesh pieces. Wrong pairs poison inherited velocity for subsequent frames in a feedback cascade, interpolating bones between distinct spatial endpoints and tearing geometry into elongated rods. The ordered transform matcher (`lib/rt64/src/hle/rt64_p09_ordered_match.h`, controlled via `TOOIE_TEST_P09_ORDERED_MATCH`) resolves this via submission-order pairing per draw-call hash.
    - `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`: Independent matrix interpolation across multi-transform meshes shears articulated attachments (feathers, snout).
    - `MECHANISM_A_COSINE_AMPLIFICATION_HOLDS_TRANSLATION` (`PROVEN_SOURCE` in `rt64_rigid_body.cpp:30-34`): `curVelMag /= dotCurVel` executes before `VelocityTolerance=5`. When directional changes reach $\ge 90^\circ$, `dotCurVel` clamps to $10^{-6}$, artificially amplifying velocity and disabling `lerpTranslation`. The bone holds translation at `CURRENT` while rotation slerps, tearing joint triangles跨-WORLD into elongated rods ("rods"). Fixed in owning layer via `lerpTranslationSpeedOnly` and world interpolation guard.
    - `PLUME_BURST_TEXTURE_TO_BUFFER_COPY_MISSING` (`PROVEN_SOURCE` in `patches/rt64/rt64-plume-texture-to-buffer-copy.patch`): Upstream `plume` lacked texture->buffer branch in `copyTextureRegion`, crashing burst readback on clean pin. Resolved via versioned patch.
@@ -230,6 +234,8 @@ Investigation across P09 evidence documents has established the following ground
    - `TECHNICAL_GATE_STATUS`: `passed: false` (`technical-gate.json`, Claude Haiku 5.5, 7 blockers B1-B7: circular stretch metric, scope mislabel with guard inert under default CURRENT/30, lack of non-player GPU pair, dirty core crash binding, post-plume unit tests unlogged, ~14k dirty RT64 lines distinction, and absent 60 FPS USER_OBSERVED gameplay check).
    - `PRODUCTION_INVARIANT`: Default presentation remains strictly CURRENT/30 (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`). P09 remains `PENDING / NOT_FORMALLY_OPEN`.
 3. **Refuted Hypotheses**:
+   - *Vertex Geometry Displacement Match Cost*: `REFUTED` as transform matcher cost (small 3-4 vertex bones match incorrectly across distinct skeleton parts).
+   - *RDRAM Vertex Buffer Address Transform Identity*: `REFUTED` as bone identity (buffers are shared across multiple matrix instances).
    - *Hierarchy Interpolation*: `REFUTED` (live world-space JOINs preserve attachments).
    - *World-Matrix Non-Rigidity*: `REFUTED` as dominant cause (rigidity decomposes cleanly 123630/0).
    - *Cross-Stream Temporal Cohort Mismatch*: `REFUTED` (pathologies occur on cohort-aligned workloads).

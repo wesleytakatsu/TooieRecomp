@@ -1,0 +1,187 @@
+//
+// RT64
+//
+// P09 default-OFF diagnostic. TOOIE_DIAG_P09_ROD_CLASSIFY=<path> classifies every
+// triangle of interpolated workloads whose rendered (final) WORLD positions stretch
+// an edge to more than twice its CURRENT endpoint length (and by more than 4 units).
+// Reference = CURRENT edge only: the PREV endpoint may come from a wrong pairing and
+// must not mask the stretch. Categories per stretched triangle:
+//   I = single WORLD; U = mixes unmapped and mapped WORLDs; P = some edge's PREV
+//   endpoint length disagrees with CURRENT (pairing/geometry mismatch); C = mixes
+//   WORLDs shown at CURRENT with interpolated ones; N = everything else
+//   (interpolation law). One WL line per interpolated workload, up to 8 TRI lines.
+// Read-only: never alters what is rendered.
+//
+
+#pragma once
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <mutex>
+#include <vector>
+
+#include "hle/rt64_game_frame.h"
+#include "hle/rt64_workload.h"
+
+namespace RT64 {
+namespace p09RodClassify {
+    struct State {
+        FILE *file = nullptr;
+        std::mutex mu;
+        uint32_t workloads = 0;
+        uint32_t triRows = 0;
+        uint32_t worldRows = 0;
+        State() {
+            const char *p = std::getenv("TOOIE_DIAG_P09_ROD_CLASSIFY");
+            if ((p != nullptr) && (p[0] != '\0')) file = std::fopen(p, "w");
+        }
+    };
+
+    inline State &state() { static State s; return s; }
+    inline bool enabled() { return state().file != nullptr; }
+
+    inline hlslpp::float3 xf(const hlslpp::float4x4 &m, const hlslpp::float3 &p) {
+        const hlslpp::float4 r = hlslpp::mul(hlslpp::float4(p, 1.0f), m);
+        return r.xyz;
+    }
+
+    inline float len3(const hlslpp::float3 &v) {
+        return std::sqrt(float(v.x) * float(v.x) + float(v.y) * float(v.y) + float(v.z) * float(v.z));
+    }
+
+    inline bool sameMtx(const hlslpp::float4x4 &a, const hlslpp::float4x4 &b, float eps = 1e-4f) {
+        for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {
+            const float x = a[i][j], y = b[i][j];
+            if (std::fabs(x - y) > eps * std::max(1.0f, std::fabs(y))) return false;
+        }
+        return true;
+    }
+
+    // Per-WORLD final state codes.
+    enum : uint8_t { ST_UNMAPPED = 0, ST_RIGID = 1, ST_CURRENT = 2, ST_ELEMENTWISE = 3, ST_OTHER = 4 };
+    inline char stChar(uint8_t s) { return "URCEO"[s]; }
+
+    inline void run(const Workload &workload, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData,
+        float curWeight)
+    {
+        State &S = state();
+        if ((S.file == nullptr) || (curWeight >= 1.0f)) return;
+        const DrawData &d = workload.drawData;
+        const size_t nWorld = d.worldTransforms.size();
+        if ((d.lerpWorldTransforms.size() != nWorld) || (workloadMap.transforms.size() < nWorld)) return;
+        const uint32_t nVert = d.vertexCount();
+        if ((d.worldIndices.size() < nVert) || (d.posFloats.size() < size_t(nVert) * 3)) return;
+        const bool hasVel = d.velFloats.size() >= size_t(nVert) * 3;
+
+        std::vector<uint8_t> st(nWorld, ST_UNMAPPED);
+        std::vector<hlslpp::float4x4> prevM(nWorld);
+        uint32_t nMapped = 0, nCur = 0, nEw = 0, nOther = 0, nHeldT = 0, nNoDecomp = 0;
+        for (size_t t = 0; t < nWorld; t++) {
+            const hlslpp::float4x4 cur = d.worldTransforms[t];
+            prevM[t] = cur;
+            const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
+            if (!tm.mapped || (tm.prevTransformIndex >= prevDrawData.worldTransforms.size())) continue;
+            nMapped++;
+            prevM[t] = prevDrawData.worldTransforms[tm.prevTransformIndex];
+            const hlslpp::float4x4 fin = d.lerpWorldTransforms[t];
+            if (!tm.rigidBody.lerpTranslation) nHeldT++;
+            if (!tm.rigidBody.lerpDecompose) nNoDecomp++;
+            if (sameMtx(fin, tm.rigidBody.lerp(curWeight, prevM[t], cur, true))) st[t] = ST_RIGID;
+            else if (sameMtx(fin, cur)) { st[t] = ST_CURRENT; nCur++; }
+            else if (sameMtx(fin, lerpMatrix(prevM[t], cur, curWeight))) { st[t] = ST_ELEMENTWISE; nEw++; }
+            else { st[t] = ST_OTHER; nOther++; }
+        }
+
+        auto local = [&](uint32_t v) {
+            return hlslpp::float3(d.posFloats[size_t(v) * 3 + 0], d.posFloats[size_t(v) * 3 + 1], d.posFloats[size_t(v) * 3 + 2]);
+        };
+        auto vel = [&](uint32_t v) {
+            if (!hasVel) return hlslpp::float3(0.0f, 0.0f, 0.0f);
+            return hlslpp::float3(d.velFloats[size_t(v) * 3 + 0], d.velFloats[size_t(v) * 3 + 1], d.velFloats[size_t(v) * 3 + 2]);
+        };
+
+        // Category counters.
+        // U = triangle mixes unmapped and mapped WORLDs.
+        // P = some edge's PREV endpoint length disagrees with CURRENT (pairing/geometry mismatch).
+        // C = mapped, mixes WORLDs shown at CURRENT with interpolated ones.
+        // N = everything mapped, consistent endpoints, no CURRENT mix: interpolation law.
+        uint32_t faces = 0, cross = 0, bad = 0, badU = 0, badP = 0, badC = 0, badN = 0, badIntra = 0, endpointP = 0;
+        float worst = 0.0f;
+        const size_t nTri = d.faceIndices.size() / 3;
+        uint32_t detail = 0;
+        for (size_t f = 0; f < nTri; f++) {
+            const uint32_t v[3] = { d.faceIndices[f * 3], d.faceIndices[f * 3 + 1], d.faceIndices[f * 3 + 2] };
+            if ((v[0] >= nVert) || (v[1] >= nVert) || (v[2] >= nVert)) continue;
+            const uint32_t w[3] = { d.worldIndices[v[0]], d.worldIndices[v[1]], d.worldIndices[v[2]] };
+            if ((w[0] >= nWorld) || (w[1] >= nWorld) || (w[2] >= nWorld)) continue;
+            faces++;
+            const bool isCross = (w[0] != w[1]) || (w[1] != w[2]);
+            if (isCross) cross++;
+            hlslpp::float3 pp[3], pc[3], pl[3];
+            for (int i = 0; i < 3; i++) {
+                const hlslpp::float3 lc = local(v[i]);
+                const hlslpp::float3 lv = vel(v[i]);
+                pc[i] = xf(d.worldTransforms[w[i]], lc);
+                pp[i] = xf(prevM[w[i]], lc - lv);
+                pl[i] = xf(d.lerpWorldTransforms[w[i]], lc - lv * (1.0f - curWeight));
+            }
+            float ratio = 0.0f, pairDev = 0.0f;
+            for (int e = 0; e < 3; e++) {
+                const int a = e, b = (e + 1) % 3;
+                const float lc = len3(pc[a] - pc[b]), lp = len3(pp[a] - pp[b]), ll = len3(pl[a] - pl[b]);
+                const float ref = std::max(lc, 1e-3f);
+                if ((ll > 2.0f * ref) && ((ll - ref) > 4.0f)) ratio = std::max(ratio, ll / ref);
+                if ((std::fabs(lp - lc) > 0.5f * lc + 3.0f)) pairDev = std::max(pairDev, std::fabs(lp - lc));
+            }
+            if (pairDev > 0.0f) endpointP++;
+            if (ratio <= 0.0f) continue;
+            bad++;
+            worst = std::max(worst, ratio);
+            bool anyU = false, anyM = false, anyC = false, anyI = false;
+            for (int i = 0; i < 3; i++) {
+                if (st[w[i]] == ST_UNMAPPED) anyU = true; else anyM = true;
+                if (st[w[i]] == ST_CURRENT) anyC = true;
+                else if (st[w[i]] != ST_UNMAPPED) anyI = true;
+            }
+            char cat;
+            if (!isCross) { badIntra++; cat = 'I'; }
+            else if (anyU && anyM) { badU++; cat = 'U'; }
+            else if (pairDev > 0.0f) { badP++; cat = 'P'; }
+            else if (anyC && anyI) { badC++; cat = 'C'; }
+            else { badN++; cat = 'N'; }
+
+            if (detail < 8) {
+                std::lock_guard<std::mutex> lock(S.mu);
+                if (S.triRows < 20000) {
+                    S.triRows++;
+                    detail++;
+                    std::fprintf(S.file, "TRI wl=%llu wc=%.3f f=%zu cat=%c ratio=%.2f pairDev=%.2f",
+                        (unsigned long long)workload.workloadId, curWeight, f, cat, ratio, pairDev);
+                    for (int i = 0; i < 3; i++) {
+                        const GameFrameMap::TransformMap &tm = workloadMap.transforms[w[i]];
+                        const hlslpp::float3 lv = vel(v[i]);
+                        std::fprintf(S.file, " v%d[w=%u pw=%d st=%c lT=%d vel=%.1f P=%.1f,%.1f,%.1f C=%.1f,%.1f,%.1f L=%.1f,%.1f,%.1f]",
+                            i, w[i], tm.mapped ? int(tm.prevTransformIndex) : -1, stChar(st[w[i]]), tm.rigidBody.lerpTranslation ? 1 : 0,
+                            len3(lv), float(pp[i].x), float(pp[i].y), float(pp[i].z), float(pc[i].x), float(pc[i].y), float(pc[i].z),
+                            float(pl[i].x), float(pl[i].y), float(pl[i].z));
+                    }
+                    std::fprintf(S.file, "\n");
+                }
+            }
+        }
+
+        std::lock_guard<std::mutex> lock(S.mu);
+        if (S.workloads < 100000) {
+            S.workloads++;
+            std::fprintf(S.file, "WL wl=%llu wc=%.3f worlds=%zu mapped=%u cur=%u ew=%u other=%u heldT=%u noDecomp=%u faces=%u cross=%u endpointP=%u bad=%u U=%u P=%u C=%u N=%u I=%u worst=%.2f\n",
+                (unsigned long long)workload.workloadId, curWeight, nWorld, nMapped, nCur, nEw, nOther, nHeldT, nNoDecomp, faces, cross,
+                endpointP, bad, badU, badP, badC, badN, badIntra, worst);
+            std::fflush(S.file);
+        }
+    }
+};
+};

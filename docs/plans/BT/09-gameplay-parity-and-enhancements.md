@@ -7,13 +7,26 @@ project: TooieRecomp
 phase: P09
 order: 9
 depends_on: P08
-updated: 2026-10-21
+updated: 2026-10-22
 tags: [banjo-tooie-Recomp, parity, gameplay, framerate, widescreen, fps, overlay, grok-quota, plume-patch, technical-gate]
 ---
 
 # BT P09 — Paridade de gameplay e melhorias
 
-## CURRENT — opção Interpolation no menu ESC e F8 removido (2026-10-21)
+## CURRENT — causa raiz dos glitches (pareamento WORLD) e correção ordered match (2026-10-22)
+
+Ver [[../../plan/evidence/p09-ordered-transform-match-20261022]] e [[../../HANDOFF]].
+- **Causa raiz dominante comprovada (`PROVEN`)**: Banjo-Tooie não usa gEX (todas WORLD são `G_EX_ID_AUTO`). Em `GameFrame::matchScene` (`lib/rt64/src/hle/rt64_game_frame.cpp`), o RT64 pareia matrizes WORLD atual↔anterior de forma gulosa por custo dominado pela origem mais predição de velocidade (`computeTransformMatch`). Ossos que compartilham o mesmo pivô (penas da crista da Kazooie) ou instâncias da mesma malha tornam-se indistinguíveis; pares errados corrompem a velocidade herdada para o frame seguinte em cascata (em 794 pares errados graves, 355 seriam corretos sem predição), esticando a geometria entre ossos distintos em "rods". As abordagens anteriores não convergiram porque usavam `max(aresta PREV, aresta CURRENT)` como referência, e a aresta PREV com par errado já vinha esticada, mascarando o defeito.
+- **Ferramenta de diagnóstico**: `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>` (`lib/rt64/src/render/rt64_p09_rod_classify.h`, default-OFF) mede triângulos com aresta renderizada $> 2\times$ CURRENT e $> 4$ unidades. Na base (attract demo wl 1000–2400, ~1320 frames), foram medidos 6640 triângulos esticados, sendo 94% (6268) da categoria P (inconsistência PREV vs CURRENT decorrente de pareamento incorreto).
+- **Alternativas refutadas (`REFUTED`)**: Custo por geometria de vértices ($4\times$ pior, 24215 esticados; ossos de 3–4 vértices encaixam geometricamente sob matrizes alheias); endereço RDRAM do buffer de vértices (compartilhado por instâncias sob matrizes distintas em 720 de 1073 casos).
+- **Correção no owning layer RT64**: Novo cabeçalho `lib/rt64/src/hle/rt64_p09_ordered_match.h` integrado em `GameFrame::matchScene`. Identidade estrutural: chamadas de mesmo hash com contagens iguais pareiam a $k$-ésima atual com a $k$-ésima anterior ("ordered pairs"), priorizado via `std::stable_partition` antes do fallback de custo. Rejeição de salto de volume $\ge 8\times$ (2× linear, `scaleCompatible`). Default ON; `TOOIE_TEST_P09_ORDERED_MATCH=0` restaura pareamento original.
+- **Resultados quantitativos e visuais**: Queda de 6640 para 378 triângulos esticados (−94%; P=338, U=28, N=12, I=0; `PROVEN` métrico). Auditoria visual cega (240 capturas anonimizadas, 4 agentes Sonnet 5.5): base 1 espigão laranja severo (wl 1698) + 3 incertos; correção 0 severos, espigão ausente no instante correspondente (wl 1699; apoio visual `STRONG_INFERENCE`). As guardas existentes continuam estritamente necessárias (correção sem guardas gera N=7939 esticados; o gate AUTO ainda desliga translação em ~17% das WORLD).
+- **Validação de testes e integridade**: Testes host `tests/p09_ordered_match_test.cpp` 26/26 PASS, `p09_world_interpolation_guard_test` 35/35 PASS; `Build-Tooie.ps1 -Stage Test -AllTests` 9/9 obrigatórios + 16/16 extras PASS; `vendor_verify.sh --reverse-check` VENDOR VERIFY OK (27 patches); binário Windows SHA256 `6F39CC23FA3DBC8969BC77F0917823F765063495197C593ED62DE32132855DE4`.
+- **Status do Gate e Pendências**: Gate técnico formal P09 permanece **não fechado** (`passed: false` historicamente). Restam P=338 triângulos esticados (possível "pop" de osso do próprio jogo como `HYPOTHESIS`); grupos com contagens diferentes recaem no fallback; captura burst no Windows/D3D12 encerrou processo logo após pedido (1×, `UNKNOWN`); teste de gameplay pelo usuário (`USER_OBSERVED`) pendente; validação Linux pendente; nada commitado.
+- **Teste de gameplay pelo usuário (`USER_OBSERVED`, 2026-10-22)**: jogando com Interpolation ON neste build, o usuário relatou que os rods/espigões "sumiram ou quase sumiram". Gate técnico formal P09 continua não fechado; resíduos acima seguem registrados.
+- `NEXT_SINGLE_ACTION`: validação Linux da correção (e das mudanças P11) pelo usuário no PC Linux; depois investigar o resíduo P (grupos de hash com contagem divergente) se ainda houver glitch visível.
+
+## Histórico — opção Interpolation no menu ESC e F8 removido (2026-10-21)
 
 Ver [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]] e [[../../HANDOFF]]. Opção persistida `interpolation` (padrão/legado/inválido = OFF = Manual 30 + CURRENT) com aplicação em runtime via `RT64::requestHostEndpointCurrent` (latch por workload, patch `rt64-p09-host-endpoint-current-toggle.patch`); ON libera Framerate e escolhe 60 quando preciso. F8 de captura desativado a pedido do usuário (infra RT64 dormente). Build/testes host exit 0 e jogo isolado ON→OFF→ON/relaunch provados em cena de título/attract. **Não** fecha o gate técnico (`passed: false`, B1–B7 abertos) nem prova correção de glitch; P09 formal segue `PENDING / NOT_FORMALLY_OPEN`. `NEXT_SINGLE_ACTION`: relato visual do usuário com Interpolation ON em gameplay real.
 

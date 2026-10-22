@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P10 standalone kit-free pipeline and restored native UI validated on Linux (candidate package 4f702d2b..., 104 files, verify exit 0). P11 Windows 11 x64 native build, tests, packaging and cartridge launcher startup proven on dev host (WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST, commits 6862e29..f22e867 on origin/main); manual W5 validation and Linux re-validation pending. P09 interpolation glitch gate remains FAILED (default OFF / 30 FPS / CURRENT); NEXT_SINGLE_ACTION resumes P09 investigation while Linux validation runs in parallel."
+description: "P10 standalone kit-free pipeline and restored native UI validated on Linux (candidate package 4f702d2b..., 104 files, verify exit 0). P11 Windows 11 x64 native build, tests, packaging and cartridge launcher startup proven on dev host (WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST, commits 6862e29..f22e867 on origin/main); manual W5 validation and Linux re-validation pending. P09 causa raiz dos glitches de interpolação provada no pareamento WORLD do RT64 e correção ordered match integrada (-94% de estiramento); validação de gameplay pelo usuário pendente e validação Linux em paralelo."
 status: current
 type: handoff
 project: TooieRecomp
@@ -8,6 +8,20 @@ updated: 2026-10-22
 tags: [tooie-recomp, handoff, p08, p09, p10, p11, packaging, release, clean-clone, windows, linux, kitfree, restored-ui, n64recomp, rt64, interpolation, settings, menu, candidate-package]
 ---
 # Handoff — TooieRecomp
+
+## CURRENT — P09 causa raiz dos glitches de interpolação e correção ordered match (2026-10-22)
+
+Ver [[plan/evidence/p09-ordered-transform-match-20261022]].
+- **Causa raiz dos glitches de interpolação (`PROVEN`)**: Banjo-Tooie não usa gEX (todas WORLD são `G_EX_ID_AUTO`). No RT64 (`GameFrame::matchScene`), o pareamento guloso por custo `computeTransformMatch` (origem + predição `prevPos + linearVelocity`) não distingue ossos com pivô compartilhado (ex.: penas da crista da Kazooie) ou instâncias da mesma malha. A velocidade herdada corrompe os frames seguintes em cascata (em 794 pares errados graves, 355 seriam corretos sem predição). O osso interpolado entre dois ossos diferentes gera "rods" e espigões. Guardas anteriores falharam porque usavam `max(aresta PREV, aresta CURRENT)`, mascarando o defeito quando PREV já vinha de par errado.
+- **Ferramenta de diagnóstico**: `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>` (`lib/rt64/src/render/rt64_p09_rod_classify.h`, default-OFF) classifica triângulos com aresta renderizada $> 2\times$ CURRENT e $> 4$ unidades em categorias I, U, P, C, N. Na medição base (attract demo, wl 1000–2400, ~1320 frames), 94% dos triângulos esticados (6268 de 6640) eram P (inconsistência PREV vs CURRENT decorrente de pareamento incorreto).
+- **Alternativas refutadas (`REFUTED`)**: Custo por geometria de vértices piorou $4\times$ (24215 esticados; ossos com 3–4 vértices encaixam geometricamente sob matrizes alheias); buffer RDRAM não é único (compartilhado por instâncias sob matrizes distintas em 720 de 1073 casos).
+- **Correção no owning layer RT64**: `lib/rt64/src/hle/rt64_p09_ordered_match.h` introduz identidade estrutural: para cada hash de draw call com contagem idêntica nos dois frames, a $k$-ésima chamada atual pareia com a $k$-ésima anterior ("ordered pairs"), priorizado via `std::stable_partition` antes do fallback de custo original. Rejeição de salto de volume $\ge 8\times$ (2× linear, `scaleCompatible`). Padrão ON; `TOOIE_TEST_P09_ORDERED_MATCH=0` restaura pareamento original.
+- **Resultados (`PROVEN` métrico / `STRONG_INFERENCE` visual)**: Triângulos esticados caíram de 6640 para 378 (−94%; P=338, U=28, N=12, I=0). Auditoria visual cega (240 capturas anonimizadas, 4 agentes Sonnet 5.5): na base, 1 espigão laranja grande (sev 3, wl 1698) + 3 incertos; na correção, 0 claros e no mesmo instante (wl 1699) o espigão não existe.
+- **Guardas mantidas**: Desligar guardas (`TOOIE_TEST_P09_TRANSLATION_COHERENCE=0 TOOIE_TEST_P09_CLOSURE_GUARD=0 TOOIE_TEST_P09_GATE_SPEED_ONLY=0`) eleva esticados para N=7939; o gate AUTO ainda desliga translação em ~17% das WORLD.
+- **Testes e integridade**: Testes host `tests/p09_ordered_match_test.cpp` 26/26 PASS, guardas 35/35 PASS; `Build-Tooie.ps1 -Stage Test -AllTests` 9/9 obrigatórios + 16/16 extras PASS; `vendor_verify.sh --reverse-check` VENDOR VERIFY OK (27 patches); exe Windows SHA256 `6F39CC23FA3DBC8969BC77F0917823F765063495197C593ED62DE32132855DE4`.
+- **Status do Gate e Resíduos**: Gate técnico formal P09 permanece aberto (não fechado). Restam P=338 triângulos esticados (possível "pop" de osso do próprio jogo como `HYPOTHESIS`); hash com contagem divergente cai no fallback; captura burst no Windows/D3D12 encerrou processo logo após pedido (1×, `UNKNOWN`); validação de gameplay pelo usuário pendente; validação Linux pendente; nada commitado.
+- **Teste de gameplay pelo usuário (`USER_OBSERVED`, 2026-10-22)**: jogando com Interpolation ON neste build, o usuário relatou que os rods/espigões "sumiram ou quase sumiram". Gate técnico formal P09 continua não fechado; resíduos acima seguem registrados.
+- `NEXT_SINGLE_ACTION`: validação Linux da correção (e das mudanças P11) pelo usuário no PC Linux; depois investigar o resíduo P (grupos de hash com contagem divergente) se ainda houver glitch visível.
 
 ## CURRENT — P11 build nativo Windows comprovado no host de dev (2026-10-22)
 
@@ -25,7 +39,7 @@ tags: [tooie-recomp, handoff, p08, p09, p10, p11, packaging, release, clean-clon
   - Validação manual interativa completa W5 no Windows (D3D12/Vulkan, áudio WASAPI, controle SDL, persistência de `graphics.json`);
   - CI do GitHub Actions não disparado (`NOT_RUN`);
   - Smoke test do pacote no Windows é não-isolado (configuração persistida em `%LOCALAPPDATA%\TooieRecompiled`).
-- `NEXT_SINGLE_ACTION`: Retomar a investigação do glitch gráfico de interpolação (P09, gate técnico FAILED; ver fase 09) — a validação Linux da P11 fica com o usuário em paralelo.
+- `NEXT_SINGLE_ACTION`: ver seção P09 acima.
 
 ## ANTERIOR (2026-10-21) — Geração 100% Kit-Free provada e Restauração Integral da UI autorizada pelo usuário (2026-10-21)
 

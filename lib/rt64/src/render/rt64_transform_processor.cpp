@@ -24,6 +24,7 @@
 #include "render/rt64_p09_world_interpolation_guard.h"
 #include "hle/rt64_workload_queue.h"
 #include "render/rt64_p09_local_pair_snapshot.h"
+#include "render/rt64_p09_rod_classify.h"
 
 namespace RT64 {
     // TransformProcessor
@@ -343,6 +344,7 @@ namespace RT64 {
                     }
                 }
                 p09ApplyWorldInterpolationGuards(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
+                p09RodClassify::run(workload, workloadMap, prevDrawData, p.curFrameWeight);
             }
             // Copy as normal and just generate the inverse of the transforms.
             else {

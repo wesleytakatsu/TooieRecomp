@@ -1,0 +1,176 @@
+diff --git a/src/hle/rt64_game_frame.cpp b/src/hle/rt64_game_frame.cpp
+index 87392d0..070e683 100644
+--- a/src/hle/rt64_game_frame.cpp
++++ b/src/hle/rt64_game_frame.cpp
+@@ -5,8 +5,11 @@
+ #include "common/rt64_math.h"
+ 
+ #include "rt64_game_frame.h"
++#include "rt64_p09_ordered_match.h"
+ #include "rt64_workload_queue.h"
+ 
++#include <algorithm>
++
+ #include "xxHash/xxh3.h"
+ 
+ namespace RT64 {
+@@ -574,6 +577,31 @@ namespace RT64 {
+             }
+         }
+ 
++        // P09: pairs of calls holding the same rank among the calls that share their hash (see rt64_p09_ordered_match.h).
++        const bool orderedMatch = p09OrderedMatch::enabled();
++        thread_local std::set<IndexPair> orderedPairs;
++        orderedPairs.clear();
++        if (orderedMatch) {
++            thread_local std::vector<p09OrderedMatch::Call> curOrderedCalls;
++            thread_local std::vector<p09OrderedMatch::Call> prevOrderedCalls;
++            auto collectOrderedCalls = [&](const std::multimap<uint64_t, GameCallMap> &hashMap, const GameScene &scene, std::vector<p09OrderedMatch::Call> &calls) {
++                // Equal hashes keep their insertion (submission) order in the multimap.
++                calls.clear();
++                for (const auto &it : hashMap) {
++                    const GameIndices::Projection &projIndices = scene.projections[it.second.sceneProjIndex];
++                    const Workload &workload = workloadQueue.workloads[projIndices.workloadIndex];
++                    const Projection &proj = workload.fbPairs[projIndices.fbPairIndex].projections[projIndices.projectionIndex];
++                    const GameCall &call = proj.gameCalls[it.second.callIndex];
++                    const uint32_t worldCount = uint32_t(call.callDesc.maxWorldMatrix - call.callDesc.minWorldMatrix) + 1;
++                    calls.push_back({ it.first, call.callDesc.minWorldMatrix, worldCount, it.second.doTransformMatching != 0 });
++                }
++            };
++
++            collectOrderedCalls(curCallHashMap, curScene, curOrderedCalls);
++            collectOrderedCalls(prevCallHashMap, prevScene, prevOrderedCalls);
++            p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs);
++        }
++
+         // Compute all the differences between transforms and insert them into a vector that will be sorted according to the differences.
+         thread_local std::vector<MatchCandidate> matchCandidates;
+         matchCandidates.clear();
+@@ -587,6 +615,12 @@ namespace RT64 {
+             prevRigidBody = (firstPrevWorkloadMap != nullptr) ? &firstPrevWorkloadMap->transforms[indices.second].rigidBody : nullptr;
+ 
+             TransformMatchResult matchResult = computeTransformMatch(curTransform, firstCurViewProj, prevTransform, firstPrevViewProj, prevRigidBody);
++            if (matchResult.valid && orderedMatch) {
++                const float curDeterminant = hlslpp::determinant(extract3x3(curTransform));
++                const float prevDeterminant = hlslpp::determinant(extract3x3(prevTransform));
++                matchResult.valid = p09OrderedMatch::scaleCompatible(curDeterminant, prevDeterminant);
++            }
++
+             if (matchResult.valid) {
+                 matchCandidates.emplace_back(indices.first, indices.second, matchResult.computeDifference());
+             }
+@@ -594,6 +628,14 @@ namespace RT64 {
+ 
+         ModifiedBuffers modifiedBuffers;
+         std::stable_sort(matchCandidates.begin(), matchCandidates.end());
++
++        // Ordered pairs are assigned before any other candidate; both groups keep their difference order.
++        if (!orderedPairs.empty()) {
++            std::stable_partition(matchCandidates.begin(), matchCandidates.end(), [](const MatchCandidate &candidate) {
++                return orderedPairs.count(IndexPair(candidate.curIndex, candidate.prevIndex)) != 0;
++            });
++        }
++
+         for (const MatchCandidate candidate : matchCandidates) {
+             if (firstCurWorkloadMap.transforms[candidate.curIndex].mapped) {
+                 continue;
+diff --git a/src/hle/rt64_p09_ordered_match.h b/src/hle/rt64_p09_ordered_match.h
+new file mode 100644
+index 0000000..3c6215d
+--- /dev/null
++++ b/src/hle/rt64_p09_ordered_match.h
+@@ -0,0 +1,94 @@
++//
++// RT64
++//
++// P09 ordered WORLD transform matching for untagged (G_EX_ID_AUTO) games.
++//
++// GameFrame::matchScene pairs current and previous WORLD transforms greedily by a
++// cost dominated by the matrix origin (plus a velocity prediction inherited from
++// the previous pairing). Bones that share a pivot (several feathers of one crest,
++// instanced copies of one mesh piece) are indistinguishable by that cost, and a
++// wrong pair poisons the inherited velocity of the next frame. A wrong pair
++// interpolates a bone between two different bones, which renders as rods and
++// detached parts on articulated models.
++//
++// The display list draws an object's calls in the same order every frame, so the
++// k-th call with a given match hash in the current frame is the k-th call with
++// that hash in the previous frame whenever both frames hold the same number of
++// such calls. Those "ordered" pairs are assigned first; every other candidate
++// keeps the original cost order as a fallback. Candidates whose volume scale
++// changes by 8x or more (2x linear) in one frame are different objects and are
++// rejected outright.
++//
++// Default ON. TOOIE_TEST_P09_ORDERED_MATCH=0 restores the original matching.
++//
++
++#pragma once
++
++#include <cmath>
++#include <cstdint>
++#include <cstdlib>
++#include <map>
++#include <set>
++#include <utility>
++#include <vector>
++
++namespace RT64 {
++namespace p09OrderedMatch {
++    inline bool enabled() {
++        static const bool on = [] {
++            const char *e = std::getenv("TOOIE_TEST_P09_ORDERED_MATCH");
++            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
++        }();
++        return on;
++    }
++
++    // One draw call as seen by the matcher, in submission order.
++    struct Call {
++        uint64_t hash;
++        uint32_t minWorld;
++        uint32_t worldCount;
++        bool doTransformMatching;
++    };
++
++    // Pairs (current WORLD, previous WORLD) of calls that hold the same rank among the calls sharing their hash.
++    inline void buildOrderedPairs(const std::vector<Call> &cur, const std::vector<Call> &prev, std::set<std::pair<uint32_t, uint32_t>> &pairs) {
++        pairs.clear();
++        std::map<uint64_t, std::vector<const Call *>> curByHash, prevByHash;
++        for (const Call &call : cur) {
++            curByHash[call.hash].push_back(&call);
++        }
++
++        for (const Call &call : prev) {
++            prevByHash[call.hash].push_back(&call);
++        }
++
++        for (const auto &it : curByHash) {
++            auto prevIt = prevByHash.find(it.first);
++            if ((prevIt == prevByHash.end()) || (prevIt->second.size() != it.second.size())) {
++                continue;
++            }
++
++            for (size_t k = 0; k < it.second.size(); k++) {
++                const Call &curCall = *it.second[k];
++                const Call &prevCall = *prevIt->second[k];
++                if (!curCall.doTransformMatching || !prevCall.doTransformMatching || (curCall.worldCount != prevCall.worldCount)) {
++                    continue;
++                }
++
++                for (uint32_t w = 0; w < curCall.worldCount; w++) {
++                    pairs.emplace(curCall.minWorld + w, prevCall.minWorld + w);
++                }
++            }
++        }
++    }
++
++    // |det| of the 3x3 part of both matrices. A ratio of 8 or more is a 2x linear scale jump: a different object.
++    inline bool scaleCompatible(float curDeterminant, float prevDeterminant) {
++        const float a = std::fabs(curDeterminant);
++        const float b = std::fabs(prevDeterminant);
++        const float lo = (a < b) ? a : b;
++        const float hi = (a < b) ? b : a;
++        return !(hi > 0.0f) || (lo > 0.125f * hi);
++    }
++};
++};

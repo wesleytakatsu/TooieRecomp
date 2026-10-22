@@ -801,6 +801,11 @@ target_compile_options(p09_world_interpolation_guard_test PRIVATE
 )
 set_target_properties(p09_world_interpolation_guard_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# P09 ordered WORLD matcher: host test of the header-only rank pairing and scale gate.
+add_executable(p09_ordered_match_test ${CMAKE_SOURCE_DIR}/tests/p09_ordered_match_test.cpp)
+target_include_directories(p09_ordered_match_test PRIVATE ${RT64_ROOT}/src)
+set_target_properties(p09_ordered_match_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 # P09 interpolated-frame burst (hotkey removed; capture infrastructure retained): host test of the header-only controller (miniz from the RT64 pin).
 add_executable(p09_interp_burst_test
     ${CMAKE_SOURCE_DIR}/tests/p09_interp_burst_test.cpp
