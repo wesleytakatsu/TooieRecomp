@@ -18,7 +18,7 @@ Um pacote instalável/portátil para Linux x86-64 que pede a ROM do usuário,
 valida sua revisão e executa sem toolchain de desenvolvimento.
 
 > [!WARNING]
-> **Fase P10 não encerrada (`status: pending`):** O trabalho recente produziu e validou um pacote candidato privado local (`LINUX_CANDIDATE_PACKAGE_VERIFIED`), mas não constitui uma release de produção aprovada. O gate técnico de interpolação P09 permanece reprovado (`FAILED`), a completude do repositório é parcial (dependências uncommitted), e o build nativo do Windows 11 x64 permanece pendente (`WINDOWS_BUILD_PENDING_NATIVE_HOST`).
+> **Fase P10 não encerrada (`status: pending`):** O trabalho recente produziu e validou um pacote candidato privado local (`LINUX_CANDIDATE_PACKAGE_VERIFIED`), mas não constitui uma release de produção aprovada. O gate técnico de interpolação P09 permanece reprovado (`FAILED`), a completude do repositório é parcial (dependências uncommitted), e o build nativo do Windows 11 x64 atingiu status [[11-windows-native-build|WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST]] (ver fase P11).
 
 ## Tarefas
 

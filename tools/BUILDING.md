@@ -2,7 +2,7 @@
 
 Status:
 - **Linux x86_64:** Candidate path is fully scripted and proven (`LINUX_CANDIDATE_PACKAGE_VERIFIED`). 1159 build steps and 8 unit test suites pass (`exit 0`). Restored UI rebuild completed cleanly (binary `0cfcd79206efc74b74e26836ce468c69bcadaf2c3950b40eb31971946026892b` equals original, `launcher-restored-menu.png` visually verified exit 0), root kit-free preflight exit 0, and final Linux package verified (`4f702d2ba0a0472345f6f1317bfe75eb0df462e96b2352d6d875edaa5c4ebcf9`, 104 regular files, `tools/verify_package.sh` exit 0, UI exact / contains no ROM). Clean kit-free proof (neutral 5c2) is separate from restored UI build.
-- **Windows 11 x64:** Scripted but **not yet proven on a physical Windows host** (`WINDOWS_BUILD_PENDING_NATIVE_HOST`). Cross-compilation translation unit (TU) syntax probes on Linux failed on third-party header boundaries (`plume_d3d12.cpp`, `plume_vulkan.cpp`), so there is no all-TUs-pass claim. All Windows instructions are unverified until executed on a physical Windows 11 host.
+- **Windows 11 x64:** Build, tests, packaging and launcher startup proven on one Windows 11 development host (`WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST`, commits `6862e29`..`f22e867` on `origin/main`). The native pipeline `tools\windows\Build-Tooie.ps1 -Stage All` (Check → Extract → Recomp → Configure → Build → Test → Package) builds cleanly without WSL. Recompiler output generation is byte-identical to the Linux baseline (420/420 files match `metadata/recomp-output.sha256`). Unit tests: 9/9 required PASS, 15/15 extra PASS, 5 driver targets SKIP. The launcher natively accepts retail cartridge ROMs (`.z64`/`.n64`) and decompressed images. Pending items: full manual validation (W5), audible confirmation of the launcher music, Linux re-validation of shared changes, CI not yet triggered.
 
 ---
 
@@ -44,23 +44,30 @@ Get-FileHash -Algorithm SHA1 ".\Banjo-Tooie (USA).z64"  # AF1A89E12B638B8D82CC4C
 (Get-Item ".\Banjo-Tooie (USA).z64").Length             # 33554432
 ```
 
-### 2.2 ROM Extraction (`tools/extract_rom.sh`)
+### 2.2 ROM Extraction (`tools/extract_rom.sh` / `tools/extract_rom.py`)
 
-The game engine and launcher **strictly require** the uncompressed ROM image (`decompressed.us.z64`). The retail cartridge ROM is compressed and cannot be run directly (the launcher rejects cartridge hash `00F70DE5F2D70EA2`).
+The game launcher natively accepts both the retail cartridge ROM (`Banjo-Tooie (USA).z64` / `.n64`, decompressing transparently in memory) and the uncompressed ROM image (`decompressed.us.z64`).
 
-To extract and decompress the ROM without needing the legacy MIPS compiler kit:
+However, the recompiler code generator (`recomp` stage) still requires the decompressed ROM file. To extract and decompress the ROM without needing the legacy MIPS compiler kit:
 
+**Linux:**
 ```bash
 tools/extract_rom.sh
-# Or: tools/build_linux.sh extract
+# Or via pipeline: tools/build_linux.sh extract
 ```
 
-- **Mechanism:** Builds vendored `decomp/tools/rom_decompressor` in a temporary directory using host `g++`, `make`, `libfmt-dev`, and `zlib1g-dev` (no IDO kit needed).
-- **Output:** `build-linux/extract/decompressed.us.z64`.
+**Windows:**
+```powershell
+.\tools\windows\Build-Tooie.ps1 -Stage Extract
+# Or portable Python: python tools/extract_rom.py
+```
+
+- **Mechanism:** Builds and runs the vendored ROM decompressor in a temporary directory using host compilers and vendored miniz/fmt shims (no IDO kit needed).
+- **Output:** `build-linux/extract/decompressed.us.z64` (Linux) or `build-win/extract/decompressed.us.z64` (Windows).
 - **Expected Decompressed Hashes:**
   - Size: `35098224` bytes
   - SHA-1: `af479771ff5e91ce3732f3d84146614ab71d8d79`
-- **Launcher Execution:** In `TooieRecompiled`, select `build-linux/extract/decompressed.us.z64`.
+- **Launcher Execution:** In `TooieRecompiled`, select either `Banjo-Tooie (USA).z64` or `decompressed.us.z64`.
 
 ---
 
@@ -137,53 +144,86 @@ Normal builds do **not** require this stage. Only maintainers updating decompila
 
 ---
 
-## 4. Building on Windows 11 x64 (Native Host Pending)
+## 4. Building on Windows 11 x64
+
+The native Windows 11 x64 build pipeline is fully proven on host (`tools\windows\Build-Tooie.ps1 -Stage All`). All stages run natively without WSL or POSIX emulation layers.
 
 ### 4.1 Prerequisites (Official Component IDs)
 
-1. **Git for Windows:** Official installer from `https://git-scm.com/download/win` or via `winget install --id Git.Git -e --source winget`.
-2. **Python 3.8+:** Reachable from Git Bash as `python3`, `python`, or `py -3` (required for vendor integrity audit; Windows Store stub does not count).
-3. **Visual Studio 2022 Build Tools:**
-   Install with official component IDs per Microsoft documentation:
+1. **Visual Studio 2022 or newer:**
+   Install Visual Studio Community 2026/2022 or Build Tools with the C++ Desktop workload and the following official component IDs (run in an **elevated** terminal because `--passive` requires administrator privileges):
    ```powershell
-   winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.CMake.Project --add Microsoft.VisualStudio.Component.Windows11SDK.26100"
+   winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --add Microsoft.VisualStudio.Component.VC.CMake.Project --add Microsoft.VisualStudio.Component.Windows11SDK.26100"
    ```
-
-### 4.2 Pathway A: Direct Private Transfer (Recommended — No WSL Needed)
-
-Compile natively on Windows using a pre-generated C bundle and the decompressed ROM transferred from Linux:
-
-1. Transfer `TooieRecomp-generated-private-local.tar.gz` (contains the 420 generated C/C++ files) and `decompressed.us.z64`.
-2. Clone repository on Windows with LF:
-   ```cmd
-   git -c core.autocrlf=false clone https://github.com/wesleytakatsu/TooieRecomp.git C:\src\TooieRecomp
-   cd C:\src\TooieRecomp
+   - Clang compiler: `Microsoft.VisualStudio.Component.VC.Llvm.Clang` (provides `clang-cl` 20.1.8 and `lld-link`)
+   - Clang toolset: `Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset`
+   - CMake & Ninja: `Microsoft.VisualStudio.Component.VC.CMake.Project`
+   - Windows SDK: `Microsoft.VisualStudio.Component.Windows11SDK.26100` (or newer Windows 11 SDK)
+2. **Git for Windows:**
+   ```powershell
+   winget install --id Git.Git -e --source winget
+   ```
+   *(Git Bash is used only by `tools/vendor_verify.sh` and `tools/package_manifest.sh`).*
+3. **Python 3.8+:**
+   ```powershell
+   winget install --id Python.Python.3.12 -e --source winget
+   ```
+   *(Reachable as `py -3` or `python`; the Microsoft Store `python3` stub is automatically ignored by build scripts).*
+4. **Git Clone with LF:**
+   Vendored files must retain byte-exact LF endings:
+   ```powershell
+   git -c core.autocrlf=false clone https://github.com/wesleytakatsu/TooieRecomp.git
+   cd TooieRecomp
    git config core.autocrlf false
    ```
-3. Extract generated code archive to `C:\temp\RecompiledFuncs`.
-4. In Windows PowerShell:
-   ```powershell
-   .\tools\windows\Build-Tooie.ps1 -Stage Check
-   .\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom C:\temp\RecompiledFuncs
-   .\tools\windows\Build-Tooie.ps1 -Stage Build
-   .\tools\windows\Build-Tooie.ps1 -Stage Package
-   ```
-5. Place `decompressed.us.z64` in the project root and select it when launching the executable.
 
-### 4.3 Pathway B: Local Generation via WSL2 (Kit-Free)
+### 4.2 Automated Native Pipeline (`Build-Tooie.ps1`)
 
-1. Install WSL2 Ubuntu: `wsl --install -d Ubuntu-24.04`.
-2. Inside WSL2, run the kit-free generation stages:
-   ```bash
-   tools/build_linux.sh preflight verify extract recomp
-   ```
-3. In Windows PowerShell:
-   ```powershell
-   .\tools\windows\Build-Tooie.ps1 -Stage Check
-   .\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom \\wsl$\Ubuntu-24.04\home\<user>\TooieRecomp\RecompiledFuncs
-   .\tools\windows\Build-Tooie.ps1 -Stage Build
-   .\tools\windows\Build-Tooie.ps1 -Stage Package
-   ```
+Execute the end-to-end native build:
+
+```powershell
+.\tools\windows\Build-Tooie.ps1 -Stage All
+```
+
+This sequentially runs:
+1. `Check`: Verifies compiler, tools, LF line endings, and vendored file integrity.
+2. `Extract`: Decompresses retail ROM `Banjo-Tooie (USA).z64` to `build-win\extract\decompressed.us.z64`.
+3. `Recomp`: Compiles `N64Recomp.exe` and generates 420 C files in `RecompiledFuncs/` (byte-identical to Linux baseline).
+4. `Configure` + `Build`: Compiles `TooieRecompiled.exe` using `clang-cl` and `lld-link` via Ninja (copies `SDL2.dll`, `dxil.dll`, `dxcompiler.dll`).
+5. `Test`: Runs required host test suites (9/9 PASS, 15/15 extra PASS with `-AllTests`).
+6. `Package`: Creates distribution archive `dist\TooieRecompiled-windows-x64-<HEAD>[-dirty]-private-local.zip` (+ `.sha256`).
+
+Individual stages can also be executed:
+
+```powershell
+.\tools\windows\Build-Tooie.ps1 -Stage Check
+.\tools\windows\Build-Tooie.ps1 -Stage Extract [-Rom <path>]
+.\tools\windows\Build-Tooie.ps1 -Stage Recomp [-Jobs N]
+.\tools\windows\Build-Tooie.ps1 -Stage Verify
+.\tools\windows\Build-Tooie.ps1 -Stage Configure [-BuildDir <path>]
+.\tools\windows\Build-Tooie.ps1 -Stage Build [-Jobs N]
+.\tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]
+.\tools\windows\Build-Tooie.ps1 -Stage Package
+```
+
+- **Options:**
+  - `-Jobs N`: Concurrency level (default: host logical CPU count).
+  - `-BuildDir <path>`: Build tree location (default: `build-win`).
+  - `-Rom <path>`: Override path to retail ROM for `Extract`.
+  - `-AllTests`: Build all test targets and execute argument-free tests (15/15 extra PASS, 5 driver targets SKIP).
+- **Outputs:** `build-win\TooieRecompiled.exe` with bundled DLLs.
+- **Verification:** `python tools/verify_package.py dist\TooieRecompiled-windows-x64-*.zip`.
+- **Running:** Execute `.\run-tooie.ps1` or double-click `build-win\TooieRecompiled.exe`. The launcher accepts both retail cartridge ROMs (`.z64`/`.n64`) and decompressed images.
+
+### 4.3 Legacy Fallback: `ImportGenerated`
+
+If you need to bypass local recompiler generation, you can import pre-generated `RecompiledFuncs` from a Linux/WSL2 build using the legacy stage:
+
+```powershell
+.\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom C:\path\to\RecompiledFuncs
+```
+
+*(This is preserved solely as a fallback; native recompiler generation via `-Stage Recomp` is now fully supported and recommended).*
 
 ---
 

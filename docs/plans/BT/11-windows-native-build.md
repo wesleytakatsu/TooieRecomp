@@ -226,16 +226,17 @@ Riscos: caminhos longos (>260) dentro de `build-win/`, mitigados com build dir c
   - o `graphics.json` persiste no caminho certo do Windows.
 - O Sonnet faz a triagem das falhas. Falha não vira `PASS`, e o que não foi executado fica `SKIPPED` ou `NOT_IMPLEMENTED`.
 
-## W6: Documentação e fechamento (Gemini, revisão do orquestrador)
+## W6: Documentação e fechamento — parcial (2026-10-22): README/BUILDING/tools/windows/README/specs atualizados; fechamento final após W5 e revalidação Linux (Gemini, revisão do orquestrador)
 
-- Reescrever README §1.5 e §2 e `tools/BUILDING.md`: tirar "Native Host Pending" e os caminhos A/B **só depois** da W5.
-- Criar `tools/windows/README.md` (o `build.yml` já referencia e ele não existe).
-- Atualizar `docs/HANDOFF.md`, a fase 11, a fase 10 (status Windows), as specs `build-and-generator.md` e `packaging-and-dependencies.md` e as evidências `p11-windows-native-*`.
-- `ImportGenerated` vira legado documentado.
-- Opcional: os `.sh` do Linux passam a chamar os `.py` novos, para uma lógica única.
-- Rodar `git diff --check` e `markdown_vault_audit`. O MCP `markdown-vault` não conectou nesta sessão: consertar ou usar o fallback documentado.
+- [x] README §1.3, §1.5 e §2 e `tools/BUILDING.md` reescritos (status atualizado para `WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST`, removido "Native Host Pending" e caminhos A/B substituídos pelo fluxo nativo).
+- [x] Criado `tools/windows/README.md` (documentação detalhada de pré-requisitos, estágios do `Build-Tooie.ps1`, testes, pacote, execução e troubleshooting).
+- [x] Atualizados `docs/HANDOFF.md`, fase 11, fase 10 (status Windows) e specs `build-and-generator.md` e `packaging-and-dependencies.md`.
+- [x] `ImportGenerated` documentado formalmente como fallback legado.
+- [ ] Validação manual interativa completa no Windows (W5: D3D12/Vulkan, áudio WASAPI, controle SDL, persistência de `graphics.json`).
+- [ ] Validação em máquina Linux física das mudanças compartilhadas no código e CMake pelo usuário.
+- [ ] Fechamento final da fase P11 após conclusão de W5 e revalidação Linux.
 
-**Checkpoint C5**: documentação.
+**Checkpoint C5**: documentação (parcial; fechamento após W5 e validação Linux).
 
 ## Ordem e paralelismo
 
@@ -272,4 +273,4 @@ W0.5 (Gemini, docs) ─┘ (paralelo a W0.4/W0.6: arquivos diferentes)
 
 ## Primeira ação concreta
 
-W0–W4 concluídas (evidências [[../../plan/evidence/p11-windows-native-w0-20261022|w0]], [[../../plan/evidence/p11-windows-native-w1-20261022|w1]], [[../../plan/evidence/p11-windows-native-w2-20261022|w2]], [[../../plan/evidence/p11-windows-native-w3-w4-20261022|w3-w4]]). Próxima: checkpoint C4; validação Linux pelo usuário; depois W5 (validação manual) e W6 (docs).
+W0–W4 concluídas (evidências [[../../plan/evidence/p11-windows-native-w0-20261022|w0]], [[../../plan/evidence/p11-windows-native-w1-20261022|w1]], [[../../plan/evidence/p11-windows-native-w2-20261022|w2]], [[../../plan/evidence/p11-windows-native-w3-w4-20261022|w3-w4]]). W6 documentação pública e specs realizada parcialmente (2026-10-22). Próxima: validação Linux pelo usuário em paralelo; no Windows, validação manual interativa W5 antes do encerramento final da fase.
