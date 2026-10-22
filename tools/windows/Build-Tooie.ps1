@@ -1,23 +1,31 @@
 <#
- Windows 11 x64 build helper for TooieRecomp.  STATUS: Check stage being validated on Windows 11 (P11 W0.6); other stages not yet run.
- Stages: Check | ImportGenerated | Build | Package   (default: Check).  All sources are vendored in this repository: no bootstrap, no download.
- Generation of RecompiledFuncs (ROM -> decompressed image -> N64Recomp, kit-free: `tools/build_linux.sh preflight verify extract recomp`) needs Linux or WSL2 - see tools/BUILDING.md.
+ Windows 11 x64 build helper for TooieRecomp.  STATUS: Check stage validated on Windows 11 (P11 W0.6). Extract, Recomp and Verify are native stages (no Linux or WSL2).
+ Stages: Check | Extract | Recomp | Verify | ImportGenerated | Build | Package   (default: Check).  All sources are vendored in this repository: no bootstrap, no download.
+ Extract: retail ROM -> <build>/extract/decompressed.us.z64 (tools/extract_rom.py). Recomp: build N64Recomp and regenerate RecompiledFuncs (tools/run_recomp.py), then freshness + hash verify. Verify: RecompiledFuncs vs metadata/recomp-output.sha256. ImportGenerated remains a fallback.
  Needs: Git for Windows (bash), Python 3.8+ (Find-Python: py -3, then python, then python3; skip WindowsApps stubs; tools/vendor_verify.sh resolves Python on its own), Visual Studio 2022 or later (verified: VS 18 / 2026)
         with VCTools + Microsoft.VisualStudio.Component.VC.Llvm.Clang (clang-cl) + VC.CMake.Project (cmake/ninja) + Windows 11 SDK.  Windows PowerShell 5.1 or PowerShell 7.
  Examples:
    .\tools\windows\Build-Tooie.ps1 -Stage Check
+   .\tools\windows\Build-Tooie.ps1 -Stage Extract
+   .\tools\windows\Build-Tooie.ps1 -Stage Recomp -Jobs 2
+   .\tools\windows\Build-Tooie.ps1 -Stage Verify
    .\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom \\wsl$\Ubuntu-24.04\home\you\TooieRecomp\RecompiledFuncs
    .\tools\windows\Build-Tooie.ps1 -Stage Build ; .\tools\windows\Build-Tooie.ps1 -Stage Package
 #>
 param(
-    [ValidateSet('Check','ImportGenerated','Build','Package')][string]$Stage = 'Check',
+    [ValidateSet('Check','Extract','Recomp','Verify','ImportGenerated','Build','Package')][string]$Stage = 'Check',
     [string]$GeneratedFrom = '',
     [int]$Jobs = 2,
-    [string]$BuildDir = ''
+    [string]$BuildDir = '',
+    [string]$Rom = ''
 )
 $ErrorActionPreference = 'Stop'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+# Python stages read TOOIE_BUILD_DIR. Set it only when -BuildDir was actually passed, so the scripts share that tree.
+$useBuildDir = $false
+if ($PSBoundParameters.ContainsKey('BuildDir') -and $BuildDir) { $useBuildDir = $true }
 if (-not $BuildDir) { $BuildDir = Join-Path $Root 'build-win' }
+if ($useBuildDir) { $env:TOOIE_BUILD_DIR = $BuildDir }
 
 function Find-Bash {
     $c = @(@("$env:ProgramFiles\Git\bin\bash.exe", "${env:ProgramFiles(x86)}\Git\bin\bash.exe") | Where-Object { Test-Path $_ })
@@ -50,6 +58,19 @@ function Find-Python {   # command array: @('py','-3') or @('C:\Python313\python
         return ,(@($exe) + @($rest))
     }
     throw 'Python 3.8+ not found (tried py -3, python, python3; skipped WindowsApps stubs).'
+}
+function Invoke-Py([string[]]$ScriptAndArgs) {   # Find-Python + args, cwd = repo root; non-zero exit throws
+    $py = @(Find-Python)
+    if ($py.Count -eq 1 -and $py[0] -is [System.Array]) { $py = @($py[0]) }
+    $rest = @()
+    if ($py.Count -gt 1) { $rest = @($py[1..($py.Count - 1)]) }
+    Push-Location $Root
+    try {
+        & $py[0] @rest @ScriptAndArgs
+        if ($LASTEXITCODE -ne 0) { throw "python step failed ($LASTEXITCODE): $($ScriptAndArgs -join ' ')" }
+    } finally {
+        Pop-Location
+    }
 }
 function Enter-VsDev {   # idempotent: clang-cl already on PATH means the developer shell is active
     if (Get-Command clang-cl -ErrorAction SilentlyContinue) { return }
@@ -94,6 +115,21 @@ switch ($Stage) {
     Invoke-Bash 'tools/vendor_verify.sh'   # offline integrity of lib/ assets/ decomp/ (needs sha256sum from Git for Windows)
     if (Test-Path (Join-Path $Root 'lib\SDL2-windows\lib\x64\SDL2.lib')) { 'ok   lib/SDL2-windows (vendored)' } else { throw 'lib/SDL2-windows missing' }
     if (Test-Path (Join-Path $Root 'RecompiledFuncs\funcs.h')) { 'ok   RecompiledFuncs present' } else { 'MISS RecompiledFuncs (native Extract/Recomp stages: P11 W1; fallback: -Stage ImportGenerated)' }
+  }
+  'Extract' {
+    Enter-VsDev
+    $pyArgs = @('tools/extract_rom.py')
+    if ($Rom) { $pyArgs += $Rom }
+    Invoke-Py $pyArgs
+  }
+  'Recomp' {
+    Enter-VsDev
+    Invoke-Py @('tools/run_recomp.py', '--jobs', "$Jobs")
+    Invoke-Py @('tools/check_generated_fresh.py')
+    Invoke-Py @('tools/verify_generated.py')
+  }
+  'Verify' {
+    Invoke-Py @('tools/verify_generated.py')
   }
   'ImportGenerated' {
     if (-not (Test-Path (Join-Path $GeneratedFrom 'funcs.h'))) { throw "-GeneratedFrom must be a RecompiledFuncs directory (funcs.h not found in '$GeneratedFrom')" }

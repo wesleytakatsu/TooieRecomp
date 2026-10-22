@@ -14,8 +14,9 @@ tags: [tooie-recomp, handoff, p08, p09, p10, p11, packaging, release, clean-clon
 - Plano de implementação de build nativo no Windows 11 x64 sem WSL estruturado e aprovado como fase P11 em [[plans/BT/11-windows-native-build]].
 - Clone de trabalho dedicado materializado em `E:\projetos\TooieRecomp-win` com `core.autocrlf=false`, HEAD `b59ddae`; integridade vendorizada verificada com `tools/vendor_verify.sh` OK (8266 arquivos regulares).
 - Preparação W0 completa (W0.1–W0.6) comprovada em [[plan/evidence/p11-windows-native-w0-20261022]]: ferramentas e CLIs auditadas, Clang 20.1.8 (`clang-cl`) instalado no VS 18 Community, `.gitattributes` com `* text=auto eol=lf`, e `tools/windows/Build-Tooie.ps1 -Stage Check` exit 0 em PowerShell 7 e Windows PowerShell 5.1.
+- W1 concluída comprovada em [[plan/evidence/p11-windows-native-w1-20261022]]: geração nativa de `RecompiledFuncs/` no Windows 11 x64 com 420/420 arquivos byte-idêntica ao baseline Linux (`metadata/recomp-output.sha256`, 0 bytes CR em `funcs.h`, `verify_generated.py` exit 0), descompressão nativa da ROM via miniz vendorizado (`decompressed.us.z64` 35098224 bytes, SHA-1 `af479771...`), patch de escrita binária no N64Recomp (`n64recomp-binary-output.patch`, 20 patches vendor reverse-applied OK) e execução dos estágios Extract, Recomp (-Jobs 8) e Verify via `Build-Tooie.ps1`.
 - Status Windows `WINDOWS_BUILD_PENDING_NATIVE_HOST` inalterado; nenhum build executado no host nativo até o momento.
-- `NEXT_SINGLE_ACTION`: checkpoint C1 — commit de `.gitattributes`, `tools/windows/Build-Tooie.ps1` e docs da P11 com OK do usuário.
+- `NEXT_SINGLE_ACTION`: checkpoint C2 — commit da W1 com OK do usuário.
 
 ## ANTERIOR (2026-10-21) — Geração 100% Kit-Free provada e Restauração Integral da UI autorizada pelo usuário (2026-10-21)
 

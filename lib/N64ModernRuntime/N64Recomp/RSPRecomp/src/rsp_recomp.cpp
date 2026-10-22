@@ -1174,7 +1174,7 @@ int main(int argc, const char** argv) {
 
     // Open output file and write beginning
     std::filesystem::create_directories(std::filesystem::path{ config.output_file_path }.parent_path());
-    std::ofstream output_file(config.output_file_path);
+    std::ofstream output_file(config.output_file_path, std::ios::binary);
     fmt::print(output_file,
         "#include \"librecomp/rsp.hpp\"\n"
         "#include \"librecomp/rsp_vu_impl.hpp\"\n");
