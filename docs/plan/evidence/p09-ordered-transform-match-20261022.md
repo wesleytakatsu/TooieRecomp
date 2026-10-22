@@ -186,7 +186,10 @@ As alterações foram formalizadas como patches locais sob governança de vendor
 `USER_OBSERVED` (2026-10-22): jogando com Interpolation ON neste build (exe SHA256 `6F39CC23...`), o usuário relatou que os
 rods/espigões "sumiram ou quase sumiram". Relato qualitativo; gate técnico formal P09 continua não fechado.
 
-## 14. NEXT_SINGLE_ACTION
+## 14. Commit, push e Linux
 
-Validação Linux da correção (e das mudanças P11) pelo usuário no PC Linux; depois investigar o resíduo P (grupos de hash com
-contagem divergente) se ainda houver glitch visível.
+**Commit/push e Linux (2026-10-22)**: correção commitada e enviada (`6685b48` em `origin/main`). Linux: análise de código apenas (sem build/teste) — a causa e a correção estão em código RT64 comum (`GameFrame::matchScene`, header `rt64_p09_ordered_match.h`), C++ padrão sem `#ifdef` de plataforma e independente da API gráfica; o efeito deve valer no Linux (`STRONG_INFERENCE`). Compilação GCC/Clang, `p09_ordered_match_test` e efeito visual no Linux: `NOT_RUN` (usuário valida no PC Linux).
+
+## 15. NEXT_SINGLE_ACTION
+
+retomar o resíduo P08 `WIDESCREEN_EDGE_GEOMETRY` — relato do usuário (`USER_OBSERVED`, 2026-10-22): em widescreen, itens somem nas bordas da tela e algumas paredes também, raro, visto no Gameplay Demo 2 e principalmente na fase dos dinossauros (Terrydactyland); ver fase 08. A validação Linux da P09/P11 segue com o usuário em paralelo.
