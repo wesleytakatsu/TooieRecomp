@@ -218,6 +218,142 @@ bool start_launcher_music_preview() {
     std::fprintf(stderr, "[tooie] launcher music: hidden ROM-backed preview started\n");
     return true;
 }
+#elif defined(_WIN32)
+// Same protocol as Linux: the child's stdin is the read end of an anonymous
+// pipe and every control message is one byte (music volume percent).
+std::atomic<HANDLE> launcher_music_process{nullptr};
+HANDLE launcher_music_job = nullptr;
+HANDLE launcher_music_stdin = nullptr; // child only; null if no control channel
+bool launcher_music_control = false;
+
+void stop_launcher_music_preview() {
+    HANDLE child = launcher_music_process.exchange(nullptr);
+    if (child == nullptr) {
+        return;
+    }
+
+    // The sender thread closes the pipe at game start, which makes the child
+    // exit on EOF. Give it one second, then force only this known child.
+    if (WaitForSingleObject(child, 1000) != WAIT_OBJECT_0) {
+        TerminateProcess(child, 1);
+        WaitForSingleObject(child, 1000);
+    }
+    CloseHandle(child);
+    if (launcher_music_job != nullptr) {
+        CloseHandle(launcher_music_job);
+        launcher_music_job = nullptr;
+    }
+}
+
+bool start_launcher_music_preview() {
+    std::wstring executable(MAX_PATH, L'\0');
+    for (;;) {
+        const DWORD length = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+        if (length == 0) {
+            std::fprintf(stderr, "[tooie] launcher music: failed to resolve executable\n");
+            return false;
+        }
+        if (length < executable.size()) {
+            executable.resize(length);
+            break;
+        }
+        executable.resize(executable.size() * 2);
+    }
+
+    SECURITY_ATTRIBUTES inherit{sizeof(inherit), nullptr, TRUE};
+    HANDLE read_end = nullptr;
+    HANDLE write_end = nullptr;
+    if (!CreatePipe(&read_end, &write_end, &inherit, 0)) {
+        std::fprintf(stderr, "[tooie] launcher music: control channel failed (%lu)\n", GetLastError());
+        return false;
+    }
+    // Only the read end may be inherited by the child.
+    SetHandleInformation(write_end, HANDLE_FLAG_INHERIT, 0);
+    DWORD nowait = PIPE_NOWAIT;
+    SetNamedPipeHandleState(write_end, &nowait, nullptr, nullptr);
+
+    HANDLE job = CreateJobObjectW(nullptr, nullptr);
+    if (job != nullptr) {
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
+            CloseHandle(job);
+            job = nullptr;
+        }
+    }
+    if (job == nullptr) {
+        std::fprintf(stderr, "[tooie] launcher music: job object failed (%lu)\n", GetLastError());
+        CloseHandle(read_end);
+        CloseHandle(write_end);
+        return false;
+    }
+
+    std::wstring command = L"\"" + executable + L"\" --launcher-music-child --launcher-music-control";
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = read_end;
+    startup.hStdOutput = nullptr;
+    startup.hStdError = nullptr;
+    PROCESS_INFORMATION info{};
+    // Suspended so the child is in the job before it runs any code.
+    const BOOL created = CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, TRUE,
+        CREATE_NO_WINDOW | CREATE_SUSPENDED, nullptr, nullptr, &startup, &info);
+    CloseHandle(read_end);
+    if (!created) {
+        std::fprintf(stderr, "[tooie] launcher music: CreateProcess failed (%lu)\n", GetLastError());
+        CloseHandle(write_end);
+        CloseHandle(job);
+        return false;
+    }
+    if (!AssignProcessToJobObject(job, info.hProcess)) {
+        std::fprintf(stderr, "[tooie] launcher music: failed to bind child lifetime (%lu)\n", GetLastError());
+        TerminateProcess(info.hProcess, 1);
+        CloseHandle(info.hThread);
+        CloseHandle(info.hProcess);
+        CloseHandle(write_end);
+        CloseHandle(job);
+        return false;
+    }
+    ResumeThread(info.hThread);
+    CloseHandle(info.hThread);
+
+    HANDLE child = info.hProcess;
+    launcher_music_job = job;
+    launcher_music_process.store(child);
+    launcher_music_preview_started = true;
+    std::atexit(stop_launcher_music_preview);
+
+    // start_game is single-shot in ModernRuntime. Keep the preview in its own
+    // process, then stop it as soon as the visible instance starts from boot.
+    std::thread([child, pipe = write_end]() {
+        int last_percent = -1;
+        while (!ultramodern::is_game_started() && launcher_music_process.load() == child) {
+            const int percent = tooie_bgm::get_percent();
+            if (percent != last_percent) {
+                const uint8_t value = static_cast<uint8_t>(percent);
+                DWORD written = 0;
+                if (WriteFile(pipe, &value, sizeof(value), &written, nullptr)) {
+                    // Full pipe in PIPE_NOWAIT mode reports 0 bytes: drop and retry later.
+                    if (written == sizeof(value)) {
+                        last_percent = percent;
+                    }
+                } else if (GetLastError() != ERROR_PIPE_BUSY) {
+                    break;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        CloseHandle(pipe);
+        if (launcher_music_process.load() == child) {
+            std::fprintf(stderr, "[tooie] launcher music: stopping preview\n");
+            stop_launcher_music_preview();
+        }
+    }).detach();
+
+    std::fprintf(stderr, "[tooie] launcher music: hidden ROM-backed preview started\n");
+    return true;
+}
 #else
 void stop_launcher_music_preview() {}
 bool start_launcher_music_preview() { return false; }
@@ -377,6 +513,26 @@ void update_gfx(void*) {
         uint8_t percent;
         while (recv(STDIN_FILENO, &percent, sizeof(percent), MSG_DONTWAIT) == sizeof(percent)) {
             tooie_bgm::set_percent(percent);
+        }
+    }
+#elif defined(_WIN32)
+    if (launcher_music_child && launcher_music_control && launcher_music_stdin != nullptr) {
+        DWORD available = 0;
+        // Broken pipe (parent gone / closed its end) -> exit like PDEATHSIG would.
+        if (!PeekNamedPipe(launcher_music_stdin, nullptr, 0, nullptr, &available, nullptr)) {
+            std::fprintf(stderr, "[tooie] launcher music: control channel closed\n");
+            std::_Exit(0);
+        }
+        while (available > 0) {
+            uint8_t buffer[64];
+            DWORD got = 0;
+            if (!ReadFile(launcher_music_stdin, buffer, (available < sizeof(buffer) ? available : static_cast<DWORD>(sizeof(buffer))), &got, nullptr) || got == 0) {
+                break;
+            }
+            for (DWORD i = 0; i < got; i++) {
+                tooie_bgm::set_percent(buffer[i]);
+            }
+            available -= got;
         }
     }
 #endif
@@ -970,12 +1126,24 @@ int main(int argc, char** argv) {
         if (std::strcmp(argv[i], "--launcher-music-child") == 0) {
             launcher_music_child = true;
         }
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
         if (std::strcmp(argv[i], "--launcher-music-control") == 0) {
             launcher_music_control = true;
         }
 #endif
     }
+
+#if defined(_WIN32)
+    if (launcher_music_child && launcher_music_control) {
+        HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+        if (in != nullptr && in != INVALID_HANDLE_VALUE && GetFileType(in) == FILE_TYPE_PIPE) {
+            launcher_music_stdin = in;
+        } else {
+            launcher_music_control = false;
+            std::fprintf(stderr, "[tooie] launcher music: invalid control channel\n");
+        }
+    }
+#endif
 
 #if defined(__linux__)
     if (launcher_music_child && launcher_music_control) {

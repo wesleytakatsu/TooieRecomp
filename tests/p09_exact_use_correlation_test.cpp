@@ -8,7 +8,9 @@
 
 #include "render/rt64_p09_exact_use_correlation.h"
 
+#ifndef _WIN32
 extern "C" FILE *fmemopen(void *buf, size_t size, const char *mode);
+#endif
 
 using namespace RT64;
 
@@ -764,12 +766,27 @@ static void test_pathological_tie_groups() {
 
     char text[96 * 1024];
     std::memset(text, 0, sizeof(text));
+#ifdef _WIN32
+    // No fmemopen on Windows: format into a binary temp file (tmpfile() is "wb+", so no
+    // CRLF translation) and read it back into the same buffer.
+    FILE *mem = std::tmpfile();
+    TEST_ASSERT(mem != nullptr, "formatter buffer opens");
+    p09TieFormatSample(mem, truncated);
+    std::fflush(mem);
+    const long written = std::ftell(mem);
+    std::rewind(mem);
+    if (written > 0 && static_cast<size_t>(written) < sizeof(text)) {
+        TEST_ASSERT(std::fread(text, 1, static_cast<size_t>(written), mem) == static_cast<size_t>(written), "formatter buffer reads back");
+    }
+    std::fclose(mem);
+#else
     FILE *mem = fmemopen(text, sizeof(text) - 1u, "w");
     TEST_ASSERT(mem != nullptr, "formatter buffer opens");
     p09TieFormatSample(mem, truncated);
     std::fflush(mem);
     const long written = std::ftell(mem);
     std::fclose(mem);
+#endif
     TEST_ASSERT(written > 0, "formatter wrote bytes");
     TEST_ASSERT(std::strstr(text, "GROUP_CAP=20\n") != nullptr, "text exposes the group cap");
     TEST_ASSERT(std::strstr(text, "MEMBER_CAP=96\n") != nullptr, "text exposes the member cap");

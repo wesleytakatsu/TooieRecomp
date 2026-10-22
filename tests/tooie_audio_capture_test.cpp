@@ -12,10 +12,30 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <process.h>
+#else
 #include <sys/mman.h>
 #include <unistd.h>
+#endif
 
 namespace {
+
+#ifdef _WIN32
+void unsetenv(const char* name) { _putenv_s(name, ""); }
+int setenv(const char* name, const char* value, int) { return _putenv_s(name, value); }
+
+// Inaccessible page: any read/write faults, like PROT_NONE.
+void* map_guard_page() { return ::VirtualAlloc(nullptr, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_NOACCESS); }
+void unmap_guard_page(void* p) { ::VirtualFree(p, 0, MEM_RELEASE); }
+#else
+void* map_guard_page() {
+    void* p = ::mmap(nullptr, 4096, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return p == MAP_FAILED ? nullptr : p;
+}
+void unmap_guard_page(void* p) { ::munmap(p, 4096); }
+#endif
 
 int g_failures = 0;
 
@@ -32,12 +52,25 @@ std::string read_file(const std::string& path) {
 }
 
 std::string make_parent() {
+#ifdef _WIN32
+    static int counter = 0;
+    std::filesystem::path dir = std::filesystem::temp_directory_path() /
+        ("tooie-audio-cap-" + std::to_string(::_getpid()) + "-" + std::to_string(counter++));
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        std::fprintf(stderr, "create_directories: %s\n", ec.message().c_str());
+        std::exit(1);
+    }
+    return dir.string();
+#else
     std::string tmpl = "/tmp/tooie-audio-cap-XXXXXX";
     if (::mkdtemp(tmpl.data()) == nullptr) {
         std::perror("mkdtemp");
         std::exit(1);
     }
     return tmpl;
+#endif
 }
 
 tooie_audio_capture::Pre pre_of(const int16_t* guest, size_t guest_n, const float* pre, uint32_t pre_bytes,
@@ -70,8 +103,8 @@ int main() {
     unsetenv("TOOIE_AUDIO_CAPTURE_DIR");
     unsetenv("TOOIE_AUDIO_CAPTURE_SECONDS");
 
-    void* locked = ::mmap(nullptr, 4096, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    expect(locked != MAP_FAILED, "mmap_guard");
+    void* locked = map_guard_page();
+    expect(locked != nullptr, "mmap_guard");
     tooie_audio_capture::Pre poison;
     poison.guest = static_cast<int16_t*>(locked);
     poison.guest_s16_samples = 2;
@@ -92,7 +125,9 @@ int main() {
     bad.absolute_dir = "relative/capture";
     bad.seconds = 12;
     expect(tooie_audio_capture::init(bad) == tooie_audio_capture::InitResult::Rejected, "relative_rejected");
-    bad.absolute_dir = "/tmp/tooie-audio-missing-no-such-dir";
+    // Absolute but nonexistent: a child of the (existing) parent works on both OSes.
+    const std::string missing_dir = parent + "/tooie-audio-missing-no-such-dir";
+    bad.absolute_dir = missing_dir.c_str();
     expect(tooie_audio_capture::init(bad) == tooie_audio_capture::InitResult::Rejected, "missing_rejected");
     bad.absolute_dir = parent.c_str();
     bad.seconds = 9;
@@ -297,8 +332,8 @@ int main() {
     expect(read_file(window_dir + "/guest_raw_s16le.pcm").size() == 16, "window_one_chunk");
     tooie_audio_capture::shutdown();
 
-    if (locked != MAP_FAILED) {
-        ::munmap(locked, 4096);
+    if (locked != nullptr) {
+        unmap_guard_page(locked);
     }
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);

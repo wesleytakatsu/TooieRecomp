@@ -2,7 +2,7 @@
 # The game itself cannot be built on public runners: RecompiledFuncs is generated from the owner's private ROM.
 #  - public jobs (no ROM): tracked-tree audit (vendored sources, no gitlinks/ROM/generated code), offline vendor verify, host unit tests (Linux + Windows/clang-cl)
 #  - all sources are vendored in the repository: no bootstrap, no submodule, no download beyond OS packages
-#  - private job: self-hosted runner that already holds the ROM at $TOOIE_ROM; uploads checksums/audit only (never the game archive)
+#  - private jobs: self-hosted runners that already hold the ROM; upload checksums/audit only (never the game archive)
 name: build
 on:
   workflow_dispatch:
@@ -37,24 +37,29 @@ jobs:
           cmake -S . -B build-ci -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
       - name: Host unit tests
         run: |
-          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test"
+          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test rom_cart_import_test"
           cmake --build build-ci --target $T -j2
           for t in $T; do (cd build-ci && ./$t); done
+          python3 tools/test_rom_check.py
 
   public-windows:   # informational until proven on a native Windows host (see tools/windows/README.md)
     runs-on: windows-2022
-    continue-on-error: true
+    continue-on-error: true  # remove after two consecutive green runs
     defaults: { run: { shell: bash } }
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ilammy/msvc-dev-cmd@7defe9254715b088f12dddd9942945a3d75cdad5 # v1.9.0
         with: { arch: x64 }
       - run: tools/vendor_verify.sh
-      - name: Configure (placeholder generated code) and build host tests
+      - name: Configure (placeholder generated code), build and run host tests
         run: |
           mkdir -p RecompiledFuncs && echo 'int tooie_ci_placeholder;' > RecompiledFuncs/ci_placeholder.c
           cmake -S . -B build-ci -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-ci --target tooie_menu_policy_test rt64_host_endpoint_current_test p09_world_interpolation_guard_test -j2
+          # rom_cart_import_test prints SKIP and exits 0 when no ROM is present.
+          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test rom_cart_import_test"
+          cmake --build build-ci --target $T -j2
+          for t in $T; do (cd build-ci && ./$t.exe); done
+          python tools/test_rom_check.py
 
   private-game-build:   # needs a self-hosted runner you control; ROM never leaves it
     if: ${{ vars.TOOIE_PRIVATE_RUNNER == 'true' }}
@@ -67,6 +72,23 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tooie-linux-private-evidence
+          path: |
+            dist/*.sha256
+            dist/*/AUDIT.txt
+            dist/*/BUILD-INFO.txt
+            dist/*/DEPENDENCIES.txt
+
+  private-game-build-windows:   # needs a self-hosted Windows runner you control; ROM never leaves it
+    if: ${{ vars.TOOIE_PRIVATE_RUNNER == 'true' }}
+    runs-on: [self-hosted, windows, x64, tooie-rom]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Build and package (TOOIE_ROM must be set in the runner environment)
+        run: pwsh -File tools/windows/Build-Tooie.ps1 -Stage All
+      - name: Upload checksums and audit only (the archive embeds ROM-derived code)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tooie-windows-private-evidence
           path: |
             dist/*.sha256
             dist/*/AUDIT.txt

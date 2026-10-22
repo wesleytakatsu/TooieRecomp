@@ -197,21 +197,21 @@ Riscos: caminhos longos (>260) dentro de `build-win/`, mitigados com build dir c
 
 | # | Tarefa | Dono | Detalhe |
 |---|--------|------|---------|
-| W3.1 | Música de preview do launcher | Sonnet | Hoje é um stub no Windows. Implementar com `CreateProcessW` mais `--launcher-music-child`, um pipe anônimo como stdin de controle e um Job Object com `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Se ficar complexo demais, manter desligado e documentar (pede OK do usuário) |
-| W3.2 | Diretório de diagnóstico | Grok | Helper único `tooie_diag_path(name)` (`TOOIE_DIAG_DIR` ou `std::filesystem::temp_directory_path()`) no lugar dos `"/tmp/..."` de `tooie_diag.cpp` e `transform_hooks.cpp`. Sem mudar o comportamento no Linux |
-| W3.3 | Portar os testes `.sh`/`.py` | Haiku | `demo1_projectile_coverage_test.sh` e `n64recomp_zero_size_static_test.sh` viram Python portátil; conferir se `attract_demo2_transition_jal_test.py` roda no Windows |
-| W3.4 | `run-tooie.ps1` | Grok | Equivalente ao `run-tooie.sh`. O Angrylion fica só no Linux (documentado) |
-| W3.5 | Atualizar a dica do `tools/extract_rom.py` (cartucho agora é aceito) | Grok | — |
+| W3.1 | Música de preview do launcher | Sonnet | ✅ **Feito (2026-10-22)**: IPC Win32 no `src/main/main.cpp` com `CreateProcessW` do próprio exe (`--launcher-music-child --launcher-music-control`, `CREATE_NO_WINDOW|CREATE_SUSPENDED`), pipe anônimo como stdin de controle (só leitura herdável, escrita `PIPE_NOWAIT`), Job Object `KILL_ON_JOB_CLOSE`, leitura no filho com `PeekNamedPipe`+`ReadFile`, EOF → `_Exit(0)`, stop com `TerminateProcess` fallback. Defaults inalterados. Probe `PROVEN` (filho gone com o pai); áudio pendente de confirmação pelo usuário |
+| W3.2 | Diretório de diagnóstico | Grok | ✅ **Feito (2026-10-22)**: `include/tooie_diag_path.h` com helper `tooie_diag_path(name)` (`TOOIE_DIAG_DIR/<name>` se definido; `temp_directory_path()` no Windows via path ANSI; `/tmp/<name>` inalterado no Linux/macOS). Todos os `"/tmp/tooie-..."` de `tooie_diag.cpp` e `transform_hooks.cpp` substituídos |
+| W3.3 | Portar os testes `.sh`/`.py` | Haiku | ✅ **Feito (2026-10-22)**: `tests/demo1_projectile_coverage_test.py` e `tests/n64recomp_zero_size_static_test.py` (portes dos `.sh`, mantidos no Linux) PASS no Windows; `tests/attract_demo2_transition_jal_test.py` OVERALL: PASS; `tools/test_rom_check.py` 37 OK |
+| W3.4 | `run-tooie.ps1` | Grok | ✅ **Feito (2026-10-22)**: `run-tooie.ps1` implementado com mesmas opções e variáveis de ambiente do `run-tooie.sh` apontando para `build-win`; `-h` testado OK. Angrylion permanece restrito ao Linux |
+| W3.5 | Atualizar a dica do `tools/extract_rom.py` (cartucho agora é aceito) | Grok | ✅ **Feito (2026-10-22)**: Dica final do `tools/extract_rom.py` atualizada informando que o launcher aceita tanto cartucho comercial (`.z64`/`.n64`) quanto imagem descomprimida |
 
 ## W4: Testes, pacote e CI
 
 | # | Tarefa | Dono | Detalhe |
 |---|--------|------|---------|
-| W4.1 | Estágio `Test` | Grok (wrapper) + Haiku (execução) | Os 8 testes de host obrigatórios, depois os demais alvos `*_test` (23 no CMake). Cada um com resultado PASS, FAIL ou SKIPPED e log |
-| W4.2 | Estágio `Package` | Grok | O `.ps1` já existe e usa o Git Bash para o `package_manifest.sh`. Portar `verify_package.sh` e `smoke_package.sh` para Python. Revisar a regra de auditoria que bane `.json` (um `graphics.json` de usuário não pode entrar no pacote, mas nenhum asset `.json` legítimo pode ser barrado) |
-| W4.3 | Smoke do pacote | Haiku | Extrair o zip para um temp, rodar `MANIFEST.sha256`, abrir o exe isolado e confirmar saída limpa |
-| W4.4 | CI | Grok | `public-windows` roda os 8 testes de host; tirar `continue-on-error` só depois de 2 execuções verdes. Novo job `private-game-build-windows` (self-hosted, ROM no runner) publicando só checksums e auditoria. Agentes nunca disparam workflow |
-| W4.5 | Tempo e disco do build | Gemini | Registrar na evidência e em `tools/BUILDING.md` |
+| W4.1 | Estágio `Test` | Grok (wrapper) + Haiku (execução) | ✅ **Feito (2026-10-22)**: Estágio Test no `Build-Tooie.ps1` e resolução de 6 causas de portabilidade em 10 testes falhos (`unistd.h`, `std::tmpfile` binário no lugar de `fmemopen`, `_putenv_s`, `VirtualAlloc(PAGE_NOACCESS)` mantendo teste de guard page, `/STACK:8388608` para `p09_exact_use_correlation_test` contra estouro 0xC00000FD de stack 1 MiB, includes/fontes/wrap/stub `tests/support/recompui_window_stub.cpp`). Sem asserções enfraquecidas. 9/9 obrigatórios PASS, 15/15 extras PASS, 5 drivers compilados com SKIP documentado; `p09_exact_use_correlation_test` 1355/1355 passed |
+| W4.2 | Estágio `Package` | Grok | ✅ **Feito (2026-10-22)**: Estágio Package no `Build-Tooie.ps1` com paridade Linux (`TooieRecompiled-windows-x64-<HEAD>[-dirty]-private-local.zip`, `BUILD-INFO.txt` com `build_time_utc`, `DEPENDENCIES.txt`, `AUDIT.txt` PASS com 104 arquivos e ban de `.json` restrito à raiz/configs de usuário, `THIRD-PARTY-MANIFEST.tsv` com 105 arquivos, zip ~19,2 MB e `.zip.sha256`). Portes `tools/verify_package.py` e `tools/smoke_package.py` com correção off-by-one em `argv` (W4.2b). Exit 0, MANIFEST OK (106 files), zero ROM/ELF |
+| W4.3 | Smoke do pacote | Haiku | ✅ **Feito (2026-10-22)**: Smoke test do pacote via `tools/smoke_package.py ... 15` PASS (alive 15s). Registrado que no Windows o smoke não é isolado de `%LOCALAPPDATA%\TooieRecompiled` devido a `SHGetKnownFolderPath` |
+| W4.4 | CI | Grok | ✅ **Feito (2026-10-22)**: CI em `.github/workflows/build.yml` atualizado com `public-windows` (9 testes + `test_rom_check.py`, `continue-on-error` mantido), `public-linux` (`rom_cart_import_test` + `test_rom_check.py`) e novo `private-game-build-windows` (self-hosted, `-Stage All`, só checksums/audit/deps). Autorado, não disparado (NOT_RUN) |
+| W4.5 | Tempo e disco do build | Gemini | ✅ **Feito (2026-10-22)**: Tempos medidos no host com 14 threads de CPU: geração Recomp ~1 min, build completo do jogo ~5 min. Registrado na evidência w3-w4 e a ser consolidado em `tools/BUILDING.md` |
 
 **Checkpoint C4**: estágios Test e Package, e o CI.
 
@@ -272,4 +272,4 @@ W0.5 (Gemini, docs) ─┘ (paralelo a W0.4/W0.6: arquivos diferentes)
 
 ## Primeira ação concreta
 
-W0–W2 concluídas (evidências [[../../plan/evidence/p11-windows-native-w0-20261022|w0]], [[../../plan/evidence/p11-windows-native-w1-20261022|w1]], [[../../plan/evidence/p11-windows-native-w2-20261022|w2]]). Próxima: checkpoint C3; depois W3 ∥ W4.
+W0–W4 concluídas (evidências [[../../plan/evidence/p11-windows-native-w0-20261022|w0]], [[../../plan/evidence/p11-windows-native-w1-20261022|w1]], [[../../plan/evidence/p11-windows-native-w2-20261022|w2]], [[../../plan/evidence/p11-windows-native-w3-w4-20261022|w3-w4]]). Próxima: checkpoint C4; validação Linux pelo usuário; depois W5 (validação manual) e W6 (docs).

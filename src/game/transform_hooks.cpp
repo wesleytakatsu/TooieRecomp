@@ -6,6 +6,7 @@
 #include "recomp.h"
 #include "funcs.h"
 #include "tintro_projection_policy.h"
+#include "tooie_diag_path.h"
 
 // Saved pointers for func_800E4640 reload
 static uint32_t s_saved_P_mtx = 0;
@@ -42,7 +43,7 @@ static void tooie_pv_scale_note(int overflow, float scale, float inv_scale,
     last_overflow = overflow;
     last_scale = scale;
     have_last = true;
-    FILE *f = std::fopen("/tmp/tooie-pv-scale-status.txt", "w");
+    FILE *f = std::fopen(tooie_diag_path("tooie-pv-scale-status.txt").c_str(), "w");
     if (f == nullptr) {
         return;
     }

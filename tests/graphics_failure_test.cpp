@@ -5,6 +5,13 @@
 #include <string>
 #include "tooie_error.h"
 
+#ifdef _WIN32
+static int setenv(const char *name, const char *value, int overwrite) {
+    (void)overwrite;
+    return _putenv_s(name, value);
+}
+#endif
+
 static int g_test_count = 0;
 static int g_pass_count = 0;
 

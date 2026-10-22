@@ -99,8 +99,9 @@ def main(argv: list[str]) -> int:
 
     print(f"extract_rom: wrote {final}")
     launcher = "start TooieRecompiled.exe" if os.name == "nt" else "./TooieRecompiled (or run-tooie.sh)"
-    print(f"extract_rom: launcher: {launcher}, click the game's ROM select, choose THAT decompressed.us.z64 "
-          "(NOT the retail .z64: the launcher hashes the file it is given against the decompressed image).")
+    print(f"extract_rom: launcher: {launcher}. The decompressed image is the generator input; "
+          "for playing, either the retail ROM (.z64/.n64) or this decompressed.us.z64 "
+          "can be selected in the launcher (a retail cart is decompressed internally).")
     return 0
 
 

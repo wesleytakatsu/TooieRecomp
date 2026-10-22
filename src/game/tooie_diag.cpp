@@ -1,4 +1,5 @@
 #include "tooie_diag.h"
+#include "tooie_diag_path.h"
 #include "recomp.h"
 #include "render/rt64_p09_local_pair_snapshot.h"
 
@@ -1082,7 +1083,7 @@ void secondary_sway_write_tree_row(uint8_t* rdram, uint64_t frame,
     ++g_secondary_sway_tree_rows;
     if (g_secondary_sway_tree_csv == nullptr) {
         g_secondary_sway_tree_csv =
-            std::fopen("/tmp/tooie-secondary-sway-62b-tree.csv", "a");
+            std::fopen(tooie_diag_path("tooie-secondary-sway-62b-tree.csv").c_str(), "a");
         if (g_secondary_sway_tree_csv == nullptr) {
             return;
         }
@@ -1205,7 +1206,7 @@ void backpack_store_sample(const BackpackFlapSample& sample) {
 
 void backpack_append_csv_locked(const BackpackFlapSample& sample, bool force_flush) {
     if (g_backpack_witness_csv == nullptr) {
-        g_backpack_witness_csv = std::fopen("/tmp/tooie-backpack-flap-witness.csv", "a");
+        g_backpack_witness_csv = std::fopen(tooie_diag_path("tooie-backpack-flap-witness.csv").c_str(), "a");
         if (g_backpack_witness_csv == nullptr) {
             return;
         }
@@ -1329,7 +1330,7 @@ void backpack_write_status(const char* reason) {
         unique_overflow = g_backpack_unique_node_overflow;
     }
 
-    if (FILE* status = std::fopen("/tmp/tooie-backpack-flap-status.txt", "w")) {
+    if (FILE* status = std::fopen(tooie_diag_path("tooie-backpack-flap-status.txt").c_str(), "w")) {
         const auto fallback_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
         std::fprintf(status,
@@ -1496,7 +1497,7 @@ void backpack_write_files(const char* reason) {
         }
     }
 
-    if (FILE* report = std::fopen("/tmp/tooie-backpack-flap-anomalies.txt", "w")) {
+    if (FILE* report = std::fopen(tooie_diag_path("tooie-backpack-flap-anomalies.txt").c_str(), "w")) {
         std::fprintf(report,
                      "TOOIE_DIAG_BACKPACK_FLAP=1\nreason=%s\n"
                      "samples=%llu\nanomalies=%llu\n"
@@ -1539,7 +1540,7 @@ void backpack_flush_at_exit() {
 }
 
 void secondary_sway_write_status(const char* reason) {
-    FILE* status = std::fopen("/tmp/tooie-secondary-sway-status.txt", "w");
+    FILE* status = std::fopen(tooie_diag_path("tooie-secondary-sway-status.txt").c_str(), "w");
     if (status == nullptr) {
         return;
     }
@@ -1705,7 +1706,7 @@ void secondary_sway_write_status(const char* reason) {
                  "HIP_CONSUME_HITS=%llu\n"
                  "HIP_CONSUME_SAMPLES=%llu\n"
                  "PRODUCER_WITNESS=AE8A8_AE820\n"
-                 "PRODUCER_CSV=/tmp/tooie-kazooie-feather-producer.csv\n"
+                 "PRODUCER_CSV=%s\n"
                  "AE8A8_HITS=%llu\n"
                  "AE820_HITS=%llu\n"
                  "PRODUCER_SAMPLES=%llu\n"
@@ -1783,6 +1784,7 @@ void secondary_sway_write_status(const char* reason) {
                  static_cast<unsigned long long>(g_secondary_sway_hip_consume_entry_hits),
                  static_cast<unsigned long long>(g_secondary_sway_hip_consume_hits),
                  static_cast<unsigned long long>(g_secondary_sway_hip_consume_samples),
+                 tooie_diag_path("tooie-kazooie-feather-producer.csv").c_str(),
                  static_cast<unsigned long long>(g_secondary_sway_ae8a8_hits),
                  static_cast<unsigned long long>(g_secondary_sway_ae820_hits),
                  static_cast<unsigned long long>(g_secondary_sway_producer_samples),
@@ -2260,7 +2262,7 @@ void feather_anim_note_reject(FeatherAnimReject reject, const char* detail) {
 }
 
 void feather_anim_write_status(const char* reason) {
-    FILE* status = std::fopen("/tmp/tooie-feather-anim-sample-time-status.txt", "w");
+    FILE* status = std::fopen(tooie_diag_path("tooie-feather-anim-sample-time-status.txt").c_str(), "w");
     if (status == nullptr) {
         return;
     }
@@ -2500,7 +2502,7 @@ void ensure_init() {
         g_backpack_flap_process_start_ms = std::chrono::duration_cast<
             std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         g_backpack_flap_pid = static_cast<long>(getpid());
-        g_backpack_witness_csv = std::fopen("/tmp/tooie-backpack-flap-witness.csv", "w");
+        g_backpack_witness_csv = std::fopen(tooie_diag_path("tooie-backpack-flap-witness.csv").c_str(), "w");
         if (g_backpack_witness_csv != nullptr) {
             std::fprintf(g_backpack_witness_csv,
                          "FRAME,GFX_TICK,MODEL_RESOURCE_ID,MODEL_BIN,NODE_ID,NODE_TYPE,"
@@ -2548,7 +2550,7 @@ void ensure_init() {
             std::getenv("TOOIE_DIAG_P09_SEAM_EDGE_PATHOLOGY_CORRELATION")),
         std::memory_order_relaxed);
     if (g_secondary_sway_enabled.load(std::memory_order_relaxed)) {
-        g_secondary_sway_csv = std::fopen("/tmp/tooie-secondary-sway-model.csv", "w");
+        g_secondary_sway_csv = std::fopen(tooie_diag_path("tooie-secondary-sway-model.csv").c_str(), "w");
         if (g_secondary_sway_csv != nullptr) {
             std::fprintf(g_secondary_sway_csv,
                          "FRAME,GFX_TICK,PLAYER_OBJECT_POINTER,PLAYER_STATE,APPEARANCE,"
@@ -2570,7 +2572,7 @@ void ensure_init() {
         std::memory_order_relaxed);
     if (g_feather_anim_sample_time_enabled.load(std::memory_order_relaxed)) {
         g_feather_anim_csv =
-            std::fopen("/tmp/tooie-feather-anim-sample-time.csv", "w");
+            std::fopen(tooie_diag_path("tooie-feather-anim-sample-time.csv").c_str(), "w");
         if (g_feather_anim_csv != nullptr) {
             std::fprintf(
                 g_feather_anim_csv,
@@ -4546,7 +4548,7 @@ void secondary_sway_note_bone_anim(uint8_t* rdram, uint32_t anim_list,
     ++g_secondary_sway_bone_anim_samples;
     if (g_secondary_sway_bone_csv == nullptr) {
         g_secondary_sway_bone_csv =
-            std::fopen("/tmp/tooie-secondary-sway-bones.csv", "a");
+            std::fopen(tooie_diag_path("tooie-secondary-sway-bones.csv").c_str(), "a");
         if (g_secondary_sway_bone_csv == nullptr) {
             return;
         }
@@ -4588,7 +4590,7 @@ void secondary_sway_write_snout_row(uint8_t* rdram, recomp_context* ctx,
     ++g_secondary_sway_snout_matrix_samples;
     if (g_secondary_sway_snout_csv == nullptr) {
         g_secondary_sway_snout_csv =
-            std::fopen("/tmp/tooie-secondary-sway-snout.csv", "a");
+            std::fopen(tooie_diag_path("tooie-secondary-sway-snout.csv").c_str(), "a");
         if (g_secondary_sway_snout_csv == nullptr) {
             return;
         }
@@ -4726,7 +4728,7 @@ bool secondary_sway_note_e2aa4(uint8_t* rdram, void* raw_ctx) {
             }
             if (g_secondary_sway_e2aa4_tuple_csv == nullptr) {
                 g_secondary_sway_e2aa4_tuple_csv =
-                    std::fopen("/tmp/tooie-secondary-sway-e2aa4-tuples.csv", "a");
+                    std::fopen(tooie_diag_path("tooie-secondary-sway-e2aa4-tuples.csv").c_str(), "a");
                 if (g_secondary_sway_e2aa4_tuple_csv != nullptr) {
                     std::fprintf(g_secondary_sway_e2aa4_tuple_csv,
                                  "FRAME,A0,A1,A2,MODEL_BIN,A1_MINUS_BIN,WORD0,"
@@ -4964,7 +4966,7 @@ void secondary_sway_note_hip_consume(uint8_t* rdram, void* raw_ctx) {
     ++g_secondary_sway_hip_consume_samples;
     if (g_secondary_sway_hip_csv == nullptr) {
         g_secondary_sway_hip_csv =
-            std::fopen("/tmp/tooie-secondary-sway-hip.csv", "a");
+            std::fopen(tooie_diag_path("tooie-secondary-sway-hip.csv").c_str(), "a");
         if (g_secondary_sway_hip_csv == nullptr) {
             return;
         }
@@ -5038,7 +5040,7 @@ void secondary_sway_dump_producer(uint8_t* rdram, uint32_t anim_list_ptr,
     }
     if (g_secondary_sway_producer_csv == nullptr) {
         g_secondary_sway_producer_csv =
-            std::fopen("/tmp/tooie-kazooie-feather-producer.csv", "a");
+            std::fopen(tooie_diag_path("tooie-kazooie-feather-producer.csv").c_str(), "a");
         if (g_secondary_sway_producer_csv == nullptr) {
             return;
         }
@@ -5370,7 +5372,7 @@ void secondary_sway_note_de2a4(uint8_t* rdram, void* raw_ctx) {
     ++g_secondary_sway_de2a4_tuple_rows;
     if (g_secondary_sway_de2a4_tuple_csv == nullptr) {
         g_secondary_sway_de2a4_tuple_csv =
-            std::fopen("/tmp/tooie-secondary-sway-de2a4-tuples.csv", "a");
+            std::fopen(tooie_diag_path("tooie-secondary-sway-de2a4-tuples.csv").c_str(), "a");
         if (g_secondary_sway_de2a4_tuple_csv == nullptr) {
             return;
         }
@@ -5965,7 +5967,7 @@ void secondary_sway_rt64_v6c_tri(
                              ? kV6CNormalSampleLimit
                              : kV6CSuspiciousSampleLimit;
     if (g_v6c_tri_csv == nullptr) {
-        g_v6c_tri_csv = std::fopen("/tmp/tooie-kazooie-feather-v6c-tri.csv", "w");
+        g_v6c_tri_csv = std::fopen(tooie_diag_path("tooie-kazooie-feather-v6c-tri.csv").c_str(), "w");
         if (g_v6c_tri_csv != nullptr) {
             std::fprintf(g_v6c_tri_csv,
                          "PRIM_SEQ,WORKLOAD,PRIM_KIND,CURRENT_DL,PARENT_DL,DL_DEPTH,"
@@ -6197,7 +6199,7 @@ void secondary_sway_note_ade2c(uint8_t* rdram, void* raw_ctx) {
     }
     if (g_secondary_sway_snout_csv == nullptr) {
         g_secondary_sway_snout_csv =
-            std::fopen("/tmp/tooie-secondary-sway-snout.csv", "a");
+            std::fopen(tooie_diag_path("tooie-secondary-sway-snout.csv").c_str(), "a");
         if (g_secondary_sway_snout_csv == nullptr) {
             return;
         }
@@ -6288,7 +6290,7 @@ void secondary_sway_note_18c28(uint8_t* rdram, uint32_t gfx_mtx_ptr,
     if (sway && g_single_mtx_guest_matrix_rows < kSingleMtxTraceRows) {
         if (g_single_mtx_matrix_csv == nullptr) {
             g_single_mtx_matrix_csv = std::fopen(
-                "/tmp/tooie-kazooie-feather-matrix.csv", "a");
+                tooie_diag_path("tooie-kazooie-feather-matrix.csv").c_str(), "a");
             if (g_single_mtx_matrix_csv != nullptr) {
                 std::fprintf(
                     g_single_mtx_matrix_csv,
@@ -6368,7 +6370,7 @@ void secondary_sway_identity_header() {
     if (!g_secondary_sway_enabled.load(std::memory_order_relaxed)) return;
     if (g_single_mtx_identity_csv == nullptr) {
         g_single_mtx_identity_csv = std::fopen(
-            "/tmp/tooie-kazooie-feather-rt64-identity.csv", "a");
+            tooie_diag_path("tooie-kazooie-feather-rt64-identity.csv").c_str(), "a");
         if (g_single_mtx_identity_csv != nullptr) {
             std::fprintf(
                 g_single_mtx_identity_csv,
@@ -6387,7 +6389,7 @@ void secondary_sway_match_header() {
     if (!g_secondary_sway_enabled.load(std::memory_order_relaxed)) return;
     if (g_single_mtx_match_csv == nullptr) {
         g_single_mtx_match_csv = std::fopen(
-            "/tmp/tooie-kazooie-feather-rt64-match.csv", "a");
+            tooie_diag_path("tooie-kazooie-feather-rt64-match.csv").c_str(), "a");
         if (g_single_mtx_match_csv != nullptr) {
             std::fprintf(
                 g_single_mtx_match_csv,
@@ -7041,7 +7043,7 @@ void secondary_sway_rt64_post_match_event(
     }
     if (g_single_mtx_post_match_csv == nullptr) {
         g_single_mtx_post_match_csv = std::fopen(
-            "/tmp/tooie-kazooie-feather-postmatch.csv", "w");
+            tooie_diag_path("tooie-kazooie-feather-postmatch.csv").c_str(), "w");
         if (g_single_mtx_post_match_csv != nullptr) {
             std::fprintf(
                 g_single_mtx_post_match_csv,
@@ -7292,7 +7294,7 @@ void secondary_sway_rt64_feather_tri_event(
     }
     if (g_feather_tri_csv == nullptr) {
         g_feather_tri_csv =
-            std::fopen("/tmp/tooie-kazooie-feather-v6b-tri.csv", "w");
+            std::fopen(tooie_diag_path("tooie-kazooie-feather-v6b-tri.csv").c_str(), "w");
         if (g_feather_tri_csv != nullptr) {
             std::fprintf(
                 g_feather_tri_csv,

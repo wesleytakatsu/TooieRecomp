@@ -409,6 +409,16 @@ target_include_directories(bcf28_helpers_test PRIVATE
     ${N64MR}/ultramodern/include
     ${N64MR}/librecomp/include
     ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+    ${RT64_ROOT}/src
+    ${RT64_ROOT}/src/contrib
+    ${RECOMP_FRONTEND}/recompinput/include
+    ${RECOMP_FRONTEND}/recompui/include
+    ${RECOMP_FRONTEND}/recompui/src
+    ${RECOMP_FRONTEND}/recompui/lib/RmlUi/Include
+    ${SDL2_INCLUDE_DIRS}
+    $<TARGET_PROPERTY:recompinput,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
 )
 target_compile_options(bcf28_helpers_test PRIVATE
     -fno-strict-aliasing
@@ -439,6 +449,16 @@ target_include_directories(core1_ra_wrappers_test PRIVATE
     ${N64MR}/ultramodern/include
     ${N64MR}/librecomp/include
     ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+    ${RT64_ROOT}/src
+    ${RT64_ROOT}/src/contrib
+    ${RECOMP_FRONTEND}/recompinput/include
+    ${RECOMP_FRONTEND}/recompui/include
+    ${RECOMP_FRONTEND}/recompui/src
+    ${RECOMP_FRONTEND}/recompui/lib/RmlUi/Include
+    ${SDL2_INCLUDE_DIRS}
+    $<TARGET_PROPERTY:recompinput,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
 )
 target_compile_options(core1_ra_wrappers_test PRIVATE
     -fno-strict-aliasing
@@ -469,6 +489,16 @@ target_include_directories(stick_angle_thunk_test PRIVATE
     ${N64MR}/ultramodern/include
     ${N64MR}/librecomp/include
     ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+    ${RT64_ROOT}/src
+    ${RT64_ROOT}/src/contrib
+    ${RECOMP_FRONTEND}/recompinput/include
+    ${RECOMP_FRONTEND}/recompui/include
+    ${RECOMP_FRONTEND}/recompui/src
+    ${RECOMP_FRONTEND}/recompui/lib/RmlUi/Include
+    ${SDL2_INCLUDE_DIRS}
+    $<TARGET_PROPERTY:recompinput,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
 )
 target_compile_options(stick_angle_thunk_test PRIVATE
     -fno-strict-aliasing
@@ -483,6 +513,29 @@ target_link_libraries(stick_angle_thunk_test PRIVATE
     Threads::Threads
 )
 set_target_properties(stick_angle_thunk_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# These three tests compile boot_hw_stubs.cpp, which references the diag wrappers (__wrap_*),
+# the BGM hooks, tooie_window and recompui::get_window_size: give them the same
+# definitions, the same --wrap (lld-link /wrap) set (TOOIE_WRAPPED_SYMBOLS) and a window-size stub
+# (the real UI library needs main.cpp's SDL window / launcher globals).
+foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
+    target_sources(${_t} PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
+        ${CMAKE_SOURCE_DIR}/tests/support/recompui_window_stub.cpp
+    )
+    if(WIN32)
+        foreach(sym IN LISTS TOOIE_WRAPPED_SYMBOLS)
+            target_link_options(${_t} PRIVATE "LINKER:/wrap:${sym}")
+        endforeach()
+    elseif(UNIX AND NOT APPLE)
+        foreach(sym IN LISTS TOOIE_WRAPPED_SYMBOLS)
+            target_link_options(${_t} PRIVATE "-Wl,--wrap=${sym}")
+        endforeach()
+    endif()
+endforeach()
 
 # P08 matrix-submission regression: proves incremental P LOAD + V MUL equivalence and RT64 classification.
 add_executable(matrix_submission_test
@@ -700,6 +753,11 @@ target_compile_options(p09_exact_use_correlation_test PRIVATE
     -fno-strict-aliasing
     -Wno-unused-parameter
 )
+if(WIN32)
+    # The test keeps large P09 tie-sample/plan structs on the stack; Linux gives the main thread 8 MiB,
+    # the Windows default is 1 MiB (0xC00000FD stack overflow).
+    target_link_options(p09_exact_use_correlation_test PRIVATE "LINKER:/STACK:8388608")
+endif()
 set_target_properties(p09_exact_use_correlation_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # P09 PREV/CUR local-pair snapshot: host test of the header-only capture/replay.

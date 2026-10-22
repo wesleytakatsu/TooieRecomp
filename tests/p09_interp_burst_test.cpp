@@ -6,7 +6,12 @@
 #include <fstream>
 #include <iterator>
 #include <thread>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
 #include <unistd.h>
+#endif
 
 #include "hle/rt64_interp_burst.h"
 #include "contrib/miniz/miniz.h"
