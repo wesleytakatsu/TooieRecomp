@@ -1,0 +1,18 @@
+# TooieRecomp local patch: rt64_transform_processor.cpp includes <unistd.h> only on non-Windows; on _WIN32 uses <process.h> and maps getpid to _getpid (P09 local pair snapshot output name). No Linux change.
+diff --git a/src/render/rt64_transform_processor.cpp b/src/render/rt64_transform_processor.cpp
+index 49c1bb9..90acd54 100644
+--- a/src/render/rt64_transform_processor.cpp
++++ b/src/render/rt64_transform_processor.cpp
+@@ -11,7 +11,12 @@
+ #include <mutex>
+ #include <string>
+ #include <thread>
++#ifdef _WIN32
++#include <process.h>
++#define getpid _getpid
++#else
+ #include <unistd.h>
++#endif
+ #include <vector>
+ 
+ #include "common/rt64_math.h"

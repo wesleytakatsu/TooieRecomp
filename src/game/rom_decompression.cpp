@@ -7,16 +7,27 @@
 
 #include "librecomp/game.hpp"
 #include "banjo_game.h"
+#include "xxHash/xxh3.h"
+#include "rom_decompressor_lib.h"
 
-// Tooie NTSC-U cart XXH3-64 (32 MiB .z64). For runtime we currently accept the
-// *decompressed* image used by the recompiler (see GameEntry.rom_hash).
-// Full cart→decompressed path lands with a dedicated decompressor callback.
+// Tooie NTSC-U retail cart (32 MiB, .z64 byte order) XXH3-64. GameEntry.rom_hash is the XXH3-64 of the *decompressed*
+// image the recompiled code expects; the cart is converted to it by tooie_decompress_rom (vendored rom_decompressor).
 
 namespace tooie {
 
-// Identity: recompiler metadata is built against decompressed.us.z64.
-// When the user supplies that image, no further transform is required.
+constexpr size_t kCartSize = 0x2000000;
+constexpr uint64_t kCartHash = 0x00F70DE5F2D70EA2ULL;
+
+// Retail cart -> decompressed image. Anything else (notably the already decompressed image) is returned unchanged.
 std::vector<uint8_t> decompress_tooie(std::span<const uint8_t> rom) {
+    if (rom.size() == kCartSize && XXH3_64bits(rom.data(), rom.size()) == kCartHash) {
+        std::vector<char> cart(rom.begin(), rom.end());
+        std::vector<char> decompressed;
+        if (tooie_decompress_rom(cart, decompressed, nullptr)) {
+            return std::vector<uint8_t>(decompressed.begin(), decompressed.end());
+        }
+        return {};
+    }
     return std::vector<uint8_t>(rom.begin(), rom.end());
 }
 

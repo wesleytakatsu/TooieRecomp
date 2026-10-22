@@ -6,6 +6,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 #include <string_view>
 
 #include "fmt/ostream.h"
@@ -14,6 +15,7 @@
 #include "zlib.h"
 
 #include "tooie_utils.h"
+#include "rom_decompressor_lib.h"
 
 constexpr bool generate_splat_files = false;
 constexpr bool generate_overlay_toml = false;
@@ -339,7 +341,9 @@ void resize_if_larger(std::vector<T>& vec, size_t new_size) {
     }
 }
 
-void undo_xors(size_t overlay_index, char* rom_start, char* overlay_data, std::vector<char>& decompressed_buffer, size_t decompressed_size) {
+bool overlay_layout_ok(const char* header, const char* contents, size_t length, bool check_reloc_offsets);
+
+bool undo_xors(size_t overlay_index, char* rom_start, char* overlay_data, std::vector<char>& decompressed_buffer, size_t decompressed_size) {
     // Calculate the CRCs of the decompressed overlay data
     uint32_t crc1, crc2;
     bk_crc(decompressed_buffer.data(), decompressed_size, crc1, crc2);
@@ -348,6 +352,11 @@ void undo_xors(size_t overlay_index, char* rom_start, char* overlay_data, std::v
     // Reverse the CRC xor in the overlay
     *reinterpret_cast<uint32_t*>(overlay_data + 0) ^= byteswap32(crc1);
     *reinterpret_cast<uint32_t*>(overlay_data + 8) ^= byteswap32(crc2);
+
+    // The entrypoint/reloc counts (header + 8) are only valid from here on; the reloc table is xored in place below.
+    if (!overlay_layout_ok(overlay_data, decompressed_buffer.data(), decompressed_size, false)) {
+        return false;
+    }
 
     // Get the pointer to the relocs and the number of relocs
     uint16_t num_relocs;
@@ -362,12 +371,18 @@ void undo_xors(size_t overlay_index, char* rom_start, char* overlay_data, std::v
     for (uint16_t reloc_index = 0; reloc_index < num_relocs; reloc_index++) {
         *reinterpret_cast<uint16_t*>(ovl_relocs + reloc_index * sizeof(uint16_t)) ^= rom_xor_swapped;
     }
+    return true;
 }
 
-void parse_relocs(output_file_state& output_files, uint32_t ovl_rom_address, const char* ovl_name, char* overlay_header, char* overlay_contents, uint32_t text_size, uint32_t rodata_size, uint32_t data_size, uint32_t bss_size) {
-    std::string ovl_asset_dir = std::string{"assets/overlays/"} + ovl_name;
-    std::filesystem::create_directories(ovl_asset_dir);
-    std::ofstream relocs_bin{ovl_asset_dir + "/relocs.bin", std::ios_base::binary};
+// relocs_dir == nullptr: library mode (no side files, no diagnostics on stderr).
+void parse_relocs(output_file_state& output_files, uint32_t ovl_rom_address, const char* ovl_name, char* overlay_header, char* overlay_contents, uint32_t text_size, uint32_t rodata_size, uint32_t data_size, uint32_t bss_size, const char* relocs_dir) {
+    const bool verbose = relocs_dir != nullptr;
+    std::ofstream relocs_bin;
+    if (verbose) {
+        std::string ovl_asset_dir = std::string{relocs_dir} + "/" + ovl_name;
+        std::filesystem::create_directories(ovl_asset_dir);
+        relocs_bin.open(ovl_asset_dir + "/relocs.bin", std::ios_base::binary);
+    }
     // Get the pointer to the relocs and the number of relocs
     uint16_t num_entrypoints;
     uint16_t num_relocs;
@@ -394,7 +409,9 @@ void parse_relocs(output_file_state& output_files, uint32_t ovl_rom_address, con
         // Read the reloc value
         uint16_t reloc_val = byteswap16(*reinterpret_cast<uint16_t*>(ovl_relocs + reloc_index * sizeof(uint16_t)));
         // Write the reloc value to the overlay's reloc list
-        relocs_bin.write(reinterpret_cast<char*>(&reloc_val), sizeof(reloc_val));
+        if (verbose) {
+            relocs_bin.write(reinterpret_cast<char*>(&reloc_val), sizeof(reloc_val));
+        }
         // Determine the reloc offset and type
         TooieRelocType reloc_type = (TooieRelocType)(reloc_val & 0x3);
         uint16_t reloc_offset = reloc_val & ~0x3;
@@ -421,12 +438,12 @@ void parse_relocs(output_file_state& output_files, uint32_t ovl_rom_address, con
                 if (next_reloc_type == TooieRelocType::R_MIPS_LO16) {
                     reloc_addend += (int16_t)(next_reloc_word & 0xFFFF);
                 }
-                else {
+                else if (verbose) {
                     fmt::print(stderr, "hi with wrong reloc type afterwards ({})\n", reloc_names[(size_t)next_reloc_type]);
                 }
 
             }
-            else {
+            else if (verbose) {
                 fmt::print(stderr, "hi with no reloc afterwards\n");
             }
             // This is safe to do as no overlay could possibly be large enough for these bits to overlap with a reloc's hi offset
@@ -437,7 +454,9 @@ void parse_relocs(output_file_state& output_files, uint32_t ovl_rom_address, con
                 reloc_addend = prev_hi_addend + (int16_t)(reloc_word & 0xFFFF);
             }
             else {
-                fmt::print(stderr, "lo without hi (reloc {} in {})\n", reloc_index, ovl_name);
+                if (verbose) {
+                    fmt::print(stderr, "lo without hi (reloc {} in {})\n", reloc_index, ovl_name);
+                }
                 reloc_addend = (int16_t)(reloc_word & 0xFFFF);
             }
         }
@@ -464,7 +483,9 @@ void parse_relocs(output_file_state& output_files, uint32_t ovl_rom_address, con
 
         // Skip rejected symbols
         if (output_files.is_rejected(ovl_name, symbol_address)) {
-            fmt::print(stderr, "Rejected: 0x{:08X} in {}\n", symbol_address, ovl_name);
+            if (verbose) {
+                fmt::print(stderr, "Rejected: 0x{:08X} in {}\n", symbol_address, ovl_name);
+            }
             continue;
         }
         
@@ -558,7 +579,53 @@ void write_swapped(std::vector<char>& data, size_t offset, uint8_t val) {
     *(data.data() + offset) = static_cast<char>(val);
 }
 
-void decompress_copy(z_stream& stream, std::ofstream& output_rom, const std::vector<char> baserom_contents, size_t offset, size_t size) {
+// In-memory stand-in for the output std::ofstream (same write/tellp/seekp semantics: writing past the end zero-fills the gap).
+class OutBuf {
+public:
+    std::vector<char> data;
+    size_t pos = 0;
+
+    void write(const char* bytes, size_t count) {
+        if (pos + count > data.size()) {
+            data.resize(pos + count);
+        }
+        if (count != 0) {
+            std::memcpy(data.data() + pos, bytes, count);
+        }
+        pos += count;
+    }
+    size_t tellp() const { return pos; }
+    void seekp(size_t abs_pos) { pos = abs_pos; }
+    void seekp(size_t off, std::ios::seekdir dir) { pos = (dir == std::ios::cur) ? pos + off : off; }
+};
+
+// Upper bounds for untrusted input (the real cart has 0x1E899B0 + a ~4 KiB overlay table and decompresses to 35098224 bytes).
+constexpr size_t max_overlay_table_size = 0x10000;
+constexpr size_t max_output_size = 0x10000000;
+
+struct InflateGuard {
+    z_stream stream;
+    bool ok;
+    InflateGuard() {
+        std::memset(&stream, 0, sizeof(stream));
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.opaque = Z_NULL;
+        stream.avail_in = 0;
+        stream.next_in = Z_NULL;
+        ok = inflateInit2(&stream, -MAX_WBITS) == Z_OK;
+    }
+    ~InflateGuard() {
+        if (ok) {
+            inflateEnd(&stream);
+        }
+    }
+};
+
+bool decompress_copy(z_stream& stream, OutBuf& output_rom, const std::vector<char>& baserom_contents, size_t offset, size_t size) {
+    if (size < sizeof(uint16_t) || offset > baserom_contents.size() || size > baserom_contents.size() - offset) {
+        return false;
+    }
     size_t decompressed_size = read_swapped<uint16_t>(baserom_contents, offset) * 16;
     std::vector<char> decompressed_buffer(decompressed_size);
 
@@ -571,50 +638,90 @@ void decompress_copy(z_stream& stream, std::ofstream& output_rom, const std::vec
     while (!err) {
         err = inflate(&stream, Z_NO_FLUSH);
     }
+    inflateReset(&stream);
     if (err != Z_STREAM_END) {
-        fmt::print(stderr, "Zlib error: {}\n", err);
-        std::exit(EXIT_FAILURE);
+        return false;
     }
     output_rom.write(decompressed_buffer.data(), decompressed_size);
-
-    inflateReset(&stream);
+    return true;
 }
 
-int main(int argc, const char** argv) {
-    if (argc != 3) {
-        fmt::print(stderr, "Decompresses a Banjo Tooie ROM.\n");
-        fmt::print(stderr, "Usage: {} [base ROM] [output ROM path]\n", argv[0]);
-        return EXIT_SUCCESS;
+// Checks that the overlay's entrypoint/name/reloc tables (as walked by get_overlay_reloc_ptr and parse_relocs) lie inside
+// [contents, contents + length). With check_reloc_offsets the reloc targets (ovl_code + offset) are verified as well.
+bool overlay_layout_ok(const char* header, const char* contents, size_t length, bool check_reloc_offsets) {
+    uint16_t num_entrypoints = byteswap16(*reinterpret_cast<const uint16_t*>(header + ovl_header_offsets::entrypoint_count));
+    uint16_t num_relocs = byteswap16(*reinterpret_cast<const uint16_t*>(header + ovl_header_offsets::reloc_count));
+    size_t name_length = (uint8_t)header[ovl_header_offsets::name_length];
+
+    size_t name_offset = 0x28 + sizeof(uint32_t) * (size_t)num_entrypoints;
+    size_t relocs_offset = name_offset + ((name_length + 4 - 1) & ~(size_t)3);
+    size_t relocs_end = relocs_offset + num_relocs * sizeof(uint16_t);
+    if (relocs_end > length || name_offset >= length) {
+        return false;
+    }
+    // The name is used as a C string.
+    if (std::memchr(contents + name_offset, 0, length - name_offset) == nullptr) {
+        return false;
+    }
+    if (check_reloc_offsets) {
+        size_t code_offset = (relocs_end + 16 - 1) & ~(size_t)15;
+        for (uint16_t i = 0; i < num_relocs; i++) {
+            uint16_t reloc_val = byteswap16(*reinterpret_cast<const uint16_t*>(contents + relocs_offset + i * sizeof(uint16_t)));
+            size_t reloc_offset = reloc_val & ~(size_t)3;
+            if (code_offset + reloc_offset + sizeof(uint32_t) > length) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool tooie_decompress_rom(const std::vector<char>& cart, std::vector<char>& out, const char* relocs_dir, std::string* error) {
+    auto fail = [&](const char* message) {
+        if (error != nullptr) {
+            *error = message;
+        }
+        out.clear();
+        return false;
+    };
+
+    out.clear();
+    if (cart.size() < (size_t)us_v10.overlay_table_offset + sizeof(uint32_t)) {
+        return fail("input is too small to be a Banjo-Tooie (USA) cartridge image");
     }
 
-    const char* baserom_path = argv[1];
-    const char* output_rom_path = argv[2];
-    
-    // Read the contents of the base ROM
-    std::vector<char> baserom_contents = read_file_contents(baserom_path);
+    // The overlay patching below works in place, so operate on a private copy.
+    std::vector<char> baserom_contents = cart;
 
-    std::ofstream output_rom_file{output_rom_path, std::ios::binary};
-    
+    OutBuf output_rom_file;
+
     // Write the contents up to core1
     output_rom_file.write(baserom_contents.data(), us_v10.core1_start);
 
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    stream.avail_in = 0;
-    stream.next_in = Z_NULL;
-    inflateInit2(&stream, -MAX_WBITS);
+    InflateGuard inflater;
+    if (!inflater.ok) {
+        return fail("failed to initialise the inflate stream");
+    }
+    z_stream& stream = inflater.stream;
 
-    decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core1_start, us_v10.core1_text_end - us_v10.core1_start);
-    decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core1_text_end, us_v10.core1_end - us_v10.core1_text_end);
-    decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core2_start, us_v10.core2_text_end - us_v10.core2_start);
-    decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core2_text_end, us_v10.core2_end - us_v10.core2_text_end);
+    if (!decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core1_start, us_v10.core1_text_end - us_v10.core1_start) ||
+        !decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core1_text_end, us_v10.core1_end - us_v10.core1_text_end) ||
+        !decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core2_start, us_v10.core2_text_end - us_v10.core2_start) ||
+        !decompress_copy(stream, output_rom_file, baserom_contents, us_v10.core2_text_end, us_v10.core2_end - us_v10.core2_text_end)) {
+        return fail("failed to inflate a core section");
+    }
 
     output_file_state output_files{(size_t)output_rom_file.tellp()};
 
     uint32_t overlay_table_size = read_swapped<uint32_t>(baserom_contents, us_v10.overlay_table_offset);
-    
+    if (overlay_table_size < 2 * sizeof(uint32_t) || overlay_table_size > max_overlay_table_size ||
+        overlay_table_size % sizeof(uint32_t) != 0 ||
+        (size_t)us_v10.overlay_table_offset + overlay_table_size > baserom_contents.size() ||
+        // undo_xors reads one 32-bit word per overlay from the start of the ROM
+        0x40 + (size_t)overlay_table_size > baserom_contents.size()) {
+        return fail("invalid overlay table");
+    }
+
     // Record the current output file position to know where to write the overlay table later
     size_t cur_output_pos = output_rom_file.tellp();
     // Align the overlay table to 16 bytes like in the compressed rom
@@ -655,6 +762,11 @@ int main(int argc, const char** argv) {
         size_t overlay_contents_length;
 
         if (overlay_end != overlay_start) {
+            constexpr size_t min_overlay_size = 0x12; // header incl. the compressed overlay's decompressed size field
+            if (overlay_end < overlay_start || overlay_end - overlay_start < min_overlay_size ||
+                (size_t)us_v10.overlay_table_offset + overlay_end > baserom_contents.size()) {
+                return fail("overlay table entry out of range");
+            }
             size_t ovl_rom_start = us_v10.overlay_table_offset + overlay_start;
             char* overlay_header = baserom_contents.data() + ovl_rom_start;
 
@@ -673,6 +785,9 @@ int main(int argc, const char** argv) {
                 resize_if_larger(decompressed_buffer, decompressed_size);
 
                 constexpr int header_size = 0x12;
+                if (decompressed_size < 0x28) {
+                    return fail("malformed compressed overlay");
+                }
                 stream.avail_in = overlay_end - overlay_start - header_size;
                 stream.next_in = reinterpret_cast<const Bytef*>(overlay_header + header_size);
 
@@ -682,13 +797,14 @@ int main(int argc, const char** argv) {
                 while (!err) {
                     err = inflate(&stream, Z_NO_FLUSH);
                 }
-                if (err != Z_STREAM_END) {
-                    printf("Zlib error: %d\n", err);
-                    return err;
-                }
                 inflateReset(&stream);
+                if (err != Z_STREAM_END) {
+                    return fail("failed to inflate an overlay");
+                }
 
-                undo_xors(overlay_index, baserom_contents.data(), overlay_header, decompressed_buffer, decompressed_size);
+                if (!undo_xors(overlay_index, baserom_contents.data(), overlay_header, decompressed_buffer, decompressed_size)) {
+                    return fail("malformed compressed overlay");
+                }
 
                 // printf("  %08X %08X %08X %08X\n",
                 //     byteswap32(*reinterpret_cast<uint32_t*>(overlay_header.data() + 0)),
@@ -709,7 +825,11 @@ int main(int argc, const char** argv) {
                 overlay_contents_length = overlay_end - overlay_start - 0x10;
                 // fmt::print("  Uncompressed\n");
             }
-            
+
+            if (!overlay_layout_ok(overlay_header, overlay_contents, overlay_contents_length, true)) {
+                return fail("malformed overlay");
+            }
+
             uint32_t text_size = 16 * read_swapped<uint16_t>(baserom_contents, ovl_rom_start + ovl_header_offsets::text_size);
             uint32_t rodata_size = 16 * read_swapped<uint16_t>(baserom_contents, ovl_rom_start + ovl_header_offsets::rodata_size);
             uint32_t data_size = 16 * read_swapped<uint16_t>(baserom_contents, ovl_rom_start + ovl_header_offsets::data_size);
@@ -748,10 +868,13 @@ int main(int argc, const char** argv) {
                 byteswapped_overlay_offsets[overlay_index - 1] = byteswap32((uint32_t)before - output_overlay_table_pos);
             }
             
-            parse_relocs(output_files, before, ovl_name, overlay_header, overlay_contents, text_size, rodata_size, data_size, bss_size);
+            parse_relocs(output_files, before, ovl_name, overlay_header, overlay_contents, text_size, rodata_size, data_size, bss_size, relocs_dir);
 
             output_rom_file.write(overlay_header, 0x10);
             output_rom_file.write(overlay_contents, overlay_contents_length);
+            if (output_rom_file.data.size() > max_output_size) {
+                return fail("decompressed image exceeds the size limit");
+            }
 
             // size_t after = output_rom_file.tellp();
 
@@ -777,5 +900,34 @@ int main(int argc, const char** argv) {
     output_rom_file.seekp(output_overlay_table_pos);
     output_rom_file.write(reinterpret_cast<char*>(byteswapped_overlay_offsets.data()), byteswapped_overlay_offsets.size() * sizeof(byteswapped_overlay_offsets[0]));
 
+    out = std::move(output_rom_file.data);
+    return true;
+}
+
+#ifndef TOOIE_ROM_DECOMPRESSOR_LIB
+int main(int argc, const char** argv) {
+    if (argc != 3) {
+        fmt::print(stderr, "Decompresses a Banjo Tooie ROM.\n");
+        fmt::print(stderr, "Usage: {} [base ROM] [output ROM path]\n", argv[0]);
+        return EXIT_SUCCESS;
+    }
+
+    const char* baserom_path = argv[1];
+    const char* output_rom_path = argv[2];
+
+    // Read the contents of the base ROM
+    std::vector<char> baserom_contents = read_file_contents(baserom_path);
+
+    std::vector<char> decompressed;
+    std::string error;
+    if (!tooie_decompress_rom(baserom_contents, decompressed, "assets/overlays", &error)) {
+        fmt::print(stderr, "Decompression failed: {}\n", error);
+        return EXIT_FAILURE;
+    }
+
+    std::ofstream output_rom_file{output_rom_path, std::ios::binary};
+    output_rom_file.write(decompressed.data(), decompressed.size());
+
     return 0;
 }
+#endif

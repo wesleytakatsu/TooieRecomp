@@ -1,0 +1,19 @@
+diff --git a/include/recomp.h b/include/recomp.h
+index 13a5fb9..60c8bcf 100644
+--- a/include/recomp.h
++++ b/include/recomp.h
+@@ -15,6 +15,14 @@
+     
+     // Use MSVC's fenv_access pragma.
+     #define SET_FENV_ACCESS() _Pragma("fenv_access(on)")
++#elif defined(__clang__) && defined(_WIN32)
++    // clang-cl / COFF: "extern inline" + weak becomes a COMDAT, which lld-link reports as a duplicate symbol against a strong
++    // definition of the same function. Plain weak (a weak external with a default definition) is overridden by a strong
++    // definition for every reference, including calls inside the generated translation unit, and still blocks IPO.
++    #define RECOMP_FUNC __attribute__((weak,noinline))
++
++    // Use the standard STDC FENV_ACCESS pragma.
++    #define SET_FENV_ACCESS() _Pragma("STDC FENV_ACCESS ON")
+ #elif defined(__clang__)
+     // Clang has no dedicated IPO attribute, so we use a combination of other attributes to give the desired behavior.
+     // The inline keyword allows multiple definitions during linking, and extern forces clang to emit an externally visible definition.

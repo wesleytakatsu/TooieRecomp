@@ -11,7 +11,12 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
 #include <unistd.h>
+#endif
 #include <vector>
 
 #include "common/rt64_math.h"

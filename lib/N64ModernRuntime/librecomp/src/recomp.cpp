@@ -390,6 +390,15 @@ recomp::RomValidationError recomp::select_rom(const std::filesystem::path& rom_p
             break;
     }
 
+    // Games whose rom_hash is that of a decompressed image can accept the original (compressed) cartridge image: run the game's
+    // routine and keep its output only if it has the expected hash. Games with compressed code keep using it for mods only.
+    if (!check_hash(rom_data, game_entry.rom_hash) && game_entry.decompression_routine != nullptr && !game_entry.has_compressed_code) {
+        std::vector<uint8_t> decompressed_rom = game_entry.decompression_routine(rom_data);
+        if (!decompressed_rom.empty() && check_hash(decompressed_rom, game_entry.rom_hash)) {
+            rom_data = std::move(decompressed_rom);
+        }
+    }
+
     if (!check_hash(rom_data, game_entry.rom_hash)) {
         const std::string_view name{ reinterpret_cast<const char*>(rom_data.data()) + 0x20, game_entry.internal_name.size()};
         if (name == game_entry.internal_name) {

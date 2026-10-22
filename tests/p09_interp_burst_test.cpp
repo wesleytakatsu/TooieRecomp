@@ -125,7 +125,7 @@ int main() {
             CHECK(c.consider(end, wl, wl + 1, true) == Reason::ENDPOINT_CURRENT);
             CHECK(c.consider(m, wl + 99, wl + 1, true) == Reason::META_MISMATCH);
             if (c.consider(m, wl, wl + 1, true) == Reason::ACCEPTED) {
-                CHECK(c.consider(m, wl, wl + 1, true) == Reason::DUPLICATE);
+                CHECK(c.consider(m, wl, wl + 1, true) == Reason::DUPLICATE_KEY);
                 if (!c.submit(job(m))) break;
                 ok++;
             }
@@ -166,14 +166,14 @@ int main() {
         FrameMeta e = good(1); e.curW = 1.0f;
         CHECK(c.consider(e, 1, 2, true) == Reason::ENDPOINT_CURRENT);
         CHECK(c.waitIdle(3000) && c.lastResult() == Controller::Result::TIMEOUT);
-        CHECK(c.request()); c.fail("x"); CHECK(c.waitIdle(2000) && c.lastResult() == Controller::Result::ERROR); // reusable after finish
+        CHECK(c.request()); c.fail("x"); CHECK(c.waitIdle(2000) && c.lastResult() == Controller::Result::FAILED); // reusable after finish
     }
     // HDR / unsupported format: explicit failure, not a mis-encode.
     {
         Controller c(5000, 20); c.setBaseDir(tmpBase("hdr").string());
         CHECK(c.request()); c.poll(30, 60);
         CHECK(c.consider(good(1), 1, 2, false) != Reason::ACCEPTED);
-        CHECK(c.waitIdle(2000) && c.lastResult() == Controller::Result::ERROR && c.lastMessage().find("UNSUPPORTED_FORMAT") != std::string::npos);
+        CHECK(c.waitIdle(2000) && c.lastResult() == Controller::Result::FAILED && c.lastMessage().find("UNSUPPORTED_FORMAT") != std::string::npos);
     }
     // Write error (base is a file): burst ends ERROR with the path, no hang; destructor with active burst is safe.
     {
@@ -181,7 +181,7 @@ int main() {
         Controller c(5000, 20); c.setBaseDir((base / "sub").string());
         CHECK(c.request()); c.poll(30, 60);
         FrameMeta m = good(1); CHECK(c.consider(m, 1, 2, true) == Reason::ACCEPTED); CHECK(c.submit(job(m)));
-        CHECK(c.waitIdle(3000) && c.lastResult() == Controller::Result::ERROR && c.lastMessage().find("sub") != std::string::npos);
+        CHECK(c.waitIdle(3000) && c.lastResult() == Controller::Result::FAILED && c.lastMessage().find("sub") != std::string::npos);
         Controller d(60000, 20); d.setBaseDir(base.string()); CHECK(d.request()); // destructs while REQUESTED
     }
     std::puts("p09_interp_burst_test: PASS");

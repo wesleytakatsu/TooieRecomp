@@ -182,11 +182,12 @@ Risco: se o N64Recomp ou o `rom_decompressor` tiverem outra suposição POSIX, o
 
 | # | Tarefa | Dono | Detalhe / Aceite |
 |---|--------|------|------------------|
-| W2.1 | Estágios `Configure` e `Build` | Grok | `-G Ninja`, `clang-cl`, `Release`, `-Jobs`. Paridade com o `-ffile-prefix-map` do Linux via `/clang:-ffile-prefix-map=<root>=/tooie` |
-| W2.2 | Flags de `RecompiledFuncs` com clang-cl | Sonnet | Validar `-fno-strict-aliasing`, `-falign-functions=16` e os `-Wno-*`; usar `/clang:` ou `if(MSVC)` quando preciso. Avaliar `/bigobj` nos `funcs_*.c` grandes |
-| W2.3 | Erros reais de TU (RT64/plume e outros) | Sonnet | As falhas de `plume_d3d12.cpp`/`plume_vulkan.cpp` vieram de sondas cross-host sem os cabeçalhos do SDK. No host nativo podem nem existir: corrigir só o que falhar de verdade, via patch versionado |
-| W2.4 | Link | Sonnet | `TOOIE_REAL_SHIM` igual à lista `-Wl,--wrap`, `/OPT:NOICF`, cópia de DLLs (SDL2, dxil, dxcompiler), ícone `.rc` |
-| W2.5 | Build completo mais smoke de execução | Haiku | `-Stage Build` com exit 0; o exe sobe e fica vivo por N s, ou sai limpo com log. O launcher na tela fica para o usuário confirmar visualmente |
+| W2.1 | Estágios `Configure` e `Build` | Grok | ✅ **Feito (2026-10-22)**: Estágios Configure, Build e All implementados no Build-Tooie.ps1 com Ninja, clang-cl, prefix-map (/clang:) e jobs paralelos. `-G Ninja`, `clang-cl`, `Release`, `-Jobs`. Paridade com o `-ffile-prefix-map` do Linux via `/clang:-ffile-prefix-map=<root>=/tooie` |
+| W2.2 | Flags de `RecompiledFuncs` com clang-cl | Sonnet | ✅ **Feito (2026-10-22)**: Flags GNU de RecompiledFuncs (-fno-strict-aliasing, -falign-functions=16, -Wno-*) aceitas nativamente pelo clang-cl (0 unused argument warnings). Validar `-fno-strict-aliasing`, `-falign-functions=16` e os `-Wno-*`; usar `/clang:` ou `if(MSVC)` quando preciso. Avaliar `/bigobj` nos `funcs_*.c` grandes |
+| W2.3 | Erros reais de TU (RT64/plume e outros) | Sonnet | ✅ **Feito (2026-10-22)**: 196 erros de TU resolvidos: enum DUPLICATE/ERROR em rt64_interp_burst.h renomeados (conflito com nb30.h/wingdi.h) e _getpid no rt64_transform_processor.cpp. As falhas de `plume_d3d12.cpp`/`plume_vulkan.cpp` vieram de sondas cross-host sem os cabeçalhos do SDK. No host nativo podem nem existir: corrigir só o que falhar de verdade, via patch versionado |
+| W2.4 | Link | Sonnet | ✅ **Feito (2026-10-22)**: Link bem-sucedido sem /FORCE:MULTIPLE: override de RECOMP_FUNC fraco (weak,noinline) no COFF via recomp.h e /wrap: unificado no CMakeLists.txt (18 símbolos). `TOOIE_REAL_SHIM` igual à lista `-Wl,--wrap`, `/OPT:NOICF`, cópia de DLLs (SDL2, dxil, dxcompiler), ícone `.rc` |
+| W2.5 | Build completo mais smoke de execução | Haiku | ✅ **Feito (2026-10-22)**: TooieRecompiled.exe (23.944.704 bytes) gerado e DLLs copiadas; smoke OK; launcher e início do jogo confirmados pelo usuário com a ROM de cartucho. `-Stage Build` com exit 0; o exe sobe e fica vivo por N s, ou sai limpo com log. O launcher na tela fica para o usuário confirmar visualmente |
+| W2.6 | Launcher aceita a ROM de cartucho (.z64/.n64) | Sonnet | ✅ **Feito (2026-10-22)**: Descompressão em memória integrada ao `select_rom` via `tooie_cart_decompress` (miniz/fmt), aceitando .z64/.n64 com `rom_cart_import_test` PASS; launcher e início confirmados pelo usuário. |
 
 Riscos: caminhos longos (>260) dentro de `build-win/`, mitigados com build dir curto. O Defender deixa o build lento; excluir a pasta é decisão do usuário, nunca do agente.
 
@@ -200,6 +201,7 @@ Riscos: caminhos longos (>260) dentro de `build-win/`, mitigados com build dir c
 | W3.2 | Diretório de diagnóstico | Grok | Helper único `tooie_diag_path(name)` (`TOOIE_DIAG_DIR` ou `std::filesystem::temp_directory_path()`) no lugar dos `"/tmp/..."` de `tooie_diag.cpp` e `transform_hooks.cpp`. Sem mudar o comportamento no Linux |
 | W3.3 | Portar os testes `.sh`/`.py` | Haiku | `demo1_projectile_coverage_test.sh` e `n64recomp_zero_size_static_test.sh` viram Python portátil; conferir se `attract_demo2_transition_jal_test.py` roda no Windows |
 | W3.4 | `run-tooie.ps1` | Grok | Equivalente ao `run-tooie.sh`. O Angrylion fica só no Linux (documentado) |
+| W3.5 | Atualizar a dica do `tools/extract_rom.py` (cartucho agora é aceito) | Grok | — |
 
 ## W4: Testes, pacote e CI
 
@@ -270,4 +272,4 @@ W0.5 (Gemini, docs) ─┘ (paralelo a W0.4/W0.6: arquivos diferentes)
 
 ## Primeira ação concreta
 
-W0 e W1 concluídas (evidências: [[../../plan/evidence/p11-windows-native-w0-20261022]], [[../../plan/evidence/p11-windows-native-w1-20261022]]). Próxima: checkpoint C2 (commit com OK do usuário), depois W2.1 (Grok) + W2.2 (Sonnet).
+W0–W2 concluídas (evidências [[../../plan/evidence/p11-windows-native-w0-20261022|w0]], [[../../plan/evidence/p11-windows-native-w1-20261022|w1]], [[../../plan/evidence/p11-windows-native-w2-20261022|w2]]). Próxima: checkpoint C3; depois W3 ∥ W4.

@@ -142,6 +142,37 @@ target_include_directories(PatchesLib PRIVATE
     ${N64MR}/N64Recomp/include
 )
 
+# --- Retail cart -> decompressed image (in-memory use of the vendored decomp/tools/rom_decompressor) ---
+# Same recipe as tools/windows/extract: the decompressor's zlib calls run on the vendored miniz (already linked by librecomp,
+# so no second miniz is compiled) through a zlib.h shim that lives only in the build tree and only on this target's include
+# path. fmt is the copy N64Recomp already builds into the game (decomp/tools/fmt is the same major version, v11, in the same
+# inline namespace, so a second compiled copy would be a duplicate-symbol link error); tooie_utils is private to this library.
+set(TOOIE_DECOMP_TOOLS "${CMAKE_SOURCE_DIR}/decomp/tools")
+set(TOOIE_CART_SHIM_DIR "${CMAKE_BINARY_DIR}/cart_decompress_shim")
+file(MAKE_DIRECTORY "${TOOIE_CART_SHIM_DIR}")
+file(WRITE "${TOOIE_CART_SHIM_DIR}/miniz_export.h" "#pragma once\n#ifndef MINIZ_EXPORT\n#define MINIZ_EXPORT\n#endif\n")
+file(WRITE "${TOOIE_CART_SHIM_DIR}/zlib.h" "#pragma once\n#include \"miniz.h\"\n")
+add_library(tooie_cart_decompress STATIC
+    ${TOOIE_DECOMP_TOOLS}/rom_decompressor.cpp
+    ${TOOIE_DECOMP_TOOLS}/tooie_utils.cpp
+)
+target_include_directories(tooie_cart_decompress PUBLIC ${TOOIE_DECOMP_TOOLS})
+target_include_directories(tooie_cart_decompress PRIVATE
+    ${TOOIE_CART_SHIM_DIR}
+    ${N64MR}/thirdparty/miniz
+    ${TOOIE_DECOMP_TOOLS}/toml11/include
+    ${TOOIE_DECOMP_TOOLS}/elfio
+)
+target_compile_definitions(tooie_cart_decompress PRIVATE TOOIE_ROM_DECOMPRESSOR_LIB)
+target_link_libraries(tooie_cart_decompress PRIVATE miniz fmt)
+# Vendored sources are not ours to fix: silence their warnings (as tools/windows/extract does).
+if(MSVC)
+    target_compile_options(tooie_cart_decompress PRIVATE /w)
+    target_compile_definitions(tooie_cart_decompress PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+    target_compile_options(tooie_cart_decompress PRIVATE -w)
+endif()
+
 # --- Main executable ---
 add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/launcher_animation.cpp
@@ -214,6 +245,7 @@ if(WIN32)
     target_link_libraries(TooieRecompiled PRIVATE
         PatchesLib
         RecompiledFuncs
+        tooie_cart_decompress
         recompui
         recompinput
         librecomp
@@ -245,6 +277,7 @@ else()
     target_link_libraries(TooieRecompiled PRIVATE
         PatchesLib
         RecompiledFuncs
+        tooie_cart_decompress
         recompui
         recompinput
         librecomp
@@ -274,27 +307,35 @@ add_dependencies(TooieRecompiled TooieUIAssets)
 # P09 backpack + player-model witnesses. Wrappers are inert unless
 # TOOIE_DIAG_BACKPACK_FLAP=1 / TOOIE_DIAG_SECONDARY_SWAY=1.
 # Generated functions remain untouched.
-if (UNIX AND NOT APPLE)
-    target_link_options(TooieRecompiled PRIVATE
-        -Wl,--wrap=func_800D674C
-        -Wl,--wrap=func_800DE448
-        -Wl,--wrap=func_800DE498
-        -Wl,--wrap=func_800E2AA4
-        -Wl,--wrap=func_800DE2A4
-        -Wl,--wrap=func_800DCF48
-        -Wl,--wrap=func_800ADE2C
-        -Wl,--wrap=func_80019AA0
-        -Wl,--wrap=mlMtxApply
-        -Wl,--wrap=func_800E2180
-        -Wl,--wrap=func_800E0B8C
-        -Wl,--wrap=func_800E0E94
-        -Wl,--wrap=func_800AE8A8
-        -Wl,--wrap=func_800AE820
-        -Wl,--wrap=babackpack_entrypoint_3
-        -Wl,--wrap=func_80098BA8
-        -Wl,--wrap=func_80092444
-        -Wl,--wrap=func_80092B04
-    )
+set(TOOIE_WRAPPED_SYMBOLS
+    func_800D674C
+    func_800DE448
+    func_800DE498
+    func_800E2AA4
+    func_800DE2A4
+    func_800DCF48
+    func_800ADE2C
+    func_80019AA0
+    mlMtxApply
+    func_800E2180
+    func_800E0B8C
+    func_800E0E94
+    func_800AE8A8
+    func_800AE820
+    babackpack_entrypoint_3
+    func_80098BA8
+    func_80092444
+    func_80092B04
+)
+if (WIN32)
+    # lld-link /wrap:f has the GNU --wrap semantics (undefined f -> __wrap_f, __real_f -> f).
+    foreach(sym IN LISTS TOOIE_WRAPPED_SYMBOLS)
+        target_link_options(TooieRecompiled PRIVATE "LINKER:/wrap:${sym}")
+    endforeach()
+elseif (UNIX AND NOT APPLE)
+    foreach(sym IN LISTS TOOIE_WRAPPED_SYMBOLS)
+        target_link_options(TooieRecompiled PRIVATE "-Wl,--wrap=${sym}")
+    endforeach()
 endif()
 
 # Keep controller recognition identical to the upstream DB (provenance: vendor/UPSTREAMS.tsv). Make the canonical DB
@@ -776,3 +817,23 @@ target_compile_options(tooie_bgm_hooks_test PRIVATE
     -fno-strict-aliasing
 )
 set_target_properties(tooie_bgm_hooks_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Retail cart import: decompress_tooie turns the cart (.z64 / normalised .n64) into the decompressed image and passes that image through unchanged.
+# Needs a private ROM (TOOIE_ROM or <repo>/Banjo-Tooie (USA).z64); SKIPs (exit 0) without one.
+add_executable(rom_cart_import_test
+    ${CMAKE_SOURCE_DIR}/tests/rom_cart_import_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
+)
+target_include_directories(rom_cart_import_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/game
+    ${N64MR}/ultramodern/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/include
+    ${N64MR}/thirdparty
+    ${N64MR}/thirdparty/concurrentqueue
+    ${N64MR}/N64Recomp/include
+)
+target_compile_definitions(rom_cart_import_test PRIVATE XXH_INLINE_ALL)
+target_link_libraries(rom_cart_import_test PRIVATE tooie_cart_decompress)
+set_target_properties(rom_cart_import_test PROPERTIES EXCLUDE_FROM_ALL TRUE)

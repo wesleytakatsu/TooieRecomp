@@ -24,32 +24,7 @@ extern "C" void __real_func_800E0E94(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800AE8A8(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800AE820(uint8_t* rdram, recomp_context* ctx);
 
-#ifdef _WIN32
-// lld-link has no GNU --wrap: here __real_<f> is simply the original generated <f> (the wrappers are still bound
-// through recomp::overlays::add_loaded_function in boot_hw_stubs.cpp). Keep this list equal to the -Wl,--wrap list.
-#define TOOIE_REAL_SHIM(f) \
-    extern "C" void f(uint8_t*, recomp_context*); \
-    extern "C" void __real_##f(uint8_t* rdram, recomp_context* ctx) { f(rdram, ctx); }
-TOOIE_REAL_SHIM(func_800D674C)
-TOOIE_REAL_SHIM(func_800DE448)
-TOOIE_REAL_SHIM(func_800DE498)
-TOOIE_REAL_SHIM(func_800E2AA4)
-TOOIE_REAL_SHIM(func_800DE2A4)
-TOOIE_REAL_SHIM(func_800DCF48)
-TOOIE_REAL_SHIM(func_800ADE2C)
-TOOIE_REAL_SHIM(func_80019AA0)
-TOOIE_REAL_SHIM(mlMtxApply)
-TOOIE_REAL_SHIM(func_800E2180)
-TOOIE_REAL_SHIM(babackpack_entrypoint_3)
-TOOIE_REAL_SHIM(func_80098BA8)
-TOOIE_REAL_SHIM(func_80092444)
-TOOIE_REAL_SHIM(func_80092B04)
-TOOIE_REAL_SHIM(func_800E0B8C)
-TOOIE_REAL_SHIM(func_800E0E94)
-TOOIE_REAL_SHIM(func_800AE8A8)
-TOOIE_REAL_SHIM(func_800AE820)
-#undef TOOIE_REAL_SHIM
-#endif
+// __real_<f> is provided by the linker (--wrap on ELF, lld-link /wrap on Windows); list: TOOIE_WRAPPED_SYMBOLS in CMakeLists.txt.
 
 namespace {
 

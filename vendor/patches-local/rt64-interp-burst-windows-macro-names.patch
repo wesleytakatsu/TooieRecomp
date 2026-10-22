@@ -1,0 +1,63 @@
+# TooieRecomp local patch: rename interpBurst enumerators Reason::DUPLICATE -> DUPLICATE_KEY and Controller::Result::ERROR -> FAILED (Windows SDK macros DUPLICATE/nb30.h and ERROR/wingdi.h break the enums on MSVC/clang-cl). Printed names unchanged.
+diff --git a/src/hle/rt64_interp_burst.h b/src/hle/rt64_interp_burst.h
+index fef89a7..d33de6a 100644
+--- a/src/hle/rt64_interp_burst.h
++++ b/src/hle/rt64_interp_burst.h
+@@ -53,7 +53,7 @@ namespace interpBurst {
+ 
+     enum class Reason : uint8_t {
+         ACCEPTED, NO_META, NATIVE, PAUSED, FORCED_CURRENT, ENDPOINT_CURRENT, WEIGHT_RANGE, UNMATCHED,
+-        META_MISMATCH, DUPLICATE, SURPLUS, COUNT
++        META_MISMATCH, DUPLICATE_KEY, SURPLUS, COUNT
+     };
+ 
+     inline const char *reasonName(Reason r) {
+@@ -158,7 +158,7 @@ namespace interpBurst {
+     class Controller {
+     public:
+         enum Phase : int { IDLE, REQUESTED, CAPTURING, FINISHING };
+-        enum class Result : int { NONE, DONE, TIMEOUT, NO_INTERPOLATION_ACTIVE, ERROR };
++        enum class Result : int { NONE, DONE, TIMEOUT, NO_INTERPOLATION_ACTIVE, FAILED };
+ 
+         explicit Controller(int64_t timeoutMs = kTimeoutMs, uint32_t images = kImages) : timeoutMs(timeoutMs), images(images) {}
+ 
+@@ -228,10 +228,10 @@ namespace interpBurst {
+             if ((r == Reason::ACCEPTED) && (meta.workloadId != presentWorkloadId)) r = Reason::META_MISMATCH;
+             if (r == Reason::ACCEPTED) {
+                 const uint64_t key = (meta.workloadId << 8) | (meta.frameIndex & 0xFFu);
+-                if (accepted.count(key) != 0) r = Reason::DUPLICATE;
++                if (accepted.count(key) != 0) r = Reason::DUPLICATE_KEY;
+                 else if (committed >= images) r = Reason::SURPLUS;
+                 else if (!formatOk) {
+-                    finishLocked(Result::ERROR, "UNSUPPORTED_FORMAT: scene target is not R8G8B8A8_UNORM (HDR); refusing to mis-encode");
++                    finishLocked(Result::FAILED, "UNSUPPORTED_FORMAT: scene target is not R8G8B8A8_UNORM (HDR); refusing to mis-encode");
+                     return Reason::SURPLUS;
+                 }
+                 else {
+@@ -264,7 +264,7 @@ namespace interpBurst {
+ 
+         void fail(const std::string &reason) {
+             std::scoped_lock lock(m);
+-            finishLocked(Result::ERROR, reason);
++            finishLocked(Result::FAILED, reason);
+         }
+ 
+         uint32_t savedCount() const { std::scoped_lock lock(m); return saved; }
+@@ -333,7 +333,7 @@ namespace interpBurst {
+                 err = std::string("filesystem error under ") + base + ": " + e.what();
+             }
+             lock.lock();
+-            if (!err.empty()) { finishLocked(Result::ERROR, err); return false; }
++            if (!err.empty()) { finishLocked(Result::FAILED, err); return false; }
+             dir = made;
+             std::printf("[tooie-interp-burst] saving to %s\n", dir.c_str());
+             std::fflush(stdout);
+@@ -415,7 +415,7 @@ namespace interpBurst {
+                     lock.unlock();
+                     const std::string err = writeJob(d, number, job);
+                     lock.lock();
+-                    if (!err.empty()) { finishLocked(Result::ERROR, err); continue; }
++                    if (!err.empty()) { finishLocked(Result::FAILED, err); continue; }
+                     saved = number;
+                     std::printf("[tooie-interp-burst] saved %s (%u/%u) workload=%llu frame=%u curW=%.4f\n", imageName(number).c_str(), saved, images,
+                         (unsigned long long)job.meta.workloadId, job.meta.frameIndex, job.meta.curW);

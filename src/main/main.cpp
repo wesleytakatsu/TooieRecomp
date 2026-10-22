@@ -682,7 +682,8 @@ gpr get_entrypoint_address();
 std::vector<recomp::GameEntry> supported_games = {
     {
         // XXH3-64 of banjo-tooie-Recomp/decompressed.us.z64 (recompiler layout).
-        // Cart baserom is 0x00F70DE5F2D70EA2 — cart→decomp integration is follow-up.
+        // The retail cart (0x00F70DE5F2D70EA2) is accepted too: librecomp select_rom runs decompression_routine
+        // (src/game/rom_decompression.cpp) and stores the decompressed image.
         .rom_hash = 0x9F843AD3455EA395ULL,
         .internal_name = "BANJO TOOIE",
         .display_name = "Banjo-Tooie",

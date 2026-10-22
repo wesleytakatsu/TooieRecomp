@@ -1,7 +1,8 @@
 <#
- Windows 11 x64 build helper for TooieRecomp.  STATUS: Check stage validated on Windows 11 (P11 W0.6). Extract, Recomp and Verify are native stages (no Linux or WSL2).
- Stages: Check | Extract | Recomp | Verify | ImportGenerated | Build | Package   (default: Check).  All sources are vendored in this repository: no bootstrap, no download.
+ Windows 11 x64 build helper for TooieRecomp.  STATUS: Check stage validated on Windows 11 (P11 W0.6). Extract, Recomp, Configure and Build are native stages (no Linux or WSL2).
+ Stages: Check | Extract | Recomp | Verify | ImportGenerated | Configure | Build | Package | All   (default: Check).  All sources are vendored in this repository: no bootstrap, no download.
  Extract: retail ROM -> <build>/extract/decompressed.us.z64 (tools/extract_rom.py). Recomp: build N64Recomp and regenerate RecompiledFuncs (tools/run_recomp.py), then freshness + hash verify. Verify: RecompiledFuncs vs metadata/recomp-output.sha256. ImportGenerated remains a fallback.
+ Configure: Ninja + clang-cl Release into <build>, file-prefix-map=/tooie. Build: TooieRecompiled only (runs Configure when build.ninja is missing). All: Check, Extract, Recomp, Configure, Build.
  Needs: Git for Windows (bash), Python 3.8+ (Find-Python: py -3, then python, then python3; skip WindowsApps stubs; tools/vendor_verify.sh resolves Python on its own), Visual Studio 2022 or later (verified: VS 18 / 2026)
         with VCTools + Microsoft.VisualStudio.Component.VC.Llvm.Clang (clang-cl) + VC.CMake.Project (cmake/ninja) + Windows 11 SDK.  Windows PowerShell 5.1 or PowerShell 7.
  Examples:
@@ -10,12 +11,14 @@
    .\tools\windows\Build-Tooie.ps1 -Stage Recomp -Jobs 2
    .\tools\windows\Build-Tooie.ps1 -Stage Verify
    .\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom \\wsl$\Ubuntu-24.04\home\you\TooieRecomp\RecompiledFuncs
+   .\tools\windows\Build-Tooie.ps1 -Stage Configure
    .\tools\windows\Build-Tooie.ps1 -Stage Build ; .\tools\windows\Build-Tooie.ps1 -Stage Package
+   .\tools\windows\Build-Tooie.ps1 -Stage All
 #>
 param(
-    [ValidateSet('Check','Extract','Recomp','Verify','ImportGenerated','Build','Package')][string]$Stage = 'Check',
+    [ValidateSet('Check','Extract','Recomp','Verify','ImportGenerated','Configure','Build','Package','All')][string]$Stage = 'Check',
     [string]$GeneratedFrom = '',
-    [int]$Jobs = 2,
+    [int]$Jobs = [Environment]::ProcessorCount,
     [string]$BuildDir = '',
     [string]$Rom = ''
 )
@@ -98,8 +101,7 @@ function Show-Tool([string]$Name) {   # first stdout line of --version; cmake/ni
     "ok   ${Name}: $($line.ToString().Trim())"
 }
 
-switch ($Stage) {
-  'Check' {
+function Invoke-Check {
     Enter-VsDev
     foreach ($t in 'git','cmake','ninja','clang-cl') { Show-Tool $t }
     $py = @(Find-Python)
@@ -115,36 +117,45 @@ switch ($Stage) {
     Invoke-Bash 'tools/vendor_verify.sh'   # offline integrity of lib/ assets/ decomp/ (needs sha256sum from Git for Windows)
     if (Test-Path (Join-Path $Root 'lib\SDL2-windows\lib\x64\SDL2.lib')) { 'ok   lib/SDL2-windows (vendored)' } else { throw 'lib/SDL2-windows missing' }
     if (Test-Path (Join-Path $Root 'RecompiledFuncs\funcs.h')) { 'ok   RecompiledFuncs present' } else { 'MISS RecompiledFuncs (native Extract/Recomp stages: P11 W1; fallback: -Stage ImportGenerated)' }
-  }
-  'Extract' {
+}
+function Invoke-Extract {
     Enter-VsDev
     $pyArgs = @('tools/extract_rom.py')
     if ($Rom) { $pyArgs += $Rom }
     Invoke-Py $pyArgs
-  }
-  'Recomp' {
+}
+function Invoke-Recomp {
     Enter-VsDev
     Invoke-Py @('tools/run_recomp.py', '--jobs', "$Jobs")
     Invoke-Py @('tools/check_generated_fresh.py')
     Invoke-Py @('tools/verify_generated.py')
-  }
-  'Verify' {
+}
+function Invoke-Verify {
     Invoke-Py @('tools/verify_generated.py')
-  }
-  'ImportGenerated' {
+}
+function Invoke-ImportGenerated {
     if (-not (Test-Path (Join-Path $GeneratedFrom 'funcs.h'))) { throw "-GeneratedFrom must be a RecompiledFuncs directory (funcs.h not found in '$GeneratedFrom')" }
     robocopy $GeneratedFrom (Join-Path $Root 'RecompiledFuncs') /MIR /NFL /NDL /NJH /NJS | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)" }
     "RecompiledFuncs imported ($((Get-ChildItem (Join-Path $Root 'RecompiledFuncs')).Count) files). Treat them as ROM-derived: never commit/upload."
-  }
-  'Build' {
+}
+function Invoke-Configure {   # clang-cl defaults live in CMAKE_*_FLAGS because -D replaces them; prefix-map via /clang:
     Enter-VsDev
-    cmake -S $Root -B $BuildDir -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
+    $rootFwd = $Root -replace '\\', '/'
+    $pm = "/clang:-ffile-prefix-map=${rootFwd}=/tooie"
+    $cFlags = "/DWIN32 /D_WINDOWS $pm"
+    $cxxFlags = "/DWIN32 /D_WINDOWS /EHsc $pm"
+    # One argv each: PS 5.1/7 re-quote on whitespace, so a Root with spaces stays inside the -D value.
+    cmake -S $Root -B $BuildDir -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release "-DCMAKE_C_FLAGS=$cFlags" "-DCMAKE_CXX_FLAGS=$cxxFlags"
     if ($LASTEXITCODE) { throw 'cmake configure failed' }
+}
+function Invoke-Build {
+    Enter-VsDev
+    if (-not (Test-Path (Join-Path $BuildDir 'build.ninja'))) { Invoke-Configure }
     cmake --build $BuildDir --target TooieRecompiled -j $Jobs
     if ($LASTEXITCODE) { throw 'cmake build failed' }
-  }
-  'Package' {
+}
+function Invoke-Package {
     $exe = Join-Path $BuildDir 'TooieRecompiled.exe'; if (-not (Test-Path $exe)) { throw "missing $exe (run -Stage Build)" }
     $name = 'TooieRecompiled-windows-x64-private-local'; $out = Join-Path $Root 'dist'; $stage = Join-Path $out $name
     if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
@@ -174,5 +185,24 @@ switch ($Stage) {
     Compress-Archive -Force -Path $stage -DestinationPath "$out\$name.zip"
     (Get-FileHash "$out\$name.zip" -Algorithm SHA256).Hash.ToLower() + "  $name.zip" | Set-Content "$out\$name.zip.sha256"
     "package: $out\$name.zip  (contains ROM-derived recompiled code; private/local use only; no ROM inside)"
-  }
+}
+function Invoke-All {
+    Invoke-Check
+    Invoke-Extract
+    Invoke-Recomp
+    Invoke-Configure
+    Invoke-Build
+    # Test and Package will be appended later.
+}
+
+switch ($Stage) {
+  'Check' { Invoke-Check }
+  'Extract' { Invoke-Extract }
+  'Recomp' { Invoke-Recomp }
+  'Verify' { Invoke-Verify }
+  'ImportGenerated' { Invoke-ImportGenerated }
+  'Configure' { Invoke-Configure }
+  'Build' { Invoke-Build }
+  'Package' { Invoke-Package }
+  'All' { Invoke-All }
 }
