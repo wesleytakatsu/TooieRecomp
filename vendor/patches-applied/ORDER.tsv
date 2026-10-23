@@ -27,4 +27,5 @@ rt64	lib/rt64	patches-local/rt64-interp-burst-windows-macro-names.patch	fad6b8e4
 rt64	lib/rt64	patches-local/rt64-transform-processor-windows-getpid.patch	44315cb400b466ff3ad1123335b6dca262ee41147210905e13e1866a4a0b07ae	6f1c2d99a4ea571c139f449c326fd176ba8f3496 + 10 rt64 patches above
 rt64	lib/rt64	patches-local/rt64-p09-ordered-transform-match.patch	e17ec7d6a71bd2108a41a77d68740ca868818ba703173a3fe667f8a89d52b147	6f1c2d99a4ea571c139f449c326fd176ba8f3496 + 11 rt64 patches above
 rt64	lib/rt64	patches-local/rt64-p09-rod-classify-diagnostic.patch	30ae18adc948c74e5406faf1cc701b6a3b2a2947833f8b4148933d43936ad3cf	6f1c2d99a4ea571c139f449c326fd176ba8f3496 + 12 rt64 patches above
+rt64	lib/rt64	patches-local/rt64-p09-interp-glitch-guards.patch	5b8af4cbb867e897ed9c225073ca1a2c0c976f23af181a459b979a406cb4e07c	6f1c2d99a4ea571c139f449c326fd176ba8f3496 + 13 rt64 patches above
 plume	lib/rt64/src/contrib/plume	patches-applied/rt64/rt64-plume-texture-to-buffer-copy.patch	49c218efa703a8946d65652474b209934cd8ec96a55c2053b93826cf8d070852	d890ac899e505fb30040e037a4037cdeca68f033

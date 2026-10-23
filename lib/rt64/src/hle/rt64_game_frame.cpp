@@ -5,10 +5,16 @@
 #include "common/rt64_math.h"
 
 #include "rt64_game_frame.h"
+#include "rt64_p09_camera_cut.h"
 #include "rt64_p09_ordered_match.h"
 #include "rt64_workload_queue.h"
 
 #include <algorithm>
+#include <cfloat>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <mutex>
 
 #include "xxHash/xxh3.h"
 
@@ -186,6 +192,71 @@ namespace RT64 {
     bool operator<(const MatchCandidate &lhs, const MatchCandidate &rhs) {
         return lhs.difference < rhs.difference;
     }
+
+    // P09 default-OFF pair audit (see the call site in matchScene).
+    namespace p09PairAudit {
+        struct State {
+            FILE *file = nullptr;
+            std::mutex mu;
+            uint64_t scenes = 0;
+            uint32_t rows = 0;
+            State() {
+                const char *p = std::getenv("TOOIE_DIAG_P09_PAIR_AUDIT");
+                if ((p != nullptr) && (p[0] != '\0')) file = std::fopen(p, "w");
+            }
+        };
+
+        static State &state() { static State s; return s; }
+
+        static void run(const Workload &curWorkload, const Workload &prevWorkload, const GameFrameMap::WorkloadMap &curMap,
+            const std::vector<MatchCandidate> &candidates, const std::set<IndexPair> &orderedPairs)
+        {
+            State &S = state();
+            if (S.file == nullptr) return;
+            auto origin = [](const hlslpp::float4x4 &m) { return hlslpp::float3(m[3].xyz); };
+            auto dist = [&](uint32_t c, uint32_t p) {
+                const hlslpp::float4x4 &cm = curWorkload.drawData.worldTransforms[c];
+                const hlslpp::float4x4 &pm = prevWorkload.drawData.worldTransforms[p];
+                return float(hlslpp::length(origin(cm) - origin(pm)));
+            };
+
+            std::vector<float> best(curWorkload.drawData.worldTransforms.size(), FLT_MAX);
+            std::vector<uint32_t> bestPrev(best.size(), UINT32_MAX);
+            for (const MatchCandidate &c : candidates) {
+                const float d = dist(c.curIndex, c.prevIndex);
+                if (d < best[c.curIndex]) {
+                    best[c.curIndex] = d;
+                    bestPrev[c.curIndex] = c.prevIndex;
+                }
+            }
+
+            uint32_t suspects = 0, mapped = 0;
+            std::lock_guard<std::mutex> lock(S.mu);
+            for (uint32_t t = 0; t < best.size(); t++) {
+                if ((t >= curMap.transforms.size()) || !curMap.transforms[t].mapped) continue;
+                mapped++;
+                const uint32_t p = curMap.transforms[t].prevTransformIndex;
+                const float chosen = dist(t, p);
+                if ((chosen > 15.0f) && (chosen > 3.0f * best[t])) {
+                    suspects++;
+                    if (S.rows < 20000) {
+                        S.rows++;
+                        std::fprintf(S.file, "PA scene=%llu wl=%llu t=%u p=%u alt=%u chosen=%.1f best=%.1f ordered=%d\n",
+                            (unsigned long long)S.scenes, (unsigned long long)curWorkload.workloadId, t, p, bestPrev[t], chosen, best[t],
+                            orderedPairs.count(IndexPair(t, p)) ? 1 : 0);
+                    }
+                }
+            }
+
+            // Milliseconds since the first audited scene, to line a log up with a screen recording.
+            static const auto t0 = std::chrono::steady_clock::now();
+            const long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+            std::fprintf(S.file, "PS scene=%llu wl=%llu ms=%lld mapped=%u suspects=%u\n", (unsigned long long)S.scenes,
+                (unsigned long long)curWorkload.workloadId, ms, mapped, suspects);
+            S.scenes++;
+            std::fflush(S.file);
+        }
+    };
 
     struct TransformMatchResult {
         float positionDifference = FLT_MAX;
@@ -428,6 +499,7 @@ namespace RT64 {
 
         // Build a multimap with all potential compatibilities between draw calls in the projections.
         uint32_t mappedViewProjIndex = UINT32_MAX;
+        bool sceneCameraCut = false;
         for (uint32_t p = 0; p < curScene.projections.size(); p++) {
             const GameIndices::Projection &curProjIndices = curScene.projections[p];
             Workload &curWorkload = workloadQueue.workloads[curProjIndices.workloadIndex];
@@ -481,6 +553,12 @@ namespace RT64 {
                 }
                 else {
                     viewProjMap.mapped = (curProjGroup.matrixId == G_EX_ID_AUTO);
+                    // P09: an AUTO camera that jumps between two game frames is a cut; show it at CURRENT.
+                    if (viewProjMap.mapped && p09CameraCut::enabled() && p09CameraCut::isCut(prevView, curView)) {
+                        viewProjMap.mapped = false;
+                        sceneCameraCut = true;
+                        p09CameraCut::noteCut();
+                    }
                 }
 
                 if (viewProjMap.mapped) {
@@ -502,6 +580,12 @@ namespace RT64 {
                     mappedViewProjIndex = curProj.transformsIndex;
                 }
             }
+        }
+
+        // P09: across a camera cut the shot's objects are often repositioned or turned as well; nothing in this scene is
+        // matched, so the whole scene is shown at CURRENT for this frame like the original cut.
+        if (sceneCameraCut) {
+            return;
         }
 
         for (uint32_t p = 0; p < prevScene.projections.size(); p++) {
@@ -599,7 +683,19 @@ namespace RT64 {
 
             collectOrderedCalls(curCallHashMap, curScene, curOrderedCalls);
             collectOrderedCalls(prevCallHashMap, prevScene, prevOrderedCalls);
-            p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs);
+            if (p09OrderedMatch::alignEnabled()) {
+                // Distance between the first WORLD origins of two calls (same matrices the candidates below use).
+                auto originDistance = [&](const p09OrderedMatch::Call &c, const p09OrderedMatch::Call &p) {
+                    const hlslpp::float4x4 &curTransform = firstCurWorkload.drawData.worldTransforms[c.minWorld];
+                    const hlslpp::float4x4 &prevTransform = firstPrevWorkload.drawData.worldTransforms[p.minWorld];
+                    return float(hlslpp::length(curTransform[3].xyz - prevTransform[3].xyz));
+                };
+
+                p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs, p09OrderedMatch::AlignMaxDistance, originDistance);
+            }
+            else {
+                p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs);
+            }
         }
 
         // Compute all the differences between transforms and insert them into a vector that will be sorted according to the differences.
@@ -647,6 +743,11 @@ namespace RT64 {
 
             matchTransform(firstCurWorkload, firstPrevWorkload, firstCurWorkloadMap, firstPrevWorkloadMap, candidate.curIndex, candidate.prevIndex, modifiedBuffers);
         }
+
+        // P09 default-OFF diagnostic TOOIE_DIAG_P09_PAIR_AUDIT=<path>: a mapped WORLD whose chosen previous origin is far
+        // (> 15 units and > 3x) compared with the closest same-hash candidate is a suspected wrong pair. Segmented models
+        // (rigid limbs with no shared triangles) show such pairs as misplaced parts the stretch metric cannot see.
+        p09PairAudit::run(firstCurWorkload, firstPrevWorkload, firstCurWorkloadMap, matchCandidates, orderedPairs);
 
         if (!modifiedBuffers.empty()) {
             workloadsModified[firstCurProjIndices.workloadIndex].merge(modifiedBuffers);

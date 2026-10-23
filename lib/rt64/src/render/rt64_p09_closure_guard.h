@@ -24,8 +24,11 @@
 // until no such edge remains. Transforms for which the two interpolations agree
 // are never switched. No game, model, bone or display-list knowledge is used.
 //
-// Default ON. TOOIE_TEST_P09_CLOSURE_GUARD=0 restores the unguarded rigid
-// interpolation for paired A/B tests.
+// Default OFF since the joint coherence and spike guards (rt64_p09_spike_guard.h):
+// on segmented models its non-rigid result left a shrunken piece next to rigid
+// neighbours and opened wrist/shoulder joints, while the newer guards keep both
+// stretched triangles and joint gaps lower without it (attract measurement,
+// 2026-10-23). TOOIE_TEST_P09_CLOSURE_GUARD=1 enables it for A/B tests.
 //
 
 #pragma once
@@ -45,7 +48,7 @@ namespace RT64 {
             static int cached = -1;
             if (cached < 0) {
                 const char *env = std::getenv("TOOIE_TEST_P09_CLOSURE_GUARD");
-                cached = (env != nullptr && env[0] == '0' && env[1] == '\0') ? 0 : 1;
+                cached = (env != nullptr && env[0] == '1' && env[1] == '\0') ? 1 : 0;
             }
             return cached != 0;
         }

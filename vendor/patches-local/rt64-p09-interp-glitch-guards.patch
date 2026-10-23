@@ -1,0 +1,988 @@
+diff --git a/src/hle/rt64_game_frame.cpp b/src/hle/rt64_game_frame.cpp
+index 070e683..d9b798d 100644
+--- a/src/hle/rt64_game_frame.cpp
++++ b/src/hle/rt64_game_frame.cpp
+@@ -5,10 +5,16 @@
+ #include "common/rt64_math.h"
+ 
+ #include "rt64_game_frame.h"
++#include "rt64_p09_camera_cut.h"
+ #include "rt64_p09_ordered_match.h"
+ #include "rt64_workload_queue.h"
+ 
+ #include <algorithm>
++#include <cfloat>
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <mutex>
+ 
+ #include "xxHash/xxh3.h"
+ 
+@@ -187,6 +193,71 @@ namespace RT64 {
+         return lhs.difference < rhs.difference;
+     }
+ 
++    // P09 default-OFF pair audit (see the call site in matchScene).
++    namespace p09PairAudit {
++        struct State {
++            FILE *file = nullptr;
++            std::mutex mu;
++            uint64_t scenes = 0;
++            uint32_t rows = 0;
++            State() {
++                const char *p = std::getenv("TOOIE_DIAG_P09_PAIR_AUDIT");
++                if ((p != nullptr) && (p[0] != '\0')) file = std::fopen(p, "w");
++            }
++        };
++
++        static State &state() { static State s; return s; }
++
++        static void run(const Workload &curWorkload, const Workload &prevWorkload, const GameFrameMap::WorkloadMap &curMap,
++            const std::vector<MatchCandidate> &candidates, const std::set<IndexPair> &orderedPairs)
++        {
++            State &S = state();
++            if (S.file == nullptr) return;
++            auto origin = [](const hlslpp::float4x4 &m) { return hlslpp::float3(m[3].xyz); };
++            auto dist = [&](uint32_t c, uint32_t p) {
++                const hlslpp::float4x4 &cm = curWorkload.drawData.worldTransforms[c];
++                const hlslpp::float4x4 &pm = prevWorkload.drawData.worldTransforms[p];
++                return float(hlslpp::length(origin(cm) - origin(pm)));
++            };
++
++            std::vector<float> best(curWorkload.drawData.worldTransforms.size(), FLT_MAX);
++            std::vector<uint32_t> bestPrev(best.size(), UINT32_MAX);
++            for (const MatchCandidate &c : candidates) {
++                const float d = dist(c.curIndex, c.prevIndex);
++                if (d < best[c.curIndex]) {
++                    best[c.curIndex] = d;
++                    bestPrev[c.curIndex] = c.prevIndex;
++                }
++            }
++
++            uint32_t suspects = 0, mapped = 0;
++            std::lock_guard<std::mutex> lock(S.mu);
++            for (uint32_t t = 0; t < best.size(); t++) {
++                if ((t >= curMap.transforms.size()) || !curMap.transforms[t].mapped) continue;
++                mapped++;
++                const uint32_t p = curMap.transforms[t].prevTransformIndex;
++                const float chosen = dist(t, p);
++                if ((chosen > 15.0f) && (chosen > 3.0f * best[t])) {
++                    suspects++;
++                    if (S.rows < 20000) {
++                        S.rows++;
++                        std::fprintf(S.file, "PA scene=%llu wl=%llu t=%u p=%u alt=%u chosen=%.1f best=%.1f ordered=%d\n",
++                            (unsigned long long)S.scenes, (unsigned long long)curWorkload.workloadId, t, p, bestPrev[t], chosen, best[t],
++                            orderedPairs.count(IndexPair(t, p)) ? 1 : 0);
++                    }
++                }
++            }
++
++            // Milliseconds since the first audited scene, to line a log up with a screen recording.
++            static const auto t0 = std::chrono::steady_clock::now();
++            const long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
++            std::fprintf(S.file, "PS scene=%llu wl=%llu ms=%lld mapped=%u suspects=%u\n", (unsigned long long)S.scenes,
++                (unsigned long long)curWorkload.workloadId, ms, mapped, suspects);
++            S.scenes++;
++            std::fflush(S.file);
++        }
++    };
++
+     struct TransformMatchResult {
+         float positionDifference = FLT_MAX;
+         float orientationDifference = FLT_MAX;
+@@ -428,6 +499,7 @@ namespace RT64 {
+ 
+         // Build a multimap with all potential compatibilities between draw calls in the projections.
+         uint32_t mappedViewProjIndex = UINT32_MAX;
++        bool sceneCameraCut = false;
+         for (uint32_t p = 0; p < curScene.projections.size(); p++) {
+             const GameIndices::Projection &curProjIndices = curScene.projections[p];
+             Workload &curWorkload = workloadQueue.workloads[curProjIndices.workloadIndex];
+@@ -481,6 +553,12 @@ namespace RT64 {
+                 }
+                 else {
+                     viewProjMap.mapped = (curProjGroup.matrixId == G_EX_ID_AUTO);
++                    // P09: an AUTO camera that jumps between two game frames is a cut; show it at CURRENT.
++                    if (viewProjMap.mapped && p09CameraCut::enabled() && p09CameraCut::isCut(prevView, curView)) {
++                        viewProjMap.mapped = false;
++                        sceneCameraCut = true;
++                        p09CameraCut::noteCut();
++                    }
+                 }
+ 
+                 if (viewProjMap.mapped) {
+@@ -504,6 +582,12 @@ namespace RT64 {
+             }
+         }
+ 
++        // P09: across a camera cut the shot's objects are often repositioned or turned as well; nothing in this scene is
++        // matched, so the whole scene is shown at CURRENT for this frame like the original cut.
++        if (sceneCameraCut) {
++            return;
++        }
++
+         for (uint32_t p = 0; p < prevScene.projections.size(); p++) {
+             const GameIndices::Projection &prevProjIndices = prevScene.projections[p];
+             const Workload &prevWorkload = workloadQueue.workloads[prevProjIndices.workloadIndex];
+@@ -599,7 +683,19 @@ namespace RT64 {
+ 
+             collectOrderedCalls(curCallHashMap, curScene, curOrderedCalls);
+             collectOrderedCalls(prevCallHashMap, prevScene, prevOrderedCalls);
+-            p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs);
++            if (p09OrderedMatch::alignEnabled()) {
++                // Distance between the first WORLD origins of two calls (same matrices the candidates below use).
++                auto originDistance = [&](const p09OrderedMatch::Call &c, const p09OrderedMatch::Call &p) {
++                    const hlslpp::float4x4 &curTransform = firstCurWorkload.drawData.worldTransforms[c.minWorld];
++                    const hlslpp::float4x4 &prevTransform = firstPrevWorkload.drawData.worldTransforms[p.minWorld];
++                    return float(hlslpp::length(curTransform[3].xyz - prevTransform[3].xyz));
++                };
++
++                p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs, p09OrderedMatch::AlignMaxDistance, originDistance);
++            }
++            else {
++                p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs);
++            }
+         }
+ 
+         // Compute all the differences between transforms and insert them into a vector that will be sorted according to the differences.
+@@ -648,6 +744,11 @@ namespace RT64 {
+             matchTransform(firstCurWorkload, firstPrevWorkload, firstCurWorkloadMap, firstPrevWorkloadMap, candidate.curIndex, candidate.prevIndex, modifiedBuffers);
+         }
+ 
++        // P09 default-OFF diagnostic TOOIE_DIAG_P09_PAIR_AUDIT=<path>: a mapped WORLD whose chosen previous origin is far
++        // (> 15 units and > 3x) compared with the closest same-hash candidate is a suspected wrong pair. Segmented models
++        // (rigid limbs with no shared triangles) show such pairs as misplaced parts the stretch metric cannot see.
++        p09PairAudit::run(firstCurWorkload, firstPrevWorkload, firstCurWorkloadMap, matchCandidates, orderedPairs);
++
+         if (!modifiedBuffers.empty()) {
+             workloadsModified[firstCurProjIndices.workloadIndex].merge(modifiedBuffers);
+         }
+diff --git a/src/hle/rt64_p09_camera_cut.h b/src/hle/rt64_p09_camera_cut.h
+new file mode 100644
+index 0000000..53cb840
+--- /dev/null
++++ b/src/hle/rt64_p09_camera_cut.h
+@@ -0,0 +1,129 @@
++//
++// RT64
++//
++// P09 camera cut detection for untagged (G_EX_ID_AUTO) view matrices.
++//
++// GameFrame::matchScene maps an AUTO camera to the previous frame's camera unconditionally, so a camera cut (a cutscene
++// changing shots, a camera reset, a warp or an area transition) is interpolated: the in-between frame shows the scene
++// from a camera halfway between two unrelated shots, a one-frame flash the original game never draws. A view change
++// larger than any continuous camera motion between two game frames is treated as a cut and the camera is not
++// interpolated for that frame (it is shown at CURRENT). Thresholds: the camera turns by more than CutAngleDegrees or
++// moves by more than CutDistance game units in one game frame. Default ON; TOOIE_TEST_P09_CAMERA_CUT=0 disables it.
++//
++
++#pragma once
++
++#include <atomic>
++#include <cmath>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++
++#include "common/rt64_hlslpp.h"
++
++namespace RT64 {
++namespace p09CameraCut {
++    constexpr float CutAngleDegrees = 30.0f;
++    constexpr float CutDistance = 250.0f;
++
++    inline bool enabled() {
++        static const bool on = [] {
++            const char *e = std::getenv("TOOIE_TEST_P09_CAMERA_CUT");
++            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
++        }();
++        return on;
++    }
++
++    // Plain arithmetic so the rule can be unit tested without hlslpp: rows of the view 3x3 and camera positions.
++    inline float rowCosine(const float a[3], const float b[3]) {
++        const float la = std::sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
++        const float lb = std::sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2]);
++        if (!(la > 1e-6f) || !(lb > 1e-6f)) {
++            return 1.0f;
++        }
++
++        return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (la * lb);
++    }
++
++    // Camera position of a row-vector view matrix [M3; t] (p_view = p_world * M3 + t) whose M3 is s times a rotation:
++    // p = -(t * M3^T) / s^2. False when M3 is not a uniformly scaled rotation (row lengths differ by more than 5% or s ~ 0).
++    inline bool cameraPosition(const float rows[3][3], const float t[3], float pos[3]) {
++        float lengthSq[3];
++        for (int r = 0; r < 3; r++) {
++            lengthSq[r] = rows[r][0] * rows[r][0] + rows[r][1] * rows[r][1] + rows[r][2] * rows[r][2];
++        }
++
++        const float scaleSq = (lengthSq[0] + lengthSq[1] + lengthSq[2]) / 3.0f;
++        if (!(scaleSq > 1e-8f) || !std::isfinite(scaleSq)) {
++            return false;
++        }
++
++        for (int r = 0; r < 3; r++) {
++            if (std::fabs(lengthSq[r] - scaleSq) > 0.1f * scaleSq) {
++                return false;
++            }
++        }
++
++        for (int c = 0; c < 3; c++) {
++            // (t * M3^T)[c] = sum_k t[k] * M3[c][k]
++            pos[c] = -(t[0] * rows[c][0] + t[1] * rows[c][1] + t[2] * rows[c][2]) / scaleSq;
++        }
++
++        return std::isfinite(pos[0]) && std::isfinite(pos[1]) && std::isfinite(pos[2]);
++    }
++
++    // prevRows/curRows: the three rows of each view 3x3; prevPos/curPos: camera positions in world space.
++    inline bool isCut(const float prevRows[3][3], const float curRows[3][3], const float prevPos[3], const float curPos[3]) {
++        const float minCosine = std::cos(CutAngleDegrees * 3.14159265358979f / 180.0f);
++        for (int r = 0; r < 3; r++) {
++            if (rowCosine(prevRows[r], curRows[r]) < minCosine) {
++                return true;
++            }
++        }
++
++        const float dx = curPos[0] - prevPos[0], dy = curPos[1] - prevPos[1], dz = curPos[2] - prevPos[2];
++        return std::sqrt(dx * dx + dy * dy + dz * dz) > CutDistance;
++    }
++
++    inline bool isCut(const hlslpp::float4x4 &prevView, const hlslpp::float4x4 &curView) {
++        float prevRows[3][3], curRows[3][3], prevPos[3], curPos[3];
++        for (int r = 0; r < 3; r++) {
++            for (int c = 0; c < 3; c++) {
++                prevRows[r][c] = prevView[r][c];
++                curRows[r][c] = curView[r][c];
++            }
++        }
++
++        // Only a rigid camera (3x3 = uniform scale times a rotation) is judged; HUD/orthographic or degenerate views are not.
++        float prevT[3], curT[3];
++        for (int c = 0; c < 3; c++) {
++            prevT[c] = prevView[3][c];
++            curT[c] = curView[3][c];
++        }
++
++        if (!cameraPosition(prevRows, prevT, prevPos) || !cameraPosition(curRows, curT, curPos)) {
++            return false;
++        }
++
++        const bool cut = isCut(prevRows, curRows, prevPos, curPos);
++        static const bool debug = std::getenv("TOOIE_DIAG_P09_CAMERA_CUT") != nullptr;
++        if (cut && debug) {
++            const float c0 = rowCosine(prevRows[0], curRows[0]), c1 = rowCosine(prevRows[1], curRows[1]), c2 = rowCosine(prevRows[2], curRows[2]);
++            const float dx = curPos[0] - prevPos[0], dy = curPos[1] - prevPos[1], dz = curPos[2] - prevPos[2];
++            std::fprintf(stderr, "[p09-cut] cos=%.3f,%.3f,%.3f dist=%.1f prevPos=%.1f,%.1f,%.1f curPos=%.1f,%.1f,%.1f\n", c0, c1, c2,
++                std::sqrt(dx * dx + dy * dy + dz * dz), prevPos[0], prevPos[1], prevPos[2], curPos[0], curPos[1], curPos[2]);
++        }
++
++        return cut;
++    }
++
++    // Count of detected cuts, logged to stderr every 16 cuts so measurement runs can read it.
++    inline void noteCut() {
++        static std::atomic<uint32_t> cuts{ 0 };
++        const uint32_t n = ++cuts;
++        if ((n == 1) || ((n % 16) == 0)) {
++            std::fprintf(stderr, "[tooie-interp] camera cuts=%u\n", n);
++        }
++    }
++};
++};
+diff --git a/src/hle/rt64_p09_ordered_match.h b/src/hle/rt64_p09_ordered_match.h
+index 3c6215d..f6c1c58 100644
+--- a/src/hle/rt64_p09_ordered_match.h
++++ b/src/hle/rt64_p09_ordered_match.h
+@@ -82,6 +82,120 @@ namespace p09OrderedMatch {
+         }
+     }
+ 
++    // Order-preserving alignment for hash groups whose call count changed between frames (an object or part appeared or
++    // vanished). The greedy fallback pairs such groups bone by bone and can give the two bones of one skinned triangle
++    // different offsets, which renders as a one-frame spike. Calls keep their submission order, so this aligns the two
++    // sequences with gaps: it maximises the number of pairs whose first WORLD origins lie within maxDistance and breaks
++    // ties by the smallest total distance. TOOIE_TEST_P09_ALIGN_MATCH=0 disables it (unequal groups use the fallback).
++    inline bool alignEnabled() {
++        static const bool on = [] {
++            const char *e = std::getenv("TOOIE_TEST_P09_ALIGN_MATCH");
++            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
++        }();
++        return on;
++    }
++
++    // Groups above this many cell evaluations keep the fallback (bounded per-frame cost).
++    constexpr size_t AlignMaxCells = 1u << 18;
++
++    // Largest first-WORLD origin move accepted as the same call between two frames (game units; walking is ~10-30).
++    constexpr float AlignMaxDistance = 96.0f;
++
++    template <typename DistanceFn>
++    inline void alignGroup(const std::vector<const Call *> &cur, const std::vector<const Call *> &prev, float maxDistance, DistanceFn distance, std::set<std::pair<uint32_t, uint32_t>> &pairs) {
++        const size_t n = cur.size();
++        const size_t m = prev.size();
++        if ((n == 0) || (m == 0) || ((n + 1) * (m + 1) > AlignMaxCells)) {
++            return;
++        }
++
++        // score = pairs * pairWeight - total distance; pairWeight dominates any sum of in-range distances.
++        const double pairWeight = 1.0 + double(maxDistance) * double((n < m) ? n : m);
++        const double reject = -1.0e300;
++        std::vector<double> score((n + 1) * (m + 1), 0.0);
++        std::vector<uint8_t> step((n + 1) * (m + 1), 0);
++        auto at = [m](size_t i, size_t j) { return i * (m + 1) + j; };
++        for (size_t i = 1; i <= n; i++) {
++            step[at(i, 0)] = 1;
++        }
++
++        for (size_t j = 1; j <= m; j++) {
++            step[at(0, j)] = 2;
++        }
++
++        for (size_t i = 1; i <= n; i++) {
++            for (size_t j = 1; j <= m; j++) {
++                double best = score[at(i - 1, j)];
++                uint8_t bestStep = 1;
++                if (score[at(i, j - 1)] > best) {
++                    best = score[at(i, j - 1)];
++                    bestStep = 2;
++                }
++
++                const Call &c = *cur[i - 1];
++                const Call &p = *prev[j - 1];
++                double diagonal = reject;
++                if (c.doTransformMatching && p.doTransformMatching && (c.worldCount == p.worldCount)) {
++                    const float d = distance(c, p);
++                    if ((d >= 0.0f) && (d <= maxDistance)) {
++                        diagonal = score[at(i - 1, j - 1)] + pairWeight - double(d);
++                    }
++                }
++
++                if (diagonal > best) {
++                    best = diagonal;
++                    bestStep = 3;
++                }
++
++                score[at(i, j)] = best;
++                step[at(i, j)] = bestStep;
++            }
++        }
++
++        size_t i = n;
++        size_t j = m;
++        while ((i > 0) && (j > 0)) {
++            const uint8_t s = step[at(i, j)];
++            if (s == 3) {
++                const Call &c = *cur[i - 1];
++                const Call &p = *prev[j - 1];
++                for (uint32_t w = 0; w < c.worldCount; w++) {
++                    pairs.emplace(c.minWorld + w, p.minWorld + w);
++                }
++
++                i--;
++                j--;
++            }
++            else if (s == 1) {
++                i--;
++            }
++            else {
++                j--;
++            }
++        }
++    }
++
++    // buildOrderedPairs plus alignment of the unequal-count groups.
++    template <typename DistanceFn>
++    inline void buildOrderedPairs(const std::vector<Call> &cur, const std::vector<Call> &prev, std::set<std::pair<uint32_t, uint32_t>> &pairs, float maxDistance, DistanceFn distance) {
++        buildOrderedPairs(cur, prev, pairs);
++        std::map<uint64_t, std::vector<const Call *>> curByHash, prevByHash;
++        for (const Call &call : cur) {
++            curByHash[call.hash].push_back(&call);
++        }
++
++        for (const Call &call : prev) {
++            prevByHash[call.hash].push_back(&call);
++        }
++
++        for (const auto &it : curByHash) {
++            auto prevIt = prevByHash.find(it.first);
++            if ((prevIt != prevByHash.end()) && (prevIt->second.size() != it.second.size())) {
++                alignGroup(it.second, prevIt->second, maxDistance, distance, pairs);
++            }
++        }
++    }
++
+     // |det| of the 3x3 part of both matrices. A ratio of 8 or more is a 2x linear scale jump: a different object.
+     inline bool scaleCompatible(float curDeterminant, float prevDeterminant) {
+         const float a = std::fabs(curDeterminant);
+diff --git a/src/render/rt64_p09_closure_guard.h b/src/render/rt64_p09_closure_guard.h
+index 1509225..96073a1 100644
+--- a/src/render/rt64_p09_closure_guard.h
++++ b/src/render/rt64_p09_closure_guard.h
+@@ -24,8 +24,11 @@
+ // until no such edge remains. Transforms for which the two interpolations agree
+ // are never switched. No game, model, bone or display-list knowledge is used.
+ //
+-// Default ON. TOOIE_TEST_P09_CLOSURE_GUARD=0 restores the unguarded rigid
+-// interpolation for paired A/B tests.
++// Default OFF since the joint coherence and spike guards (rt64_p09_spike_guard.h):
++// on segmented models its non-rigid result left a shrunken piece next to rigid
++// neighbours and opened wrist/shoulder joints, while the newer guards keep both
++// stretched triangles and joint gaps lower without it (attract measurement,
++// 2026-10-23). TOOIE_TEST_P09_CLOSURE_GUARD=1 enables it for A/B tests.
+ //
+ 
+ #pragma once
+@@ -45,7 +48,7 @@ namespace RT64 {
+             static int cached = -1;
+             if (cached < 0) {
+                 const char *env = std::getenv("TOOIE_TEST_P09_CLOSURE_GUARD");
+-                cached = (env != nullptr && env[0] == '0' && env[1] == '\0') ? 0 : 1;
++                cached = (env != nullptr && env[0] == '1' && env[1] == '\0') ? 1 : 0;
+             }
+             return cached != 0;
+         }
+diff --git a/src/render/rt64_p09_rod_classify.h b/src/render/rt64_p09_rod_classify.h
+index 7300036..82fe83b 100644
+--- a/src/render/rt64_p09_rod_classify.h
++++ b/src/render/rt64_p09_rod_classify.h
+@@ -174,7 +174,59 @@ namespace p09RodClassify {
+             }
+         }
+ 
++        // Joint gaps on segmented models. A pair is a joint when the child's origin stays put (drift < 0.5) in the parent's
++        // local frame between the two endpoints (CURRENT origins within 25 units). Its gap is the distance between the
++        // child's rendered origin and the joint point carried by the parent's rendered matrix (local point interpolated).
++        // JG rows (gap > 1.5 units) name both final states and held flags.
++        uint32_t gaps = 0, joints = 0;
++        float worstGap = 0.0f;
++        {
++            std::lock_guard<std::mutex> lock(S.mu);
++            std::vector<hlslpp::float4x4> curInv(nWorld), prevInv(nWorld);
++            std::vector<uint8_t> inv(nWorld, 0);
++            for (size_t t = 0; t < nWorld; t++) {
++                if (st[t] == ST_UNMAPPED) continue;
++                const hlslpp::float4x4 cur = d.worldTransforms[t];
++                if (!(std::fabs(hlslpp::determinant(cur)) > 1e-9f) || !(std::fabs(hlslpp::determinant(prevM[t])) > 1e-9f)) continue;
++                curInv[t] = hlslpp::inverse(cur);
++                prevInv[t] = hlslpp::inverse(prevM[t]);
++                inv[t] = 1;
++            }
++
++            for (size_t c = 0; c < nWorld; c++) {
++                if (!inv[c]) continue;
++                const hlslpp::float3 cc = hlslpp::float4x4(d.worldTransforms[c])[3].xyz;
++                const hlslpp::float3 cp = prevM[c][3].xyz;
++                for (size_t p = 0; p < nWorld; p++) {
++                    if ((p == c) || !inv[p]) continue;
++                    if (len3(hlslpp::float3(hlslpp::float4x4(d.worldTransforms[p])[3].xyz) - cc) > 25.0f) continue;
++                    const hlslpp::float3 lc = xf(curInv[p], cc);
++                    const hlslpp::float3 lp = xf(prevInv[p], cp);
++                    if (len3(lc - lp) >= 0.5f) continue;
++                    joints++;
++                    const hlslpp::float3 local = lp + (lc - lp) * curWeight;
++                    const hlslpp::float3 joint = xf(d.lerpWorldTransforms[p], local);
++                    const float gap = len3(hlslpp::float3(hlslpp::float4x4(d.lerpWorldTransforms[c])[3].xyz) - joint);
++                    if (gap <= 1.5f) continue;
++                    gaps++;
++                    worstGap = std::max(worstGap, gap);
++                    if (S.triRows < 40000) {
++                        S.triRows++;
++                        const GameFrameMap::TransformMap &tc = workloadMap.transforms[c];
++                        const GameFrameMap::TransformMap &tp = workloadMap.transforms[p];
++                        std::fprintf(S.file, "JG wl=%llu wc=%.3f c=%zu p=%zu stc=%c stp=%c lTc=%d lTp=%d gap=%.2f\n",
++                            (unsigned long long)workload.workloadId, curWeight, c, p, stChar(st[c]), stChar(st[p]),
++                            tc.rigidBody.lerpTranslation ? 1 : 0, tp.rigidBody.lerpTranslation ? 1 : 0, gap);
++                    }
++                }
++            }
++        }
++
+         std::lock_guard<std::mutex> lock(S.mu);
++        if (gaps > 0) {
++            std::fprintf(S.file, "JGW wl=%llu joints=%u gaps=%u worst=%.1f\n", (unsigned long long)workload.workloadId, joints, gaps, worstGap);
++        }
++
+         if (S.workloads < 100000) {
+             S.workloads++;
+             std::fprintf(S.file, "WL wl=%llu wc=%.3f worlds=%zu mapped=%u cur=%u ew=%u other=%u heldT=%u noDecomp=%u faces=%u cross=%u endpointP=%u bad=%u U=%u P=%u C=%u N=%u I=%u worst=%.2f\n",
+diff --git a/src/render/rt64_p09_spike_guard.h b/src/render/rt64_p09_spike_guard.h
+new file mode 100644
+index 0000000..548b742
+--- /dev/null
++++ b/src/render/rt64_p09_spike_guard.h
+@@ -0,0 +1,449 @@
++//
++// RT64
++//
++// P09 spike guard, the last post-pass over the WORLD matrices TransformProcessor::process just interpolated.
++//
++// Whatever the matcher and the earlier guards decide, an interpolated frame must not show a triangle much longer than
++// it is in the CURRENT frame: the game never draws it that way, and on screen it is a one-frame spike or rod. The
++// remaining cases come from pairs that are wrong for reasons the matcher cannot see (an object or part that appears,
++// vanishes or swaps level of detail between two frames). For every triangle whose rendered edge exceeds twice its CURRENT
++// length (and by more than 4 units, the same rule as the rod classifier), the whole object it belongs to (the WORLDs
++// connected through shared triangles) is shown at CURRENT for this frame: that object steps like the 30 fps original
++// for one frame instead of tearing. Default ON; TOOIE_TEST_P09_SPIKE_GUARD=0 disables it. Inert while the endpoint-CURRENT
++// workaround is active (the interpolated matrices do not reach the screen then).
++//
++
++#pragma once
++
++#include <algorithm>
++#include <atomic>
++#include <cmath>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <numeric>
++#include <vector>
++
++#include "hle/rt64_game_frame.h"
++#include "hle/rt64_host_endpoint_current.h"
++#include "hle/rt64_workload.h"
++
++namespace RT64 {
++namespace p09SpikeGuard {
++    inline bool enabled() {
++        static const bool on = [] {
++            const char *e = std::getenv("TOOIE_TEST_P09_SPIKE_GUARD");
++            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
++        }();
++        return on;
++    }
++
++    // Same edge rule as the rod classifier: rendered edge > 2x CURRENT edge and more than 4 units longer.
++    inline bool stretched(float renderedLength, float currentLength) {
++        const float ref = (currentLength > 1e-3f) ? currentLength : 1e-3f;
++        return (renderedLength > 2.0f * ref) && ((renderedLength - ref) > 4.0f);
++    }
++
++    // Union-find over WORLD indices.
++    inline uint32_t findRoot(std::vector<uint32_t> &parent, uint32_t x) {
++        while (parent[x] != x) {
++            parent[x] = parent[parent[x]];
++            x = parent[x];
++        }
++
++        return x;
++    }
++
++    inline void unite(std::vector<uint32_t> &parent, uint32_t a, uint32_t b) {
++        a = findRoot(parent, a);
++        b = findRoot(parent, b);
++        if (a != b) {
++            parent[b] = a;
++        }
++    }
++
++    // Segment coherence (TOOIE_TEST_P09_SEGMENT_COHERENCE=0 disables it). The AUTO gate in RigidBody::updateLinear holds the
++    // translation of a WORLD whose speed jumps by 10x (a limb starting to swing, Kazooie leaving the backpack) as if it had
++    // teleported. The translation coherence guard releases such holds only across shared triangles, which segmented models
++    // (rigid limbs, no triangle between bones) do not have: the held limb is drawn at CURRENT while its body is halfway,
++    // a misplaced part for one frame. A held WORLD whose moving neighbours (CURRENT origins within SegmentRadius) are
++    // interpolated, and whose own jump is below SegmentMaxJump, belongs to a moving body and is interpolated too. A real
++    // teleport moves the whole object, so its neighbours are held as well and nothing changes.
++    constexpr float SegmentRadius = 80.0f;
++    constexpr float SegmentMaxJump = 150.0f;
++
++    inline bool segmentCoherenceEnabled() {
++        static const bool on = [] {
++            const char *e = std::getenv("TOOIE_TEST_P09_SEGMENT_COHERENCE");
++            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
++        }();
++        return on;
++    }
++
++    // Returns the number of WORLD translations released.
++    inline uint32_t applySegmentCoherence(Workload &workload, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData,
++        float prevWeight, float curWeight)
++    {
++        if (!segmentCoherenceEnabled() || (curWeight >= 1.0f) || endpointCurrentActive()) {
++            return 0;
++        }
++
++        DrawData &d = workload.drawData;
++        const size_t nWorld = d.worldTransforms.size();
++        if ((nWorld == 0) || (d.lerpWorldTransforms.size() != nWorld) || (d.prevWorldTransforms.size() != nWorld) ||
++            (d.invTWorldTransforms.size() != nWorld) || (workloadMap.transforms.size() < nWorld)) {
++            return 0;
++        }
++
++        // 0 = not moving or unmapped, 1 = moving and interpolated, 2 = moving and held at the CURRENT translation.
++        std::vector<uint8_t> state(nWorld, 0);
++        std::vector<hlslpp::float3> curPos(nWorld), prevPos(nWorld);
++        for (size_t t = 0; t < nWorld; t++) {
++            const hlslpp::float4x4 cur = d.worldTransforms[t];
++            curPos[t] = cur[3].xyz;
++            prevPos[t] = curPos[t];
++            const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
++            if (!tm.mapped || (tm.prevTransformIndex >= prevDrawData.worldTransforms.size())) continue;
++            const hlslpp::float4x4 prev = prevDrawData.worldTransforms[tm.prevTransformIndex];
++            prevPos[t] = prev[3].xyz;
++            const float jump = float(hlslpp::length(curPos[t] - prevPos[t]));
++            if (!(jump > 1e-2f)) continue;
++            const hlslpp::float4x4 lerp = d.lerpWorldTransforms[t];
++            const float fromCur = float(hlslpp::length(hlslpp::float3(lerp[3].xyz) - curPos[t]));
++            state[t] = (fromCur < 1e-3f) ? 2 : 1;
++        }
++
++        uint32_t released = 0;
++        for (size_t t = 0; t < nWorld; t++) {
++            if (state[t] != 2) continue;
++            if (float(hlslpp::length(curPos[t] - prevPos[t])) > SegmentMaxJump) continue;
++            uint32_t moving = 0, held = 0;
++            for (size_t u = 0; u < nWorld; u++) {
++                if ((u == t) || (state[u] == 0)) continue;
++                if (float(hlslpp::length(curPos[u] - curPos[t])) > SegmentRadius) continue;
++                if (state[u] == 1) moving++; else held++;
++            }
++
++            if ((moving == 0) || (moving < held)) continue;
++            const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
++            const hlslpp::float4x4 prevEnd = prevDrawData.worldTransforms[tm.prevTransformIndex];
++            const hlslpp::float4x4 curEnd = d.worldTransforms[t];
++            RigidBody body = tm.rigidBody;
++            body.lerpTranslation = true;
++            const hlslpp::float4x4 curMatrix = body.lerp(curWeight, prevEnd, curEnd, true);
++            d.lerpWorldTransforms[t] = curMatrix;
++            d.prevWorldTransforms[t] = body.lerp(prevWeight, prevEnd, curEnd, true);
++            d.invTWorldTransforms[t] = hlslpp::transpose(hlslpp::inverse(curMatrix));
++            released++;
++        }
++
++        if (released > 0) {
++            static std::atomic<uint64_t> total{ 0 };
++            const uint64_t before = total.fetch_add(released);
++            if ((before / 256) != ((before + released) / 256) || (before == 0)) {
++                std::fprintf(stderr, "[tooie-interp] segment coherence released=%llu\n", (unsigned long long)(before + released));
++            }
++        }
++
++        return released;
++    }
++
++    // Joint coherence (TOOIE_TEST_P09_JOINT_COHERENCE=0 disables it). Every WORLD is interpolated on its own: its origin
++    // moves along a straight line while its rotation turns along an arc. A child piece hangs from its parent at a point
++    // fixed in the parent's frame, so when the parent turns a lot between two game frames the child's straight-line
++    // origin leaves that arc and the joint opens (wrist off the arm, shoulder off the body, on segmented models with no
++    // triangle across the joint). The hierarchy is not in the display list, so it is inferred: a WORLD's parent is the
++    // neighbouring WORLD (CURRENT origins within JointRadius) in whose local frame the child's origin stays put between
++    // the two endpoints. The child keeps its own interpolated rotation and its origin is re-attached to the interpolated
++    // parent at the interpolated local point. Roots are resolved first; cycles keep the lower index as the root.
++    constexpr float JointRadius = 25.0f;
++    constexpr float JointMaxDrift = 0.5f;
++
++    inline bool jointCoherenceEnabled() {
++        static const bool on = [] {
++            const char *e = std::getenv("TOOIE_TEST_P09_JOINT_COHERENCE");
++            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
++        }();
++        return on;
++    }
++
++    // Returns the number of WORLD origins re-attached.
++    inline uint32_t applyJointCoherence(Workload &workload, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData,
++        float prevWeight, float curWeight)
++    {
++        if (!jointCoherenceEnabled() || (curWeight >= 1.0f) || endpointCurrentActive()) {
++            return 0;
++        }
++
++        DrawData &d = workload.drawData;
++        const size_t nWorld = d.worldTransforms.size();
++        if ((nWorld < 2) || (d.lerpWorldTransforms.size() != nWorld) || (d.prevWorldTransforms.size() != nWorld) ||
++            (d.invTWorldTransforms.size() != nWorld) || (workloadMap.transforms.size() < nWorld)) {
++            return 0;
++        }
++
++        auto xf = [](const hlslpp::float4x4 &m, const hlslpp::float3 &p) {
++            const hlslpp::float4 r = hlslpp::mul(hlslpp::float4(p, 1.0f), m);
++            return hlslpp::float3(r.xyz);
++        };
++
++        auto len3 = [](const hlslpp::float3 &v) {
++            return std::sqrt(float(v.x) * float(v.x) + float(v.y) * float(v.y) + float(v.z) * float(v.z));
++        };
++
++        std::vector<uint8_t> mapped(nWorld, 0);
++        std::vector<hlslpp::float4x4> prevEnd(nWorld), curEnd(nWorld), prevInv(nWorld), curInv(nWorld);
++        for (size_t t = 0; t < nWorld; t++) {
++            const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
++            if (!tm.mapped || (tm.prevTransformIndex >= prevDrawData.worldTransforms.size())) continue;
++            curEnd[t] = d.worldTransforms[t];
++            prevEnd[t] = prevDrawData.worldTransforms[tm.prevTransformIndex];
++            const float curDet = hlslpp::determinant(curEnd[t]);
++            const float prevDet = hlslpp::determinant(prevEnd[t]);
++            if (!(std::fabs(curDet) > 1e-9f) || !(std::fabs(prevDet) > 1e-9f)) continue;
++            curInv[t] = hlslpp::inverse(curEnd[t]);
++            prevInv[t] = hlslpp::inverse(prevEnd[t]);
++            mapped[t] = 1;
++        }
++
++        // Parent choice: smallest drift of the child's origin in the candidate parent's local frame.
++        std::vector<int32_t> parent(nWorld, -1);
++        std::vector<hlslpp::float3> localPrev(nWorld), localCur(nWorld);
++        for (size_t c = 0; c < nWorld; c++) {
++            if (!mapped[c]) continue;
++            const hlslpp::float3 cCur = curEnd[c][3].xyz;
++            const hlslpp::float3 cPrev = prevEnd[c][3].xyz;
++            float bestDrift = JointMaxDrift;
++            for (size_t p = 0; p < nWorld; p++) {
++                if ((p == c) || !mapped[p]) continue;
++                if (len3(hlslpp::float3(curEnd[p][3].xyz) - cCur) > JointRadius) continue;
++                const hlslpp::float3 lc = xf(curInv[p], cCur);
++                const hlslpp::float3 lp = xf(prevInv[p], cPrev);
++                const float drift = len3(lc - lp);
++                if (drift < bestDrift) {
++                    bestDrift = drift;
++                    parent[c] = int32_t(p);
++                    localCur[c] = lc;
++                    localPrev[c] = lp;
++                }
++            }
++        }
++
++        // Break cycles: walk each chain; a WORLD met twice on its own walk is cut at the lowest index of the cycle.
++        std::vector<uint8_t> mark(nWorld, 0); // 0 unseen, 1 on the current walk, 2 done
++        for (size_t s = 0; s < nWorld; s++) {
++            if (mark[s] != 0) continue;
++            std::vector<uint32_t> walk;
++            int32_t t = int32_t(s);
++            while ((t >= 0) && (mark[t] == 0)) {
++                mark[t] = 1;
++                walk.push_back(uint32_t(t));
++                t = parent[t];
++            }
++
++            if ((t >= 0) && (mark[t] == 1)) {
++                uint32_t lowest = uint32_t(t);
++                int32_t u = parent[t];
++                while ((u >= 0) && (u != t)) {
++                    lowest = std::min(lowest, uint32_t(u));
++                    u = parent[u];
++                }
++
++                parent[lowest] = -1;
++            }
++
++            for (uint32_t w : walk) mark[w] = 2;
++        }
++
++        // Resolve from the roots down (memoised depth-first).
++        std::vector<uint8_t> done(nWorld, 0);
++        uint32_t attached = 0;
++        std::vector<uint32_t> stack;
++        for (size_t s = 0; s < nWorld; s++) {
++            if (done[s] || (parent[s] < 0)) continue;
++            stack.clear();
++            int32_t t = int32_t(s);
++            while ((t >= 0) && !done[t] && (parent[t] >= 0)) {
++                stack.push_back(uint32_t(t));
++                t = parent[t];
++            }
++
++            for (size_t i = stack.size(); i-- > 0;) {
++                const uint32_t c = stack[i];
++                const uint32_t p = uint32_t(parent[c]);
++                const hlslpp::float4x4 parentCur = d.lerpWorldTransforms[p];
++                const hlslpp::float4x4 parentPrev = d.prevWorldTransforms[p];
++                hlslpp::float4x4 childCur = d.lerpWorldTransforms[c];
++                hlslpp::float4x4 childPrev = d.prevWorldTransforms[c];
++                const hlslpp::float3 localAtCur = localPrev[c] + (localCur[c] - localPrev[c]) * curWeight;
++                const hlslpp::float3 localAtPrev = localPrev[c] + (localCur[c] - localPrev[c]) * prevWeight;
++                childCur[3] = hlslpp::float4(xf(parentCur, localAtCur), 1.0f);
++                childPrev[3] = hlslpp::float4(xf(parentPrev, localAtPrev), 1.0f);
++                d.lerpWorldTransforms[c] = childCur;
++                d.prevWorldTransforms[c] = childPrev;
++                d.invTWorldTransforms[c] = hlslpp::transpose(hlslpp::inverse(childCur));
++                done[c] = 1;
++                attached++;
++            }
++        }
++
++        static const bool debug = std::getenv("TOOIE_DIAG_P09_JOINT") != nullptr;
++        if (debug) {
++            static std::atomic<uint64_t> calls{ 0 };
++            if ((++calls % 200) == 0) {
++                // Best drift of every mapped WORLD against any neighbour, to see why parents are (not) found.
++                uint32_t nb = 0, under05 = 0, under2 = 0, under5 = 0;
++                for (size_t c = 0; c < nWorld; c++) {
++                    if (!mapped[c]) continue;
++                    float best = 1e9f;
++                    for (size_t p = 0; p < nWorld; p++) {
++                        if ((p == c) || !mapped[p]) continue;
++                        if (len3(hlslpp::float3(curEnd[p][3].xyz) - hlslpp::float3(curEnd[c][3].xyz)) > JointRadius) continue;
++                        best = std::min(best, len3(xf(curInv[p], curEnd[c][3].xyz) - xf(prevInv[p], prevEnd[c][3].xyz)));
++                    }
++                    if (best > 1e8f) continue;
++                    nb++;
++                    under05 += best < 0.5f;
++                    under2 += best < 2.0f;
++                    under5 += best < 5.0f;
++                }
++                std::fprintf(stderr, "[p09-joint] worlds=%zu withNeighbour=%u drift<0.5=%u <2=%u <5=%u attached=%u\n", nWorld, nb, under05, under2, under5, attached);
++            }
++        }
++
++        return attached;
++    }
++
++    // Returns the number of WORLD matrices shown at CURRENT.
++    // Unites WORLDs joined by a joint (the child's origin stays within JointMaxDrift in the parent's local frame between the
++    // two endpoints, CURRENT origins within JointRadius): segmented models have no triangle across their joints, so this is
++    // what makes one articulated object a single group.
++    inline void uniteJoints(const DrawData &d, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData, std::vector<uint32_t> &parent) {
++        const size_t nWorld = d.worldTransforms.size();
++        auto xf = [](const hlslpp::float4x4 &m, const hlslpp::float3 &p) {
++            const hlslpp::float4 r = hlslpp::mul(hlslpp::float4(p, 1.0f), m);
++            return hlslpp::float3(r.xyz);
++        };
++
++        auto len3 = [](const hlslpp::float3 &v) {
++            return std::sqrt(float(v.x) * float(v.x) + float(v.y) * float(v.y) + float(v.z) * float(v.z));
++        };
++
++        std::vector<uint8_t> ok(nWorld, 0);
++        std::vector<hlslpp::float4x4> curEnd(nWorld), prevEnd(nWorld), curInv(nWorld), prevInv(nWorld);
++        for (size_t t = 0; t < nWorld; t++) {
++            const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
++            if (!tm.mapped || (tm.prevTransformIndex >= prevDrawData.worldTransforms.size())) continue;
++            curEnd[t] = d.worldTransforms[t];
++            prevEnd[t] = prevDrawData.worldTransforms[tm.prevTransformIndex];
++            if (!(std::fabs(hlslpp::determinant(curEnd[t])) > 1e-9f) || !(std::fabs(hlslpp::determinant(prevEnd[t])) > 1e-9f)) continue;
++            curInv[t] = hlslpp::inverse(curEnd[t]);
++            prevInv[t] = hlslpp::inverse(prevEnd[t]);
++            ok[t] = 1;
++        }
++
++        for (size_t c = 0; c < nWorld; c++) {
++            if (!ok[c]) continue;
++            const hlslpp::float3 cc = curEnd[c][3].xyz;
++            const hlslpp::float3 cp = prevEnd[c][3].xyz;
++            for (size_t p = 0; p < nWorld; p++) {
++                if ((p == c) || !ok[p]) continue;
++                if (len3(hlslpp::float3(curEnd[p][3].xyz) - cc) > JointRadius) continue;
++                if (len3(xf(curInv[p], cc) - xf(prevInv[p], cp)) < JointMaxDrift) {
++                    unite(parent, uint32_t(c), uint32_t(p));
++                }
++            }
++        }
++    }
++
++    inline uint32_t apply(Workload &workload, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData, float curWeight) {
++        if (!enabled() || (curWeight >= 1.0f) || endpointCurrentActive()) {
++            return 0;
++        }
++
++        DrawData &d = workload.drawData;
++        const size_t nWorld = d.worldTransforms.size();
++        if ((nWorld == 0) || (d.lerpWorldTransforms.size() != nWorld) || (d.prevWorldTransforms.size() != nWorld) ||
++            (d.invTWorldTransforms.size() != nWorld) || (workloadMap.transforms.size() < nWorld)) {
++            return 0;
++        }
++
++        const uint32_t nVert = d.vertexCount();
++        if ((d.worldIndices.size() < nVert) || (d.posFloats.size() < size_t(nVert) * 3)) {
++            return 0;
++        }
++
++        const bool hasVel = d.velFloats.size() >= size_t(nVert) * 3;
++        auto xf = [](const hlslpp::float4x4 &m, const hlslpp::float3 &p) {
++            const hlslpp::float4 r = hlslpp::mul(hlslpp::float4(p, 1.0f), m);
++            return hlslpp::float3(r.xyz);
++        };
++
++        auto len3 = [](const hlslpp::float3 &v) {
++            return std::sqrt(float(v.x) * float(v.x) + float(v.y) * float(v.y) + float(v.z) * float(v.z));
++        };
++
++        std::vector<uint32_t> parent(nWorld);
++        std::iota(parent.begin(), parent.end(), 0u);
++        const size_t nTri = d.faceIndices.size() / 3;
++        for (size_t f = 0; f < nTri; f++) {
++            const uint32_t v0 = d.faceIndices[f * 3], v1 = d.faceIndices[f * 3 + 1], v2 = d.faceIndices[f * 3 + 2];
++            if ((v0 >= nVert) || (v1 >= nVert) || (v2 >= nVert)) continue;
++            const uint32_t w0 = d.worldIndices[v0], w1 = d.worldIndices[v1], w2 = d.worldIndices[v2];
++            if ((w0 >= nWorld) || (w1 >= nWorld) || (w2 >= nWorld)) continue;
++            unite(parent, w0, w1);
++            unite(parent, w1, w2);
++        }
++
++        uniteJoints(d, workloadMap, prevDrawData, parent);
++
++        std::vector<uint8_t> snapRoot(nWorld, 0);
++        bool any = false;
++        for (size_t f = 0; f < nTri; f++) {
++            const uint32_t v[3] = { d.faceIndices[f * 3], d.faceIndices[f * 3 + 1], d.faceIndices[f * 3 + 2] };
++            if ((v[0] >= nVert) || (v[1] >= nVert) || (v[2] >= nVert)) continue;
++            const uint32_t w[3] = { d.worldIndices[v[0]], d.worldIndices[v[1]], d.worldIndices[v[2]] };
++            if ((w[0] >= nWorld) || (w[1] >= nWorld) || (w[2] >= nWorld)) continue;
++            if (!workloadMap.transforms[w[0]].mapped && !workloadMap.transforms[w[1]].mapped && !workloadMap.transforms[w[2]].mapped) continue;
++            const uint32_t root = findRoot(parent, w[0]);
++            if (snapRoot[root]) continue;
++            hlslpp::float3 pc[3], pl[3];
++            for (int i = 0; i < 3; i++) {
++                const hlslpp::float3 lc(d.posFloats[size_t(v[i]) * 3 + 0], d.posFloats[size_t(v[i]) * 3 + 1], d.posFloats[size_t(v[i]) * 3 + 2]);
++                hlslpp::float3 lv(0.0f, 0.0f, 0.0f);
++                if (hasVel) {
++                    lv = hlslpp::float3(d.velFloats[size_t(v[i]) * 3 + 0], d.velFloats[size_t(v[i]) * 3 + 1], d.velFloats[size_t(v[i]) * 3 + 2]);
++                }
++
++                pc[i] = xf(d.worldTransforms[w[i]], lc);
++                pl[i] = xf(d.lerpWorldTransforms[w[i]], lc - lv * (1.0f - curWeight));
++            }
++
++            for (int e = 0; e < 3; e++) {
++                const int a = e, b = (e + 1) % 3;
++                if (stretched(len3(pl[a] - pl[b]), len3(pc[a] - pc[b]))) {
++                    snapRoot[root] = 1;
++                    any = true;
++                    break;
++                }
++            }
++        }
++
++        if (!any) {
++            return 0;
++        }
++
++        uint32_t snapped = 0;
++        for (size_t t = 0; t < nWorld; t++) {
++            if (!workloadMap.transforms[t].mapped || !snapRoot[findRoot(parent, uint32_t(t))]) continue;
++            const hlslpp::float4x4 cur = d.worldTransforms[t];
++            d.lerpWorldTransforms[t] = cur;
++            d.prevWorldTransforms[t] = cur;
++            d.invTWorldTransforms[t] = hlslpp::transpose(hlslpp::inverse(cur));
++            snapped++;
++        }
++
++        return snapped;
++    }
++};
++};
+diff --git a/src/render/rt64_transform_processor.cpp b/src/render/rt64_transform_processor.cpp
+index d7e3ae2..52d8c17 100644
+--- a/src/render/rt64_transform_processor.cpp
++++ b/src/render/rt64_transform_processor.cpp
+@@ -25,6 +25,7 @@
+ #include "hle/rt64_workload_queue.h"
+ #include "render/rt64_p09_local_pair_snapshot.h"
+ #include "render/rt64_p09_rod_classify.h"
++#include "render/rt64_p09_spike_guard.h"
+ 
+ namespace RT64 {
+     // TransformProcessor
+@@ -344,6 +345,9 @@ namespace RT64 {
+                     }
+                 }
+                 p09ApplyWorldInterpolationGuards(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
++                p09SpikeGuard::applySegmentCoherence(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
++                p09SpikeGuard::applyJointCoherence(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
++                p09SpikeGuard::apply(workload, workloadMap, prevDrawData, p.curFrameWeight);
+                 p09RodClassify::run(workload, workloadMap, prevDrawData, p.curFrameWeight);
+             }
+             // Copy as normal and just generate the inverse of the transforms.

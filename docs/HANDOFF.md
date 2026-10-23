@@ -9,6 +9,19 @@ tags: [tooie-recomp, handoff, p08, p09, p10, p11, packaging, release, clean-clon
 ---
 # Handoff — TooieRecomp
 
+## CURRENT — P09 glitches raros de interpolação: guardas novas no RT64 (2026-10-23)
+
+Patch local `vendor/patches-local/rt64-p09-interp-glitch-guards.patch` (VENDOR VERIFY OK, 28 patches). Todas default ON, cada uma com `=0`:
+- `TOOIE_TEST_P09_ALIGN_MATCH`: grupos de hash com contagem diferente entre frames são alinhados em ordem com lacunas (antes caíam no matcher guloso).
+- `TOOIE_TEST_P09_CAMERA_CUT`: câmera AUTO que gira > 30° ou salta > 250 unidades entre frames do jogo é corte; a cena não é interpolada nesse frame (antes o RT64 sempre interpolava a câmera AUTO).
+- `TOOIE_TEST_P09_SEGMENT_COHERENCE`: osso travado pelo gate AUTO com vizinhos (≤ 80 u) interpolados volta a interpolar (membros de modelos segmentados).
+- `TOOIE_TEST_P09_JOINT_COHERENCE`: hierarquia inferida (origem do filho fixa no sistema do pai); a origem do filho é presa ao pai interpolado.
+- `TOOIE_TEST_P09_SPIKE_GUARD`: objeto (triângulos + juntas) com aresta interpolada > 2× a atual é mostrado em CURRENT nesse frame.
+- Guarda de fechamento antiga agora default OFF (`TOOIE_TEST_P09_CLOSURE_GUARD=1` religa): encolhia peças e abria juntas.
+- Diagnósticos default-OFF: `TOOIE_DIAG_P09_PAIR_AUDIT=<arquivo>`, `TOOIE_DIAG_P09_CAMERA_CUT=1`, `TOOIE_DIAG_P09_JOINT=1`; o classificador de rods agora emite `JG`/`JGW` (aberturas de junta).
+- Medição attract (wl 1000–2400): triângulos esticados 378 → 0; juntas abertas 202 (>3 u) → 0; 16 cortes de câmera tratados (`PROVEN` métrico). Usuário jogando: "Ficou muito bom" (`USER_OBSERVED`, 2026-10-23). Testes: required 9/9, extra 17/17 PASS; `p09_ordered_match_test` 41/41; `p09_world_interpolation_guard_test` 35/35. Linux `NOT_RUN`.
+- `NEXT_SINGLE_ACTION`: desempenho — auditar logs/diagnósticos pesados e o travamento ao carregar a Demo 5 (fase de gelo); evidência detalhada desta correção pendente.
+
 ## CURRENT — P08 bordas em widescreen: planos de culling nativos (2026-10-22)
 
 Ver [[plan/evidence/p08-widescreen-native-planes-20261022]].

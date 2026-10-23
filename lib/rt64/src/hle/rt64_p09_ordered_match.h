@@ -82,6 +82,120 @@ namespace p09OrderedMatch {
         }
     }
 
+    // Order-preserving alignment for hash groups whose call count changed between frames (an object or part appeared or
+    // vanished). The greedy fallback pairs such groups bone by bone and can give the two bones of one skinned triangle
+    // different offsets, which renders as a one-frame spike. Calls keep their submission order, so this aligns the two
+    // sequences with gaps: it maximises the number of pairs whose first WORLD origins lie within maxDistance and breaks
+    // ties by the smallest total distance. TOOIE_TEST_P09_ALIGN_MATCH=0 disables it (unequal groups use the fallback).
+    inline bool alignEnabled() {
+        static const bool on = [] {
+            const char *e = std::getenv("TOOIE_TEST_P09_ALIGN_MATCH");
+            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
+        }();
+        return on;
+    }
+
+    // Groups above this many cell evaluations keep the fallback (bounded per-frame cost).
+    constexpr size_t AlignMaxCells = 1u << 18;
+
+    // Largest first-WORLD origin move accepted as the same call between two frames (game units; walking is ~10-30).
+    constexpr float AlignMaxDistance = 96.0f;
+
+    template <typename DistanceFn>
+    inline void alignGroup(const std::vector<const Call *> &cur, const std::vector<const Call *> &prev, float maxDistance, DistanceFn distance, std::set<std::pair<uint32_t, uint32_t>> &pairs) {
+        const size_t n = cur.size();
+        const size_t m = prev.size();
+        if ((n == 0) || (m == 0) || ((n + 1) * (m + 1) > AlignMaxCells)) {
+            return;
+        }
+
+        // score = pairs * pairWeight - total distance; pairWeight dominates any sum of in-range distances.
+        const double pairWeight = 1.0 + double(maxDistance) * double((n < m) ? n : m);
+        const double reject = -1.0e300;
+        std::vector<double> score((n + 1) * (m + 1), 0.0);
+        std::vector<uint8_t> step((n + 1) * (m + 1), 0);
+        auto at = [m](size_t i, size_t j) { return i * (m + 1) + j; };
+        for (size_t i = 1; i <= n; i++) {
+            step[at(i, 0)] = 1;
+        }
+
+        for (size_t j = 1; j <= m; j++) {
+            step[at(0, j)] = 2;
+        }
+
+        for (size_t i = 1; i <= n; i++) {
+            for (size_t j = 1; j <= m; j++) {
+                double best = score[at(i - 1, j)];
+                uint8_t bestStep = 1;
+                if (score[at(i, j - 1)] > best) {
+                    best = score[at(i, j - 1)];
+                    bestStep = 2;
+                }
+
+                const Call &c = *cur[i - 1];
+                const Call &p = *prev[j - 1];
+                double diagonal = reject;
+                if (c.doTransformMatching && p.doTransformMatching && (c.worldCount == p.worldCount)) {
+                    const float d = distance(c, p);
+                    if ((d >= 0.0f) && (d <= maxDistance)) {
+                        diagonal = score[at(i - 1, j - 1)] + pairWeight - double(d);
+                    }
+                }
+
+                if (diagonal > best) {
+                    best = diagonal;
+                    bestStep = 3;
+                }
+
+                score[at(i, j)] = best;
+                step[at(i, j)] = bestStep;
+            }
+        }
+
+        size_t i = n;
+        size_t j = m;
+        while ((i > 0) && (j > 0)) {
+            const uint8_t s = step[at(i, j)];
+            if (s == 3) {
+                const Call &c = *cur[i - 1];
+                const Call &p = *prev[j - 1];
+                for (uint32_t w = 0; w < c.worldCount; w++) {
+                    pairs.emplace(c.minWorld + w, p.minWorld + w);
+                }
+
+                i--;
+                j--;
+            }
+            else if (s == 1) {
+                i--;
+            }
+            else {
+                j--;
+            }
+        }
+    }
+
+    // buildOrderedPairs plus alignment of the unequal-count groups.
+    template <typename DistanceFn>
+    inline void buildOrderedPairs(const std::vector<Call> &cur, const std::vector<Call> &prev, std::set<std::pair<uint32_t, uint32_t>> &pairs, float maxDistance, DistanceFn distance) {
+        buildOrderedPairs(cur, prev, pairs);
+        std::map<uint64_t, std::vector<const Call *>> curByHash, prevByHash;
+        for (const Call &call : cur) {
+            curByHash[call.hash].push_back(&call);
+        }
+
+        for (const Call &call : prev) {
+            prevByHash[call.hash].push_back(&call);
+        }
+
+        for (const auto &it : curByHash) {
+            auto prevIt = prevByHash.find(it.first);
+            if ((prevIt != prevByHash.end()) && (prevIt->second.size() != it.second.size())) {
+                alignGroup(it.second, prevIt->second, maxDistance, distance, pairs);
+            }
+        }
+    }
+
     // |det| of the 3x3 part of both matrices. A ratio of 8 or more is a 2x linear scale jump: a different object.
     inline bool scaleCompatible(float curDeterminant, float prevDeterminant) {
         const float a = std::fabs(curDeterminant);

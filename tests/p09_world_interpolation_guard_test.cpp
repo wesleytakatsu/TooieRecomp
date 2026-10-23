@@ -262,7 +262,8 @@ void testGateSpeedOnly() {
 void testDefaultsAreOn() {
     TEST_ASSERT(RT64::p09TranslationCoherence::gateSpeedOnlyEnabled(), "gate speed-only release is ON by default");
     TEST_ASSERT(RT64::p09TranslationCoherence::enabled(), "translation coherence is ON by default");
-    TEST_ASSERT(RT64::p09ClosureGuard::enabled(), "closure guard is ON by default");
+    // Superseded by the joint coherence and spike guards (rt64_p09_spike_guard.h); opt in with TOOIE_TEST_P09_CLOSURE_GUARD=1.
+    TEST_ASSERT(!RT64::p09ClosureGuard::enabled(), "closure guard is OFF by default");
 }
 
 } // namespace

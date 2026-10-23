@@ -174,7 +174,59 @@ namespace p09RodClassify {
             }
         }
 
+        // Joint gaps on segmented models. A pair is a joint when the child's origin stays put (drift < 0.5) in the parent's
+        // local frame between the two endpoints (CURRENT origins within 25 units). Its gap is the distance between the
+        // child's rendered origin and the joint point carried by the parent's rendered matrix (local point interpolated).
+        // JG rows (gap > 1.5 units) name both final states and held flags.
+        uint32_t gaps = 0, joints = 0;
+        float worstGap = 0.0f;
+        {
+            std::lock_guard<std::mutex> lock(S.mu);
+            std::vector<hlslpp::float4x4> curInv(nWorld), prevInv(nWorld);
+            std::vector<uint8_t> inv(nWorld, 0);
+            for (size_t t = 0; t < nWorld; t++) {
+                if (st[t] == ST_UNMAPPED) continue;
+                const hlslpp::float4x4 cur = d.worldTransforms[t];
+                if (!(std::fabs(hlslpp::determinant(cur)) > 1e-9f) || !(std::fabs(hlslpp::determinant(prevM[t])) > 1e-9f)) continue;
+                curInv[t] = hlslpp::inverse(cur);
+                prevInv[t] = hlslpp::inverse(prevM[t]);
+                inv[t] = 1;
+            }
+
+            for (size_t c = 0; c < nWorld; c++) {
+                if (!inv[c]) continue;
+                const hlslpp::float3 cc = hlslpp::float4x4(d.worldTransforms[c])[3].xyz;
+                const hlslpp::float3 cp = prevM[c][3].xyz;
+                for (size_t p = 0; p < nWorld; p++) {
+                    if ((p == c) || !inv[p]) continue;
+                    if (len3(hlslpp::float3(hlslpp::float4x4(d.worldTransforms[p])[3].xyz) - cc) > 25.0f) continue;
+                    const hlslpp::float3 lc = xf(curInv[p], cc);
+                    const hlslpp::float3 lp = xf(prevInv[p], cp);
+                    if (len3(lc - lp) >= 0.5f) continue;
+                    joints++;
+                    const hlslpp::float3 local = lp + (lc - lp) * curWeight;
+                    const hlslpp::float3 joint = xf(d.lerpWorldTransforms[p], local);
+                    const float gap = len3(hlslpp::float3(hlslpp::float4x4(d.lerpWorldTransforms[c])[3].xyz) - joint);
+                    if (gap <= 1.5f) continue;
+                    gaps++;
+                    worstGap = std::max(worstGap, gap);
+                    if (S.triRows < 40000) {
+                        S.triRows++;
+                        const GameFrameMap::TransformMap &tc = workloadMap.transforms[c];
+                        const GameFrameMap::TransformMap &tp = workloadMap.transforms[p];
+                        std::fprintf(S.file, "JG wl=%llu wc=%.3f c=%zu p=%zu stc=%c stp=%c lTc=%d lTp=%d gap=%.2f\n",
+                            (unsigned long long)workload.workloadId, curWeight, c, p, stChar(st[c]), stChar(st[p]),
+                            tc.rigidBody.lerpTranslation ? 1 : 0, tp.rigidBody.lerpTranslation ? 1 : 0, gap);
+                    }
+                }
+            }
+        }
+
         std::lock_guard<std::mutex> lock(S.mu);
+        if (gaps > 0) {
+            std::fprintf(S.file, "JGW wl=%llu joints=%u gaps=%u worst=%.1f\n", (unsigned long long)workload.workloadId, joints, gaps, worstGap);
+        }
+
         if (S.workloads < 100000) {
             S.workloads++;
             std::fprintf(S.file, "WL wl=%llu wc=%.3f worlds=%zu mapped=%u cur=%u ew=%u other=%u heldT=%u noDecomp=%u faces=%u cross=%u endpointP=%u bad=%u U=%u P=%u C=%u N=%u I=%u worst=%.2f\n",

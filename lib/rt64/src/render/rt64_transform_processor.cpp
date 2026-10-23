@@ -25,6 +25,7 @@
 #include "hle/rt64_workload_queue.h"
 #include "render/rt64_p09_local_pair_snapshot.h"
 #include "render/rt64_p09_rod_classify.h"
+#include "render/rt64_p09_spike_guard.h"
 
 namespace RT64 {
     // TransformProcessor
@@ -344,6 +345,9 @@ namespace RT64 {
                     }
                 }
                 p09ApplyWorldInterpolationGuards(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
+                p09SpikeGuard::applySegmentCoherence(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
+                p09SpikeGuard::applyJointCoherence(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
+                p09SpikeGuard::apply(workload, workloadMap, prevDrawData, p.curFrameWeight);
                 p09RodClassify::run(workload, workloadMap, prevDrawData, p.curFrameWeight);
             }
             // Copy as normal and just generate the inverse of the transforms.
