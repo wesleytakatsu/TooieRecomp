@@ -1,16 +1,39 @@
 ---
 title: "Transform interpolation"
-description: "O pareamento WORLD automático por custo de origem no RT64 é a causa raiz dominante dos glitches de interpolação articulada (rods); a correção ordered match reduz 94% dos triângulos esticados; guardas de translação/fechamento continuam necessárias."
+description: "O conjunto de guardas arquiteturais no RT64 (corte de câmera, coerência de segmentos e juntas, spike guard, alinhamento DP com lacunas) elimina estiramentos residuais e aberturas articulares a 60 FPS; guarda de fechamento desligada por padrão; validação de gameplay pelo usuário 'Ficou muito bom'."
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-22
+updated: 2026-10-23
 tags: [reverse-engineering, interpolation, rt64, grok-quota, plume-patch, technical-gate]
 ---
 
 # Transform interpolation
 
-## Current (2026-10-22) — pareamento WORLD automático do RT64 é a causa raiz dos rods
+## Current (2026-10-23) — guardas arquiteturais de interpolação no RT64 (corte de câmera, segmentos, juntas e alinhamento DP)
+
+Ver [[../../plan/evidence/p09-interp-glitch-guards-20261023]].
+
+Apesar de a correspondência estrutural ordenada (`ordered match`) ter eliminado 94% dos triângulos esticados, testes interativos em alta taxa de quadros (60 FPS) revelaram defeitos residuais: flashes esporádicos de um frame, membros fora de posição e articulações abertas em modelos anatômicos segmentados (ombros/pulsos do Banjo). O modelo atual no RT64 resolve essas falhas através de um pipeline integrado de guardas arquiteturais (`vendor/patches-local/rt64-p09-interp-glitch-guards.patch`):
+
+- **Alinhamento ordenado com lacunas por DP (`TOOIE_TEST_P09_ALIGN_MATCH`, default ON)**:
+  - Grupos de chamadas com o mesmo hash do display list mas contagens assimétricas entre frames deixam de cair no pareamento guloso por custo; são alinhados deterministicamente admitindo gaps ordenados (tabela DP de até 96 unidades), reduzindo estiramentos residuais (378 → 276 triângulos esticados no attract demo).
+- **Detecção geométrica de corte de câmera (`TOOIE_TEST_P09_CAMERA_CUT`, default ON)**:
+  - A câmera AUTO era sempre interpolada (`viewProjMap.mapped = true`), borrando a imagem em transições bruscas. O avaliador detecta rotações $> 30^\circ$ ou saltos $> 250$ unidades sob matrizes 3x3 bem condicionadas (escala uniforme × rotação), tratando 16 cortes reais no attract sem falsos positivos em HUD. A cena é apresentada sem interpolação naquele frame (`CURRENT`).
+- **Coerência de segmentos (`TOOIE_TEST_P09_SEGMENT_COHERENCE`, default ON)**:
+  - O gate de velocidade linear original (`RigidBody::updateLinear`) desarmava a interpolação de translação em membros de modelos segmentados (velocidade $\ge 5$ e $\ge 10\times$ anterior). A guarda libera a interpolação se vizinhos próximos ($\le 80$ u) estiverem em movimento interpolado e o salto do osso for $< 150$ u (1025 liberações no attract).
+- **Coerência de juntas (`TOOIE_TEST_P09_JOINT_COHERENCE`, default ON)**:
+  - Infere a hierarquia esquelética pai-filho observando a invariância da posição relativa do pivô no referencial vizinho ($\le 25$ u, deriva temporal $\text{drift} < 0,5$ u). O filho tem sua origem amarrada e transladada com o pai interpolado; ciclos transitivos são resolvidos pelo menor índice.
+- **Guarda de espigões por componentes conexos (`TOOIE_TEST_P09_SPIKE_GUARD`, default ON)**:
+  - Malhas com aresta interpolada $> 2\times$ CURRENT e $> 4$ u revertem todo o componente conexo para `CURRENT`. O agrupamento unifica partições tanto por triângulos quanto por juntas inferidas contíguas (`uniteJoints`), impedindo descolamento articular em personagens segmentados.
+- **Desativação da guarda de fechamento elementwise (`TOOIE_TEST_P09_CLOSURE_GUARD`, default OFF)**:
+  - A interpolação linear elemento a elemento (`lerpMatrix`) encolhia peças rígidas sob rotações pronunciadas e abria juntas. Seu padrão foi alterado para inativo (default OFF).
+- **Validação e eficácia (`PROVEN` métrico / `USER_OBSERVED`)**:
+  - No attract demo (wl 1000–2400): triângulos esticados 378 → 0 (−100%), juntas abertas 202 → 0 (−100%) e frames com juntas abertas 45 → 0 (−100%).
+  - Testes unitários host: `p09_ordered_match_test` 41/41 PASS, `p09_world_interpolation_guard_test` 35/35 PASS, suíte obrigatória 9/9 PASS, suíte extra 17/17 PASS.
+  - Gameplay interativo validado pelo usuário (`USER_OBSERVED`, 2026-10-23): "Ficou muito bom".
+
+## Prior (2026-10-22) — pareamento WORLD automático do RT64 é a causa raiz dos rods
 
 Ver [[../../plan/evidence/p09-ordered-transform-match-20261022]].
 

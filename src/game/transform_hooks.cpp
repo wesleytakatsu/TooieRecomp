@@ -13,11 +13,14 @@ static uint32_t s_saved_P_mtx = 0;
 static uint32_t s_saved_V_mtx = 0;
 
 static bool tooie_pv_scale_diag_on() {
-    const char *env = std::getenv("TOOIE_DIAG_FEATHER_TEMPORAL_COHERENCY");
-    if ((env == nullptr) || (env[0] == '\0') || (env[0] == '0')) {
-        env = std::getenv("TOOIE_DIAG_PV_SCALE");
-    }
-    return (env != nullptr) && (env[0] != '\0') && (env[0] != '0');
+    static const bool enabled = []() {
+        const char *env = std::getenv("TOOIE_DIAG_FEATHER_TEMPORAL_COHERENCY");
+        if ((env == nullptr) || (env[0] == '\0') || (env[0] == '0')) {
+            env = std::getenv("TOOIE_DIAG_PV_SCALE");
+        }
+        return (env != nullptr) && (env[0] != '\0') && (env[0] != '0');
+    }();
+    return enabled;
 }
 
 static void tooie_pv_scale_note(int overflow, float scale, float inv_scale,

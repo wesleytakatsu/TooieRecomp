@@ -868,6 +868,15 @@ extern "C" void func_800815CC(uint8_t* rdram, recomp_context* ctx) {
     std::fflush(stderr);
 }
 
+// default OFF; set TOOIE_DIAG_OVERLAY_LOG=1 to enable
+static bool tooie_diag_overlay_log_on() {
+    static const bool enabled = []() {
+        const char* raw = std::getenv("TOOIE_DIAG_OVERLAY_LOG");
+        return raw != nullptr && raw[0] != '\0' && raw[0] != '0';
+    }();
+    return enabled;
+}
+
 // Host ovl_load for the decompressed ROM image.
 // Mirrors banjo-tooie-Recomp/src/core2/overlays.c (uncompressed path) and then
 // registers native recomp functions at the actual heap text address.
@@ -980,11 +989,14 @@ extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx) {
         // text_size may omit trailing data (for example 0x230 vs section 0x240),
         // which otherwise makes load_overlays select no section at all.
         load_overlays(mapping_rom, static_cast<int32_t>(text_start), mapping_size);
-        std::fprintf(stderr,
-                     "[tooie] ovl_load: idx=%d pkg=0x%x +0x%x -> ram=0x%x text=0x%x map=0x%x\n",
-                     overlay_index, pkg_rom, text_off,
-                     static_cast<uint32_t>(text_start), text_size, mapping_size);
-        std::fflush(stderr);
+        // default OFF; set TOOIE_DIAG_OVERLAY_LOG=1 to enable
+        if (tooie_diag_overlay_log_on()) {
+            std::fprintf(stderr,
+                         "[tooie] ovl_load: idx=%d pkg=0x%x +0x%x -> ram=0x%x text=0x%x map=0x%x\n",
+                         overlay_index, pkg_rom, text_off,
+                         static_cast<uint32_t>(text_start), text_size, mapping_size);
+            std::fflush(stderr);
+        }
     }
 
     ctx->r2 = overlay_ptr;
@@ -1033,11 +1045,14 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx) {
     if (text_start != 0 && mapping_size != 0) {
         unload_overlays(text_start, mapping_size);
     }
-    std::fprintf(stderr,
-                 "[tooie] ovl_unload: idx=%u ptr=0x%x text=0x%x size=0x%x\n",
-                 overlay_index, static_cast<uint32_t>(overlay_ptr),
-                 static_cast<uint32_t>(text_start), mapping_size);
-    std::fflush(stderr);
+    // default OFF; set TOOIE_DIAG_OVERLAY_LOG=1 to enable
+    if (tooie_diag_overlay_log_on()) {
+        std::fprintf(stderr,
+                     "[tooie] ovl_unload: idx=%u ptr=0x%x text=0x%x size=0x%x\n",
+                     overlay_index, static_cast<uint32_t>(overlay_ptr),
+                     static_cast<uint32_t>(text_start), mapping_size);
+        std::fflush(stderr);
+    }
 
     const int32_t new_count = load_count - 1;
     const int32_t swapped = MEM_W(new_count * 4, kseg0_gpr(kAddr_D_80126738));
@@ -2151,6 +2166,15 @@ static void tooie_ud5_reset_heading_ords(int glidx) {
     }
 }
 
+// Cached once. default OFF; set TOOIE_DIAG_UD5=1 to enable.
+static bool tooie_diag_ud5_on() {
+    static const bool enabled = []() {
+        const char* raw = std::getenv("TOOIE_DIAG_UD5");
+        return raw != nullptr && raw[0] != '\0' && raw[0] != '0';
+    }();
+    return enabled;
+}
+
 // === USER_DEMO_5 MAP=296 CLEAN SEMANTIC JOIN & CALL-PRESENCE MODULE (RT64) ===
 static uint32_t s_rt_trace_epoch = 0;
 static uint32_t s_rt_ud5_map296_epoch = 0;
@@ -2193,6 +2217,10 @@ static inline void tooie_rt_dump_checkpoint(uint8_t* rdram, const char* phase) {
 }
 
 static inline bool tooie_rt_check_map_entry(uint8_t* rdram) {
+    // default OFF; set TOOIE_DIAG_UD5=1 to enable. Never latches s_rt_in_map296 otherwise.
+    if (!tooie_diag_ud5_on()) {
+        return false;
+    }
     if (s_rt_trace_epoch == 0) {
         s_rt_trace_epoch = 0x54524143; // 'TRAC'
     }
@@ -3461,6 +3489,10 @@ static void tooie_ud4_np_call(const char* name, uint32_t addr, uint8_t* rdram,
 }
 
 static bool tooie_ud5_combinator_window(uint8_t* rdram, int* glidx_out) {
+    // default OFF; set TOOIE_DIAG_UD5=1 to enable
+    if (!tooie_diag_ud5_on()) {
+        return false;
+    }
     const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
     const int stage_v = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
     const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
@@ -3477,6 +3509,10 @@ static bool tooie_ud5_combinator_window(uint8_t* rdram, int* glidx_out) {
 }
 
 static bool tooie_ud5_p60_writer_window(uint8_t* rdram, int* glidx_out) {
+    // default OFF; set TOOIE_DIAG_UD5=1 to enable
+    if (!tooie_diag_ud5_on()) {
+        return false;
+    }
     const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
     const int stage_v = int(MEM_BU(0x0, kseg0_gpr(0x80135470u)));
     const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));

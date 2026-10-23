@@ -4,7 +4,10 @@
 #include "tooie_fps_meter.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
+#include <cstdlib>
+#include <thread>
 
 #include "recompui/recompui.h"
 #include "elements/ui_label.h"
@@ -93,6 +96,21 @@ namespace {
 
 void tooie::register_fps_overlay() {
     recompui::set_overlay_update_callback(update_overlay);
+
+    // Default-OFF diagnostic TOOIE_DIAG_PRESENT_LOG=1: one stderr line every 250 ms with the cumulative present count, so a
+    // timestamped log shows where the present rate drops (map loads, stalls). Detached sampler thread, reads one atomic.
+    const char *present_log = std::getenv("TOOIE_DIAG_PRESENT_LOG");
+    if ((present_log != nullptr) && (present_log[0] == '1')) {
+        std::thread([]() {
+            uint64_t last = 0;
+            for (;;) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                const uint64_t now = RT64::presentSuccessCount.load(std::memory_order_relaxed);
+                std::fprintf(stderr, "[tooie-present] count=%llu delta=%llu\n", (unsigned long long)now, (unsigned long long)(now - last));
+                last = now;
+            }
+        }).detach();
+    }
 }
 
 void tooie::set_fps_overlay_enabled(bool enabled) {

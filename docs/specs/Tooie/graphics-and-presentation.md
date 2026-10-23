@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Comprehensive technical specification for RT64 integration, widescreen culling hooks, projection policies, the shader-local CURRENT tfPos workaround, and planned FPS presets."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-22
+updated: 2026-10-23
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -125,9 +125,22 @@ namespace RT64 {
 - **Owner**: `install_interpolation_policy` (`include/tooie_menu_policy.h`) sinks the APPLIED `interpolation` value; `src/game/config.cpp` forwards it as `requestHostEndpointCurrent(!enabled)`. No startup `setenv`; `tooie_rsp_endpoint_current` (module, test, CMake target) was removed.
 - **Readers (all use `endpointCurrentActive()`)**: `RSPProcessor::process` (`processCB.forceEndpointCurrent`), `p09WorldGuardEndpointCurrentActive`, `interpBurst::forceEndpointEnv`. The old per-site static getenv caches no longer exist.
 - **Environment Precedence**: `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` explicit `0`/`1` wins over the option (legacy test override, read once); unset/empty defers to the host. `TOOIE_TEST_INTERPOLATION_FPS=60|120` forces Interpolation ON at that rate regardless of the option and logs `[tooie] TOOIE_TEST_INTERPOLATION_FPS=... overrides the Interpolation setting`.
-- **Interpolation Matching & Diagnostic Controls (P09)**:
+- **Interpolation Matching & Guard Controls (P09)**:
   - `TOOIE_TEST_P09_ORDERED_MATCH`: Controls structural draw call sequence matching for untagged (`G_EX_ID_AUTO`) WORLD transforms in RT64 `GameFrame::matchScene`. Default ON; setting `0` restores the original greedy origin-cost matching.
-  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: Diagnostic output file path (default-OFF). When configured, evaluates every triangle of interpolated workloads after guard processing and classifies stretched geometry (rendered edge $> 2\times$ CURRENT edge and $> 4$ units) across categories I, U, P, C, and N into the specified file. Strictly read-only; never alters rendering.
+  - `TOOIE_TEST_P09_ALIGN_MATCH`: Controls sequence alignment with gaps via dynamic programming for draw-call hash groups with divergent counts across frames in RT64 `GameFrame::matchScene`. Default ON; setting `0` falls back to greedy origin-cost matching for asymmetric groups.
+  - `TOOIE_TEST_P09_CAMERA_CUT`: Controls geometric camera cut detection for well-conditioned AUTO view matrices in `rt64_p09_camera_cut.h`. When active, large angular rotations or linear displacements between frames suppress temporal camera interpolation for that frame, rendering the scene at CURRENT. Default ON; setting `0` forces continuous interpolation for AUTO cameras.
+  - `TOOIE_TEST_P09_SEGMENT_COHERENCE`: Controls conditional release of linear translation interpolation for segmented model parts held by the upstream linear velocity gate (`RigidBody::updateLinear`). Releases interpolation when neighboring moving matrices are interpolating cleanly and linear jump is within bounds. Default ON; setting `0` retains strict upstream gate holding.
+  - `TOOIE_TEST_P09_JOINT_COHERENCE`: Controls runtime skeletal joint hierarchy inference based on relative pivot invariance between neighboring matrices. Binds child transform origin to the interpolated parent coordinate space, breaking dependency cycles by lowest matrix index. Default ON; setting `0` leaves WORLD transforms independently interpolated.
+  - `TOOIE_TEST_P09_SPIKE_GUARD`: Controls connected-component geometry deformation checks uniting both mesh triangles and inferred joints (`uniteJoints`). Snaps the entire connected object partition to CURRENT when any interpolated edge stretches beyond relative and absolute thresholds against CURRENT. Default ON; setting `0` renders interpolated vertices without spike snapping.
+  - `TOOIE_TEST_P09_CLOSURE_GUARD`: Controls elementwise convex matrix interpolation guard (`lerpMatrix`). Default OFF (`0`) to prevent volume shrinking under rotation and joint gaps in segmented models; setting `1` re-enables elementwise closure limiting.
+- **Diagnostic & Telemetry Controls (P09 & Performance)**:
+  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: Diagnostic output file path (default OFF). When configured, evaluates every triangle of interpolated workloads after guard processing and classifies stretched geometry across categories I, U, P, C, and N, including joint gap reports (`JG`/`JGW`). Strictly read-only; never alters rendering.
+  - `TOOIE_DIAG_P09_PAIR_AUDIT=<arquivo>`: Audit log file path (default OFF). When configured, outputs detailed pairwise transform correspondence evaluations and temporal variance data during frame matching in RT64. Strictly read-only.
+  - `TOOIE_DIAG_P09_CAMERA_CUT`: Controls console diagnostic logging for camera cut evaluations (default `0` / OFF). Setting `1` logs, for each detected cut, the row cosines of the two view rotations, the camera displacement and both camera positions.
+  - `TOOIE_DIAG_P09_JOINT`: Controls console diagnostic logging for joint inference (default `0` / OFF). Setting `1` logs, every 200 interpolated workloads, how many WORLD matrices have a neighbour, how many have a joint drift below 0.5/2/5 units, and how many origins were re-attached.
+  - `TOOIE_DIAG_PRESENT_LOG`: Controls periodic presentation rate telemetry (default `0` / OFF). Setting `1` logs one stderr line every 250 ms with the cumulative present count (`RT64::presentSuccessCount`) and its delta; timestamps come from the capturing tool.
+  - `TOOIE_DIAG_UD5`: Controls diagnostic logging and camera telemetry for Map 296 / Demo 5 (default `0` / OFF). Setting `1` enables logging; setting `0` or omitting eliminates all diagnostic I/O overhead.
+  - `TOOIE_DIAG_OVERLAY_LOG`: Controls diagnostic logging for overlay load and unload events (default `0` / OFF). Setting `1` logs overlay transitions; setting `0` or omitting silences overlay transition I/O.
 - **Runtime telemetry**: RT64 prints `[tooie-interp] workload=N endpointCurrent=E generate=G targetRate=T viRate=V displayFrames=D` on every change of that tuple and one `first interpolated render ... curW=` line per change; never per frame. `endpointCurrent=1` with `curW<1` is masked interpolation (CURRENT repeats poses); real interpolation is `endpointCurrent=0`.
 - **Shader Effect (`RSPProcessCS.hlsl:78-93`)**:
   - `tfPos` bypasses temporal interpolation, evaluating directly at CURRENT vertex positions:

@@ -4,12 +4,25 @@ description: "P08 correção de bordas em widescreen (16:9) implementada via pla
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-22
+updated: 2026-10-23
 tags: [tooie-recomp, handoff, p08, p09, p10, p11, packaging, release, clean-clone, windows, linux, kitfree, restored-ui, n64recomp, rt64, interpolation, settings, menu, candidate-package]
 ---
 # Handoff — TooieRecomp
 
+## CURRENT — Desempenho: travas na troca de fase e logs sempre ligados (2026-10-23)
+
+Ver [[plan/evidence/perf-overlay-dedupe-and-logs-20261023]].
+- **Sintoma (`USER_OBSERVED`)**: Jogo pesado; carregar a Demo 5 (fase de gelo, mapa 296) demora e trava.
+- **Causa raiz comprovada (`PROVEN`)**: `activate_canonical_mapping` chama `load_overlays` repetidamente no dispatch de syscalls; `load_overlay` acumulava seções em `loaded_sections` sem deduplicar, e `unload_overlays` apagava linearmente $O(n)$ do meio do vetor, causando travamento quadrático crescente nas trocas de mapa (até 91 s no attract).
+- **Correção no runtime**: Patch local `vendor/patches-local/n64modernruntime-overlay-section-dedupe.patch` deduplica registros `(ram, secao)`. VENDOR VERIFY OK (29 patches). Travas caíram de 110,8 s para 2,8 s no attract de 7 min.
+- **Saneamento de logs síncronos**: Auditoria estática localizou logs e I/O bloqueante sempre ativos (`USER_DEMO_5 MAP=296` com `fprintf`+`fflush` a cada chamada de câmera, logs por overlay, `getenv` repetitivo em `transform_hooks.cpp`, CAS atômico em `ensure_init`). Confinados sob `TOOIE_DIAG_UD5=1` e `TOOIE_DIAG_OVERLAY_LOG=1` (default OFF), getenv em cache e fast path. Linhas de log no attract caíram de 83.264 para 533; FPS mediano subiu de 56 para 72.
+- **Testes**: Suíte required 9/9, extra 17/17 PASS.
+- Commit e push autorizados pelo usuário (2026-10-23). Linux `NOT_RUN`.
+- `NEXT_SINGLE_ACTION`: validação Linux (usuário) das correções P08/P09/desempenho; resíduos de baixo custo: ~70 wrappers `TOOIE_UD4_WRAP` de investigação encerrada e matching de frames do RT64 com Interpolation OFF.
+
 ## CURRENT — P09 glitches raros de interpolação: guardas novas no RT64 (2026-10-23)
+
+Ver [[plan/evidence/p09-interp-glitch-guards-20261023]].
 
 Patch local `vendor/patches-local/rt64-p09-interp-glitch-guards.patch` (VENDOR VERIFY OK, 28 patches). Todas default ON, cada uma com `=0`:
 - `TOOIE_TEST_P09_ALIGN_MATCH`: grupos de hash com contagem diferente entre frames são alinhados em ordem com lacunas (antes caíam no matcher guloso).
@@ -20,7 +33,7 @@ Patch local `vendor/patches-local/rt64-p09-interp-glitch-guards.patch` (VENDOR V
 - Guarda de fechamento antiga agora default OFF (`TOOIE_TEST_P09_CLOSURE_GUARD=1` religa): encolhia peças e abria juntas.
 - Diagnósticos default-OFF: `TOOIE_DIAG_P09_PAIR_AUDIT=<arquivo>`, `TOOIE_DIAG_P09_CAMERA_CUT=1`, `TOOIE_DIAG_P09_JOINT=1`; o classificador de rods agora emite `JG`/`JGW` (aberturas de junta).
 - Medição attract (wl 1000–2400): triângulos esticados 378 → 0; juntas abertas 202 (>3 u) → 0; 16 cortes de câmera tratados (`PROVEN` métrico). Usuário jogando: "Ficou muito bom" (`USER_OBSERVED`, 2026-10-23). Testes: required 9/9, extra 17/17 PASS; `p09_ordered_match_test` 41/41; `p09_world_interpolation_guard_test` 35/35. Linux `NOT_RUN`.
-- `NEXT_SINGLE_ACTION`: desempenho — auditar logs/diagnósticos pesados e o travamento ao carregar a Demo 5 (fase de gelo); evidência detalhada desta correção pendente.
+- `NEXT_SINGLE_ACTION`: ver seção de desempenho acima.
 
 ## CURRENT — P08 bordas em widescreen: planos de culling nativos (2026-10-22)
 

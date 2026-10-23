@@ -2426,8 +2426,13 @@ void feather_anim_flush_at_exit() {
 }
 
 void ensure_init() {
+    // Fast path once initialised: acquire load, no CAS.
+    if (g_inited.load(std::memory_order_acquire)) {
+        return;
+    }
     bool expected = false;
-    if (!g_inited.compare_exchange_strong(expected, true)) {
+    if (!g_inited.compare_exchange_strong(
+            expected, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
         return;
     }
     const char* e = std::getenv("TOOIE_DIAG");
@@ -2719,6 +2724,9 @@ void ensure_init() {
                      "user-demo ordinals + egg/camera fields)\n");
         std::fflush(stderr);
     }
+    // Second publish, release, after the relaxed flag stores. An acquire load
+    // that observes this write sees the finished init.
+    g_inited.store(true, std::memory_order_release);
 }
 
 void format_stack(char* buf, size_t buflen) {
