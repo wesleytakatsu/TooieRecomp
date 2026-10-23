@@ -113,7 +113,7 @@ You can execute any individual stage:
 .\tools\windows\Build-Tooie.ps1 -Stage Test -AllTests
 
 # Package release archive into dist/
-.\tools\windows\Build-Tooie.ps1 -Stage Package
+.\tools\windows\Build-Tooie.ps1 -Stage Package [-ReleaseVersion <ver>]
 ```
 
 ### 4.3 Pipeline Parameters
@@ -144,10 +144,11 @@ To bypass local recompiler generation and import pre-generated `RecompiledFuncs/
   - Or double-click `build-win\TooieRecompiled.exe`.
   - The launcher accepts both the original cartridge ROM (`Banjo-Tooie (USA).z64` / `.n64`, decompressing in memory transparently) and the decompressed image (`build-win\extract\decompressed.us.z64`).
 - **Distribution Package:**
-  - Archive: `dist\TooieRecompiled-windows-x64-<HEAD>[-dirty]-private-local.zip` (+ `.sha256`)
+  - Archive: `dist\BanjoTooieRecompiled-v<ver>-Windows-x64.zip` (with `-ReleaseVersion <ver>`) or `dist\BanjoTooieRecompiled-dev-<desc>-Windows-x64.zip` (+ `.sha256`)
+  - Each archive contains one top-level folder `BanjoTooieRecompiled`, `BUILD-INFO.txt` and the end-user `README-PACKAGE.txt`; the `.sha256` sidecar sits next to the archive.
   - Checksum and content audit:
     ```powershell
-    python tools\verify_package.py dist\TooieRecompiled-windows-x64-*.zip
+    python tools\verify_package.py dist\BanjoTooieRecompiled-*-Windows-x64*.zip
     ```
 
 ---

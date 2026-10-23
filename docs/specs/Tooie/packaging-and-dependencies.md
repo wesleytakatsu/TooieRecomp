@@ -15,8 +15,17 @@ TooieRecomp produces self-contained, redistributable application packages for Li
 - Target Platforms: Linux x86-64 and Windows x64.
 - Primary Binaries: `TooieRecompiled` (Linux) and `TooieRecompiled.exe` (Windows).
 - Release Artifact Formats:
-  - Standalone compressed tarball (`.tar.gz`) on Linux (`tools/package_linux.sh`).
-  - Standalone compressed zip archive (`.zip`) on Windows (`Build-Tooie.ps1 -Stage Package`).
+  - Standalone compressed tarball (`.tar.gz`) on Linux (`tools/package_linux.sh`):
+    - Release: `TOOIE_RELEASE_VERSION=<ver> tools/package_linux.sh` → `dist/BanjoTooieRecompiled-v<ver>-Linux-x64.tar.gz`.
+    - Development: `dist/BanjoTooieRecompiled-dev-<git describe --always --dirty>-Linux-x64.tar.gz`.
+  - Standalone compressed zip archive (`.zip`) on Windows (`Build-Tooie.ps1 -Stage Package`):
+    - Release: `Build-Tooie.ps1 -Stage Package -ReleaseVersion <ver>` → `dist\BanjoTooieRecompiled-v<ver>-Windows-x64.zip`.
+    - Development: `dist\BanjoTooieRecompiled-dev-<git describe --always --dirty>-Windows-x64.zip`.
+  - Archive Structure & Metadata:
+    - Each archive contains a single top-level `BanjoTooieRecompiled` directory.
+    - Checksum sidecar: `<archive>.sha256`.
+    - Package metadata: `BUILD-INFO.txt` (recording exact commit/dirty state and `release_version`), `AUDIT.txt`, `DEPENDENCIES.txt`, `MANIFEST.sha256`, and `THIRD-PARTY-MANIFEST.tsv`.
+    - End-user documentation: `README-PACKAGE.txt` (explains ROM requirements, SHA-1 verification, controls/saves, legal notices, and repository URL).
   - Standalone source archive (`tools/package_source.sh`).
   - AppImage and Flatpak distribution formats remain `NOT_IMPLEMENTED`.
 
@@ -56,7 +65,7 @@ TooieRecomp produces self-contained, redistributable application packages for Li
 
 1. **Zero Copyrighted Game Assets**:
    - The compiled executable and repository do not contain copyrighted textures, audio samples, dialog text, model geometry, or level maps.
-   - Machine-translated C code (`RecompiledFuncs/`) and translated microcode (`rsp/n_aspMain.cpp`) embed ROM-derived logic and are strictly designated for private local testing.
+   - Machine-translated C code (`RecompiledFuncs/`) and translated microcode (`rsp/n_aspMain.cpp`) embed ROM-derived logic; they are compiled directly into the released executable and excluded from source tracking (`RecompiledFuncs/` is never published as source).
    - User-interface resources (`assets/` and `ui_assets/`) contain restored menu assets, character vector art, animations, icons, typography fonts, and UI wordmarks; zero ROM game data is bundled.
 2. **User-Provided ROM**:
    - End users provide their own legally acquired cartridge dump or decompressed image:
@@ -95,6 +104,8 @@ Static components (`RT64`, `N64ModernRuntime`, `ultramodern`, `fmt`, `toml11`, `
 2. **License Validation**:
    - Every file bundled in the distribution archive must have an explicit attribution rule mapped in `tools/package_licenses.tsv`.
    - Package integrity is verified via `tools/verify_package.py`.
+   - Rows marked UNKNOWN or UNVERIFIED in `THIRD-PARTY-MANIFEST.tsv` remain open owner items to clear.
+   - Distribution packages contain no game assets and no ROM; binaries are released publicly (first public-ready release: `v0.1.0-p08`).
 3. **Execution Scripts**:
    - Package launchers `run-tooie.sh` and `run-tooie.ps1` manage execution environment variables:
      - `TOOIE_BUILD_DIR`: Path to build directory.

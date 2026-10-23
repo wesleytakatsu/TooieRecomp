@@ -47,6 +47,8 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
   controle e/ou teclado, troca de controle, mapeamento por jogador, "Rumble 1 s" e indicador de input na página Controles;
   portas N64 seguem os jogadores; correções de fidelidade do `osCont*` no runtime. Usuário validou no Windows (2026-10-23).
   Detalhes: [[specs/Tooie/input-and-controllers]], [[MULTIPLAYER_PLAN]].
+- Release pública — pacotes renomeados para `BanjoTooieRecompiled-v<ver>-<OS>-x64`, README do pacote para usuário final,
+  política private-local removida (decisão do dono, como Zelda64Recomp/BanjoRecomp); primeira release `v0.1.0-p08`.
 
 ## Pendências conhecidas
 

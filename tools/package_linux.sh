@@ -1,19 +1,28 @@
 #!/usr/bin/env bash
-# Stage + archive a Linux x86_64 build and audit it. Never packages a ROM or ROM-derived asset files.
-# NOTE: the executable embeds N64Recomp-translated game code (ROM-derived). The archive is therefore labelled
-# "private-local" and is NOT cleared for public redistribution (owner licensing decision pending, see README-PACKAGE).
-#   TOOIE_BUILD_DIR=<cmake build dir> tools/package_linux.sh      -> dist/TooieRecompiled-linux-x86_64-<ver>-private-local.tar.gz
+# Stage + audit a public Linux x64 archive. Contains ROM-derived recompiled code; no ROM inside.
+# Optional TOOIE_RELEASE_VERSION: letters, digits, dots and dashes; no leading v. Otherwise uses git describe --always --dirty.
+#   TOOIE_RELEASE_VERSION=0.1.0 TOOIE_BUILD_DIR=<cmake build dir> tools/package_linux.sh -> dist/BanjoTooieRecompiled-v0.1.0-Linux-x64.tar.gz
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/tools/toolchain.lock"; source "$ROOT/tools/paths.sh"
+RELEASE_VERSION="${TOOIE_RELEASE_VERSION:-}"
+if [[ -n "$RELEASE_VERSION" ]] && { [[ ! "$RELEASE_VERSION" =~ ^[A-Za-z0-9.-]+$ ]] || [[ "$RELEASE_VERSION" == [vV]* ]]; }; then
+    echo "package: invalid TOOIE_RELEASE_VERSION (use letters, digits, dots and dashes; no leading v)" >&2
+    exit 1
+fi
 [[ -x "$BUILD/TooieRecompiled" ]] || { echo "package: missing $BUILD/TooieRecompiled"; exit 1; }
 # ldconfig lives in /sbin (a /usr/sbin symlink on Debian/Ubuntu), which a reduced PATH may omit. Resolve it explicitly, never silently.
 LDCONFIG="$(command -v ldconfig || command -v /sbin/ldconfig || command -v /usr/sbin/ldconfig || true)"
 [[ -n "$LDCONFIG" ]] || { echo "package: ldconfig not found on PATH, /sbin or /usr/sbin; install glibc tools (libc-bin)"; exit 1; }
 VER="$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo nogit)"
-NAME="TooieRecompiled-linux-x86_64-$VER-private-local"
-OUT="${TOOIE_DIST_DIR:-$ROOT/dist}"; STAGE="$OUT/$NAME"
+NAME="BanjoTooieRecompiled-dev-$VER-Linux-x64"
+BUILD_LABEL="dev build $VER"
+if [[ -n "$RELEASE_VERSION" ]]; then
+    NAME="BanjoTooieRecompiled-v$RELEASE_VERSION-Linux-x64"
+    BUILD_LABEL="v$RELEASE_VERSION"
+fi
+OUT="${TOOIE_DIST_DIR:-$ROOT/dist}"; STAGE="$OUT/$NAME/BanjoTooieRecompiled"
 rm -rf "$STAGE"; mkdir -p "$STAGE/licenses"
 
 install -m755 "$BUILD/TooieRecompiled" "$STAGE/TooieRecompiled"
@@ -22,7 +31,7 @@ mkdir -p "$STAGE/ui_assets"; install -m644 "$ROOT/ui_assets/TooieLogo.svg" "$STA
 install -m644 "$ROOT/recompcontrollerdb.txt" "$STAGE/"
 cat > "$STAGE/run-tooie.sh" <<'LAUNCH'
 #!/usr/bin/env bash
-# Run from anywhere; the game resolves assets/ next to the executable. Pick your decompressed ROM image (tools/extract_rom.sh) in the launcher window.
+# Run from anywhere; the game resolves assets/ next to the executable. Select your own retail or decompressed ROM in the launcher.
 cd "$(dirname "$(readlink -f "$0")")" && exec ./TooieRecompiled "$@"
 LAUNCH
 chmod 755 "$STAGE/run-tooie.sh"
@@ -62,6 +71,7 @@ EXE="$STAGE/TooieRecompiled"
   else
     echo "tooie_tree_dirty_files: unavailable (source export without Git metadata)"
   fi
+  echo "release_version: ${RELEASE_VERSION:-none}"
   echo "ROM_SHA1: $ROM_SHA1"
   echo "vendored_upstreams (path, pin sha; full table in vendor/UPSTREAMS.tsv):";  awk -F'\t' '!/^#/ && NF && $1!="path" {print "  " $1 " " $3}' "$ROOT/vendor/UPSTREAMS.tsv"
   echo "vendor_manifest_sha256: $(sha256sum "$ROOT/vendor/MANIFEST.sha256" | cut -d' ' -f1)"
@@ -69,25 +79,28 @@ EXE="$STAGE/TooieRecompiled"
   echo "compiler: $(clang --version | head -1)"; echo "cmake: $(cmake --version | head -1)"
   echo "binary_sha256: $(sha256sum "$STAGE/TooieRecompiled" | cut -d' ' -f1)"; } > "$STAGE/BUILD-INFO.txt"
 
-cat > "$STAGE/README-PACKAGE.txt" <<'EOF2'
-TooieRecompiled (Linux x86_64) - PRIVATE / LOCAL USE PACKAGE (candidate, not a committed release)
+cat > "$STAGE/README-PACKAGE.txt" <<EOF2
+Banjo-Tooie Recompiled $BUILD_LABEL (Linux x64)
 
-Contains: the game executable, UI assets, controller DB, notices of linked code, build info, manifests.
-Does NOT contain: any ROM, decompressed ROM, ELF, saves, configs or logs. You must supply your own
-Banjo-Tooie (USA) rev 0 cartridge dump (SHA-1 af1a89e12b638b8d82cc4c085c8e01d4cba03fb3, .z64) and turn it into the decompressed image the launcher
-accepts (35098224 bytes, SHA-1 af479771ff5e91ce3732f3d84146614ab71d8d79) with tools/extract_rom.sh from the source tree; select that file in the launcher.
+A native PC port of Banjo-Tooie made with static recompilation (N64Recomp).
+Contains no game assets and no ROM: graphics, audio and other game data are read from your own ROM at run time.
 
-LICENSING: the executable embeds machine-translated game code derived from that ROM (not game assets).
-Do not redistribute this archive publicly until the project owner has decided the distribution terms; TooieRecomp
-itself has no LICENSE file. THIRD-PARTY-MANIFEST.tsv lists every file with provenance and licence status;
-UNKNOWN / UNVERIFIED rows are open owner decisions, not clearances.
+Requirements: your own Banjo-Tooie (USA) rev 0 cartridge dump
+(SHA-1 af1a89e12b638b8d82cc4c085c8e01d4cba03fb3, .z64 or .n64).
+The launcher accepts that retail cart (it decompresses internally) or the decompressed image
+(35098224 bytes, SHA-1 af479771ff5e91ce3732f3d84146614ab71d8d79).
+GPU: Vulkan.
 
-Run:      ./run-tooie.sh          (host needs: libSDL2, libfreetype, GTK 3, a Vulkan driver, zlib1g - see DEPENDENCIES.txt)
-Verify:   from this directory:  sha256sum -c MANIFEST.sha256     (paths are relative to this directory)
-          from outside:         tools/verify_package.sh <archive .tar.gz or extracted dir>   (in the source repo)
-Data:     user config/saves go to the per-user app folder (~/.config/TooieRecompiled), never into this directory.
-Note:     if a third-party app installed its own /usr/local/lib/libz.so.1 it can shadow the distro zlib; this package
-          only needs the distro SONAME libz.so.1 (no zlib symbols are imported by the executable itself).
+How to play: run ./run-tooie.sh and select your ROM in the launcher.
+Host needs: libSDL2, libfreetype, GTK 3, a Vulkan driver, zlib1g - see DEPENDENCIES.txt.
+Data: user config and saves go to ~/.config/TooieRecompiled, never into this directory.
+
+Banjo-Tooie is (c) Nintendo / Rare. This is an unofficial fan project, not affiliated with or endorsed by
+Nintendo or Rare. The executable contains code translated from the game; use a ROM dumped from a cartridge you own.
+Third-party components and their licences: licenses/ and THIRD-PARTY-MANIFEST.tsv.
+
+Verify: from this directory: sha256sum -c MANIFEST.sha256
+Source: https://github.com/wesleytakatsu/TooieRecomp
 EOF2
 
 # Audit
@@ -105,6 +118,6 @@ text_refs="$(grep -rIl "/home/" "$STAGE" 2>/dev/null | grep -v '^$' | wc -l || t
 
 "$ROOT/tools/package_manifest.sh" "$STAGE"
 ( cd "$STAGE" && find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
-tar --sort=name --owner=0 --group=0 --numeric-owner -C "$OUT" -czf "$OUT/$NAME.tar.gz" "$NAME"
+tar --sort=name --owner=0 --group=0 --numeric-owner -C "$OUT/$NAME" -czf "$OUT/$NAME.tar.gz" BanjoTooieRecompiled
 ( cd "$OUT" && sha256sum "$NAME.tar.gz" | tee "$NAME.tar.gz.sha256" )
-echo "package: $OUT/$NAME.tar.gz"
+echo "package: $OUT/$NAME.tar.gz (contains ROM-derived recompiled code; no ROM inside)"

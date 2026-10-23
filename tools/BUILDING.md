@@ -115,15 +115,15 @@ The pipeline executes the following stages sequentially:
 4. `recomp`: Compiles vendored `N64Recomp` and generates `RecompiledFuncs/` (420 files) directly from the decompressed ROM and committed `metadata/tooie.us.syms.toml`, then validates against `metadata/recomp-output.sha256`.
 5. `configure` + `build`: Compiles `TooieRecompiled` (1159 steps) with Clang and Ninja.
 6. `test`: Runs 8 host unit test suites.
-7. `package`: Creates the Linux candidate package.
+7. `package`: Creates the Linux candidate package (`TOOIE_RELEASE_VERSION=<ver> tools/package_linux.sh` produces `dist/BanjoTooieRecompiled-v<ver>-Linux-x64.tar.gz`, or dev `BanjoTooieRecompiled-dev-*-Linux-x64.tar.gz`).
 
 4. Verify and smoke-test candidate package:
 ```bash
 # Test isolated sandbox launch (verifies process liveness; smoke_package expects a directory):
-tools/smoke_package.sh dist/TooieRecompiled-linux-x86_64-*-private-local
+tools/smoke_package.sh dist/BanjoTooieRecompiled-*-Linux-x64/BanjoTooieRecompiled
 
 # Verify archive checksums and file manifest:
-tools/verify_package.sh dist/TooieRecompiled-linux-x86_64-*-private-local.tar.gz
+tools/verify_package.sh dist/BanjoTooieRecompiled-*-Linux-x64.tar.gz
 ```
 
 ### 3.4 Maintainer-Only: Decompilation & Metadata Regeneration (Requires Legacy Compiler Kit)
@@ -191,7 +191,7 @@ This sequentially runs:
 3. `Recomp`: Compiles `N64Recomp.exe` and generates 420 C files in `RecompiledFuncs/` (byte-identical to Linux baseline).
 4. `Configure` + `Build`: Compiles `TooieRecompiled.exe` using `clang-cl` and `lld-link` via Ninja (copies `SDL2.dll`, `dxil.dll`, `dxcompiler.dll`).
 5. `Test`: Runs required host test suites (9/9 PASS, 15/15 extra PASS with `-AllTests`).
-6. `Package`: Creates distribution archive `dist\TooieRecompiled-windows-x64-<HEAD>[-dirty]-private-local.zip` (+ `.sha256`).
+6. `Package`: Creates distribution archive `dist\BanjoTooieRecompiled-v<ver>-Windows-x64.zip` (with `-ReleaseVersion <ver>`) or `dist\BanjoTooieRecompiled-dev-<desc>-Windows-x64.zip` (+ `.sha256`).
 
 Individual stages can also be executed:
 
@@ -203,7 +203,7 @@ Individual stages can also be executed:
 .\tools\windows\Build-Tooie.ps1 -Stage Configure [-BuildDir <path>]
 .\tools\windows\Build-Tooie.ps1 -Stage Build [-Jobs N]
 .\tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]
-.\tools\windows\Build-Tooie.ps1 -Stage Package
+.\tools\windows\Build-Tooie.ps1 -Stage Package [-ReleaseVersion <ver>]
 ```
 
 - **Options:**
@@ -212,7 +212,7 @@ Individual stages can also be executed:
   - `-Rom <path>`: Override path to retail ROM for `Extract`.
   - `-AllTests`: Build all test targets and execute argument-free tests (15/15 extra PASS, 5 driver targets SKIP).
 - **Outputs:** `build-win\TooieRecompiled.exe` with bundled DLLs.
-- **Verification:** `python tools/verify_package.py dist\TooieRecompiled-windows-x64-*.zip`.
+- **Verification:** `python tools/verify_package.py dist\BanjoTooieRecompiled-*-Windows-x64*.zip`.
 - **Running:** Execute `.\run-tooie.ps1` or double-click `build-win\TooieRecompiled.exe`. The launcher accepts both retail cartridge ROMs (`.z64`/`.n64`) and decompressed images.
 
 ### 4.3 Legacy Fallback: `ImportGenerated`
@@ -229,7 +229,7 @@ If you need to bypass local recompiler generation, you can import pre-generated 
 
 ## 5. Distribution & Licensing
 
-- **Private-Local Classification:** Any package containing `TooieRecompiled` embeds machine-translated game logic derived from the user's ROM; all archives are designated `*-private-local`.
+- **Public Release Policy:** Binary releases are published publicly on GitHub Releases (like Zelda64Recomp and BanjoRecomp). Packages contain machine-translated code compiled into the executable, with NO game assets and NO ROM. Graphics, audio, and game data are read from the user's legally acquired ROM at runtime. `RecompiledFuncs/` C sources are untracked in git and never published as source.
 - **Zero Game Assets Versioned:** The repository contains no ROM dumps, textures, level geometry, or audio banks.
-- **Native UI Resources:** All previously completed native UI assets, animations, icons, character vector art, typography fonts (including `Suplexmentary Comic NC.ttf`, `InterVariable.ttf`, `NotoEmoji-Regular.ttf`, and `promptfont.ttf`), and the original 7300x2450 Tooie logo are vendored locally in `assets/` and `ui_assets/` (managed on every build by CMake target `TooieUIAssets`). License notices and provenance are tracked honestly (SIL OFL 1.1 notices; zlib controller DB; origin and unverified license status of Suplexmentary Comic NC preserved without blocking restoration).
+- **Native UI Resources:** All previously completed native UI assets, animations, icons, character vector art, typography fonts (including `Suplexmentary Comic NC.ttf`, `InterVariable.ttf`, `NotoEmoji-Regular.ttf`, and `promptfont.ttf`), and the original 7300x2450 Tooie logo are vendored locally in `assets/` and `ui_assets/` (managed on every build by CMake target `TooieUIAssets`). License notices and provenance are tracked honestly (SIL OFL 1.1 notices; zlib controller DB; origin and unverified license status of Suplexmentary Comic NC preserved without blocking restoration). Rows marked UNKNOWN/UNVERIFIED in the third-party manifest remain open owner items to clear; TooieRecomp itself has no LICENSE file (open owner decision).
 - Detailed legal terms: See [Asset and Licensing Manifest](../docs/specs/Tooie/asset-and-licensing-manifest.md).

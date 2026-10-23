@@ -5,6 +5,7 @@
  Configure: Ninja + clang-cl Release into <build>, file-prefix-map=/tooie. Build: TooieRecompiled only (runs Configure when build.ninja is missing). Test: required host *_test executables (Configure when build.ninja is missing); -AllTests builds the rest and runs the ones that need no arguments. All: Check, Extract, Recomp, Configure, Build, Test, Package.
  Needs: Git for Windows (bash), Python 3.8+ (Find-Python: py -3, then python, then python3; skip WindowsApps stubs; tools/vendor_verify.sh resolves Python on its own), Visual Studio 2022 or later (verified: VS 18 / 2026)
         with VCTools + Microsoft.VisualStudio.Component.VC.Llvm.Clang (clang-cl) + VC.CMake.Project (cmake/ninja) + Windows 11 SDK.  Windows PowerShell 5.1 or PowerShell 7.
+ Package: public Windows x64 archive, no ROM inside. Optional -ReleaseVersion (letters, digits, dots and dashes; no leading v); otherwise uses git describe --always --dirty.
  Examples:
    .\tools\windows\Build-Tooie.ps1 -Stage Check
    .\tools\windows\Build-Tooie.ps1 -Stage Extract
@@ -13,6 +14,7 @@
    .\tools\windows\Build-Tooie.ps1 -Stage ImportGenerated -GeneratedFrom \\wsl$\Ubuntu-24.04\home\you\TooieRecomp\RecompiledFuncs
    .\tools\windows\Build-Tooie.ps1 -Stage Configure
    .\tools\windows\Build-Tooie.ps1 -Stage Build ; .\tools\windows\Build-Tooie.ps1 -Stage Package
+   .\tools\windows\Build-Tooie.ps1 -Stage Package -ReleaseVersion 0.1.0
    .\tools\windows\Build-Tooie.ps1 -Stage Test
    .\tools\windows\Build-Tooie.ps1 -Stage Test -AllTests
    .\tools\windows\Build-Tooie.ps1 -Stage All
@@ -23,7 +25,8 @@ param(
     [int]$Jobs = [Environment]::ProcessorCount,
     [string]$BuildDir = '',
     [string]$Rom = '',
-    [switch]$AllTests
+    [switch]$AllTests,
+    [ValidatePattern('\A(?![vV])[A-Za-z0-9.-]+\z')][string]$ReleaseVersion = ''
 )
 $ErrorActionPreference = 'Stop'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -299,9 +302,16 @@ function Invoke-Package {
     $exe = Join-Path $BuildDir 'TooieRecompiled.exe'
     if (-not (Test-Path -LiteralPath $exe)) { throw "missing $exe (run -Stage Build)" }
     $ver = Get-PackageVersion
-    $name = "TooieRecompiled-windows-x64-$ver-private-local"
+    $releaseLabel = 'none'
+    $buildLabel = "dev build $ver"
+    $name = "BanjoTooieRecompiled-dev-$ver-Windows-x64"
+    if ($ReleaseVersion) {
+        $releaseLabel = $ReleaseVersion
+        $buildLabel = "v$ReleaseVersion"
+        $name = "BanjoTooieRecompiled-v$ReleaseVersion-Windows-x64"
+    }
     $out = Join-Path $Root 'dist'
-    $stage = Join-Path $out $name
+    $stage = Join-Path (Join-Path $out $name) 'BanjoTooieRecompiled'
     if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
     New-Item -ItemType Directory -Force "$stage\ui_assets", "$stage\licenses" | Out-Null
     Copy-Item -LiteralPath $exe -Destination $stage
@@ -351,6 +361,7 @@ function Invoke-Package {
     [void]$info.Add('TooieRecompiled build info')
     [void]$info.Add("tooie_commit: $commit")
     [void]$info.Add("tooie_tree_dirty_files: $dirtyLabel")
+    [void]$info.Add("release_version: $releaseLabel")
     [void]$info.Add('ROM_SHA1: ' + (Get-LockValue 'ROM_SHA1'))
     [void]$info.Add('vendored_upstreams (path, pin sha; full table in vendor/UPSTREAMS.tsv):')
     foreach ($row in @(Get-UpstreamPinLines)) { [void]$info.Add($row) }
@@ -364,24 +375,26 @@ function Invoke-Package {
     [void]$info.Add("build_time_utc: $utc")
     Write-Utf8NoBom (Join-Path $stage 'BUILD-INFO.txt') ([string[]]$info.ToArray())
     $readme = @(
-        'TooieRecompiled (Windows x64) - PRIVATE / LOCAL USE PACKAGE (candidate, not a committed release)',
+        "Banjo-Tooie Recompiled $buildLabel (Windows x64)",
         '',
-        'Contains: the game executable, bundled runtime DLLs (SDL2.dll, dxil.dll, dxcompiler.dll), UI assets, controller DB, notices of linked code, build info, manifests.',
-        'Does NOT contain: any ROM, decompressed ROM, ELF, saves, configs or logs. You must supply your own',
-        'Banjo-Tooie (USA) rev 0 cartridge dump (SHA-1 af1a89e12b638b8d82cc4c085c8e01d4cba03fb3, .z64 or .n64).',
+        'A native PC port of Banjo-Tooie made with static recompilation (N64Recomp).',
+        'Contains no game assets and no ROM: graphics, audio and other game data are read from your own ROM at run time.',
+        '',
+        'Requirements: your own Banjo-Tooie (USA) rev 0 cartridge dump',
+        '(SHA-1 af1a89e12b638b8d82cc4c085c8e01d4cba03fb3, .z64 or .n64).',
         'The launcher accepts that retail cart (it decompresses internally) or the decompressed image',
         '(35098224 bytes, SHA-1 af479771ff5e91ce3732f3d84146614ab71d8d79).',
+        'GPU: Direct3D 12.',
         '',
-        'LICENSING: the executable embeds machine-translated game code derived from that ROM (not game assets).',
-        'Do not redistribute this archive publicly until the project owner has decided the distribution terms; TooieRecomp',
-        'itself has no LICENSE file. THIRD-PARTY-MANIFEST.tsv lists every file with provenance and licence status;',
-        'UNKNOWN / UNVERIFIED rows are open owner decisions, not clearances.',
+        'How to play: double-click TooieRecompiled.exe and select your ROM in the launcher.',
+        'Data: user config and saves go to %LOCALAPPDATA%\TooieRecompiled, never into this directory.',
         '',
-        'Run:      double-click TooieRecompiled.exe',
-        '          or, from the source repository (this package does not include run-tooie.ps1):  powershell -File .\run-tooie.ps1',
-        'Verify:   python tools\verify_package.py <zip>',
-        '          or, from this directory, in Git for Windows bash:  sha256sum -c MANIFEST.sha256',
-        'Data:     user config and saves go to %LOCALAPPDATA%\TooieRecompiled, never into this directory.'
+        'Banjo-Tooie is (c) Nintendo / Rare. This is an unofficial fan project, not affiliated with or endorsed by',
+        'Nintendo or Rare. The executable contains code translated from the game; use a ROM dumped from a cartridge you own.',
+        'Third-party components and their licences: licenses/ and THIRD-PARTY-MANIFEST.tsv.',
+        '',
+        'Verify: from this directory, in Git for Windows bash: sha256sum -c MANIFEST.sha256',
+        'Source: https://github.com/wesleytakatsu/TooieRecomp'
     )
     Write-Utf8NoBom (Join-Path $stage 'README-PACKAGE.txt') $readme
     $hits = New-Object System.Collections.Generic.List[string]
@@ -408,7 +421,7 @@ function Invoke-Package {
         foreach ($hit in $hits) { Write-Host "AUDIT FAIL: $hit" }
         throw 'package audit failed'
     }
-    Invoke-Bash "tools/package_manifest.sh 'dist/$name'"   # fails if any staged file lacks a rule in tools/package_licenses.tsv
+    Invoke-Bash "tools/package_manifest.sh 'dist/$name/BanjoTooieRecompiled'"   # fails if any staged file lacks a rule in tools/package_licenses.tsv
     $rels = New-Object System.Collections.Generic.List[string]
     foreach ($f in @(Get-ChildItem -LiteralPath $stage -Recurse -File)) {
         $rel = (Get-StageRelative $f.FullName $stage).Replace('\', '/')
@@ -424,9 +437,9 @@ function Invoke-Package {
     $zip = Join-Path $out "$name.zip"
     Compress-Archive -Force -Path $stage -DestinationPath $zip
     $zipHash = (Get-Sha256Hex $zip) + '  ' + "$name.zip"
-    Write-Utf8NoBom "$zip.sha256" @($zipHash)
+    [System.IO.File]::WriteAllText("$zip.sha256", $zipHash + "`n", (New-Object System.Text.UTF8Encoding $false))
     Invoke-Py @('tools/verify_package.py', $zip)   # non-zero fails the stage
-    "package: $zip  (contains ROM-derived recompiled code; private/local use only; no ROM inside)"
+    "package: $zip  (contains ROM-derived recompiled code; no ROM inside)"
 }
 $script:RequiredTests = @(
     'tooie_menu_policy_test',

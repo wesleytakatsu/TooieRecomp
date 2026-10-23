@@ -140,8 +140,8 @@ The pipeline automatically executes:
 
 - **Output Executable:** `build-linux/TooieRecompiled`
 - **Unit Tests:** `tools/build_linux.sh test` (runs 8 host unit test suites).
-- **Packaging:** `tools/package_linux.sh` (produces `dist/TooieRecompiled-linux-x86_64-*-private-local.tar.gz`).
-- **Smoke Test:** `tools/smoke_package.sh dist/TooieRecompiled-linux-x86_64-*-private-local` (validates process startup and clean exit in an isolated sandbox).
+- **Packaging:** `TOOIE_RELEASE_VERSION=<ver> tools/package_linux.sh` (produces `dist/BanjoTooieRecompiled-v<ver>-Linux-x64.tar.gz` or dev `dist/BanjoTooieRecompiled-dev-*-Linux-x64.tar.gz`).
+- **Smoke Test:** `tools/smoke_package.sh dist/BanjoTooieRecompiled-*-Linux-x64/BanjoTooieRecompiled` (validates process startup and clean exit in an isolated sandbox).
 
 #### Optional Maintainer-Only: Decompilation & Metadata Regeneration (Legacy Kit)
 
@@ -212,7 +212,7 @@ The pipeline automatically executes:
 3. `Recomp`: Builds `N64Recomp.exe` and generates `RecompiledFuncs/` (420 files byte-identical to Linux baseline).
 4. `Configure` + `Build`: Compiles `TooieRecompiled.exe` using `clang-cl` and `lld-link` via Ninja (copies `SDL2.dll`, `dxil.dll`, `dxcompiler.dll`).
 5. `Test`: Runs required host test suites (9/9 PASS, 15/15 extra PASS with `-AllTests`).
-6. `Package`: Creates distribution archive `dist\TooieRecompiled-windows-x64-<HEAD>[-dirty]-private-local.zip` (+ `.sha256`).
+6. `Package`: Creates distribution archive `dist\BanjoTooieRecompiled-v<ver>-Windows-x64.zip` (with `-ReleaseVersion <ver>`) or `dist\BanjoTooieRecompiled-dev-<desc>-Windows-x64.zip` (+ `.sha256`).
 
 Individual stages can also be executed independently:
 
@@ -224,12 +224,12 @@ Individual stages can also be executed independently:
 .\tools\windows\Build-Tooie.ps1 -Stage Configure [-BuildDir <path>]
 .\tools\windows\Build-Tooie.ps1 -Stage Build [-Jobs N]
 .\tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]
-.\tools\windows\Build-Tooie.ps1 -Stage Package
+.\tools\windows\Build-Tooie.ps1 -Stage Package [-ReleaseVersion <ver>]
 ```
 
 - **Jobs:** Defaults to the host's logical CPU count (`$env:NUMBER_OF_PROCESSORS`), or override with `-Jobs N`.
 - **Output Executable:** `build-win\TooieRecompiled.exe` (with bundled `SDL2.dll`, `dxil.dll`, and `dxcompiler.dll`).
-- **Package Verification:** `python tools/verify_package.py dist\TooieRecompiled-windows-x64-*.zip`.
+- **Package Verification:** `python tools/verify_package.py dist\BanjoTooieRecompiled-*-Windows-x64*.zip`.
 - **Running the Game:** Execute `.\run-tooie.ps1` (supports the same options as `run-tooie.sh`) or double-click `build-win\TooieRecompiled.exe`. The launcher accepts both `Banjo-Tooie (USA).z64` and `decompressed.us.z64`.
 
 #### Legacy Fallback: `ImportGenerated`
@@ -251,9 +251,9 @@ Importing pre-generated `RecompiledFuncs/` from a Linux/WSL2 build remains avail
 - **Windows 11 x64:** Status is `WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST`. The native build pipeline (`Build-Tooie.ps1 -Stage All`), test suite (9/9 required PASS, 15/15 extra PASS, 5 driver targets SKIP), packaging, and launcher startup have been proven natively on host (commits `6862e29`..`f22e867`, pushed to `origin/main`). Recompiler output generation is byte-identical to the Linux baseline (420/420 files match `metadata/recomp-output.sha256`). The runtime launcher accepts both retail cartridge ROMs (`.z64`/`.n64`, decompressing in memory) and decompressed images. Pending items: validation on Linux of shared changes (user testing on physical Linux PC); audible confirmation of launcher music on Windows; W5 full manual validation (D3D12/Vulkan, audio, controller, graphics.json persistence); CI not triggered; package smoke test on Windows is non-isolated (writes configuration to `%LOCALAPPDATA%\TooieRecompiled`).
 - **Transform Interpolation & Glitches:** The in-game Graphics menu includes an **Interpolation** toggle (persisted in `graphics.json`, defaulting strictly to `false` / 30 FPS / `CURRENT` endpoint). The F8 screenshot hotkey remains disabled; diagnostic RT64 burst and snapshot mechanisms remain available through explicit configuration flags. The P09 articulated transform glitch technical gate remains **FAILED** (`passed: false`); P09 and P10 remain formally open.
 - **Licensing & Legal Boundaries:**
-  - Machine-translated C code (`RecompiledFuncs/`) and translated microcode (`rsp/n_aspMain.cpp`) embed ROM-derived logic; candidate packages are designated strictly as `private-local`.
-  - All native UI assets, typography fonts, animations, and vector art are vendored locally in `assets/` and `ui_assets/`. Provenance and license notices are tracked honestly (OFL 1.1 for Inter, Noto Emoji, and PromptFont; zlib for `recompcontrollerdb.txt`; origin and unverified license status of `Suplexmentary Comic NC.ttf` preserved without blocking restoration).
-  - The formal project license remains open / pending owner decision. No blanket legal clearance or public redistribution license is claimed.
+  - Binary releases are public on GitHub Releases (modeled after Zelda64Recomp and BanjoRecomp). Executables embed machine-translated C code (`RecompiledFuncs/`) and microcode (`rsp/n_aspMain.cpp`); packages contain no game assets and no ROM. Machine-translated C sources remain untracked in git and are never published as source.
+  - All native UI assets, typography fonts, animations, and vector art are vendored locally in `assets/` and `ui_assets/`. Provenance and license notices are tracked honestly (OFL 1.1 for Inter, Noto Emoji, and PromptFont; zlib for `recompcontrollerdb.txt`; origin and unverified license status of `Suplexmentary Comic NC.ttf` preserved without blocking restoration). Rows marked UNKNOWN/UNVERIFIED in the third-party manifest remain open owner items to clear.
+  - The formal project license remains open / pending owner decision (TooieRecomp itself has no LICENSE file).
 
 ---
 
