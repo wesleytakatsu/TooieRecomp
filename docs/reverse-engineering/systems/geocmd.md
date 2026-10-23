@@ -4,7 +4,7 @@ description: "Sibling walker DE2A4, compact type-2 DCF48, type-0x11/0x18 DLs; pl
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-09-07
+updated: 2026-10-22
 tags: [reverse-engineering, geocmd]
 ---
 
@@ -224,6 +224,19 @@ the snout (`STRONG_INFERENCE` for handler; snout handler
 
 Header `gtype` bit `0x40`. `0x61F` has **zero** GeoCmd `0x02`. Snout is
 bone INDEX 4. If live body is `0x61F`, snout **does not** use DCF48/E2AA4.
+
+## GeoCmd tipo 14: gates de esfera e efeitos colaterais (`CORRECTED/SUPERSEDED` / `STRONG_INFERENCE`)
+
+Os comandos GeoCmd tipo 14 (`0x800DDDC4`, `0x800DDF14`, `0x800DDFA0`) realizam gates de visibilidade por esfera delimitadora.
+
+- **Despacho interceptável via `jalr` (`CORRECTED/SUPERSEDED`)**:
+  São despachados pelo walker `func_800DE2A4` com `jalr` obtido através de `get_function`. Dessa forma, wrappers registrados **são executados**. O comentário histórico anterior no repositório que afirmava o oposto foi categorizado como `CORRECTED/SUPERSEDED`.
+- **Efeitos colaterais em tipos 10 e 15**:
+  As subárvores subordinadas aos comandos tipo 14 podem conter nós do tipo 10 (posição de tag de anexo consumida por aproximadamente 61 sítios da lógica de jogo) e do tipo 15 (flags de zona). Expandir o culling em widescreen simplesmente forçando a inversão do retorno $v_0$ cria o risco real de executar esses nós e contaminar a simulação. No censo do attract mode, os nós de tipo 14 registraram 0 entradas.
+- **Risco latente em gates tipo 13 (`STRONG_INFERENCE`)**:
+  A expansão de AABB `0x800CAA24` anteriormente empregada em produção invertia $v_0$ globalmente. O mesmo canal de efeitos colaterais de tipos 10 e 15 existe sob os gates de GeoCmd tipo 13 (`0x800DDC28` / `0x800DDD14`).
+
+Ver [[view-volume]] e [[model-renderer]].
 
 ## Modding relevance
 

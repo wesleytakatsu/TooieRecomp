@@ -75,6 +75,17 @@ flags. Do not implement an intro production fix until MAP_18B extents
 are dumped. Keep original `800CACEC` v0 for demo/callback consumers.
 `CLEAN_PINNED_BUILD_VALIDATION: PASS` (`23c070a9` + clean RT64 `6f1c2d99`;
 artifact `/tmp/p08-clean-milestone-validation-20260830T035059Z/`).
+2026-10-22 gameplay edge fix (user confirmed): **native-style planes**
+production ON — the volume aspect `+0xE8` is widened only while plane
+builders `800CA1B0`/`800CA218`/`800CA2A8` run (the game's own wide-screen
+flag `0x800799B8` path, without its anamorphic projection/HUD); projection
+`800CB124` stays 4:3. Per-test expansions use k=1 while it is active; attract
+demos (`0x80127632 == 5`) keep original planes (wider planes desync them).
+Kill switch `TOOIE_TEST_WS_NATIVE_PLANES=0`. Draw-only `800DE498` forcing is
+`REFUTED` as a fix (frozen edge actors, draws through walls); GeoCmd type-14
+gates ARE interceptable (prior "no LOOKUP site" claim `CORRECTED`). Census:
+`TOOIE_DIAG_WS_CULL_CENSUS=<file>`. Evidence
+`docs/plan/evidence/p08-widescreen-native-planes-20261022.md`.
 
 ## Source-of-truth hierarchy
 

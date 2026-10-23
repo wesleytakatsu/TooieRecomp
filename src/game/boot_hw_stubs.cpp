@@ -20,6 +20,7 @@
 #include "ultramodern/config.hpp"
 #include "recompui/recompui.h"
 #include "tooie_window.h"
+#include "tooie_ws_frustum.h"
 #include "tooie_diag.h"
 #include "tooie_demo7_drift.h"
 #include "tooie_demo1_parity.h"
@@ -92,6 +93,15 @@ extern "C" void func_800CACEC(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800E3E8C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8011447C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800B97A4(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800DDDC4(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800DDF14(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800DDFA0(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800DE498(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_801143A4(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800E9F20(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800CA1B0(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800CA218(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800CA2A8(uint8_t* rdram, recomp_context* ctx);
 
 // Declared in syscall_handler.cpp
 extern "C" void tooie_invalidate_resident_overlay(gpr overlay_ptr);
@@ -4250,13 +4260,21 @@ extern "C" void tooie_ws_log_prim_emit(uint32_t, uint32_t, uint64_t,
                                        uint32_t, uint32_t, uint32_t, uint32_t) {}
 
 // Production widescreen frustum correction (P08 gameplay maps + models).
-// 800CAA24: horizontal-only aspect-aware AABB retest. k = target/source.
-// 800CACEC: same H-expand only while a draw scope is open. Open scopes:
+// Shared plane math: tooie_ws_frustum.h. 800CAA24 is the horizontal-only
+// aspect-aware AABB retest (k = target/source). 800CACEC uses the same
+// H-expand only while a draw scope is open. Production scopes:
 // func_8011447C (kind 2, preserved object-pop path) and func_800B97A4
 // (kind 3, pure-draw allowlist in tooie_demo1_projectile.h). func_800E3E8C
 // does not open a scope, so func_800DE498 and unclassified logic/FX keep
-// the original v0. Disable with TOOIE_TEST_*_ASPECT_AWARE=0.
+// the original v0. Disable production with TOOIE_TEST_*_ASPECT_AWARE=0.
 // Does not write expanded planes back into guest volume memory.
+//
+// TOOIE_DIAG_WS_CULL_CENSUS=<file path>  (default OFF) census of 800CACEC / 800CAA24.
+// TOOIE_TEST_WS_GEO_SPHERE_ASPECT=1      (default OFF, not production) draw-only extra child
+// walk for GeoCmd type-14 sphere gates func_800DDDC4 / func_800DDF14 / func_800DDFA0
+// (kinds 10/11/12) when only the widened sphere accepts; their v0 is never changed.
+// Nothing for func_800DE498 or func_801143A4. Unset, nothing new is registered and guest
+// v0 stays on today's path.
 static bool tooie_ws_env_explicit_off(const char* name) {
     const char* val = std::getenv(name);
     return val != nullptr && val[0] == '0';
@@ -4272,11 +4290,39 @@ static bool tooie_object_frustum_aspect_aware_enabled() {
     return enabled;
 }
 
+// Exact match on "1". Any other value, including unset, leaves the GeoCmd sphere path off.
+static bool tooie_ws_geo_sphere_aspect_enabled() {
+    static const bool enabled = []() {
+        const char* val = std::getenv("TOOIE_TEST_WS_GEO_SPHERE_ASPECT");
+        return val != nullptr && val[0] == '1' && val[1] == '\0';
+    }();
+    return enabled;
+}
+
+// Copies the path out of getenv: MSVC reuses that buffer on the next getenv.
+static char s_ws_census_path[4096];
+
+static bool tooie_ws_census_enabled() {
+    static const bool enabled = []() {
+        const char* val = std::getenv("TOOIE_DIAG_WS_CULL_CENSUS");
+        if (val == nullptr || val[0] == '\0') {
+            return false;
+        }
+        std::snprintf(s_ws_census_path, sizeof(s_ws_census_path), "%s", val);
+        return s_ws_census_path[0] != '\0';
+    }();
+    return enabled;
+}
+
 static thread_local int s_cacec_draw_consumer = 0;
 // Diagnostic-only context of the innermost expansion scope (2 = func_8011447C, 3 = func_800B97A4) and the origin of its caller.
 // Kind 1 (func_800E3E8C) is retired: that wrapper no longer opens a scope.
 static thread_local int s_cacec_scope_kind = 0;
 static thread_local int32_t s_cacec_scope_origin = 0;
+// Innermost census tag, separate from the expansion scope. 0 = untagged.
+// 2 func_8011447C, 3 func_800B97A4, 10 func_800DDDC4, 11 func_800DDF14, 12 func_800DDFA0,
+// 13 func_800DE498, 14 func_801143A4. Kind 20 (func_800CAA24) is counted in that wrapper, any caller.
+static thread_local int s_ws_census_kind = 0;
 
 struct TooieCacecDrawScope {
     int saved_kind;
@@ -4290,6 +4336,22 @@ struct TooieCacecDrawScope {
         --s_cacec_draw_consumer;
         s_cacec_scope_kind = saved_kind;
         s_cacec_scope_origin = saved_origin;
+    }
+};
+
+// Pushes the census kind only while TOOIE_DIAG_WS_CULL_CENSUS is set. Off, this is a bool load.
+struct TooieWsCensusScope {
+    int saved;
+    bool active;
+    explicit TooieWsCensusScope(int kind) : saved(s_ws_census_kind), active(tooie_ws_census_enabled()) {
+        if (active) {
+            s_ws_census_kind = kind;
+        }
+    }
+    ~TooieWsCensusScope() {
+        if (active) {
+            s_ws_census_kind = saved;
+        }
     }
 };
 
@@ -4331,29 +4393,128 @@ static float tooie_map_vis_target_aspect() {
         graphics_config.ar_option, width, height, original);
 }
 
+// Widescreen draw margin. The guest culls a bounding sphere/box against its planes, so an object whose centre crosses
+// the edge is dropped while still partly on screen. Only when k > 1 (wider than the source aspect, so 4:3 stays
+// original): the lateral tangent is widened by TOOIE_TEST_WS_DRAW_MARGIN (default 1.15, 1 = exact aspect) and draw-only
+// sphere radii by TOOIE_TEST_WS_DRAW_RADIUS_SCALE (default 1.25). Both clamp to [1, 2].
+static float tooie_ws_env_factor(const char* name, float fallback) {
+    const char* val = std::getenv(name);
+    if (val == nullptr || val[0] == '\0') {
+        return fallback;
+    }
+    const float f = std::strtof(val, nullptr);
+    if (!std::isfinite(f)) {
+        return fallback;
+    }
+    return std::min(2.0f, std::max(1.0f, f));
+}
+
+static float tooie_ws_draw_lateral_margin() {
+    static const float margin = tooie_ws_env_factor("TOOIE_TEST_WS_DRAW_MARGIN", 1.15f);
+    return margin;
+}
+
+static float tooie_ws_draw_radius_scale() {
+    static const float scale = tooie_ws_env_factor("TOOIE_TEST_WS_DRAW_RADIUS_SCALE", 1.25f);
+    return scale;
+}
+
+// Native-style widescreen culling (production default ON, TOOIE_TEST_WS_NATIVE_PLANES=0 restores the per-test
+// expansions below). The game's own wide-screen option (set_widescreen, halfword 0x800799B8) multiplies the volume
+// aspect +0xE8 by 4/3 in 80015D14, which widens the horizontal plane vectors built by 800CA1B0 / 800CA218 / 800CA2A8
+// (+0xF8, +0x11C) and therefore every guest cull and visibility consumer, but it also squeezes the projection and HUD
+// anamorphically. Here only those three builders see the widened aspect (target/source, times the lateral margin);
+// +0xE8 is restored right after, so 800CB124 keeps the original projection for RT64 to expand. Actor activity,
+// animation and section visibility then follow the 16:9 view exactly as in the game's wide-screen mode.
+// The attract gameplay demos (D_80127630.unk2 == 5) replay inputs recorded under 4:3 culling; wider guest planes
+// change actor activity and desync them (measured: player path diverges), so demos keep the original planes and
+// only the sim-neutral per-test draw expansions.
+static bool tooie_ws_native_planes_enabled() {
+    static const bool enabled = !tooie_ws_env_explicit_off("TOOIE_TEST_WS_NATIVE_PLANES");
+    return enabled;
+}
+
+static bool tooie_ws_native_planes_active(const uint8_t* rdram) {
+    if (!tooie_ws_native_planes_enabled()) {
+        return false;
+    }
+    int16_t mode = 0;
+    std::memcpy(&mode, rdram + ((0x80127632u ^ 2u) & 0x00FFFFFFu), sizeof(mode));
+    return mode != 5;
+}
+
 static float tooie_map_vis_k_for_volume(const uint8_t* rdram, uint32_t volume_ptr) {
+    if (tooie_ws_native_planes_active(rdram)) {
+        // The guest planes are already wide: the per-test expansions must not widen them twice.
+        return 1.0f;
+    }
     float source = tooie_ws_read_f32(rdram, volume_ptr + 0xE8);
     if (!(source > 0.0f) || !std::isfinite(source)) {
         source = 4.0f / 3.0f;
     }
     const float target = tooie_map_vis_target_aspect();
-    if (!(source > 0.0f) || !std::isfinite(target)) {
-        return 1.0f;
-    }
-    float k = target / source;
-    if (!(k > 1.0f) || !std::isfinite(k)) {
-        return 1.0f;
-    }
-    return k;
+    const float k = tooie_ws_frustum::k_for(source, target);
+    return k > 1.0f ? k * tooie_ws_draw_lateral_margin() : k;
 }
 
-static void tooie_ws_expand_h_plane(float& nx, float& ny, float& nz, float& d,
+static void tooie_ws_call_with_native_aspect(uint8_t* rdram, recomp_context* ctx, recomp_func_t* original) {
+    const uint32_t volume_ptr = static_cast<uint32_t>(ctx->r4);
+    if (!tooie_ws_native_planes_active(rdram) || !tooie_ws_guest_safe(volume_ptr, 0xECu)) {
+        original(rdram, ctx);
+        return;
+    }
+    const uint32_t aspect_addr = volume_ptr + 0xE8u;
+    const float source = tooie_ws_read_f32(rdram, aspect_addr);
+    const float k = (source > 0.0f && std::isfinite(source))
+        ? tooie_ws_frustum::k_for(source, tooie_map_vis_target_aspect()) : 1.0f;
+    if (!(k > 1.0f)) {
+        original(rdram, ctx);
+        return;
+    }
+    const float wide = source * k * tooie_ws_draw_lateral_margin();
+    uint8_t* const p = rdram + (aspect_addr & 0x00FFFFFFu);
+    std::memcpy(p, &wide, sizeof(wide));
+    original(rdram, ctx);
+    std::memcpy(p, &source, sizeof(source));
+}
+
+static void tooie_wrap_func_800CA1B0(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_call_with_native_aspect(rdram, ctx, func_800CA1B0);
+}
+
+static void tooie_wrap_func_800CA218(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_call_with_native_aspect(rdram, ctx, func_800CA218);
+}
+
+static void tooie_wrap_func_800CA2A8(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_call_with_native_aspect(rdram, ctx, func_800CA2A8);
+}
+
+// Historical entry point. Production tests go through the header; same formula.
+[[maybe_unused]] static void tooie_ws_expand_h_plane(float& nx, float& ny, float& nz, float& d,
                                     const float cam[3], const float fwd[3], float k) {
-    const float nf = nx * fwd[0] + ny * fwd[1] + nz * fwd[2];
-    nx = fwd[0] * nf + (nx - fwd[0] * nf) / k;
-    ny = fwd[1] * nf + (ny - fwd[1] * nf) / k;
-    nz = fwd[2] * nf + (nz - fwd[2] * nf) / k;
-    d = -(cam[0] * nx + cam[1] * ny + cam[2] * nz);
+    tooie_ws_frustum::expand_h_plane(nx, ny, nz, d, cam, fwd, k);
+}
+
+// Same words the eval loops used to read: cam, forward, then plane {n, d} at +0x24 + i*0x10.
+static bool tooie_ws_read_volume(const uint8_t* rdram, uint32_t volume_ptr, tooie_ws_frustum::Volume& out) {
+    if (!tooie_ws_guest_safe(volume_ptr, 0x64)) {
+        return false;
+    }
+    out.cam[0] = tooie_ws_read_f32(rdram, volume_ptr + 0x0);
+    out.cam[1] = tooie_ws_read_f32(rdram, volume_ptr + 0x4);
+    out.cam[2] = tooie_ws_read_f32(rdram, volume_ptr + 0x8);
+    out.fwd[0] = tooie_ws_read_f32(rdram, volume_ptr + 0xC);
+    out.fwd[1] = tooie_ws_read_f32(rdram, volume_ptr + 0x10);
+    out.fwd[2] = tooie_ws_read_f32(rdram, volume_ptr + 0x14);
+    for (int pl = 0; pl < 4; ++pl) {
+        const uint32_t base = volume_ptr + 0x24u + static_cast<uint32_t>(pl) * 0x10u;
+        out.planes[pl][0] = tooie_ws_read_f32(rdram, base + 0x0);
+        out.planes[pl][1] = tooie_ws_read_f32(rdram, base + 0x4);
+        out.planes[pl][2] = tooie_ws_read_f32(rdram, base + 0x8);
+        out.planes[pl][3] = tooie_ws_read_f32(rdram, base + 0xC);
+    }
+    return true;
 }
 
 static uint32_t tooie_map_vis_aspect_eval_float_aabb(
@@ -4374,40 +4535,15 @@ static uint32_t tooie_map_vis_aspect_eval_float_aabb(
         tooie_ws_read_f32(rdram, max_ptr + 4),
         tooie_ws_read_f32(rdram, max_ptr + 8),
     };
-    const float cam[3] = {
-        tooie_ws_read_f32(rdram, volume_ptr + 0x0),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x4),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x8),
-    };
-    float fwd[3] = {
-        tooie_ws_read_f32(rdram, volume_ptr + 0xC),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x10),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x14),
-    };
-    const float flen = std::sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]);
-    if (!(flen > 1.0e-6f) || !std::isfinite(flen)) {
+    tooie_ws_frustum::Volume volume{};
+    if (!tooie_ws_read_volume(rdram, volume_ptr, volume)) {
         return 0xFFFFFFFFu;
     }
-    fwd[0] /= flen;
-    fwd[1] /= flen;
-    fwd[2] /= flen;
-
-    for (int pl = 0; pl < 4; ++pl) {
-        float nx = tooie_ws_read_f32(rdram, volume_ptr + 0x24 + pl * 0x10);
-        float ny = tooie_ws_read_f32(rdram, volume_ptr + 0x28 + pl * 0x10);
-        float nz = tooie_ws_read_f32(rdram, volume_ptr + 0x2C + pl * 0x10);
-        float d  = tooie_ws_read_f32(rdram, volume_ptr + 0x30 + pl * 0x10);
-        if (pl < 2 && k > 1.0f) {
-            tooie_ws_expand_h_plane(nx, ny, nz, d, cam, fwd, k);
-        }
-        const float px = (nx >= 0.0f) ? minv[0] : maxv[0];
-        const float py = (ny >= 0.0f) ? minv[1] : maxv[1];
-        const float pz = (nz >= 0.0f) ? minv[2] : maxv[2];
-        if ((nx * px + ny * py + nz * pz + d) >= 0.0f) {
-            return 0;
-        }
+    const int accepted = tooie_ws_frustum::aabb_accepts(volume, minv, maxv, k);
+    if (accepted < 0) {
+        return 0xFFFFFFFFu;
     }
-    return 1;
+    return static_cast<uint32_t>(accepted);
 }
 
 static uint32_t tooie_cacec_eval_sphere(
@@ -4416,38 +4552,174 @@ static uint32_t tooie_cacec_eval_sphere(
     if (!tooie_ws_guest_safe(volume_ptr, 0x64) || !std::isfinite(radius) || radius < 0.0f) {
         return 0xFFFFFFFFu;
     }
-    const float cam[3] = {
-        tooie_ws_read_f32(rdram, volume_ptr + 0x0),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x4),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x8),
-    };
-    float fwd[3] = {
-        tooie_ws_read_f32(rdram, volume_ptr + 0xC),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x10),
-        tooie_ws_read_f32(rdram, volume_ptr + 0x14),
-    };
-    const float flen = std::sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]);
-    if (!(flen > 1.0e-6f) || !std::isfinite(flen)) {
+    tooie_ws_frustum::Volume volume{};
+    if (!tooie_ws_read_volume(rdram, volume_ptr, volume)) {
         return 0xFFFFFFFFu;
     }
-    fwd[0] /= flen;
-    fwd[1] /= flen;
-    fwd[2] /= flen;
-    const float rel[3] = {x - cam[0], y - cam[1], z - cam[2]};
-    for (int pl = 0; pl < 4; ++pl) {
-        float nx = tooie_ws_read_f32(rdram, volume_ptr + 0x24 + pl * 0x10);
-        float ny = tooie_ws_read_f32(rdram, volume_ptr + 0x28 + pl * 0x10);
-        float nz = tooie_ws_read_f32(rdram, volume_ptr + 0x2C + pl * 0x10);
-        if (pl < 2 && k > 1.0f) {
-            float d_unused = 0.0f;
-            tooie_ws_expand_h_plane(nx, ny, nz, d_unused, cam, fwd, k);
-        }
-        const float dot = nx * rel[0] + ny * rel[1] + nz * rel[2];
-        if (radius <= dot) {
-            return 0;
+    const float pos[3] = {x, y, z};
+    const float draw_radius = k > 1.0f ? radius * tooie_ws_draw_radius_scale() : radius;
+    const int accepted = tooie_ws_frustum::sphere_accepts(volume, pos, draw_radius, k);
+    if (accepted < 0) {
+        return 0xFFFFFFFFu;
+    }
+    return static_cast<uint32_t>(accepted);
+}
+
+// Census file. Kinds are sparse; slot == kind. X rows stop at 20000 per process, counters do not.
+static constexpr int kWsCensusKindSlots = 21;
+static constexpr uint32_t kWsCensusXRowCap = 20000u;
+
+struct TooieWsCensusBucket {
+    uint32_t calls;
+    uint32_t acc;
+    uint32_t rej;
+    uint32_t ws;
+    uint32_t applied;
+    uint32_t entries;  // GeoCmd handler wrapper entries, independent of CACEC calls
+};
+
+static TooieWsCensusBucket s_ws_census_buckets[kWsCensusKindSlots];
+static FILE* s_ws_census_file = nullptr;
+static bool s_ws_census_file_failed = false;
+static bool s_ws_census_header_written = false;
+static bool s_ws_census_k_seen = false;
+static float s_ws_census_header_k = 0.0f;
+static uint32_t s_ws_census_frame = 0;
+static uint32_t s_ws_census_x_rows = 0;
+
+static void tooie_ws_census_remember_k(uint32_t volume_ptr, float k) {
+    if (s_ws_census_k_seen || !tooie_ws_guest_safe(volume_ptr, 0xECu)) {
+        return;
+    }
+    s_ws_census_header_k = k;
+    s_ws_census_k_seen = true;
+}
+
+static FILE* tooie_ws_census_fp() {
+    if (s_ws_census_file != nullptr || s_ws_census_file_failed) {
+        return s_ws_census_file;
+    }
+    s_ws_census_file = std::fopen(s_ws_census_path, "wb");
+    if (s_ws_census_file == nullptr) {
+        s_ws_census_file_failed = true;
+        std::fprintf(stderr, "[tooie] ws cull census failed to open %s\n", s_ws_census_path);
+        return nullptr;
+    }
+    return s_ws_census_file;
+}
+
+static void tooie_ws_census_ensure_header() {
+    if (s_ws_census_header_written) {
+        return;
+    }
+    FILE* fp = tooie_ws_census_fp();
+    if (fp == nullptr) {
+        return;
+    }
+    const float k = s_ws_census_k_seen ? s_ws_census_header_k : 0.0f;
+    std::fprintf(fp, "H census v1 k=%.9g\n", static_cast<double>(k));
+    s_ws_census_header_written = true;
+}
+
+static int tooie_ws_pred_to_expanded(uint32_t pred) {
+    if (pred == 0u) {
+        return 0;
+    }
+    if (pred == 1u) {
+        return 1;
+    }
+    return -1;
+}
+
+static void tooie_ws_census_count(int kind, uint32_t orig_v0, int expanded, uint32_t final_v0,
+                                  bool write_x, float x, float y, float z, float radius) {
+    if (kind < 0 || kind >= kWsCensusKindSlots) {
+        kind = 0;
+    }
+    TooieWsCensusBucket& bucket = s_ws_census_buckets[kind];
+    ++bucket.calls;
+    const tooie_ws_frustum::Census cls = tooie_ws_frustum::classify(static_cast<unsigned>(orig_v0), expanded);
+    if (cls == tooie_ws_frustum::Census::Accept) {
+        ++bucket.acc;
+    } else if (cls == tooie_ws_frustum::Census::RejectBoth) {
+        ++bucket.rej;
+    } else if (cls == tooie_ws_frustum::Census::WidescreenOnly) {
+        ++bucket.ws;
+    }
+    const int applied = (final_v0 != orig_v0) ? 1 : 0;
+    if (applied != 0) {
+        ++bucket.applied;
+    }
+    if (!write_x || cls != tooie_ws_frustum::Census::WidescreenOnly || s_ws_census_x_rows >= kWsCensusXRowCap) {
+        return;
+    }
+    tooie_ws_census_ensure_header();
+    FILE* fp = s_ws_census_file;
+    if (fp == nullptr) {
+        return;
+    }
+    std::fprintf(fp, "X f=%u k=%d x=%.9g y=%.9g z=%.9g r=%.9g applied=%d\n",
+                 s_ws_census_frame, kind, static_cast<double>(x), static_cast<double>(y),
+                 static_cast<double>(z), static_cast<double>(radius), applied);
+    ++s_ws_census_x_rows;
+    std::fflush(fp);
+}
+
+static uint32_t tooie_ws_census_word(const uint8_t* rdram, uint32_t a) {
+    const float f = tooie_ws_read_f32(rdram, a);
+    uint32_t u = 0;
+    std::memcpy(&u, &f, sizeof(u));
+    return u;
+}
+
+// Simulation probe for draw-only A/B runs: RNG state D_8012C7F0 and player 0 position (D_80135490[0] +0xE4).
+static void tooie_ws_census_sim_probe(const uint8_t* rdram) {
+    FILE* fp = s_ws_census_file;
+    if (fp == nullptr) {
+        return;
+    }
+    const uint32_t rng = tooie_ws_census_word(rdram, 0x8012C7F0u);
+    const uint32_t ps = tooie_ws_census_word(rdram, 0x80135490u);
+    const uint32_t pos = ps != 0u ? tooie_ws_census_word(rdram, ps + 0xE4u) : 0u;
+    std::fprintf(fp, "S f=%u rng=%08x px=%.9g py=%.9g pz=%.9g\n", s_ws_census_frame, rng,
+                 static_cast<double>(pos != 0u ? tooie_ws_read_f32(rdram, pos) : 0.0f),
+                 static_cast<double>(pos != 0u ? tooie_ws_read_f32(rdram, pos + 4) : 0.0f),
+                 static_cast<double>(pos != 0u ? tooie_ws_read_f32(rdram, pos + 8) : 0.0f));
+}
+
+// Finished frame is whatever accumulated since the previous 800E9F20 entry (frame 0 at startup).
+static void tooie_ws_census_on_frame(const uint8_t* rdram) {
+    tooie_ws_census_ensure_header();
+    tooie_ws_census_sim_probe(rdram);
+    bool any = false;
+    for (int kind = 0; kind < kWsCensusKindSlots; ++kind) {
+        if (s_ws_census_buckets[kind].calls != 0u || s_ws_census_buckets[kind].entries != 0u) {
+            any = true;
+            break;
         }
     }
-    return 1;
+    if (any) {
+        tooie_ws_census_ensure_header();
+        FILE* fp = s_ws_census_file;
+        if (fp != nullptr) {
+            for (int kind = 0; kind < kWsCensusKindSlots; ++kind) {
+                const TooieWsCensusBucket& bucket = s_ws_census_buckets[kind];
+                if (bucket.calls == 0u && bucket.entries == 0u) {
+                    continue;
+                }
+                std::fprintf(fp, "F f=%u k=%d calls=%u acc=%u rej=%u ws=%u applied=%u entries=%u\n",
+                             s_ws_census_frame, kind, bucket.calls, bucket.acc, bucket.rej, bucket.ws, bucket.applied,
+                             bucket.entries);
+            }
+        }
+    }
+    for (int kind = 0; kind < kWsCensusKindSlots; ++kind) {
+        s_ws_census_buckets[kind] = {};
+    }
+    if (s_ws_census_file != nullptr) {
+        std::fflush(s_ws_census_file);
+    }
+    ++s_ws_census_frame;
 }
 
 static void tooie_wrap_func_800CAA24(uint8_t* rdram, recomp_context* ctx) {
@@ -4455,18 +4727,41 @@ static void tooie_wrap_func_800CAA24(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t min_ptr = static_cast<uint32_t>(ctx->r5);
     const uint32_t max_ptr = static_cast<uint32_t>(ctx->r6);
     func_800CAA24(rdram, ctx);
-    if (!tooie_map_vis_aspect_aware_enabled()) {
+    const bool census = tooie_ws_census_enabled();
+    const bool prod_on = tooie_map_vis_aspect_aware_enabled();
+    if (!prod_on && !census) {
         return;
     }
     const uint32_t orig = static_cast<uint32_t>(ctx->r2);
-    const float k = tooie_map_vis_k_for_volume(rdram, volume_ptr);
-    if (!(k > 1.0f) || orig != 0) {
-        return;
+    int expanded = -1;
+    if (prod_on) {
+        const float k = tooie_map_vis_k_for_volume(rdram, volume_ptr);
+        if (census) {
+            tooie_ws_census_remember_k(volume_ptr, k);
+        }
+        if ((k > 1.0f) && orig == 0u) {
+            const uint32_t aspect_vis =
+                tooie_map_vis_aspect_eval_float_aabb(rdram, volume_ptr, min_ptr, max_ptr, k);
+            expanded = tooie_ws_pred_to_expanded(aspect_vis);
+            if (aspect_vis == 1u) {
+                ctx->r2 = 1;
+            }
+        } else if (census && orig == 0u) {
+            expanded = tooie_ws_pred_to_expanded(
+                tooie_map_vis_aspect_eval_float_aabb(rdram, volume_ptr, min_ptr, max_ptr, k));
+        }
+    } else if (census) {
+        const float k = tooie_map_vis_k_for_volume(rdram, volume_ptr);
+        tooie_ws_census_remember_k(volume_ptr, k);
+        if (orig == 0u) {
+            expanded = tooie_ws_pred_to_expanded(
+                tooie_map_vis_aspect_eval_float_aabb(rdram, volume_ptr, min_ptr, max_ptr, k));
+        }
     }
-    const uint32_t aspect_vis =
-        tooie_map_vis_aspect_eval_float_aabb(rdram, volume_ptr, min_ptr, max_ptr, k);
-    if (aspect_vis == 1) {
-        ctx->r2 = 1;
+    if (census) {
+        // Kind 20 is this predicate for any caller. Do not retag nested culls.
+        tooie_ws_census_count(20, orig, expanded, static_cast<uint32_t>(ctx->r2),
+                              false, 0.0f, 0.0f, 0.0f, 0.0f);
     }
 }
 
@@ -4480,40 +4775,131 @@ static void tooie_wrap_func_800CACEC(uint8_t* rdram, recomp_context* ctx) {
     const float py = tooie_ws_read_f32(rdram, pos_p + 4);
     const float pz = tooie_ws_read_f32(rdram, pos_p + 8);
     func_800CACEC(rdram, ctx);
-    if (!tooie_object_frustum_aspect_aware_enabled()) {
+    const bool census = tooie_ws_census_enabled();
+    if (!tooie_object_frustum_aspect_aware_enabled() && !census) {
         return;
     }
     const uint32_t orig_res = static_cast<uint32_t>(ctx->r2);
-    if (orig_res != 0 || s_cacec_draw_consumer <= 0) {
-        return;
+    int expanded = -1;
+    const bool want_prod = tooie_object_frustum_aspect_aware_enabled() &&
+                           orig_res == 0u && s_cacec_draw_consumer > 0;
+    if (want_prod || (census && orig_res == 0u)) {
+        const float k = tooie_ws_guest_safe(vp, 0xECu)
+            ? tooie_map_vis_k_for_volume(rdram, vp) : 1.0f;
+        if (census) {
+            tooie_ws_census_remember_k(vp, k);
+        }
+        if ((census && orig_res == 0u) || (want_prod && k > 1.0f)) {
+            expanded = tooie_ws_pred_to_expanded(tooie_cacec_eval_sphere(rdram, vp, px, py, pz, radius, k));
+        }
+        if (want_prod && k > 1.0f && expanded == 1) {
+            ctx->r2 = 1;
+            banjo::tooie_d1x_cacec_extra(rdram, vp, tooie_d1x_origin(__builtin_return_address(0)), r6_u, px, py, pz);
+        }
+    } else if (census) {
+        const float k = tooie_ws_guest_safe(vp, 0xECu)
+            ? tooie_map_vis_k_for_volume(rdram, vp) : 1.0f;
+        tooie_ws_census_remember_k(vp, k);
     }
-    const float k = tooie_ws_guest_safe(vp, 0xECu)
-        ? tooie_map_vis_k_for_volume(rdram, vp) : 1.0f;
-    if (!(k > 1.0f)) {
-        return;
+    if (census) {
+        tooie_ws_census_count(s_ws_census_kind, orig_res, expanded, static_cast<uint32_t>(ctx->r2),
+                              true, px, py, pz, radius);
     }
-    const uint32_t expanded = tooie_cacec_eval_sphere(rdram, vp, px, py, pz, radius, k);
-    if (expanded == 1) {
-        ctx->r2 = 1;
-        banjo::tooie_d1x_cacec_extra(rdram, vp, tooie_d1x_origin(__builtin_return_address(0)), r6_u, px, py, pz);
+}
+
+// GeoCmd type-14 sphere gate record (TOOIE_TEST_WS_GEO_SPHERE_ASPECT only). The first 800E3E8C call inside a
+// handler is its own gate test (the child walk only runs after an accept).
+// The same record arms the 800DE498 whole-model gate (its first 800E3E8C, at 800DE6EC); flip_now turns a
+// widescreen-only accept into v0 = 1 right there so the model draws.
+struct TooieWsGeoGateRecord {
+    bool filled;
+    uint32_t orig_v0;
+    int expanded;
+    bool flip_now;
+    bool flipped;
+};
+static thread_local TooieWsGeoGateRecord* s_ws_geo_gate_rec = nullptr;
+static thread_local TooieWsGeoGateRecord* s_ws_model_gate_rec = nullptr;
+static constexpr uint32_t kWsGeoTagTable = 0x8012C844u;
+static constexpr uint32_t kWsGeoZoneArray = 0x8012C848u;
+static constexpr uint32_t kWsModelPreDrawCallback = 0x8012C9A8u;
+static constexpr uint32_t kWsModelPostDrawCallback = 0x8012C9B0u;
+
+static inline uint32_t tooie_ws_read_u32(const uint8_t* rdram, uint32_t a) {
+    uint32_t val = 0;
+    if (tooie_ws_guest_safe(a, 4)) {
+        std::memcpy(&val, rdram + (a & 0x00FFFFFFu), sizeof(val));
     }
+    return val;
+}
+
+static inline void tooie_ws_write_u32(uint8_t* rdram, uint32_t a, uint32_t val) {
+    if (tooie_ws_guest_safe(a, 4)) {
+        std::memcpy(rdram + (a & 0x00FFFFFFu), &val, sizeof(val));
+    }
+}
+
+static inline int16_t tooie_ws_read_s16(const uint8_t* rdram, uint32_t a) {
+    int16_t val = 0;
+    if (tooie_ws_guest_safe(a, 2)) {
+        std::memcpy(&val, rdram + ((a ^ 2u) & 0x00FFFFFFu), sizeof(val));
+    }
+    return val;
 }
 
 __attribute__((noinline)) static void tooie_wrap_func_800E3E8C(uint8_t* rdram, recomp_context* ctx) {
     const int32_t origin = tooie_d1x_origin(__builtin_return_address(0));
     const uint32_t pos_ptr = static_cast<uint32_t>(ctx->r4), radius_bits = static_cast<uint32_t>(ctx->r5);
     const uint32_t extra_before = banjo::tooie_d1x_extra_count();
+    TooieWsGeoGateRecord* rec = s_ws_geo_gate_rec;
+    if (rec == nullptr || rec->filled) {
+        rec = s_ws_model_gate_rec;
+    }
+    const bool record = rec != nullptr && !rec->filled;
+    float pos[3] = {0.0f, 0.0f, 0.0f};
+    if (record) {
+        rec->filled = true;
+        pos[0] = tooie_ws_read_f32(rdram, pos_ptr);
+        pos[1] = tooie_ws_read_f32(rdram, pos_ptr + 4);
+        pos[2] = tooie_ws_read_f32(rdram, pos_ptr + 8);
+    }
     func_800E3E8C(rdram, ctx);
     banjo::tooie_d1x_e3e8c(rdram, pos_ptr, radius_bits, origin, static_cast<uint32_t>(ctx->r2), extra_before);
+    if (record) {
+        rec->orig_v0 = static_cast<uint32_t>(ctx->r2);
+        if (rec->orig_v0 == 0u) {
+            float radius = 0.0f;
+            std::memcpy(&radius, &radius_bits, sizeof(radius));
+            const uint32_t vp = tooie_ws_read_u32(rdram, 0x8012D500u);
+            const float k = tooie_ws_guest_safe(vp, 0xECu) ? tooie_map_vis_k_for_volume(rdram, vp) : 1.0f;
+            rec->expanded = (k > 1.0f)
+                ? tooie_ws_pred_to_expanded(tooie_cacec_eval_sphere(rdram, vp, pos[0], pos[1], pos[2], radius, k))
+                : 0;
+            if (rec->flip_now && rec->expanded == 1) {
+                // Draw-only: the type-10 tag table and type-15 zone array are per-call config that 800DE318 zeroes at
+                // the end of this 800DE498 call, so nulling them here keeps margin geometry from feeding logic.
+                tooie_ws_write_u32(rdram, kWsGeoTagTable, 0u);
+                tooie_ws_write_u32(rdram, kWsGeoZoneArray, 0u);
+                // The actor pre/post-draw callbacks (D_8012C9A8 / D_8012C9B0, also zeroed by 800DE318) never ran for an
+                // original reject either.
+                tooie_ws_write_u32(rdram, kWsModelPreDrawCallback, 0u);
+                tooie_ws_write_u32(rdram, kWsModelPostDrawCallback, 0u);
+                ctx->r2 = 1;
+                rec->flipped = true;
+            }
+        }
+    }
 }
 
 __attribute__((noinline)) static void tooie_wrap_func_8011447C(uint8_t* rdram, recomp_context* ctx) {
+    TooieWsCensusScope census_scope(2);
     TooieCacecDrawScope draw_scope(2, tooie_d1x_origin(__builtin_return_address(0)));
     func_8011447C(rdram, ctx);
 }
 
 // LOOKUP-only model draw (funcs_123.c). Scope opens only when the shared allowlist names this VRAM.
 __attribute__((noinline)) static void tooie_wrap_func_800B97A4(uint8_t* rdram, recomp_context* ctx) {
+    TooieWsCensusScope census_scope(tooie_demo1_projectile::kCacecScopeKindB97A4);
     if (tooie_demo1_projectile::tooie_cacec_pure_draw_vram(tooie_demo1_projectile::kCacecPureDrawB97A4)) {
         TooieCacecDrawScope draw_scope(tooie_demo1_projectile::kCacecScopeKindB97A4,
                                        tooie_d1x_origin(__builtin_return_address(0)));
@@ -4521,6 +4907,118 @@ __attribute__((noinline)) static void tooie_wrap_func_800B97A4(uint8_t* rdram, r
         return;
     }
     func_800B97A4(rdram, ctx);
+}
+
+// GeoCmd type-14 sphere handlers (T0/T1/T2). The original always runs with its original v0. With the experiment
+// flag, a 4:3 reject that the widened sphere accepts walks the gated child list (node + lh(+0x10)) once more,
+// draw-only: the type-10 tag table D_8012C844 and the type-15 zone array D_8012C848 are nulled for that walk
+// (their handlers early-out on null), so no logic-visible state is produced for margin geometry.
+// 800DE498 stores the predicate and must stay original. 801143A4 is census-only.
+extern "C" void func_800DE2A4(uint8_t* rdram, recomp_context* ctx);
+
+static void tooie_ws_geo_extra_walk(uint8_t* rdram, recomp_context* ctx, int kind, gpr a0, uint32_t node) {
+    const int16_t child_off = tooie_ws_read_s16(rdram, node + 0x10u);
+    if (child_off == 0) {
+        return;
+    }
+    const gpr saved_r2 = ctx->r2, saved_r3 = ctx->r3, saved_r4 = ctx->r4, saved_r5 = ctx->r5;
+    const uint32_t saved_tags = tooie_ws_read_u32(rdram, kWsGeoTagTable);
+    const uint32_t saved_zones = tooie_ws_read_u32(rdram, kWsGeoZoneArray);
+    tooie_ws_write_u32(rdram, kWsGeoTagTable, 0u);
+    tooie_ws_write_u32(rdram, kWsGeoZoneArray, 0u);
+    ctx->r4 = a0;
+    ctx->r5 = static_cast<gpr>(static_cast<int64_t>(static_cast<int32_t>(node + static_cast<int32_t>(child_off))));
+    func_800DE2A4(rdram, ctx);
+    tooie_ws_write_u32(rdram, kWsGeoTagTable, saved_tags);
+    tooie_ws_write_u32(rdram, kWsGeoZoneArray, saved_zones);
+    ctx->r2 = saved_r2;
+    ctx->r3 = saved_r3;
+    ctx->r4 = saved_r4;
+    ctx->r5 = saved_r5;
+    if (tooie_ws_census_enabled()) {
+        ++s_ws_census_buckets[kind].applied;
+    }
+}
+
+static void tooie_ws_geo_sphere_gate(uint8_t* rdram, recomp_context* ctx, int kind, recomp_func_t* original) {
+    TooieWsCensusScope census_scope(kind);
+    if (tooie_ws_census_enabled()) {
+        ++s_ws_census_buckets[kind].entries;
+    }
+    if (!tooie_ws_geo_sphere_aspect_enabled()) {
+        original(rdram, ctx);
+        return;
+    }
+    const gpr a0 = ctx->r4;
+    const uint32_t node = static_cast<uint32_t>(ctx->r5);
+    TooieWsGeoGateRecord rec{false, 1u, 0, false, false};
+    TooieWsGeoGateRecord* const saved_rec = s_ws_geo_gate_rec;
+    s_ws_geo_gate_rec = &rec;
+    original(rdram, ctx);
+    s_ws_geo_gate_rec = saved_rec;
+    if (rec.filled && rec.orig_v0 == 0u && rec.expanded == 1) {
+        tooie_ws_geo_extra_walk(rdram, ctx, kind, a0, node);
+    }
+}
+
+__attribute__((noinline)) static void tooie_wrap_func_800DDDC4(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_geo_sphere_gate(rdram, ctx, 10, func_800DDDC4);
+}
+
+__attribute__((noinline)) static void tooie_wrap_func_800DDF14(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_geo_sphere_gate(rdram, ctx, 11, func_800DDF14);
+}
+
+__attribute__((noinline)) static void tooie_wrap_func_800DDFA0(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_geo_sphere_gate(rdram, ctx, 12, func_800DDFA0);
+}
+
+// Experiment, default OFF (TOOIE_TEST_WS_MODEL_DRAW_ASPECT=1): draw-only whole-model expansion. 800DE498 tests the
+// model sphere at 800DE6EC only while D_8012C828 != 0 and stores the predicate in 0x8012C940, which logic reads
+// through 800DF350; its v0 is the model pointer or 0. A widescreen-only accept draws the model, then 0x8012C940 and v0
+// are put back to the original reject. USER_OBSERVED side effects (2026-10-22): such models are frozen (logic still
+// treats them as off-screen) and, with the pre/post-draw callbacks nulled, some draw through walls/floors or with the
+// wrong state. Superseded in gameplay by the native-style planes above.
+static bool tooie_ws_model_draw_aspect_enabled() {
+    static const bool enabled = []() {
+        const char* val = std::getenv("TOOIE_TEST_WS_MODEL_DRAW_ASPECT");
+        return val != nullptr && val[0] == '1' && val[1] == '\0';
+    }() && tooie_object_frustum_aspect_aware_enabled();
+    return enabled;
+}
+
+static constexpr uint32_t kWsModelGateEnabled = 0x8012C828u;
+static constexpr uint32_t kWsModelVisible = 0x8012C940u;
+
+// Linker /wrap rewrites func_800DE498 to __wrap_func_800DE498 (backpack/sway diag, then __real).
+__attribute__((noinline)) static void tooie_wrap_func_800DE498(uint8_t* rdram, recomp_context* ctx) {
+    TooieWsCensusScope census_scope(13);
+    if (!tooie_ws_model_draw_aspect_enabled() || tooie_ws_read_u32(rdram, kWsModelGateEnabled) == 0u) {
+        func_800DE498(rdram, ctx);
+        return;
+    }
+    TooieWsGeoGateRecord rec{false, 1u, 0, true, false};
+    TooieWsGeoGateRecord* const saved_rec = s_ws_model_gate_rec;
+    s_ws_model_gate_rec = &rec;
+    func_800DE498(rdram, ctx);
+    s_ws_model_gate_rec = saved_rec;
+    if (rec.flipped) {
+        tooie_ws_write_u32(rdram, kWsModelVisible, 0u);
+        ctx->r2 = 0;
+        if (tooie_ws_census_enabled()) {
+            ++s_ws_census_buckets[13].applied;
+        }
+    }
+}
+
+__attribute__((noinline)) static void tooie_wrap_func_801143A4(uint8_t* rdram, recomp_context* ctx) {
+    TooieWsCensusScope census_scope(14);
+    func_801143A4(rdram, ctx);
+}
+
+__attribute__((noinline)) static void tooie_wrap_func_800E9F20(uint8_t* rdram, recomp_context* ctx) {
+    tooie_ws_census_on_frame(rdram);
+    func_800E9F20(rdram, ctx);
 }
 
 namespace banjo {
@@ -5627,11 +6125,29 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800A9318), tooie_wrap_800a9318);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CAA24), tooie_wrap_func_800CAA24);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CACEC), tooie_wrap_func_800CACEC);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CA1B0), tooie_wrap_func_800CA1B0);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CA218), tooie_wrap_func_800CA218);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800CA2A8), tooie_wrap_func_800CA2A8);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E3E8C), tooie_wrap_func_800E3E8C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kCspSetVolVram), tooie_bgm_on_csp_set_vol);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kUpdateVram), tooie_bgm_on_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
+    // Census and the GeoCmd experiment are off unless their env vars say otherwise.
+    // 10/11/12 also register for the experiment so the extra walk runs with census off.
+    // 800DE498 is registered above as __wrap_func_800DE498; replace that lookup only while census is on.
+    if (tooie_ws_census_enabled() || tooie_ws_geo_sphere_aspect_enabled()) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DDDC4), tooie_wrap_func_800DDDC4);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DDF14), tooie_wrap_func_800DDF14);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DDFA0), tooie_wrap_func_800DDFA0);
+    }
+    if (tooie_ws_census_enabled() || tooie_ws_model_draw_aspect_enabled()) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DE498), tooie_wrap_func_800DE498);
+    }
+    if (tooie_ws_census_enabled()) {
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801143A4), tooie_wrap_func_801143A4);
+        recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E9F20), tooie_wrap_func_800E9F20);
+    }
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }

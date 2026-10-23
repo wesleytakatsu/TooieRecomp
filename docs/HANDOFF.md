@@ -1,6 +1,6 @@
 ---
 title: "Handoff — TooieRecomp"
-description: "P10 standalone kit-free pipeline and restored native UI validated on Linux (candidate package 4f702d2b..., 104 files, verify exit 0). P11 Windows 11 x64 native build, tests, packaging and cartridge launcher startup proven on dev host (WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST, commits 6862e29..f22e867 on origin/main); manual W5 validation and Linux re-validation pending. P09 causa raiz dos glitches de interpolação provada no pareamento WORLD do RT64 e correção ordered match integrada (-94% de estiramento); validação de gameplay pelo usuário pendente e validação Linux em paralelo."
+description: "P08 correção de bordas em widescreen (16:9) implementada via planos de culling nativos no volume de visão (ws=0 em todos os kinds, attract preservado e gameplay validado pelo usuário). P09 causa raiz dos glitches de interpolação provada no pareamento WORLD do RT64 (-94% de estiramento). P11 build nativo Windows 11 x64, testes e launcher comprovados no host de dev."
 status: current
 type: handoff
 project: TooieRecomp
@@ -8,6 +8,17 @@ updated: 2026-10-22
 tags: [tooie-recomp, handoff, p08, p09, p10, p11, packaging, release, clean-clone, windows, linux, kitfree, restored-ui, n64recomp, rt64, interpolation, settings, menu, candidate-package]
 ---
 # Handoff — TooieRecomp
+
+## CURRENT — P08 bordas em widescreen: planos de culling nativos (2026-10-22)
+
+Ver [[plan/evidence/p08-widescreen-native-planes-20261022]].
+- **Sintoma e relato do usuário (`USER_OBSERVED`)**: Em renderização 16:9, itens, portas, Jinjos e paredes sumiam nas bordas laterais da tela (observado no Gameplay Demo 2 e Terrydactyland).
+- **Mapa estático e causa raiz (`PROVEN`)**: Ponteiro global do volume de visão `0x8012D500` (espelho de `0x80127680 + 12 * idx`). Apenas 41 acessores leem esse ponteiro. Os vetores horizontais eram derivados do aspecto 4:3 de `+0xE8` em `0x800CA1B0`/`0x800CA218`/`0x800CA2A8`, e `0x800CAF34` montava os 4 planos $\{n, d\}$ a cada frame sem ler `+0xE8`. O renderizador de modelos `0x800DE498` (kind 13) causava 1323 rejeições indevidas de widescreen (`ws`) em modelos distintos.
+- **Tentativa 1 refutada (`REFUTED`)**: Forçar desenho em `0x800DE498` restaurando `0x8012C940`/v0 causava divergência de simulação com callbacks ativos; com callbacks nulos mantinha determinismo mas causava atores congelados na borda, itens/Jinjos visíveis através de paredes e escotilha de Jamjars incorreta (`USER_OBSERVED`). Mantido como experimento default-OFF `TOOIE_TEST_WS_MODEL_DRAW_ASPECT=1`.
+- **Solução por planos nativos (`PROVEN` / produção default ON)**: Durante a execução de `0x800CA1B0`/`0x800CA218`/`0x800CA2A8`, o aspecto em `+0xE8` é temporariamente substituído por `aspecto * (alvo/origem) * margem_lateral` (default 1.15) e restaurado logo após; a projeção `0x800CB124` permanece em 4:3 para o RT64. Todos os 41 acessores e testes do jogo operam em 16:9 nativo sem anamorfismo; expansões por teste (`0x800CAA24`/`0x800CACEC`) passam a $k=1$. O censo de rejeições ws caiu para 0 em todos os tipos. Desativável via `TOOIE_TEST_WS_NATIVE_PLANES=0`.
+- **Proteção do attract demo (`PROVEN` métrico)**: Sob `0x80127632 == 5`, os planos permanecem em 4:3 para evitar dessincronização da gravação original de N64 (que divergia na posição 1348); caminho de 1603 posições do jogador na sonda de simulação é 100% idêntico ao original.
+- **Validação interativa e testes (`USER_OBSERVED` / `PROVEN`)**: Usuário confirmou em gameplay: "Parece tudo correto agora". Suíte completa `Build-Tooie.ps1 -Stage Test -AllTests`: 9/9 obrigatórios + 17/17 extras PASS (5 skipped por desenho; novo teste `p08_ws_frustum_test` 68/68 PASS); executável SHA256 `0D44B01E52223B9579C19852CEA06EEEC7457913F14F33DA1A5DC63292C72B02`.
+- `NEXT_SINGLE_ACTION`: investigar o glitch de interpolação em cutscene relatado pelo usuário (close de Banjo/Kazooie, escopo P09), após commit autorizado desta correção.
 
 ## CURRENT — P09 causa raiz dos glitches de interpolação e correção ordered match (2026-10-22)
 
@@ -22,7 +33,7 @@ Ver [[plan/evidence/p09-ordered-transform-match-20261022]].
 - **Status do Gate e Resíduos**: Gate técnico formal P09 permanece aberto (não fechado). Restam P=338 triângulos esticados (possível "pop" de osso do próprio jogo como `HYPOTHESIS`); hash com contagem divergente cai no fallback; captura burst no Windows/D3D12 encerrou processo logo após pedido (1×, `UNKNOWN`); validação de gameplay pelo usuário pendente; validação Linux pendente; nada commitado.
 - **Teste de gameplay pelo usuário (`USER_OBSERVED`, 2026-10-22)**: jogando com Interpolation ON neste build, o usuário relatou que os rods/espigões "sumiram ou quase sumiram". Gate técnico formal P09 continua não fechado; resíduos acima seguem registrados.
 - **Commit/push e Linux (2026-10-22)**: correção commitada e enviada (`6685b48` em `origin/main`). Linux: análise de código apenas (sem build/teste) — a causa e a correção estão em código RT64 comum (`GameFrame::matchScene`, header `rt64_p09_ordered_match.h`), C++ padrão sem `#ifdef` de plataforma e independente da API gráfica; o efeito deve valer no Linux (`STRONG_INFERENCE`). Compilação GCC/Clang, `p09_ordered_match_test` e efeito visual no Linux: `NOT_RUN` (usuário valida no PC Linux).
-- `NEXT_SINGLE_ACTION`: retomar o resíduo P08 `WIDESCREEN_EDGE_GEOMETRY` — relato do usuário (`USER_OBSERVED`, 2026-10-22): em widescreen, itens somem nas bordas da tela e algumas paredes também, raro, visto no Gameplay Demo 2 e principalmente na fase dos dinossauros (Terrydactyland); ver fase 08. A validação Linux da P09/P11 segue com o usuário em paralelo.
+- `NEXT_SINGLE_ACTION`: ver seção P08 acima.
 
 ## CURRENT — P11 build nativo Windows comprovado no host de dev (2026-10-22)
 

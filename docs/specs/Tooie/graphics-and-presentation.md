@@ -77,6 +77,20 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
    - Callers evaluating spatial occupancy or fog (`0x8011458C`, `chlightfader`) retain original unexpanded culling.
    - Configuration: Controlled via `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE` (default `1`). Setting `0` restores original.
    - Parity resolution note: The downstream simulation divergence in USER_DEMO1 was resolved by removing generic DRAW scope from `func_800E3E8C` and allowlisting pure draw `func_800B97A4` (kind 3) alongside preserved `func_8011447C` (kind 2), while excluding mixed renderer `func_800DE498` (which stays original `v0`). Under default-ON (binary A6A2), USER_DEMO1 restores 355-post trajectory, record words, RNG, and post 355 Fire Egg hit. Widescreen edge pop preservation in gameplay is visually confirmed for the tested area by direct user QA ("Sim, continua funcionando", USER_REPORTED, VISUALLY_CONFIRMED_FOR_TESTED_AREA; broader game parity remains untested residual).
+3. **Native View Volume Widescreen Planes (`TOOIE_TEST_WS_NATIVE_PLANES`)**:
+   - Contract: When active (default `1` / ON), the aspect ratio field at `0x8012D500+0xE8` is temporarily substituted during execution of horizontal boundary vector generators (`0x800CA1B0`, `0x800CA218`, `0x800CA2A8`) with $\text{aspect}_{\text{temp}} = \text{aspect} \times \left(\frac{\text{target\_aspect}}{\text{source\_aspect}}\right) \times \text{lateral\_margin}$, and restored immediately afterwards.
+   - Projection matrix generation at `0x800CB124` remains at base 4:3 aspect to allow RT64 to manage widescreen projection expansion cleanly.
+   - All native game culling accessors and plane tests (`0x800CAA24`, `0x800CAB70`, `0x800CACEC`) evaluate against the natively widened 16:9 planes.
+   - When native planes are active, the per-test expansion factor $k$ in `func_800CAA24` and `func_800CACEC` collapses to $1.0$ to prevent double-widening.
+   - Setting `TOOIE_TEST_WS_NATIVE_PLANES=0` disables native plane widening and restores isolated per-test expansions.
+   - Attract Demo Protection: Native plane widening is automatically bypassed during attract mode demo playback (detected via halfword `0x80127632 == 5`), retaining 4:3 planes to preserve input recorded demo synchronization.
+4. **Widescreen Margin Controls**:
+   - `TOOIE_TEST_WS_DRAW_MARGIN`: Lateral margin scaling factor applied to horizontal boundary vector opening angles when target aspect exceeds source aspect. Default: `1.15`. Clamped to $[1.0, 2.0]$. Inactive in 4:3.
+   - `TOOIE_TEST_WS_DRAW_RADIUS_SCALE`: Radius multiplier applied to bounding sphere tests during manual per-test expansions. Default: `1.25`. Clamped to $[1.0, 2.0]$. Inactive in 4:3.
+5. **Experimental and Diagnostic Overrides**:
+   - `TOOIE_TEST_WS_MODEL_DRAW_ASPECT`: Experimental forced draw pass for `func_800DE498` restoring `0x8012C940` and $v_0$ (default `0` / OFF).
+   - `TOOIE_TEST_WS_GEO_SPHERE_ASPECT`: Experimental draw-only walk of GeoCmd type 14 subtrees with null type 10 / type 15 tables (default `0` / OFF).
+   - `TOOIE_DIAG_WS_CULL_CENSUS=<path>`: Diagnostic census logger (default OFF). When set to a file path, logs per-frame culling calls, acceptances, rejections, widescreen-only rejections (`ws`), applied modifications, rejected object coordinates, and simulation probe vectors (RNG state and player position) across categorized caller kinds.
 
 ### 3.2 Cutscene Projection Compensation (`tooie_tintro_projection_policy`)
 ```cpp

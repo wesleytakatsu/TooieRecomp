@@ -155,9 +155,11 @@ constexpr bool upd_accept(const UpdLoopScope& sc, uint32_t sp, uint32_t record_a
 // Pure-draw allowlist. Guest VRAM identity, not a host PC. A display-list or matrix write is not SIM feedback.
 // func_800B97A4 (LOOKUP at funcs_123.c, one site) accept path emits G_MTX 0xDA380002, G_DL 0xDE000000, G_MOVEMEM
 // 0xD8380002 plus mlMtx* / guMtxF2L / osVirtualToPhysical. No 800DC090/800DC0C0 on that path. func_800B956C on v0!=0
-// advances the model-node loop (L_800B975C) and skips 800B9108. func_800DDDC4 / func_800DDF14 / func_800DDFA0 are
-// draw-shaped DE2A4 gates but have zero LOOKUP sites, so a wrapper would not run; they are not registered.
-// func_800DE498 stores the widened v0 and is excluded. Unclassified E3E8C callers stay original.
+// advances the model-node loop (L_800B975C) and skips 800B9108. func_800DDDC4 / func_800DDF14 / func_800DDFA0 are the
+// GeoCmd type-14 sphere gates; they have no constant LOOKUP site but the walker 800DE2A4 dispatches them with jalr
+// through get_function, so a registered wrapper does run (CORRECTED 2026-10-22). Their subtrees can hold type-10 tag and
+// type-15 zone writes, so they are not in this allowlist. func_800DE498 stores the widened v0 and is excluded.
+// Unclassified E3E8C callers stay original.
 constexpr uint32_t kCacecPureDrawB97A4 = 0x800B97A4u;
 constexpr int kCacecScopeKindB97A4 = 3;
 constexpr bool tooie_cacec_pure_draw_vram(uint32_t vram) { return vram == kCacecPureDrawB97A4; }

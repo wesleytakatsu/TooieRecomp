@@ -4,7 +4,7 @@ description: "func_800DE448 / DE498 and the player vs backpack callsites."
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-09-15
+updated: 2026-10-22
 tags: [reverse-engineering, model, renderer]
 ---
 
@@ -86,6 +86,21 @@ model rendering is gated by a bounding-sphere frustum visibility check:
 Because `func_800DE498` gates pre-draw callbacks that mutate actor state (`0x7A`) and advance global LCG RNG (`func_800DC0C0`), opening an aspect-expanded culling scope around `func_800DE498` or its shared frustum helper `func_800E3E8C` desynchronizes gameplay simulation. The recompiler runtime separates pure draw culling from simulation by:
 1. Dropping generic `TooieCacecDrawScope` from `func_800E3E8C`, so unclassified callers and mixed renderer `func_800DE498` receive original unexpanded `v0`.
 2. Allowlisting pure model display-list/matrix draw callers such as `func_800B97A4` (scope kind 3), which emits G_MTX / G_DL / G_MOVEMEM without RNG or actor callbacks, alongside preserved object-pop scope `func_8011447C` (scope kind 2).
+
+### 0x8012C940, callbacks de ator e reset em 800DE318 (`PROVEN`)
+
+A rotina de renderização `func_800DE498` possui múltiplos acoplamentos entre culling visual e lógica de simulação:
+
+- **Teste condicional e gravação em `0x8012C940`**:
+  O teste de esfera em `0x800DE6EC` (via `func_800E3E8C`) só é avaliado quando `D_8012C828 != 0`. O resultado da visibilidade é armazenado na variável global `0x8012C940`. Esse valor é posteriormente lido pela lógica do jogo através de `func_800DF350` por diversos módulos e atores (`sukickball`, `chpiranha`, `chcablespark`, `fxrain`, `fxleaves`).
+- **Valor de retorno**:
+  Retorna o ponteiro de `model_bin` em caso de visibilidade aceita ou `0` em caso de culling.
+- **Callbacks de ator antes e depois do desenho**:
+  Invoca os callbacks registrados do ator antes da emissão do desenho (`D_8012C9A8`, ver cadeia acima) e após a conclusão da emissão (`D_8012C9B0`).
+- **Reset de configuração em `func_800DE318`**:
+  A cada chamada, a função `func_800DE318` reinicializa o contexto do renderizador, incluindo a limpeza de `D_8012C844` (tabela de tags do GeoCmd tipo 10) e `D_8012C848` (tabela de zonas do GeoCmd tipo 15; ver [[geocmd]]).
+- **Tentativa de desenho forçado (`REFUTED`)**:
+  A tentativa de forçar o desenho em `func_800DE498` para widescreen restaurando `0x8012C940`/`v0` divergia a simulação com os callbacks ativos; com os callbacks zerados (para não divergir) os atores ficavam congelados na borda (a lógica ainda os trata como fora da tela) e algumas entidades eram desenhadas através de paredes/chão ou com estado errado (`USER_OBSERVED`; atribuição aos callbacks zerados = `STRONG_INFERENCE`). A correção adotada foi via planos nativos no volume de visão (ver [[view-volume]] e [[../../plan/evidence/p08-widescreen-native-planes-20261022]]).
 
 
 ## Player-table callsite (`PROVEN` `STATIC_MIPS` / generated C)

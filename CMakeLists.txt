@@ -806,6 +806,11 @@ add_executable(p09_ordered_match_test ${CMAKE_SOURCE_DIR}/tests/p09_ordered_matc
 target_include_directories(p09_ordered_match_test PRIVATE ${RT64_ROOT}/src)
 set_target_properties(p09_ordered_match_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# P08 widescreen frustum: host test of the header-only plane expansion, sphere/AABB tests and census classify.
+add_executable(p08_ws_frustum_test ${CMAKE_SOURCE_DIR}/tests/p08_ws_frustum_test.cpp)
+target_include_directories(p08_ws_frustum_test PRIVATE ${CMAKE_SOURCE_DIR}/src/game)
+set_target_properties(p08_ws_frustum_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 # P09 interpolated-frame burst (hotkey removed; capture infrastructure retained): host test of the header-only controller (miniz from the RT64 pin).
 add_executable(p09_interp_burst_test
     ${CMAKE_SOURCE_DIR}/tests/p09_interp_burst_test.cpp

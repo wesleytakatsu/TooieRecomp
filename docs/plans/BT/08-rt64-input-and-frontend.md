@@ -7,13 +7,27 @@ project: TooieRecomp
 phase: P08
 order: 8
 depends_on: P07
-updated: 2026-10-20
+updated: 2026-10-22
 tags: [banjo-tooie-Recomp, rt64, input, frontend, linux, attract, demo1, demo7, drift, fire-egg, movement-parity, menu, settings, config, forced-refresh, resolution, aspect-ratio]
 ---
 
 # BT P08 — RT64, entrada e frontend
 
-## CURRENT — `WAITING_USER_SCENE`
+## CURRENT — WIDESCREEN_EDGE_GEOMETRY: planos nativos 16:9 (2026-10-22)
+
+Ver [[../../plan/evidence/p08-widescreen-native-planes-20261022]].
+
+Resíduo de geometria de bordas em widescreen (`WIDESCREEN_EDGE_GEOMETRY`) corrigido no gameplay testado pelo usuário (`USER_OBSERVED`; censo `PROVEN` métrico no attract). Paredes do intro `MAP_18B` continuam escopo separado, não revalidadas aqui:
+
+- **Relato e sintoma (`USER_OBSERVED`)**: Em 16:9 itens, portas, Jinjos e algumas paredes sumiam nas bordas da tela (visível no Gameplay Demo 2 e Terrydactyland).
+- **Diagnóstico e causa raiz (`PROVEN`)**: O ponteiro global do volume de visão `0x8012D500` tem seus vetores horizontais calculados a partir de `+0xE8` (aspecto 4:3) em `0x800CA1B0`/`0x800CA218`/`0x800CA2A8`, e `0x800CAF34` constrói os 4 planos $\{n, d\}$ a cada frame. O renderizador de modelos `0x800DE498` gerava 1323 rejeições indevidas de widescreen (`ws`) em dezenas de modelos distintos.
+- **Tentativa 1 refutada (`REFUTED`)**: Forçar desenho em `0x800DE498` restaurando `0x8012C940`/v0 divergia simulação com callbacks ativos; com callbacks nulos congelava atores na borda e tornava Jinjos/portas visíveis através de paredes (`USER_OBSERVED`). Convertido no experimento default-OFF `TOOIE_TEST_WS_MODEL_DRAW_ASPECT=1`.
+- **Solução por planos nativos (`PROVEN` de produção, default ON)**: Durante `0x800CA1B0`/`0x800CA218`/`0x800CA2A8`, o aspecto `+0xE8` é temporariamente substituído por `aspecto * (alvo/origem) * margem_lateral` (default 1.15) e restaurado imediatamente. A matriz de projeção `0x800CB124` permanece em 4:3 para o RT64. Todos os 41 acessores e testes nativos (`0x800CAA24`, `0x800CAB70`, `0x800CACEC`) passam a operar sobre planos 16:9 nativos sem distorção anamórfica; expansões por teste passam a $k=1$. O censo ws caiu para 0 em todos os tipos. Desativável por `TOOIE_TEST_WS_NATIVE_PLANES=0`.
+- **Proteção do attract mode (`PROVEN` métrico)**: Sob `0x80127632 == 5`, os planos permanecem em 4:3 para preservar os replays gravados; caminho de 1603 posições do jogador na sonda é 100% idêntico ao original.
+- **Validação pelo usuário e testes (`USER_OBSERVED` / `PROVEN`)**: Usuário confirmou em gameplay: "Parece tudo correto agora". Testes `Build-Tooie.ps1 -Stage Test -AllTests`: 9/9 obrigatórios + 17/17 extras PASS (incluindo `p08_ws_frustum_test` 68/68 PASS; 5 skipped por desenho); executável SHA256 `0D44B01E52223B9579C19852CEA06EEEC7457913F14F33DA1A5DC63292C72B02`.
+- `NEXT_SINGLE_ACTION`: investigar o glitch de interpolação em cutscene relatado pelo usuário (close de Banjo/Kazooie, escopo P09), após commit autorizado desta correção.
+
+## Histórico — CURRENT — `WAITING_USER_SCENE`
 
 Ver [[../../plan/evidence/p09-visual-test-mode-20261020]]. Gates host do snapshot aprovados (build/revisões, unidade 123/123, I/O separado e negativos semânticos); captura real `NOT_EXECUTED`. Novo jogo isolado PID inicial `1188686`, configurado 60 + novo snapshot sem heavy; FPS efetivos `UNKNOWN`, marcador inexistente. `NEXT_SINGLE_ACTION`: aguardar usuário avisar cena pronta e só então armar uma vez, não por cronômetro. Não é aceite de gameplay ou correção permanente; P08 não encerrado/P09 não aberto formalmente. CURRENT/30 normal preservado; sem commit/push; estados abaixo históricos.
 
