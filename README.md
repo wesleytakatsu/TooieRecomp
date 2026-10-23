@@ -259,12 +259,12 @@ Importing pre-generated `RecompiledFuncs/` from a Linux/WSL2 build remains avail
 
 ## 3. Documentation & Specifications
 
-- [Master Implementation Plan](docs/plan/index.md)
 - [Operational Handoff State](docs/HANDOFF.md)
 - [Agent Navigation & Rules](AGENTS.md) / [Portuguese Agent Rules](docs/AGENTS.md)
 - [Detailed Build System Guide](tools/BUILDING.md)
 - [Asset Ownership & Licensing Manifest](docs/specs/Tooie/asset-and-licensing-manifest.md)
 - [Build & Code Generator Specification](docs/specs/Tooie/build-and-generator.md)
 - [Packaging & Dependency Specification](docs/specs/Tooie/packaging-and-dependencies.md)
-- [Implementation Phases Index](docs/plans/BT/index.md)
+- [Specifications Index](docs/specs/index.md)
+- [Reverse-Engineering Knowledge Base](docs/reverse-engineering/README.md)
 - [Vendored Dependency Provenance](vendor/README.md)

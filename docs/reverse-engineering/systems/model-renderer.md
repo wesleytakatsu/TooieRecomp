@@ -100,7 +100,7 @@ A rotina de renderização `func_800DE498` possui múltiplos acoplamentos entre 
 - **Reset de configuração em `func_800DE318`**:
   A cada chamada, a função `func_800DE318` reinicializa o contexto do renderizador, incluindo a limpeza de `D_8012C844` (tabela de tags do GeoCmd tipo 10) e `D_8012C848` (tabela de zonas do GeoCmd tipo 15; ver [[geocmd]]).
 - **Tentativa de desenho forçado (`REFUTED`)**:
-  A tentativa de forçar o desenho em `func_800DE498` para widescreen restaurando `0x8012C940`/`v0` divergia a simulação com os callbacks ativos; com os callbacks zerados (para não divergir) os atores ficavam congelados na borda (a lógica ainda os trata como fora da tela) e algumas entidades eram desenhadas através de paredes/chão ou com estado errado (`USER_OBSERVED`; atribuição aos callbacks zerados = `STRONG_INFERENCE`). A correção adotada foi via planos nativos no volume de visão (ver [[view-volume]] e [[../../plan/evidence/p08-widescreen-native-planes-20261022]]).
+  A tentativa de forçar o desenho em `func_800DE498` para widescreen restaurando `0x8012C940`/`v0` divergia a simulação com os callbacks ativos; com os callbacks zerados (para não divergir) os atores ficavam congelados na borda (a lógica ainda os trata como fora da tela) e algumas entidades eram desenhadas através de paredes/chão ou com estado errado (`USER_OBSERVED`; atribuição aos callbacks zerados = `STRONG_INFERENCE`). A correção adotada foi via planos nativos no volume de visão (ver [[view-volume]] e `p08-widescreen-native-planes-20261022`).
 
 
 ## Player-table callsite (`PROVEN` `STATIC_MIPS` / generated C)
@@ -148,8 +148,8 @@ was visually `SAME` but omitted JOIN parents 107/108 (`CORRECTED`).
 `CORRECTED` vs earlier tagging-as-`ROOT_CANDIDATE`. The later boned SIMPLE
 candidate is `REFUTED` as a sufficient fix; it is not the current production
 recommendation. Provenance:
-[[../../plan/evidence/p09-banjorecomp-transform-tagging-portability-audit]],
-[[../../plan/evidence/p09-boned-interpolation-counterfactual]].
+`p09-banjorecomp-transform-tagging-portability-audit`,
+`p09-boned-interpolation-counterfactual`.
 
 Current RT64 temporal semantics and proof boundaries are maintained in
 [[transform-interpolation]]; visual root remains `UNKNOWN`.

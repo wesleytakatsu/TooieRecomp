@@ -17,17 +17,17 @@ XYZW records in `func_800AE8A8` (product error ≤ 1.6e-7 rad, 991
 frames). Additive bytes 8/9 are 0 on this path. Bone 107 supplies the
 uniform scale and the large local rotation steps; those steps are
 `PROVEN` authored clip keys / walk↔idle transitions, not a sampler
-bug ([[../../plan/evidence/p09-animation-clip-transition-and-authored-key-forensic]]).
+bug (`p09-animation-clip-transition-and-authored-key-forensic`).
 Plume roots 103/100 stay locally smooth; crest 79 local is nearly
 identity; head 108 has an authored nod on clip 22. Combined-walk clip
 ids include `0x15` (loop) and `0x16` (30-frame start). Downstream V7
 position, culling, draw-temporal, depth, and alpha/texture stay
 `CLOSED` as local mismatch. Details:
-[[../../plan/evidence/p09-upstream-current-bone-transform-semantic-forensic]],
-[[../../plan/evidence/p09-visible-feather-alpha-coverage-texture-forensic]],
-[[../../plan/evidence/p09-post-position-draw-temporal-and-depth-state-forensic]],
-[[../../plan/evidence/p09-visible-feather-culling-winding-face-visibility-forensic]],
-[[../../plan/evidence/p09-bounded-crest-post-handoff-transferability-audit]].
+`p09-upstream-current-bone-transform-semantic-forensic`,
+`p09-visible-feather-alpha-coverage-texture-forensic`,
+`p09-post-position-draw-temporal-and-depth-state-forensic`,
+`p09-visible-feather-culling-winding-face-visibility-forensic`,
+`p09-bounded-crest-post-handoff-transferability-audit`.
 
 ## Proven role
 
@@ -189,5 +189,5 @@ V5 coverage was incomplete (only 103). V5B repaired the sibling gate for
 `RESULT==CURRENT` 211/211. Visual result `SAME`. It did **not** cover
 JOIN parents 107/108, so it does not refute interpolation of every
 transform used by visible feather triangles. V5C:
-[[../../plan/evidence/p09-feather-no-interp-v5c]]. V5B details:
-[[../../plan/evidence/p09-kazooie-feather-v6-post-matrix-vertex-path]].
+`p09-feather-no-interp-v5c`. V5B details:
+`p09-kazooie-feather-v6-post-matrix-vertex-path`.

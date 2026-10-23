@@ -12,9 +12,10 @@ tags: [reverse-engineering, tooie, modding]
 
 This tree answers: **what do we currently know about the game?**
 
-Forensic investigation (how a claim was proven or refuted, dumps, A/B
-runs) stays in `docs/plan/evidence/`. Specs stay in `docs/specs/`.
-Handoffs stay in `docs/HANDOFF.md`.
+How a claim was proven or refuted (dumps, A/B runs) is recorded in commit
+messages; the old `docs/plan/evidence/` folder was removed on 2026-10-23 and
+stays in git history. Specs stay in `docs/specs/`. Current state stays in
+`docs/HANDOFF.md`.
 
 Do not copy full evidence logs here. Link them as provenance.
 

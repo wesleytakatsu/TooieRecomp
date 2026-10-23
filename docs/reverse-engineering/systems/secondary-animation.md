@@ -153,7 +153,7 @@ durable live-model registration path. In the corrected 2026-09-02 capture,
 resource `0x62B` produced one unique registered model bin (`0x80226130`) from
 2,693 model rows and 5,386 registration hits. E2180 entered 1,062 times; 216
 were inside the registered span. The matcher accepted zero rows. See
-[[../../plan/evidence/p09-corrected-snout-e2180-capture]].
+`p09-corrected-snout-e2180-capture`.
 
 All 1,062 observed entries failed the diagnostic's `word(node+0)==2` and
 `hword(node+0xA)==42` tests; none was at relative offset `0x11CB8`. The only

@@ -1,9 +1,9 @@
 ---
 title: "TooieRecomp Spec — Runtime, Dynamic Overlays and Guest Preemption"
-description: "Comprehensive technical specification for N64ModernRuntime integration, the 884 dynamic overlay management system (kTooieOverlayCount = 884), syscall table dispatch, and Hybrid F' guest preemption."
+description: "Technical specification for N64ModernRuntime integration, the 884 dynamic overlay management system, syscall table dispatch, and Hybrid F' guest preemption."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-16
+updated: 2026-10-23
 tags: [specs, tooierecomp, runtime, overlays, syscalls, preemption, scheduling]
 ---
 
@@ -11,17 +11,18 @@ tags: [specs, tooierecomp, runtime, overlays, syscalls, preemption, scheduling]
 
 ## 1. System Overview
 
-TooieRecomp virtualizes Nintendo 64 system hardware via `N64ModernRuntime`. Unlike Banjo-Kazooie, *Banjo-Tooie* features:
-1. An extensive 884-overlay dynamic code architecture executing out of a unified VRAM window (`0x80800000`). Indexed 1..884, slot 0 unused (`kTooieOverlayCount = 884`). (Earlier decompilation estimates referenced 851).
-2. An indirect syscall trampoline mechanism mediated by the core2 engine.
-3. Multi-threaded OSThread scheduling that requires active guest preemption between the game logic thread and the audio synthesizer thread.
+TooieRecomp virtualizes Nintendo 64 hardware execution via `N64ModernRuntime`. *Banjo-Tooie* relies on three runtime architectures:
+1. An 884-overlay dynamic code architecture executing out of a unified VRAM window (`0x80800000`). Indexed 1..884, slot 0 unused (`kTooieOverlayCount = 884`).
+2. An indirect syscall dispatch mechanism mediated by core2 trampoline decoding.
+3. Multi-threaded OSThread scheduling with cooperative guest preemption between the game logic thread and the audio synthesis thread.
 
 ```text
 +---------------------------------------------------------------------------------+
 |                       Guest Code Execution (ModernRuntime)                      |
 |  - RDRAM Memory: 8 MiB (0x80000000 - 0x807FFFFF) + Virtual KSEG0/KSEG1          |
-|  - OSThreads: Thread 1 (idle), Thread 3 (scheduler), Thread 4 (audio),         |
-|               Thread 5 (game), Thread 6 (graphics)                              |
+|  - OSThreads: Thread 1 (IDLE), Thread 2 (TIDY), Thread 3 (CIC6105),             |
+|               Thread 4 (AUDIO), Thread 5 (SCHEDULER), Thread 6 (MAIN),          |
+|               Thread 7 (JOY), Thread 8 (MOTOR), Thread 9 (CRASH)                |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
@@ -29,16 +30,16 @@ TooieRecomp virtualizes Nintendo 64 system hardware via `N64ModernRuntime`. Unli
 |                      Dynamic Overlay System (syscall_handler.cpp)               |
 |  - Overlays: 884 modules loaded dynamically into heap memory (slots 1..884)     |
 |  - Execution Window: VRAM 0x80800000 (Size: 0x00200000)                         |
-|  - Core2 Trampoline Table: Base 0x800815C0 (ROM 0x01E5AEB0)                     |
-|  - Syscall Dispatch: Traps guest syscalls, verifies residency, applies relocs   |
+|  - Core2 Trampoline Table: Base 0x800815C0 (ROM 0x01E5AEB0, kCore2Rom)          |
+|  - Syscall Dispatch: recomp_syscall_handler decodes index and entry             |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
 +---------------------------------------------------------------------------------+
 |                      Guest Preemption Engine (Hybrid F')                        |
-|  - Thread-Local RCP Contexts: Independent register sets per OSThread            |
-|  - Cooperative Safepoints: yield_self_1ms in scheduler loops (func_800C2AB8)   |
-|  - Backedge Injection: Lightweight yield checks in recompiled function loops     |
+|  - Generator Backedge Safepoints: ultramodern_preemption_hint / service         |
+|  - Thread-Local Context: TLS RDRAM and status_reg per thread                    |
+|  - Control: ULTRAMODERN_GUEST_PREEMPTION env flag (default ON)                  |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -46,14 +47,14 @@ TooieRecomp virtualizes Nintendo 64 system hardware via `N64ModernRuntime`. Unli
 
 ## 2. Requirements Traceability
 
-| Requirement ID | Description | Acceptance Criteria | Implementation Status |
+| Requirement ID | Description | Acceptance Criteria | Status |
 | :--- | :--- | :--- | :--- |
-| **REQ-RUN-01** | Overlay Relocation | Relocates R_MIPS_26, R_MIPS_32, R_MIPS_HI16/LO16 upon loading into heap. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-RUN-02** | Nested Overlay Calls | Maintains a call stack (`s_overlay_stack`) preserving caller state on nested loads. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-RUN-03** | Core1 RA Preservation | Wrapper functions save `$ra` in `$a3` to prevent direct host return corruption. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-RUN-04** | Audio Thread Preemption | Audio thread (`Thread 4`) preempts main loop; SoundManager delta events fire. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-RUN-05** | Boot Hardware Stubs | Seeds IPL3 boot residue at `0x802FB1F4` and `0x802FE1C0` for retail probe pass. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-RUN-06** | MMIO Trap Handling | Traps unmapped SI/PI MMIO writes (`0xA48xxxxx` / `0xA46xxxxx`) cleanly. | `IMPLEMENTED` / `VALIDATED` |
+| **REQ-RUN-01** | Overlay Relocation | Relocates R_MIPS_26, R_MIPS_32, R_MIPS_HI16/LO16 upon loading into heap. | `IMPLEMENTED` |
+| **REQ-RUN-02** | Nested Overlay Calls | Maintains a call stack (`s_overlay_stack`) preserving caller state on nested loads. | `IMPLEMENTED` |
+| **REQ-RUN-03** | Core1 RA Preservation | Strong native symbol overrides (`func_800137D4`, `func_800137F4`, `func_80013A5C`, `func_80013A7C`) preserve `$ra` across jumps. | `IMPLEMENTED` |
+| **REQ-RUN-04** | Audio Preemption | Audio thread (`Thread 4`) preempts main loop via generator loop backedges. | `IMPLEMENTED` |
+| **REQ-RUN-05** | Boot Hardware Stubs | Seeds IPL3 boot residue at `0x802FB1F4` and `0x802FE1C0` for boot verification. | `IMPLEMENTED` |
+| **REQ-RUN-06** | MMIO Trap Handling | Traps unmapped SI/PI MMIO writes (`0xA48xxxxx` / `0xA46xxxxx`) cleanly. | `IMPLEMENTED` |
 
 ---
 
@@ -67,9 +68,10 @@ static constexpr uint32_t kCore2Rom = 0x01E5AEB0u;
 static constexpr int32_t  kOverlayVram = static_cast<int32_t>(0x80800000u);
 static constexpr uint32_t kOverlayWindowSize = 0x00200000u;
 static constexpr uint32_t kTooieOverlayCount = 884;
+static constexpr uint32_t kOvlTableRom = 0x01F00020u;
 ```
 
-### 3.2 Overlay Tracking Structures
+### 3.2 Overlay Tracking & State Flow
 ```cpp
 struct ActiveOverlayMapping {
     uint32_t overlay_index = 0;
@@ -86,38 +88,60 @@ struct ResidentOverlay {
     ActiveOverlayMapping mapping{};
 };
 
-// Thread-local residency cache ensuring thread-safe overlay access
+// Thread-local residency cache and active mapping stack
 static thread_local std::array<ResidentOverlay, kTooieOverlayCount + 1> s_resident_overlays{};
 static thread_local std::vector<ActiveOverlayMapping> s_overlay_stack;
+static thread_local ActiveOverlayMapping s_canonical_mapping{};
 ```
 
-### 3.3 Syscall Dispatch Interface
-- `ovl_load(uint8_t* rdram, recomp_context* ctx)`: Allocates heap memory, decodes compressed overlay data, writes code to RDRAM, and resolves relocations.
-- `ovl_unload(uint8_t* rdram, recomp_context* ctx)`: Frees heap allocation and invalidates residency mapping.
-- `func_80082088(uint8_t* rdram, recomp_context* ctx)`: Main overlay entry dispatcher invoked via syscall trampoline.
-- Return Address Wrapper: Leaf wrappers (`core1_ra_wrappers`) guarantee `$ra` is moved to a preserved register (`$a3`) before host dispatch, resolving the lookup-zero defect (`p08-core1-ra-wrapper-fix.md`).
+State transitions are managed through `park_canonical_mapping()`, `activate_canonical_mapping()`, and `tooie_invalidate_resident_overlay()`.
+
+### 3.3 Overlay Lifecycle & Syscall Dispatch Interface
+- `ovl_load(uint8_t* rdram, recomp_context* ctx)`:
+  - Reads overlay package metadata from ROM table at `0x01F00020` (`kOvlTableRom`). Packages with compression flag `0x80` are rejected (requires uncompressed ROM data).
+  - Allocates heap via `heap_alloc_sided` (`0x8001ACEC`), copies overlay data via `do_rom_read`, and clears BSS (`0x80082380`).
+  - Registers native recompiled functions with the runtime via `load_overlays(mapping_rom, text_start, size)`.
+  - Caches resident overlays (`flags & 0x04`) in `s_resident_overlays`.
+- `ovl_unload(uint8_t* rdram, recomp_context* ctx)`:
+  - If overlay is resident (`flags & 0x04`), returns immediately without unmapping.
+  - Otherwise resets syscalls (`0x80082428`, `ovl_reset_syscalls`), unregisters native functions via `unload_overlays`, frees heap memory (`0x8001B084`, `heap_free`), and clears the residency cache entry.
+- `func_80082088(uint8_t* rdram, recomp_context* ctx)`:
+  - Host-safe replacement for the guest overlay relocator. Validates overlay header, entry points, and relocations at `text_start`.
+- `defragment_overlays`:
+  - Host-safe no-op stub (`boot_hw_stubs.cpp`). `func_800815CC` rewrites the table base.
+- Syscall Dispatch (`recomp_syscall_handler` in `src/game/syscall_handler.cpp`):
+  - Traps guest syscall executions from the core2 trampoline.
+  - Decodes `syscall_code = overlay index` and `imm >> 2 = entry index` by reading instruction words at `kCore2Rom`.
+  - Dispatches calls via `g_tooie_overlay_dispatch[idx]` defined in `generated/overlay_dispatch.inc.h`.
+  - First 128 dispatches unconditionally log `[tooie] syscall dispatch`. Additional logging is gated by `TOOIE_DIAG_OVERLAY_LOG`.
+- Section Deduplication:
+  - A local runtime patch (`vendor/patches-local/n64modernruntime-overlay-section-dedupe.patch`) modifies `librecomp/src/overlays.cpp` so that `load_overlay` skips duplicate `loaded_sections` entries for identical `(ram, section_index)`, eliminating multi-second stalls during map changes.
+- Return Address Overrides:
+  - Strong symbol definitions in `boot_hw_stubs.cpp` (`func_800137D4`, `func_800137F4`, `func_80013A5C`, `func_80013A7C`) interpose over weak compiler-generated stubs, correctly reproducing `$ra` preservation across `jr a1`/`jr a3` transitions.
 
 ---
 
-## 4. Guest Preemption Architecture (Hybrid F')
+## 4. Hybrid F' Guest Preemption
 
-Static recompilation translates MIPS instructions into host C code blocks that run synchronously until completion. Without preemption, spinloops in the game thread prevent the audio synthesis thread from executing, causing buffer starvation and event deadlocks:
+Static recompilation translates MIPS basic blocks into host C functions that execute cooperatively. Without preemption, CPU spinloops in game logic delay the audio synthesizer thread (`Thread 4`), causing audio buffer starvation.
 
-### Preemption Mechanism & Components:
-1. **Safepoint Yields (PATCH 1)**:
-   - Injected into scheduler spinwaits (e.g. `func_800C2AB8`).
-   - Calls `ultramodern::yield_self_1ms()`, allowing `Thread 4 [AUDIO]` to execute pending delta-queue items.
-2. **Runtime Thread Switching Service (PATCH 2)**:
-   - Hooks `N64ModernRuntime` thread scheduler.
-   - Evaluates thread priority queues on message enqueue (`osSendMesg`, `osRecvMesg`).
-3. **Loop Backedge Yields (PATCH 3)**:
-   - Generator injects periodic execution checks into loop backedges of recompiled functions.
-4. **Thread-Local RCP Register Contexts (PATCH 3.5)**:
-   - Each `OSThread` maintains its own RCP execution context structure.
-   - Eliminates process-global register corruption during preemptive context switches.
-5. **Clean-Build Validation (PATCH 4)**:
-   - Validated independently (**VERDICT B**, behavior **CLASS A**).
-   - Resolves Slot 7 SoundManager event processing (`p08-preemption-patch4-clean-build-independent-review.md`).
+### Preemption Architecture:
+1. **Generator Safepoints**:
+   - The N64Recomp C code generator emulates cooperative preemption at loop backedges:
+     ```c
+     if (ultramodern_preemption_hint()) {
+         ultramodern_service_preemption(rdram, &ctx->status_reg);
+     }
+     ```
+   - Emitted automatically by the code generator (`N64Recomp/src/cgenerator.cpp`).
+2. **Runtime Scheduling & Synchronization**:
+   - Implemented in `ultramodern/src/preemption.cpp` and `ultramodern/src/mesgqueue.cpp`.
+   - Uses thread-local `rdram` and `status_reg` pointers, a global work epoch counter (`g_work_epoch`), and cause-aware message queue draining with RCP class masks.
+3. **Control Flag**:
+   - `ULTRAMODERN_GUEST_PREEMPTION`: Environment variable checked at process initialization (`main.cpp`).
+   - Unset or empty: **ON** (default production behavior).
+   - Value `0`, `false`, `off`, `no`: **OFF** (disables preemption across all threads).
+   - Status is logged at boot: `[tooie] guest preemption: ON/OFF`.
 
 ---
 
@@ -125,10 +149,8 @@ Static recompilation translates MIPS instructions into host C code blocks that r
 
 Implemented in `src/game/boot_hw_stubs.cpp`:
 1. **IPL3 Boot Residue**:
-   - `tooie_seed_ipl3_boot_residue(uint8_t* rdram)`: Seeds residual boot memory words checked by `func_8001DE64`:
-     - `0x802FB1F4`: Matches IPL3 opcode residual.
-     - `0x802FE1C0`: Matches IPL3 checksum comparator.
+   - `tooie_seed_ipl3_boot_residue(uint8_t* rdram)`: Seeds residual boot memory words at `0x802FB1F4` and `0x802FE1C0`, checked by `func_8001DE64`.
 2. **CIC-6105 Emulation**:
-   - Host intercept returns expected challenge seeds, satisfying boot integrity checks in `gldb`, `gsmaker`, and `gsworld`.
+   - Provides a 64-byte PIF-RAM mirror and executes the X-Scale 6105 challenge-response algorithm in `tooie___osSiRawStartDma` (hooked at `0x80031A60`).
 3. **Lookup Gap Stubs**:
-   - Unnamed boot helpers and compiler stubs are registered via `banjo::register_boot_lookup_stubs()`, replacing unmapped null callbacks with deterministic handlers.
+   - Unmapped boot helpers and compiler stubs are registered via `banjo::register_boot_lookup_stubs()`, replacing unmapped null callbacks with deterministic host stubs.

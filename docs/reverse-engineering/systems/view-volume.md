@@ -75,7 +75,7 @@ Banjo-Tooie possui uma opção nativa de tela widescreen acessível no menu de o
 
 ## Native widescreen planes hook (`PROVEN` runtime)
 
-No TooieRecomp, para evitar os defeitos visuais do modo anamórfico e permitir que o RT64 estenda o campo visual limpo sem distorções, foi implementado o mecanismo de planos nativos de culling (ver [[../../plan/evidence/p08-widescreen-native-planes-20261022]]):
+No TooieRecomp, para evitar os defeitos visuais do modo anamórfico e permitir que o RT64 estenda o campo visual limpo sem distorções, foi implementado o mecanismo de planos nativos de culling (ver `p08-widescreen-native-planes-20261022`):
 
 1. **Ajuste temporário de aspecto em `+0xE8`**:
    Durante a execução dos construtores de vetores `0x800CA1B0`, `0x800CA218` e `0x800CA2A8`, o valor de aspecto em `+0xE8` é temporariamente substituído por:

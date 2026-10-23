@@ -51,7 +51,7 @@ time is `Animation+0x10` (`func_8008C0C8`), clip id is
 wrap is `anctrl+0x1A`. It does **not** write 0x28 bone records.
 `__baanim_update_scaleToHorizontalVelocity` is clip **rate** vs
 `|v_xz|` from `*(player+0xC8)+0x10`, not bone-107 TRS scale.
-P09 sample-time witness: [[../../plan/evidence/p09-feather-anim-sample-time-v1]].
+P09 sample-time witness: `p09-feather-anim-sample-time-v1`.
 Pose apply is `func_800E0170` (`PROVEN`): cart flag-`0x16` header
 `s16 start,end,count`; dirent `(boneAnimID<<4)|channel`; keys
 `u16 time_flags + s16 value`; `func_800E04C0` linear or cubic;
@@ -59,7 +59,7 @@ Pose apply is `func_800E0170` (`PROVEN`): cart flag-`0x16` header
 the D674C resource id. Normalized sample time `Animation+0x10`.
 `baanim_playForDuration_once` / `_loop` / `*StartingAt` change clips.
 P09 clip22 107/108 raw 0x28 matches ROM keys
-(`PROVEN`): [[../../plan/evidence/p09-animation-clip-transition-and-authored-key-forensic]].
+(`PROVEN`): `p09-animation-clip-transition-and-authored-key-forensic`.
 ADE2C reads the same slot: `list+0x50+(index<<6)` (bone 30 = `+0x7D0`).
 
 `func_800AF04C` is **not** the 4x4 writer. Inside `func_800AE8A8`, if
@@ -81,7 +81,7 @@ that inherited scale before AE820 builds the local 4x4, and no AF04C/E0E94
 additive record is reached when the additive context byte 9 is zero. The low
 determinant samples are therefore a legal uniform-scale state in this
 capture, not evidence of a singular matrix. See
-[[../../plan/evidence/p09-kazooie-feather-v2-producer-witness]].
+`p09-kazooie-feather-v2-producer-witness`.
 
 ## Diagnostic wrapper ABI rule (`PROVEN`, 2026-09-04)
 

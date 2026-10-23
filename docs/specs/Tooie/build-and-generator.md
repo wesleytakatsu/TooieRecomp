@@ -1,9 +1,9 @@
 ---
 title: "TooieRecomp Spec — Build System and Recompiler Generator"
-description: "Detailed technical specification for the CMake build pipeline, static recompilation generator, metadata inputs, and dependency linking in TooieRecomp."
+description: "Technical specification for the CMake build pipeline, Clang compiler toolchains, static recompilation generator, metadata inputs, and dependency linking in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-16
+updated: 2026-10-23
 tags: [specs, tooierecomp, build, cmake, n64recomp, rsprecomp]
 ---
 
@@ -11,11 +11,11 @@ tags: [specs, tooierecomp, build, cmake, n64recomp, rsprecomp]
 
 ## 1. System Requirements & Architecture
 
-The build system coordinates the compilation of statically recompiled C/C++ guest code together with host virtualization runtimes and native platform libraries into a standalone Linux x86-64 executable `TooieRecompiled`.
+The build system coordinates the compilation of statically recompiled C/C++ guest code together with host virtualization runtimes and native platform libraries into standalone executables: `TooieRecompiled` on Linux x86-64 and `TooieRecompiled.exe` on Windows x64.
 
 ```text
 +---------------------------------------------------------------------------------+
-|                        Decompilation Assets (banjo-tooie-Recomp)                |
+|                        Decompilation Sources (decomp/)                          |
 |  - Matching ELF: build/us/banjotooie_decompressed.elf                           |
 |  - Splat configuration: baserom.us.yaml                                         |
 |  - Address maps: symbol_addrs.us.txt, reloc_addrs.us.txt, overlays.us.toml      |
@@ -31,7 +31,7 @@ The build system coordinates the compilation of statically recompiled C/C++ gues
                                        v
 +---------------------------------------------------------------------------------+
 |                         Static Recompilation Generators                         |
-|  - N64Recomp tooie.us.rev0.recomp.toml -> RecompiledFuncs/*.c (~21,000 funcs)   |
+|  - N64Recomp tooie.us.rev0.recomp.toml -> RecompiledFuncs/*.c                  |
 |  - RSPRecomp n_aspMain.us.rev0.toml -> rsp/n_aspMain.cpp                        |
 |  - tools/fix_rsprecomp_labels.py -> C++ label normalization                     |
 +---------------------------------------------------------------------------------+
@@ -39,13 +39,13 @@ The build system coordinates the compilation of statically recompiled C/C++ gues
                                        v
 +---------------------------------------------------------------------------------+
 |                             Native Host Compilation                             |
-|  - Clang / GCC (C++20) via CMake >= 3.20                                        |
-|  - ModernRuntime + RT64 + RecompFrontend + RecompiledPatches                    |
+|  - Clang mandatory (GCC rejected via CMake FATAL_ERROR)                         |
+|  - ModernRuntime + RT64 + RecompFrontend + PatchesLib                           |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
 +---------------------------------------------------------------------------------+
-|               TooieRecompiled (Standalone Linux x86-64 Executable)              |
+|         TooieRecompiled / TooieRecompiled.exe (Native Platform Binary)          |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -53,85 +53,73 @@ The build system coordinates the compilation of statically recompiled C/C++ gues
 
 ## 2. Requirements Traceability
 
-| Requirement ID | Description | Acceptance Criteria | Implementation Status |
+| Requirement ID | Description | Acceptance Criteria | Status |
 | :--- | :--- | :--- | :--- |
-| **REQ-BLD-01** | Toolchain Compatibility | Compiles with Clang 14+ or GCC 11+ supporting C++20 on Linux x86-64. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-BLD-02** | Metadata Determinism | `generate_metadata.py` produces identical hashes across clean runs. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-BLD-03** | Zero Undefined Symbols | Linker rejects missing symbols, unresolved relocations, or unknown syscalls. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-BLD-04** | RSP Microcode Parity | `n_aspMain.cpp` compiles cleanly and executes audio tasks at `0x17D0`. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-BLD-05** | Test Suite Targets | CMake provides isolated unit test targets runnable without game launch. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-BLD-06** | Asset Quarantine | No ROM binaries, copyrighted audio, or textures bundled in binary output. | `IMPLEMENTED` / `VALIDATED` |
+| **REQ-BLD-01** | Toolchain Requirement | Compiles with Clang (C++20). GCC is explicitly rejected with FATAL_ERROR. | `IMPLEMENTED` |
+| **REQ-BLD-02** | Metadata Determinism | `generate_metadata.py` produces identical tables across clean runs. | `IMPLEMENTED` |
+| **REQ-BLD-03** | Zero Undefined Symbols | Missing symbols or unresolved relocations halt the build immediately. | `IMPLEMENTED` |
+| **REQ-BLD-04** | RSP Microcode Parity | `n_aspMain.cpp` compiles cleanly and executes audio tasks at `0x17D0`. | `IMPLEMENTED` |
+| **REQ-BLD-05** | Test Suite Targets | CMake provides isolated unit test targets runnable without game launch. | `IMPLEMENTED` |
+| **REQ-BLD-06** | Asset Quarantine | No ROM binaries, copyrighted audio, or textures bundled in binary output. | `IMPLEMENTED` |
 
 ---
 
 ## 3. Interface & Configuration Contracts
 
-### 3.1 CMake Build Options
-- `TOOIE_LIB` (internal, fixed to `<repo>/lib`): vendored `N64ModernRuntime`(+`N64Recomp`), `rt64`, `RecompFrontend`, `SlotMap`, `SDL2-windows`. There is no `BK_ROOT`, no sibling checkout and no `third_party/` cache; an incomplete tree is a `FATAL_ERROR` pointing at `tools/vendor_verify.sh`.
-- `CMAKE_BUILD_TYPE`: Standard CMake build configuration (`Release`, `RelWithDebInfo`, `Debug`).
-- `CMAKE_CXX_STANDARD`: 20. Required for `std::span`, `<chrono>`, and modern template facilities.
-- `TOOIE_CART_Z64`: Path to the 32 MiB NTSC-U Rev. 0 cartridge ROM used by oracle verification scripts.
-- `WIN32` Target Support: On Windows, CMake uses the vendored SDL2 2.30.3 VC development files (`lib/SDL2-windows`, imported targets `SDL2::SDL2`/`SDL2::SDL2main`, shared with rt64 via the `vendor/patches-local/rt64-use-host-sdl2-target` seam; no `FetchContent`), uses `clang-cl` and `lld-link` (Visual Studio 2026/2022 Community / Build Tools with `Microsoft.VisualStudio.Component.VC.Llvm.Clang`), the vendored DirectX Shader Compiler (`lib/rt64/src/contrib/dxc`, x86_64 only) and bundles runtime DLLs (`SDL2.dll`, `dxil.dll`, `dxcompiler.dll`). Status: `WINDOWS_NATIVE_BUILD_PROVEN_DEV_HOST`. The complete pipeline (`tools\windows\Build-Tooie.ps1 -Stage All`: Check → Extract → Recomp → Configure → Build → Test → Package) is proven on Windows 11 x64, producing `build-win/TooieRecompiled.exe` (23,944,704 bytes), passing 9/9 required host unit tests and 15/15 extra unit tests (5 driver targets SKIP), and passing distribution packaging and smoke test (15s). The launcher natively accepts both retail cartridge ROMs (`.z64`/`.n64`) via transparent in-memory decompression and uncompressed images (`decompressed.us.z64`).
+### 3.1 CMake Configuration & Compiler Constraints
+- **Compiler Requirement**:
+  - Clang is strictly required (`CMakeLists.txt:26-33`). On Linux: `clang` / `clang++`. On Windows: `clang-cl` with `lld-link`.
+  - GCC is rejected at configure time with a `FATAL_ERROR`.
+  - C++ standard: C++20 (`std::span`, `<chrono>`, modern templates).
+- **Architecture Options**:
+  - Linux x86-64 adds `-march=nehalem`, requires FreeType and system SDL2.
+  - Windows x64 uses `/OPT:NOICF`, subsystem WINDOWS in Release, links vendored SDL2 2.30.3 VC development files, and bundles `SDL2.dll`, `dxil.dll`, `dxcompiler.dll`.
+  - In-source builds are strictly forbidden (`FATAL_ERROR`).
+  - Target `TooieUIAssets` wipes and synchronizes assets to `<build>/assets`.
+- **ROM Environment**:
+  - `TOOIE_CART_Z64`: Path to the 32 MiB retail cartridge ROM (`Banjo-Tooie (USA).z64`). Required by oracle runner (`tools/oracle/.../run.sh`) without implicit parent lookups.
 
 ### 3.2 Dependency Management: Vendored Standalone Closure
-Status: `IMPLEMENTED` (authoring host Linux); offline Linux proof recorded in `docs/plan/evidence/p10-standalone-vendor-20261021.md` (classification there is authoritative).
-- **Category A, vendored as regular files** (no submodule, gitlink, sibling or download): `lib/{N64ModernRuntime(+N64Recomp,thirdparty),rt64,RecompFrontend,SlotMap,SDL2-windows}`, `assets/` (real directory), `recompcontrollerdb.txt`, `decomp/` (sources only), `tools/wheelhouse/` (hash-pinned wheels, `tools/requirements.lock`). Provenance/pins/licence status/integrated patches: `vendor/` (`UPSTREAMS.tsv`, `patches-applied/ORDER.tsv`, `DERIVED-FILES.tsv`, `BINARIES.tsv`, `EXCLUDES.txt`, `MANIFEST.sha256`).
-- **Category B, explicit hash-verified prerequisites** (never in git, never downloaded by a build): the canonical ROM `Banjo-Tooie (USA).z64` (size `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`, validated by `tools/rom_check.sh`), and the extracted decompressed image required by the launcher (`decompressed.us.z64`, size `35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`, XXH3 `9F843AD3455EA395`, extracted via `tools/extract_rom.sh`). The normal build is completely kit-free; the legacy IDO/gcc/binutils compiler kit (`TOOIE_TOOLCHAIN_KIT`, 34 files in `tools/toolchain.sha256`, verified via `tools/toolchain_kit.sh verify`) is strictly a maintainer-only prerequisite for `decomp` and metadata regeneration.
-- **Category C, host packages**: Clang/CMake/Ninja/SDL2/GTK/MIPS binutils (Linux), Visual Studio Build Tools (Windows).
-- `tools/vendor_verify.sh [--reverse-check]`: offline integrity (manifest sha256, exec bits, no symlink/nested .git, no unlisted ELF/PE/ar, patch chain reverse-applies). `tools/vendor_manifest.sh` regenerates the manifest after an intentional change.
-- The former `tools/deps.lock`, `tools/bootstrap_deps.sh` and `tools/apply_runtime_patches.sh` are **retired** (history: git + `docs/plan/evidence/p10-windows-linux-clean-clone-readiness-20261021.md`). The 17 patches are integrated; nothing is applied at build time.
-- Paths: `tools/paths.sh` (`DECOMP_ROOT` = work copy `$BUILD/decomp-work`, so `decomp/` stays pristine; `TOOIE_DECOMP_ROOT` is an explicit override only); N64Recomp is built out of tree in `$BUILD/n64recomp`.
-- Native Generation & Direct Private Input Transfer: The Windows native pipeline generates `RecompiledFuncs/` directly and byte-identically to the Linux baseline (420/420 files matching `metadata/recomp-output.sha256`) via `-Stage Extract` (`tools/extract_rom.py`, using vendored miniz/fmt shims) and `-Stage Recomp` (`tools/run_recomp.py`, building `N64Recomp.exe` natively with binary output flags). Populating `RecompiledFuncs/` via `Build-Tooie.ps1 -Stage ImportGenerated` remains supported solely as a legacy fallback.
-- Line endings: vendored trees are `-text` (byte-exact, `.gitattributes`); clone with `git -c core.autocrlf=false clone ...`; global git mutation is prohibited.
+- **Vendored Trees (`lib/`, `assets/`, `decomp/`)**:
+  - All dependencies are vendored directly as regular files (no submodules, gitlinks, or network downloads during build).
+  - Provenance tracked in `vendor/UPSTREAMS.tsv`, `vendor/patches-applied/ORDER.tsv`, and `vendor/MANIFEST.sha256`.
+  - Verified offline via `tools/vendor_verify.sh [--reverse-check]`.
+- **Maintainer Toolchain Kit**:
+  - Normal compilation is kit-free. The legacy IDO/gcc compiler kit (`TOOIE_TOOLCHAIN_KIT`, 34 files verified via `tools/toolchain.sha256`) is strictly an optional prerequisite for decomp and metadata regeneration.
 
-### 3.2 Core Targets
+### 3.3 Build Pipelines & Execution Stages
+- **Linux Pipeline (`tools/build_linux.sh`)**:
+  - Stages: `preflight`, `verify`, `extract`, `recomp`, `configure`, `build`, `test`, `package`.
+  - `decomp` stage is maintainer-only.
+  - Standard test suite runs 8 core unit tests.
+- **Windows Pipeline (`tools/windows/Build-Tooie.ps1`)**:
+  - Stages: `Check`, `Extract`, `Recomp`, `Verify`, `ImportGenerated`, `Configure`, `Build`, `Test`, `Package`, `All`.
+  - Options: `-AllTests` runs all non-argument tests; `-Jobs` specifies concurrency.
+  - Standard test suite runs 9 core unit tests (including `rom_cart_import_test`).
 
-| Target | Artifact | Linkage / Dependencies |
+### 3.4 Core CMake Targets & Libraries
+
+| Target | Artifact | Linkage / Purpose |
 | :--- | :--- | :--- |
-| `TooieRecompiled` | `build/TooieRecompiled` | `RecompiledFuncs`, `RecompiledPatches`, `rt64`, `N64ModernRuntime`, `ultramodern`, `RecompFrontend`, `SDL2`, `Threads::Threads`. |
-| `RecompiledFuncs` | `build/libRecompiledFuncs.a` | Static archive of ~21,000 recompiled guest functions. Built with Clang/GCC using `-O3` or `-O2`. |
-| `RecompiledPatches`| `build/libRecompiledPatches.a`| Native function overrides (`RecompiledPatches/patches.c`). Replaces weak guest symbols. |
-| `rt64_host_endpoint_current_test` | `build/rt64_host_endpoint_current_test` | Standalone test for RT64 host endpoint-current latch and override semantics. Supersedes removed `tooie_rsp_endpoint_current_test`. |
-| `window_display_test` | `build/window_display_test` | Standalone test for display index and aspect ratio sanitizer (38 assertions). |
-| `tintro_projection_policy_test` | `build/tintro_projection_policy_test` | Standalone test for cutscene projection compensation (7 assertions). |
-| `p09_exact_use_correlation_test` | `build/p09_exact_use_correlation_test` | Standalone test for seam edge diagnostic keys (1231 assertions). |
-| `tooie_demo7_drift_test` | `build/tooie_demo7_drift_test` | Standalone host unit test for Demo 7 bounded kinematic monitoring. |
-| `mips_rounding_test` | `build/mips_rounding_test` | Standalone test for IEEE 754 roundTiesToEven FPU rounding (21 assertions). |
+| `TooieRecompiled` | `build/TooieRecompiled[.exe]` | Executable linking `PatchesLib`, `RecompiledFuncs`, `tooie_cart_decompress`, `recompui`, `recompinput`, `librecomp`, `ultramodern`, `rt64`, `nfd`, `SDL2`, `Threads` (+ `FREETYPE`, `atomic`, `dl` on Linux). |
+| `RecompiledFuncs` | `build/libRecompiledFuncs.a` | Static archive of generated guest functions. Flags: `-fno-strict-aliasing -Wno-unused-variable -Wno-implicit-function-declaration -falign-functions=16 -DRECOMP_MIPS_ROUND_COMPAT=1`. |
+| `PatchesLib` | `build/libPatchesLib.a` | Scaffold library (`patches.c`, `patches_bin.c`, `recomp_overlays.inl`). Native overrides live in `src/game/boot_hw_stubs.cpp` as strong symbols. |
+| `tooie_cart_decompress` | `build/libtooie_cart_decompress.a` | Static library wrapping miniz for in-memory cartridge decompression. |
 
-### 3.3 Metadata Configuration Files
-- `metadata/manifest.json`: Defines binary segments, memory layout, entry point (`0x800815C0`), and ROM CRC.
-- `metadata/overlays.table.toml`: Contains index, RAM base, ROM offset, code size, data size, and BSS size for all 884 overlays.
-- `metadata/syscalls.table.toml`: Mapping of syscall numbers to target overlay indices and function offsets.
-- `metadata/section_table.toml`: Memory segments for core1, core2, audio, and boot sections.
-- `tooie.us.rev0.toml` & `tooie.us.rev0.recomp.toml`: Recompiler configuration specifying function boundaries, stub replacements, and register tracking.
-- `n_aspMain.us.rev0.toml`: RSP recompiler configuration defining DMEM/IMEM layout and command jump tables.
+### 3.5 Test Targets (`EXCLUDE_FROM_ALL`)
+CMake defines isolated verification targets:
+- **Core host tests**: `tooie_menu_policy_test`, `tooie_menu_config_test`, `rt64_host_endpoint_current_test`, `p09_interp_burst_test`, `p09_world_interpolation_guard_test`, `p09_local_pair_snapshot_test`, `p09_exact_use_correlation_test`, `rt64_present_decimator_test`, `rom_cart_import_test` (Windows).
+- **Additional domain tests**: `preemption_t15`, `bcf28_helpers_test`, `core1_ra_wrappers_test`, `stick_angle_thunk_test`, `matrix_submission_test`, `mips_rounding_test`, `input_direction_test`, `window_display_test`, `tintro_projection_policy_test`, `tooie_demo7_drift_test`, `tooie_fps_meter_test`, `p09_cpu_shader_clip_semantics_test`, `p09_ordered_match_test`, `p08_ws_frustum_test`, `graphics_failure_test`, `tooie_audio_capture_test`, `tooie_bgm_volume_test`, `tooie_bgm_hooks_test`.
+- **Argument-driven tests** (SKIP when unparameterized): `tooie_demo1_parity_test`, `tooie_demo1_projectile_test`, `tooie_demo1_target_selector_test`, `tooie_demo1_upd_layout_test`, `p09_local_pair_snapshot_io_test`.
 
-### 3.4 Generator, Runtime & Submodule Versioned Patch Inventory
-Historical inventory. These patches are **already integrated** in `lib/` (provenance in `vendor/patches-applied/`, order and sha256 in `vendor/patches-applied/ORDER.tsv`; `patches/…` paths below now read `vendor/patches-applied/…`). New local fixes go to `vendor/patches-local/` (`vendor/UPDATING.md`). Nothing is applied by build scripts:
-- **N64ModernRuntime** (`ca568b6ad79b9029d14077f0c3ffa757727c5559`):
-  - `patches/runtime/n64modernruntime-scheduler.patch` (SHA256 `1b3d3d46...`): scheduler yield and prioritization.
-  - `patches/runtime/n64modernruntime-preemption.patch` (SHA256 `8959055e...`): preemption runtime service, C ABI, cause-aware hold, per-thread RCP mask.
-- **N64Recomp** (`2b6f05688de2abc7d86da5b4a89b84c2c6acbabe`):
-  - `patches/runtime/n64recomp-tooie.patch` (SHA256 `adf97c9d...`): cumulative generator patch for same-section JAL lookup, ROUND_W_S emission, and loop backedge yield safepoints.
-  - `patches/runtime/n64recomp-zero-size-static.patch` (SHA256 `48ca1e7710a7b6ecd2f4cfe3c8ac064c11b2307ad98f35ee53b70b3f1cfebb58`): fixes static function end-boundary detection by skipping zero-sized ELF symbols sharing the static address (e.g. `bsrest_VRAM` / `bsrest_TEXT_START` at `0x80800000`). Validated by `tests/n64recomp_zero_size_static_test.sh` PASS.
-- **RT64** (`6f1c2d99a4ea571c139f449c326fd176ba8f3496`):
-  - `patches/rt64/rt64-rsp-endpoint-current.patch` (SHA256 `49925480...`): production CURRENT `tfPos` snap, post-snap fog, CPU data path, and push constant expansion.
-  - `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256 `6d746f27...`): cumulative presentation decimator (`rt64_present_decimator.h`, `rt64_present_stats.h`), `viOriginalRate` write protection under `configurationMutex`, and `presentSuccessCount` increment.
-  - `patches/rt64/rt64-p09-exact-use-correlation-header.patch` (SHA256 `0d4c250a...`): installs `src/render/rt64_p09_exact_use_correlation.h` for host test compilation.
-  - *Historical provenance note*: Older incremental patches `rt64-present-rate-decimator.patch`, `rt64-present-success-counter.patch`, and `p09-exact-use-pathology-correlation.patch` remain for provenance, but are SUPERSEDED for clean-pin apply (failing with exit 1 on clean pin `6f1c2d99`).
-- **RecompFrontend** (`d0d90ba49f46f4896aaeda362056c21b1e342561`):
-  - `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256 `37266d0b...`): registers `recompui::set_overlay_update_callback` for render-thread overlay update.
-- **P11 Local Patches for Windows Native Build and Parity** (`vendor/patches-local/`, tracking in `vendor/patches-applied/ORDER.tsv` and `vendor/MANIFEST.sha256`):
-  - `vendor/patches-local/n64recomp-binary-output.patch` (SHA256 `d916bf11...`): opens file streams in explicit binary mode (`std::ios::binary`) in `N64Recomp` and `RSPRecomp`, preventing CRLF translation on Windows and ensuring 420/420 byte-identical files matching `metadata/recomp-output.sha256`.
-  - `vendor/patches-local/n64recomp-coff-weak-recomp-func.patch` (SHA256 `421fe06f...`): defines `RECOMP_FUNC` as `extern __attribute__((weak, noinline))` under `__clang__ && _WIN32` in `lib/N64ModernRuntime/N64Recomp/include/recomp.h`, allowing strong function overrides to replace weak guest symbols in `lld-link` under the Windows COFF model without duplicate symbol errors.
-  - `vendor/patches-local/rt64-interp-burst-windows-macro-names.patch` (SHA256 `fad6b8e4...`): renames `Reason::DUPLICATE` to `DUPLICATE_KEY` and `Controller::Result::ERROR` to `FAILED` in `lib/rt64/src/hle/rt64_interp_burst.h` (and `tests/p09_interp_burst_test.cpp`), preventing collision with Win32 SDK macros in `<nb30.h>` and `<wingdi.h>`.
-  - `vendor/patches-local/rt64-transform-processor-windows-getpid.patch` (SHA256 `44315cb4...`): uses `<process.h>` and `_getpid()` under `#if defined(_WIN32)` in RT64 transform processor.
-  - `vendor/patches-local/decomp-rom-decompressor-in-memory.patch` (SHA256 `d497b67e...`): implements in-memory ROM decompression `tooie_decompress_rom()` in `decomp/tools/rom_decompressor_lib.h` without creating intermediate files.
-  - `vendor/patches-local/n64modernruntime-select-rom-decompress-cart.patch` (SHA256 `fae99e0a...`): hooks `recomp::select_rom` in `librecomp` to transparently decompress retail cartridge ROMs (`.z64`/`.n64`) in memory when raw cartridge hash differs from uncompressed expectation.
-- **Symbol Wrapping Unification Contract (`TOOIE_WRAPPED_SYMBOLS`)**:
-  - `CMakeLists.txt` defines a canonical list of 18 intercepted symbols in `TOOIE_WRAPPED_SYMBOLS`.
-  - Emitted as `-Wl,--wrap=<sym>` on Linux and `LINKER:/wrap:<sym>` on Windows (`lld-link`).
-  - Supersedes legacy manual lookup table shims (`TOOIE_REAL_SHIM`), providing identical interception semantics across Linux and Windows.
+### 3.6 Symbol Wrapping (`TOOIE_WRAPPED_SYMBOLS`)
+`CMakeLists.txt` defines 18 intercepted symbols wrapped via `-Wl,--wrap=<sym>` (Linux) and `LINKER:/wrap:<sym>` (Windows `lld-link`):
+- Guarantees identical symbol interposition semantics across both platforms.
+- Overrides are implemented in `src/game/boot_hw_stubs.cpp`.
+
+### 3.7 Patch Management
+- Upstream patches are permanently integrated into `lib/` and documented in `vendor/patches-applied/ORDER.tsv`.
+- Project-local runtime modifications are recorded in `vendor/patches-local/` (e.g., `n64modernruntime-overlay-section-dedupe.patch`, `rt64-p09-ordered-transform-match.patch`, `n64recomp-binary-output.patch`, `n64recomp-coff-weak-recomp-func.patch`, `decomp-rom-decompressor-in-memory.patch`).
 
 ---
 
@@ -139,10 +127,8 @@ Historical inventory. These patches are **already integrated** in `lib/` (proven
 
 1. **Generated Code Immutability**:
    - Files within `RecompiledFuncs/`, `generated/`, and `rsp/n_aspMain.cpp` are purely machine-generated.
-   - Hand-editing generated code is strictly prohibited by project policy (`AGENTS.md`). Defects must be resolved in `N64Recomp`, generator scripts, or through strong overrides in `RecompiledPatches`.
+   - Hand-editing generated code is strictly prohibited by project policy (`AGENTS.md`). Defects must be fixed in the code generator or through strong native symbol overrides in `boot_hw_stubs.cpp`.
 2. **Freshness Invariant**:
-   - `python3 tools/check_generated_fresh.py` must return exit code 0, verifying that generated sources match current metadata tables and recompiler configuration.
-3. **Fail-Fast Linking**:
-   - The linker flag `-Wl,--no-undefined` (or platform equivalent) ensures that missing symbols or unmapped guest function pointers immediately halt the build with an actionable error.
-4. **Static Function Sizing Invariant**:
-   - Static function emitters in `N64Recomp` must not truncate function bodies when zero-sized symbols or non-code labels share the entry address. All emitted statics must retain their full instruction body.
+   - `python3 tools/check_generated_fresh.py` verifies that generated sources correspond exactly to metadata tables and recompiler configuration.
+3. **Static Function Sizing Invariant**:
+   - Static function emitters in `N64Recomp` must not truncate function bodies when zero-sized symbols or non-code labels share the entry address (`n64recomp-zero-size-static.patch`).

@@ -21,7 +21,7 @@ USAGE
     exit 0
 fi
 
-oracle_paths_ok || fail "ANGRYLION_CONTROL is not built. See docs/specs/BT/angrylion-control-oracle.md"
+oracle_paths_ok || fail "ANGRYLION_CONTROL is not built. See docs/specs/Tooie/angrylion-control-oracle.md"
 
 resolve_rom() {
     if [[ -n "${TOOIE_CART_Z64:-}" ]]; then

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Modding, Extensions and Asset Customization"
 description: "Specification for the recomp extension API, extended object data structures, texture pack container formats (.rtz), and mod callback hooks."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-16
+updated: 2026-10-23
 tags: [specs, tooierecomp, modding, extensions, rtz, textures, api]
 ---
 
@@ -11,12 +11,12 @@ tags: [specs, tooierecomp, modding, extensions, rtz, textures, api]
 
 ## 1. Subsystem Architecture
 
-TooieRecomp provides extensible modding APIs inherited from the static recompilation architecture (`RecompModTool`, `specs/BK/mods.md`), enabling community developers to hook game functions, attach arbitrary data to game actors, and load custom high-resolution textures.
+TooieRecomp incorporates modding and extension APIs inherited from the static recompilation core architecture, providing data structures for attaching arbitrary data to game entities, custom texture pack loading, and mod configuration hooks.
 
 ```text
 +---------------------------------------------------------------------------------+
 |                       Modding & Extension Architecture                          |
-|  - Data Extension API (src/game/recomp_data_api.cpp)                            |
+|  - Data Container API (src/game/recomp_data_api.cpp: hashmaps, slotmaps)        |
 |  - Object Extension API (src/game/recomp_extension_api.cpp)                      |
 |  - Mod Content Containers (.rtz, rt64.json via src/main/main.cpp)               |
 +---------------------------------------------------------------------------------+
@@ -26,7 +26,7 @@ TooieRecomp provides extensible modding APIs inherited from the static recompila
 |                         Runtime Integration Hooks                               |
 |  - recomp::mods::register_mod_content_type (Runtime texture pack toggles)       |
 |  - recomputil::init_extended_object_data (Object subtype custom payloads)       |
-|  - dod::slot_map32<ExtensionData> (Lock-free object handle allocation)          |
+|  - dod::slot_map32<ExtensionData> (Handle allocation)                           |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -34,13 +34,13 @@ TooieRecomp provides extensible modding APIs inherited from the static recompila
 
 ## 2. Requirements Traceability
 
-| Requirement ID | Description | Acceptance Criteria | Implementation Status |
+| Requirement ID | Description | Acceptance Criteria | Status |
 | :--- | :--- | :--- | :--- |
-| **REQ-MOD-01** | Extended Object Data | Mods can attach custom memory blocks to spawned game actors. | `INHERITED_INFRASTRUCTURE` / `UNTESTED_FOR_TOOIE` |
-| **REQ-MOD-02** | Type Contexts & Slots | `dod::slot_map32` manages per-object extension lifecycle cleanly. | `INHERITED_INFRASTRUCTURE` / `UNTESTED_FOR_TOOIE` |
-| **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` texture archives containing replacement RT64 textures. | `INHERITED_INFRASTRUCTURE` / `UNTESTED_FOR_TOOIE` |
-| **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | `INHERITED_INFRASTRUCTURE` / `UNTESTED_FOR_TOOIE` |
-| **REQ-MOD-05** | Backward Compatibility | Reuses BK modding contracts without breaking Tooie memory invariants. | `INHERITED_INFRASTRUCTURE` / `UNTESTED_FOR_TOOIE` |
+| **REQ-MOD-01** | Extended Object Data | Modding API allows attaching custom memory blocks to spawned entities. | `INHERITED_UNTESTED` |
+| **REQ-MOD-02** | Type Contexts & Slots | `dod::slot_map32` manages per-object extension lifecycle. | `INHERITED_UNTESTED` |
+| **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` texture archives containing replacement RT64 textures. | `INHERITED_UNTESTED` |
+| **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | `INHERITED_UNTESTED` |
+| **REQ-MOD-05** | Deprecated Mod Rejection| Rejects incompatible legacy mods (`bk_recomp_mod_fov_slider`). | `IMPLEMENTED` |
 
 ---
 
@@ -49,9 +49,7 @@ TooieRecomp provides extensible modding APIs inherited from the static recompila
 ### 3.1 Object Extension API (`src/game/recomp_extension_api.cpp`)
 ```cpp
 struct ExtensionInfo {
-    // Subtype ID, or 0xFFFFFFFF for generic object data.
     uint32_t subtype_index;
-    // Byte offset from start of extension data.
     uint32_t data_offset;
 };
 
@@ -74,30 +72,23 @@ struct ExtensionContext {
 ```
 
 ### 3.2 Mod Lifecycle Hooks (`include/recomp_data.h`)
-- `recomputil::init_extended_object_data(size_t num_types)`: Initializes extension contexts for each actor type on engine boot.
-- `recomputil::clear_all_object_data(size_t type_index)`: Resets custom actor payloads on area transition or scene reload.
-- `recomputil::register_data_api_exports()`: Publishes extension management symbols to the guest symbol table.
+- `recomputil::init_extended_object_data(size_t num_types)`:
+  - Invoked during startup (`src/main/main.cpp`) with `num_types = 2` (inherited labeled contexts for Props and ActorMarkers). Semantic utilization in Tooie remains unvalidated.
+- `recomputil::clear_all_object_data(size_t type_index)`: Clears custom object payloads on map transitions.
+- `recomputil::register_data_api_exports()`: Publishes extension symbols (`recomputil_*`) to guest dispatch tables.
+- **Data Container Library (`src/game/recomp_data_api.cpp`)**:
+  - Exports helper functions for mods, providing host-side implementations of hash maps, hash sets, and slot maps accessible to guest code.
 
 ### 3.3 Texture Pack Container Format (`.rtz`)
-- **Container**: ZIP archive with `.rtz` extension.
-- **Manifest**: Contains `rt64.json` defining texture hashes, mipmap levels, and materials (albedo, normal, roughness, metallic).
-- **Registration (`src/main/main.cpp:1135-1147`)**:
-  ```cpp
-  recomp::mods::ModContentType texture_pack_content_type{
-      .content_filename = "rt64.json",
-      .allow_runtime_toggle = true,
-      .on_enabled = enable_texture_pack,
-      .on_disabled = disable_texture_pack,
-      .on_reordered = reorder_texture_pack,
-  };
-  auto id = recomp::mods::register_mod_content_type(texture_pack_content_type);
-  recomp::mods::register_mod_container_type("rtz", std::vector{ id }, false);
-  ```
+- **Container**: ZIP archive formatted with `.rtz` extension.
+- **Manifest**: Contains `rt64.json` defining texture hashes, mipmap specifications, and PBR material definitions.
+- **Registration (`src/main/main.cpp`)**:
+  - Registers `rtz` container format with runtime mod manager.
+  - Registers deprecated mod rejection for `bk_recomp_mod_fov_slider` via `recomp::mods::register_deprecated_mod`.
+  - Legacy initialization calls `register_bk_overlays()` and `register_bk_patches()` are retained from the recompiler architecture.
 
 ---
 
-## 4. Invariants & Relation to Banjo-Kazooie Contract
+## 4. Invariants & Verification Status
 
-- **Contract Reuse**: The extension system reuses the design established in [[../BK/mods|BK Modding Specification]].
-- **Memory Safety Invariant**: Extended object memory allocations are tracked independently of guest RDRAM and are deallocated on actor despawn to prevent memory leaks.
-- **Validation Boundary & Reality Check**: While the modding and extension infrastructure (`recomp_data_api.cpp`, `recomp_extension_api.cpp`, and `.rtz` registration in `src/main/main.cpp:1135-1147`) compiles cleanly into `TooieRecompiled`, this code represents inherited infrastructure from the BanjoRecomp / RecompModTool baseline. Active modding capabilities, `.rtz` replacement packs in Banjo-Tooie, and actor extension data on actual Tooie entities have NOT undergone runtime QA or verification. The system is classified strictly as `INHERITED_INFRASTRUCTURE / UNTESTED_FOR_TOOIE` until validated in a dedicated post-parity enhancement phase.
+While the modding and extension infrastructure compiles cleanly into `TooieRecompiled`, runtime modding in Banjo-Tooie has not undergone dedicated verification. The system status is classified as `INHERITED_UNTESTED`.

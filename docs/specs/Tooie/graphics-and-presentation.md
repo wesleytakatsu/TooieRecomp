@@ -1,6 +1,6 @@
 ---
 title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpolation"
-description: "Comprehensive technical specification for RT64 integration, widescreen culling hooks, projection policies, the shader-local CURRENT tfPos workaround, and planned FPS presets."
+description: "Technical specification for RT64 integration, widescreen culling hooks, projection policies, host endpoint-CURRENT fallback, transform interpolation guards, and presentation controls."
 status: current
 area: "specs/Tooie"
 updated: 2026-10-23
@@ -11,7 +11,7 @@ tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps
 
 ## 1. Subsystem Overview
 
-TooieRecomp renders original Nintendo 64 display lists through `RT64`, translating F3DEX2 commands to modern Vulkan 1.2+ pipelines while injecting native transforms to support widescreen viewports and high-framerate presentation.
+TooieRecomp renders original Nintendo 64 display lists through `RT64`, translating F3DEX2 commands to modern Vulkan 1.2+ (Linux) or Direct3D 12 (Windows default) pipelines while injecting native transforms to support widescreen viewports and high-framerate presentation.
 
 ```text
 +---------------------------------------------------------------------------------+
@@ -24,8 +24,9 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
                                        v
 +---------------------------------------------------------------------------------+
 |                       Aspect-Aware Frustum Culling Hooks                        |
-|  - Map Geometry: func_800CAA24 (H-plane n_cam_x /= k, production default ON)    |
-|  - Object Side-Plane: func_800CACEC (Actor frustum expand, production ON)       |
+|  - Native 16:9 View Volume: TOOIE_TEST_WS_NATIVE_PLANES (production default ON) |
+|  - Map Geometry: func_800CAA24 (H-plane n_cam_x /= k, fallback/attract)         |
+|  - Object Side-Plane: func_800CACEC (Actor frustum expand, fallback/attract)   |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
@@ -33,15 +34,16 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 |                      RT64 Workload Queue & Transform Processor                  |
 |  - Matrix matching across successive workloads                                  |
 |  - Target Rate vs viOriginalRate evaluation (pacing constraint)                 |
-|  - Target Rate Policy: Interpolation OFF = Manual 30; ON = user rate (min 60)    |
+|  - Target Rate Policy: Interpolation OFF = Manual 30; ON = user rate (min 60)   |
+|  - P09 Guards: camera cut, segment/joint coherence, spike guard, speed gate     |
 +---------------------------------------------------------------------------------+
                                        |
                                        v
 +---------------------------------------------------------------------------------+
 |                     RSPProcess Compute Shader (RSPProcessCS.hlsl)               |
-|  - endpoint-CURRENT via RT64::endpointCurrentActive() (Interpolation OFF = on)   |
+|  - endpoint-CURRENT via RT64::endpointCurrentActive() (Interpolation OFF = on)  |
 |  - tfPos bypassed to CURRENT vertex positions; fog derives from tfPos.z/w       |
-|  - Interpolation option ON = off; explicit env value still overrides            |
+|  - Interpolation option ON = off; explicit env value overrides                  |
 +---------------------------------------------------------------------------------+
 ```
 
@@ -49,48 +51,50 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 
 ## 2. Requirements Traceability
 
-| Requirement ID | Description | Acceptance Criteria | Implementation Status |
+| Requirement ID | Description | Acceptance Criteria | Status |
 | :--- | :--- | :--- | :--- |
-| **REQ-GFX-01** | Aspect-Aware Map Culling | `func_800CAA24` scales horizontal culling plane (`n_cam_x /= k`). | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-02** | Aspect-Aware Object Culling | `func_800CACEC` expands culling planes during draw passes (pure `func_800B97A4` + preserved `func_8011447C`). | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-03** | Cutscene Aspect Policy | Preconditions projection matrix via `compensation_factor`. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-04** | tfPos CURRENT Workaround | Active whenever the Interpolation graphics option is OFF (default); host-controlled via `RT64::requestHostEndpointCurrent`, no setenv. See §3.3. | `IMPLEMENTED` / `VALIDATED` (2026-10-21 runtime; supersedes the startup `setenv` default) |
-| **REQ-GFX-05** | Diagnostic Env Override | An explicit `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` (`0`/`1`) in the environment overrides the Interpolation option; unset/empty defers to the option. | `IMPLEMENTED` / `VALIDATED` |
-| **REQ-GFX-06** | Interpolation Graphics Option | Graphics option `interpolation` (bool, persisted in `graphics.json`, default/missing/invalid = OFF). OFF locks presentation to Manual 30 (`kForcedRefreshRate`) with the CURRENT endpoint; ON unlocks the Framerate controls and selects Manual 60 when the stored rate would generate no intermediate frames; applies at runtime on Apply without restart. User-authorised 2026-10-21 (supersedes the old frozen 30 FPS lock). Does not claim the articulated-glitch gate passed. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]]) |
-| **REQ-GFX-07** | Below-Native Presentation Decimation | Present-only decimation preserving guest updates, audio, and ACK signals. | `IMPLEMENTED` / `STATICALLY_VERIFIED` |
-| **REQ-GFX-08** | Intro Cinematic Walls | Eliminates geometry edge holes in SCENE_A and SCENE_B. | `PLANNED` / `NOT_IMPLEMENTED` |
-| **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. Auto resolution uses integer window VI scale and disables downsampling. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
-| **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode, keeping current height. | `IMPLEMENTED` / `VALIDATED` (see [[../../plan/evidence/p08-settings-functionality-20261019]]) |
+| **REQ-GFX-01** | Aspect-Aware Map Culling | `func_800CAA24` scales horizontal culling plane (`n_cam_x /= k`). | `IMPLEMENTED` |
+| **REQ-GFX-02** | Aspect-Aware Object Culling | `func_800CACEC` expands culling planes during allowlisted draw passes (`func_800B97A4` kind 3, `func_8011447C` kind 2). | `IMPLEMENTED` |
+| **REQ-GFX-03** | Cutscene Aspect Policy | Preconditions projection matrix via `compensation_factor`. | `IMPLEMENTED` |
+| **REQ-GFX-04** | tfPos CURRENT Fallback | Active whenever Interpolation is OFF (default); host-controlled via `RT64::requestHostEndpointCurrent`. | `IMPLEMENTED` |
+| **REQ-GFX-05** | Diagnostic Env Override | Explicit `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` overrides the option. | `IMPLEMENTED` |
+| **REQ-GFX-06** | Interpolation Graphics Option | Persisted boolean option in `graphics.json`. OFF locks to Manual 30; ON unlocks user rate (min 60). | `IMPLEMENTED` |
+| **REQ-GFX-07** | Below-Native Presentation Decimation | Present-only decimation preserving guest updates, audio, and ACK signals. | `IMPLEMENTED` |
+| **REQ-GFX-08** | Top-Left Present FPS Counter | Visible present FPS overlay toggle in Graphics menu; measures swapchain presents. | `IMPLEMENTED` |
+| **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. | `IMPLEMENTED` |
+| **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode. | `IMPLEMENTED` |
+| **REQ-GFX-11** | Intro Cinematic Walls | 16:9 projection compensation implemented; edge geometry and ultrawide remain open. | `PARTIAL` |
 
 ---
 
 ## 3. Interface & Mathematical Contracts
 
 ### 3.1 Aspect-Aware Frustum Culling
-1. **Map Geometry (`func_800CAA24`)**:
-   - Math: Let $k = \frac{\text{target\_aspect}}{\text{original\_aspect}}$ (where original is $\frac{4}{3}$).
-   - The horizontal camera-space plane normal is scaled: $n_{\text{cam}, x}' = \frac{n_{\text{cam}, x}}{k}$.
-   - Configuration: Controlled via `TOOIE_TEST_MAP_VIS_ASPECT_AWARE` (default `1`). Setting `0` forces original 4:3 culling.
-2. **Object Frustum (`func_800CACEC`)**:
-   - Expands horizontal bounding planes specifically for dynamic actor and prop draws.
-   - Restricts expansion to allowlisted pure DRAW callers (`func_800B97A4` scope kind 3, `func_8011447C` scope kind 2). Generic DRAW scope on `func_800E3E8C` is dropped to exclude mixed-renderer callers (`func_800DE498`).
-   - Callers evaluating spatial occupancy or fog (`0x8011458C`, `chlightfader`) retain original unexpanded culling.
-   - Configuration: Controlled via `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE` (default `1`). Setting `0` restores original.
-   - Parity resolution note: The downstream simulation divergence in USER_DEMO1 was resolved by removing generic DRAW scope from `func_800E3E8C` and allowlisting pure draw `func_800B97A4` (kind 3) alongside preserved `func_8011447C` (kind 2), while excluding mixed renderer `func_800DE498` (which stays original `v0`). Under default-ON (binary A6A2), USER_DEMO1 restores 355-post trajectory, record words, RNG, and post 355 Fire Egg hit. Widescreen edge pop preservation in gameplay is visually confirmed for the tested area by direct user QA ("Sim, continua funcionando", USER_REPORTED, VISUALLY_CONFIRMED_FOR_TESTED_AREA; broader game parity remains untested residual).
-3. **Native View Volume Widescreen Planes (`TOOIE_TEST_WS_NATIVE_PLANES`)**:
-   - Contract: When active (default `1` / ON), the aspect ratio field at `0x8012D500+0xE8` is temporarily substituted during execution of horizontal boundary vector generators (`0x800CA1B0`, `0x800CA218`, `0x800CA2A8`) with $\text{aspect}_{\text{temp}} = \text{aspect} \times \left(\frac{\text{target\_aspect}}{\text{source\_aspect}}\right) \times \text{lateral\_margin}$, and restored immediately afterwards.
-   - Projection matrix generation at `0x800CB124` remains at base 4:3 aspect to allow RT64 to manage widescreen projection expansion cleanly.
-   - All native game culling accessors and plane tests (`0x800CAA24`, `0x800CAB70`, `0x800CACEC`) evaluate against the natively widened 16:9 planes.
-   - When native planes are active, the per-test expansion factor $k$ in `func_800CAA24` and `func_800CACEC` collapses to $1.0$ to prevent double-widening.
-   - Setting `TOOIE_TEST_WS_NATIVE_PLANES=0` disables native plane widening and restores isolated per-test expansions.
-   - Attract Demo Protection: Native plane widening is automatically bypassed during attract mode demo playback (detected via halfword `0x80127632 == 5`), retaining 4:3 planes to preserve input recorded demo synchronization.
-4. **Widescreen Margin Controls**:
-   - `TOOIE_TEST_WS_DRAW_MARGIN`: Lateral margin scaling factor applied to horizontal boundary vector opening angles when target aspect exceeds source aspect. Default: `1.15`. Clamped to $[1.0, 2.0]$. Inactive in 4:3.
-   - `TOOIE_TEST_WS_DRAW_RADIUS_SCALE`: Radius multiplier applied to bounding sphere tests during manual per-test expansions. Default: `1.25`. Clamped to $[1.0, 2.0]$. Inactive in 4:3.
-5. **Experimental and Diagnostic Overrides**:
-   - `TOOIE_TEST_WS_MODEL_DRAW_ASPECT`: Experimental forced draw pass for `func_800DE498` restoring `0x8012C940` and $v_0$ (default `0` / OFF).
-   - `TOOIE_TEST_WS_GEO_SPHERE_ASPECT`: Experimental draw-only walk of GeoCmd type 14 subtrees with null type 10 / type 15 tables (default `0` / OFF).
-   - `TOOIE_DIAG_WS_CULL_CENSUS=<path>`: Diagnostic census logger (default OFF). When set to a file path, logs per-frame culling calls, acceptances, rejections, widescreen-only rejections (`ws`), applied modifications, rejected object coordinates, and simulation probe vectors (RNG state and player position) across categorized caller kinds.
+1. **Native View Volume Widescreen Planes (`TOOIE_TEST_WS_NATIVE_PLANES`)**:
+   - Production mechanism (default `1` / ON): The volume aspect ratio field at `0x8012D500+0xE8` is temporarily widened while horizontal boundary vector generators (`0x800CA1B0`, `0x800CA218`, `0x800CA2A8`, registered via `add_loaded_function` in `boot_hw_stubs.cpp`) execute:
+     $$\text{aspect}_{\text{temp}} = \text{aspect} \times \left(\frac{\text{target\_aspect}}{\text{source\_aspect}}\right) \times \text{lateral\_margin}$$
+     and restored immediately afterwards.
+   - Projection matrix generation at `0x800CB124` remains at base 4:3 so RT64 handles widescreen projection cleanly.
+   - Native game culling tests evaluate against the widened 16:9 planes.
+   - When native planes are active, the per-test expansion factor $k$ in `func_800CAA24` and `func_800CACEC` collapses to $1.0$ in `tooie_map_vis_k_for_volume` (`src/game/tooie_ws_frustum.h`) to prevent double-widening.
+   - Attract Demo Mode: In attract demos (`0x80127632 == 5`), native planes are deactivated and per-test expansions ($k > 1$, margin 1.15, radius 1.25) become active.
+   - Kill switch: Setting `TOOIE_TEST_WS_NATIVE_PLANES=0` disables native planes and falls back to isolated per-test expansions.
+   - Verification: Host test `tests/p08_ws_frustum_test.cpp`.
+2. **Per-Test Map Geometry Culling (`func_800CAA24`)**:
+   - Scales the horizontal camera-space plane normal: $n_{\text{cam}, x}' = n_{\text{cam}, x} / k$.
+   - The wrapper `tooie_wrap_func_800CAA24` only executes the evaluation when `orig == 0` (only promotes rejections to acceptances).
+   - Controlled via `TOOIE_TEST_MAP_VIS_ASPECT_AWARE` (default ON; value starting with `'0'` disables).
+3. **Per-Test Dynamic Object Culling (`func_800CACEC`)**:
+   - Expands horizontal bounding planes for dynamic actors during allowlisted pure draw passes (`func_800B97A4` kind 3, `func_8011447C` kind 2).
+   - Spatial occupancy and fog callers (`0x8011458C`, `chlightfader`) retain unexpanded culling.
+   - Controlled via `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE` (default ON; value starting with `'0'` disables).
+4. **Widescreen Margin and Radius Controls**:
+   - `TOOIE_TEST_WS_DRAW_MARGIN`: Lateral margin scaling factor applied to horizontal boundary vector opening angles (default `1.15`, clamp `[1.0, 2.0]`).
+   - `TOOIE_TEST_WS_DRAW_RADIUS_SCALE`: Radius multiplier applied to bounding sphere tests during manual per-test expansions (default `1.25`, clamp `[1.0, 2.0]`). Inactive when native planes are active.
+5. **Experimental & Diagnostic Cull Overrides (REFUTED as production fixes)**:
+   - `TOOIE_TEST_WS_MODEL_DRAW_ASPECT`: Experimental forced draw pass for `func_800DE498`. Only enables if explicitly set to `"1"` AND `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE != 0`. `REFUTED` as a fix (causes actor freeze at screen edges and drawing through walls; superseded by native planes).
+   - `TOOIE_TEST_WS_GEO_SPHERE_ASPECT`: Experimental draw-only walk of GeoCmd type 14 subtrees. Only enables if explicitly set to `"1"`.
+   - `TOOIE_DIAG_WS_CULL_CENSUS=<path>`: Diagnostic census file logger.
 
 ### 3.2 Cutscene Projection Compensation (`tooie_tintro_projection_policy`)
 ```cpp
@@ -111,160 +115,90 @@ namespace tooie_tintro_projection_policy {
     void apply(uint8_t* rdram, float proj[4][4]);
 }
 ```
-Validated via `tests/tintro_projection_policy_test.cpp` (7/7 assertions PASS).
+Validated via `tests/tintro_projection_policy_test.cpp`.
 
-### 3.3 Shader-Local CURRENT `tfPos` Workaround (P09 Phase 1) and Host Switch
+### 3.3 Shader-Local CURRENT `tfPos` Fallback & Host Switch
 ```cpp
-// RT64 (patches/rt64/rt64-p09-host-endpoint-current-toggle.patch): src/hle/rt64_host_endpoint_current.h
 namespace RT64 {
-    void requestHostEndpointCurrent(bool endpointCurrent); // any thread (config callback)
-    void latchHostEndpointCurrent();                       // render thread, once per game workload
+    void requestHostEndpointCurrent(bool endpointCurrent); // config callback
+    void latchHostEndpointCurrent();                       // render thread boundary
     bool endpointCurrentActive();                          // env override > latched host request > off
 }
 ```
-- **Owner**: `install_interpolation_policy` (`include/tooie_menu_policy.h`) sinks the APPLIED `interpolation` value; `src/game/config.cpp` forwards it as `requestHostEndpointCurrent(!enabled)`. No startup `setenv`; `tooie_rsp_endpoint_current` (module, test, CMake target) was removed.
-- **Readers (all use `endpointCurrentActive()`)**: `RSPProcessor::process` (`processCB.forceEndpointCurrent`), `p09WorldGuardEndpointCurrentActive`, `interpBurst::forceEndpointEnv`. The old per-site static getenv caches no longer exist.
-- **Environment Precedence**: `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` explicit `0`/`1` wins over the option (legacy test override, read once); unset/empty defers to the host. `TOOIE_TEST_INTERPOLATION_FPS=60|120` forces Interpolation ON at that rate regardless of the option and logs `[tooie] TOOIE_TEST_INTERPOLATION_FPS=... overrides the Interpolation setting`.
+- **Owner**: `install_interpolation_policy` (`include/tooie_menu_policy.h`) receives the persisted `interpolation` setting and invokes `RT64::requestHostEndpointCurrent(!enabled)`.
+- **Inert Guards**: All P09 transform interpolation guards are completely inert when `endpointCurrentActive()` is true (which is the default state when Interpolation is OFF).
+- **Environment Override**: `TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT` explicit non-empty value (first char `!= '0'`) forces CURRENT; explicit `"0"` enables interpolation. Unset or empty defers to the menu option.
+- **Forced Rate Flag**: `TOOIE_TEST_INTERPOLATION_FPS` accepts `60` or `120` to force Interpolation ON at that rate.
 - **Interpolation Matching & Guard Controls (P09)**:
-  - `TOOIE_TEST_P09_ORDERED_MATCH`: Controls structural draw call sequence matching for untagged (`G_EX_ID_AUTO`) WORLD transforms in RT64 `GameFrame::matchScene`. Default ON; setting `0` restores the original greedy origin-cost matching.
-  - `TOOIE_TEST_P09_ALIGN_MATCH`: Controls sequence alignment with gaps via dynamic programming for draw-call hash groups with divergent counts across frames in RT64 `GameFrame::matchScene`. Default ON; setting `0` falls back to greedy origin-cost matching for asymmetric groups.
-  - `TOOIE_TEST_P09_CAMERA_CUT`: Controls geometric camera cut detection for well-conditioned AUTO view matrices in `rt64_p09_camera_cut.h`. When active, large angular rotations or linear displacements between frames suppress temporal camera interpolation for that frame, rendering the scene at CURRENT. Default ON; setting `0` forces continuous interpolation for AUTO cameras.
-  - `TOOIE_TEST_P09_SEGMENT_COHERENCE`: Controls conditional release of linear translation interpolation for segmented model parts held by the upstream linear velocity gate (`RigidBody::updateLinear`). Releases interpolation when neighboring moving matrices are interpolating cleanly and linear jump is within bounds. Default ON; setting `0` retains strict upstream gate holding.
-  - `TOOIE_TEST_P09_JOINT_COHERENCE`: Controls runtime skeletal joint hierarchy inference based on relative pivot invariance between neighboring matrices. Binds child transform origin to the interpolated parent coordinate space, breaking dependency cycles by lowest matrix index. Default ON; setting `0` leaves WORLD transforms independently interpolated.
-  - `TOOIE_TEST_P09_SPIKE_GUARD`: Controls connected-component geometry deformation checks uniting both mesh triangles and inferred joints (`uniteJoints`). Snaps the entire connected object partition to CURRENT when any interpolated edge stretches beyond relative and absolute thresholds against CURRENT. Default ON; setting `0` renders interpolated vertices without spike snapping.
-  - `TOOIE_TEST_P09_CLOSURE_GUARD`: Controls elementwise convex matrix interpolation guard (`lerpMatrix`). Default OFF (`0`) to prevent volume shrinking under rotation and joint gaps in segmented models; setting `1` re-enables elementwise closure limiting.
-- **Diagnostic & Telemetry Controls (P09 & Performance)**:
-  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: Diagnostic output file path (default OFF). When configured, evaluates every triangle of interpolated workloads after guard processing and classifies stretched geometry across categories I, U, P, C, and N, including joint gap reports (`JG`/`JGW`). Strictly read-only; never alters rendering.
-  - `TOOIE_DIAG_P09_PAIR_AUDIT=<arquivo>`: Audit log file path (default OFF). When configured, outputs detailed pairwise transform correspondence evaluations and temporal variance data during frame matching in RT64. Strictly read-only.
-  - `TOOIE_DIAG_P09_CAMERA_CUT`: Controls console diagnostic logging for camera cut evaluations (default `0` / OFF). Setting `1` logs, for each detected cut, the row cosines of the two view rotations, the camera displacement and both camera positions.
-  - `TOOIE_DIAG_P09_JOINT`: Controls console diagnostic logging for joint inference (default `0` / OFF). Setting `1` logs, every 200 interpolated workloads, how many WORLD matrices have a neighbour, how many have a joint drift below 0.5/2/5 units, and how many origins were re-attached.
-  - `TOOIE_DIAG_PRESENT_LOG`: Controls periodic presentation rate telemetry (default `0` / OFF). Setting `1` logs one stderr line every 250 ms with the cumulative present count (`RT64::presentSuccessCount`) and its delta; timestamps come from the capturing tool.
-  - `TOOIE_DIAG_UD5`: Controls diagnostic logging and camera telemetry for Map 296 / Demo 5 (default `0` / OFF). Setting `1` enables logging; setting `0` or omitting eliminates all diagnostic I/O overhead.
-  - `TOOIE_DIAG_OVERLAY_LOG`: Controls diagnostic logging for overlay load and unload events (default `0` / OFF). Setting `1` logs overlay transitions; setting `0` or omitting silences overlay transition I/O.
-- **Runtime telemetry**: RT64 prints `[tooie-interp] workload=N endpointCurrent=E generate=G targetRate=T viRate=V displayFrames=D` on every change of that tuple and one `first interpolated render ... curW=` line per change; never per frame. `endpointCurrent=1` with `curW<1` is masked interpolation (CURRENT repeats poses); real interpolation is `endpointCurrent=0`.
-- **Shader Effect (`RSPProcessCS.hlsl:78-93`)**:
-  - `tfPos` bypasses temporal interpolation, evaluating directly at CURRENT vertex positions:
+  - `TOOIE_TEST_P09_ORDERED_MATCH`: Hash-ordered transform pairing for untagged (`G_EX_ID_AUTO`) WORLD transforms. Default ON; `"0"` reverts to greedy matching.
+  - `TOOIE_TEST_P09_ALIGN_MATCH`: Sequence alignment with gaps via dynamic programming for asymmetric hash groups. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_CAMERA_CUT`: Geometric camera cut detection for AUTO view matrices. Large angular/linear steps suppress camera interpolation for the frame. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_SEGMENT_COHERENCE`: Conditional release of translation interpolation for segmented model parts. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_JOINT_COHERENCE`: Skeletal joint hierarchy inference based on relative pivot invariance. Binds child origin to parent coordinate space. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_SPIKE_GUARD`: Connected-component geometry deformation checks uniting mesh triangles and inferred joints. Snaps partition to CURRENT if edges stretch excessively. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_TRANSLATION_COHERENCE`: Linear velocity coherence gate. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_GATE_SPEED_ONLY`: Controls whether linear velocity gate clamps translation speed only. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_CLOSURE_GUARD`: Convex elementwise matrix lerp limiting. Default OFF (`0`); only `"1"` enables.
+  - `TOOIE_TEST_P09_SELECTIVE_ELEMENTWISE_WORLD` / `MULTI_ONLY_ELEMENTWISE_WORLD`: Selective closure guards. Default OFF.
+- **Diagnostic Controls**:
+  - `TOOIE_DIAG_P09_CAMERA_CUT` / `TOOIE_DIAG_P09_JOINT`: Diagnostic logging flags. Note: parsed via `getenv != nullptr` (any value turns them ON).
+  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<path>`: Classifies stretched triangles after guard processing. Read-only.
+  - `TOOIE_DIAG_P09_PAIR_AUDIT=<path>`: Outputs pairwise transform correspondence evaluations.
+- **Compute Shader Operation (`RSPProcessCS.hlsl`)**:
+  - `tfPos` evaluates directly at CURRENT vertex positions:
     `tfPos = mul(mul(endpointViewProj[...], endpointWorld[...]), endpointPos);`
-  - In `RSPProcessCS.hlsl:86-93`, fog calculation derives directly from `tfPos`:
-    `const float fogAlpha = ((max(tfPos.z, 0) / tfPos.w) * rspFog.mul + rspFog.offset);`
-    Because `tfPos` also drives fog, snapping `tfPos` to CURRENT ensures fog depth remains perfectly aligned with current mesh geometry without temporal lag or shearing.
-  - View, projection, and texgen continue normal temporal handling.
-- **Verification**: `tests/rt64_host_endpoint_current_test.cpp` (env unset/0/1, latch semantics) and `tests/tooie_menu_config_test.cpp`; runtime proof in [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]]. The former `tooie_rsp_endpoint_current_test` was removed with its module.
-- **Versioned Clean-Pin Patches & Provenance**: `patches/rt64/rt64-p09-host-endpoint-current-toggle.patch` (SHA256 `b96e2b703ae0d4782b2debf1178584355590865a7a17d7d74a128745cd5d8f15`, stacked after the guard/burst patches; replay-checked with `git apply --check` on the clean chain) and `patches/rt64/rt64-rsp-endpoint-current.patch` (SHA256: `49925480c2d1736c790ddf96152844951f6fe27a150ab1cc110347d557c0d813`), integrated into vendored `lib/rt64` against clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496` (`tools/apply_runtime_patches.sh` retired; provenance tracked in `vendor/patches-applied/ORDER.tsv`, verified via `tools/vendor_verify.sh --reverse-check`).
-- **Workaround vs. Permanent Fix Classification**:
-  - The `tfPos` CURRENT bypass (active while Interpolation is OFF, the default) is strictly a **palliative workaround**. It prevents visible mesh tearing (such as Kazooie's wing feathers and Banjo's backpack/snout) by evaluating vertex positions at CURRENT.
-  - **Continuous vertex position interpolation at 60+ FPS is NOT IMPLEMENTED**.
-  - The permanent architectural fix resolving `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS` remains **NOT IMPLEMENTED**. Experimental articulated guards (translation coherence and closure guard in `patches/rt64/rt64-p09-world-interpolation-guard.patch`, with Mechanism A linear speed gate in `rt64_rigid_body.{h,cpp}`) were evaluated across iterations 1-3 in October 2026. While Mechanism A is `PROVEN_SOURCE` and matched GPU pairs exist for the title scene (wl 1000-2500), independent verification gates remain failed (`gate.json: passed = false`, `resumed-gate.json: passed = false`) due to unverified build logs, a fatal SIGSEGV (-11) crash in `runs/ong2` during attract demo gameplay, unversioned working tree diagnostic state, and absent non-player articulated and 60 FPS gameplay verification. The default (Interpolation OFF) keeps the CURRENT endpoint and Manual 30 FPS (`kForcedRefreshRate = 30`); turning Interpolation ON is an explicit user choice that exposes those experimental, still-gated glitches (`NOT` a fix, technical gate `passed: false`).
+  - Fog calculation derives from `tfPos` (`max(tfPos.z, 0) / tfPos.w`), ensuring depth matches mesh geometry without lag.
+- **Verification**: `tests/rt64_host_endpoint_current_test.cpp`, `tests/p09_ordered_match_test.cpp`, `tests/p09_world_interpolation_guard_test.cpp`.
 
 ---
 
-## 4. Phase 2 Exact FPS Presets & Below-Native Presentation Decimation
+## 4. Framerate Control & Presentation Decimation
 
-### 4.1 Target Presets & Forced 30 FPS Policy Lock
-Requested user presets: `{20, 30, 45, 60, 70, 100, 120, 144}` FPS.
-- **Frontend UI Option & Policy Enforcement (REQ-GFX-06)**: `tooie_menu::install_interpolation_policy` ties the persisted `interpolation` bool to the Framerate options. OFF: Manual/30, rate controls disabled with `Locked to 30 FPS`. ON: controls enabled; `coerce_refresh` keeps the stored rate unless it is Original or Manual <= 30, which becomes Manual 60. Legacy `TOOIE_TEST_INTERPOLATION_FPS` remains an explicit override.
-- **Policy Enforcement Contract**: The UI (temporary) view is coerced on every change and is reverted to the applied rate on cancel; the applied view is coerced and sunk to RT64 on load (after the last of the three options has loaded, so a stored 120 survives boot) and when the `interpolation` option is applied (Apply button, graphics `requires_confirmation`). Callbacks resolve `recompui::config::get_graphics_config()` per call (vector reallocation). The RT64 request is latched at the next workload boundary: no restart and no `setenv`. Dedicated 8-preset selector widget remains `PLANNED` / `NOT_IMPLEMENTED`. Host test: `tests/tooie_menu_config_test.cpp`.
+### 4.1 Framerate Policy
+- **Framerate Policy Enforcement**:
+  - Interpolation OFF (default): Locked to Manual 30 (`kForcedRefreshRate = 30`). Framerate UI controls disabled with label "Locked to 30 FPS".
+  - Interpolation ON: Framerate controls enabled. Minimum framerate coerced to 60 FPS (or user-configured rate).
+  - Dedicated 8-preset selector widget is not implemented.
 
 ### 4.2 Below-Native Presentation Decimation (REQ-GFX-07)
-- **Problem**: In upstream RT64 (`rt64_workload_queue.cpp:1175`), when `targetRate <= viOriginalRate` (e.g. 20 or 30 FPS target on a 60 Hz VI scene), RT64 emitted one presentation per native workload with `displayFrames = 1` and no sleep or pacing. Below-native target was an effective no-op.
+- **Problem**: When `targetRate < viOriginalRate` (e.g. 20 or 30 FPS target on a 60 Hz VI scene), RT64 historically emitted one presentation per native workload without pacing.
 - **Implementation (`rt64_present_decimator.h` & `rt64_present_queue.cpp`)**:
-  - `PresentDecimator` integer accumulator (`ticks += targetRate`, `ticks >= originalRate`) computes exact average presentation rates for divisors (20/60, 30/60, 20/30) and non-divisors (45/60, 70/60, 100/60) with zero float drift and no integer overflow (`uint32_t`).
+  - `PresentDecimator` integer accumulator (`ticks += targetRate`, `ticks >= originalRate`) computes exact average presentation rates with zero float drift.
   - Active condition: `manualRate && !paused && targetRate > 0 && viOriginalRate > 0 && targetRate < viOriginalRate`.
-  - Manual target clamped to swapchain rate when known; applies also if panel rate is below VI rate.
-- **Workload & ACK Flow (Static Proof)**:
-  - Skipped presentations route through the existing catch-up skip path in `PresentQueue::threadLoop()`: `skipInterpolation()`, `notifyPresentId(present)`, framebuffer-operation release, and `threadAdvanceBarrier`.
-  - Every guest workload is fully consumed; guest logic, audio processing, and VI events are never slept or stalled. Workload ACK signals flow unimpeded.
-- **Concurrency & Data Race Elimination**:
-  - `viOriginalRate` write in `rt64_workload_queue.cpp:1021` is protected under `std::scoped_lock(ext.sharedResources->configurationMutex)`.
-  - Reads in `rt64_present_queue.cpp` occur under `configurationMutex`. Lock hierarchy is strictly preserved: `configurationMutex` is a leaf lock across both workload and present threads, preventing lock inversion.
-- **Cadence Resets**:
-  - Catch-up skip explicitly resets the decimator (`presentDecimator = PresentDecimator()`).
-  - Paused presents pass `paused == true` into `shouldPresent()`, resetting cadence so the first unpaused frame displays immediately without dropping.
-- **Verification & Status**:
-  - Validated by host test `tests/rt64_present_decimator_test.cpp` (`rt64_present_decimator_test` PASS exit 0).
-  - Versioned patch: `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256: `6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c`), integrated into vendored `lib/rt64` against clean RT64 pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496` (`tools/apply_runtime_patches.sh` retired; provenance tracked in `vendor/patches-applied/ORDER.tsv`). (Supersedes the older incremental `patches/rt64/rt64-present-rate-decimator.patch` for clean-pin apply; see [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]]).
-  - Status: `IMPLEMENTED`, `STATICALLY_VERIFIED`.
+  - Skipped presentations route through `skipInterpolation()`, preserving all guest updates, audio processing, and VI synchronization signals.
+  - Thread safety: Configuration parameters accessed under `configurationMutex`.
+- **Verification**: `tests/rt64_present_decimator_test.cpp`.
 
-### 4.3 Above-Native Rates & Motion Smoothness Limit
-- When `targetRate > viOriginalRate`, RT64 generates interpolated frames (`displayFrames > 1`).
-- **Palliative Workaround Interaction**: While Interpolation is OFF the CURRENT endpoint forces vertex positions to CURRENT (`tfPos`) and intermediate presents repeat the current vertex pose; with Interpolation ON (`endpointCurrent=0`) real interpolated poses are rendered, with the open glitch gate. Higher presentation rates (e.g. 100, 120, 144 FPS) present at the higher rate but cannot produce smooth motion for articulated meshes until the permanent interpolation fix is implemented.
+### 4.3 Top-Left Present FPS Counter (REQ-GFX-08)
+- **Metric**: Counts swapchain presents that successfully return `true` (`RT64::presentSuccessCount`). Excludes skipped presents and failed frames. Does NOT represent guest logic speed.
+- **Under CURRENT Fallback**: Intermediate presents repeat the current vertex pose. The counter reflects display swapchain cadence, not high-framerate motion.
+- **Configuration**:
+  - Setting: `show_fps_counter` in `graphics.json`.
+  - UI entry: "Show Present FPS" checkbox in Graphics options (`src/game/config.cpp`). Default `false` (OFF).
+  - Overlay: Render-thread callback via `recompui::set_overlay_update_callback`.
+  - Meter: `tooie::PresentRateMeter` computes integer presents per second over a 1000 ms sliding window.
+- **Verification**: `tests/tooie_fps_meter_test.cpp`.
 
-### 4.4 Top-Left Present FPS Counter & Graphics Settings Toggle (REQ-GFX-08)
-- **Purpose**: Provides an unobtrusive, on-screen display of the rate of frames actually presented to the display swapchain in the top-left corner.
-- **Metric Fidelity**:
-  - Counts only calls where `swapChain->present(...)` successfully returns `true` (`RT64::presentSuccessCount`).
-  - Decimator skips and failed presents are excluded.
-  - Does NOT display the user-selected target rate (`recomp_get_target_framerate`), does NOT display the guest VI rate (`viOriginalRate`), and does NOT represent game simulation or animation speed.
-- **Pose Repeat Limitation under CURRENT Workaround** (Interpolation OFF):
-  - Because the `tfPos` CURRENT workaround evaluates vertex positions at the current guest state, presentation rates above the native guest update rate repeat the same vertex pose across intermediate presents.
-  - The counter reading near 60 FPS while visible character motion updates at ~30 Hz reflects actual swapchain presentation cadence, not high-framerate motion interpolation.
-- **User Configuration & Directions**:
-  - Setting key: `banjo::configkeys::graphics::show_fps_counter` in `include/banjo_config.h`.
-  - UI entry: "Show Present FPS" checkbox in the Graphics options tab (`src/game/config.cpp:add_graphics_options`).
-  - Default: `false` (OFF). Persisted automatically in `graphics.json`.
-  - Usage directions: Navigate to the Graphics settings tab, check "Show Present FPS" to activate the overlay immediately; uncheck to deactivate. No restart required.
-- **Overlay & Meter Architecture**:
-  - RecompFrontend hook: `recompui::set_overlay_update_callback` (`ui_state.cpp`), executing in `draw_hook()` on the render thread. It is an always-on render-thread overlay, unaffected by `hide_all_contexts()` and capturing zero input.
-  - Sliding meter: `tooie::PresentRateMeter` (`include/tooie_fps_meter.h`) computes rounded integer presents per second over a 1000 ms sliding window. Stalls > 3 s reset the window and display `"-- FPS"`.
-  - Render style: 16 dp from top-left, dark backing (`rgba(0,0,0,160)`), text updated only when rounded integer changes.
-- **Versioned Patches & Provenance**:
-  - `patches/frontend/recompfrontend-overlay-update-callback.patch` (SHA256: `37266d0bd13d42c0b8f174c0118b6a9b2490784c5880f05e6ee37ab811cd48a7`): Integrated into vendored `lib/RecompFrontend` against pin `d0d90ba49f46f4896aaeda362056c21b1e342561` (`tools/apply_runtime_patches.sh` retired; provenance tracked in `vendor/patches-applied/ORDER.tsv`).
-  - `patches/rt64/rt64-present-fps-decimator-and-counter.patch` (SHA256: `6d746f27ed1bd3132dcea8464adeb25dcfac4ad38502bf92f402ea6e3a19836c`): Integrated into vendored `lib/rt64` against pin `6f1c2d99a4ea571c139f449c326fd176ba8f3496`.
-  - Historical provenance note: The older incremental patch `patches/rt64/rt64-present-success-counter.patch` is SUPERSEDED for clean-pin apply (fails with exit 1 on clean pin); the cumulative decimator-and-counter patch replaces it for clean clones. See [[../../plan/evidence/checkpoint-20261019-review-and-patch-replay]].
-- **Verification & Status**:
-  - Unit test: `tests/tooie_fps_meter_test.cpp` (`tooie_fps_meter_test` PASS exit 0).
-  - Reverse patch application: `git apply --reverse --check` exit 0.
-  - Status: `IMPLEMENTED`, `UNIT_TESTED`. (Separate from the unimplemented 8-preset selector widget `REQ-GFX-06`; in-game runtime QA is NOT performed).
+### 4.4 Resolution Scaling & Downsampling (REQ-GFX-09)
+- `Original3x` (base 720p) and `Original4x` (base 960p) supported in `ultramodern::renderer::Resolution`.
+- Multiplicative downsampling: `resolutionMultiplier = base * ds`, `downsampleMultiplier = ds`.
+- Patch: `vendor/patches-applied/runtime/n64modernruntime-resolution-3x-4x.patch`.
 
-### 4.5 Resolution 3x, 4x and Downsampling Scaling (REQ-GFX-09)
-- **Resolution Enums**: `Original3x` (base 720p) and `Original4x` (base 960p) are defined in `ultramodern::renderer::Resolution` and registered in config serialization (`patches/runtime/n64modernruntime-resolution-3x-4x.patch`).
-- **Downsample Multiplier Math**:
-  - Base multiplier: `Original` = 1x, `Original2x` = 2x, `Original3x` = 3x, `Original4x` = 4x.
-  - Downsampling multiplies on top: `resolutionMultiplier = base * ds`, `downsampleMultiplier = ds`.
-  - For example, Original 3x with Downsampling 2x renders internally at 1440p and downsamples to 720p.
-- **Auto Resolution**: Uses integer window VI scaling (not adaptive framerate); downsampling is disabled when Auto is active.
-- **Verification**: Host unit tests `tests/tooie_menu_policy_test.cpp` and runtime screenshots (`general-disabled-fixed.png`, `graphics-16x9-4x.png`, `intro-4x-30fps.png`) in [[../../plan/evidence/p08-settings-functionality-20261019]].
+### 4.5 Aspect Ratio Window Auto-Resize (REQ-GFX-10)
+- In windowed mode, selecting `Original (4:3)` or `Expand (16:9)` auto-resizes the host window while keeping height.
+- UI queues target aspect ratio via `tooie_menu::request_window_aspect`, processed on the SDL event thread during `update_gfx`.
+- Dimensions derived via `tooie_menu::aspect_window_size`, accounting for window borders (`SDL_GetWindowBordersSize`) and display bounds (`SDL_GetDisplayUsableBounds`).
+- Verification: `tests/tooie_menu_policy_test.cpp`.
 
-### 4.6 Aspect Ratio Window Auto-Resize (REQ-GFX-10)
-- **User Confirmed Preference**: Selecting `Original (4:3)` or `Expand (16:9)` in the Aspect Ratio option automatically resizes the application window in windowed mode while retaining current height.
-- **Thread Boundary Architecture**:
-  - UI callbacks cannot invoke SDL functions directly without risking deadlocks or race conditions.
-  - Callbacks queue the target aspect ratio into an atomic slot (`tooie_menu::request_window_aspect`).
-  - Consumed on the SDL event thread during `update_gfx` (`src/main/main.cpp`).
-  - Derives dimensions via `tooie_menu::aspect_window_size`, accounting for window decorations (`SDL_GetWindowBordersSize`), and clamps within display usable bounds (`SDL_GetDisplayUsableBounds`).
-  - Ignored when in Fullscreen or Borderless mode.
-- **Verification**: Validated by `tests/tooie_menu_policy_test.cpp` PASS exit 0 and runtime screenshots (`graphics-4x3.png`, `graphics-16x9-4x.png`, `fullscreen-original.png`).
-
-### 4.7 Remaining Gates
-1. Implement the 8-preset user selector widget in RecompFrontend UI (`REQ-GFX-06`).
-2. Perform runtime QA to verify presentation intervals against pose-change intervals, confirming audio and guest timing stability without clock distortion. (Runtime QA not performed; no actual in-game FPS measurements or speed guarantees claimed).
-3. Perform runtime visual QA of the top-left FPS counter overlay across gameplay maps and menus.
+### 4.6 Interpolated-Frame PNG Burst Diagnostic
+- The F8 capture hotkey and `src/game/tooie_interp_burst.cpp` were removed.
+- Dormant diagnostic infrastructure remains in `rt64_interp_burst.h` and helper `pictures_dir_from` in `include/tooie_interp_burst.h`.
+- Host test: `tests/p09_interp_burst_test.cpp`.
 
 ---
 
-## 4.8 Interpolated-Frame PNG Burst (F8 hotkey REMOVED 2026-10-21)
+## 5. Architectural References
 
-- **User-disabled**: the F8 hotkey (SDL event watch, `tooie::register_interp_burst`, `src/game/tooie_interp_burst.cpp`) was removed at user request; nothing requests a burst now, there is no replacement hotkey or capture UI, and `TooieRecompiled` registers no capture key. The RT64 capture infrastructure (`rt64_interp_burst.h`, `rt64-p09-interp-burst-capture.patch`) and its host test `p09_interp_burst_test` are retained as dormant diagnostics; `include/tooie_interp_burst.h` keeps only the pure `pictures_dir_from` helper.
-- Historical (still true when the hotkey existed): one bounded burst of 20 numbered `PRE_VI_RESOLVED_COLOR_TARGET` PNGs with manifest/status, only for frame-level generated, matched, intermediate-weight frames without forced CURRENT; readbacks perturb timing. Evidence: [[../../plan/evidence/p09-interpolated-frame-burst-20261020]]. Removal proof (no artifact after F8): [[../../plan/evidence/p09-menu-interpolation-toggle-20261021]].
-
-## 5. Architectural Causal Knowledge & Refuted Hypotheses
-
-Investigation across P09 evidence documents has established the following ground truth:
-1. **Proven Root Causes**:
-   - `UNTAGGED_WORLD_GREEDY_TRANSFORM_MATCH_WRONG_PAIRING` (`PROVEN_SOURCE` in `lib/rt64/src/hle/rt64_game_frame.cpp`): Tooie does not tag matrices with gEX (`G_EX_ID_AUTO`). RT64 origin-dominated greedy cost matching in `GameFrame::matchScene` cannot distinguish bones sharing geometric pivots (e.g., Kazooie crest feathers) or instanced mesh pieces. Wrong pairs poison inherited velocity for subsequent frames in a feedback cascade, interpolating bones between distinct spatial endpoints and tearing geometry into elongated rods. The ordered transform matcher (`lib/rt64/src/hle/rt64_p09_ordered_match.h`, controlled via `TOOIE_TEST_P09_ORDERED_MATCH`) resolves this via submission-order pairing per draw-call hash.
-   - `NONLINEAR_COMPOSED_WORLD_INTERPOLATION_BREAKS_ARTICULATED_CONSTRAINTS`: Independent matrix interpolation across multi-transform meshes shears articulated attachments (feathers, snout).
-   - `MECHANISM_A_COSINE_AMPLIFICATION_HOLDS_TRANSLATION` (`PROVEN_SOURCE` in `rt64_rigid_body.cpp:30-34`): `curVelMag /= dotCurVel` executes before `VelocityTolerance=5`. When directional changes reach $\ge 90^\circ$, `dotCurVel` clamps to $10^{-6}$, artificially amplifying velocity and disabling `lerpTranslation`. The bone holds translation at `CURRENT` while rotation slerps, tearing joint triangles跨-WORLD into elongated rods ("rods"). Fixed in owning layer via `lerpTranslationSpeedOnly` and world interpolation guard.
-   - `PLUME_BURST_TEXTURE_TO_BUFFER_COPY_MISSING` (`PROVEN_SOURCE` in `patches/rt64/rt64-plume-texture-to-buffer-copy.patch`): Upstream `plume` lacked texture->buffer branch in `copyTextureRegion`, crashing burst readback on clean pin. Resolved via versioned patch.
-   - `ONG2_TEARDOWN_RACE` (`PROVEN_SOURCE` in `librecomp/src/recomp.cpp`): Guest OSThreads continue overlay unload during static destructor execution in `exit()`, causing race condition crash on shutdown. Harness mitigation applied; product race remains open.
-2. **Heuristics & Boundaries**:
-   - `MECHANISM_B_ELEMENTWISE_CLOSURE_GUARD`: `HYPOTHESIS / CLASS-LEVEL HEURISTIC`. Convex elementwise lerp prevents joint edges from stretching $>1.25\times\text{refLength}+1.0$; acts as a class-level boundary, not an anatomical constraint solver.
-   - `TECHNICAL_GATE_STATUS`: `passed: false` (`technical-gate.json`, Claude Haiku 5.5, 7 blockers B1-B7: circular stretch metric, scope mislabel with guard inert under default CURRENT/30, lack of non-player GPU pair, dirty core crash binding, post-plume unit tests unlogged, ~14k dirty RT64 lines distinction, and absent 60 FPS USER_OBSERVED gameplay check).
-   - `PRODUCTION_INVARIANT`: Default presentation remains strictly CURRENT/30 (`TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=1`, `tooie_menu::kForcedRefreshRate = 30`). P09 remains `PENDING / NOT_FORMALLY_OPEN`.
-3. **Refuted Hypotheses**:
-   - *Vertex Geometry Displacement Match Cost*: `REFUTED` as transform matcher cost (small 3-4 vertex bones match incorrectly across distinct skeleton parts).
-   - *RDRAM Vertex Buffer Address Transform Identity*: `REFUTED` as bone identity (buffers are shared across multiple matrix instances).
-   - *Hierarchy Interpolation*: `REFUTED` (live world-space JOINs preserve attachments).
-   - *World-Matrix Non-Rigidity*: `REFUTED` as dominant cause (rigidity decomposes cleanly 123630/0).
-   - *Cross-Stream Temporal Cohort Mismatch*: `REFUTED` (pathologies occur on cohort-aligned workloads).
-   - *Bound-Sprite View Cull*: `REFUTED` (`func_800CB8F0` is occupancy query, `draw_fn=NONE`).
-   - *Type-6 Static Vis Cull*: `REFUTED` (`func_800EFFB4` is Euclidean distance, not aspect-sensitive).
+Detailed reverse-engineering models and transform interpolation mechanisms are documented in:
+- **[Transform Interpolation System](../../reverse-engineering/systems/transform-interpolation.md)**: Current RT64 interpolation pipeline, pairing, P09 guards, and refuted hypotheses.
+- **[Operational Handoff](../../HANDOFF.md)**: Current rendering guardrails and active visual residuals.

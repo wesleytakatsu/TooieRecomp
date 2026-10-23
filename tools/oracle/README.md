@@ -11,4 +11,4 @@ Launchers:
 - Angrylion oracle (playable): `../../run-tooie-angrylion-rdp.sh`
 - Low-level: `angrylion-control/run.sh`
 
-How to fetch, build, and run: `docs/specs/BT/angrylion-control-oracle.md`.
+How to fetch, build, and run: `docs/specs/Tooie/angrylion-control-oracle.md`.

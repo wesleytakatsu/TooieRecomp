@@ -22,7 +22,7 @@ log() { echo "[build_linux] $(date -u +%H:%M:%SZ) $*"; }
 
 stage_preflight() { "$ROOT/tools/preflight.sh" generate; }   # kit-free; `tools/preflight.sh decomp` adds the maintainer checks
 stage_verify()    { "$ROOT/tools/vendor_verify.sh"; }
-stage_decomp() { # private ROM -> decompressed ROM + ELF, in a WORK COPY of decomp/ (docs/plans/BT/02-rom-decompression-and-elf.md)
+stage_decomp() { # private ROM -> decompressed ROM + ELF, in a WORK COPY of decomp/ (docs/specs/Tooie/build-and-generator.md)
     if [[ -f "$DECOMP_ROOT/build/us/banjotooie_decompressed.elf" && -f "$DECOMP_ROOT/decompressed.us.z64" ]]; then
         [[ ! -f "$TOOIE_ROM" ]] || "$ROOT/tools/rom_check.sh" "$TOOIE_ROM"       # a ROM that is present must still be the right one
         log "decomp outputs present, skipping"; return

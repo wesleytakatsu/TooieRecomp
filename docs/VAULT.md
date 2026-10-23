@@ -2,240 +2,60 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-10-16
+updated: 2026-10-23
 tags: [vault, index, tooierecomp]
 ---
 
 # Índice da documentação
 
-## reverse-engineering
+## Raiz
 
-Canonical current knowledge about Banjo-Tooie (what the game is). Forensic
-proof lives under `docs/plan/evidence/`. Do not silently promote hypotheses.
-
-- [[reverse-engineering/README]] — Reverse-engineering knowledge base
-- [[reverse-engineering/glossary]] — Status, provenance, aliases
-- [[reverse-engineering/corrections]] — High-value identity corrections
-- [[reverse-engineering/symbols/functions]] — Function registry (see also `symbols/functions.csv`)
-- [[reverse-engineering/symbols/overlays]] — Overlays of current interest
-- [[reverse-engineering/symbols/structs]] — Struct layout registry
-- [[reverse-engineering/assets/README]] — Resource / asset catalog
-- [[reverse-engineering/assets/animations]] — Animation identities
-- [[reverse-engineering/assets/models]] — Model identities
-- [[reverse-engineering/characters/banjo]] — Banjo
-- [[reverse-engineering/characters/kazooie]] — Kazooie
-- [[plan/evidence/p09-menu-interpolation-toggle-20261021]] — P09 — Interpolation ON/OFF no menu ESC (persistido, runtime via patch RT64), F8 removido; não corrige glitch
-- [[plan/evidence/p09-kazooie-carry-banjo-head-feathers]] — P09 — Kazooie carry-Banjo head feathers; V1 token on V5 match
-- [[plan/evidence/p09-kazooie-feather-v1-capture]] — P09 — V1 live identity + matrix CSV
-- [[plan/evidence/p09-kazooie-feather-v2-producer-witness]] — P09 — bone103 scale reanalysis + AE820 dump
-- [[plan/evidence/p09-kazooie-feather-v3-implementation]] — P09 — V3 feather implementation notes
-- [[plan/evidence/p09-generic-selective-world-interpolation-production-design]] — P09 — SELECTIVE_ELEMENTWISE_WORLD default-off; multi-world GameCall classifier; visual test required
-- [[plan/evidence/p09-standard-slerp-world-production-candidate-discriminator]] — P09 — STANDARD_SLERP_WORLD CPU arm; rotation-only mathematical SLERP; recapture required
-- [[plan/evidence/p09-elementwise-world-interpolation-causal-discriminator]] — P09 — ELEMENTWISE_WORLD recapture: attachments linear, pathologies fixed, material nonrigidity
-- [[plan/evidence/p09-cpu-diagnostic-shader-semantics-repair]] — P09 — CPU clip helpers repaired to SPIR-V row-vector WQ; offline synth only
-- [[plan/evidence/p09-cpu-shader-matrix-semantics-and-homogeneous-audit]] — P09 — SPIR-V proves CPU matrix mismatch; repair diagnostics before recapture
-- [[plan/evidence/p09-exact-order-validated-camera-pose-view]] — P09 — prior camera-pose arm; shader-equivalence claim superseded by matrix audit
-- [[plan/evidence/p09-independent-architecture-root-cause-review]] — P09 — Astra architecture review; VIEW inverse-camera lerp; nonstandard quat interior; WORLD JOIN drops w
-- [[plan/evidence/p09-exact-order-view-world-temporal-cohort-forensic]] — P09 — hierarchy REFUTED; MODELVIEW order invalid; exact-order VIEW×WORLD cohort/composite waits recapture
-- [[plan/evidence/p09-view-world-interaction-root-discriminator]] — P09 — CLCL VIEW×WORLD safe class; world-space/hierarchical/modelview discriminator
-- [[plan/evidence/p09-tfpos-factorial-term-attribution]] — P09 — CPU 16-way LIVE/CURRENT tfPos factorial; CLCL captured; world non-rigidity REFUTED
-- [[plan/evidence/p09-world-matrix-interpolation-rigidity-forensic]] — P09 — world RigidBody TRS+SLERP; RIGID_WORLD JOIN recapture REFUTED as root
-- [[plan/evidence/p09-articulated-temporal-coherence-root]] — P09 — JOIN/phase coherent-scope; CLIP_LERP closed; ALL_CURRENT residual overstated
-- [[plan/evidence/p09-projective-w-production-fix]] — P09 — CLIP_LERP/NDC_LERP CPU counterfactuals; W-sign CURRENT remains production
-- [[plan/evidence/p09-projective-w-and-viewproj-representation-root-cause]] — P09 — VERSION=3 relative INVALID; projective-W / viewProj class; witness v4 pending
-- [[plan/evidence/p09-relative-view-world-interpolation-root-cause]] — P09 — SIMPLE REFUTED; combined-relative INVALID on VERSION=3
-- [[plan/evidence/p09-boned-interpolation-counterfactual]] — P09 — AUTO DECOMPOSE proven; SIMPLE offline counterfactual REFUTED by VERSION=2
-- [[plan/evidence/p09-world-occurrence-identity-root-cause-audit]] — P09 — 39 session-union worldIndex vs 9 bones; V5C token-only; CPU 58.6x world lerp
-- [[plan/evidence/p09-passive-high-rate-temporal-coherency-witness]] — P09 — passive CPU intermediate clip reconstruction; capture done (58.596×)
-- [[plan/evidence/p09-temporal-coherency-root-cause]] — P09 — mixed-time projection-only INVALID; global CURRENT FIXED; coherency invariant
-- [[plan/evidence/p09-high-rate-force-current-projection]] — P09 — INVALID mixed-time projection-only CURRENT; diagnostic removed
-- [[plan/evidence/p09-high-rate-force-current-frame]] — P09 — high-rate extra frames with CURRENT weights; V5C SAME, original FPS FIXED; user visual FIXED
-- [[plan/evidence/p09-feather-no-interp-v5c]] — P09 — V5C NO_INTERP on 79,100–105,107,108; V5B missed JOIN parents; visual SAME
-- [[plan/evidence/p09-kazooie-feather-v6-post-matrix-vertex-path]] — P09 — V5B NO_INTERP SAME on seven bones; V6 triangle path
-- [[plan/evidence/p09-kazooie-feather-v6b-triangle-witness-repair]] — P09 — V6 TRI=0 key failure; V6B triangle witness
-- [[plan/evidence/p09-bounded-crest-post-handoff-transferability-audit]] — P09 — crest Q/RSPProcess/RSPModify/RasterVS transfer; visible-feather position path closed
-- [[plan/evidence/p09-visual-geometry-identity-and-scope-forensic]] — P09 — six right-plume DLs miss left plume and crest
-- [[plan/evidence/p09-narrow-rspprocess-structural-forensic]] — P09 — RSPProcessCS statically closed after Q' refute
-- [[plan/evidence/p09-feather-postprocess-q-witness-v1]] — P09 — CPU Q' postprocess witness V1
-- [[plan/evidence/p09-post-handoff-structural-forensic]] — P09 — post-V7 structural forensic; RSPModify absent; RSPProcess first writer
-- [[plan/evidence/p09-v5-real-call-match]] — P09 — V5 snout RT64 match (closed primary)
-- [[reverse-engineering/characters/mumbo]] — Mumbo
-- [[reverse-engineering/systems/resource-system]] — Asset table / load
-- [[reverse-engineering/systems/animation]] — Animation application
-- [[plan/evidence/p09-animation-clip-transition-and-authored-key-forensic]] — P09 — clip22 107/108 match ROM keys; time resets are clip changes
-- [[plan/evidence/p09-feather-anim-sample-time-v1]] — P09 — baanim clip/time + raw 0x28 before AE8A8
-- [[plan/evidence/p09-upstream-current-bone-transform-semantic-forensic]] — P09 — AE8A8 compose closed; 107 steps later proven authored
-- [[reverse-engineering/systems/secondary-animation]] — bawobble
-- [[reverse-engineering/systems/model-renderer]] — func_800DE448 / DE498
-- [[reverse-engineering/systems/geocmd]] — GeoCmd 0x02 dual-mtx
-- [[reverse-engineering/systems/transform-interpolation]] — RT64 AUTO; V5C token-only; intermediate CPU world-lerp explosion
-- [[plan/evidence/p09-v4-real-match-witness]] — P09 real RT64 call/candidate/result witness (V4)
-- [[reverse-engineering/systems/overlays]] — Overlay VRAM / ba cluster
-- [[reverse-engineering/modding/README]] — Modding map
-- [[reverse-engineering/modding/known-extension-points]] — Known seams
-
-## Notas
-
-- [[AGENTS]] — Regras para agentes — TooieRecomp — Regras de navegação, implementação e evidência para agentes que trabalham no plano TooieRecomp.
-- [[HANDOFF]] — Handoff — TooieRecomp — P09 STANDARD_SLERP_WORLD CPU arm; ELEMENTWISE recapture proven; recapture STANDARD_SLERP_WORLD.
-- [[plan/evidence/p09-upstream-current-bone-transform-semantic-forensic]] — P09 — current-bone compose parent*child XYZW; additive unused; 107 keyed steps; clip time unresolved
-- [[plan/evidence/p09-visible-feather-alpha-coverage-texture-forensic]] — P09 — plume AC/TT/ST forensic; all three CLOSED as local mismatch
-- [[plan/evidence/p09-post-position-draw-temporal-and-depth-state-forensic]] — P09 — draw-temporal and depth-state forensic; both CLOSED as local mismatch
-- [[plan/evidence/p09-visible-feather-culling-winding-face-visibility-forensic]] — P09 — 14-DL culling/winding forensic; status A; no missing triangles
-- [[MARKDOWN_VAULT_TOOLS]] — Guia de uso do MCP markdown-vault — Vault = `TooieRecomp/docs`. Configs de MCP/IDE no TooieRecomp (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`). Abrir agentes neste repositório, não em `N64-Recomp/`.
-- [[README]] — Documentação — Esta pasta descreve o funcionamento do projeto de recompilação estática do Banjo-Tooie para PC (`N64Recomp` + `N64ModernRuntime` + `RT64`).
-- [[specs/BT/angrylion-control-oracle]] — ANGRYLION_CONTROL — Mupen Pure Interpreter + Angrylion RDP Plus + CXD4 LLE pinned under `tools/oracle/angrylion-control/` (measurement only; TooieRecomp stays RT64).
-
-## plan
-
-- [[plan/evidence/p08-provisional-player-ai-speed-parity]] — P08 — Provisional Player and AI Movement Speed Parity Baseline — Player scalar speed and AI actor speed magnitude proven against ANGRYLION_CONTROL in measured windows; animation cadence is not full animation-state parity.
-- [[plan/evidence/p08-user-demo4-sincos-semantics-fix]] — P08 — USER_DEMO_4 sincos MIPS round.w.s semantics fix — nearest-even ROUND.W.S; bind-tick discriminator RESOLVED; `CAMERA_COMPLETE_FIX: NO`.
-- [[plan/evidence/p08-user-demo4-post-round-full-state-discriminator]] — P08 — USER_DEMO_4 post-ROUND.W.S full-state discriminator — idle follow-cam 1..38 MATCH; first remaining bit difference is dump glidx 39 walking ncbapivot.
-- [[plan/evidence/p08-user-demo4-walkstart-ncbapivot-discriminator]] — P08 — USER_DEMO_4 walkstart ncbapivot discriminator — `800137AC` a2/f14 CORRECTED/SUPERSEDED; first split is `80112C5C` on `p60_8` 0 vs 5.
-- [[plan/evidence/p08-user-demo4-bind-tick-follow-eye]] — P08 — USER_DEMO_4 bind-tick follow-eye — Pre-fix A-candidate `800137F4`/`80013818`; POST-FIX MATCH `006d5328`.
-- [[plan/evidence/p08-user-demo4-live-eye-writer]] — P08 — USER_DEMO_4 live-eye writer — Last `node+0x74` writer before glidx-1 enter is faithful `80110770`; computed source is upstream ROUND.W.S.
-- [[plan/evidence/p08-user-demo4-ncbapivot-first-instruction]] — P08 — USER_DEMO_4 ncbapivot first tick — Pre-fix n74 DIFF is CORRECTED/SUPERSEDED; POST-FIX bind n74 MATCH; remaining dump glidx 39.
-- [[plan/evidence/p08-user-demo4-ca8b4-first-seed]] — P08 — USER_DEMO_4 CA8B4 first seed — Rec init MATCH; CA8B4 identity; glidx-1 ULP seed CORRECTED/SUPERSEDED after ROUND.W.S.
-- [[plan/evidence/p08-user-demo4-follow-camera-first-discriminator]] — P08 — USER_DEMO_4 follow-camera CA628 writer/input discriminator — CA628 stores src2[1] at +0x1C; idle 1..38 MATCH after ROUND.W.S.
-- [[plan/evidence/p08-user-demo4-bce84-live-input-join]] — P08 — instruction-level `0x800BCE84` live-input join; `BCE84_SOURCE_FIELD=0x115` MATCH; old `bs_pressed` ring-0 probe CORRECTED/SUPERSEDED.
-- [[plan/evidence/p08-user-demo4-800979d8-independent-review]] — P08 — adversarial review of the `0x800979D8` bainput contract; focused test and bounded BCE84/P60/ncbapivot runtime content match, immutable hash gate blocked.
-
-- [[plan/evidence/p08-user-demo4-800979d8-postfix-validation]] — P08 — corrected post-fix validation; exact ring-1 BCE84 source and bounded helper/P60 chain match, no global parity claim.
-- [[plan/evidence/p08-user-demo4-bainput-held-state-provenance]] — P08 — USER_DEMO_4 C-Right raw-pad → BaInput held-state; final BCE84 join PROVEN in bounded scope.
-- [[plan/evidence/p08-attract-movement-residuals]] — P08 — user-reproduced USER_DEMO_1 residual; USER_DEMO_5 is RESOLVED_BY_800979D8_HOST_REPLACEMENT_FIX; widescreen residual is independent (T_INTRO CLIP_X Expand K=4/3; first env G_DL 0x0031f6d8/0x0031f8f8 at Scene-A frame 5).
-- [[plan/evidence/p08-widescreen-edge-geometry]] — P08 — WIDESCREEN_EDGE_GEOMETRY: T_INTRO 16:9 first RT64 divergence CLIP_X (viewProj 0.905148->0.678861, K=4/3 AUTO); guest Original/Expand owner diff=0 REFUTED; 21:9+ authored extent PROVEN/separate.
-- [[plan/evidence/p08-attract-loop-after-demo2-crash]] — P08 — attract-loop crash after DEMO2 — Deterministic SIGSEGV: bsrest_entrypoint_11 LOOKUP_FUNC(0x808003FC) binds baflameline_entrypoint_5.
-- [[plan/evidence/p09-user-observed-parity-residuals]] — provisional pre-P09 evidence — Demo 0-only input/physics/behavior and Blue Egg parity; Fire Egg and global visual-drift reports remain open; Demo 1..3 untested.
-- [[plan/evidence/p09-live-geocmd-type2-dispatch]] — P09 — E2AA4 raw 0; compact 0x62B type-2 is DCF48; dual-mtx demoted.
-- [[plan/evidence/p09-19aa0-gmtx-rt64-match-stage]] — P09 — 19AA0/mlMtxApply dataflow; D_8007BCD0 REFUTED; V3 match CSV.
-- [[plan/evidence/p09-live-0x62b-tree-reachability]] — P09 — 0x11CB8 is a DE2A4 sibling; tree witness.
-- [[plan/evidence/p09-e2aa4-snout-witness]] — P09 — true 0x62B span 0x13178; snout witness moved to E2AA4; generic E2180 demoted.
-- [[plan/evidence/p09-62b-snout-e2180-layout]] — P09 — independent 0x62B snout parse; GeoCmd02 @ 0x11CB8 not 0x14960; E2180 a1 semantics.
-- [[plan/evidence/p09-deferred-render-context-e0b8c]] — P09 — DE448 immediate vs E2180 not in 80092444 TLS; durable 0x62B; E0B8C conditional.
-- [[plan/evidence/p09-player-model-witness-r31-repair]] — P09 — r31 DE448 filter retired; D_80135490+80092444+80092B04 player model witness.
-- [[plan/baseline-manifest]] — Baseline manifest — TooieRecomp P00 — Ambiente, commits, remotes, ROM, decisões e licenças congelados na P00.
-- [[plan/definition-of-done]] — Definição de pronto — TooieRecomp — Critérios objetivos para considerar Banjo-Tooie concluído como port nativo no Linux.
-- [[plan/evidence/p07-boot-hang-audio-diag]] — P07 boot hang + audio silence diagnosis (2026-08-09) — With `TOOIE_DIAG=1` (~12–18 s after auto-start):
-- [[plan/evidence/p08-forced-cinematic-facing-diagnosis]] — P08 — forced/cinematic actor facing diagnosis — USER_BUG_B one-actor: Wooded Hollow sucoaster `chdiggerground` reverse walk, heading 294.21° vs yaw 114.21° (Level B).
-- [[plan/evidence/p08-forced-cinematic-facing-independent-review]] — P08 — independent review: return contract and selected node discriminator remain UNKNOWN; historical Level B is CORRECTED/SUPERSEDED, no fix.
-- [[plan/evidence/p08-demo-movement-precision-diagnosis]] — P08 — demo movement precision diagnosis — Wooded Hollow first-straight 510 is original slope-scaled physics (`func_800EF04C` from `func_8009AE08`); post-physics writer REFUTED; FIRST_STRAIGHT_INTERNAL_FIDELITY PASS.
-- [[plan/evidence/p08-stick-angle-thunk-fix-correction]] — P08 — func_80013B70 review correction — Minimal semantic correction reproducing $at/$r1=0x43340000 delay slot on all y==0 paths.
-- [[plan/evidence/p08-stick-angle-thunk-fix]] — P08 — stick-angle secondary-entry fix — Native shared-tail override for empty generated func_80013B70; cardinals 0/90/180/270 and third-argument contract PASS.
-- [[plan/evidence/p08-stick-angle-thunk-fix-rereview]] — P08 — focused independent re-review of corrected func_80013B70 — Verdict A; prior `$r1` delay-slot blocker resolved; function-level fix accepted, runtime player validation pending.
-- [[plan/evidence/p08-stick-angle-thunk-fix-independent-review]] — P08 — historical independent review of the func_80013B70 secondary-entry fix — Verdict C preserved; prior `$r1` delay-slot blocker resolved by correction and re-review.
-- [[plan/evidence/p08-player-direction-facing-diagnosis]] — P08 — player direction / facing diagnosis — Level A empty 13B70; USER_BUG_A WASD RESOLVED; attract-bypass claim corrected; USER_BUG_B separate.
-- [[plan/evidence/p08-directional-input-movement-diagnosis]] — P08 — directional input / movement diagnosis — Host→N64 pad conversion proven bidirectional; live-player angle later owned by func_80013B70.
-- [[plan/evidence/p08-original-timing-4x3-baseline]] — P08-T03 — original timing / 4:3 baseline — 60Hz VI, 20/30Hz logic, 30Hz animation, host decouple, and 4:3 content aspect validated with live measurements.
-- [[plan/evidence/p08-render-submission-matrix-fix]] — P08 — Tooie render-submission matrix fix — Implementation of the proven incremental projection and view matrix submission split in TooieRecomp, avoiding RT64 viewproj decomposition and restoring correct camera/actor view extraction.
-- [[plan/evidence/p08-render-submission-matrix-diagnosis]] — P08 — render-submission matrix diagnosis — Rare view-in-projection vs RT64 G_MTX_PROJECTION LOAD decompose. Banjo incremental MUL avoids the path Tooie hits.
-- [[plan/evidence/p08-actor-camera-transform-discriminator]] — P08 — actor and camera transform discriminator — Telemetry discrimination between Actor.rotation simulation state, model matrix construction, and camera view transform during the first visible Wooded Hollow attract demo.
-- [[plan/evidence/p08-visible-demo-movement-diagnosis]] — P08 — visible demo movement diagnosis — Visible attract/gameplay demo reproduced after the RA-wrapper fix; first fidelity gap is character/camera transform (Level C). Historical 150s DIAG “no demo” run is preserved.
-- [[plan/evidence/p08-core1-ra-wrapper-fix]] — P08 — core1 RA wrapper fix — Tooie-native strong-symbol overrides for 0x800137D4 / 0x80013A5C / 0x80013A7C; old LOOKUP_FUNC(0) resolved.
-- [[plan/evidence/p08-80013a7c-lookup-zero-diagnosis]] — P08 — func_80013A7C lookup-zero diagnosis — Proven root cause (Level A): leaf wrapper saves RA in $a3, but direct host calls do not write ctx->r31, causing LOOKUP_FUNC(0). Fix implemented.
-- [[plan/evidence/p08-bcf28-binding-fix-independent-review]] — P08 — func_800BCF28 helper binding fix independent review — Verdict B: native 0x800BCCC0/0x800BCCD8 bindings accepted; old SIGSEGV resolved; next blocker func_80013A7C (not diagnosed).
-- [[plan/evidence/p08-bcf28-binding-fix]] — P08 — func_800BCF28 helper binding fix — Tooie-native recomp helpers bound at 0x800BCCC0 and 0x800BCCD8, replacing erroneous gap stubs and resolving func_800BCF28 SIGSEGV.
-- [[plan/evidence/p08-bcf28-crash-diagnosis]] — P08 — func_800BCF28 SIGSEGV root cause PROVEN (A) — `get_function(0x800BCCC0)` = `lookup_gap_stub` (v0=0) masks real element accessor (a0+a1*56+0x24); caller dereferences null base → SIGSEGV at rdram+0x8000000c. Binding fix later implemented and independently accepted.
-- [[plan/evidence/p08-active-banjo-reuse-audit]] — P08 — Active BanjoRecomp reuse audit — Auditoria diagnóstico-only: risco de código/estado Banjo-Kazooie ativo no executável TooieRecompiled. Verdict: nenhum behavior BK alcançável (code recompilado Tooie só chama recomp_syscall_handler/func_*; exports recomp_get_* BK não registrados/chamados → DORMANT). N64ModernRuntime DIRTY (threadqueue.cpp + N64Recomp use_lookup_for_all_function_calls). RecompiledPatches = scaffold vazio. Build não reproduzível (5 itens). Scheduler bug = LOCAL TOOIE PATCH IN SHARED RUNTIME. Recomendação: CONTINUE P08.
-- [[plan/evidence/p08-actor-init-segv-diagnosis]] — P08 — diagnóstico do SIGSEGV na inicialização de actor — Prova com GDB que o SIGSEGV em vector_push_back (via func_80106668/func_80107C2C) é artefato do spawn diagnóstico: D_80136EE0 (vetor global de Actors) está NULL porque o initializer (chbaddieDll ep1 → func_800FF390 → func_801065E0) nunca executou. Natural flow diverge antes. Não é bug de vector/runtime.
-- [[plan/evidence/p08-actor-manager-init-divergence]] — P08 — actor manager init: premissa desatualizada (cadeia executa no HEAD) — Diagnóstico: a cadeia legítima chbaddieDll ep1 → func_800FF390 → func_801065E0 → D_80136EE0 executa NATURALMENTE no HEAD c43e89b. A evidência anterior de 0 hits (a6053a0) foi coletada antes dos fixes de relocations/overlay-cache/scheduler. Não existe primeira divergência neste caminho no HEAD.
-- [[plan/evidence/p08-actor-null-callback-diagnosis]] — P08 — diagnóstico: callback nulo em func_80108C90 (ActorInfo[0x38]) — Prova com runtime + ROM que o valor 0 lido como callback de actor no spawn forçado não é um callback opcional legítimo; a origem é o mapeamento de data de overlay.
-- [[plan/evidence/p08-controller-host-path]] — P08 — caminho host dos controles — Data: 2026-08-09
-- [[plan/evidence/p08-do-dma-segv-diagnosis]] — P08 — SIGSEGV do_dma: dinamic diagnosis — **HEAD:** `f865c038455da1e5fafb5257ece974e1e15c9399` **Modo:** diagnóstico somente. Zero código alterado. **Status:** ROOT HIGH — overlay base-vram collision no func_map.
-- [[plan/evidence/p08-first-area-playable]] — P08 — cena 3D após a transição — Smoke dirigido: boot → jiggy → terreno/água da abertura; câmera e sequência não progridem.
-- [[plan/evidence/p08-gcsection-glintrosync-segv-diagnosis]] — P08 — SIGSEGV natural glintrosync:6 → gcsection:4 (diagnóstico) — SIGSEGV natural glintrosyncDll:6 → gcsectionDll:4 — func_808000F0 retornava NULL porque ovl_unload não invalidava s_resident_overlays (cache stale; heap reutilizado por overlay 709). FIX aplicado. ROOT CAUSE E, HIGH.
-- [[plan/evidence/p08-intro-actor-spawn-diagnosis]] — P08 — diagnóstico de divergência no spawn de actors da intro — Identificação do primeiro ponto de divergência na cadeia de inicialização e spawn dos actors da abertura (chintroticker 419, chintrochar 440, chintrocam 441).
-- [[plan/evidence/p08-intro-to-demo-transition-diagnosis]] — P08 — INTRO → ATTRACT DEMO transition diagnosis — Checkpoint da validação visual, warp/type-4 e post-mortem do freeze natural depois da Jiggy transition.
-- [[plan/evidence/p08-natural-actor-spawn-divergence]] — P08 — divergência no spawn natural de actors (IPL3 integrity gate) — Diagnóstico fechado: gate anti-tamper func_8001DE64 / D_8007DB79 bloqueia pipeline func_800A5C28 → func_800BDCDC → gccubeDll:5 → gccollectDll:8 → actor creation. Stub address +0x10000 + missing guest words. Discriminator matrix. Fix A decidido, NÃO implementado.
-- [[plan/evidence/p08-no-threads-left-diagnosis]] — P08 — Diagnóstico: "No threads left to run!" — std::runtime_error No threads left to run! = run_next_thread com a running queue vazia (NÃO é esgotamento de threads). ROOT CAUSE E, HIGH: patch local de threadqueue.cpp rejeita re-inserção após osSetThreadPri porque thread_queue_remove não limpa t->queue; fila drena até vazia e a thread SCHEDULE bloqueia em osRecvMesg. Diagnosis-only; fix estreito externo pendente de autorização.
-- [[plan/evidence/p08-overlay-data-relocation-diagnosis]] — P08 — diagnóstico: relocation de data de overlay perdida (chcollballcontrol) — Prova que o construtor recompilado devolvia 0x80804FA0 (link-time) porque o pipeline de metadados truncava nomes de seção; relocs existiam no ELF. Fix na camada generator/metadata; ActorInfo[0x38] == 0x80107C2C.
-- [[plan/evidence/p08-overlay-rmips26-binding-diagnosis]] — P08 — corrigir binding de R_MIPS_26 intra-overlay no GENERATOR — Fix estrutural no N64Recomp: jal same-section em seções relocatable agora resolve para chamada direta a C, mesmo com use_lookup_for_all_function_calls=true. Elimina a colisão de base vram 0x80800000 (chintrochar→gsworldDll). Scheduler preservado via restrição a relocatable. Validado 3/3 smokes + 140s run.
-- [[plan/evidence/p08-runtime-frontend-smoke]] — BT P08 — runtime, launcher e música — Evidência do desbloqueio DP/VI e do ciclo de música do launcher.
-- [[plan/evidence/p08-demo-zbuffer-oracle-sol-review]] — P08 — independent Z-buffer oracle-validity review — Rice-zero is not a CPU-visible rendered-Z oracle; RT64 ownership/order is valid but exact format is refuted; C-ORACLE.
-- [[plan/evidence/p08-session-handoff]] — P08 — session handoff: attract demo e render submission — T_INTRO 16:9 first RT64 divergence is CLIP_X (K=4/3 AUTO); guest presentation envelope REFUTED; first env owner 0x0031f6d8/0x0031f8f8 at frame 5.
-- [[plan/evidence/p08-slot7-object-lifecycle-arbitration]] — P08 — slot7 table[2] object lifecycle arbitration (Grok) — Arbitragem Gemini×DeepSeek: creator 20790, clearer 205D0, countdown +0x34, C2AB8 progress A|C; origem UNKNOWN; ROOT_CAUSE_PROVEN=NO.
-- [[plan/evidence/p08-guest-preemption-runtime-audit]] — P08 — guest preemption & runtime scheduler structural audit — Auditoria estrutural do gap N64 (interrupt preemption) vs N64ModernRuntime (cooperative token único).
-- [[plan/evidence/p08-guest-preemption-causal-validation]] — P08 — guest preemption causal validation (clean experiment, class A) — Experimento limpo reversível: yield_self_1ms em func_800C2AB8 → AUDIO roda, func_800205D0 limpa table[2].word0, C2AB8 retorna, attract progride (até SIGSEGV downstream novo em func_800BCF28). Gap de preempção provado causalmente.
-- [[plan/evidence/p08-permanent-preemption-design]] — P08 — permanent guest-preemption design (DeepSeek Hybrid F) — `CORRECTED/SUPERSEDED` pela revisão adversarial.
-- [[plan/evidence/p08-preemption-design-adversarial-review]] — P08 — adversarial review of generic guest-preemption design — Hybrid F quebrado (veredito C); Hybrid F' aprovado.
-- [[plan/evidence/p08-preemption-implementation-plan]] — P08 — preemption Hybrid F' implementation plan — PATCH 3.5 accepted; PATCH4_READY YES.
-- [[plan/evidence/p08-preemption-patch4-clean-build-independent-review]] — P08 — independent review of PATCH 4 clean-build correction — Verdict B; tracked-state blocker resolved; PATCH 4 accepted.
-- [[plan/evidence/p08-preemption-patch4-clean-build-correction]] — P08 — PATCH 4 clean-build / tracked-state correction — Track empty RecompiledPatches scaffolds so a clean clone can build TooieRecompiled. Independent review verdict C is preserved; this is the implementer correction.
-- [[plan/evidence/p08-preemption-patch4-independent-review]] — P08 — independent review of PATCH 4 — Behavior CLASS A; verdict C because clean tracked Tooie build lacks reproducible `RecompiledPatches` scaffolds.
-- [[plan/evidence/p08-preemption-patch4-validation]] — P08 — PATCH 4 Hybrid F' activation / regen / T13–T15 — Tooie-scoped startup ON; 4298 safepoints; C2AB8 CLASS A; current blocker func_800BCF28.
-- [[plan/evidence/p08-preemption-patch35-rcp-independent-review]] — P08 — independent review of PATCH 3.5 RCP correction — Verdict B; old-global discriminator and regressions PASS; PATCH4_READY YES.
-- [[plan/evidence/p08-preemption-patch35-rcp-correction]] — P08 — PATCH 3.5 RCP per-OSThread correction — TLS `current_mi_mask`; RCP-X1..X4 and P3-X6+ PASS; flag OFF.
-- [[plan/evidence/p08-preemption-patch35-independent-review]] — P08 — historical independent review of preemption PATCH 3.5 — Verdict C; process-global RCP defect proven, now resolved by the preserved correction review.
-- [[plan/evidence/p08-preemption-patch35-validation]] — P08 — PATCH 3.5 implementer validation — A+ hold-until-eligible claims; PATCH4 gate corrected/superseded by independent review.
-- [[plan/evidence/p08-preemption-patch35-design]] — P08 — PATCH 3.5 semantic-closure design — implemented/validated.
-- [[plan/evidence/p08-preemption-patch3-independent-review]] — P08 — independent review of preemption PATCH 3 — Veredito B; PATCH 3 aceite; branch-likely PROVEN; JR genérico INCOMPLETE; PATCH 3.5 design next; PATCH4_READY NO.
-- [[plan/evidence/p08-preemption-patch3-validation]] — P08 — preemption PATCH 3 generator safepoint validation — T11 static/live/ABI PASS; flag OFF; sem regen Tooie.
-- [[plan/evidence/p08-preemption-patch2-independent-review]] — P08 — independent review of preemption PATCH 2 — Veredito B; PATCH 3 ready; X1 cause/class before PATCH 4; C ABI must wrap status_reg.
-- [[plan/evidence/p08-preemption-patch2-validation]] — P08 — preemption PATCH 2 runtime service validation — epoch/service/intmask; T01–T10/T12 PASS; flag OFF; cumulative artifact.
-- [[plan/evidence/p08-preemption-patch1-independent-review]] — P08 — independent review of preemption PATCH 1 — Veredito B; PATCH 2 ready; T01-E WEAK; cumulative artifact B; PATCH 3 void*/recomp_context* collision.
-- [[plan/evidence/p08-preemption-patch1-validation]] — P08 — preemption PATCH 1 scaffold validation — stubs, flag OFF, harness T01 PASS, dirty files untouched.
-- [[plan/evidence/p08-slot7-scheduled-event-validation]] — P08 — slot7 scheduled-event dynamic validation (clean freeze, class A) — 3 clean freezes: objeto de table[2] agendado na delta-queue do SoundManager (head, delta 0), handler func_8001ED68, func_8001EE34 pending, thread [Game] AUDIO estacionada + contadores de áudio congelados → CLASS A (callback agendado e devido, mas contexto de dispatch não pode rodar).
-- [[plan/evidence/p08-slot7-scheduled-event-driver]] — P08 — slot7 scheduled event driver reconstruction (func_8001EE34 / func_8001ED68) — Reconstrução estática do scheduler, delta-queue e dispatch indireto (Gemini).
-- [[plan/evidence/p08-attract-actor-loop-diagnosis]] — P08 — attract actor-loop / slot7 readiness busy-wait — MAIN em C2AB8; slot7 pending; func_80026500 refutado como hang PC.
-- [[plan/evidence/p08-type4-transition-semantics-audit]] — P08 — auditoria estática + clean-freeze type-4 snapshot — Layout/estados da type-4; snapshot limpo (8/8 runs) prova type-4 completa, warp consumido e corrige 0.9/3.5/2883 para +0x0C/+0x18/+0x10. Blocker downstream no mode-5/attract init.
-- [[plan/evidence/p08-threadqueue-b-fix-validation]] — P08 — Fix B threadqueue: validação — Validação do fix B em threadqueue.cpp (scan real de links, sem field-equality guard). Contrato de thread_queue_remove provado: HEAD PASS, NON-HEAD/TAIL FAIL (infinite loop). SECOND SCHEDULER BUG CONFIRMED: remove só checa o HEAD. NO_THREADS_LEFT FIXED (0/2 smoke). Novo blocker: SIGSEGV em thread_queue_insert com queue==NULLPTR via osSetThreadPri sobre thread RUNNING (JOY).
-- [[plan/evidence/p08-title-input-eeprom]] — P08 — input title/file select — **CORRECTED/SUPERSEDED** by [[plan/evidence/p08-title-file-select-validation]]; historical blocked wording retained for history only.
-- [[plan/evidence/p08-title-file-select-validation]] — P08-T10 — title/file-select — **VALIDATED / COMPLETE**; intro -> file select -> slot navigation -> confirmation -> Spiral Mountain PASS.
-- [[plan/evidence/p08-visual-validation/README]] — P08 — visual validation: intro → attract handoff — Inventário das capturas e interpretação humana validada da abertura até a tela preta pós-Jiggy.
-- [[plan/evidence/p10-windows-linux-clean-clone-readiness-20261021]] — P10 — Windows 11 x64 and Linux Clean-Clone Readiness and Packaging Verification — Forensic evidence, independent audit results, and reproducible build proof for standalone clean-clone readiness on Linux and native Windows 11 x64 preparation.
-- [[plan/evidence/p10-standalone-vendor-20261021]] — P10 — Standalone repository: Banjo Recomp dependencies vendored (`vendor/`), offline Linux generate/build/test/package proof, Windows pending native host
-- [[plan/index]] — Plano mestre — Banjo-Tooie nativo no Linux — Plano executável para transformar os insumos BanjoRecomp e banjo-tooie-Recomp em um port nativo completo de Banjo-Tooie para Linux.
-
-## plans
-
-- [[plans/BT/00-baseline-and-decisions]] — BT P00 — Baseline e decisões — Congela ambiente, fontes, ROM e decisões antes da implementação do TooieRecomp.
-- [[plans/BT/01-linux-toolchain]] — BT P01 — Toolchain Linux — Instala e valida compiladores, bibliotecas, Python e submódulos usados pelos dois projetos.
-- [[plans/BT/02-rom-decompression-and-elf]] — BT P02 — ROM, decomposição e ELF — Produz e valida os artefatos binários que serão a entrada da recompilação estática.
-- [[plans/BT/03-recompiler-metadata]] — BT P03 — Metadados do recompilador — Converte ELF, símbolos, relocations, overlays e syscalls do Tooie em entradas determinísticas para N64Recomp.
-- [[plans/BT/04-static-recompilation]] — BT P04 — Recompilação estática — Gera C/C++ nativo a partir do MIPS de Banjo-Tooie e fecha o primeiro build compile-only.
-- [[plans/BT/05-native-runtime-and-boot]] — BT P05 — Runtime nativo e boot — Cria o executável TooieRecomp e integra ROM, memória, callbacks e entrada do jogo.
-- [[plans/BT/06-overlays-and-syscalls]] — BT P06 — Overlays e syscalls — Implementa o ciclo completo dos módulos dinâmicos de Banjo-Tooie no runtime nativo.
-- [[plans/BT/07-rsp-and-audio]] — BT P07 — RSP e áudio — Inventaria e integra os microcódigos RSP e o pipeline de áudio necessários por Banjo-Tooie.
-- [[plans/BT/08-rt64-input-and-frontend]] — BT P08 — RT64, entrada e frontend — Completa renderização, janela, controles e experiência de inicialização no Linux.
-- [[plans/BT/09-gameplay-parity-and-enhancements]] — BT P09 — Paridade de gameplay e melhorias — Fecha campanha, saves e timing antes de habilitar widescreen, FPS alto e extensões.
-- [[plans/BT/10-linux-packaging-and-release]] — BT P10 — Empacotamento e release Linux — Produz, testa e publica um artefato Linux reproduzível sem conteúdo proprietário do jogo.
-- [[plans/BT/index]] — Etapas de implementação — TooieRecomp — Índice ordenado das etapas necessárias para entregar Banjo-Tooie nativo no Linux.
-
-## roadmap
-
-- [[roadmap/tooie-recomp]] — TooieRecomp Roadmap — > [!NOTE] > Este roadmap histórico foi substituído pelo [[plan/index|Plano mestre]] e > pelas [[plans/BT/index|etapas de implementação]]. Ele permanece como > registro do raciocínio inicial.
+- [[HANDOFF]] — Estado atual, pendências e próxima ação
+- [[AGENTS]] — Regras para agentes
+- [[README]] — Entrada da documentação
+- [[MARKDOWN_VAULT_TOOLS]] — Guia do MCP markdown-vault
 
 ## specs
 
-- [[specs/BK/build]] — BK — Build — Full pipeline to go from the Banjo-Kazooie US ROM to a native executable, based on `BUILDING.md`.
-- [[specs/BK/ci]] — BK — CI/CD & Release — The four GitHub Actions workflows under `BanjoRecomp/.github/workflows/`. The repo's builds are fully automated, so a portable release of the recomp can be regenerated from CI alone.
-- [[specs/BK/config]] — BK — Recompiler Config — `banjo.us.rev0.toml` configures `N64Recomp` for the Banjo-Kazooie NTSC 1.0 ROM. All paths are relative to the TOML location.
-- [[specs/BK/features]] — BK — Features — Feature set of the port, mostly provided by the `RT64` rendering engine, `N64ModernRuntime` runtime, `RecompFrontend` UI, and the native patch layer.
-- [[specs/BK/index]] — Banjo: Recompiled — Specifications for the `BanjoRecomp` folder — the reference port of Banjo-Kazooie built via static recompilation.
-- [[specs/BK/input]] — BK — Input & Controllers — `create_gfx()` / `main()` configure SDL2 for the whole session:
-- [[specs/BK/mods]] — BK — Mods & Extension APIs — How `BanjoRecomp` lets third-party code attach to the recompiled game: per-object extension data, container APIs, and modI/O. This is the layer between the native [Patches](patches.md) runtime and full community mods.
-- [[specs/BK/overview]] — BK — Static Recompilation Overview — The game's own assets are **not** shipped. The executable grabs them from a user-provided ROM at runtime. The repository and releases contain no game assets.
-- [[specs/BK/patches]] — BK — Native Patches — BanjoRecomp changes game behavior by compiling **native C patches** into a MIPS ELF, then recompiling that ELF with `N64Recomp` and registering the result as overlays. This is the mechanism that powers features like widescreen, note saving, and camera changes.
-- [[specs/BK/reuse-contract]] — BK — Contrato de reutilização para TooieRecomp — Separa componentes reutilizáveis do BanjoRecomp de dados e comportamento exclusivos de Banjo-Kazooie.
-- [[specs/BK/rsp]] — BK — RSP ASP Microcode — Banjo uses the Nintendo *Audio Sample Processor* DSP microcode (`n_aspMain`) on the N64 RSP. The `RSPRecomp` tool converts that RSP binary code into C just like `N64Recomp` does for MIPS CPU code.
-- [[specs/BK/runtime]] — BK — Runtime — How `BanjoRecomp` boots, registers recompiled code, and wires overlays, patches and game features through `N64ModernRuntime` / `RecompFrontend`.
-- [[specs/BK/symbols]] — BK — BanjoRecompSyms — The `BanjoRecompSyms` submodule provides the symbol maps that let `N64Recomp` know which bytes map to which function. It is the BK analog of what `banjo-tooie-Recomp` produces via `symbol_addrs.us.txt` + ELF.
-- [[specs/BK/ui]] — BK — UI Layer — A scene graph of animated SVGs driven by keyframe curves — no video asset, pure transform animation:
-- [[specs/BT/build]] — BT — Build — The `Makefile` produces an ELF that matches the original ROM layout, then a recompressed runnable ROM. The invariant is byte-exact matching.
-- [[specs/BT/ci]] — BT — CI/CD — The decomp repo's single workflow `.github/workflows/ci.yml`.
-- [[specs/BT/compression]] — BT — ROM Compression & Recompression — Banjo-Tooie ships a **compressed cartridge**: boot is flat, but `core1`, `core2` and every overlay are deflated. The decomp repo must read the compressed baserom (decompress) and later rebuild the compressed ROM from the built ELF byte-for-byte (recompress).
-- [[specs/BT/index]] — Banjo Tooie Decomp Fork — Especificações do fork local wesleytakatsu/banjo-tooie-Recomp e de sua relação com o upstream Mr-Wiseguy/banjo-tooie.
-- [[specs/BT/input]] — BT — Input e controles nativos — Contrato de controles do TooieRecomp, deliberadamente alinhado ao BanjoRecomp.
-- [[specs/BT/matching]] — BT — Matching & Decomp Workflow — How a `#pragma GLOBAL_ASM` stub becomes matched C code in `banjo-tooie-Recomp`, and the tools + CI that verify byte-exact output.
-- [[specs/BT/overlays]] — BT — Overlay System — Banjo-Tooie makes heavy use of **dynamically loaded code overlays** — the largest complicating factor for a static recomp. Overlays are code banks loaded into a fixed 0x80800000 VRAM region at runtime.
-- [[specs/BT/overview]] — BT — Decompilation Overview — WIP decompilation of Banjo-Tooie (NTSC-U) by **Mr-Wiseguy** (author of `N64Recomp` / `N64ModernRuntime` / `rarezip`). Uses **Splat** to split the ROM and rebase the game to an ELF.
-- [[specs/BT/recomp-readiness]] — BT — Prontidão para recompilação estática — Inventário dos artefatos existentes no banjo-tooie-Recomp, contratos para N64Recomp e lacunas do futuro TooieRecomp.
-- [[specs/BT/rsp-and-audio]] — BT — RSP e áudio — Config: `TooieRecomp/n_aspMain.us.rev0.toml`
-- [[specs/BT/setup]] — BT — Setup — O checkout antigo `banjo-tooie/` foi excluído. Ele não deve aparecer em caminhos locais, scripts nem instruções. O nome sem `-Recomp` continua válido somente para identificar o repositório upstream.
-- [[specs/BT/sources]] — BT — Source Tree — Layout of `banjo-tooie-Recomp/src/` (generated by Splat), organized by memory segment.
-- [[specs/BT/splat]] — BT — Splat configuration — `baserom.us.yaml` drives **Splat**, which splits the decompressed ROM into `src/`, `asm/`, and `assets/`.
-- [[specs/BT/symbols]] — BT — Symbols and Relocations — The repo ships plain-text symbol and relocation maps used by Splat at build time. These are the raw material for a static-recomp symbol table.
-- [[specs/BT/syscalls]] — BT — Overlay Syscall Dispatch — Generates `overlay_syscalls.s` from `overlays.us.toml` (banjo-tooie-Recomp):
-- [[specs/BT/tools]] — BT — Tooling — C++ and Python tools under `banjo-tooie-Recomp/tools/`, built by `tools/Makefile` and used by the main Makefile.
-- [[specs/Tooie/asset-and-licensing-manifest]] — TooieRecomp Spec — Asset Ownership and Licensing Manifest — Comprehensive specification of copyright boundaries, ROM-derived code classification, third-party component licenses, and distribution restrictions.
-- [[plan/evidence/p08-widescreen-edge-geometry]] — P08 — Widescreen edge geometry: gameplay map/object vis production ON; intro WALL7799 skip original AABB TOP cull; 819F8 post-AABB skip OPEN.
-- [[specs/index]] — Specifications Index — Technical specifications for the two reference projects used to build a Banjo-Tooie static recompilation.
+- [[specs/index]] — Índice das specs e matriz de requisitos
+- [[specs/Tooie/index]] — Hub das specs do port nativo
+- [[specs/Tooie/build-and-generator]] — Build e gerador do recompilador
+- [[specs/Tooie/packaging-and-dependencies]] — Empacotamento, releases e dependências
+- [[specs/Tooie/asset-and-licensing-manifest]] — Fronteiras de assets e licenças
+- [[specs/Tooie/runtime-and-overlays]] — Runtime, overlays dinâmicos e preempção
+- [[specs/Tooie/audio-system]] — Áudio e microcódigo RSP
+- [[specs/Tooie/graphics-and-presentation]] — RT64, widescreen e interpolação
+- [[specs/Tooie/input-and-controllers]] — Entrada e controles
+- [[specs/Tooie/window-ui-and-config]] — Janela, UI e configuração
+- [[specs/Tooie/save-system]] — Saves
+- [[specs/Tooie/gameplay-parity]] — Paridade de gameplay
+- [[specs/Tooie/diagnostics-and-telemetry]] — Diagnósticos e telemetria
+- [[specs/Tooie/testing-and-oracle]] — Testes e oráculo
+- [[specs/Tooie/angrylion-control-oracle]] — Oráculo ANGRYLION_CONTROL
+- [[specs/Tooie/modding-and-extensions]] — Modding e extensões
+
+## reverse-engineering
+
+- [[reverse-engineering/README]] — Base de conhecimento
+- [[reverse-engineering/glossary]] — Estados, proveniência, aliases
+- [[reverse-engineering/corrections]] — Correções de identidade
+- [[reverse-engineering/symbols/functions]] — Funções (também `symbols/functions.csv`)
+- [[reverse-engineering/symbols/overlays]] — Overlays
+- [[reverse-engineering/symbols/structs]] — Structs / offsets
+- [[reverse-engineering/assets/README]] — Assets e recursos (também `assets/resource-ids.csv`)
+- [[reverse-engineering/assets/animations]] — Animações
+- [[reverse-engineering/assets/models]] — Modelos
+- [[reverse-engineering/characters/banjo]] — Banjo
+- [[reverse-engineering/characters/kazooie]] — Kazooie
+- [[reverse-engineering/characters/mumbo]] — Mumbo
+- [[reverse-engineering/systems/view-volume]] — Volume de visão e culling
+- [[reverse-engineering/systems/transform-interpolation]] — Interpolação de transforms (RT64)
+- [[reverse-engineering/systems/model-renderer]] — Renderizador de modelos
+- [[reverse-engineering/systems/geocmd]] — GeoCmd
+- [[reverse-engineering/systems/animation]] — Animação
+- [[reverse-engineering/systems/secondary-animation]] — Animação secundária (bawobble)
+- [[reverse-engineering/systems/resource-system]] — Sistema de recursos
+- [[reverse-engineering/systems/overlays]] — Sistemas de overlay
+- [[reverse-engineering/systems/audio-sequence-volume]] — Volume de sequências e BGM
+- [[reverse-engineering/modding/README]] — Mapa de modding
+- [[reverse-engineering/modding/known-extension-points]] — Pontos de extensão

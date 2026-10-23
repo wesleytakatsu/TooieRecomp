@@ -73,26 +73,18 @@ Antes de mover, dividir, renomear ou remover notas.
 5. Rode `markdown_vault_diagnose_docs`.
 6. Rode `markdown_vault_lint`.
 
-## Modelo adotado pelos planos BT
+## Modelo das notas
 
-Cada etapa em [plans/BT](plans/BT/index.md) mantém frontmatter com `title`,
-`description`, `status`, `type`, `project`, `phase`, `order`, `depends_on` e
-`tags`. Os títulos são únicos, cada arquivo contém somente uma H1 e os links
-internos usam paths relativos ou wikilinks resolvíveis.
-
-As ações usam checkboxes e IDs estáveis como `P03-T04`. Assim,
-`markdown_vault_extract_tasks` produz uma fila de trabalho que continua
-compreensível fora do arquivo original. A mudança de fase exige atualizar o
-`status` do frontmatter, o gate no [plano mestre](plan/index.md) e anexar
-evidências no documento da etapa.
+Toda nota tem frontmatter com `title`, `description`, `status` e `tags`; títulos são únicos, cada arquivo tem uma só H1 e os
+links internos usam paths relativos ou wikilinks resolvíveis. Não há mais planos de fase nem pasta de evidências (removidos em
+2026-10-23); o estado corrente fica em [HANDOFF](HANDOFF.md).
 
 Para agentes, o fluxo recomendado é:
 
 1. `markdown_vault_generate_agent_briefing` com a tarefa atual.
-2. `markdown_vault_build_context_pack` limitado à fase e às specs relacionadas.
-3. `markdown_vault_extract_tasks` para selecionar o próximo ID pendente.
-4. Implementação e registro da evidência na mesma nota.
-5. `markdown_vault_audit` antes de fechar a fase.
+2. `markdown_vault_build_context_pack` limitado ao HANDOFF e às specs/RE da área.
+3. Implementação; detalhes da investigação vão na mensagem do commit.
+4. `markdown_vault_audit` antes de encerrar.
 
 ## Critério de pronto
 

@@ -49,11 +49,11 @@ is `CORRECTED/SUPERSEDED`. Live untagged worlds interpolate with
 matches live explosions (`REFUTED` as the captured root). Use
 `CURRENT_ROOT_CLASS: INDEPENDENT_VIEW_AND_WORLD_INTERPOLATION_OF_COUPLED_RELATIVE_MOTION`.
 Provenance:
-[[../plan/evidence/p09-relative-view-world-interpolation-root-cause]],
-[[../plan/evidence/p09-feather-no-interp-v5c]],
-[[../plan/evidence/p09-world-occurrence-identity-root-cause-audit]],
-[[../plan/evidence/p09-boned-interpolation-counterfactual]],
-[[../plan/evidence/p09-kazooie-feather-v6-post-matrix-vertex-path]].
+`p09-relative-view-world-interpolation-root-cause`,
+`p09-feather-no-interp-v5c`,
+`p09-world-occurrence-identity-root-cause-audit`,
+`p09-boned-interpolation-counterfactual`,
+`p09-kazooie-feather-v6-post-matrix-vertex-path`.
 
 ## Global current-frame FIXED is not a production interpolation disable
 
@@ -62,8 +62,8 @@ high-rate renders still on. That proves **some** frame-weight consumer
 is causal. It does **not** license permanently forcing all processors
 to CURRENT. V5C did **not** refute interpolation of every concrete
 world slot used by visible feather vertices. Provenance:
-[[../plan/evidence/p09-high-rate-force-current-frame]],
-[[../plan/evidence/p09-temporal-coherency-root-cause]].
+`p09-high-rate-force-current-frame`,
+`p09-temporal-coherency-root-cause`.
 
 ## Projection-only CURRENT is not a causal isolate
 
@@ -73,7 +73,7 @@ plus severe ghosting. That is `INVALID_TEMPORALLY_INCOHERENT`, not
 proof that ProjectionProcessor is the original root. The diagnostic
 was removed. Do not add another per-component CURRENT override.
 Default high-rate after removal is still `GLITCH` (no leak).
-Provenance: [[../plan/evidence/p09-temporal-coherency-root-cause]].
+Provenance: `p09-temporal-coherency-root-cause`.
 
 ## V7 current-frame handoff CORRECT does not cover intermediate high-rate math
 
@@ -82,7 +82,7 @@ endpoint/current GameFrame path. It does not prove that interpolated
 `viewProj(w)*world(w)*(pos-vel*(1-w))` is geometrically sane at
 intermediate `w`. Do not treat a V7 PASS as a high-rate interpolation
 PASS. Provenance:
-[[../plan/evidence/p09-passive-high-rate-temporal-coherency-witness]].
+`p09-passive-high-rate-temporal-coherency-witness`.
 
 ## Vel=0 does not make RSP/Vertex a temporal no-op
 
@@ -90,7 +90,7 @@ F3DEX2 empty velocity and default `vertexInterpolation=SKIP` make the
 `pos - vel*(1-w)` term zero. `RSPProcessCS` still multiplies
 interpolated `viewProjMat` and `worldMat`. `prevWorldMats` is not the
 ordinary raster POSITION source. Provenance:
-[[../plan/evidence/p09-temporal-coherency-root-cause]].
+`p09-temporal-coherency-root-cause`.
 
 ## Prior Q-witness small deltas do not outrank global-current FIXED
 
@@ -98,8 +98,8 @@ The CPU Q' witness reported small interpolation deltas. It did not
 include the later high-rate global-current `FIXED`. It also does not
 justify a mixed-time projection-only A/B (that experiment is
 `INVALID`). Provenance:
-[[../plan/evidence/p09-feather-postprocess-q-witness-v1]],
-[[../plan/evidence/p09-temporal-coherency-root-cause]].
+`p09-feather-postprocess-q-witness-v1`,
+`p09-temporal-coherency-root-cause`.
 
 ## V5C SAME is not original-framerate FIXED
 
@@ -108,7 +108,7 @@ Original-framerate graphics (`targetRate=0`) also removes extra
 `threadRenderFrame` calls, `GameFrame::match`, and interpolated
 color-target presents. Those are not the same experiment. Do not treat
 V5C as a global current-frame test. Provenance:
-[[../plan/evidence/p09-high-rate-force-current-frame]].
+`p09-high-rate-force-current-frame`.
 
 ## BanjoRecomp PR #22 tagging is not a ready P09 fix
 
@@ -121,7 +121,7 @@ solution: AUTO identity `CORRECT`, DLs are rigid-bone, no GeoCmd1 sort
 node on that tree. V5B `SAME` does **not** close interpolation of JOIN
 parents 107/108 (see V5C). `CORRECTED` vs tagging-as-`ROOT_CANDIDATE`.
 Provenance:
-[[../plan/evidence/p09-banjorecomp-transform-tagging-portability-audit]].
+`p09-banjorecomp-transform-tagging-portability-audit`.
 
 ## V6 zero-triangle capture is not missing feather geometry
 
@@ -135,7 +135,7 @@ hits were stored under matrix/match workload, the G_MTX token is cleared
 after the first world-transform G_VTX, and `FEATHER_TRI_ROWS` only
 incremented after that lookup. `CORRECTED`. Do not treat TRI=0 as
 renderer evidence. Provenance:
-[[../plan/evidence/p09-kazooie-feather-v6b-triangle-witness-repair]].
+`p09-kazooie-feather-v6b-triangle-witness-repair`.
 
 ## Feather `0x5AA` G_VTX destination is v0=0, not v0=8
 
@@ -148,7 +148,7 @@ The previously cited “type-0x11 child of `0x62B+0x124A0`” with
 `dl=0x534` is the child of bone 105 (`+0x124D0`). Bone 103's own
 type-0x11 is `+0x12580` `dl=0x5AA`; its type-0x18 join is `+0x12550`
 `dl=0x592`. `CORRECTED/SUPERSEDED`. Provenance:
-[[../plan/evidence/p09-kazooie-feather-gmtx-to-dl-trace]].
+`p09-kazooie-feather-gmtx-to-dl-trace`.
 
 ## Kazooie plume GeoCmd parent is 107, not head 108
 
@@ -158,7 +158,7 @@ that placed 100–105 in the head-108 child list followed 108's sibling
 continue (`next=0x160`) and are `CORRECTED/SUPERSEDED`. Crest 79 remains
 a GeoCmd child of head 108. Skeletal compose parent of 103 and 100 is
 the same index 25 / 107. Provenance:
-[[../plan/evidence/p09-visual-geometry-identity-and-scope-forensic]].
+`p09-visual-geometry-identity-and-scope-forensic`.
 
 ## Kazooie V1 low determinant is not a singular matrix
 

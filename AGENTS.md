@@ -16,88 +16,37 @@ The canonical ROM is strictly an explicit private input (`Banjo-Tooie (USA).z64`
 
 ## Required read order
 
-Before changing code, build logic, patches, plans, or specs:
+Before changing code, build logic, patches or docs:
 
 1. Read this file.
 2. Read `docs/AGENTS.md`.
-3. Read `docs/plan/index.md`.
-4. Locate the active BT phase in `docs/plans/BT/index.md` and read that phase.
-5. Read only the BK/BT specs referenced by the active phase/task.
-6. Read `docs/HANDOFF.md` and the current session handoff/evidence referenced there.
-7. Select one open task / one bounded objective before editing.
+3. Read `docs/HANDOFF.md` (current state, open items, next action).
+4. Read only the specs (`docs/specs/Tooie/**`) and reverse-engineering pages (`docs/reverse-engineering/**`) for the area of the task.
+5. Select one bounded objective before editing.
 
-Do not reopen hypotheses explicitly marked `REFUTED`, `CORRECTED/SUPERSEDED`, or resolved unless new primary evidence contradicts them.
+Do not reopen conclusions explicitly marked `REFUTED` or `CORRECTED/SUPERSEDED` unless new primary evidence contradicts them.
 
-Active P08 residual: `WIDESCREEN_EDGE_GEOMETRY`. Canonical state is
-`docs/HANDOFF.md` and `docs/plan/evidence/p08-session-handoff.md`.
-`gspropsDll_entrypoint_1` is a one-shot type-6 load of all gccubes, not
-per-frame visibility. Type-6 per-frame consumer is `800FF62C` over
-`D_80136EE0`; vis is Euclidean `800EFFB4` (NOT aspect/FOV); TYPE6 vis CF
-`NO_CHANGE`. Sprite types 7/9/C (`800CBB18` is type 0xC, not 0xA) dispatch
-at map load via `gccube_ep6`; `800F0064` is world XZ membership, not
-camera/FOV/aspect; GSPROPS vis CF is `PARTIAL_HIT` on inserts and
-`REFUTED` as Expand pop. Bound-sprite `800B3CDC` products live in
-`D_8012AE80+0xE0`; per-frame consumers are spatial queries (`800CB8F0`
-LIVE 5777) with `draw_fn=NONE`; `BOUND_SPRITE_VIEW_CULL_AS_EXPAND_ROOT`
-is `REFUTED`. Do not wrap `80108DC0` as vis. Do not treat `800F0064` as
-a FOV gate. Do not reopen bound-sprite draw. Do not combine
-`TOOIE_TEST_DISABLE_MAP_VIS_CULL`, `TOOIE_TEST_DISABLE_MODEL_GEO_CULL`,
-`TOOIE_TEST_DISABLE_PROP_CELL_VIS_CULL`, `TOOIE_TEST_DISABLE_GSPROPS_VIS_CULL`,
-or `TOOIE_TEST_DISABLE_TYPE6_STATIC_VIS_CULL`.
-`8011458C` is occupancy/near-fog via `801143A4`, not actor draw.
-Actor chain `80114184`→`800BD708`→`800CD23C`→`800EA628`→`80103508`→`8010108C`.
-`TOOIE_TEST_EXPAND_ACTOR_CUBE_AABB` is `PARTIAL_HIT` visitation /
-`NO_CHANGE` draw-DL (`03508=3` `0108c=0`).
-`ACTOR_PICKUP_VIEW_CULL_AS_EXPAND_ROOT` is `REFUTED`.
-`80108C14` is a rare `D_80136EE0` submit (`LIVE` 2 vs `800FF62C=1337`),
-same type-6 objects, GETTER jalr not DRAW, RESOURCE gates only.
-`80108C14_AS_REMAINING_DRAW_ROOT` is `REFUTED`.
-`REMAINING_STATIC_DECORATIVE_VIEW_CULL_AS_EXPAND_ROOT` is `REFUTED`.
-Prior “intra-model GeoCmd analog untested” is `CORRECTED/SUPERSEDED`:
-it was `800E3DC0`/`800CAB70` (BK GeoCmdD homolog; `E3DC0_DIRECT_ROOT`
-already `REFUTED`). No distinct extra GeoCmd layer. `800CAA24` aspect-aware
-H-plane Expand is **production default ON** (user visual
-`VISUALLY_CONFIRMED_FOR_TESTED_GAMEPLAY_MAP_GEOMETRY`; `TOOIE_TEST_MAP_VIS_ASPECT_AWARE=0`
-forces original). `ACTOR_CUBE_AABB_SELECTION_AS_EXPAND_DRAW_ROOT: REFUTED`
-(do not say globally actor/pickup view cull REFUTED).
-`TYPE6_AS_INTRO_RESIDUAL_ROOT: STRONGLY_WEAKENED`;
-`TYPE6_GAMEPLAY_OBJECT_POP_ROOT: REOPENED_TARGETED`.
-Screenshot A/B/C object pop is `PROVEN` (object-specific, shared with demo).
-Corrected object-pop diagnostic captured gameplay `chsilo`/`chnests`.
-A/B transitions are `OBJECT_MODEL_FRUSTUM_SIDE_PLANE` (`800CACEC` source
-reject / target accept). User visual confirmed aspect-aware CACEC;
-**production ON** unless `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE=0`.
-DRAW-only expand (`800E3E8C`/`8011447C`); original v0 for `8011458C`
-and `chlightfader`. Intro walls `STILL_PRESENT` and independent
-(`SOURCE_GEOMETRY`/`CAMERA_FRAMING` `STRONG_HYPOTHESIS`; map
-`MAP_18B_CS_STARTUP_INTRO`). Do not return to GPU. Do not combine vis
-flags. Do not implement an intro production fix until MAP_18B extents
-are dumped. Keep original `800CACEC` v0 for demo/callback consumers.
-`CLEAN_PINNED_BUILD_VALIDATION: PASS` (`23c070a9` + clean RT64 `6f1c2d99`;
-artifact `/tmp/p08-clean-milestone-validation-20260830T035059Z/`).
-2026-10-22 gameplay edge fix (user confirmed): **native-style planes**
-production ON — the volume aspect `+0xE8` is widened only while plane
-builders `800CA1B0`/`800CA218`/`800CA2A8` run (the game's own wide-screen
-flag `0x800799B8` path, without its anamorphic projection/HUD); projection
-`800CB124` stays 4:3. Per-test expansions use k=1 while it is active; attract
-demos (`0x80127632 == 5`) keep original planes (wider planes desync them).
-Kill switch `TOOIE_TEST_WS_NATIVE_PLANES=0`. Draw-only `800DE498` forcing is
-`REFUTED` as a fix (frozen edge actors, draws through walls); GeoCmd type-14
-gates ARE interceptable (prior "no LOOKUP site" claim `CORRECTED`). Census:
-`TOOIE_DIAG_WS_CULL_CENSUS=<file>`. Evidence
-`docs/plan/evidence/p08-widescreen-native-planes-20261022.md`.
+## Current guardrails (render)
+
+- Widescreen: production culls with native-style 16:9 planes (volume aspect `+0xE8` widened only while
+  `800CA1B0`/`800CA218`/`800CA2A8` build the lateral vectors; projection `800CB124` stays 4:3 for RT64). Attract demos
+  (`0x80127632 == 5`) keep the original planes. Kill switch `TOOIE_TEST_WS_NATIVE_PLANES=0`. Draw-only forcing in
+  `800DE498` is `REFUTED` as a fix (frozen edge actors, draws through walls). Do not combine the
+  `TOOIE_TEST_DISABLE_*_CULL` diagnostic flags. Do not return to GPU-side investigation for culling.
+- Interpolation: RT64 pairs untagged WORLD transforms by draw order and applies the P09 guards (align, camera cut, segment
+  and joint coherence, spike guard); the elementwise closure guard is default OFF. See
+  `docs/specs/Tooie/graphics-and-presentation.md`.
+- Intro walls in 16:9 (`T_INTRO`) and ultrawide (> 16:9) are a separate open residual.
 
 ## Source-of-truth hierarchy
 
 Use the repository, not chat history, as canonical state.
 
-- `docs/HANDOFF.md`: concise global current state.
-- `docs/plan/evidence/*session-handoff*.md`: operational state sufficient for a fresh agent/chat.
-- `docs/plans/**`: phase/task status, gates, residual work, next action.
-- `docs/specs/**`: stable contracts only.
+- `docs/HANDOFF.md`: concise global current state, open items and the next action.
+- `docs/specs/**`: stable contracts of the current system only.
 - `docs/reverse-engineering/**`: current reverse-engineering knowledge (what the game is).
-- `docs/plan/evidence/**`: experiments, dumps, hypotheses, arbitration, and proof (how it was shown).
-- Git commits/patch artifacts: exact implementation history and reproducibility.
+- Git commits/patch artifacts: implementation history, investigation details and reproducibility (there is no evidence
+  folder; plans and evidence were removed on 2026-10-23 and remain in git history).
 
 Classify conclusions explicitly when documenting them:
 
@@ -112,7 +61,7 @@ Classify conclusions explicitly when documenting them:
 
 Never promote a disputed hypothesis into a spec. Canonical RE pages must never silently promote a hypothesis.
 
-Whenever an investigation proves or materially corrects knowledge about a function role or arguments, struct field/offset, resource ID, asset type, model/animation identity, overlay, bone/tag/part, GeoCmd type, matrix/render path, state machine, audio system, map structure, or reusable engine behavior, evaluate whether it belongs in `docs/reverse-engineering/`. Evidence docs remain provenance. Canonical pages hold the current best model. Do not copy full evidence logs into canonical pages.
+Whenever an investigation proves or materially corrects knowledge about a function role or arguments, struct field/offset, resource ID, asset type, model/animation identity, overlay, bone/tag/part, GeoCmd type, matrix/render path, state machine, audio system, map structure, or reusable engine behavior, evaluate whether it belongs in `docs/reverse-engineering/`. Canonical pages hold the current best model; provenance goes in the commit message.
 
 ## Generated code and ownership of fixes
 
@@ -202,7 +151,7 @@ For temporary diagnostic code:
 
 - keep it at the real source layer, never generated C;
 - make it reversible;
-- record the exact diff/command/result in evidence;
+- record the exact diff/command/result in the commit message;
 - distinguish timing-perturbed runs from clean ground truth;
 - revert temporary diagnostic code before a docs-only checkpoint unless the active task explicitly promotes it into the implementation.
 
@@ -214,14 +163,12 @@ A technical task is not complete when only the code or experiment is done.
 
 When the state changes, review and update as applicable:
 
-- task-specific evidence;
-- current session handoff;
 - `docs/HANDOFF.md`;
-- active phase plan;
 - related specs;
-- indexes/vault navigation.
+- reverse-engineering pages when knowledge of the game changed;
+- indexes/vault navigation (`docs/VAULT.md`).
 
-Specs describe stable contracts; evidence records investigation and uncertainty; handoffs describe current operational state.
+Specs describe stable contracts; handoffs describe current operational state; commits record how it was shown.
 
 When models/agents disagree, preserve both claims and record the arbitration/proof instead of silently choosing one.
 
@@ -229,7 +176,7 @@ Run the documented documentation checks before closing a task, including `markdo
 
 ## Build and validation
 
-Use commands already documented by the active phase/specs/evidence. Do not invent a new build or dependency workflow if the repository already has one.
+Use commands already documented by the specs and `tools/` docs. Do not invent a new build or dependency workflow if the repository already has one.
 
 For a behavioral/runtime change, validate at the narrowest useful levels first (unit/harness), then integration/build, then the relevant clean game reproduction.
 
@@ -255,7 +202,7 @@ Before handing off:
 - generated code was not hand-edited;
 - pre-existing dirty state was preserved;
 - required tests/builds actually ran;
-- docs/phase/specs were reviewed and updated where appropriate;
+- docs/specs were reviewed and updated where appropriate;
 - `git diff --check` passes for intended changes;
 - worktree status is explicitly reported;
 - commit/push state is recorded;

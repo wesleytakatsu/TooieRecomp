@@ -22,7 +22,7 @@ only `0x592` as JOIN; the known `0x54C` and `0x564` distal join DLs are not
 covered by that class. Root join unresolved count `3252/3720` blocks a complete
 CPU geometry claim. A join can alter its connecting surface but cannot move
 the separately submitted own-mesh vertices; exact visual artifact ownership
-remains UNKNOWN. See [[../../plan/evidence/p09-post-triangle-architectural-review]]
+remains UNKNOWN. See `p09-post-triangle-architectural-review`
 for source/CSV limits and the next witness.
 
 ## Dispatch (`PROVEN` generated C)

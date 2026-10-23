@@ -38,7 +38,7 @@ USAGE
 
 if [[ ! -x "$ORACLE_RUN" ]]; then
   echo "error: oracle launcher not found: $ORACLE_RUN" >&2
-  echo "See docs/specs/BT/angrylion-control-oracle.md" >&2
+  echo "See docs/specs/Tooie/angrylion-control-oracle.md" >&2
   exit 1
 fi
 
