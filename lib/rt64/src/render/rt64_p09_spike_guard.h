@@ -5,11 +5,13 @@
 //
 // Whatever the matcher and the earlier guards decide, an interpolated frame must not show a triangle much longer than
 // it is in the CURRENT frame: the game never draws it that way, and on screen it is a one-frame spike or rod. The
-// remaining cases come from pairs that are wrong for reasons the matcher cannot see (an object or part that appears,
-// vanishes or swaps level of detail between two frames). For every triangle whose rendered edge exceeds twice its CURRENT
-// length (and by more than 4 units, the same rule as the rod classifier), the whole object it belongs to (the WORLDs
-// connected through shared triangles) is shown at CURRENT for this frame: that object steps like the 30 fps original
-// for one frame instead of tearing. Default ON; TOOIE_TEST_P09_SPIKE_GUARD=0 disables it. Inert while the endpoint-CURRENT
+// remaining cases come from rigid interpolation of a skinned body, or from pairs that are wrong for reasons the matcher
+// cannot see (an object or part that appears, vanishes or swaps level of detail between two frames). For every triangle
+// whose rendered edge exceeds twice its CURRENT length (and by more than 4 units, the same rule as the rod classifier),
+// the whole object (the WORLDs connected through shared triangles) is first shown with elementwise interpolation: each
+// vertex stays on the chord between its endpoints, which keeps the interpolated time and does not step at 30 fps. Only
+// if an edge is still stretched (a wrong pair) is that object shown at CURRENT. Default ON; TOOIE_TEST_P09_SPIKE_GUARD=0
+// disables it and TOOIE_TEST_P09_SPIKE_ELEMENTWISE=0 restores the CURRENT-only behaviour. Inert while the endpoint-CURRENT
 // workaround is active (the interpolated matrices do not reach the screen then).
 //
 
@@ -33,6 +35,15 @@ namespace p09SpikeGuard {
     inline bool enabled() {
         static const bool on = [] {
             const char *e = std::getenv("TOOIE_TEST_P09_SPIKE_GUARD");
+            return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
+        }();
+        return on;
+    }
+
+    // Elementwise chord for a stretched object. TOOIE_TEST_P09_SPIKE_ELEMENTWISE=0 snaps it to CURRENT instead.
+    inline bool elementwiseEnabled() {
+        static const bool on = [] {
+            const char *e = std::getenv("TOOIE_TEST_P09_SPIKE_ELEMENTWISE");
             return (e == nullptr) || (e[0] == '\0') || (e[0] != '0');
         }();
         return on;
@@ -314,7 +325,6 @@ namespace p09SpikeGuard {
         return attached;
     }
 
-    // Returns the number of WORLD matrices shown at CURRENT.
     // Unites WORLDs joined by a joint (the child's origin stays within JointMaxDrift in the parent's local frame between the
     // two endpoints, CURRENT origins within JointRadius): segmented models have no triangle across their joints, so this is
     // what makes one articulated object a single group.
@@ -356,7 +366,8 @@ namespace p09SpikeGuard {
         }
     }
 
-    inline uint32_t apply(Workload &workload, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData, float curWeight) {
+    // Returns the number of WORLD matrices rewritten (elementwise, or CURRENT when an edge stays stretched).
+    inline uint32_t apply(Workload &workload, const GameFrameMap::WorkloadMap &workloadMap, const DrawData &prevDrawData, float prevWeight, float curWeight) {
         if (!enabled() || (curWeight >= 1.0f) || endpointCurrentActive()) {
             return 0;
         }
@@ -433,17 +444,79 @@ namespace p09SpikeGuard {
             return 0;
         }
 
-        uint32_t snapped = 0;
+        // Elementwise chord first. TOOIE_TEST_P09_SPIKE_ELEMENTWISE=0 keeps the CURRENT snap for every flagged root.
+        std::vector<hlslpp::float4x4> ew;
+        std::vector<uint8_t> stillRoot;
+        if (elementwiseEnabled()) {
+            ew.resize(nWorld);
+            stillRoot.assign(nWorld, 0);
+            for (size_t t = 0; t < nWorld; t++) {
+                const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
+                const bool flagged = snapRoot[findRoot(parent, uint32_t(t))] != 0;
+                if (flagged && tm.mapped && (tm.prevTransformIndex < prevDrawData.worldTransforms.size())) {
+                    ew[t] = lerpMatrix(prevDrawData.worldTransforms[tm.prevTransformIndex], d.worldTransforms[t], curWeight);
+                }
+                else {
+                    ew[t] = d.lerpWorldTransforms[t];
+                }
+            }
+
+            for (size_t f = 0; f < nTri; f++) {
+                const uint32_t v[3] = { d.faceIndices[f * 3], d.faceIndices[f * 3 + 1], d.faceIndices[f * 3 + 2] };
+                if ((v[0] >= nVert) || (v[1] >= nVert) || (v[2] >= nVert)) continue;
+                const uint32_t w[3] = { d.worldIndices[v[0]], d.worldIndices[v[1]], d.worldIndices[v[2]] };
+                if ((w[0] >= nWorld) || (w[1] >= nWorld) || (w[2] >= nWorld)) continue;
+                if (!workloadMap.transforms[w[0]].mapped && !workloadMap.transforms[w[1]].mapped && !workloadMap.transforms[w[2]].mapped) continue;
+                const uint32_t root = findRoot(parent, w[0]);
+                if (!snapRoot[root] || stillRoot[root]) continue;
+                hlslpp::float3 pc[3], pl[3];
+                for (int i = 0; i < 3; i++) {
+                    const hlslpp::float3 lc(d.posFloats[size_t(v[i]) * 3 + 0], d.posFloats[size_t(v[i]) * 3 + 1], d.posFloats[size_t(v[i]) * 3 + 2]);
+                    hlslpp::float3 lv(0.0f, 0.0f, 0.0f);
+                    if (hasVel) {
+                        lv = hlslpp::float3(d.velFloats[size_t(v[i]) * 3 + 0], d.velFloats[size_t(v[i]) * 3 + 1], d.velFloats[size_t(v[i]) * 3 + 2]);
+                    }
+
+                    pc[i] = xf(d.worldTransforms[w[i]], lc);
+                    pl[i] = xf(ew[w[i]], lc - lv * (1.0f - curWeight));
+                }
+
+                for (int e = 0; e < 3; e++) {
+                    const int a = e, b = (e + 1) % 3;
+                    if (stretched(len3(pl[a] - pl[b]), len3(pc[a] - pc[b]))) {
+                        stillRoot[root] = 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        uint32_t changed = 0;
         for (size_t t = 0; t < nWorld; t++) {
             if (!workloadMap.transforms[t].mapped || !snapRoot[findRoot(parent, uint32_t(t))]) continue;
+            const uint32_t root = findRoot(parent, uint32_t(t));
+            if (elementwiseEnabled() && !stillRoot[root]) {
+                const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
+                if (tm.prevTransformIndex < prevDrawData.worldTransforms.size()) {
+                    const hlslpp::float4x4 prevEnd = prevDrawData.worldTransforms[tm.prevTransformIndex];
+                    const hlslpp::float4x4 curEnd = d.worldTransforms[t];
+                    d.lerpWorldTransforms[t] = ew[t];
+                    d.prevWorldTransforms[t] = lerpMatrix(prevEnd, curEnd, prevWeight);
+                    d.invTWorldTransforms[t] = hlslpp::transpose(hlslpp::inverse(ew[t]));
+                    changed++;
+                }
+
+                continue;
+            }
+
             const hlslpp::float4x4 cur = d.worldTransforms[t];
             d.lerpWorldTransforms[t] = cur;
             d.prevWorldTransforms[t] = cur;
             d.invTWorldTransforms[t] = hlslpp::transpose(hlslpp::inverse(cur));
-            snapped++;
+            changed++;
         }
 
-        return snapped;
+        return changed;
     }
 };
 };

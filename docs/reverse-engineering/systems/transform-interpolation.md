@@ -42,8 +42,11 @@ Modelo atual (2026-10-23). Contrato das variáveis de ambiente: [[../../specs/To
   < 150 u (membros de modelos segmentados).
 - **Joint coherence**: infere a hierarquia (a origem do filho fica fixa, drift < 0,5, no sistema de um vizinho ≤ 25 u) e
   prende a origem do filho ao pai interpolado, eliminando a abertura corda × arco nas juntas.
-- **Spike guard**: se uma aresta interpolada ficar > 2× a atual e > 4 u maior, o objeto (união por triângulos e por juntas)
-  é mostrado na pose atual naquele quadro.
+- **Spike guard**: se uma aresta interpolada ficar > 2× a atual e > 4 u maior, o objeto (união por triângulos e juntas) é
+  exibido primeiro com interpolação elementwise (`lerpMatrix(prev, cur, t)`: cada vértice sobre a corda reta entre seus
+  endpoints, sem arestas excedendo os comprimentos originais e mantendo o tempo interpolado). Se alguma aresta ainda
+  ficar esticada sob matrizes elementwise (pareamento incorreto), o objeto é desenhado na pose atual (CURRENT). Switch:
+  `TOOIE_TEST_P09_SPIKE_ELEMENTWISE=0` restaura a exibição direta em CURRENT (default ON).
 - **Closure guard** (interpolação elementwise): default OFF — encolhia peças e abria juntas ao lado de vizinhos rígidos.
 
 ## Interpolation OFF
@@ -61,10 +64,18 @@ matching de quadros nesse modo.
 - Forçar desenho via `800DE498` para widescreen (não relacionado à interpolação; ver [[view-volume]]).
 - Pular o matching do RT64 com Interpolation OFF mantendo os processadores de endpoint: o processo encerrou sem log numa
   troca de cena do attract (causa `UNKNOWN`).
+- Timing de quadros do jogo como causa de tremores: o passo de VI por quadro (`0x80078F64`, contado pela thread de
+  VI em `0x80079138`, gravado por `func_800151BC`) foi 2 VIs em todos os 660 quadros da demo 3, somando 1318 VIs iguais
+  aos VIs do host; o runtime entrega VIs corretamente.
+- Câmera AUTO sofrendo gate de translação: VIEW usa `G_EX_COMPONENT_INTERPOLATE` (elementwise) e nunca sofre gate.
+- Variação do passo de locomoção originada no renderizador: após o fix o osso raiz de Mumbo é desenhado exatamente em
+  t = 0,5 de cada par; a variação de passo de Mumbo e Banjo decorre da própria locomoção/animação do jogo.
 
 ## Ferramentas (default OFF)
 
-- `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: triângulos esticados (linhas `TRI`/`WL`) e aberturas de junta (`JG`/`JGW`).
+- `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: triângulos esticados (linhas `TRI`/`WL`), aberturas de junta (`JG`/`JGW`) e
+  objetos conectados (linhas `OBJ`, objetos ≥ 20 WORLDs: movimento do centroide `mot`, fração na corda `along`, desvio
+  `perp`, erro `rms`, contagens R/C/E/O/H, e movimento/fração de origem do primeiro WORLD `rmot`/`rlerp`).
 - `TOOIE_DIAG_P09_PAIR_AUDIT=<arquivo>`, `TOOIE_DIAG_P09_CAMERA_CUT=1`, `TOOIE_DIAG_P09_JOINT=1`.
 - Attract automático com interpolação: `TOOIE_AUTO_START=1 TOOIE_TEST_INTERPOLATION_FPS=60`. Muitos glitches só aparecem
   jogando (transições de animação); o attract cobre pouco.

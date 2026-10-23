@@ -40,6 +40,9 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
   attract, pior 91 s → 1,8 s); logs sempre ligados (Demo 5 / mapa 296 `ud5`, log por overlay) agora atrás de
   `TOOIE_DIAG_UD5` / `TOOIE_DIAG_OVERLAY_LOG`. FPS mediano 56 → 72.
 - `e7bc8c1` — Removidos 23 wrappers `TOOIE_UD4_WRAP` de investigação encerrada.
+- Spike guard elementwise — Interpolação: Mumbo e Kazooie tremiam nas demos 3/6/12 porque o spike guard desenhava o
+  objeto em CURRENT ao detectar pequenos estiramentos da interpolação rígida. O fallback elementwise resolveu sem
+  esticar triângulos (WORLDs em CURRENT -96%, 190.633 → 8.374). Usuário confirmou movimento correto (2026-10-23).
 
 ## Pendências conhecidas
 
@@ -54,7 +57,7 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
 
 - Windows: `tools\windows\Build-Tooie.ps1 -Stage Test` **não** atualiza `build-win\TooieRecompiled.exe`; recompile `build-win`
   com ninja antes de medir ou entregar build para teste.
-- Medições úteis (default OFF): `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>` (triângulos esticados e juntas abertas),
+- Medições úteis (default OFF): `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>` (triângulos esticados, juntas e linhas `OBJ`),
   `TOOIE_DIAG_WS_CULL_CENSUS=<arquivo>` (culling widescreen), `TOOIE_DIAG_PRESENT_LOG=1` (taxa de frames, travas).
   Attract automático: `TOOIE_AUTO_START=1`; interpolação forçada: `TOOIE_TEST_INTERPOLATION_FPS=60`.
 - Mudanças em código vendorizado (`lib/`, `decomp/`) viram `vendor/patches-local/*.patch` + linhas em

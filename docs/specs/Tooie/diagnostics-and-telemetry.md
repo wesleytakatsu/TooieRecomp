@@ -64,7 +64,7 @@ Diagnostic Log Output (stderr or specified file destination)
 | `TOOIE_DIAG_OVERLAY_LOG` | Runtime | A | Logs overlay load and unload events. |
 | `TOOIE_DIAG_P09_CAMERA_CUT` | RT64 | B | Logs camera cut detection decisions and matrices. |
 | `TOOIE_DIAG_P09_JOINT` | RT64 | B | Logs joint inference statistics every 200 workloads. |
-| `TOOIE_DIAG_P09_ROD_CLASSIFY=<path>` | RT64 | Path | Evaluates triangles after guard processing and classifies stretched geometry. |
+| `TOOIE_DIAG_P09_ROD_CLASSIFY=<path>` | RT64 | Path | Evaluates geometry after guard processing; classifies stretched rods and logs connected object telemetry (`OBJ` rows for objects ≥ 20 WORLDs: centroid motion `mot`, chord fraction `along`, off-chord `perp`, `rms` error, R/C/E/O/H counts, root motion `rmot`/`rlerp`). |
 | `TOOIE_DIAG_P09_PAIR_AUDIT=<path>` | RT64 | Path | Outputs pairwise transform correspondence evaluations. |
 | `TOOIE_DIAG_P09_LOCAL_PAIR_SNAPSHOT` | RT64 | A | Captures transform snapshot pairs for test harnesses. |
 | `TOOIE_DIAG_TIMING` | Telemetry | A | Logs scheduling and frame pacing telemetry. |

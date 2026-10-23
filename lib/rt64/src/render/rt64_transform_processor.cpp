@@ -347,7 +347,7 @@ namespace RT64 {
                 p09ApplyWorldInterpolationGuards(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
                 p09SpikeGuard::applySegmentCoherence(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
                 p09SpikeGuard::applyJointCoherence(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
-                p09SpikeGuard::apply(workload, workloadMap, prevDrawData, p.curFrameWeight);
+                p09SpikeGuard::apply(workload, workloadMap, prevDrawData, p.prevFrameWeight, p.curFrameWeight);
                 p09RodClassify::run(workload, workloadMap, prevDrawData, p.curFrameWeight);
             }
             // Copy as normal and just generate the inverse of the transforms.

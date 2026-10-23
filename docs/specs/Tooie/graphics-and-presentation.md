@@ -135,14 +135,19 @@ namespace RT64 {
   - `TOOIE_TEST_P09_CAMERA_CUT`: Geometric camera cut detection for AUTO view matrices. Large angular/linear steps suppress camera interpolation for the frame. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_SEGMENT_COHERENCE`: Conditional release of translation interpolation for segmented model parts. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_JOINT_COHERENCE`: Skeletal joint hierarchy inference based on relative pivot invariance. Binds child origin to parent coordinate space. Default ON; `"0"` disables.
-  - `TOOIE_TEST_P09_SPIKE_GUARD`: Connected-component geometry deformation checks uniting mesh triangles and inferred joints. Snaps partition to CURRENT if edges stretch excessively. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_SPIKE_GUARD`: Connected-component geometry deformation checks uniting mesh triangles and inferred
+    joints. Renders flagged objects with elementwise matrix lerp fallback first; snaps partition to CURRENT only if
+    edges remain stretched. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_SPIKE_ELEMENTWISE`: Controls elementwise matrix lerp fallback on spike-flagged objects. Default ON;
+    `"0"` snaps to CURRENT only.
   - `TOOIE_TEST_P09_TRANSLATION_COHERENCE`: Linear velocity coherence gate. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_GATE_SPEED_ONLY`: Controls whether linear velocity gate clamps translation speed only. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_CLOSURE_GUARD`: Convex elementwise matrix lerp limiting. Default OFF (`0`); only `"1"` enables.
   - `TOOIE_TEST_P09_SELECTIVE_ELEMENTWISE_WORLD` / `MULTI_ONLY_ELEMENTWISE_WORLD`: Selective closure guards. Default OFF.
 - **Diagnostic Controls**:
   - `TOOIE_DIAG_P09_CAMERA_CUT` / `TOOIE_DIAG_P09_JOINT`: Diagnostic logging flags. Note: parsed via `getenv != nullptr` (any value turns them ON).
-  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<path>`: Classifies stretched triangles after guard processing. Read-only.
+  - `TOOIE_DIAG_P09_ROD_CLASSIFY=<path>`: Classifies stretched triangles after guard processing and logs connected
+    object metrics (`OBJ` rows). Read-only.
   - `TOOIE_DIAG_P09_PAIR_AUDIT=<path>`: Outputs pairwise transform correspondence evaluations.
 - **Compute Shader Operation (`RSPProcessCS.hlsl`)**:
   - `tfPos` evaluates directly at CURRENT vertex positions:

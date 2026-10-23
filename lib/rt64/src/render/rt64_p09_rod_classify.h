@@ -10,6 +10,9 @@
 //   endpoint length disagrees with CURRENT (pairing/geometry mismatch); C = mixes
 //   WORLDs shown at CURRENT with interpolated ones; N = everything else
 //   (interpolation law). One WL line per interpolated workload, up to 8 TRI lines.
+// One OBJ line per connected mapped object (triangles plus inferred joints) of at least 20 WORLDs: vertex-centroid motion
+// versus the straight PREV-to-CURRENT chord (along, perp), the per-vertex rms miss, and the first WORLD's origin motion
+// (rmot) with its rendered fraction along it (rlerp, 0.5 at the midpoint frame).
 // Read-only: never alters what is rendered.
 //
 
@@ -26,6 +29,7 @@
 
 #include "hle/rt64_game_frame.h"
 #include "hle/rt64_workload.h"
+#include "render/rt64_p09_spike_guard.h"
 
 namespace RT64 {
 namespace p09RodClassify {
@@ -35,6 +39,7 @@ namespace p09RodClassify {
         uint32_t workloads = 0;
         uint32_t triRows = 0;
         uint32_t worldRows = 0;
+        uint32_t objRows = 0;
         State() {
             const char *p = std::getenv("TOOIE_DIAG_P09_ROD_CLASSIFY");
             if ((p != nullptr) && (p[0] != '\0')) file = std::fopen(p, "w");
@@ -222,6 +227,95 @@ namespace p09RodClassify {
             }
         }
 
+        // Connected mapped WORLDs. A fully mapped triangle or an inferred joint unites WORLDs; a component of
+        // >= 20 WORLDs is one articulated object. Sums use the distinct vertices of its triangles.
+        std::vector<uint32_t> parent(nWorld);
+        for (size_t t = 0; t < nWorld; t++) parent[t] = uint32_t(t);
+        auto find = [&](uint32_t x) {
+            while (parent[x] != x) {
+                parent[x] = parent[parent[x]];
+                x = parent[x];
+            }
+            return x;
+        };
+        auto unite = [&](uint32_t a, uint32_t b) {
+            a = find(a);
+            b = find(b);
+            if (a != b) parent[b] = a;
+        };
+        for (size_t f = 0; f < nTri; f++) {
+            const uint32_t v[3] = { d.faceIndices[f * 3], d.faceIndices[f * 3 + 1], d.faceIndices[f * 3 + 2] };
+            if ((v[0] >= nVert) || (v[1] >= nVert) || (v[2] >= nVert)) continue;
+            const uint32_t w[3] = { d.worldIndices[v[0]], d.worldIndices[v[1]], d.worldIndices[v[2]] };
+            if ((w[0] >= nWorld) || (w[1] >= nWorld) || (w[2] >= nWorld)) continue;
+            if ((st[w[0]] == ST_UNMAPPED) || (st[w[1]] == ST_UNMAPPED) || (st[w[2]] == ST_UNMAPPED)) continue;
+            unite(w[0], w[1]);
+            unite(w[0], w[2]);
+        }
+
+        // Segmented models have no triangle across their joints: join them the way the spike guard does.
+        p09SpikeGuard::uniteJoints(d, workloadMap, prevDrawData, parent);
+
+        struct ObjAcc {
+            hlslpp::float3 sumP = hlslpp::float3(0.0f, 0.0f, 0.0f);
+            hlslpp::float3 sumC = hlslpp::float3(0.0f, 0.0f, 0.0f);
+            hlslpp::float3 sumL = hlslpp::float3(0.0f, 0.0f, 0.0f);
+            double sumSq = 0.0;
+            uint32_t verts = 0;
+            uint32_t worlds = 0;
+            uint32_t nR = 0, nC = 0, nE = 0, nO = 0, nH = 0;
+            float rootMot = -1.0f, rootLerp = -1.0f;
+        };
+        std::vector<ObjAcc> acc(nWorld);
+        for (size_t t = 0; t < nWorld; t++) {
+            if (st[t] == ST_UNMAPPED) continue;
+            const uint32_t r = find(uint32_t(t));
+            ObjAcc &A = acc[r];
+            if (A.worlds == 0) {
+                // First drawn WORLD of the object (usually its root): origin motion and rendered fraction along it.
+                const hlslpp::float4x4 m1 = d.worldTransforms[t], ml = d.lerpWorldTransforms[t];
+                const hlslpp::float3 o0 = prevM[t][3].xyz, o1 = m1[3].xyz, ol = ml[3].xyz;
+                const hlslpp::float3 dm = o1 - o0, dl = ol - o0;
+                A.rootMot = len3(dm);
+                const float mm = float(dm.x) * float(dm.x) + float(dm.y) * float(dm.y) + float(dm.z) * float(dm.z);
+                A.rootLerp = (mm > 1e-4f) ? (float(dl.x) * float(dm.x) + float(dl.y) * float(dm.y) + float(dl.z) * float(dm.z)) / mm : -1.0f;
+            }
+            A.worlds++;
+            if (st[t] == ST_RIGID) A.nR++;
+            else if (st[t] == ST_CURRENT) A.nC++;
+            else if (st[t] == ST_ELEMENTWISE) A.nE++;
+            else if (st[t] == ST_OTHER) A.nO++;
+            const GameFrameMap::TransformMap &tm = workloadMap.transforms[t];
+            if (tm.mapped && !tm.rigidBody.lerpTranslation) A.nH++;
+        }
+
+        std::vector<uint8_t> seen(nVert);
+        for (size_t f = 0; f < nTri; f++) {
+            const uint32_t v[3] = { d.faceIndices[f * 3], d.faceIndices[f * 3 + 1], d.faceIndices[f * 3 + 2] };
+            if ((v[0] >= nVert) || (v[1] >= nVert) || (v[2] >= nVert)) continue;
+            const uint32_t w[3] = { d.worldIndices[v[0]], d.worldIndices[v[1]], d.worldIndices[v[2]] };
+            if ((w[0] >= nWorld) || (w[1] >= nWorld) || (w[2] >= nWorld)) continue;
+            if ((st[w[0]] == ST_UNMAPPED) || (st[w[1]] == ST_UNMAPPED) || (st[w[2]] == ST_UNMAPPED)) continue;
+            const uint32_t r = find(w[0]);
+            if (acc[r].worlds < 20) continue;
+            for (int i = 0; i < 3; i++) {
+                if (seen[v[i]]) continue;
+                seen[v[i]] = 1;
+                const hlslpp::float3 lc = local(v[i]);
+                const hlslpp::float3 lv = vel(v[i]);
+                const hlslpp::float3 pc = xf(d.worldTransforms[w[i]], lc);
+                const hlslpp::float3 pp = xf(prevM[w[i]], lc - lv);
+                const hlslpp::float3 pl = xf(d.lerpWorldTransforms[w[i]], lc - lv * (1.0f - curWeight));
+                const hlslpp::float3 miss = pl - (pp + (pc - pp) * curWeight);
+                ObjAcc &A = acc[r];
+                A.sumP = A.sumP + pp;
+                A.sumC = A.sumC + pc;
+                A.sumL = A.sumL + pl;
+                A.sumSq += double(float(miss.x)) * double(float(miss.x)) + double(float(miss.y)) * double(float(miss.y)) + double(float(miss.z)) * double(float(miss.z));
+                A.verts++;
+            }
+        }
+
         std::lock_guard<std::mutex> lock(S.mu);
         if (gaps > 0) {
             std::fprintf(S.file, "JGW wl=%llu joints=%u gaps=%u worst=%.1f\n", (unsigned long long)workload.workloadId, joints, gaps, worstGap);
@@ -232,6 +326,30 @@ namespace p09RodClassify {
             std::fprintf(S.file, "WL wl=%llu wc=%.3f worlds=%zu mapped=%u cur=%u ew=%u other=%u heldT=%u noDecomp=%u faces=%u cross=%u endpointP=%u bad=%u U=%u P=%u C=%u N=%u I=%u worst=%.2f\n",
                 (unsigned long long)workload.workloadId, curWeight, nWorld, nMapped, nCur, nEw, nOther, nHeldT, nNoDecomp, faces, cross,
                 endpointP, bad, badU, badP, badC, badN, badIntra, worst);
+            for (size_t t = 0; t < nWorld; t++) {
+                const ObjAcc &A = acc[t];
+                if ((A.worlds < 20) || (A.verts == 0)) continue;
+                const float inv = 1.0f / float(A.verts);
+                const hlslpp::float3 P = A.sumP * inv;
+                const hlslpp::float3 C = A.sumC * inv;
+                const hlslpp::float3 L = A.sumL * inv;
+                const hlslpp::float3 m = C - P;
+                const float mot = len3(m);
+                float along = -1.0f, perp = 0.0f;
+                if (mot > 0.01f) {
+                    const hlslpp::float3 rel = L - P;
+                    const float dot = float(rel.x) * float(m.x) + float(rel.y) * float(m.y) + float(rel.z) * float(m.z);
+                    along = dot / (mot * mot);
+                    perp = len3(rel - m * along);
+                }
+                const float rms = float(std::sqrt(A.sumSq / double(A.verts)));
+                if (S.objRows < 400000) {
+                    S.objRows++;
+                    std::fprintf(S.file, "OBJ wl=%llu wc=%.3f worlds=%u verts=%u mot=%.2f along=%.3f perp=%.2f rms=%.2f cx=%.1f cy=%.1f cz=%.1f R=%u C=%u E=%u O=%u H=%u rmot=%.2f rlerp=%.3f\n",
+                        (unsigned long long)workload.workloadId, curWeight, A.worlds, A.verts, mot, along, perp, rms,
+                        float(C.x), float(C.y), float(C.z), A.nR, A.nC, A.nE, A.nO, A.nH, A.rootMot, A.rootLerp);
+                }
+            }
             std::fflush(S.file);
         }
     }
