@@ -45,16 +45,23 @@ extern "C" void osContStartReadData_recomp(uint8_t* rdram, recomp_context* ctx) 
 extern "C" void osContGetReadData_recomp(uint8_t* rdram, recomp_context* ctx) {
     PTR(OSContPad) data = _arg<0, PTR(OSContPad)>(rdram, ctx);
 
+    constexpr uint8_t unread_sentinel = 0xFF;
     OSContPad dummy_data[MAXCONTROLLERS];
+    for (int controller = 0; controller < MAXCONTROLLERS; controller++) {
+        dummy_data[controller].err_no = unread_sentinel;
+    }
 
     osContGetReadData(dummy_data);
 
     for (int controller = 0; controller < MAXCONTROLLERS; controller++) {
+        if (dummy_data[controller].err_no == unread_sentinel) {
+            continue;
+        }
+        MEM_B(6 * controller + 4, data) = dummy_data[controller].err_no;
         if (dummy_data[controller].err_no == 0) {
             MEM_H(6 * controller + 0, data) = dummy_data[controller].button;
             MEM_B(6 * controller + 2, data) = dummy_data[controller].stick_x;
             MEM_B(6 * controller + 3, data) = dummy_data[controller].stick_y;
-            MEM_B(6 * controller + 4, data) = dummy_data[controller].err_no;
         }
     }
 }

@@ -52,6 +52,7 @@ namespace recompui {
         std::vector<SelectOption> options;
         std::vector<Option*> option_elements;
         bool is_open = false;
+        bool refreshing_options = false;
 
         Style hover_style;
         Style focus_style;
@@ -71,6 +72,7 @@ namespace recompui {
             std::string selected_option_value = ""
         );
         void add_change_callback(std::function<void(SelectOption& option, int option_index)> callback);
+        void set_options(std::vector<SelectOption> options, std::string selected_value);
         Style* get_hover_style() { return &hover_style; }
         Style* get_focus_style() { return &focus_style; }
         Style* get_disabled_style() { return &disabled_style; }

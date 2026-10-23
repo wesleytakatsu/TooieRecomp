@@ -28,6 +28,18 @@
 static void add_general_options(recomp::config::Config &config) {
     using EnumOptionVector = const std::vector<recomp::config::ConfigOptionEnumOption>;
 
+    static EnumOptionVector multiplayer_mode_options = {
+        {banjo::MultiplayerMode::Off, "Off", "Off"},
+        {banjo::MultiplayerMode::On, "On", "On"},
+    };
+    config.add_enum_option(
+        banjo::configkeys::general::multiplayer_mode,
+        "Multiplayer (up to 4 players)",
+        "Enables per-player controller assignment in Controls. Takes effect after restarting the game.",
+        multiplayer_mode_options,
+        banjo::MultiplayerMode::Off
+    );
+
     static EnumOptionVector note_saving_mode_options = {
         {banjo::NoteSavingMode::Off,        "Off",    "Off"},
         {banjo::NoteSavingMode::OnlyNotes,  "Notes",  "Only Notes"},
@@ -122,6 +134,10 @@ T get_general_config_number_value(const std::string& option_id) {
 
 banjo::NoteSavingMode banjo::get_note_saving_mode() {
     return get_general_config_enum_value<banjo::NoteSavingMode>(banjo::configkeys::general::note_saving_mode);
+}
+
+banjo::MultiplayerMode banjo::get_multiplayer_mode() {
+    return get_general_config_enum_value<banjo::MultiplayerMode>(banjo::configkeys::general::multiplayer_mode);
 }
 
 banjo::CameraInvertMode banjo::get_camera_invert_mode() {

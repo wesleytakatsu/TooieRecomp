@@ -254,6 +254,8 @@ namespace recompui {
         }
         case EventType::Text:
             {
+                // RmlUI emits intermediate selection changes while options are replaced.
+                if (refreshing_options) break;
                 const std::string& opt_value = std::get<EventText>(e.variant).text;
 
                 int index = -1;
@@ -318,5 +320,20 @@ namespace recompui {
                 option_element->set_active(true);
             }
         }
+    }
+
+    void Select::set_options(std::vector<SelectOption> options, std::string selected_value) {
+        for (auto focused = get_current_context().get_focused_element(); focused; focused = focused->get_parent()) {
+            if (focused->get_parent() == this) {
+                focus();
+                break;
+            }
+        }
+        refreshing_options = true;
+        this->options = std::move(options);
+        selected_option_value = std::move(selected_value);
+        selected_option_index = -1;
+        add_option_elements();
+        refreshing_options = false;
     }
 };

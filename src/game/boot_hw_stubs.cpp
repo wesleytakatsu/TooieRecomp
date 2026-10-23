@@ -491,11 +491,111 @@ extern "C" void osContInit_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osContStartReadData_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osContGetReadData_recomp(uint8_t* rdram, recomp_context* ctx);
 
+static FILE* tooie_cont_ports_log() {
+    static FILE* fp = []() -> FILE* {
+        const char* path = std::getenv("TOOIE_DIAG_CONT_PORTS");
+        return path != nullptr && path[0] != '\0' ? std::fopen(path, "a") : nullptr;
+    }();
+    return fp;
+}
+
+// Pad-frame counter, advanced once per read call while diagnostics are enabled.
+static uint64_t s_cont_ports_frame = 0;
+
+static void tooie_cont_ports_status(uint8_t* rdram, FILE* fp, gpr statuses) {
+    for (int port = 0; port < 4; port++) {
+        std::fprintf(fp, " status%d={type=%04X,status=%02X,errno=%02X}", port,
+                     static_cast<unsigned>(MEM_HU(4 * port, statuses)),
+                     static_cast<unsigned>(static_cast<uint8_t>(MEM_B(4 * port + 2, statuses))),
+                     static_cast<unsigned>(static_cast<uint8_t>(MEM_B(4 * port + 3, statuses))));
+    }
+}
+
+static void tooie_osContInit(uint8_t* rdram, recomp_context* ctx) {
+    FILE* fp = tooie_cont_ports_log();
+    if (fp == nullptr) {
+        osContInit_recomp(rdram, ctx);
+        return;
+    }
+    const gpr queue = ctx->r4;
+    const gpr pattern = ctx->r5;
+    const gpr statuses = ctx->r6;
+    osContInit_recomp(rdram, ctx);
+    std::fprintf(fp, "frame=%llu osContInit mq=%08X pattern_ptr=%08X status_ptr=%08X result=%d pattern=%02X",
+                 static_cast<unsigned long long>(s_cont_ports_frame),
+                 static_cast<uint32_t>(queue), static_cast<uint32_t>(pattern), static_cast<uint32_t>(statuses),
+                 static_cast<int32_t>(ctx->r2),
+                 static_cast<unsigned>(static_cast<uint8_t>(MEM_B(0, pattern))));
+    tooie_cont_ports_status(rdram, fp, statuses);
+    std::fprintf(fp, "\n");
+    std::fflush(fp);
+}
+
+static void tooie_cont_ports_snapshot(uint8_t* rdram, gpr pads, FILE* fp) {
+    struct Presence {
+        uint8_t pattern;
+        uint8_t unknown[4];
+        uint8_t pad_errno[4];
+        uint16_t type[4];
+        uint8_t status[4];
+        uint8_t status_errno[4];
+        bool operator==(const Presence&) const = default;
+    };
+    static Presence previous{};
+    static uint16_t previous_buttons[4]{};
+    static bool have_previous = false;
+    Presence current{};
+    uint16_t buttons[4]{};
+    int8_t stick_x[4]{};
+    int8_t stick_y[4]{};
+    unsigned pressed = 0;
+    const gpr statuses = kseg0_gpr(0x80079B90u);
+    current.pattern = static_cast<uint8_t>(MEM_B(0, kseg0_gpr(0x80079D68u)));
+    for (int port = 0; port < 4; port++) {
+        current.unknown[port] = static_cast<uint8_t>(MEM_B(port, kseg0_gpr(0x80079D6Cu)));
+        current.pad_errno[port] = static_cast<uint8_t>(MEM_B(6 * port + 4, pads));
+        current.type[port] = MEM_HU(4 * port, statuses);
+        current.status[port] = static_cast<uint8_t>(MEM_B(4 * port + 2, statuses));
+        current.status_errno[port] = static_cast<uint8_t>(MEM_B(4 * port + 3, statuses));
+        buttons[port] = MEM_HU(6 * port, pads);
+        stick_x[port] = MEM_B(6 * port + 2, pads);
+        stick_y[port] = MEM_B(6 * port + 3, pads);
+        if (previous_buttons[port] == 0 && buttons[port] != 0) {
+            pressed |= 1u << port;
+        }
+        previous_buttons[port] = buttons[port];
+    }
+    ++s_cont_ports_frame;
+    if (!have_previous || !(current == previous) || pressed != 0) {
+        std::fprintf(fp, "frame=%llu osContGetReadData pads=%08X changed=%d pressed=%X D_80079D68=%02X D_80079D6C=[%02X,%02X,%02X,%02X]",
+                     static_cast<unsigned long long>(s_cont_ports_frame), static_cast<uint32_t>(pads),
+                     !have_previous || !(current == previous), pressed, static_cast<unsigned>(current.pattern),
+                     static_cast<unsigned>(current.unknown[0]), static_cast<unsigned>(current.unknown[1]),
+                     static_cast<unsigned>(current.unknown[2]), static_cast<unsigned>(current.unknown[3]));
+        for (int port = 0; port < 4; port++) {
+            std::fprintf(fp, " pad%d={errno=%02X,buttons=%04X,x=%d,y=%d}", port,
+                         static_cast<unsigned>(current.pad_errno[port]), static_cast<unsigned>(buttons[port]),
+                         static_cast<int>(stick_x[port]), static_cast<int>(stick_y[port]));
+            std::fprintf(fp, " status%d={type=%04X,status=%02X,errno=%02X}", port,
+                         static_cast<unsigned>(current.type[port]), static_cast<unsigned>(current.status[port]),
+                         static_cast<unsigned>(current.status_errno[port]));
+        }
+        std::fprintf(fp, "\n");
+        std::fflush(fp);
+    }
+    previous = current;
+    have_previous = true;
+}
+
 // Diagnostic wrap only: call the shared runtime writer, then sample guest
 // OSContPad + the func_80015D60 scale word. No behavioral change when
 // TOOIE_DIAG_INPUT is unset.
 static void tooie_osContGetReadData(uint8_t* rdram, recomp_context* ctx) {
+    const gpr pads = ctx->r4;
     osContGetReadData_recomp(rdram, ctx);
+    if (FILE* fp = tooie_cont_ports_log()) {
+        tooie_cont_ports_snapshot(rdram, pads, fp);
+    }
     if (!tooie_diag::input_enabled()) {
         return;
     }
@@ -516,6 +616,20 @@ static void tooie_osContGetReadData(uint8_t* rdram, recomp_context* ctx) {
     tooie_diag::note_guest_pad(sx, sy, buttons, scale, remap_x, remap_y);
 }
 extern "C" void osContSetCh_recomp(uint8_t* rdram, recomp_context* ctx);
+
+static void tooie_osContSetCh(uint8_t* rdram, recomp_context* ctx) {
+    FILE* fp = tooie_cont_ports_log();
+    if (fp == nullptr) {
+        osContSetCh_recomp(rdram, ctx);
+        return;
+    }
+    const uint8_t ch = static_cast<uint8_t>(ctx->r4);
+    osContSetCh_recomp(rdram, ctx);
+    std::fprintf(fp, "frame=%llu osContSetCh ch=%u result=%d\n",
+                 static_cast<unsigned long long>(s_cont_ports_frame), static_cast<unsigned>(ch),
+                 static_cast<int32_t>(ctx->r2));
+    std::fflush(fp);
+}
 extern "C" void __osMotorAccess_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osMotorInit_recomp(uint8_t* rdram, recomp_context* ctx);
 extern "C" void osEepromProbe_recomp(uint8_t* rdram, recomp_context* ctx);
@@ -673,8 +787,8 @@ static const UltraLookupHook kUltraLookupHooks[] = {
     // D_80079B90[0].errno = 8 and never calls osContGetReadData → title/save
     // select ignore pads. Must return host Eep16k (GameEntry.save_type).
     { static_cast<int32_t>(0x80030170), osEepromProbe_recomp, "osEepromProbe" },
-    { static_cast<int32_t>(0x800301E0), osContInit_recomp, "osContInit" },
-    { static_cast<int32_t>(0x80030550), osContSetCh_recomp, "osContSetCh" },
+    { static_cast<int32_t>(0x800301E0), tooie_osContInit, "osContInit" },
+    { static_cast<int32_t>(0x80030550), tooie_osContSetCh, "osContSetCh" },
     { static_cast<int32_t>(0x80030640), __osMotorAccess_recomp, "__osMotorAccess" },
     { static_cast<int32_t>(0x800308B4), osMotorInit_recomp, "osMotorInit" },
     { static_cast<int32_t>(0x80030A10), osPfsInit_recomp, "osPfsInit" },

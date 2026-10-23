@@ -6,6 +6,9 @@
 #include "elements/ui_button.h"
 #include "elements/ui_pill_button.h"
 #include "elements/ui_select.h"
+#include "elements/ui_toggle.h"
+#include "recompinput/players.h"
+#include "ui_input_activity.h"
 
 namespace recompui {
 
@@ -36,6 +39,17 @@ protected:
     bool was_player_assigning = false;
     bool queue_focus_on_edit_profile_button = false;
     bool force_instant_scroll = false;
+    Select *controller_select = nullptr;
+    Toggle *keyboard_toggle = nullptr;
+    Button *rumble_button = nullptr;
+    Label *rumble_note = nullptr;
+    InputActivity *activity = nullptr;
+    SDL_JoystickID current_controller_id = -1;
+    bool current_keyboard = false;
+    bool devices_initialized = false;
+    recompinput::players::RumbleTestResult rumble_result = recompinput::players::RumbleTestResult::Ok;
+    std::chrono::steady_clock::time_point rumble_note_until{};
+    std::string current_rumble_note = "No rumble";
 
     on_select_player_profile_callback on_select_profile_callback;
     on_edit_player_profile_callback on_edit_profile_callback;
@@ -46,11 +60,13 @@ private:
     void on_select_player_profile(int profile_index);
     void on_edit_profile();
     void create_add_multiplayer_pill();
+    void create_multiplayer_controls();
 public:
     PlayerCard(ResourceId rid, Element *parent, int player_index, bool is_assignment_card = false);
     virtual ~PlayerCard();
     void update_assignment_player_card();
     void update_player_card_icon();
+    void update_multiplayer_controls(const std::vector<recompinput::players::ConnectedController> &controllers, bool controllers_changed);
     void set_on_select_profile_callback(on_select_player_profile_callback callback) {
         on_select_profile_callback = std::move(callback);
     }

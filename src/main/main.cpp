@@ -64,6 +64,7 @@ extern char** environ;
 #include "tooie_bgm_volume.h"
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
+#include "tooie_controller_ports.h"
 #include "tooie_error.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
@@ -390,8 +391,20 @@ ultramodern::gfx_callbacks_t::gfx_data_t create_gfx() {
     return {};
 }
 
+static tooie_controller_ports::PortQuery get_controller_port_query() {
+    tooie_controller_ports::PortQuery query{};
+    query.single_player = recompinput::players::is_single_player_mode();
+    if (!query.single_player) {
+        query.assigned_count = recompinput::players::get_number_of_assigned_players();
+        for (int port = 0; port < 4; port++) {
+            query.assigned[port] = recompinput::players::get_player_is_assigned(port);
+        }
+    }
+    return query;
+}
+
 ultramodern::input::connected_device_info_t get_connected_device_info(int controller_num) {
-    if (recompinput::players::is_single_player_mode() || recompinput::players::get_player_is_assigned(controller_num)) {
+    if (tooie_controller_ports::port_connected(get_controller_port_query(), controller_num)) {
         return ultramodern::input::connected_device_info_t{
             .connected_device = ultramodern::input::Device::Controller,
             .connected_pak = ultramodern::input::Pak::RumblePak,
@@ -1310,6 +1323,12 @@ int main(int argc, char** argv) {
 
     banjo::init_config();
 
+    // finalize() loaded controls; SDL controller events are not processed until recomp::start().
+    if (banjo::get_multiplayer_mode() == banjo::MultiplayerMode::On) {
+        recompinput::players::set_single_player_mode(false);
+        recompinput::players::set_player_count_range(1, 4);
+    }
+
     recompui::register_launcher_init_callback(on_launcher_init);
     recompui::register_launcher_update_callback([](recompui::LauncherMenu* menu) {
         banjo::launcher_animation_update(menu);
@@ -1389,7 +1408,16 @@ int main(int argc, char** argv) {
     };
 
     auto tooie_get_n64_input = [](int controller, uint16_t* buttons, float* x, float* y) -> bool {
-        const bool ok = recompinput::profiles::get_n64_input(controller, buttons, x, y);
+        const auto source = tooie_controller_ports::port_input_source(get_controller_port_query(), controller);
+        if (source == tooie_controller_ports::PortInput::NoResponse) {
+            if (buttons != nullptr) *buttons = 0;
+            if (x != nullptr) *x = 0.0f;
+            if (y != nullptr) *y = 0.0f;
+            return false;
+        }
+        const bool ok = source == tooie_controller_ports::PortInput::MergedFallback
+            ? recompinput::profiles::get_merged_n64_input(buttons, x, y)
+            : recompinput::profiles::get_n64_input(controller, buttons, x, y);
         if (x != nullptr && y != nullptr) {
             tooie_diag::apply_synthetic_input(controller, buttons, x, y);
         }

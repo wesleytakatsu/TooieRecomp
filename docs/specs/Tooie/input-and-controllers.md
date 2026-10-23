@@ -44,6 +44,7 @@ Banjo-Tooie Player Physics & Attract Demo Engine
 | **REQ-INP-04** | Input Helper Contract | `0x800979D8` evaluates held state and ring buffer `0x800BCE84`. | `IMPLEMENTED` |
 | **REQ-INP-05** | Attract Parity | Attract sequences serve as regression detection suite. | `PARTIAL` |
 | **REQ-INP-06** | Camera Controls | Camera inversion and analog camera bindings in guest engine. | `NOT_IMPLEMENTED` |
+| **REQ-INP-07** | Local Multiplayer (up to 4) | 4-slot controller/keyboard routing, per-player profiles, and N64 port policy. | `IMPLEMENTED` (Windows, user-validated; Linux pending) |
 
 ---
 
@@ -76,6 +77,54 @@ Banjo-Tooie Player Physics & Attract Demo Engine
   - `recomp_get_inverted_axes`: Registered via `REGISTER_FUNC(recomp_get_inverted_axes)`. Reads `get_camera_invert_mode()`.
   - `recomp_get_analog_inverted_axes`, `recomp_get_analog_cam_enabled`, `recomp_get_right_analog_inputs`, `recomp_get_bgm_volume`.
   - *Dormant Hooks*: `recomp_get_gyro_deltas` and `recomp_get_mouse_deltas` are defined in `recomp_api.cpp` but registration remains commented out in `main.cpp`. Guest-side camera consumer hooks remain unimplemented in the Tooie engine, so camera options remain disabled in the user interface.
+
+### 3.4 Local Multiplayer
+
+- **N64 Controller Port Policy (`include/tooie_controller_ports.h`)**:
+  - Implemented as pure logic header validated via `tests/tooie_controller_ports_test.cpp`.
+  - *Single-Player Mode*: All 4 N64 ports report connected and receive inputs merged from active controller profiles.
+  - *Multiplayer Mode*: Port i corresponds directly to player slot i (0–3).
+    - Port 0 is unconditionally connected; when slot 0 has no assigned device, it falls back to serving merged
+      single-player input via `profiles::get_merged_n64_input`.
+    - Ports 1–3 report connected only when an active device is assigned to that slot; otherwise `get_input` returns
+      `false` (no response).
+- **Player Slots & Assignment Model (`recompinput/include/recompinput/player_slots.h`)**:
+  - 4 fixed player slots managed in RecompFrontend (`tests/recompinput_player_slots_test.cpp`).
+  - Each slot can be assigned at most one controller AND/OR the keyboard. Gaps between assigned slots are permitted.
+  - A controller belongs to at most one slot, and the keyboard belongs to at most one slot. Selecting an already
+    assigned controller swaps assignments between the two slots.
+  - Disconnecting a controller closes and clears the handle to prevent dangling references while retaining device
+    identity for automatic reconnect.
+  - Keyboard input is strictly isolated to its assigned slot and does not leak to other players.
+- **Assignment Persistence & Device Correlation (`controls.json`)**:
+  - Player slot configurations persist under the `players` key in `controls.json`, storing controller identity
+    (serial number or model GUID hash) and keyboard attachment state.
+  - On connection, controllers match against saved slots first by hardware serial number, then by model GUID hash in
+    order of connection.
+  - *Hardware Limitation*: Identical controllers lacking unique serial numbers (such as multiple Bluetooth Xbox One S
+    controllers on Windows) cannot be distinguished across host restarts and are reassigned based on connection order.
+- **Per-Player Mapping Profiles**:
+  - Profiles `mp_player_<N>_controller` and `mp_player_<N>_keyboard` (N = 1–4) are allocated on demand with
+    device defaults.
+  - Player 1 profiles are copied from single-player default configurations on initial creation.
+- **Rumble Testing & Driver Verification**:
+  - `test_rumble(controller, 1000)` invokes `SDL_GameControllerRumble` at full strength for 1000 ms while temporarily
+    suspending guest game rumble on that device.
+  - On Windows with Bluetooth controllers, SDL's RAWINPUT driver requires at least one initial button input from the
+    gamepad before accepting rumble ("Controller isn't correlated yet, try hitting a button first"); the UI reports
+    "Press a button on it first" until correlated. Additional outcomes include "Rumbling…" (1 s), "No rumble", and
+    "Rumble failed".
+  - Tracks per-device input activity timestamps (~250 ms pulse).
+- **Guest Read Contract & Absence Semantics (`librecomp`)**:
+  - Patched in `vendor/patches-local/n64modernruntime-cont-port-fidelity.patch` (libultra semantics):
+    - `osContGetReadData_recomp` writes `err_no` for every port that ultramodern read and copies button/stick only when
+      `err_no == 0`, so absent or disconnected ports report non-zero `err_no` instead of keeping stale buttons.
+    - Ports beyond the channel count set by `osContSetCh` (the game calls `osContSetCh(4)` then `osContSetCh(2)` when it
+      enters its multiplayer mode) are left untouched in guest memory; before, they received uninitialized stack data and
+      the game saw phantom players.
+    - `__osContGetInitData` ORs one bit per connected port into the `osContInit` bitpattern (`pattern=03` for ports 0+1;
+      single-player mode reports all 4 ports, `0F`).
+  - Measured (`TOOIE_DIAG_CONT_PORTS`): `D_80079D6C[0..3]` follows per-frame port presence (`err_no == 0`).
 
 ---
 

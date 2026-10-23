@@ -824,6 +824,10 @@ recompui::Element* recompui::ContextId::get_focused_element() {
     }
 
     for (const auto& resource : opened_context->resources) {
+        // Constructors reserve empty slots, and styles share this resource map.
+        if (resource == nullptr || !resource->is_element()) {
+            continue;
+        }
         recompui::Element *element = static_cast<Element*>(resource.get());
         if (element->id == focused->GetId()) {
             return element;

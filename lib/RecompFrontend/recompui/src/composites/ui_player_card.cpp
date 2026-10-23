@@ -15,6 +15,10 @@ PlayerCard::PlayerCard(
     player_index(player_index),
     is_assignment_card(is_assignment_card)
 {
+    if (!is_assignment_card && !recompinput::players::is_single_player_mode()) {
+        create_multiplayer_controls();
+        return;
+    }
     const float size = is_assignment_card ? assign_player_card_size : static_player_card_size;
     const float icon_size = is_assignment_card ? assign_player_card_icon_size : static_player_card_icon_size;
 
@@ -63,7 +67,6 @@ PlayerCard::PlayerCard(
     icon->set_display(Display::None);
 
     if (!is_assignment_card) {
-        auto player = recompinput::players::get_player(player_index, is_assignment_card);
         update_player_card_icon();
 
         auto profile_label = context.create_element<Label>(this, "Profile", LabelStyle::Small);
@@ -77,9 +80,7 @@ PlayerCard::PlayerCard(
 
         std::vector<SelectOption> options;
 
-        int device_profile_index = has_controller
-            ? recompinput::profiles::get_controller_profile_index_from_sdl_controller(player.controller)
-            : recompinput::profiles::get_or_create_mp_keyboard_profile_index(player_index);
+        int device_profile_index = cur_profile;
 
         if (device_profile_index >= 0) {
             options.emplace_back(
@@ -132,6 +133,158 @@ PlayerCard::PlayerCard(
 PlayerCard::~PlayerCard() {
 }
 
+void PlayerCard::create_multiplayer_controls() {
+    auto context = get_current_context();
+    set_display(Display::Flex);
+    set_flex_direction(FlexDirection::Column);
+    set_as_navigation_container(NavigationType::Vertical);
+    set_flex(1.0f, 1.0f);
+    set_flex_basis(0.0f);
+    set_min_width(0.0f);
+    set_padding(12.0f);
+    set_gap(8.0f);
+    set_border_width(theme::border::width);
+    set_border_radius(theme::border::radius_sm);
+    set_border_color(theme::color::BorderSoft);
+
+    context.create_element<Label>(this, "Player " + std::to_string(player_index + 1), theme::Typography::LabelLG);
+    context.create_element<Label>(this, "Controller", theme::Typography::LabelSM);
+    controller_select = context.create_element<Select>(this, std::vector<SelectOption>{{"None", "none"}}, "none");
+    controller_select->set_min_width(0.0f);
+    controller_select->add_change_callback([this](SelectOption &option, int) {
+        // Resolve IDs afresh: a hotplug must never leave a captured SDL pointer in a callback.
+        SDL_GameController *controller = nullptr;
+        if (option.value != "none") {
+            for (const auto &connected : recompinput::players::get_connected_controllers()) {
+                if (std::to_string(connected.id) == option.value) controller = connected.controller;
+            }
+            if (!controller) return;
+        }
+        if (recompinput::players::get_player_controller(player_index) != controller) {
+            recompinput::players::set_player_controller(player_index, controller);
+        }
+    });
+
+    auto controls_row = context.create_element<Element>(this);
+    controls_row->set_display(Display::Flex);
+    controls_row->set_align_items(AlignItems::Center);
+    controls_row->set_justify_content(JustifyContent::SpaceBetween);
+    controls_row->set_as_navigation_container(NavigationType::Horizontal);
+    controls_row->set_gap(12.0f);
+
+    auto rumble_row = context.create_element<Element>(controls_row);
+    rumble_row->set_display(Display::Flex);
+    rumble_row->set_flex(1.0f, 1.0f);
+    rumble_row->set_min_width(0.0f);
+    rumble_row->set_flex_wrap(FlexWrap::Wrap);
+    rumble_row->set_align_items(AlignItems::Center);
+    rumble_row->set_gap(8.0f);
+    rumble_button = context.create_element<Button>(rumble_row, "Rumble 1 s", ButtonStyle::Secondary, ButtonSize::Small);
+    rumble_button->set_flex_shrink(0.0f);
+    rumble_button->add_pressed_callback([this]() {
+        recompinput::players::test_rumble(recompinput::players::get_player_controller(player_index), 1000, &rumble_result);
+        rumble_note_until = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    });
+    rumble_note = context.create_element<Label>(rumble_row, "No rumble", theme::Typography::LabelSM);
+    rumble_note->set_min_width(0.0f);
+    rumble_note->set_white_space(WhiteSpace::Normal);
+    rumble_note->set_color(theme::color::TextDim);
+
+    auto keyboard_row = context.create_element<Element>(controls_row);
+    keyboard_row->set_display(Display::Flex);
+    keyboard_row->set_align_items(AlignItems::Center);
+    keyboard_row->set_gap(8.0f);
+    keyboard_row->set_flex_shrink(0.0f);
+    context.create_element<Label>(keyboard_row, "Keyboard", theme::Typography::LabelSM);
+    keyboard_toggle = context.create_element<Toggle>(keyboard_row, ToggleSize::Medium);
+    keyboard_toggle->add_checked_callback([this](bool checked) {
+        recompinput::players::set_player_keyboard(player_index, checked);
+    });
+
+    auto mapping_row = context.create_element<Element>(this);
+    mapping_row->set_display(Display::Flex);
+    mapping_row->set_align_items(AlignItems::Center);
+    mapping_row->set_justify_content(JustifyContent::SpaceBetween);
+    mapping_row->set_as_navigation_container(NavigationType::Horizontal);
+    mapping_row->set_gap(12.0f);
+    activity = context.create_element<InputActivity>(mapping_row);
+    edit_profile_button = context.create_element<Button>(mapping_row, "Edit mapping", ButtonStyle::Secondary, ButtonSize::Small);
+    edit_profile_button->set_flex_shrink(0.0f);
+    edit_profile_button->add_pressed_callback([this]() { on_edit_profile(); });
+    // The page refreshes all cards once their constructors have finished.
+}
+
+void PlayerCard::update_multiplayer_controls(
+    const std::vector<recompinput::players::ConnectedController> &controllers, bool controllers_changed
+) {
+    if (!controller_select) return;
+    auto controller = recompinput::players::get_player_controller(player_index);
+    SDL_JoystickID id = -1;
+    int ordinal = 0;
+    for (const auto &connected : controllers) {
+        if (connected.controller == controller) {
+            id = connected.id;
+            ordinal = connected.ordinal;
+            break;
+        }
+    }
+    bool keyboard = recompinput::players::get_player_keyboard(player_index);
+    if (controllers_changed || !devices_initialized) {
+        std::vector<SelectOption> options{{"None", "none"}};
+        for (const auto &connected : controllers) {
+            options.emplace_back(std::to_string(connected.ordinal) + ": " + connected.name, std::to_string(connected.id));
+        }
+        controller_select->set_options(std::move(options), id < 0 ? "none" : std::to_string(id));
+    } else if (id != current_controller_id) {
+        controller_select->set_selection(id < 0 ? "none" : std::to_string(id));
+    }
+    if (!devices_initialized || controllers_changed || id != current_controller_id) {
+        bool can_rumble = id >= 0 && recompinput::players::get_controller_has_rumble(controller);
+        bool lost_focus = !can_rumble && get_current_context().get_focused_element() == rumble_button;
+        rumble_button->set_enabled(can_rumble);
+        if (lost_focus) controller_select->focus();
+    }
+    if (id != current_controller_id) rumble_note_until = {};
+    std::string note;
+    if (std::chrono::steady_clock::now() < rumble_note_until) {
+        switch (rumble_result) {
+        case recompinput::players::RumbleTestResult::NeedsInput: note = "Press a button on it first"; break;
+        case recompinput::players::RumbleTestResult::NoRumble: note = "No rumble"; break;
+        case recompinput::players::RumbleTestResult::Failed: note = "Rumble failed"; break;
+        case recompinput::players::RumbleTestResult::Ok: break;
+        }
+    }
+    if (note.empty() && recompinput::players::is_rumble_test_active(controller)) note = "Rumbling\u2026";
+    else if (note.empty() && !rumble_button->is_enabled()) note = "No rumble";
+    if (note != current_rumble_note) {
+        rumble_note->set_text(note);
+        rumble_note->set_display(note.empty() ? Display::None : Display::Block);
+        current_rumble_note = note;
+    }
+    if (!devices_initialized || keyboard != current_keyboard) keyboard_toggle->set_checked(keyboard);
+    if (!devices_initialized || id != current_controller_id || keyboard != current_keyboard) {
+        bool can_edit = id >= 0 || keyboard;
+        bool lost_focus = !can_edit && get_current_context().get_focused_element() == edit_profile_button;
+        edit_profile_button->set_enabled(can_edit);
+        if (lost_focus) controller_select->focus();
+    }
+    current_controller_id = id;
+    current_keyboard = keyboard;
+    devices_initialized = true;
+
+    auto age = id >= 0 ? recompinput::players::get_time_since_controller_input(id)
+                      : std::chrono::steady_clock::duration::max();
+    std::string device = "Controller " + std::to_string(ordinal);
+    if (keyboard) {
+        auto keyboard_age = recompinput::players::get_time_since_keyboard_input();
+        if (keyboard_age < age) {
+            age = keyboard_age;
+            device = "Keyboard";
+        }
+    }
+    activity->update(age, device);
+}
+
 void PlayerCard::process_event(const Event &e) {
     switch (e.type) {
     case EventType::Focus: {
@@ -153,7 +306,8 @@ void PlayerCard::process_event(const Event &e) {
             queue_focus_on_edit_profile_button = false;
             if (edit_profile_button != nullptr) {
                 force_instant_scroll = true;
-                edit_profile_button->focus();
+                if (edit_profile_button->is_enabled()) edit_profile_button->focus();
+                else if (controller_select) controller_select->focus();
             }
         }
         break;

@@ -18,14 +18,14 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo funcionando; `VENDOR VERIFY OK` (29 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo funcionando; `VENDOR VERIFY OK` (33 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
-| Entrada / UI / config | SDL2, menu ESC (Graphics: Interpolation), FPS overlay | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
-| Testes | `Build-Tooie.ps1 -Stage Test -AllTests`: required 9/9, extra 17/17, 5 skipped (Windows, 2026-10-23) | [[specs/Tooie/testing-and-oracle]] |
+| Entrada / UI / config | SDL2, multijogador local (até 4 jogadores, opção default Off), menu ESC (Graphics: Interpolation), FPS overlay | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
+| Testes | `Build-Tooie.ps1 -Stage Test -AllTests`: required 9/9, extra 19/19, 5 skipped (Windows, 2026-10-23) | [[specs/Tooie/testing-and-oracle]] |
 
 ## Correções recentes (todas em `origin/main`)
 
@@ -43,10 +43,15 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
 - Spike guard elementwise — Interpolação: Mumbo e Kazooie tremiam nas demos 3/6/12 porque o spike guard desenhava o
   objeto em CURRENT ao detectar pequenos estiramentos da interpolação rígida. O fallback elementwise resolveu sem
   esticar triângulos (WORLDs em CURRENT -96%, 190.633 → 8.374). Usuário confirmou movimento correto (2026-10-23).
+- Multijogador local (até 4) — opção "Multiplayer (up to 4 players)" (default Off, vale após reiniciar): cada jogador com
+  controle e/ou teclado, troca de controle, mapeamento por jogador, "Rumble 1 s" e indicador de input na página Controles;
+  portas N64 seguem os jogadores; correções de fidelidade do `osCont*` no runtime. Usuário validou no Windows (2026-10-23).
+  Detalhes: [[specs/Tooie/input-and-controllers]], [[MULTIPLAYER_PLAN]].
 
 ## Pendências conhecidas
 
-- Validação Linux (feita pelo usuário no PC Linux; nunca WSL) das correções de widescreen, interpolação e desempenho: `NOT_RUN`.
+- Validação Linux (feita pelo usuário no PC Linux; nunca WSL) das correções de widescreen, interpolação, desempenho e
+  multijogador local: `NOT_RUN`.
 - Paredes do intro em 16:9 (`T_INTRO`, cenas SCENE_A/SCENE_B) e ultrawide (> 16:9): resíduo separado, não tratado.
 - Pular o matching de frames do RT64 com Interpolation OFF: tentado e `REFUTED` (o processo encerrou sem log na troca de cena
   do attract); causa `UNKNOWN`.

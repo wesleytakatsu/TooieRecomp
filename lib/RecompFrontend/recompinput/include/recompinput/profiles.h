@@ -8,14 +8,11 @@
 
 
 namespace recompinput {
-    struct ControllerGUID {
-        uint64_t hash;
-        std::string serial;
-        int vendor{};
-        int product{};
-        int version{};
-        int crc16{};
-    };
+    using ControllerGUID = ControllerIdentity;
+
+    namespace profiles {
+        uint64_t hash_controller_guid(const ControllerGUID& guid);
+    }
 
     inline void to_json(nlohmann::json& j, const ControllerGUID& guid) {
         j = nlohmann::json{ {"serial", guid.serial}, {"vendor", guid.vendor}, {"product", guid.product}, {"version", guid.version}, {"crc16", guid.crc16} };
@@ -27,6 +24,7 @@ namespace recompinput {
         j.at("product").get_to(guid.product);
         j.at("version").get_to(guid.version);
         j.at("crc16").get_to(guid.crc16);
+        guid.hash = profiles::hash_controller_guid(guid);
     }
 
     namespace profiles {
@@ -63,6 +61,9 @@ namespace recompinput {
         std::string get_string_from_controller_guid(ControllerGUID guid);
         bool get_n64_input(int player_index, uint16_t* buttons_out, float* x_out, float* y_out);
 
+        int get_or_create_mp_controller_profile_index(int player_index);
+        bool get_merged_n64_input(uint16_t* buttons_out, float* x_out, float* y_out);
+        void save_player_config();
         bool load_controls_config(const std::filesystem::path& path);
         bool save_controls_config(const std::filesystem::path& path);
     }

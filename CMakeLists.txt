@@ -634,6 +634,25 @@ target_include_directories(tooie_menu_policy_test PRIVATE
 )
 set_target_properties(tooie_menu_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# Pure N64 controller port policy, independent of SDL and the runtime.
+add_executable(tooie_controller_ports_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_controller_ports_test.cpp
+)
+target_include_directories(tooie_controller_ports_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(tooie_controller_ports_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(recompinput_player_slots_test
+    ${CMAKE_SOURCE_DIR}/tests/recompinput_player_slots_test.cpp
+)
+target_include_directories(recompinput_player_slots_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/RecompFrontend/recompinput/include/recompinput
+)
+target_link_libraries(recompinput_player_slots_test PRIVATE recompinput SDL2::SDL2)
+target_compile_definitions(recompinput_player_slots_test PRIVATE SDL_MAIN_HANDLED NOMINMAX)
+set_target_properties(recompinput_player_slots_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 # Real librecomp Config integration (loaded 240 -> 30, registry reallocation, load callback, saved JSON).
 add_executable(tooie_menu_config_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_menu_config_test.cpp

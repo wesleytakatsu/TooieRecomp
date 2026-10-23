@@ -14,6 +14,8 @@
 
 namespace recompui {
 
+class ConnectedDeviceRow;
+
 struct GameInputContext {
     std::string name;
     std::string description;
@@ -102,6 +104,10 @@ protected:
     bool multiplayer_view_mappings;
 
     bool single_player_show_keyboard_mappings = false;
+    bool multiplayer_show_keyboard_mappings = false;
+    bool mapping_has_controller = false;
+    bool mapping_has_keyboard = false;
+    bool players_view_rendered = false;
 
     bool awaiting_binding = false;
     bool awaiting_binding_for_menu_action_button = false;
@@ -148,6 +154,9 @@ protected:
     } game_input_sections;
 
     std::vector<PlayerCard*> player_cards;
+    Element *connected_devices = nullptr;
+    std::vector<ConnectedDeviceRow*> connected_device_rows;
+    std::vector<recompinput::players::ConnectedController> connected_controllers;
     std::vector<GameInputRowsWrapper*> rows_wrappers;
     std::vector<GameInputRow*> game_input_rows;
     IconToggle *keyboard_toggle;
@@ -190,6 +199,7 @@ private:
     void render_header();
     void render_body();
     void render_body_players();
+    void update_players_view();
     void render_body_mappings();
     void render_control_mappings();
     void render_footer();

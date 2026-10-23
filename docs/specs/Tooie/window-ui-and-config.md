@@ -136,8 +136,12 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
   - `interpolation`: Boolean (default `false`). When false, forces CURRENT endpoint fallback; when true, unlocks high-framerate interpolation.
   - `show_fps_counter`: Boolean toggle for top-left present FPS counter.
   - Hidden options: `api_option`, `hpfb_option`, `developer_mode`.
-- **controls.json**: Controller mapping profiles and bindings.
-- **general.json**: `rumble_strength`, `joystick_deadzone`, `background_input_mode`.
+- **controls.json**: Controller mapping profiles, bindings, and `players` array persisting per-slot assignments
+  (controller identity with hardware serial/GUID hash, or null, and keyboard toggle).
+- **general.json**: `rumble_strength`, `joystick_deadzone`, `background_input_mode`, and `multiplayer_mode`
+  ("Multiplayer (up to 4 players)", `Off`/`On`, default `Off`). Evaluated once at startup in `src/main/main.cpp`:
+  `On` activates `recompinput::players::set_single_player_mode(false)` and `set_player_count_range(1, 4)`;
+  `Off` preserves default single-player mode (merging all host controllers and keyboard into player 1).
 - **sound.json**: `main_volume` (frontend master volume) and `bgm_volume` (synthesizer sequence volume, 0–100).
 - **mods.json**: Mod management infrastructure (`enabled_mods`, `mod_order`).
 
@@ -163,3 +167,30 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 - `third_person_camera_invert_mode`, `first_person_invert_mode`, `flying_and_swimming_invert_mode`: Disabled (`UI_DISABLED`).
 - `cutscene_aspect_ratio_mode`: Disabled (`UI_DISABLED`).
 - `hr_option`: HUD placement option disabled (`UI_DISABLED`).
+
+### 4.4 Multiplayer Controls Interface
+
+When `multiplayer_mode` is enabled (`On`), the Controls configuration page switches to a dedicated 4-player configuration view:
+- **Player Cards (2x2 Grid)**:
+  - 4 cards representing player slots 1 through 4.
+  - Each card provides:
+    - **Controller Selector**: Dropdown listing "None" and all detected gamepads formatted as `<ordinal>: <SDL name>`.
+    - **Rumble 1 s Button**: Triggers a 1000 ms rumble test at full strength, updating an adjacent status readout
+      ("Rumbling…", "No rumble", "Rumble failed", or "Press a button on it first" when SDL's RAWINPUT driver requires
+      initial button correlation on Windows Bluetooth pads).
+    - **Keyboard Toggle**: Checkbox attaching host keyboard inputs to the selected player slot.
+    - **Input Activity Line**: Displays "Input: Controller N" or "Input: Keyboard", illuminated for ~250 ms upon
+      receiving input from the respective device.
+    - **Edit Mapping**: Navigation button opening the per-player mapping configuration screen.
+- **Connected Devices List**:
+  - Displayed below the player cards, enumerating Keyboard and each connected physical controller, assigned player
+    slot, and real-time input activity.
+- **Mapping View & Profile Reset Scope**:
+  - For player slots configured with both a controller and keyboard, the mapping view provides a device toggle to
+    switch between controller and keyboard layouts.
+  - "Reset to defaults" strictly resets the profile currently being edited (`mp_player_<N>_controller` or
+    `mp_player_<N>_keyboard`) without altering the player's other device profile.
+- **Assignment Modal & Focus Safety**:
+  - The "Assign players" modal remains available as a quick-setup workflow to populate unassigned slots.
+  - `ContextId::get_focused_element` skips empty slots and non-element resources during UI element construction,
+    preventing crashes when navigating back from mapping screens.

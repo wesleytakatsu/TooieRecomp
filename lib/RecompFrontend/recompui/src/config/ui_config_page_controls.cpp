@@ -15,6 +15,57 @@ ConfigPageControls *controls_page = nullptr;
 
 const std::string_view active_state_style_name = "cont_opt_active";
 
+// Focusable for keyboard/controller inspection; no action or assignment mutation.
+class ConnectedDeviceRow : public Element {
+    Label *assignment;
+    InputActivity *activity;
+    int current_player = -2;
+    Style focus_style;
+
+protected:
+    void process_event(const Event &e) override {
+        if (e.type == EventType::Focus) {
+            bool focused = std::get<EventFocus>(e.variant).active;
+            set_style_enabled("device_focus", focused);
+            if (focused) scroll_into_view(true);
+        }
+    }
+
+public:
+    ConnectedDeviceRow(ResourceId rid, Element *parent, const std::string &name)
+        : Element(rid, parent, Events(EventType::Focus), "div", false) {
+        set_display(Display::Flex);
+        set_align_items(AlignItems::Center);
+        set_gap(16.0f);
+        set_padding(8.0f);
+        set_border_width(theme::border::width);
+        set_border_radius(theme::border::radius_sm);
+        set_border_color(theme::color::BorderSoft);
+        enable_focus();
+        focus_style.set_border_color(theme::color::PrimaryL);
+        focus_style.set_background_color(theme::color::PrimaryA20);
+        add_style(&focus_style, "device_focus");
+        auto context = get_current_context();
+        auto name_label = context.create_element<Label>(this, name, theme::Typography::LabelSM);
+        name_label->set_flex(1.0f, 1.0f);
+        name_label->set_min_width(0.0f);
+        assignment = context.create_element<Label>(this, "", theme::Typography::LabelSM);
+        assignment->set_width(144.0f);
+        assignment->set_flex_shrink(0.0f);
+        activity = context.create_element<InputActivity>(this);
+        activity->set_width(200.0f);
+        activity->set_flex_shrink(0.0f);
+    }
+
+    void update(int player, std::chrono::steady_clock::duration age, const std::string &device) {
+        if (player != current_player) {
+            assignment->set_text(player < 0 ? "Not assigned" : "Player " + std::to_string(player + 1));
+            current_player = player;
+        }
+        activity->update(age, device);
+    }
+};
+
 // Separating this out, may be a good component later to expose.
 class ScrollBuffer : public Element {
 protected:
@@ -229,6 +280,27 @@ void ConfigPageControls::process_event(const Event &e) {
             last_update_index = update_index;
             render_all();
         }
+        if (multiplayer_enabled) {
+            if (players_view_rendered) {
+                update_players_view();
+            } else if (multiplayer_view_mappings) {
+                bool controller = recompinput::players::get_player_controller(selected_player) != nullptr;
+                bool keyboard = recompinput::players::get_player_keyboard(selected_player);
+                if (!controller && !keyboard) {
+                    multiplayer_view_mappings = false;
+                    queue_selected_player_profile_edit_focus = true;
+                    force_update();
+                } else if (controller != mapping_has_controller || keyboard != mapping_has_keyboard) {
+                    mapping_has_controller = controller;
+                    mapping_has_keyboard = keyboard;
+                    update_control_mappings();
+                    render_header();
+                    render_footer();
+                    // The old device's menu rows or footer toggle may have lost focusability.
+                    if (!game_input_rows.empty()) game_input_rows[0]->focus_on_first_binding();
+                }
+            }
+        }
         queue_update();
         break;
     default:
@@ -335,6 +407,10 @@ void ConfigPageControls::render_body() {
     recompui::ContextId context = get_current_context();
 
     if (should_show_mappings()) {
+        players_view_rendered = false;
+        player_cards.clear();
+        connected_device_rows.clear();
+        connected_devices = nullptr;
         body->get_right()->set_display(Display::Flex);
         render_body_mappings();
     } else {
@@ -361,54 +437,45 @@ void ConfigPageControls::render_body_mappings() {
 }
 
 void ConfigPageControls::render_body_players() {
+    // Assignment commits/hotplug may force an update without changing this view.
+    if (players_view_rendered) return;
     recompui::ContextId context = get_current_context();
     body->set_as_navigation_container(NavigationType::Horizontal);
     body->set_max_height(100.0f, Unit::Percent);
 
     auto body_left = body->get_left();
+    game_input_rows.clear();
+    rows_wrappers.clear();
     body_left->clear_children();
     player_cards.clear();
 
     body_left->set_display(Display::Block);
-    // Top/bottom padding is within the player cards so that controller nav puts them more into view.
     body_left->set_padding_top(0.0f);
-    body_left->set_padding_bottom(0.0f);
+    body_left->set_padding_bottom(16.0f);
     body_left->set_padding_right(64.0f);
     body_left->set_padding_left(64.0f);
-    body_left->set_as_navigation_container(NavigationType::GridCol);
+    body_left->set_as_navigation_container(NavigationType::Vertical);
     body_left->set_position(Position::Relative);
     body_left->set_height_auto();
     body_left->set_max_height(100.0f, Unit::Percent);
     body_left->set_overflow_y(Overflow::Auto);
 
-    bool make_fakes = max_num_players > 4;
-
     recompui::Element *player_grid = nullptr;
-    // Grid supports groups of 4
-    for (int i = 0; i < max_num_players; i += 4) {
+    // Two cards per row leave room for full SDL controller names.
+    int player_count = static_cast<int>(max_num_players);
+    for (int i = 0; i < player_count; i += 2) {
         player_grid = context.create_element<Element>(body_left, 0, "div", false);
-        player_grid->set_as_navigation_container(NavigationType::GridRow);
+        player_grid->set_as_navigation_container(NavigationType::Horizontal);
         player_grid->set_display(Display::Flex);
         player_grid->set_flex_direction(FlexDirection::Row);
         player_grid->set_justify_content(JustifyContent::Center);
-        player_grid->set_align_items(AlignItems::Center);
+        player_grid->set_align_items(AlignItems::FlexStart);
         player_grid->set_width(100.0f, Unit::Percent);
         player_grid->set_height_auto();
-        player_grid->set_gap(64.0f);
-        // Remove extra margin already added as padding from player cards.
-        // The player cards still need the padding for controller nav visibility.
-        player_grid->set_margin_bottom(-64.0f);
+        player_grid->set_gap(16.0f);
+        player_grid->set_margin_top(16.0f);
 
-        for (int j = i; j < i + 4; j++) {
-            if (!make_fakes && j >= max_num_players) {
-                break;
-            }
-
-            if (make_fakes && j >= 4 && j >= max_num_players) {
-                auto fake = context.create_element<Element>(player_grid);
-                fake->set_width(PlayerCard::static_player_card_size, Unit::Dp);
-                continue;
-            }
+        for (int j = i; j < i + 2 && j < player_count; j++) {
 
             auto player_card = context.create_element<PlayerCard>(
                 player_grid,
@@ -428,10 +495,22 @@ void ConfigPageControls::render_body_players() {
         }
     }
 
-    // Retain 64px bottom margin on the last row.
-    if (player_grid != nullptr) {
-        player_grid->set_margin_bottom(0.0f);
-    }
+    auto heading = context.create_element<Label>(body_left, "Connected devices", theme::Typography::LabelLG);
+    heading->set_margin_top(16.0f);
+    heading->set_margin_bottom(8.0f);
+    connected_devices = context.create_element<Element>(body_left);
+    connected_devices->set_display(Display::Flex);
+    connected_devices->set_flex_direction(FlexDirection::Column);
+    connected_devices->set_as_navigation_container(NavigationType::Vertical);
+    connected_devices->set_gap(8.0f);
+    // RmlUI may omit scroll-parent padding from the scrollable extent.
+    auto bottom_buffer = context.create_element<Element>(body_left);
+    bottom_buffer->set_height(32.0f);
+    bottom_buffer->set_flex_shrink(0.0f);
+    connected_controllers.clear();
+    connected_device_rows.clear();
+    players_view_rendered = true;
+    update_players_view();
 
     if (queue_selected_player_profile_edit_focus) {
         queue_selected_player_profile_edit_focus = false;
@@ -441,8 +520,45 @@ void ConfigPageControls::render_body_players() {
     }
 }
 
+void ConfigPageControls::update_players_view() {
+    auto controllers = recompinput::players::get_connected_controllers();
+    bool changed = controllers.size() != connected_controllers.size();
+    for (size_t i = 0; !changed && i < controllers.size(); ++i) {
+        const auto &a = controllers[i];
+        const auto &b = connected_controllers[i];
+        changed = a.id != b.id || a.controller != b.controller || a.ordinal != b.ordinal || a.name != b.name;
+    }
+    for (auto card : player_cards) card->update_multiplayer_controls(controllers, changed);
+    if (changed || connected_device_rows.empty()) {
+        auto context = get_current_context();
+        int focused_row = -1;
+        for (size_t i = 0; i < connected_device_rows.size(); ++i) {
+            if (context.get_focused_element() == connected_device_rows[i]) focused_row = static_cast<int>(i);
+        }
+        // Restore list focus by stable joystick ID (or keyboard), never by a stale row pointer.
+        SDL_JoystickID focused_id = focused_row > 0 ? connected_controllers[focused_row - 1].id : -1;
+        connected_devices->clear_children();
+        connected_device_rows.clear();
+        connected_device_rows.push_back(context.create_element<ConnectedDeviceRow>(connected_devices, "Keyboard"));
+        int new_focus = 0;
+        for (const auto &controller : controllers) {
+            if (controller.id == focused_id) new_focus = static_cast<int>(connected_device_rows.size());
+            connected_device_rows.push_back(context.create_element<ConnectedDeviceRow>(connected_devices,
+                std::to_string(controller.ordinal) + ": " + controller.name));
+        }
+        connected_controllers = controllers;
+        if (focused_row >= 0) connected_device_rows[new_focus]->focus();
+    }
+    connected_device_rows[0]->update(recompinput::players::get_keyboard_player(),
+        recompinput::players::get_time_since_keyboard_input(), "Keyboard");
+    for (size_t i = 0; i < controllers.size(); ++i) {
+        const auto &controller = controllers[i];
+        connected_device_rows[i + 1]->update(recompinput::players::get_controller_player(controller.controller),
+            recompinput::players::get_time_since_controller_input(controller.id), "Controller " + std::to_string(controller.ordinal));
+    }
+}
+
 void ConfigPageControls::on_select_player_profile(int player_index, int profile_index) {
-    auto& assigned_player = recompinput::players::get_player(player_index);
     recompinput::InputDevice device = recompinput::players::get_player_input_device(player_index);
     if (device != recompinput::InputDevice::COUNT) {
         recompinput::profiles::set_input_profile_for_player(player_index, profile_index, device);
@@ -451,9 +567,12 @@ void ConfigPageControls::on_select_player_profile(int player_index, int profile_
 
 void ConfigPageControls::on_edit_player_profile(int player_index) {
     selected_player = player_index;
+    multiplayer_show_keyboard_mappings = recompinput::players::get_player_controller(player_index) == nullptr;
     recompinput::InputDevice device = recompinput::players::get_player_input_device(player_index);
     if (device != recompinput::InputDevice::COUNT) {
-        selected_profile_index = recompinput::profiles::get_input_profile_for_player(player_index, device);
+        mapping_has_controller = recompinput::players::get_player_controller(player_index) != nullptr;
+        mapping_has_keyboard = recompinput::players::get_player_keyboard(player_index);
+        set_current_profile_index();
         multiplayer_view_mappings = true;
         queue_first_game_input_row_focus = true;
         force_update();
@@ -473,12 +592,15 @@ void ConfigPageControls::render_footer() {
     {
         auto footer_left = footer->get_left();
         footer_left->clear_children();
-        if (!multiplayer_enabled) {
+        keyboard_toggle = nullptr;
+        if (!multiplayer_enabled || (mapping_has_controller && mapping_has_keyboard)) {
             keyboard_toggle = context.create_element<IconToggle>(footer_left, "icons/Cont.svg", "icons/Keyboard.svg", ToggleSize::Large);
-            keyboard_toggle->set_checked(single_player_show_keyboard_mappings);
+            keyboard_toggle->set_checked(multiplayer_enabled ? multiplayer_show_keyboard_mappings : single_player_show_keyboard_mappings);
             keyboard_toggle->add_checked_callback([this](bool checked) {
-                this->single_player_show_keyboard_mappings = checked;
+                if (multiplayer_enabled) multiplayer_show_keyboard_mappings = checked;
+                else single_player_show_keyboard_mappings = checked;
                 this->update_control_mappings();
+                if (multiplayer_enabled) render_header();
             });
         }
     }
@@ -565,6 +687,10 @@ void ConfigPageControls::set_current_profile_index() {
         selected_profile_index = single_player_show_keyboard_mappings
             ? recompinput::profiles::get_sp_keyboard_profile_index()
             : recompinput::profiles::get_sp_controller_profile_index();
+    } else {
+        selected_profile_index = get_player_input_device() == recompinput::InputDevice::Keyboard
+            ? recompinput::profiles::get_or_create_mp_keyboard_profile_index(selected_player)
+            : recompinput::profiles::get_or_create_mp_controller_profile_index(selected_player);
     }
 }
 
@@ -574,6 +700,8 @@ void ConfigPageControls::update_control_mappings() {
         set_current_profile_index();
     } else if (!multiplayer_view_mappings) {
         return;
+    } else {
+        set_current_profile_index();
     }
 
     // Decide section visibility, reset margins
@@ -630,6 +758,11 @@ void ConfigPageControls::update_control_mappings() {
 
 recompinput::InputDevice ConfigPageControls::get_player_input_device() {
     if (multiplayer_enabled) {
+        bool controller = recompinput::players::get_player_controller(selected_player) != nullptr;
+        bool keyboard = recompinput::players::get_player_keyboard(selected_player);
+        if (controller && keyboard) {
+            return multiplayer_show_keyboard_mappings ? recompinput::InputDevice::Keyboard : recompinput::InputDevice::Controller;
+        }
         return recompinput::players::get_player_input_device(this->selected_player);
     }
 

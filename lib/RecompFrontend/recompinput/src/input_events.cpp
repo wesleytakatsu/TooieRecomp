@@ -39,6 +39,7 @@ void purge_deferred_controller_profiles() {
 }
 
 bool sdl_event_filter(void* userdata, SDL_Event* event) {
+    players::record_input_activity(*event);
     switch (event->type) {
     case SDL_EventType::SDL_KEYDOWN:
     {
@@ -86,6 +87,8 @@ bool sdl_event_filter(void* userdata, SDL_Event* event) {
             }
         }
         
+        if (controller == nullptr) break;
+        players::controller_connected(controller, SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)));
         ControllerGUID guid = profiles::get_guid_from_sdl_controller(controller);
         if (profiles::get_controller_by_guid(guid) < 0) {
             if (players::is_single_player_mode()) {

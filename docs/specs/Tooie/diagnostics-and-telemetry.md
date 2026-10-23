@@ -69,6 +69,7 @@ Diagnostic Log Output (stderr or specified file destination)
 | `TOOIE_DIAG_P09_LOCAL_PAIR_SNAPSHOT` | RT64 | A | Captures transform snapshot pairs for test harnesses. |
 | `TOOIE_DIAG_TIMING` | Telemetry | A | Logs scheduling and frame pacing telemetry. |
 | `TOOIE_DIAG_INPUT` / `_INPUT_VECTOR` | Input | A | Logs controller input state and stick vectors. |
+| `TOOIE_DIAG_CONT_PORTS=<path>` | Input | Path | Logs `osContInit` (bitpattern and 4 statuses), `osContSetCh`, frame presence transitions in `osContGetReadData` (`err_no`, `D_80079D68`, `D_80079D6C[0..3]`, `D_80079B90[i]`), and button edges per port. Default OFF. |
 | `TOOIE_DIAG_DEMO_PATH` / `_DEMO_SYNC` | Attract | A | Logs attract demo position sync and path tracking. |
 | `TOOIE_DIAG_DEMO7_DRIFT` | Attract | A | Monitors kinematic drift in attract Demo 7. |
 | `TOOIE_DIAG_DEMO1_PARITY` / `_PROJECTILE` | Attract | A | Monitors fire egg trajectory and target hits in Demo 1. |
