@@ -92,6 +92,8 @@ const std::string version_string = "0.1.0-p08";
 
 namespace {
 
+constexpr char kGitHubUrl[] = "https://github.com/wesleytakatsu/TooieRecomp";
+
 bool launcher_music_child = false;
 bool launcher_music_preview_started = false;
 
@@ -1067,7 +1069,16 @@ void on_launcher_init(recompui::LauncherMenu *menu) {
         recompui::GameOptionsMenuLayout::Center
     );
 
-    game_options_menu->add_default_options();
+    game_options_menu->add_start_game_or_load_rom_option();
+    game_options_menu->add_setup_controls_option();
+    game_options_menu->add_settings_option();
+    game_options_menu->add_mods_option();
+    game_options_menu->add_option("GitHub", []() {
+        if (SDL_OpenURL(kGitHubUrl) != 0) {
+            std::fprintf(stderr, "Failed to open GitHub URL: %s\n", SDL_GetError());
+        }
+    });
+    game_options_menu->add_exit_option();
     game_options_menu->set_width(30, recompui::Unit::Percent);
 
     for (auto option : game_options_menu->get_options()) {
