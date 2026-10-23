@@ -3528,20 +3528,6 @@ static bool tooie_ud5_p60_writer_window(uint8_t* rdram, int* glidx_out) {
     return rel_glidx >= 0 && rel_glidx <= 28;
 }
 
-#define TOOIE_UD4_WRAP(sym, addr, tag)                                                    \
-    static void tooie_wrap_##sym(uint8_t* rdram, recomp_context* ctx) {                    \
-        tooie_ud4_np_call(tag, addr, rdram, ctx, 1);                                      \
-        sym(rdram, ctx);                                                                  \
-        tooie_ud4_np_call(tag, addr, rdram, ctx, 0);                                      \
-    }
-
-TOOIE_UD4_WRAP(func_8011607C, 0x8011607Cu, "8011607C")
-TOOIE_UD4_WRAP(func_80113978, 0x80113978u, "80113978")
-TOOIE_UD4_WRAP(func_80112524, 0x80112524u, "80112524")
-TOOIE_UD4_WRAP(func_801107F0, 0x801107F0u, "801107F0")
-TOOIE_UD4_WRAP(func_800EFB24, 0x800EFB24u, "800EFB24")
-TOOIE_UD4_WRAP(func_800EEF94, 0x800EEF94u, "800EEF94")
-
 static void tooie_wrap_func_800F1A88(uint8_t* rdram, recomp_context* ctx) {
     tooie_ud4_np_call("800F1A88", 0x800F1A88u, rdram, ctx, 1);
     int glidx = -1;
@@ -3569,9 +3555,6 @@ static void tooie_wrap_func_800F1A88(uint8_t* rdram, recomp_context* ctx) {
         std::fflush(stderr);
     }
 }
-
-TOOIE_UD4_WRAP(func_80115358, 0x80115358u, "80115358")
-TOOIE_UD4_WRAP(func_80115750, 0x80115750u, "80115750")
 
 static void tooie_wrap_func_80112C3C(uint8_t* rdram, recomp_context* ctx) {
     tooie_ud4_np_call("80112C3C", 0x80112C3Cu, rdram, ctx, 1);
@@ -3823,22 +3806,6 @@ static void tooie_wrap_func_800EF214(uint8_t* rdram, recomp_context* ctx) {
         std::fflush(stderr);
     }
 }
-
-TOOIE_UD4_WRAP(func_80013B70, 0x80013B70u, "80013B70")
-TOOIE_UD4_WRAP(func_80013B7C, 0x80013B7Cu, "80013B7C")
-TOOIE_UD4_WRAP(func_800137AC, 0x800137ACu, "800137AC")
-TOOIE_UD4_WRAP(func_800137C4, 0x800137C4u, "800137C4")
-TOOIE_UD4_WRAP(func_800137F4, 0x800137F4u, "800137F4")
-TOOIE_UD4_WRAP(func_80013788, 0x80013788u, "80013788")
-TOOIE_UD4_WRAP(func_80013818, 0x80013818u, "80013818")
-TOOIE_UD4_WRAP(func_80111FD4, 0x80111FD4u, "80111FD4")
-TOOIE_UD4_WRAP(func_801138A0, 0x801138A0u, "801138A0")
-TOOIE_UD4_WRAP(func_801138F4, 0x801138F4u, "801138F4")
-TOOIE_UD4_WRAP(func_80110F44, 0x80110F44u, "80110F44")
-TOOIE_UD4_WRAP(func_80115580, 0x80115580u, "80115580")
-TOOIE_UD4_WRAP(func_80110A68, 0x80110A68u, "80110A68")
-TOOIE_UD4_WRAP(func_80111310, 0x80111310u, "80111310")
-TOOIE_UD4_WRAP(func_800A516C, 0x800A516Cu, "800A516C")
 
 extern "C" void sqrtf_recomp(uint8_t* rdram, recomp_context* ctx);
 static void tooie_wrap_sqrtf(uint8_t* rdram, recomp_context* ctx) {
@@ -6089,21 +6056,13 @@ void register_boot_lookup_stubs() {
                                           __wrap_func_800E2180);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009C914),
                                           tooie_wrap_yaw_set_ideal);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011607C), tooie_wrap_func_8011607C);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80113978), tooie_wrap_func_80113978);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112524), tooie_wrap_func_80112524);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801107F0), tooie_wrap_func_801107F0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110770), tooie_wrap_func_80110770);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801108A0), tooie_wrap_func_801108A0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112A84), tooie_wrap_func_80112A84);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112D08), tooie_wrap_func_80112D08);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010FFB0), tooie_wrap_func_8010FFB0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EE7F8), tooie_wrap_func_800EE7F8);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFB24), tooie_wrap_func_800EFB24);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEF94), tooie_wrap_func_800EEF94);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F1A88), tooie_wrap_func_800F1A88);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115358), tooie_wrap_func_80115358);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115750), tooie_wrap_func_80115750);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112C3C), tooie_wrap_func_80112C3C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F1738), tooie_wrap_func_800F1738);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F1DCC), tooie_wrap_func_800F1DCC);
@@ -6112,22 +6071,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EE780), tooie_wrap_func_800EE780);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFD24), tooie_wrap_func_800EFD24);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EF214), tooie_wrap_func_800EF214);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80013B70), tooie_wrap_func_80013B70);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80013B7C), tooie_wrap_func_80013B7C);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800137AC), tooie_wrap_func_800137AC);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800137C4), tooie_wrap_func_800137C4);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800137F4), tooie_wrap_func_800137F4);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80013788), tooie_wrap_func_80013788);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80013818), tooie_wrap_func_80013818);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80111FD4), tooie_wrap_func_80111FD4);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801138A0), tooie_wrap_func_801138A0);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801138F4), tooie_wrap_func_801138F4);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110F44), tooie_wrap_func_80110F44);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115580), tooie_wrap_func_80115580);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110A68), tooie_wrap_func_80110A68);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110790), tooie_wrap_func_80110790);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80111310), tooie_wrap_func_80111310);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800A516C), tooie_wrap_func_800A516C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8002DCA0), tooie_wrap_sqrtf);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800979D8), tooie_bainput_func_800979D8);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80097990), tooie_wrap_func_80097990);

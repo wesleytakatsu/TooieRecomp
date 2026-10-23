@@ -18,7 +18,8 @@ Ver [[plan/evidence/perf-overlay-dedupe-and-logs-20261023]].
 - **Saneamento de logs síncronos**: Auditoria estática localizou logs e I/O bloqueante sempre ativos (`USER_DEMO_5 MAP=296` com `fprintf`+`fflush` a cada chamada de câmera, logs por overlay, `getenv` repetitivo em `transform_hooks.cpp`, CAS atômico em `ensure_init`). Confinados sob `TOOIE_DIAG_UD5=1` e `TOOIE_DIAG_OVERLAY_LOG=1` (default OFF), getenv em cache e fast path. Linhas de log no attract caíram de 83.264 para 533; FPS mediano subiu de 56 para 72.
 - **Testes**: Suíte required 9/9, extra 17/17 PASS.
 - Commit e push autorizados pelo usuário (2026-10-23). Linux `NOT_RUN`.
-- `NEXT_SINGLE_ACTION`: validação Linux (usuário) das correções P08/P09/desempenho; resíduos de baixo custo: ~70 wrappers `TOOIE_UD4_WRAP` de investigação encerrada e matching de frames do RT64 com Interpolation OFF.
+- Resíduos (2026-10-23): os 23 wrappers `TOOIE_UD4_WRAP` (só trace + original, registrados sempre) foram removidos com seus `add_loaded_function`; `tooie_ud4_np_call` e helpers usados por outros wrappers ficam. Pular o matching do RT64 quando a taxa alvo não passa da taxa do jogo (Interpolation OFF = Manual 30), mantendo os processadores de endpoint: `REFUTED` — com Interpolation OFF o processo encerrou sem log por volta de 60 s (troca de cena do attract), enquanto o mesmo build com o comportamento antigo rodou normal (A/B). Revertido; causa `UNKNOWN`.
+- `NEXT_SINGLE_ACTION`: validação Linux (usuário) das correções P08/P09/desempenho.
 
 ## CURRENT — P09 glitches raros de interpolação: guardas novas no RT64 (2026-10-23)
 
