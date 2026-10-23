@@ -82,8 +82,7 @@ extern char** environ;
 #include <Windows.h>
 #include <timeapi.h>
 #include "SDL_syswm.h"
-#define APP_ICON_B 1
-#define APP_ICON_K 2
+#define APP_ICON 1 // icons/app.rc
 #endif
 
 #include "stb/stb_image.h"
@@ -412,10 +411,7 @@ bool SetImageAsIcon(const char* filename, SDL_Window* window)
 {
     // Read data
     int width, height, bytesPerPixel;
-    if (sizeof(icon_bytes) <= 1) {
-        return false;
-    }
-    void* data = stbi_load_from_memory(reinterpret_cast<const uint8_t*>(icon_bytes), sizeof(icon_bytes), &width, &height, &bytesPerPixel, 4);
+    void* data = stbi_load_from_memory(icon_bytes, sizeof(icon_bytes), &width, &height, &bytesPerPixel, 4);
 
     // Calculate pitch
     int pitch;
@@ -486,10 +482,13 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
     SDL_GetWindowWMInfo(window, &wmInfo);
 
 #if defined(_WIN32)
-    // There's a 50/50 chance to choose the icon where the smallest variant is either Banjo or Kazooie alone.
-    bool choose_kazooie_icon = (rand() % 2 == 0);
-    HICON new_icon = LoadIcon(GetModuleHandle(NULL), choose_kazooie_icon ? MAKEINTRESOURCE(APP_ICON_K) : MAKEINTRESOURCE(APP_ICON_B));
-    SendMessage(wmInfo.info.win.window, WM_SETICON, ICON_SMALL2, (LPARAM)(new_icon));
+    HINSTANCE instance = GetModuleHandle(NULL);
+    HICON big_icon = (HICON)LoadImage(instance, MAKEINTRESOURCE(APP_ICON), IMAGE_ICON,
+        GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
+    HICON small_icon = (HICON)LoadImage(instance, MAKEINTRESOURCE(APP_ICON), IMAGE_ICON,
+        GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0);
+    SendMessage(wmInfo.info.win.window, WM_SETICON, ICON_BIG, (LPARAM)(big_icon));
+    SendMessage(wmInfo.info.win.window, WM_SETICON, ICON_SMALL, (LPARAM)(small_icon));
 #elif defined(__linux__)
     SetImageAsIcon("icons/app.png", window);
 #endif
@@ -846,7 +845,7 @@ std::vector<recomp::GameEntry> supported_games = {
         .game_id = u8"bt.n64.us.1.0",
         .mod_game_id = "bt",
         .save_type = recomp::SaveType::Eep16k,
-        .thumbnail_bytes = std::span<const char>(icon_bytes, sizeof(icon_bytes)),
+        .thumbnail_bytes = std::span<const char>(reinterpret_cast<const char*>(icon_bytes), sizeof(icon_bytes)),
         .is_enabled = true,
         .decompression_routine = banjo::decompress_bk,
         .has_compressed_code = false,
