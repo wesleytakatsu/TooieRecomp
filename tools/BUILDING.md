@@ -39,6 +39,10 @@ stat -c %s "Banjo-Tooie (USA).z64" # 33554432
 
 On Windows (PowerShell):
 ```powershell
+# Verify using the project helper:
+python tools/rom_check.py
+
+# Or verify manually:
 Get-FileHash -Algorithm MD5 ".\Banjo-Tooie (USA).z64"   # 40E98FAA24AC3EBE1D25CB5E5DDF49E4
 Get-FileHash -Algorithm SHA1 ".\Banjo-Tooie (USA).z64"  # AF1A89E12B638B8D82CC4C085C8E01D4CBA03FB3
 (Get-Item ".\Banjo-Tooie (USA).z64").Length             # 33554432
@@ -128,7 +132,7 @@ tools/verify_package.sh dist/BanjoTooieRecompiled-*-Linux-x64.tar.gz
 
 ### 3.4 Maintainer-Only: Decompilation & Metadata Regeneration (Requires Legacy Compiler Kit)
 
-Normal builds do **not** require this stage. Only maintainers updating decompilation or regenerating recompiler metadata need the legacy IDO/gcc compiler kit:
+Normal builds do **not** require this stage. Only maintainers updating decompilation or regenerating recompiler metadata (`metadata/tooie.us.syms.toml` via `tools/generate_metadata.py`) need the legacy IDO/gcc compiler kit:
 
 1. Install maintainer packages: `sudo apt install gcc-mips-linux-gnu binutils-mips-linux-gnu libtoml11-dev python3-venv`.
 2. Download the 4 upstream compiler archives into `<kit-dir>` and verify the 34 binaries:
@@ -159,6 +163,8 @@ The native Windows 11 x64 build pipeline is fully proven on host (`tools\windows
    - Clang toolset: `Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset`
    - CMake & Ninja: `Microsoft.VisualStudio.Component.VC.CMake.Project`
    - Windows SDK: `Microsoft.VisualStudio.Component.Windows11SDK.26100` (or newer Windows 11 SDK)
+
+   *(Alternatively, you can use the Visual Studio Installer GUI and select "Desktop development with C++", "C++ Clang Compiler for Windows", "MSVC Clang toolset", "C++ CMake tools for Windows", and the Windows 11 SDK).*
 2. **Git for Windows:**
    ```powershell
    winget install --id Git.Git -e --source winget
