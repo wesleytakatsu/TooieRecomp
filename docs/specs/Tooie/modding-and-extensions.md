@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Modding, Extensions and Asset Customization"
 description: "Specification for the recomp extension API, extended object data structures, texture pack container formats (.rtz), and mod callback hooks."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-27
 tags: [specs, tooierecomp, modding, extensions, rtz, textures, api]
 ---
 
@@ -38,7 +38,7 @@ TooieRecomp incorporates modding and extension APIs inherited from the static re
 | :--- | :--- | :--- | :--- |
 | **REQ-MOD-01** | Extended Object Data | Modding API allows attaching custom memory blocks to spawned entities. | `INHERITED_UNTESTED` |
 | **REQ-MOD-02** | Type Contexts & Slots | `dod::slot_map32` manages per-object extension lifecycle. | `INHERITED_UNTESTED` |
-| **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` texture archives containing replacement RT64 textures. | `INHERITED_UNTESTED` |
+| **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` texture archives containing replacement RT64 textures. | `VALIDATED_WINDOWS` (§4) |
 | **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | `INHERITED_UNTESTED` |
 | **REQ-MOD-05** | Deprecated Mod Rejection| Rejects incompatible legacy mods (`bk_recomp_mod_fov_slider`). | `IMPLEMENTED` |
 
@@ -82,6 +82,14 @@ struct ExtensionContext {
 ### 3.3 Texture Pack Container Format (`.rtz`)
 - **Container**: ZIP archive formatted with `.rtz` extension.
 - **Manifest**: Contains `rt64.json` defining texture hashes, mipmap specifications, and PBR material definitions.
+- **Layout**: `rt64.json` (`configuration.hashVersion` = 5, the current RT64 TMEM hash) plus `.png`/`.dds` files; each
+  `textures[]` entry maps `hashes.rt64` (16 hex digits) to a `path`. `mod.json` is optional for `.rtz`: without it the
+  mod id is the file stem. With it, `game_id` must be `bt`.
+- **Install**: drop the file in `%LOCALAPPDATA%\TooieRecompiled\mods` (Linux: `~/.config/TooieRecompiled/mods`). A new
+  pack is enabled by default and recorded in `mods.json`.
+- **Hashes**: RT64 hashes the loaded TMEM contents, so packs made for other emulators (GLideN64/Rice `hires_texture`)
+  do not match. Hashes come from RT64's texture dump (developer mode → texture replacements → "Start dumping textures";
+  dump base names are `<hash>.v5`).
 - **Registration (`src/main/main.cpp`)**:
   - Registers `rtz` container format with runtime mod manager.
   - Registers deprecated mod rejection for `bk_recomp_mod_fov_slider` via `recomp::mods::register_deprecated_mod`.
@@ -91,4 +99,14 @@ struct ExtensionContext {
 
 ## 4. Invariants & Verification Status
 
-While the modding and extension infrastructure compiles cleanly into `TooieRecompiled`, runtime modding in Banjo-Tooie has not undergone dedicated verification. The system status is classified as `INHERITED_UNTESTED`.
+While the modding and extension infrastructure compiles cleanly into `TooieRecompiled`, runtime modding in Banjo-Tooie has not undergone dedicated verification. The system status is classified as `INHERITED_UNTESTED`, except:
+
+- **REQ-MOD-03 `VALIDATED_WINDOWS` (2026-10-27, `d430ddc`)**: the 168 textures RT64 dumped during the first 40 s of
+  attract (Rare logo → title screen) were packed as magenta checkerboards into a test `.rtz` with a `mod.json`. Installed
+  in the mods folder, the pack was auto-enabled at startup and every captured frame (8/15/25/40 s) showed the
+  replacements; without it the same frames are the original art. Runtime toggling from the Mods menu (REQ-MOD-04) and
+  Linux were not tested.
+
+Code mods (`.nrm`) load through the same manager, but Tooie publishes no mod SDK yet (no `RECOMP_EXPORT` patches, no
+headers or mod-tool symbol file), and there is no data-file replacement or external-audio API, so text/language and
+music replacement need new exports.
