@@ -109,6 +109,14 @@ Para compilar TooieRecomp desde el código fuente, coloca tu ROM verificada `Ban
 
 ---
 
+## Licencia
+
+El código propio de TooieRecomp está licenciado bajo la [GNU General Public License v3.0](LICENSE). El código traducido
+del juego, la descompilación en `decomp/` y el contenido del juego no están cubiertos por esta licencia. Los componentes
+de terceros mantienen sus propias licencias (ver arriba).
+
+---
+
 ## Aviso Legal
 
 Banjo-Tooie es © Nintendo / Rare.

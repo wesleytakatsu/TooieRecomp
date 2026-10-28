@@ -107,6 +107,14 @@ To build TooieRecomp from source, place your verified `Banjo-Tooie (USA).z64` RO
 
 ---
 
+## License
+
+TooieRecomp's own code is licensed under the [GNU General Public License v3.0](LICENSE). The code translated from the
+game, the decompilation in `decomp/` and the game's content are not covered by this license. Third-party components
+keep their own licenses (see above).
+
+---
+
 ## Legal
 
 Banjo-Tooie is © Nintendo / Rare.

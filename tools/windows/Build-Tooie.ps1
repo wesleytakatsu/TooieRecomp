@@ -325,6 +325,7 @@ function Invoke-Package {
     Copy-Item -Recurse -LiteralPath $assets -Destination "$stage\assets"
     Copy-Item -LiteralPath (Join-Path $Root 'ui_assets\TooieLogo.svg') -Destination "$stage\ui_assets"
     Copy-Item -LiteralPath (Join-Path $Root 'recompcontrollerdb.txt') -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $Root 'LICENSE') -Destination (Join-Path $stage 'LICENSE.txt')
     # Same notice set as tools/package_linux.sh (superset of what is linked), gathered from the vendored tree (repo-relative paths).
     foreach ($d in 'vendor\licenses', 'lib\rt64', 'lib\N64ModernRuntime', 'lib\RecompFrontend', 'lib\SlotMap', 'lib\SDL2-windows') {
         Get-ChildItem -Path (Join-Path $Root $d) -Recurse -Depth 6 -File |
@@ -391,6 +392,7 @@ function Invoke-Package {
         '',
         'Banjo-Tooie is (c) Nintendo / Rare. This is an unofficial fan project, not affiliated with or endorsed by',
         'Nintendo or Rare. The executable contains code translated from the game; use a ROM dumped from a cartridge you own.',
+        'TooieRecomp''s own code is licensed under the GNU GPL v3.0 (LICENSE.txt); the code translated from the game is not.',
         'Third-party components and their licences: licenses/ and THIRD-PARTY-MANIFEST.tsv.',
         '',
         'Verify: from this directory, in Git for Windows bash: sha256sum -c MANIFEST.sha256',

@@ -25,6 +25,7 @@ TooieRecomp produces self-contained, redistributable application packages for Li
     - Each archive contains a single top-level `BanjoTooieRecompiled` directory.
     - Checksum sidecar: `<archive>.sha256`.
     - Package metadata: `BUILD-INFO.txt` (recording exact commit/dirty state and `release_version`), `AUDIT.txt`, `DEPENDENCIES.txt`, `MANIFEST.sha256`, and `THIRD-PARTY-MANIFEST.tsv`.
+    - Project licence: `LICENSE.txt` (GPL-3.0, copy of the repository `LICENSE`).
     - End-user documentation: `README-PACKAGE.txt` (explains ROM requirements, SHA-1 verification, controls/saves, legal notices, and repository URL).
   - Standalone source archive (`tools/package_source.sh`).
   - Linux `.deb` and AppImage files were published with `v0.1.0-p08`, but they were built by hand on Linux: there is no

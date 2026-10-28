@@ -29,6 +29,7 @@ install -m755 "$BUILD/TooieRecompiled" "$STAGE/TooieRecompiled"
 cp -rL "$BUILD/assets" "$STAGE/assets"
 mkdir -p "$STAGE/ui_assets"; install -m644 "$ROOT/ui_assets/TooieLogo.svg" "$STAGE/ui_assets/"
 install -m644 "$ROOT/recompcontrollerdb.txt" "$STAGE/"
+install -m644 "$ROOT/LICENSE" "$STAGE/LICENSE.txt"
 cat > "$STAGE/run-tooie.sh" <<'LAUNCH'
 #!/usr/bin/env bash
 # Run from anywhere; the game resolves assets/ next to the executable. Select your own retail or decompressed ROM in the launcher.
@@ -97,6 +98,7 @@ Data: user config and saves go to ~/.config/TooieRecompiled, never into this dir
 
 Banjo-Tooie is (c) Nintendo / Rare. This is an unofficial fan project, not affiliated with or endorsed by
 Nintendo or Rare. The executable contains code translated from the game; use a ROM dumped from a cartridge you own.
+TooieRecomp's own code is licensed under the GNU GPL v3.0 (LICENSE.txt); the code translated from the game is not.
 Third-party components and their licences: licenses/ and THIRD-PARTY-MANIFEST.tsv.
 
 Verify: from this directory: sha256sum -c MANIFEST.sha256

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Asset Ownership and Licensing Manifest"
 description: "Technical specification of copyright boundaries, ROM-derived code classification, third-party component licenses, and distribution restrictions."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-27
+updated: 2026-10-28
 tags: [specs, tooierecomp, assets, licensing, copyright, rom-derived, manifest]
 ---
 
@@ -68,7 +68,8 @@ Detailed upstream URLs, pins, and license metadata are cataloged in `vendor/UPST
 ### 2.1 Vendored Closure & Third-Party Auditing
 - Every third-party source is vendored as regular files under `lib/`, `decomp/`, `assets/`, `recompcontrollerdb.txt`, and `tools/wheelhouse/`.
 - Provenance and tracking: `vendor/UPSTREAMS.tsv`, `vendor/patches-applied/ORDER.tsv`, `vendor/BINARIES.tsv`, `vendor/EXCLUDES.txt`, and `vendor/MANIFEST.sha256`.
-- Rows marked `UNKNOWN` or `UNVERIFIED` in the third-party manifest remain open owner items to clear (not a block on publishing). TooieRecomp itself has no LICENSE file (open owner decision).
+- Rows marked `UNKNOWN` or `UNVERIFIED` in the third-party manifest remain open owner items to clear (not a block on publishing). TooieRecomp's own code is GPL-3.0 (`LICENSE`, required because the executable links the GPL-3.0
+  N64ModernRuntime); ROM-derived code, `decomp/` and game content are not covered.
 
 ---
 
@@ -113,4 +114,4 @@ Zero game data exists in `assets/`. Game assets (textures, audio banks, level ge
    - Distribution packages are validated by `tools/verify_package.py`.
    - Prohibited files: `.z64`, `.n64`, `.v64`, `.elf`, `.sav`, `.eep`, `.log`, `baserom*`, `decompressed*`.
    - Any `*.json` file at the root of the distribution package is forbidden, and configuration files (`graphics.json`, `general.json`, `sound.json`, `controls.json`) must never be bundled anywhere in the archive.
-   - All third-party licenses are aggregated into the package `licenses/` directory; rows marked `UNKNOWN` or `UNVERIFIED` in `THIRD-PARTY-MANIFEST.tsv` remain open owner items to clear. TooieRecomp itself has no LICENSE file (open owner decision).
+   - All third-party licenses are aggregated into the package `licenses/` directory; rows marked `UNKNOWN` or `UNVERIFIED` in `THIRD-PARTY-MANIFEST.tsv` remain open owner items to clear. The project's GPL-3.0 text ships at the package root as `LICENSE.txt`.
