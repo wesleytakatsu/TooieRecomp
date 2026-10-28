@@ -77,7 +77,7 @@ Gráficos, áudio e dados do jogo são lidos e descompactados diretamente da ROM
 
 O TooieRecomp suporta múltiplos idiomas de texto no jogo: **English** (padrão), **Português (Brasil)**, **Français**, **Deutsch** e **Español**.
 
-- **Português (Brasil):** Já vem integrado ao jogo (crédito: tradução por CLEHPTON, incluída com permissão do autor). Não necessita de arquivos adicionais nem de ROM europeia.
+- **Português (Brasil):** Já vem integrado ao jogo. Não necessita de arquivos adicionais nem de ROM europeia.
 - **Français, Deutsch, Español:** Selecione o idioma em **Settings** → **General** → **Game Language** (no inicializador ou no menu `Esc` dentro do jogo). O jogo solicitará a sua ROM europeia (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`, SHA-1 `93bf2fac1387320ad07251cb4b64fd36bac1d7a6`) uma única vez para extrair o pacote de idioma diretamente. A ROM europeia é usada APENAS para essa extração pontual; o jogo sempre roda a partir da sua ROM USA.
 - **Aplicação do idioma:** O idioma selecionado entra em vigor ao iniciar o jogo. Se for alterado durante a partida, reinicie o jogo para aplicá-lo.
 

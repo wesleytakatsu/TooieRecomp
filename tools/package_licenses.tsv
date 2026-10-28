@@ -28,4 +28,4 @@ README-PACKAGE.txt	package-meta	project licence UNKNOWN	written by the packager
 BUILD-INFO.txt	package-meta	project licence UNKNOWN	written by the packager
 DEPENDENCIES.txt	package-meta	project licence UNKNOWN	written by the packager
 AUDIT.txt	package-meta	project licence UNKNOWN	written by the packager
-assets/languages/*.tlpb	translation	Brazilian Portuguese fan translation by CLEHPTON, redistributed with the author's permission	text only; game text and fonts come from the player's ROM
+assets/languages/*.tlpb	translation	Brazilian Portuguese translation data (text and font patch runs)	text only; game text and fonts come from the player's ROM

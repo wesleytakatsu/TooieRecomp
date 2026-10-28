@@ -2,7 +2,8 @@
 # The game itself cannot be built on public runners: RecompiledFuncs is generated from the owner's private ROM.
 #  - public jobs (no ROM): tracked-tree audit (vendored sources, no gitlinks/ROM/generated code), offline vendor verify, host unit tests (Linux + Windows/clang-cl)
 #  - all sources are vendored in the repository: no bootstrap, no submodule, no download beyond OS packages
-#  - private jobs: self-hosted runners that already hold the ROM; upload checksums/audit only (never the game archive)
+#  - GitHub-hosted runners only: pull requests (including forks) must never reach a self-hosted runner.
+#    The ROM-backed game builds live in private-build.yml (manual dispatch only).
 name: build
 on:
   workflow_dispatch:
@@ -60,37 +61,3 @@ jobs:
           cmake --build build-ci --target $T -j2
           for t in $T; do (cd build-ci && ./$t.exe); done
           python tools/test_rom_check.py
-
-  private-game-build:   # needs a self-hosted runner you control; ROM never leaves it
-    if: ${{ vars.TOOIE_PRIVATE_RUNNER == 'true' }}
-    runs-on: [self-hosted, linux, x64, tooie-rom]
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - name: Build and package (TOOIE_ROM must be set in the runner environment)
-        run: tools/build_linux.sh
-      - name: Upload checksums and audit only (the archive embeds ROM-derived code)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: tooie-linux-private-evidence
-          path: |
-            dist/*.sha256
-            dist/*/AUDIT.txt
-            dist/*/BUILD-INFO.txt
-            dist/*/DEPENDENCIES.txt
-
-  private-game-build-windows:   # needs a self-hosted Windows runner you control; ROM never leaves it
-    if: ${{ vars.TOOIE_PRIVATE_RUNNER == 'true' }}
-    runs-on: [self-hosted, windows, x64, tooie-rom]
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - name: Build and package (TOOIE_ROM must be set in the runner environment)
-        run: pwsh -File tools/windows/Build-Tooie.ps1 -Stage All
-      - name: Upload checksums and audit only (the archive embeds ROM-derived code)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: tooie-windows-private-evidence
-          path: |
-            dist/*.sha256
-            dist/*/AUDIT.txt
-            dist/*/BUILD-INFO.txt
-            dist/*/DEPENDENCIES.txt

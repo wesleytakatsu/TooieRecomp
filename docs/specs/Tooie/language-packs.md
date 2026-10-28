@@ -12,9 +12,9 @@ tags: [specs, tooierecomp, localization, language, tlp, tlpb, text, font]
 ## 1. Subsystem Architecture
 
 TooieRecomp implements in-game language localization for dialogs and menu texts through a dual architecture:
-1. **Built-in Brazilian Portuguese (`pt-BR`):** Ships directly with the project and release packages as `assets/languages/pt-BR.tlpb` (~309 KB). It contains only the translator's work (CLEHPTON's fan translation, redistributed with permission obtained by the project owner) and metadata. At startup, the game builds the `pt-BR` pack in memory from the bundle and the player's USA ROM, synthesizing accented font frames procedurally at runtime. No European ROM or external pack file is required.
+1. **Built-in Brazilian Portuguese (`pt-BR`):** Ships directly with the project and release packages as `assets/languages/pt-BR.tlpb` (~309 KB). It contains only the translated text, font patch data and metadata. At startup, the game builds the `pt-BR` pack in memory from the bundle and the player's USA ROM, synthesizing accented font frames procedurally at runtime. No European ROM or external pack file is required.
 2. **In-Game European Language Import (`fr`, `de`, `es`):** When the player selects Français, Deutsch, or Español in Settings and the corresponding pack (`<app folder>/languages/<tag>.tlp`) is missing, an in-engine localized modal prompt asks the player to select their verified European ROM (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`). An embedded C++ importer extracts the language pack directly, validates CRC32 integrity, and atomically writes the `.tlp` container to the application folder. The European ROM is used only once for extraction; the game always executes from the USA ROM. No Python installation is needed by players.
-3. **Developer Reference Tooling:** `tools/build_language_packs.py` serves as a developer tool to build the `assets/languages/pt-BR.tlpb` bundle (from European ROM + CLEHPTON v4 BPS) and generate reference `.tlp` packs for automated unit test parity.
+3. **Developer Reference Tooling:** `tools/build_language_packs.py` serves as a developer tool to build the `assets/languages/pt-BR.tlpb` bundle (from the European ROM + the pt-BR source BPS patch) and generate reference `.tlp` packs for automated unit test parity.
 
 ```text
 ======================= pt-BR Built-In Pipeline =======================
@@ -124,13 +124,13 @@ Used for the built-in translation bundle (`assets/languages/pt-BR.tlpb`, ~309 KB
 
 #### Bundle Section Types
 1. **Kind 0 (Full Replacement Section):**
-   - 2,230 translated text sections completely authored by the translator.
+   - 2,230 translated text sections with the pt-BR text.
    - Replaces the entire USA text section payload.
 2. **Kind 1 (Overlay Section):**
    - 4 menu sections where only specific records are translated.
    - Encodes a bitmask / flag array of keep/replace decisions per USA record: English records are referenced directly from the player's USA ROM in memory, not duplicated in the bundle.
 3. **Font 0 Patch Runs:**
-   - 37 byte runs (209 bytes total) representing the translator's modifications to font 0 (asset `0x0C21`).
+   - 37 byte runs (209 bytes total) representing the pt-BR modifications to font 0 (asset `0x0C21`).
    - Applied over the player's USA font 0 after verifying target asset size and CRC32.
 
 ---
@@ -153,7 +153,7 @@ When a European language (Français, Deutsch, Español) is selected in Settings 
 ### 4.2 Developer Tool (`tools/build_language_packs.py`)
 
 `tools/build_language_packs.py` is maintained strictly as a developer utility:
-- Builds the `assets/languages/pt-BR.tlpb` bundle from the European ROM and CLEHPTON's v4 BPS patch.
+- Builds the `assets/languages/pt-BR.tlpb` bundle from the European ROM and the pt-BR source BPS patch.
 - Applies project fixes to the pt-BR text from `PTBR_TEXT_FIXES` (keyed by asset ID + record type). Current fix:
   title-screen legal line (`0x186C`, record `0x85`) shortened to "A LOGO RAREWARE É MARCA DA RARE." because the
   46-character translation was cut at both edges of the USA title layout (about 38 characters fit); verified in game.
@@ -164,7 +164,7 @@ When a European language (Français, Deutsch, Español) is selected in Settings 
 ```sh
 python tools/build_language_packs.py \
     --pal-rom "<path_to_european_rom>" \
-    [--ptbr-bps "<path_to_v4_patch.bps>"] \
+    [--ptbr-bps "<path_to_ptbr_patch.bps>"] \
     [--usa-image "<path_to_bt.n64.us.1.0.z64>"] \
     [--out-dir "<destination_folder>"] \
     [--build-bundle] \
@@ -209,7 +209,7 @@ Configuration key in `general.json`:
 For Brazilian Portuguese, font 1 is generated entirely in memory at boot:
 1. The player's USA font 1 (`0x0C22`, 51 IA8 frames, height 23) is read from the base decompressed ROM image.
 2. Base frames are padded to height 31 by prepending 8 transparent pixel rows, matching the European layout.
-3. 23 accented glyph frames are synthesized procedurally in the translator's frame order (51–73):
+3. 23 accented glyph frames are synthesized procedurally in the pt-BR frame order (51–73):
    `Ã`, `Á`, `À`, `É`, `È`, `Í`, `Ì`, `Ç`, `Õ`, `Ó`, `Ò`, `Ü`, `Ú`, `Ù`, `¿`, `¡`, `ª`, `°`, `Ê`, `Ï`, `Ô`, `Â`, and the comma.
 4. Accents are rendered from compact procedural masks using the font's fill and outline colors; `¿` and `¡` are rotated copies of `?` and `!`; the comma is formed by shifting the apostrophe glyph downward.
 5. The developer target `tooie_font_preview` outputs the complete synthesized font sheet as a PPM image for visual inspection.
