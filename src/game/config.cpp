@@ -10,6 +10,7 @@
 #include "librecomp/config.hpp"
 #include "tooie_menu_policy.h"
 #include "tooie_bgm_volume.h"
+#include "tooie_language_import_ui.h"
 #include "hle/rt64_host_endpoint_current.h"
 #include "util/file.h"
 #include <filesystem>
@@ -38,6 +39,26 @@ static void add_general_options(recomp::config::Config &config) {
         "Enables per-player controller assignment in Controls. Takes effect after restarting the game.",
         multiplayer_mode_options,
         banjo::MultiplayerMode::Off
+    );
+
+    // Labels are already uppercase: the menu's uppercase transform does not handle accented letters.
+    static EnumOptionVector language_options = {
+        {banjo::Language::English, "English", "ENGLISH"},
+        {banjo::Language::PortugueseBrazil, "PortugueseBrazil", "PORTUGUÊS (BRASIL)"},
+        {banjo::Language::French, "French", "FRANÇAIS"},
+        {banjo::Language::German, "German", "DEUTSCH"},
+        {banjo::Language::Spanish, "Spanish", "ESPAÑOL"},
+    };
+    config.add_enum_option(
+        banjo::configkeys::general::language,
+        "Game Language",
+        "Language of the in-game text. Português (Brasil) is built in. Français, Deutsch and Español are extracted once from your own European ROM when you select them; the game always runs from the USA ROM. Applies when the game starts; if the game is already running, restart it.",
+        language_options,
+        banjo::Language::English
+    );
+    config.add_option_change_callback(
+        banjo::configkeys::general::language,
+        tooie_language_import_ui::on_language_change
     );
 
     static EnumOptionVector note_saving_mode_options = {
@@ -134,6 +155,25 @@ T get_general_config_number_value(const std::string& option_id) {
 
 banjo::NoteSavingMode banjo::get_note_saving_mode() {
     return get_general_config_enum_value<banjo::NoteSavingMode>(banjo::configkeys::general::note_saving_mode);
+}
+
+banjo::Language banjo::get_language() {
+    return get_general_config_enum_value<banjo::Language>(banjo::configkeys::general::language);
+}
+
+const char* banjo::language_tag(banjo::Language language) {
+    switch (language) {
+        case Language::PortugueseBrazil:
+            return "pt-BR";
+        case Language::French:
+            return "fr";
+        case Language::German:
+            return "de";
+        case Language::Spanish:
+            return "es";
+        default:
+            return "";
+    }
 }
 
 banjo::MultiplayerMode banjo::get_multiplayer_mode() {

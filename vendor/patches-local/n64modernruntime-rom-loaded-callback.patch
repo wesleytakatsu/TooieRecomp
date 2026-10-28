@@ -1,0 +1,27 @@
+diff --git a/librecomp/include/librecomp/game.hpp b/librecomp/include/librecomp/game.hpp
+index 7f1533e..7d7aca2 100644
+--- a/librecomp/include/librecomp/game.hpp
++++ b/librecomp/include/librecomp/game.hpp
+@@ -36,6 +36,8 @@ namespace recomp {
+ 
+         void (*thread_create_callback)(uint8_t* rdram, recomp_context* context) = nullptr;
+ 
++        void (*on_rom_loaded_callback)() = nullptr;
++
+         void (*on_init_callback)(uint8_t* rdram, recomp_context* context) = nullptr;
+ 
+         std::u8string stored_filename() const;
+diff --git a/librecomp/src/recomp.cpp b/librecomp/src/recomp.cpp
+index 17cc788..22928cc 100644
+--- a/librecomp/src/recomp.cpp
++++ b/librecomp/src/recomp.cpp
+@@ -741,6 +741,9 @@ bool wait_for_game_started(uint8_t* rdram, recomp_context* context) {
+                 auto find_it = game_roms.find(current_game.value());
+                 const recomp::GameEntry& game_entry = find_it->second;
+ 
++                if (game_entry.on_rom_loaded_callback) {
++                    game_entry.on_rom_loaded_callback();
++                }
+                 init(rdram, context, game_entry.entrypoint_address);
+                 if (game_entry.on_init_callback) {
+                     game_entry.on_init_callback(rdram, context);

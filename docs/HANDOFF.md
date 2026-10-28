@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-23
+updated: 2026-10-27
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -25,10 +25,20 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Entrada / UI / config | SDL2, multijogador local (até 4 jogadores, opção default Off), menu ESC (Graphics: Interpolation), FPS overlay | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
+| Idiomas do jogo | Seleção de idioma (EN, pt-BR, FR, DE, ES): pt-BR embutido via bundle TLPB (`assets/languages/pt-BR.tlpb`), fonte 1 composta em runtime; FR/DE/ES importados no jogo da ROM europeia via C++ (`.tlp`); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Testes | `Build-Tooie.ps1 -Stage Test -AllTests`: required 9/9, extra 19/19, 5 skipped (Windows, 2026-10-23) | [[specs/Tooie/testing-and-oracle]] |
 
 ## Correções recentes (todas em `origin/main`)
 
+- Idiomas do jogo — Português (Brasil) integrado na distribuição via bundle TLPB (`assets/languages/pt-BR.tlpb`, ~309 KB,
+  tradução de CLEHPTON com autorização do autor obtida pelo dono do projeto; sem texto ou arte da Rare no repositório);
+  fonte 1 pt-BR gerada em runtime a partir da fonte USA com máscaras de acento procedurais (`include/tooie_font_sprite.h`).
+  Francês, alemão e espanhol importados diretamente na UI do jogo (diálogo de arquivo nativo pede a ROM europeia uma vez,
+  C++ extrai `.tlp` via `tooie_language_import.h` com validação de CRC32, sem Python). `tools/build_language_packs.py`
+  virou ferramenta de desenvolvedor. Correções da revisão: resultado da importação em prompt do jogo (patch local
+  `recompfrontend-prompt-chain`), checagem da ROM USA antes de pedir a europeia, helpers compartilhados
+  (`tooie_asset_table.h`, `tooie_language_paths.h`). Testes unitários PASS. Validado no Windows (2026-10-27), inclusive
+  importação pelo menu ESC em tela cheia. Pendente de commit. Detalhes: [[specs/Tooie/language-packs]].
 - `55ecdd0` — Widescreen: o aspecto do volume de visão (`+0xE8`) é alargado só enquanto `800CA1B0`/`800CA218`/`800CA2A8`
   constroem os vetores laterais; projeção `800CB124` fica 4:3 para o RT64 expandir. Demos do attract
   (`0x80127632 == 5`) mantêm os planos originais (planos largos dessincronizam demos gravados). `TOOIE_TEST_WS_NATIVE_PLANES=0`
@@ -54,6 +64,7 @@ Estado corrente para um agente ou chat novo. Histórico de investigações e evi
 
 - Validação Linux (feita pelo usuário no PC Linux; nunca WSL) das correções de widescreen, interpolação, desempenho e
   multijogador local: `NOT_RUN`.
+- Validação Linux dos pacotes de idioma / importador de idiomas pelo usuário no PC Linux: `NOT_RUN`.
 - Paredes do intro em 16:9 (`T_INTRO`, cenas SCENE_A/SCENE_B) e ultrawide (> 16:9): resíduo separado, não tratado.
 - Pular o matching de frames do RT64 com Interpolation OFF: tentado e `REFUTED` (o processo encerrou sem log na troca de cena
   do attract); causa `UNKNOWN`.

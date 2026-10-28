@@ -71,6 +71,14 @@ Graphics, audio, and game data are read and decompressed directly from the ROM a
 - **Identical Controllers:** If you connect multiple identical controllers without a serial number, they are
   re-assigned in connection order after a restart.
 
+### Game languages
+
+TooieRecomp supports in-game text languages: **English** (default), **Português (Brasil)**, **Français**, **Deutsch**, and **Español**.
+
+- **Português (Brasil):** Built into the game (credit: fan translation by CLEHPTON, included with the author's permission). No additional files or European ROM required.
+- **Français, Deutsch, Español:** Select the language in **Settings** → **General** → **Game Language** (accessible from the launcher or the in-game `Esc` menu). The game will ask you for your European ROM (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`, SHA-1 `93bf2fac1387320ad07251cb4b64fd36bac1d7a6`) once to extract the language pack. The European ROM is used ONLY to extract that language; the game always runs from your USA ROM.
+- **Applying language:** The selected language is applied when the game starts. If changed during gameplay, restart the game for it to take effect.
+
 ---
 
 ## Building from Source

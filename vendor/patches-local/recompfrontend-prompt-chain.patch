@@ -1,0 +1,82 @@
+diff --git a/recompui/src/composites/ui_prompt.cpp b/recompui/src/composites/ui_prompt.cpp
+index 56a0b70..01026b1 100644
+--- a/recompui/src/composites/ui_prompt.cpp
++++ b/recompui/src/composites/ui_prompt.cpp
+@@ -1,3 +1,4 @@
++#include <cstdint>
+ #include <mutex>
+ 
+ #include "recompui.h"
+@@ -16,31 +17,46 @@ struct {
+     recompui::Button* cancel_button;
+     std::function<void()> confirm_action;
+     std::function<void()> cancel_action;
++    uint64_t generation = 0;
+     std::mutex mutex;
+ } prompt_state;
+ 
+ void run_confirm_callback() {
+     std::function<void()> confirm_action;
++    uint64_t generation;
+     {
+         std::lock_guard lock{ prompt_state.mutex };
++        generation = prompt_state.generation;
+         confirm_action = std::move(prompt_state.confirm_action);
+     }
+     if (confirm_action) {
+         confirm_action();
+     }
+-    recompui::hide_context(prompt_state.ui_context);
++    {
++        std::lock_guard lock{ prompt_state.mutex };
++        if (generation == prompt_state.generation) {
++            recompui::hide_context(prompt_state.ui_context);
++        }
++    }
+ }
+ 
+ void run_cancel_callback() {
+     std::function<void()> cancel_action;
++    uint64_t generation;
+     {
+         std::lock_guard lock{ prompt_state.mutex };
++        generation = prompt_state.generation;
+         cancel_action = std::move(prompt_state.cancel_action);
+     }
+     if (cancel_action) {
+         cancel_action();
+     }
+-    recompui::hide_context(prompt_state.ui_context);
++    {
++        std::lock_guard lock{ prompt_state.mutex };
++        if (generation == prompt_state.generation) {
++            recompui::hide_context(prompt_state.ui_context);
++        }
++    }
+ 
+     // TODO nav: focus on return_element_id
+     // or just remove it as the usage of the prompt can change now
+@@ -154,6 +170,7 @@ void recompui::open_choice_prompt(
+     bool focus_on_cancel
+ ) {
+     std::lock_guard lock{ prompt_state.mutex };
++    ++prompt_state.generation;
+ 
+     std::function<void()> prev_cancel_action = std::move(prompt_state.cancel_action);
+ 
+@@ -190,6 +207,7 @@ void recompui::open_info_prompt(
+     ButtonStyle okay_variant
+ ) {
+     std::lock_guard lock{ prompt_state.mutex };
++    ++prompt_state.generation;
+ 
+     std::function<void()> prev_cancel_action = std::move(prompt_state.cancel_action);
+ 
+@@ -222,6 +240,7 @@ void recompui::open_notification(
+     const std::string& content_text
+ ) {
+     std::lock_guard lock{ prompt_state.mutex };
++    ++prompt_state.generation;
+ 
+     std::function<void()> prev_cancel_action = std::move(prompt_state.cancel_action);
+ 

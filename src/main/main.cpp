@@ -65,6 +65,7 @@ extern char** environ;
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
 #include "tooie_controller_ports.h"
+#include "tooie_language_pack_loader.h"
 #include "tooie_error.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
@@ -866,6 +867,7 @@ std::vector<recomp::GameEntry> supported_games = {
         .has_compressed_code = false,
         .entrypoint_address = get_entrypoint_address(),
         .entrypoint = recomp_entrypoint,
+        .on_rom_loaded_callback = tooie_apply_language_pack,
         .on_init_callback = banjo::bk_on_init,
     },
 };

@@ -741,6 +741,9 @@ bool wait_for_game_started(uint8_t* rdram, recomp_context* context) {
                 auto find_it = game_roms.find(current_game.value());
                 const recomp::GameEntry& game_entry = find_it->second;
 
+                if (game_entry.on_rom_loaded_callback) {
+                    game_entry.on_rom_loaded_callback();
+                }
                 init(rdram, context, game_entry.entrypoint_address);
                 if (game_entry.on_init_callback) {
                     game_entry.on_init_callback(rdram, context);

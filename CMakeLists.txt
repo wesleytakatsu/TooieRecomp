@@ -187,6 +187,10 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/recomp_api.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_extension_api.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_data_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/language_paths.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/language_pack.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/language_import_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/text_font_map.cpp
     ${CMAKE_SOURCE_DIR}/src/game/rom_decompression.cpp
     ${CMAKE_SOURCE_DIR}/src/game/syscall_handler.cpp
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
@@ -937,3 +941,35 @@ target_include_directories(rom_cart_import_test PRIVATE
 target_compile_definitions(rom_cart_import_test PRIVATE XXH_INLINE_ALL)
 target_link_libraries(rom_cart_import_test PRIVATE tooie_cart_decompress)
 set_target_properties(rom_cart_import_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_language_pack_test ${CMAKE_SOURCE_DIR}/tests/tooie_language_pack_test.cpp)
+target_include_directories(tooie_language_pack_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(tooie_language_pack_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_text_font_map_test ${CMAKE_SOURCE_DIR}/tests/tooie_text_font_map_test.cpp)
+target_include_directories(tooie_text_font_map_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(tooie_text_font_map_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_language_import_test ${CMAKE_SOURCE_DIR}/tests/tooie_language_import_test.cpp)
+target_include_directories(tooie_language_import_test PRIVATE ${CMAKE_SOURCE_DIR}/include ${N64MR}/thirdparty/miniz ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz)
+target_link_libraries(tooie_language_import_test PRIVATE miniz)
+set_target_properties(tooie_language_import_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_font_sprite_test ${CMAKE_SOURCE_DIR}/tests/tooie_font_sprite_test.cpp)
+target_include_directories(tooie_font_sprite_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(tooie_font_sprite_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_language_bundle_test ${CMAKE_SOURCE_DIR}/tests/tooie_language_bundle_test.cpp)
+target_include_directories(tooie_language_bundle_test PRIVATE ${CMAKE_SOURCE_DIR}/include ${N64MR}/thirdparty/miniz ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz)
+target_link_libraries(tooie_language_bundle_test PRIVATE miniz)
+set_target_properties(tooie_language_bundle_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_font_preview ${CMAKE_SOURCE_DIR}/tests/tooie_font_preview.cpp)
+target_include_directories(tooie_font_preview PRIVATE ${CMAKE_SOURCE_DIR}/include ${N64MR}/thirdparty/miniz ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz)
+target_link_libraries(tooie_font_preview PRIVATE miniz)
+set_target_properties(tooie_font_preview PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_language_timing ${CMAKE_SOURCE_DIR}/tests/tooie_language_timing.cpp)
+target_include_directories(tooie_language_timing PRIVATE ${CMAKE_SOURCE_DIR}/include ${N64MR}/thirdparty/miniz ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz)
+target_link_libraries(tooie_language_timing PRIVATE miniz)
+set_target_properties(tooie_language_timing PROPERTIES EXCLUDE_FROM_ALL TRUE)

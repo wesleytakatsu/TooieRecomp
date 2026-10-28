@@ -36,6 +36,8 @@ namespace recomp {
 
         void (*thread_create_callback)(uint8_t* rdram, recomp_context* context) = nullptr;
 
+        void (*on_rom_loaded_callback)() = nullptr;
+
         void (*on_init_callback)(uint8_t* rdram, recomp_context* context) = nullptr;
 
         std::u8string stored_filename() const;

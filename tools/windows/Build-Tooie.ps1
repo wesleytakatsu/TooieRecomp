@@ -442,6 +442,11 @@ function Invoke-Package {
     "package: $zip  (contains ROM-derived recompiled code; no ROM inside)"
 }
 $script:RequiredTests = @(
+    'tooie_language_pack_test',
+    'tooie_text_font_map_test',
+    'tooie_language_import_test',
+    'tooie_font_sprite_test',
+    'tooie_language_bundle_test',
     'tooie_menu_policy_test',
     'tooie_menu_config_test',
     'rt64_host_endpoint_current_test',

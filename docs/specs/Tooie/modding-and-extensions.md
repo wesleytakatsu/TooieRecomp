@@ -108,5 +108,5 @@ While the modding and extension infrastructure compiles cleanly into `TooieRecom
   Linux were not tested.
 
 Code mods (`.nrm`) load through the same manager, but Tooie publishes no mod SDK yet (no `RECOMP_EXPORT` patches, no
-headers or mod-tool symbol file), and there is no data-file replacement or external-audio API, so text/language and
-music replacement need new exports.
+headers or mod-tool symbol file), and there is no data-file replacement or external-audio API. In-game text languages
+are supported through language packs (see [language packs](language-packs.md)); music replacement still needs new exports.
