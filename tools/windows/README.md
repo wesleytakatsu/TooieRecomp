@@ -80,7 +80,7 @@ This sequentially executes:
 3. `Recomp`: Builds `N64Recomp.exe` and generates 420 C files in `RecompiledFuncs/` (byte-identical to Linux baseline).
 4. `Configure`: Generates CMake build configuration with Ninja and `clang-cl`.
 5. `Build`: Compiles `TooieRecompiled.exe` and copies runtime DLLs (`SDL2.dll`, `dxil.dll`, `dxcompiler.dll`).
-6. `Test`: Executes host unit test suites (9/9 required PASS).
+6. `Test`: Executes host unit test suites (14/14 required PASS).
 7. `Package`: Audits and packages release archive into `dist/`.
 
 ### 4.2 Individual Pipeline Stages
@@ -106,10 +106,10 @@ You can execute any individual stage:
 # Build TooieRecompiled.exe
 .\tools\windows\Build-Tooie.ps1 -Stage Build [-Jobs N]
 
-# Run required host unit tests (9/9 PASS)
+# Run required host unit tests (14/14 PASS)
 .\tools\windows\Build-Tooie.ps1 -Stage Test
 
-# Build all test targets and run extra unit tests (15/15 extra PASS)
+# Build all test targets and run extra unit tests (19/19 extra PASS)
 .\tools\windows\Build-Tooie.ps1 -Stage Test -AllTests
 
 # Package release archive into dist/
@@ -156,7 +156,9 @@ To bypass local recompiler generation and import pre-generated `RecompiledFuncs/
 ## 6. Host Unit Test Results
 
 The Windows test suite is fully ported and verified:
-- **Required Host Tests (9/9 PASS):**
+- **Required Host Tests (14/14 PASS):**
+  - `tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
+    `tooie_language_bundle_test`
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
   - `rt64_host_endpoint_current_test`
@@ -166,7 +168,7 @@ The Windows test suite is fully ported and verified:
   - `p09_exact_use_correlation_test` (1355/1355 passed; configured with `/STACK:8388608` 8 MiB stack)
   - `rt64_present_decimator_test`
   - `rom_cart_import_test`
-- **Extra Unit Tests with `-AllTests` (15/15 PASS):**
+- **Extra Unit Tests with `-AllTests` (19/19 PASS):**
   - Includes `window_display_test`, `tintro_projection_policy_test`, `tooie_demo7_drift_test`, `mips_rounding_test`, and Python test ports (`demo1_projectile_coverage_test.py`, `n64recomp_zero_size_static_test.py`, `attract_demo2_transition_jal_test.py`, `tools/test_rom_check.py`).
 - **Skipped Driver Targets (5 SKIP):**
   - `tooie_demo1_parity_test`, `tooie_demo1_projectile_test`, `tooie_demo1_target_selector_test`, `tooie_demo1_upd_layout_test`, `p09_local_pair_snapshot_io_test`.

@@ -196,7 +196,7 @@ This sequentially runs:
 2. `Extract`: Decompresses retail ROM `Banjo-Tooie (USA).z64` to `build-win\extract\decompressed.us.z64`.
 3. `Recomp`: Compiles `N64Recomp.exe` and generates 420 C files in `RecompiledFuncs/` (byte-identical to Linux baseline).
 4. `Configure` + `Build`: Compiles `TooieRecompiled.exe` using `clang-cl` and `lld-link` via Ninja (copies `SDL2.dll`, `dxil.dll`, `dxcompiler.dll`).
-5. `Test`: Runs required host test suites (9/9 PASS, 15/15 extra PASS with `-AllTests`).
+5. `Test`: Runs required host test suites (14/14 PASS, 19/19 extra PASS with `-AllTests`).
 6. `Package`: Creates distribution archive `dist\BanjoTooieRecompiled-v<ver>-Windows-x64.zip` (with `-ReleaseVersion <ver>`) or `dist\BanjoTooieRecompiled-dev-<desc>-Windows-x64.zip` (+ `.sha256`).
 
 Individual stages can also be executed:
@@ -216,7 +216,7 @@ Individual stages can also be executed:
   - `-Jobs N`: Concurrency level (default: host logical CPU count).
   - `-BuildDir <path>`: Build tree location (default: `build-win`).
   - `-Rom <path>`: Override path to retail ROM for `Extract`.
-  - `-AllTests`: Build all test targets and execute argument-free tests (15/15 extra PASS, 5 driver targets SKIP).
+  - `-AllTests`: Build all test targets and execute argument-free tests (19/19 extra PASS, 5 driver targets SKIP).
 - **Outputs:** `build-win\TooieRecompiled.exe` with bundled DLLs.
 - **Verification:** `python tools/verify_package.py dist\BanjoTooieRecompiled-*-Windows-x64*.zip`.
 - **Running:** Execute `.\run-tooie.ps1` or double-click `build-win\TooieRecompiled.exe`. The launcher accepts both retail cartridge ROMs (`.z64`/`.n64`) and decompressed images.

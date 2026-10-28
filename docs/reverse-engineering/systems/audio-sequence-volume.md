@@ -118,8 +118,4 @@ Audio RSP Task Dispatch (n_aspMain)
 - **Unit Tests**:
   - `tests/tooie_bgm_volume_test.cpp`: Validates identity scaling (100%), muting (0%), attenuation (50%), numeric bounds, compounding avoidance, restoration, idle live changes, and unknown pointer classification.
   - `tests/tooie_bgm_hooks_test.cpp`: Validates hook dispatch contracts, unchanged forwarding of unknown pointers, event counts, authored memory preservation, and context copying.
-- **Evidence Documents**:
-  - `p08-settings-functionality-20261019`: Full test execution and acoustic QA captures.
-  - [[../../specs/Tooie/audio-system]]: Subsystem specification and requirements traceability.
-- **Audio Captures**:
-  - `/home/wesley/.cache/tooie-menu-settings-20261019/`: `preview-100.wav`, `preview-0-real.wav`, `preview-50-real.wav`, `preview-100-restored.wav`, `game-0.wav`, `game-100-restored.wav`.
+- **Specification**: [[../../specs/Tooie/audio-system]] (subsystem specification and requirements traceability).

@@ -32,7 +32,7 @@ Os gráficos, o áudio e os dados do jogo são lidos e descompactados diretament
   - Ferramentas de identificação de comandos na página `Controls`: um indicador de entrada e o botão `Rumble 1 s` para testar a vibração.
 - **Suporte para comandos modernos e teclado:** Compatibilidade com comandos através de SDL2 e controlos por teclado.
 - **Iniciador nativo:** Interface gráfica integrada com seleção de ROM.
-- **Suporte a modificações (mods):** Suporte extensível a modificações através do menu `Mods` no jogo.
+- **Pacotes de texturas:** pacotes de texturas do RT64 (`.rtz`) através do menu `Mods` no jogo.
 
 ---
 
@@ -54,9 +54,11 @@ Os gráficos, o áudio e os dados do jogo são lidos e descompactados diretament
 ### Linux (x64)
 
 1. Transfira o pacote `BanjoTooieRecompiled-v<version>-Linux-x64.tar.gz` da
-   [página de Releases](https://github.com/wesleytakatsu/TooieRecomp/releases) (quando disponível).
+   [página de Releases](https://github.com/wesleytakatsu/TooieRecomp/releases).
 2. Extraia o arquivo comprimido e entre na pasta correspondente.
 3. Execute `./run-tooie.sh` e selecione a sua ROM no iniciador.
+
+A release inclui também um pacote `.deb` (Debian/Ubuntu/Mint) e um `.AppImage`.
 
 **Requisitos e notas:**
 - Requer uma placa gráfica com suporte para **Vulkan**.

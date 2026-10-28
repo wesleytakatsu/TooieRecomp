@@ -30,7 +30,7 @@ Graphics, audio, and game data are read and decompressed directly from the ROM a
   - Controller identification tools in `Controls`: an input indicator and a `Rumble 1 s` test button.
 - **Modern Controller & Keyboard Support:** Gamepad support powered by SDL2 alongside customizable keyboard controls.
 - **Native Launcher:** Built-in graphical launcher with ROM selection.
-- **Mod Support:** Extensible game modifications via the in-game `Mods` menu.
+- **Texture Packs:** RT64 texture packs (`.rtz`) via the in-game `Mods` menu.
 
 ---
 
@@ -52,9 +52,11 @@ Graphics, audio, and game data are read and decompressed directly from the ROM a
 ### Linux (x64)
 
 1. Download `BanjoTooieRecompiled-v<version>-Linux-x64.tar.gz` from the
-   [Releases page](https://github.com/wesleytakatsu/TooieRecomp/releases) (when available).
+   [Releases page](https://github.com/wesleytakatsu/TooieRecomp/releases).
 2. Extract the archive and enter the directory.
 3. Run `./run-tooie.sh` and select your ROM in the launcher.
+
+The release also has a `.deb` package (Debian/Ubuntu/Mint) and an `.AppImage`.
 
 **Requirements & Notes:**
 - Requires a **Vulkan**-capable GPU.
