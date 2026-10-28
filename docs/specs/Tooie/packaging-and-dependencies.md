@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Packaging, Releases and Dependency Boundaries"
 description: "Technical specification for standalone Linux and Windows packaging, clean-room asset separation, legal ROM requirements, and runtime dependencies."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-28
 tags: [specs, tooierecomp, packaging, release, linux, windows, dependencies, assets]
 ---
 
@@ -27,7 +27,11 @@ TooieRecomp produces self-contained, redistributable application packages for Li
     - Package metadata: `BUILD-INFO.txt` (recording exact commit/dirty state and `release_version`), `AUDIT.txt`, `DEPENDENCIES.txt`, `MANIFEST.sha256`, and `THIRD-PARTY-MANIFEST.tsv`.
     - End-user documentation: `README-PACKAGE.txt` (explains ROM requirements, SHA-1 verification, controls/saves, legal notices, and repository URL).
   - Standalone source archive (`tools/package_source.sh`).
-  - AppImage and Flatpak distribution formats remain `NOT_IMPLEMENTED`.
+  - Linux `.deb` and AppImage files were published with `v0.1.0-p08`, but they were built by hand on Linux: there is no
+    versioned script for them yet. Flatpak is `NOT_IMPLEMENTED`.
+  - The `assets/` tree (UI resources and `assets/languages/pt-BR.tlpb`) is copied next to the executable by the CMake
+    target `TooieUIAssets` and shipped in every package. Imported FR/DE/ES packs are written to the user's app folder,
+    never to the package.
 
 ```text
 +---------------------------------------------------------------------------------+

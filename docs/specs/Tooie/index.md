@@ -3,7 +3,7 @@ title: "TooieRecomp Native Port Specifications — Index"
 description: "Hub and architectural index for the technical specifications of TooieRecomp, the native static recompilation of Banjo-Tooie."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-28
 tags: [specs, tooierecomp, index, architecture]
 ---
 
@@ -51,12 +51,12 @@ tags: [specs, tooierecomp, index, architecture]
 
 ## Specification Domain Suite
 
-The TooieRecomp system is specified across 14 core functional domains:
+The TooieRecomp system is specified across 15 core functional domains:
 
 1. **[Build System & Recompiler Generator](build-and-generator.md)**: CMake configuration, Clang toolchain requirements, N64Recomp/RSPRecomp pipelines, metadata manifests, vendored dependency closure, and symbols.
 2. **[Runtime, Overlays & Guest Preemption](runtime-and-overlays.md)**: ModernRuntime integration, 884 dynamic overlays, syscall table dispatch, and Hybrid F' guest preemption.
 3. **[Graphics, Presentation & Interpolation](graphics-and-presentation.md)**: RT64 renderer, native-style 16:9 culling planes, host endpoint-CURRENT fallback, presentation decimation, P09 transform interpolation guards, and top-left present FPS counter.
-4. **[Input & Controller Subsystem](input-and-controllers.md)**: SDL2 input mapping, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback.
+4. **[Input & Controller Subsystem](input-and-controllers.md)**: SDL2 input mapping, local multiplayer for up to 4 players, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback.
 5. **[Windowing, UI & Configuration](window-ui-and-config.md)**: SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration.
 6. **[Audio Subsystem & RSP Microcode](audio-system.md)**: `n_aspMain` microcode execution, `M_AUDTASK` scheduling, SoundManager delta queues, and audio stream stability.
 7. **[Save System & Persistence](save-system.md)**: EEPROM emulation, save slot management, and filesystem persistence (`<config>/saves/<game_id>.bin`).
@@ -67,6 +67,7 @@ The TooieRecomp system is specified across 14 core functional domains:
 12. **[Packaging & Dependency Boundaries](packaging-and-dependencies.md)**: Standalone packaging (`.tar.gz` and `.zip`), dependency boundaries, candidate verification, and on-the-fly ROM decompression.
 13. **[Modding, Extensions & Asset Customization](modding-and-extensions.md)**: Extended object data, slot maps, texture pack container formats (.rtz), and mod callback hooks.
 14. **[Asset Ownership & Licensing Manifest](asset-and-licensing-manifest.md)**: Copyright boundaries, legal ROM requirements, ROM-derived code classification, third-party component licenses, and package distribution policies.
+15. **[In-Game Language Packs](language-packs.md)**: Game Language option, built-in pt-BR bundle, FR/DE/ES import from the player's European ROM, glyph mapping, and in-memory ROM rewrite.
 
 ---
 

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Testing Framework and Measurement Oracle"
 description: "Technical specification for the host unit test harness, regression test suite, and the ANGRYLION_CONTROL software-rendered ground truth oracle."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-28
 tags: [specs, tooierecomp, tests, oracle, angrylion, regression]
 ---
 
@@ -64,7 +64,9 @@ All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_
   - `p09_exact_use_correlation_test`
   - `rt64_present_decimator_test`
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 9 required verification tests (the 8 above plus `rom_cart_import_test`).
+  - Default runs 14 required verification tests: the 8 above, `rom_cart_import_test` and the 5 language tests
+    (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
+    `tooie_language_bundle_test`). The Linux list does not include the language tests yet.
   - Flag `-AllTests` runs all non-argument tests. Argument-driven tests report `SKIP` when invoked without input data.
 
 ### 3.2 Catalogue of Automated Test Targets
@@ -98,6 +100,13 @@ All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_
 | `tooie_bgm_volume_test` | `tests/tooie_bgm_volume_test.cpp` | Tests BGM sequence player volume scaling. |
 | `tooie_bgm_hooks_test` | `tests/tooie_bgm_hooks_test.cpp` | Tests audio driver sequence update intercept hooks. |
 | `tooie_demo7_drift_test` | `tests/tooie_demo7_drift_test.cpp` | Tests attract demo kinematic monitoring. |
+| `tooie_controller_ports_test` | `tests/tooie_controller_ports_test.cpp` | Tests N64 controller port policy for single-player and local multiplayer. |
+| `recompinput_player_slots_test` | `tests/recompinput_player_slots_test.cpp` | Tests per-player controller/keyboard slot assignment. |
+| `tooie_language_pack_test` | `tests/tooie_language_pack_test.cpp` | Tests TLPK parse/serialize and asset-table rewrite. |
+| `tooie_text_font_map_test` | `tests/tooie_text_font_map_test.cpp` | Tests USA and European glyph mapping (`func_800D35D0`). |
+| `tooie_language_import_test` | `tests/tooie_language_import_test.cpp` | Tests FR/DE/ES pack extraction from European + USA images. |
+| `tooie_font_sprite_test` | `tests/tooie_font_sprite_test.cpp` | Tests font sprite parse/serialize and generated pt-BR font 1. |
+| `tooie_language_bundle_test` | `tests/tooie_language_bundle_test.cpp` | Tests TLPB bundle parse and pt-BR pack build. |
 
 ### 3.3 Auxiliary and Python Test Scripts
 - `tests/attract_demo2_transition_jal_test.py`: Validates disassembly JAL targets in attract transitions.
@@ -105,6 +114,7 @@ All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_
 - `tools/test_rom_check.py`: Validates ROM checksum algorithms.
 - `tools/test_syscall_decode.py`: Validates core2 syscall decode tables.
 - `tools/test_metadata_invariants.py`: Verifies metadata consistency across table definitions.
+- `tools/test_build_language_packs.py`: Tests the developer language-pack builder (`tools/build_language_packs.py`).
 
 ---
 

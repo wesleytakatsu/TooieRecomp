@@ -4,13 +4,14 @@ description: "How current RE knowledge maps to future mods. Not a shipped API."
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-09-02
+updated: 2026-10-28
 tags: [reverse-engineering, modding]
 ---
 
 # Modding map
 
-TooieRecomp has no public mod API yet (P09-T10 is still a plan task).
+TooieRecomp has no public mod API yet; only `.rtz` texture packs and language packs are supported
+(see `specs/Tooie/modding-and-extensions.md`).
 This tree records **seams that already have proven roles**, plus
 **potential uses** that must stay labelled `HYPOTHESIS`.
 

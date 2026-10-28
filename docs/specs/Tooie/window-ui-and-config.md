@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-28
 tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution]
 ---
 
@@ -142,6 +142,10 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
   ("Multiplayer (up to 4 players)", `Off`/`On`, default `Off`). Evaluated once at startup in `src/main/main.cpp`:
   `On` activates `recompinput::players::set_single_player_mode(false)` and `set_player_count_range(1, 4)`;
   `Off` preserves default single-player mode (merging all host controllers and keyboard into player 1).
+  `language` ("Game Language", `English`/`PortugueseBrazil`/`French`/`German`/`Spanish`, default `English`): labels are
+  stored pre-uppercased because the menu's uppercase transform does not handle accented letters. A change callback
+  (`tooie_language_import_ui::on_language_change`) runs the European-ROM import for FR/DE/ES; the pack itself is applied at
+  ROM load, so a change made while the game runs takes effect after a restart. See [language packs](language-packs.md).
 - **sound.json**: `main_volume` (frontend master volume) and `bgm_volume` (synthesizer sequence volume, 0–100).
 - **mods.json**: Mod management infrastructure (`enabled_mods`, `mod_order`).
 

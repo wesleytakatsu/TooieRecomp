@@ -3,7 +3,7 @@ title: "Specifications Index and Master Requirements Matrix"
 description: "Master technical specifications index and requirements verification matrix for the TooieRecomp project."
 status: current
 area: "specs"
-updated: 2026-10-23
+updated: 2026-10-28
 tags:
   - docs
   - index
@@ -30,8 +30,9 @@ Comprehensive technical specifications governing the native static recompilation
 - **[Build System & Recompiler Generator](Tooie/build-and-generator.md)** — CMake build pipeline, Clang toolchain requirements, N64Recomp/RSPRecomp code generation, and metadata manifests.
 - **[Runtime, Dynamic Overlays & Guest Preemption](Tooie/runtime-and-overlays.md)** — ModernRuntime integration, 884 dynamic overlay relocations, syscall dispatch, and Hybrid F' guest preemption.
 - **[Graphics, Presentation & High-Framerate Interpolation](Tooie/graphics-and-presentation.md)** — RT64 rendering, native-style 16:9 culling planes, host endpoint-CURRENT fallback, presentation decimation, P09 transform interpolation guards, and top-left present FPS counter.
-- **[Input & Controller Subsystem](Tooie/input-and-controllers.md)** — SDL2 controller mapping, stick-angle thunk override (80013B70), and input helper contracts (800979D8).
+- **[Input & Controller Subsystem](Tooie/input-and-controllers.md)** — SDL2 controller mapping, local multiplayer for up to 4 players, stick-angle thunk override (80013B70), and input helper contracts (800979D8).
 - **[Windowing, UI & Configuration](Tooie/window-ui-and-config.md)** — SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration.
+- **[In-Game Language Packs](Tooie/language-packs.md)** — Game Language option, built-in pt-BR bundle (`.tlpb`), FR/DE/ES import from the player's European ROM (`.tlp`), font remapping, and in-memory ROM rewrite.
 - **[Audio Subsystem & RSP Microcode](Tooie/audio-system.md)** — `n_aspMain` microcode execution, `M_AUDTASK` dispatch, SoundManager delta queues, and SDL2 audio stream management.
 - **[Save System & Data Persistence](Tooie/save-system.md)** — 16 Kbit EEPROM emulation, save slot management, and filesystem persistence (`<config>/saves/<game_id>.bin`).
 - **[Gameplay Parity & Verification Criteria](Tooie/gameplay-parity.md)** — Parity contracts, attract sequence verification, camera mechanics, and physics invariants.
@@ -70,9 +71,11 @@ This matrix tracks the implementation and verification status of all core TooieR
 | **REQ-18** | Test Oracle | Reference measurement via ANGRYLION_CONTROL | [[Tooie/testing-and-oracle]] | `IMPLEMENTED` | Standalone Linux reference oracle available for ground-truth rendering verification. |
 | **REQ-19** | Diagnostics | Default-OFF non-intrusive runtime telemetry and safety stops | [[Tooie/diagnostics-and-telemetry]] | `IMPLEMENTED` | Heavy diagnostic telemetry defaults to OFF; controlled via environment flags. |
 | **REQ-20** | Packaging | Standalone Linux and Windows release packages | [[Tooie/packaging-and-dependencies]] | `IMPLEMENTED` | Packages generated via `package_linux.sh` (`.tar.gz`) and `Build-Tooie.ps1` (`.zip`). Launcher decompresses retail ROM on the fly or accepts pre-decompressed image. |
-| **REQ-21** | Modding | Extensible object payloads, slot maps, and .rtz texture pack loading | [[Tooie/modding-and-extensions]] | `INHERITED_UNTESTED` | Infrastructure inherited from core recompiler architecture; unvalidated for Tooie. |
+| **REQ-21** | Modding | Extensible object payloads, slot maps, and .rtz texture pack loading | [[Tooie/modding-and-extensions]] | `PARTIAL` | `.rtz` texture packs validated on Windows; object extension data and runtime toggles inherited and unvalidated for Tooie. |
 | **REQ-22** | FPS Counter | Visible top-left present FPS counter toggle in Graphics settings | [[Tooie/graphics-and-presentation]] | `IMPLEMENTED` | Config toggle in Graphics menu; measures swap chain presentation rate. |
 | **REQ-23** | Oracle Verification | Automated comparison against software reference | [[Tooie/angrylion-control-oracle]] | `IMPLEMENTED` | Dedicated oracle harness and frame comparison scripts on Linux. |
+| **REQ-24** | Local Multiplayer | Up to 4 players, each with controller and/or keyboard and per-player mapping | [[Tooie/input-and-controllers]] | `IMPLEMENTED` | Option "Multiplayer (up to 4 players)" (default Off, applies after restart). User-validated on Windows; Linux `NOT_RUN`. |
+| **REQ-25** | Game Languages | English, Português (Brasil), Français, Deutsch, Español selectable in launcher and ESC menu | [[Tooie/language-packs]] | `IMPLEMENTED` | pt-BR ships as `assets/languages/pt-BR.tlpb`; FR/DE/ES are extracted once from the player's European ROM. Applied at ROM load (restart after changing). Validated on Windows; Linux `NOT_RUN`. |
 
 ---
 

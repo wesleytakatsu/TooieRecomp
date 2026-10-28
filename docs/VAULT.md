@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-10-23
+updated: 2026-10-28
 tags: [vault, index, tooierecomp]
 ---
 
@@ -33,6 +33,7 @@ tags: [vault, index, tooierecomp]
 - [[specs/Tooie/testing-and-oracle]] — Testes e oráculo
 - [[specs/Tooie/angrylion-control-oracle]] — Oráculo ANGRYLION_CONTROL
 - [[specs/Tooie/modding-and-extensions]] — Modding e extensões
+- [[specs/Tooie/language-packs]] — Idiomas do jogo (pacotes de texto e fontes)
 
 ## reverse-engineering
 
@@ -57,5 +58,6 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/systems/resource-system]] — Sistema de recursos
 - [[reverse-engineering/systems/overlays]] — Sistemas de overlay
 - [[reverse-engineering/systems/audio-sequence-volume]] — Volume de sequências e BGM
+- [[reverse-engineering/systems/text-and-fonts]] — Texto e fontes (assets de texto, mapeamento de glifos)
 - [[reverse-engineering/modding/README]] — Mapa de modding
 - [[reverse-engineering/modding/known-extension-points]] — Pontos de extensão
