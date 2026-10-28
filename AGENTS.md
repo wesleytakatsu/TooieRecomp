@@ -6,10 +6,9 @@ The detailed project workflow lives in [`docs/AGENTS.md`](docs/AGENTS.md). Read 
 
 ## Workspace root
 
-Start CLI and IDE agents in **this directory** (`TooieRecomp/`). Project MCP
-configs (`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/config.toml`,
-`.agents/mcp_config.json`) bind markdown-vault to `docs/`. Do not open
-`N64-Recomp/` as the workspace. Shared sources are vendored under `lib/`, `decomp/` and `assets/`; normal
+Start CLI and IDE agents in **this directory** (`TooieRecomp/`). Agent/MCP configs
+(`.mcp.json`, `.vscode/mcp.json`, `opencode.json`, `.codex/`, `.agents/`, `.opencode/`) are personal, machine-specific
+and git-ignored: keep them local and never commit them. Shared sources are vendored under `lib/`, `decomp/` and `assets/`; normal
 builds require no sibling checkout, no BanjoRecomp checkout, and no submodules.
 
 The canonical ROM is strictly an explicit private input (`Banjo-Tooie (USA).z64`, size `33554432` bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`), git-ignored and never versioned. The repository contains zero game data; game assets are read from the verified decompressed ROM image (`35098224` bytes, SHA-1 `af479771ff5e91ce3732f3d84146614ab71d8d79`), which the runtime launcher strictly requires. `assets/` contains all restored native UI menu resources, animations, character vector art, typography fonts, and styling (managed via `TooieUIAssets`). The normal build is completely kit-free; the legacy IDO/gcc compiler kit is strictly an optional maintainer-only prerequisite for decomp/metadata regeneration (`TOOIE_TOOLCHAIN_KIT`, 34 files verified against `tools/toolchain.sha256`). The optional Angrylion oracle retains its separately documented setup; it is not required to build the game.

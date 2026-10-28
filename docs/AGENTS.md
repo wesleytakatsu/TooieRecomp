@@ -12,8 +12,8 @@ tags: [agents, workflow, tooierecomp, rules]
 
 ## Workspace
 
-Abra o CLI/IDE em `TooieRecomp/` (este repositório). As configs de MCP/vault ficam aqui
-([[MARKDOWN_VAULT_TOOLS]]). O projeto é **standalone**: RT64, N64ModernRuntime/N64Recomp, RecompFrontend, SDL2 (Windows),
+Abra o CLI/IDE em `TooieRecomp/` (este repositório). Configs de agentes e MCP (`.mcp.json`, `.codex/`, `opencode.json`
+etc.) são pessoais e ficam fora do git (`.gitignore`). O projeto é **standalone**: RT64, N64ModernRuntime/N64Recomp, RecompFrontend, SDL2 (Windows),
 assets de interface, decomp e wheels estão vendorizados (`lib/`, `decomp/`, `assets/`, `tools/wheelhouse/`; proveniência em
 `vendor/`). Sem checkouts irmãos, submódulos ou downloads. Fora do git: a ROM canônica do usuário (`Banjo-Tooie (USA).z64`,
 33554432 bytes, MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`) e a imagem descomprimida gerada a partir dela (35098224 bytes,

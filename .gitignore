@@ -36,6 +36,17 @@ build-cmake/
 .claude/settings.local.json
 .opencode/node_modules/
 
+# Personal agent/MCP configs (machine-specific paths): local only, never versioned
+.mcp.json
+.vscode/mcp.json
+.codex/
+.agents/
+.opencode/
+opencode.json
+opencode-compaction.sh
+.ignore
+docs/MARKDOWN_VAULT_TOOLS.md
+
 # Python
 __pycache__/
 *.pyc

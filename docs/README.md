@@ -15,7 +15,6 @@ para Linux e Windows.
 - [Especificações](specs/index.md) — contratos do sistema atual
 - [Engenharia reversa](reverse-engineering/README.md) — modelo atual do jogo
 - [Índice do vault](VAULT.md)
-- [Markdown Vault MCP](MARKDOWN_VAULT_TOOLS.md) — vault = `docs/`
 
 ## Regra de manutenção
 

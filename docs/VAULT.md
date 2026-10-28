@@ -13,7 +13,6 @@ tags: [vault, index, tooierecomp]
 - [[HANDOFF]] — Estado atual, pendências e próxima ação
 - [[AGENTS]] — Regras para agentes
 - [[README]] — Entrada da documentação
-- [[MARKDOWN_VAULT_TOOLS]] — Guia do MCP markdown-vault
 
 ## specs
 
