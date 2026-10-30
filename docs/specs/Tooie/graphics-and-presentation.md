@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Technical specification for RT64 integration, widescreen culling hooks, projection policies, host endpoint-CURRENT fallback, transform interpolation guards, and presentation controls."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-30
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -154,6 +154,28 @@ namespace RT64 {
     `tfPos = mul(mul(endpointViewProj[...], endpointWorld[...]), endpointPos);`
   - Fog calculation derives from `tfPos` (`max(tfPos.z, 0) / tfPos.w`), ensuring depth matches mesh geometry without lag.
 - **Verification**: `tests/rt64_host_endpoint_current_test.cpp`, `tests/p09_ordered_match_test.cpp`, `tests/p09_world_interpolation_guard_test.cpp`.
+
+### 3.4 RT64 CPU Cost With Many Draw Calls
+
+Scenes with about a thousand small draw calls (Glitter Gulch Mine crystals, 990 draws of ~4 triangles) dropped to 9-12
+FPS on Windows D3D12 with the GPU mostly idle. Two RT64 stages were the cost; both are now behavior-identical
+optimizations carried as local vendor patches:
+
+- **Matching check sets** (`GameFrame::matchScene`, `rt64-perf-match-checkset-keys.patch`): upstream visited every
+  (current, previous) call pair sharing a call hash. `hashFromCall` hashes render state and triangle count, not geometry
+  or texture, so one group reached ~95,000 call pairs for 300-640 unique transform pairs. The sets are now built from
+  the distinct per-call keys of each hash group: transforms by (workload, first world matrix, matrix count), tiles by
+  (tile count, tile position, tile matching, TMEM hash), look-at by resolved look-at index. The resulting
+  `transformCheckSet`, `tileCheckSet` and `lookAtCheckSet` are identical to the all-pairs loop.
+- **TMEM texture hashing** (`TextureManager::uploadTexture`, `rt64-perf-tmem-hash-cache.patch`): the game reloads TMEM
+  before nearly every draw, so `TMEMHasher::hash` ran ~900 times per frame (most with TLUT, which parses every byte)
+  although the same contents recur. A cache keyed by a 128-bit XXH3 of the full 4096-byte TMEM plus every hash input
+  field returns the earlier 64-bit hash; it holds at most 65,536 entries and is cleared when full.
+
+Measured at the mine spot (D3D12, GTX 1650, 2026-10-30): check-set construction 12 ms average / 39 ms peak per scene to
+1.8 ms; TMEM hashing 14 ms to 1.1 ms per frame; the scene went from 9-12 FPS to 60 FPS. Equivalence was checked at
+runtime with a temporary verification build that ran the original code next to the new one: 0 mismatches for both
+stages (the verification code is not kept). Upstream RT64 had no fix as of `d9817c6` (2026-10-23).
 
 ---
 

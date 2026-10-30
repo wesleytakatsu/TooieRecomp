@@ -17,12 +17,13 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (35 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (37 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
+| Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; outras áreas com queda e Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` validado no Windows; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
@@ -64,6 +65,6 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: usar o Dev Mode → Warp para voltar ao ponto de queda de FPS em Glitter Gulch Mine (mapa 199) e
-medi-lo com o mesmo save e posição; depois, validação Linux (widescreen, interpolação, multijogador, idiomas, Dev Mode)
-e pacotes Linux novos.
+`NEXT_SINGLE_ACTION`: o usuário joga as outras áreas que tinham queda de FPS no Windows com o build da branch
+`feat/dev-mode` e, onde ainda cair, salva o ponto com o Dev Mode → Warp para medição; depois, validação Linux
+(widescreen, interpolação, desempenho, multijogador, idiomas, Dev Mode) e pacotes Linux novos.
