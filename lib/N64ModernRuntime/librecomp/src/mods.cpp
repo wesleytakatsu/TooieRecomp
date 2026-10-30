@@ -805,6 +805,7 @@ std::vector<recomp::mods::ModOpenErrorDetails> recomp::mods::ModContext::scan_mo
     for (const auto& mod_path : std::filesystem::directory_iterator{mod_folder, std::filesystem::directory_options::skip_permission_denied, ec}) {
         bool is_mod = false;
         bool requires_manifest = true;
+        bool search_nested_content_root = false;
         std::reference_wrapper<const std::vector<ModContentTypeId>> supported_content_types = std::cref(empty_content_types);
         if (mod_path.is_regular_file()) {
             auto find_container_it = container_types.find(mod_path.path().extension().string());
@@ -812,15 +813,21 @@ std::vector<recomp::mods::ModOpenErrorDetails> recomp::mods::ModContext::scan_mo
                 is_mod = true;
                 supported_content_types = find_container_it->second.supported_content_types;
                 requires_manifest = find_container_it->second.requires_manifest;
+                search_nested_content_root = find_container_it->second.search_nested_content_root;
             }
         }
         else if (mod_path.is_directory()) {
             is_mod = true;
         }
         if (is_mod) {
-            printf("Opening mod " PATHFMT "\n", mod_path.path().stem().c_str());
             std::string open_error_param;
-            ModOpenError open_error = open_mod_from_path(mod_path, open_error_param, supported_content_types, requires_manifest);
+            bool skipped = false;
+            ModOpenError open_error = open_mod_from_path(mod_path, open_error_param, supported_content_types, requires_manifest, search_nested_content_root, skipped);
+            if (skipped) {
+                printf("Skipping non-mod " PATHFMT PATHFMT "\n", mod_path.path().stem().c_str(), mod_path.path().extension().c_str());
+                continue;
+            }
+            printf("Opening mod " PATHFMT "\n", mod_path.path().stem().c_str());
 
             if (open_error != ModOpenError::Good) {
                 ret.emplace_back(mod_path.path(), open_error, open_error_param);
@@ -947,7 +954,7 @@ recomp::mods::ModContentTypeId recomp::mods::ModContext::register_content_type(c
     return ModContentTypeId{.value = ret};
 }
 
-bool recomp::mods::ModContext::register_container_type(const std::string& extension, const std::vector<ModContentTypeId>& container_content_types, bool requires_manifest) {
+bool recomp::mods::ModContext::register_container_type(const std::string& extension, const std::vector<ModContentTypeId>& container_content_types, bool requires_manifest, bool search_nested_content_root) {
     // Validate the provided content type IDs.
     for (ModContentTypeId id : container_content_types) {
         if (id.value >= content_types.size()) {
@@ -972,7 +979,8 @@ bool recomp::mods::ModContext::register_container_type(const std::string& extens
     container_types.emplace(true_extension,
         ModContainerType {
             .supported_content_types = container_content_types,
-            .requires_manifest = requires_manifest
+            .requires_manifest = requires_manifest,
+            .search_nested_content_root = search_nested_content_root
         });
 
     return true;
@@ -1212,6 +1220,14 @@ std::filesystem::path recomp::mods::ModContext::get_mod_filename(const std::stri
     }
 
     return opened_mods[find_it->second].manifest.mod_root_path;
+}
+
+std::string recomp::mods::ModContext::get_mod_content_root(const std::string& mod_id) const {
+    auto find_it = opened_mods_by_id.find(mod_id);
+    if (find_it == opened_mods_by_id.end()) {
+        return {};
+    }
+    return opened_mods[find_it->second].manifest.file_handle->get_content_root();
 }
 
 size_t recomp::mods::ModContext::get_mod_order_index(const std::string& mod_id) const {

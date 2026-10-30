@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Testing Framework and Measurement Oracle"
 description: "Technical specification for the host unit test harness, regression test suite, and the ANGRYLION_CONTROL software-rendered ground truth oracle."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-28
+updated: 2026-10-30
 tags: [specs, tooierecomp, tests, oracle, angrylion, regression]
 ---
 
@@ -51,7 +51,8 @@ TooieRecomp enforces a strict verification hierarchy designed to validate guest 
 
 ## 3. Host Automated Test Suite Registry
 
-All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_hw_stubs.cpp` using the unified `TOOIE_WRAPPED_SYMBOLS` wrapping contract.
+Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use `boot_hw_stubs.cpp` and the unified
+`TOOIE_WRAPPED_SYMBOLS` wrapping contract; independent subsystem tests do not require those guest stubs.
 
 ### 3.1 Test Execution Commands
 - **Linux (`tools/build_linux.sh test`)**: Executes 9 core verification tests:
@@ -65,15 +66,16 @@ All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_
   - `rt64_present_decimator_test`
   - `tooie_dev_warp_test` (Dev Mode warp state machine, saved-position JSON, map names)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 15 required verification tests: the 9 above, `rom_cart_import_test` and the 5 language tests
+  - Default runs 16 required verification tests: the 9 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
-    `tooie_language_bundle_test`). The Linux list does not include the language tests yet.
+    `tooie_language_bundle_test`). The Linux list does not include the language tests or the ZIP mod test yet.
   - Flag `-AllTests` runs all non-argument tests. Argument-driven tests report `SKIP` when invoked without input data.
 
 ### 3.2 Catalogue of Automated Test Targets
 
 | Target | Source File | Scope / Purpose |
 | :--- | :--- | :--- |
+| `tooie_texture_zip_mod_test` | `tests/tooie_texture_zip_mod_test.cpp` | Synthetic ZIP roots and relative metadata reads, ambiguity/invalid roots, real `ModContext` scanning, default manifest, `.rtz` regression and texture-only detection with an `.nrm` control; no ROM or game assets |
 | `tooie_dev_warp_test` | `tests/tooie_dev_warp_test.cpp` | Dev Mode warp: teleport state machine (same map, other map, load detection, timeout), `dev_warps.json` round trip and malformed input, map names |
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |

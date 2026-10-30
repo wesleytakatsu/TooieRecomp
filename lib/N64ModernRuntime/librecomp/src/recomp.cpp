@@ -136,9 +136,9 @@ recomp::mods::ModContentTypeId recomp::mods::register_mod_content_type(const Mod
     return mod_context->register_content_type(type);
 }
 
-bool recomp::mods::register_mod_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest) {
+bool recomp::mods::register_mod_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest, bool search_nested_content_root) {
     std::lock_guard mod_lock{ mod_context_mutex };
-    return mod_context->register_container_type(extension, content_types, requires_manifest);
+    return mod_context->register_container_type(extension, content_types, requires_manifest, search_nested_content_root);
 }
 
 std::string recomp::mods::get_mod_display_name(size_t mod_index) {
@@ -685,6 +685,11 @@ std::string recomp::mods::get_mod_id_from_filename(const std::filesystem::path& 
 std::filesystem::path recomp::mods::get_mod_filename(const std::string& mod_id) {
     std::lock_guard lock { mod_context_mutex };
     return mod_context->get_mod_filename(mod_id);
+}
+
+std::string recomp::mods::get_mod_content_root(const std::string& mod_id) {
+    std::lock_guard lock{ mod_context_mutex };
+    return mod_context->get_mod_content_root(mod_id);
 }
 
 size_t recomp::mods::get_mod_order_index(const std::string& mod_id) {

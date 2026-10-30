@@ -1,0 +1,330 @@
+diff --git a/librecomp/include/librecomp/mods.hpp b/librecomp/include/librecomp/mods.hpp
+index 37556bd..628268f 100644
+--- a/librecomp/include/librecomp/mods.hpp
++++ b/librecomp/include/librecomp/mods.hpp
+@@ -86,6 +86,8 @@ namespace recomp {
+             InvalidDisableOptionDependency,
+             InvalidHiddenOptionDependency,
+             DuplicateEnumStrings,
++            AmbiguousContentRoot,
++            InvalidContentRoot,
+         };
+ 
+         std::string error_to_string(ModOpenError);
+@@ -176,11 +178,13 @@ namespace recomp {
+             virtual ~ModFileHandle() = default;
+             virtual std::vector<char> read_file(const std::string& filepath, bool& exists) const = 0;
+             virtual bool file_exists(const std::string& filepath) const = 0;
++            virtual std::string get_content_root() const { return {}; }
+         };
+ 
+         struct ZipModFileHandle final : public ModFileHandle {
+             FILE* file_handle = nullptr;
+             std::unique_ptr<mz_zip_archive> archive;
++            std::string content_root;
+ 
+             ZipModFileHandle() = default;
+             ZipModFileHandle(const std::filesystem::path& mod_path, ModOpenError& error);
+@@ -189,8 +193,19 @@ namespace recomp {
+ 
+             std::vector<char> read_file(const std::string& filepath, bool& exists) const final;
+             bool file_exists(const std::string& filepath) const final;
++            std::string get_content_root() const final { return content_root; }
+         };
+ 
++        enum class ZipContentRootStatus { Found, NotFound, Ambiguous, Invalid };
++
++        struct ZipContentRootResult {
++            ZipContentRootStatus status = ZipContentRootStatus::NotFound;
++            std::string root;
++            std::vector<std::string> candidates;
++        };
++
++        ZipContentRootResult find_zip_content_root(const ZipModFileHandle& handle, const std::string& marker_filename);
++
+         struct LooseModFileHandle final : public ModFileHandle {
+             std::filesystem::path root_path;
+ 
+@@ -312,6 +327,8 @@ namespace recomp {
+             // Whether or not this container requires a manifest to be treated as a valid mod.
+             // If no manifest is present, a default one will be created.
+             bool requires_manifest;
++            // Search for the registered content marker inside a ZIP directory.
++            bool search_nested_content_root = false;
+         };
+ 
+         struct ModConfigQueueSaveMod {
+@@ -355,6 +372,7 @@ namespace recomp {
+             void unload_mods();
+             std::string get_mod_id_from_filename(const std::filesystem::path& mod_filename) const;
+             std::filesystem::path get_mod_filename(const std::string& mod_id) const;
++            std::string get_mod_content_root(const std::string& mod_id) const;
+             size_t get_mod_order_index(const std::string& mod_id) const;
+             size_t get_mod_order_index(size_t mod_index) const;
+             std::optional<ModDetails> get_details_for_mod(const std::string& mod_id) const;
+@@ -375,7 +393,7 @@ namespace recomp {
+             std::string get_latest_game_mode_id() const;
+             void set_latest_game_mode_id(const std::string& game_mode_id);
+             ModContentTypeId register_content_type(const ModContentType& type);
+-            bool register_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest);
++            bool register_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest, bool search_nested_content_root = false);
+             ModContentTypeId get_code_content_type() const { return code_content_type_id; }
+             bool is_content_runtime_toggleable(ModContentTypeId content_type) const;
+             std::string get_mod_display_name(size_t mod_index) const;
+@@ -384,7 +402,7 @@ namespace recomp {
+             DependencyStatus is_dependency_met(size_t mod_index, const std::string& dependency_id) const;
+         private:
+             ModOpenError open_mod_from_manifest(ModManifest &manifest, std::string &error_param, const std::vector<ModContentTypeId> &supported_content_types, bool requires_manifest);
+-            ModOpenError open_mod_from_path(const std::filesystem::path& mod_path, std::string& error_param, const std::vector<ModContentTypeId>& supported_content_types, bool requires_manifest);
++            ModOpenError open_mod_from_path(const std::filesystem::path& mod_path, std::string& error_param, const std::vector<ModContentTypeId>& supported_content_types, bool requires_manifest, bool search_nested_content_root, bool& skipped);
+             ModOpenError open_mod_from_memory(std::span<const uint8_t> mod_bytes, std::string &error_param, const std::vector<ModContentTypeId> &supported_content_types, bool requires_manifest);
+             ModLoadError load_mod(ModHandle& mod, std::string& error_param);
+             void check_dependencies(ModHandle& mod, std::vector<std::pair<ModLoadError, std::string>>& errors);
+@@ -649,10 +667,11 @@ namespace recomp {
+         void set_latest_game_mode_id(const std::string& game_mode_id);
+         std::string get_mod_id_from_filename(const std::filesystem::path& mod_filename);
+         std::filesystem::path get_mod_filename(const std::string& mod_id);
++        std::string get_mod_content_root(const std::string& mod_id);
+         size_t get_mod_order_index(const std::string& mod_id);
+         size_t get_mod_order_index(size_t mod_index);
+         ModContentTypeId register_mod_content_type(const ModContentType& type);
+-        bool register_mod_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest);
++        bool register_mod_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest, bool search_nested_content_root = false);
+         std::string get_mod_display_name(size_t mod_index);
+         std::filesystem::path get_mod_path(size_t mod_index);
+         std::pair<std::string, std::string> get_mod_import_info(size_t mod_index, size_t import_index);
+diff --git a/librecomp/src/mod_manifest.cpp b/librecomp/src/mod_manifest.cpp
+index 71560eb..b3e3d76 100644
+--- a/librecomp/src/mod_manifest.cpp
++++ b/librecomp/src/mod_manifest.cpp
+@@ -54,7 +54,8 @@ std::vector<char> recomp::mods::ZipModFileHandle::read_file(const std::string& f
+     std::vector<char> ret{};
+ 
+     mz_uint32 file_index;
+-    if (!mz_zip_reader_locate_file_v2(archive.get(), filepath.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
++    std::string full_path = content_root.empty() ? filepath : content_root + "/" + filepath;
++    if (!mz_zip_reader_locate_file_v2(archive.get(), full_path.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
+         exists = false;
+         return ret;
+     }
+@@ -77,13 +78,74 @@ std::vector<char> recomp::mods::ZipModFileHandle::read_file(const std::string& f
+ 
+ bool recomp::mods::ZipModFileHandle::file_exists(const std::string& filepath) const {
+     mz_uint32 file_index;
+-    if (!mz_zip_reader_locate_file_v2(archive.get(), filepath.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
++    std::string full_path = content_root.empty() ? filepath : content_root + "/" + filepath;
++    if (!mz_zip_reader_locate_file_v2(archive.get(), full_path.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
+         return false;
+     }
+ 
+     return true;
+ }
+ 
++recomp::mods::ZipContentRootResult recomp::mods::find_zip_content_root(const ZipModFileHandle& handle, const std::string& marker_filename) {
++    ZipContentRootResult result;
++    bool has_archive_root = false;
++    const std::string suffix = "/" + marker_filename;
++    mz_uint count = mz_zip_reader_get_num_files(handle.archive.get());
++    for (mz_uint i = 0; i < count; i++) {
++        mz_zip_archive_file_stat stat;
++        if (!mz_zip_reader_file_stat(handle.archive.get(), i, &stat)) {
++            result.status = ZipContentRootStatus::Invalid;
++            return result;
++        }
++        if (stat.m_is_directory) {
++            continue;
++        }
++
++        std::string filename = stat.m_filename;
++        if (filename == marker_filename) {
++            has_archive_root = true;
++        }
++        else if (filename.ends_with(suffix)) {
++            result.candidates.emplace_back(filename.substr(0, filename.size() - suffix.size()));
++        }
++    }
++
++    if (has_archive_root) {
++        result.status = ZipContentRootStatus::Found;
++        result.candidates.clear();
++        return result;
++    }
++
++    for (const std::string& candidate : result.candidates) {
++        bool invalid = candidate.empty() || candidate.front() == '/' || candidate.find(':') != std::string::npos;
++        size_t start = 0;
++        while (!invalid && start < candidate.size()) {
++            size_t end = candidate.find('/', start);
++            std::string component = candidate.substr(start, end == std::string::npos ? end : end - start);
++            invalid = component == "." || component == "..";
++            if (end == std::string::npos) {
++                break;
++            }
++            start = end + 1;
++        }
++        if (invalid) {
++            result.status = ZipContentRootStatus::Invalid;
++            result.candidates = {candidate};
++            return result;
++        }
++    }
++
++    if (result.candidates.size() == 1) {
++        result.status = ZipContentRootStatus::Found;
++        result.root = result.candidates.front();
++        result.candidates.clear();
++    }
++    else if (result.candidates.size() > 1) {
++        result.status = ZipContentRootStatus::Ambiguous;
++    }
++    return result;
++}
++
+ recomp::mods::LooseModFileHandle::~LooseModFileHandle() {
+     // Nothing to do here, members will be destroyed automatically.
+ }
+@@ -957,7 +1019,8 @@ recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_manifest(ModM
+     return ModOpenError::Good;
+ }
+ 
+-recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const std::filesystem::path& mod_path, std::string& error_param, const std::vector<ModContentTypeId>& supported_content_types, bool requires_manifest) {
++recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const std::filesystem::path& mod_path, std::string& error_param, const std::vector<ModContentTypeId>& supported_content_types, bool requires_manifest, bool search_nested_content_root, bool& skipped) {
++    skipped = false;
+     ModManifest manifest{};
+     manifest.mod_root_path = mod_path;
+ 
+@@ -995,6 +1058,25 @@ recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const st
+         return handle_error;
+     }
+ 
++    if (is_file && search_nested_content_root && supported_content_types.size() == 1) {
++        ZipModFileHandle& zip_handle = static_cast<ZipModFileHandle&>(*manifest.file_handle);
++        ZipContentRootResult root = find_zip_content_root(zip_handle, content_types[supported_content_types.front().value].content_filename);
++        if (root.status == ZipContentRootStatus::NotFound) {
++            skipped = true;
++            return ModOpenError::Good;
++        }
++        if (root.status == ZipContentRootStatus::Ambiguous || root.status == ZipContentRootStatus::Invalid) {
++            for (const std::string& candidate : root.candidates) {
++                if (!error_param.empty()) {
++                    error_param += ", ";
++                }
++                error_param += candidate;
++            }
++            return root.status == ZipContentRootStatus::Ambiguous ? ModOpenError::AmbiguousContentRoot : ModOpenError::InvalidContentRoot;
++        }
++        zip_handle.content_root = std::move(root.root);
++    }
++
+     return open_mod_from_manifest(manifest, error_param, supported_content_types, requires_manifest);
+ }
+ 
+@@ -1053,6 +1135,10 @@ std::string recomp::mods::error_to_string(ModOpenError error) {
+             return "Invalid hidden option dependency in mod.json";
+         case ModOpenError::DuplicateEnumStrings:
+             return "Duplicate enum strings found in mod.json (enum strings are case insensitive)";
++        case ModOpenError::AmbiguousContentRoot:
++            return "Multiple texture pack roots found";
++        case ModOpenError::InvalidContentRoot:
++            return "Invalid texture pack root";
+     }
+     return "Unknown mod opening error: " + std::to_string((int)error);
+ }
+diff --git a/librecomp/src/mods.cpp b/librecomp/src/mods.cpp
+index d24a152..c5f779d 100644
+--- a/librecomp/src/mods.cpp
++++ b/librecomp/src/mods.cpp
+@@ -805,6 +805,7 @@ std::vector<recomp::mods::ModOpenErrorDetails> recomp::mods::ModContext::scan_mo
+     for (const auto& mod_path : std::filesystem::directory_iterator{mod_folder, std::filesystem::directory_options::skip_permission_denied, ec}) {
+         bool is_mod = false;
+         bool requires_manifest = true;
++        bool search_nested_content_root = false;
+         std::reference_wrapper<const std::vector<ModContentTypeId>> supported_content_types = std::cref(empty_content_types);
+         if (mod_path.is_regular_file()) {
+             auto find_container_it = container_types.find(mod_path.path().extension().string());
+@@ -812,15 +813,21 @@ std::vector<recomp::mods::ModOpenErrorDetails> recomp::mods::ModContext::scan_mo
+                 is_mod = true;
+                 supported_content_types = find_container_it->second.supported_content_types;
+                 requires_manifest = find_container_it->second.requires_manifest;
++                search_nested_content_root = find_container_it->second.search_nested_content_root;
+             }
+         }
+         else if (mod_path.is_directory()) {
+             is_mod = true;
+         }
+         if (is_mod) {
+-            printf("Opening mod " PATHFMT "\n", mod_path.path().stem().c_str());
+             std::string open_error_param;
+-            ModOpenError open_error = open_mod_from_path(mod_path, open_error_param, supported_content_types, requires_manifest);
++            bool skipped = false;
++            ModOpenError open_error = open_mod_from_path(mod_path, open_error_param, supported_content_types, requires_manifest, search_nested_content_root, skipped);
++            if (skipped) {
++                printf("Skipping non-mod " PATHFMT PATHFMT "\n", mod_path.path().stem().c_str(), mod_path.path().extension().c_str());
++                continue;
++            }
++            printf("Opening mod " PATHFMT "\n", mod_path.path().stem().c_str());
+ 
+             if (open_error != ModOpenError::Good) {
+                 ret.emplace_back(mod_path.path(), open_error, open_error_param);
+@@ -947,7 +954,7 @@ recomp::mods::ModContentTypeId recomp::mods::ModContext::register_content_type(c
+     return ModContentTypeId{.value = ret};
+ }
+ 
+-bool recomp::mods::ModContext::register_container_type(const std::string& extension, const std::vector<ModContentTypeId>& container_content_types, bool requires_manifest) {
++bool recomp::mods::ModContext::register_container_type(const std::string& extension, const std::vector<ModContentTypeId>& container_content_types, bool requires_manifest, bool search_nested_content_root) {
+     // Validate the provided content type IDs.
+     for (ModContentTypeId id : container_content_types) {
+         if (id.value >= content_types.size()) {
+@@ -972,7 +979,8 @@ bool recomp::mods::ModContext::register_container_type(const std::string& extens
+     container_types.emplace(true_extension,
+         ModContainerType {
+             .supported_content_types = container_content_types,
+-            .requires_manifest = requires_manifest
++            .requires_manifest = requires_manifest,
++            .search_nested_content_root = search_nested_content_root
+         });
+ 
+     return true;
+@@ -1214,6 +1222,14 @@ std::filesystem::path recomp::mods::ModContext::get_mod_filename(const std::stri
+     return opened_mods[find_it->second].manifest.mod_root_path;
+ }
+ 
++std::string recomp::mods::ModContext::get_mod_content_root(const std::string& mod_id) const {
++    auto find_it = opened_mods_by_id.find(mod_id);
++    if (find_it == opened_mods_by_id.end()) {
++        return {};
++    }
++    return opened_mods[find_it->second].manifest.file_handle->get_content_root();
++}
++
+ size_t recomp::mods::ModContext::get_mod_order_index(const std::string& mod_id) const {
+     auto find_it = opened_mods_by_id.find(mod_id);
+     if (find_it == opened_mods_by_id.end()) {
+diff --git a/librecomp/src/recomp.cpp b/librecomp/src/recomp.cpp
+index 22928cc..2dc800e 100644
+--- a/librecomp/src/recomp.cpp
++++ b/librecomp/src/recomp.cpp
+@@ -136,9 +136,9 @@ recomp::mods::ModContentTypeId recomp::mods::register_mod_content_type(const Mod
+     return mod_context->register_content_type(type);
+ }
+ 
+-bool recomp::mods::register_mod_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest) {
++bool recomp::mods::register_mod_container_type(const std::string& extension, const std::vector<ModContentTypeId>& content_types, bool requires_manifest, bool search_nested_content_root) {
+     std::lock_guard mod_lock{ mod_context_mutex };
+-    return mod_context->register_container_type(extension, content_types, requires_manifest);
++    return mod_context->register_container_type(extension, content_types, requires_manifest, search_nested_content_root);
+ }
+ 
+ std::string recomp::mods::get_mod_display_name(size_t mod_index) {
+@@ -687,6 +687,11 @@ std::filesystem::path recomp::mods::get_mod_filename(const std::string& mod_id)
+     return mod_context->get_mod_filename(mod_id);
+ }
+ 
++std::string recomp::mods::get_mod_content_root(const std::string& mod_id) {
++    std::lock_guard lock{ mod_context_mutex };
++    return mod_context->get_mod_content_root(mod_id);
++}
++
+ size_t recomp::mods::get_mod_order_index(const std::string& mod_id) {
+     std::lock_guard lock { mod_context_mutex };
+     return mod_context->get_mod_order_index(mod_id);

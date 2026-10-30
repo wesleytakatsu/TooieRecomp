@@ -89,7 +89,7 @@ extern char** environ;
 
 #include "stb/stb_image.h"
 
-const std::string version_string = "0.1.0-p08";
+const std::string version_string = "0.1.1";
 
 namespace {
 
@@ -1473,6 +1473,8 @@ int main(int argc, char** argv) {
 
     // Register the .rtz texture pack file format with the previous content type as its only allowed content type.
     recomp::mods::register_mod_container_type("rtz", std::vector{ texture_pack_content_type_id }, false);
+    // Register plain .zip texture packs with an optional directory around rt64.json.
+    recomp::mods::register_mod_container_type("zip", std::vector{ texture_pack_content_type_id }, false, true);
 
     activate_tooie_guest_preemption();
     tooie_audio_capture::init_from_env();

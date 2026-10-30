@@ -469,7 +469,7 @@ void renderer::RT64Context::check_texture_pack_actions() {
         std::vector<RT64::ReplacementDirectory> replacement_directories;
         replacement_directories.reserve(enabled_texture_packs.size());
         for (const std::string &mod_id : sorted_texture_packs) {
-            replacement_directories.emplace_back(RT64::ReplacementDirectory(recomp::mods::get_mod_filename(mod_id)));
+            replacement_directories.emplace_back(RT64::ReplacementDirectory(recomp::mods::get_mod_filename(mod_id), recomp::mods::get_mod_content_root(mod_id)));
         }
 
         if (!replacement_directories.empty()) {

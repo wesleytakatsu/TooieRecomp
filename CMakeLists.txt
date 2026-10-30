@@ -455,6 +455,19 @@ target_link_libraries(bcf28_helpers_test PRIVATE
 )
 set_target_properties(bcf28_helpers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+add_executable(tooie_texture_zip_mod_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_texture_zip_mod_test.cpp
+)
+target_include_directories(tooie_texture_zip_mod_test PRIVATE
+    ${N64MR}/librecomp/include
+    ${N64MR}/N64Recomp/include
+)
+target_link_libraries(tooie_texture_zip_mod_test PRIVATE
+    librecomp
+    Threads::Threads
+)
+set_target_properties(tooie_texture_zip_mod_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 # P08 core1 RA-wrapper regression: 0x800137D4 / 0x800137F4 / 0x80013A5C / 0x80013A7C.
 add_executable(core1_ra_wrappers_test
     ${CMAKE_SOURCE_DIR}/tests/core1_ra_wrappers_test.cpp

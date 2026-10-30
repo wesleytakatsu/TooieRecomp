@@ -17,7 +17,7 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (37 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (39 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
@@ -26,21 +26,23 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
-| Modding | `.rtz` validado no Windows; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
+| Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 15 obrigatórios (inclui 5 de idioma e `tooie_dev_warp_test`); Linux `build_linux.sh test`: 9 | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 16 obrigatórios (inclui 5 de idioma, `tooie_dev_warp_test` e `tooie_texture_zip_mod_test`); Linux `build_linux.sh test`: 9 | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
-- `v0.1.0-p08` (pública, notas em inglês e português). O zip do Windows foi substituído em 2026-10-27 por um build do
-  commit `83bc173` (com idiomas). Os `.tar.gz`, `.deb` e AppImage do Linux ainda são do build anterior, sem idiomas.
+- Versão fonte `0.1.1`; nova pré-release `v0.1.1` para Windows x64, incluindo Dev Mode/Warp, otimizações RT64 e ZIPs de
+  texturas. O pacote de texturas do usuário não integra a distribuição. A origem é a branch `feat/dev-mode`.
+- `v0.1.0-p08` permanece como release anterior, sem substituição dos seus arquivos. As notas publicadas dessa release
+  registram pacotes Windows e Linux com idiomas; validação completa de gameplay no Linux continua pendente.
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
 
 ## Pendências conhecidas
 
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
-- `tools/build_linux.sh test` ainda não roda os 5 testes de idioma (só o Windows os executa).
+- `tools/build_linux.sh test` ainda não roda os 5 testes de idioma nem o novo teste ZIP (só o Windows os executa).
 - `.deb` e AppImage foram gerados à mão no Linux; não há script versionado para eles.
 - Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
 - Pular o matching de frames do RT64 com Interpolation OFF: `REFUTED` (processo encerrou sem log na troca de cena do
