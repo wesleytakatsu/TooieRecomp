@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-28
+updated: 2026-10-29
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -26,7 +26,8 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` validado no Windows; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 14 obrigatórios (inclui 5 de idioma); Linux `build_linux.sh test`: 8 | [[specs/Tooie/testing-and-oracle]] |
+| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo; validado nos demos de atração no Windows, jogo real `NOT_RUN` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 15 obrigatórios (inclui 5 de idioma e `tooie_dev_warp_test`); Linux `build_linux.sh test`: 9 | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -63,4 +64,6 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: validação Linux pelo usuário (widescreen, interpolação, multijogador, idiomas) e pacotes Linux novos.
+`NEXT_SINGLE_ACTION`: o usuário valida o Dev Mode → Warp no jogo real no Windows (salvar uma posição, teleportar no mesmo
+mapa e a partir de outro mapa, renomear, excluir) com um save copiado; depois, validação Linux (widescreen, interpolação,
+multijogador, idiomas, Dev Mode) e pacotes Linux novos.

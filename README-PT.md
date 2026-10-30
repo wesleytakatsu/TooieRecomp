@@ -33,6 +33,9 @@ Os gráficos, o áudio e os dados do jogo são lidos e descompactados diretament
 - **Suporte para comandos modernos e teclado:** Compatibilidade com comandos através de SDL2 e controlos por teclado.
 - **Iniciador nativo:** Interface gráfica integrada com seleção de ROM.
 - **Pacotes de texturas:** pacotes de texturas do RT64 (`.rtz`) através do menu `Mods` no jogo.
+- **Modo de programador (Dev Mode):** separador do menu ESC desbloqueado depois de um aviso. `Warp` guarda o sítio
+  onde o Banjo está e teletransporta-o de volta mais tarde, também a partir de outro nível. Altera o estado do jogo
+  diretamente: guarde o jogo antes de o usar.
 
 ---
 

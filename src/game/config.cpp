@@ -11,6 +11,7 @@
 #include "tooie_menu_policy.h"
 #include "tooie_bgm_volume.h"
 #include "tooie_language_import_ui.h"
+#include "tooie_dev_mode_ui.h"
 #include "hle/rt64_host_endpoint_current.h"
 #include "util/file.h"
 #include <filesystem>
@@ -401,6 +402,8 @@ void banjo::init_config() {
     add_sound_options(sound_config);
 
     recompui::config::create_mods_tab();
+
+    tooie_dev_mode_ui::create_tab();
 
     recompui::config::finalize();
 

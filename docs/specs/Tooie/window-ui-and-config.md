@@ -3,8 +3,8 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-28
-tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution]
+updated: 2026-10-29
+tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution, dev-mode, warp]
 ---
 
 # Windowing, User Interface and Configuration Specification
@@ -48,6 +48,7 @@ RT64 Viewport & Swapchain Presentation
 | **REQ-WIN-08** | Aspect Ratio Auto-Resize | Selecting 4:3 or 16:9 in windowed mode resizes window on SDL event thread. | `IMPLEMENTED` |
 | **REQ-CFG-01** | Menu Policy Enforcement | Interpolation OFF enforces Manual 30; ON unlocks user framerate controls. | `IMPLEMENTED` |
 | **REQ-CFG-02** | Resolution Scaling | Exposes `Original3x` and `Original4x` in UI and config serialization. | `IMPLEMENTED` |
+| **REQ-DEV-01** | Dev Mode tab | ESC menu tab locked behind an accepted warning; Warp saves, renames, deletes and teleports to player positions. | `IMPLEMENTED` |
 
 ---
 
@@ -148,6 +149,8 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
   ROM load, so a change made while the game runs takes effect after a restart. See [language packs](language-packs.md).
 - **sound.json**: `main_volume` (frontend master volume) and `bgm_volume` (synthesizer sequence volume, 0–100).
 - **mods.json**: Mod management infrastructure (`enabled_mods`, `mod_order`).
+- **dev_warps.json**: positions saved by the Dev Mode warp (section 4.5); written only when the user saves, renames or
+  deletes one.
 
 ### 4.2 Invariants & Operational Boundaries
 1. **Config Pointer Safety**:
@@ -198,3 +201,27 @@ When `multiplayer_mode` is enabled (`On`), the Controls configuration page switc
   - The "Assign players" modal remains available as a quick-setup workflow to populate unassigned slots.
   - `ContextId::get_focused_element` skips empty slots and non-element resources during UI element construction,
     preventing crashes when navigating back from mapping screens.
+
+### 4.5 Dev Mode Tab
+
+The last ESC menu tab, "Dev Mode" (`tooie_dev_mode_ui::create_tab`, `src/game/tooie_dev_mode_ui.cpp`), holds tools
+that change the game's state directly.
+
+- **Lock**: the tab first shows a warning (the tools can soft-lock the game, corrupt progress or crash it) and an
+  "Accept and unlock" button. Acceptance lasts until the game is closed; it is not saved.
+- **Game functions** (after unlocking): **Warp**, which opens a modal over the tab.
+- **Warp modal**:
+  - Shows the map player 1 is in, or that Banjo is not in a level (title screen, pause, loading, cutscene).
+  - **Save current position** stores the current map, entrance, position and facing under a default name
+    (`<map name> #<n>`; map names come from `decomp/include/maps.h` through `tools/generate_map_names.py`).
+  - Each saved position has **Teleport**, **Rename** (inline text field) and **Delete** (confirmation prompt).
+  - Teleport closes the menu. In the same map the player is moved at once; in another map the game loads it through
+    the saved entrance, as warp pads do, and the player is moved once it stands in the new map for 15 frames. A
+    teleport that cannot start or finish within 30 s is dropped (`[tooie-warp] ... timed out` on stderr).
+- **Storage**: `<config_path>/dev_warps.json`, `{"version": 1, "positions": [{"name", "map", "entrance", "x", "y",
+  "z", "yaw"}]}`, written through a temporary file. Malformed files and entries without a map are ignored.
+- **Game side**: a hook on `yaw_update` (`0x8009C88C`, `src/game/tooie_dev_warp_hook.cpp`) publishes player 1's
+  position every gameplay frame and runs the teleport state machine (`tooie_dev_warp::Teleporter`); the state machine,
+  the JSON format and the map names are tested by `tests/tooie_dev_warp_test.cpp`. Addresses and their certainty:
+  [warp and player position](../../reverse-engineering/systems/warp-and-player-position.md).
+- Not restored by a teleport: enemies, objects, timers and the camera, which follows the player after a few frames.

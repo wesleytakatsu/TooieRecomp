@@ -457,7 +457,8 @@ $script:RequiredTests = @(
     'p09_local_pair_snapshot_test',
     'p09_exact_use_correlation_test',
     'rt64_present_decimator_test',
-    'rom_cart_import_test'
+    'rom_cart_import_test',
+    'tooie_dev_warp_test'
 )
 # Bare invocation prints a usage line and exits non-zero. Built under -AllTests; not run.
 # tools/build_linux.sh does not run this set either.

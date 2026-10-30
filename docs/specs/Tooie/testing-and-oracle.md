@@ -54,7 +54,7 @@ TooieRecomp enforces a strict verification hierarchy designed to validate guest 
 All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_hw_stubs.cpp` using the unified `TOOIE_WRAPPED_SYMBOLS` wrapping contract.
 
 ### 3.1 Test Execution Commands
-- **Linux (`tools/build_linux.sh test`)**: Executes 8 core verification tests:
+- **Linux (`tools/build_linux.sh test`)**: Executes 9 core verification tests:
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
   - `rt64_host_endpoint_current_test`
@@ -63,8 +63,9 @@ All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_
   - `p09_local_pair_snapshot_test`
   - `p09_exact_use_correlation_test`
   - `rt64_present_decimator_test`
+  - `tooie_dev_warp_test` (Dev Mode warp state machine, saved-position JSON, map names)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 14 required verification tests: the 8 above, `rom_cart_import_test` and the 5 language tests
+  - Default runs 15 required verification tests: the 9 above, `rom_cart_import_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests yet.
   - Flag `-AllTests` runs all non-argument tests. Argument-driven tests report `SKIP` when invoked without input data.
@@ -73,6 +74,7 @@ All CMake test executables are marked `EXCLUDE_FROM_ALL` and link against `boot_
 
 | Target | Source File | Scope / Purpose |
 | :--- | :--- | :--- |
+| `tooie_dev_warp_test` | `tests/tooie_dev_warp_test.cpp` | Dev Mode warp: teleport state machine (same map, other map, load detection, timeout), `dev_warps.json` round trip and malformed input, map names |
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |
 | `tintro_projection_policy_test` | `tests/tintro_projection_policy_test.cpp` | Tests cutscene projection source aspect ratio and compensation factor. |

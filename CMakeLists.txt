@@ -202,6 +202,10 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_mode_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
 )
@@ -540,6 +544,9 @@ foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
         ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
         ${CMAKE_SOURCE_DIR}/tests/support/recompui_window_stub.cpp
     )
@@ -637,6 +644,18 @@ target_include_directories(tooie_menu_policy_test PRIVATE
     ${N64MR}/thirdparty
 )
 set_target_properties(tooie_menu_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Dev Mode warp: teleport state machine, saved-position JSON and map names (no guest memory).
+add_executable(tooie_dev_warp_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_warp_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
+)
+target_include_directories(tooie_dev_warp_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/thirdparty
+)
+set_target_properties(tooie_dev_warp_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # Pure N64 controller port policy, independent of SDL and the runtime.
 add_executable(tooie_controller_ports_test

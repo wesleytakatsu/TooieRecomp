@@ -28,6 +28,7 @@
 #include "generated/overlay_dispatch.inc.h"
 #include "tooie_bgm_hooks.h"
 #include "tooie_bgm_volume.h"
+#include "tooie_dev_warp_hook.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -6226,6 +6227,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kCspSetVolVram), tooie_bgm_on_csp_set_vol);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kUpdateVram), tooie_bgm_on_update);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kYawUpdateVram), tooie_dev_on_yaw_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
     // Census and the GeoCmd experiment are off unless their env vars say otherwise.
     // 10/11/12 also register for the experiment so the extra walk runs with census off.
