@@ -48,7 +48,7 @@ int main() {
         CHECK(t.target().entrance == 3 && t.target().yaw == 270.0f);
     }
 
-    // Other map: Goto, then wait for a load and kStableFrames frames in the target map before applying.
+    // Other map: Goto, then wait for the load and kSettleSeconds in the target map before applying.
     {
         Teleporter t;
         double now = 0.0;
@@ -59,16 +59,39 @@ int main() {
         CHECK(t.step(frame(0xC7, 0x80200000u), now += frame_time) == Action::None);
         // Loading: no player frames for a while, then a new player in the target map.
         now += 1.0;
+        const double arrived = now + frame_time;
         Action last = Action::None;
-        int frames = 0;
-        while (last == Action::None && frames < 100) {
+        while (last == Action::None && now < 20.0) {
             last = t.step(frame(0xC7, 0x80210000u), now += frame_time);
-            frames++;
         }
 
         CHECK(last == Action::Apply);
-        CHECK(frames == Teleporter::kStableFrames);
+        CHECK(now - arrived >= Teleporter::kSettleSeconds && now - arrived < Teleporter::kSettleSeconds + 2 * frame_time);
         CHECK(!t.busy());
+    }
+
+    // A hitch while the game has not taken the request yet (old map fading out) is not a load.
+    {
+        Teleporter t;
+        double now = 0.0;
+        t.request(target(0xC7), now);
+        CHECK(t.step(frame(0xAF, 0x80200000u), now += frame_time) == Action::Goto);
+        GameState pending = frame(0xC7, 0x80200000u);
+        pending.warp_pending = true;
+        now += 1.0;
+        for (int i = 0; i < 100; i++) {
+            CHECK(t.step(pending, now += frame_time) == Action::None);
+        }
+
+        // The game takes the request, then loads the new map.
+        CHECK(t.step(frame(0xC7, 0x80200000u), now += frame_time) == Action::None);
+        now += 1.0;
+        Action last = Action::None;
+        while (last == Action::None && now < 20.0) {
+            last = t.step(frame(0xC7, 0x80210000u), now += frame_time);
+        }
+
+        CHECK(last == Action::Apply);
     }
 
     // A new player pointer alone is a load sign.
@@ -78,7 +101,7 @@ int main() {
         t.request(target(0xC7), now);
         CHECK(t.step(frame(0xAF, 0x80200000u), now += frame_time) == Action::Goto);
         Action last = Action::None;
-        for (int i = 0; i < Teleporter::kStableFrames && last == Action::None; i++) {
+        while (last == Action::None && now < Teleporter::kSettleSeconds + 1.0) {
             last = t.step(frame(0xC7, 0x80210000u), now += frame_time);
         }
 

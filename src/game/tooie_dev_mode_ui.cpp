@@ -30,6 +30,7 @@ struct State {
     int renaming = -1;       // index of the entry being renamed, or -1
     std::string status;      // last message shown in the Warp modal
     Element* view = nullptr; // the DevModeView of the open tab, or nullptr
+    ContextId view_context = ContextId::null(); // the UI context that owns view
     bool dirty = false;      // the view must rebuild its contents on its next update
 };
 
@@ -53,11 +54,20 @@ void store_entries() {
 }
 
 // Rebuilding from a button callback would destroy the button while its callback runs: mark the view instead, and it
-// rebuilds on its next update event.
+// rebuilds on its next update event. Callbacks of a prompt run in the prompt's UI context, and an element can only be
+// updated from its own context: switch to the view's context for the update, then back.
 void rebuild() {
     g_state.dirty = true;
-    if (g_state.view != nullptr) {
-        g_state.view->queue_update();
+    if ((g_state.view == nullptr) || (g_state.view_context == ContextId::null())) {
+        return;
+    }
+
+    ContextId previous = recompui::try_close_current_context();
+    g_state.view_context.open();
+    g_state.view->queue_update();
+    g_state.view_context.close();
+    if (previous != ContextId::null()) {
+        previous.open();
     }
 }
 
@@ -324,12 +334,14 @@ public:
         set_height(100.0f, Unit::Percent);
         set_padding(24.0f);
         g_state.view = this;
+        g_state.view_context = get_current_context();
         build_contents(get_current_context(), this);
     }
 
     ~DevModeView() override {
         if (g_state.view == this) {
             g_state.view = nullptr;
+            g_state.view_context = ContextId::null();
         }
     }
 };

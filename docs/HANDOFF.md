@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-29
+updated: 2026-10-30
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -26,7 +26,7 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` validado no Windows; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
-| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo; validado nos demos de atração no Windows, jogo real `NOT_RUN` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
+| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
 | Testes | Windows `Build-Tooie.ps1 -Stage Test`: 15 obrigatórios (inclui 5 de idioma e `tooie_dev_warp_test`); Linux `build_linux.sh test`: 9 | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
@@ -64,6 +64,6 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: o usuário valida o Dev Mode → Warp no jogo real no Windows (salvar uma posição, teleportar no mesmo
-mapa e a partir de outro mapa, renomear, excluir) com um save copiado; depois, validação Linux (widescreen, interpolação,
-multijogador, idiomas, Dev Mode) e pacotes Linux novos.
+`NEXT_SINGLE_ACTION`: usar o Dev Mode → Warp para voltar ao ponto de queda de FPS em Glitter Gulch Mine (mapa 199) e
+medi-lo com o mesmo save e posição; depois, validação Linux (widescreen, interpolação, multijogador, idiomas, Dev Mode)
+e pacotes Linux novos.

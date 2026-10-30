@@ -16,8 +16,9 @@ void Teleporter::request(const Position& target, double now) {
     requested_at = now;
     last_frame = now;
     old_player = 0;
+    load_started = false;
     saw_load = false;
-    stable = 0;
+    arrived = false;
 }
 
 Action Teleporter::step(const GameState& state, double now) {
@@ -45,28 +46,43 @@ Action Teleporter::step(const GameState& state, double now) {
         phase = Phase::Loading;
         old_player = state.player;
         last_frame = now;
+        load_started = false;
         saw_load = false;
-        stable = 0;
+        arrived = false;
         return Action::Goto;
-    case Phase::Loading:
-        // The old map can keep running for a few frames after the request, so the map number alone does not say the
-        // new map is ready: wait for a sign of loading (a gap without player frames, a new player, a non-gameplay mode).
-        if ((now - last_frame > kLoadGapSeconds) || (state.player != old_player) || !state.gameplay) {
+    case Phase::Loading: {
+        // The old map keeps running (and fading out) until the game takes the request, so neither the map number nor a
+        // hitch says the new map is ready. Wait until the game has taken the request (warp_pending cleared), then for a
+        // sign of the load (a gap without player frames, a new player, a non-gameplay mode).
+        const bool load_sign = (now - last_frame > kLoadGapSeconds) || (state.player != old_player) || !state.gameplay;
+        last_frame = now;
+        if (!state.warp_pending) {
+            load_started = true;
+        }
+
+        if (load_started && load_sign) {
             saw_load = true;
         }
 
-        last_frame = now;
-        if (saw_load && ready && (state.position.map == target_position.map)) {
-            if (++stable >= kStableFrames) {
-                phase = Phase::Idle;
-                return Action::Apply;
-            }
+        if (!saw_load || !ready || (state.position.map != target_position.map)) {
+            arrived = false;
+            return Action::None;
         }
-        else {
-            stable = 0;
+
+        // The new map's fade-in and the entry walk from the entrance would move the player off the target: place it
+        // kSettleSeconds after the load.
+        if (!arrived) {
+            arrived = true;
+            arrived_at = now;
+        }
+
+        if (now - arrived_at >= kSettleSeconds) {
+            phase = Phase::Idle;
+            return Action::Apply;
         }
 
         return Action::None;
+    }
     default:
         return Action::None;
     }

@@ -4,7 +4,7 @@ description: "Current map and entrance, the game's go-to-map entry point, player
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-29
+updated: 2026-10-30
 tags: [reverse-engineering, map, warp, player]
 ---
 
@@ -13,7 +13,8 @@ tags: [reverse-engineering, map, warp, player]
 What the Dev Mode warp ([window UI spec](../../specs/Tooie/window-ui-and-config.md), `src/game/tooie_dev_warp_hook.cpp`)
 reads and calls. Runtime checks: in the attract demos the current map read as 335, then 314, matching the demo
 sequence; a teleport from map 335 to a position saved in map 314 loaded map 314 through entrance 8 and placed the
-player at the saved coordinates (2026-10-29, Windows, D3D12).
+player at the saved coordinates (2026-10-29, Windows, D3D12). With a save file loaded the mode read 3 in Jinjo Village
+(map 322), and saving, teleporting within a map and to another map worked (2026-10-30, Windows, user playtest).
 
 ## Map state
 
@@ -21,15 +22,18 @@ player at the saved coordinates (2026-10-29, Windows, D3D12).
 | --- | --- | --- |
 | `u16 0x80132DC2`, read by `func_800EA05C()` | current map id (`MAP_*` of `decomp/include/maps.h`, e.g. `0xC7` Glitter Gulch Mine) | `PROVEN` (actors compare it with map ids; runtime values match the demo maps) |
 | `s16 0x80132DC8`, read by `func_800EA090()` | entrance (exit id) the current map was entered through | `STRONG_INFERENCE` (warp pads compare it with their table's entrance while `FLAG3_9FE_WARPING_VIA_WARPPAD` is set; passing it to the go-to entry point loaded the map) |
-| `D_80127630 + 0x2` (s16) | game mode; 5 in gameplay, 3 on the title intro | `PROVEN` (transition log) |
-| `D_80127630 + 0x10` (s16) | **not** the current map: it read 0 throughout demo gameplay; the transition log reads it while a transition is processed | `PROVEN` (runtime) |
+| `D_80127630 + 0x2` (s16) | game mode: 3 while a save file is played (and on the title intro, with no player), 5 in attract demos; `func_800A819C` returns true for exactly 3 or 5 | `PROVEN` (decompiled getter; runtime: 3 in a loaded save, 5 in demos). **CORRECTED**: an earlier version of this page called 5 "gameplay"; it is the attract demo mode. |
+| `D_80127630 + 0x10` (s16, `mapValue`) | map of a pending transition, **not** the current map: it read 0 throughout gameplay | `PROVEN` (runtime) |
+| `u8 D_80127630 + 0x12` (`0x80127642`) | pending map change: `func_800A7B18(1)` sets it (called by `func_800A7990`, which the go-to entry point uses); the main loop `func_800A7D84` clears it when it starts the change (once `func_800C9510()` returns 0) and re-enters mode 3 | `STRONG_INFERENCE` (decompiled code and generated `sb 0x7642`; the warp waits for it to clear before it trusts load signs, and cross-map teleports then placed the player) |
 
 ## Going to a map
 
 `_gcgoto_entrypoint_1(map, entrance)` (syscall stub `0x80087A58`, overlay `gcgoto`) is what warp pads call. It runs
 `func_8080011C_gcgoto(map, entrance, 0, 1)`, which does nothing while `D_80127194 + 0x42C` is non-zero, else maps
 the pair through `gcgoto_entrypoint_0`, schedules the transition with `func_800A7990(map, entrance, 1)` and calls
-`func_800EA334(0)` and `gcgoto_entrypoint_14(1)`. The new map loads over the next frames, with the usual fade.
+`func_800EA334(0)` and `gcgoto_entrypoint_14(1)`. The old map keeps running while it fades out; the map change starts
+when the main loop clears the pending flag at `0x80127642`, and the new map loads over the next frames, with the usual
+fade-in and, for most entrances, a short walk from the entrance.
 `PROVEN` (decompiled `src/overlays/gc/goto.c`; runtime teleport).
 
 ## Player 1

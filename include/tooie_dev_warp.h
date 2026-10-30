@@ -30,8 +30,9 @@ struct Entry {
 
 // What the hook reads from the game on each frame of player 1.
 struct GameState {
-    bool gameplay = false; // game mode 5
-    uint32_t player = 0;   // PlayerState address of player 1, 0 when there is none
+    bool gameplay = false;     // game mode 3 (save file) or 5 (attract demo)
+    bool warp_pending = false; // a map change was requested and the game has not started it yet
+    uint32_t player = 0;       // PlayerState address of player 1, 0 when there is none
     Position position;
 };
 
@@ -44,12 +45,13 @@ enum class Action {
 };
 
 // Teleport state machine, driven once per frame of player 1. A teleport to the current map applies at once; to another
-// map it asks the game for the map, waits until a new player stands in it for a few frames, then applies.
+// map it asks the game for the map and applies kSettleSeconds after the game has started the change and the new map
+// has loaded.
 class Teleporter {
 public:
     static constexpr double kTimeoutSeconds = 30.0;
     static constexpr double kLoadGapSeconds = 0.15; // no player frame for this long means the game was loading
-    static constexpr int kStableFrames = 15;
+    static constexpr double kSettleSeconds = 2.0;   // wait in the loaded map (fade-in, entry walk) before applying
 
     void request(const Position& target, double now);
     Action step(const GameState& state, double now);
@@ -63,8 +65,10 @@ private:
     double requested_at = 0.0;
     double last_frame = 0.0;
     uint32_t old_player = 0;
+    bool load_started = false; // the game took the map change request (warp_pending cleared)
     bool saw_load = false;
-    int stable = 0;
+    bool arrived = false;      // the player is in the loaded target map
+    double arrived_at = 0.0;
 };
 
 // Shared between the game thread and the UI thread.

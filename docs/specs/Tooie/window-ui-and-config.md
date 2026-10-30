@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-29
+updated: 2026-10-30
 tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution, dev-mode, warp]
 ---
 
@@ -216,12 +216,14 @@ that change the game's state directly.
     (`<map name> #<n>`; map names come from `decomp/include/maps.h` through `tools/generate_map_names.py`).
   - Each saved position has **Teleport**, **Rename** (inline text field) and **Delete** (confirmation prompt).
   - Teleport closes the menu. In the same map the player is moved at once; in another map the game loads it through
-    the saved entrance, as warp pads do, and the player is moved once it stands in the new map for 15 frames. A
-    teleport that cannot start or finish within 30 s is dropped (`[tooie-warp] ... timed out` on stderr).
+    the saved entrance, as warp pads do, and the player is moved 2 s after the new map has loaded (after the fade-in
+    and the walk from the entrance). The load counts only after the game has taken the map change request (its
+    pending-warp flag cleared), so a hitch while the old map fades out is not mistaken for it. A teleport that cannot
+    start or finish within 30 s is dropped (`[tooie-warp] ... timed out` on stderr).
 - **Storage**: `<config_path>/dev_warps.json`, `{"version": 1, "positions": [{"name", "map", "entrance", "x", "y",
   "z", "yaw"}]}`, written through a temporary file. Malformed files and entries without a map are ignored.
 - **Game side**: a hook on `yaw_update` (`0x8009C88C`, `src/game/tooie_dev_warp_hook.cpp`) publishes player 1's
-  position every gameplay frame and runs the teleport state machine (`tooie_dev_warp::Teleporter`); the state machine,
+  position on every frame of a save file or attract demo (game modes 3 and 5) and runs the teleport state machine (`tooie_dev_warp::Teleporter`); the state machine,
   the JSON format and the map names are tested by `tests/tooie_dev_warp_test.cpp`. Addresses and their certainty:
   [warp and player position](../../reverse-engineering/systems/warp-and-player-position.md).
 - Not restored by a teleport: enemies, objects, timers and the camera, which follows the player after a few frames.

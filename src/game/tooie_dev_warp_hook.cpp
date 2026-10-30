@@ -20,7 +20,10 @@ namespace {
 
 constexpr uint32_t kPlayers = 0x80135490u;     // PlayerState* D_80135490[]: index 0 is player 1
 constexpr uint32_t kGameState = 0x80127630u;   // D_80127630: game mode at +0x2 (s16)
-constexpr int16_t kGameplayMode = 5;
+constexpr int16_t kPlayMode = 3;               // playing a save file
+constexpr int16_t kDemoMode = 5;               // attract demo
+constexpr int32_t kWarpPendingOffset = 0x12;   // u8 D_80127630+0x12: set by func_800A7B18 when a map change is requested,
+                                               // cleared by the main loop (func_800A7D84) when it starts the change
 constexpr uint32_t kCurrentMap = 0x80132DC2u;      // u16, read by func_800EA05C (the game's current-map getter)
 constexpr uint32_t kCurrentEntrance = 0x80132DC8u; // s16, read by func_800EA090 (compared with warp pad entrances)
 constexpr int32_t kPlayerPositionOffset = 0xE4; // PlayerState+0xE4 -> struct with the position (f32[3]) at +0x0
@@ -55,7 +58,10 @@ double now_seconds() {
 tooie_dev_warp::GameState read_state(uint8_t* rdram, uint32_t player) {
     tooie_dev_warp::GameState state;
     const gpr game = kseg0(kGameState);
-    state.gameplay = (MEM_H(0x2, game) == kGameplayMode);
+    // Same test as the game's func_800A819C.
+    const int16_t mode = MEM_H(0x2, game);
+    state.gameplay = (mode == kPlayMode) || (mode == kDemoMode);
+    state.warp_pending = (MEM_BU(kWarpPendingOffset, game) != 0);
     state.position.map = static_cast<int16_t>(MEM_HU(0, kseg0(kCurrentMap)));
     state.position.entrance = MEM_H(0, kseg0(kCurrentEntrance));
     const uint32_t position = static_cast<uint32_t>(MEM_W(kPlayerPositionOffset, kseg0(player)));
