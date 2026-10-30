@@ -63,6 +63,8 @@ namespace recompinput {
 
         int get_or_create_mp_controller_profile_index(int player_index);
         bool get_merged_n64_input(uint16_t* buttons_out, float* x_out, float* y_out);
+        // Whether any binding of input is held for the given player, using the same profiles as get_n64_input.
+        bool get_game_input_held(int player_index, GameInput input);
         void save_player_config();
         bool load_controls_config(const std::filesystem::path& path);
         bool save_controls_config(const std::filesystem::path& path);

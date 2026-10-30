@@ -65,6 +65,7 @@ extern char** environ;
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
 #include "tooie_controller_ports.h"
+#include "tooie_dev_cheats.h"
 #include "tooie_language_pack_loader.h"
 #include "tooie_error.h"
 #include "recomp_data.h"
@@ -89,7 +90,7 @@ extern char** environ;
 
 #include "stb/stb_image.h"
 
-const std::string version_string = "0.1.1";
+const std::string version_string = "0.1.2";
 
 namespace {
 
@@ -1438,6 +1439,10 @@ int main(int argc, char** argv) {
                                     x != nullptr ? *x : 0.0f,
                                     y != nullptr ? *y : 0.0f,
                                     buttons != nullptr ? *buttons : 0);
+        if ((controller == 0) && (buttons != nullptr)) {
+            tooie_dev_cheats::on_player1_input(
+                recompinput::profiles::get_game_input_held(0, recompinput::GameInput::DEBUG), *buttons);
+        }
         return ok;
     };
 

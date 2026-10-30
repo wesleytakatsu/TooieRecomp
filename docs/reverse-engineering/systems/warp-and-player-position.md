@@ -1,6 +1,6 @@
 ---
 title: "Warp and player position"
-description: "Current map and entrance, the game's go-to-map entry point, player 1's PlayerState, position and facing, as used by the Dev Mode warp."
+description: "Current map and entrance, the game's go-to-map entry point, player 1's PlayerState, position, facing and flight states, as used by the Dev Mode warp and cheats."
 status: current
 type: reverse-engineering
 project: TooieRecomp
@@ -47,3 +47,27 @@ fade-in and, for most entrances, a short walk from the entrance.
 
 Writing the position through `func_8009C0F8` moves the player; velocity and the camera are not reset, so the camera
 catches up over a few frames. Whether objects that track the player (enemies, triggers) need more state is `UNKNOWN`.
+
+## Player state machine: flying
+
+`bs_setState(PlayerState*, state)` (`0x8009E5C8`) requests a transition and `bs_getCurrentState(PlayerState*)`
+(`0x8009E6F8`) returns the current state; overlay code calls `bs_setState` through the function lookup, so a hook
+registered for its address sees those calls. A temporary log of player 1's requests (2026-10-30, Windows, user taking
+off from the flight pad in Mayahem Temple, map 184) read:
+
+| Time | Transition | Meaning |
+| --- | --- | --- |
+| 71.4 s | `0x1` -> `0x23` | standing on the pad, A pressed: launch |
+| 73.1 s | `0x23` -> `0x24` | launch over (about 1.7 s): flying |
+| 85.4 s | `0x24` -> `0x1` | landed |
+
+The launch handlers are the first entry of `bskazfly` (`func_80800248_bskazfly`: take-off animation, gravity -1200;
+`func_80800320_bskazfly`: vertical velocity 1600 at 39% of the animation, then the flying state once the player falls).
+`0x1` is idle; `0x2` and `0x4` were the states while walking in the same log.
+
+| Claim | Status |
+| --- | --- |
+| `0x23` is the flight launch and `0x24` flying, for Banjo and Kazooie together | `PROVEN` (runtime trace above) |
+| Requesting `0x23` from idle or walking (`0x1`, `0x2`, `0x4`) away from any pad takes off and flies normally | `PROVEN` (Dev Mode fly cheat, user playtest on Windows, 2026-10-30) |
+| `0x2` and `0x4` are the ground movement states | `STRONG_INFERENCE` (seen only while walking) |
+| Whether the pad spends a red feather before the launch state, and whether `0x23` is safe from other states or forms | `UNKNOWN` |

@@ -10,9 +10,12 @@
 #include "elements/ui_container.h"
 #include "elements/ui_label.h"
 #include "elements/ui_scroll_container.h"
+#include "elements/ui_select.h"
 #include "elements/ui_text_input.h"
+#include "elements/ui_toggle.h"
 #include "util/file.h"
 
+#include "tooie_dev_cheats.h"
 #include "tooie_dev_warp.h"
 
 namespace {
@@ -26,6 +29,7 @@ struct State {
     bool unlocked = false;   // the warning was accepted in this session
     bool warp_open = false;  // the Warp modal is shown
     bool entries_loaded = false;
+    bool cheats_loaded = false;
     std::vector<Entry> entries;
     int renaming = -1;       // index of the entry being renamed, or -1
     std::string status;      // last message shown in the Warp modal
@@ -45,6 +49,22 @@ void ensure_entries_loaded() {
         g_state.entries = tooie_dev_warp::load_entries(store_path());
         g_state.entries_loaded = true;
     }
+}
+
+std::filesystem::path cheats_path() {
+    return recompui::file::get_app_folder_path() / "dev_cheats.json";
+}
+
+void ensure_cheats_loaded() {
+    if (!g_state.cheats_loaded) {
+        tooie_dev_cheats::set_settings(tooie_dev_cheats::load_settings(cheats_path()));
+        g_state.cheats_loaded = true;
+    }
+}
+
+void store_cheats(const tooie_dev_cheats::Settings& settings) {
+    tooie_dev_cheats::set_settings(settings);
+    tooie_dev_cheats::save_settings(cheats_path(), settings);
 }
 
 void store_entries() {
@@ -281,6 +301,53 @@ void build_warp_modal(ContextId context, Element* root) {
     });
 }
 
+// One line per cheat: a switch to enable it, its name and the D-pad direction that triggers it with the Debug Button.
+void build_cheats(ContextId context, Element* root) {
+    using tooie_dev_cheats::Direction;
+    ensure_cheats_loaded();
+    const tooie_dev_cheats::Settings settings = tooie_dev_cheats::settings();
+
+    context.create_element<Label>(root, "Cheats", theme::Typography::Header3);
+    context.create_element<Label>(root,
+        "Hold the Debug Button (R3 or T by default, see the Controls tab) and press the D-Pad direction set here.",
+        theme::Typography::LabelSM);
+
+    Element* line = row(context, root, 16.0f);
+    line->set_padding(8.0f);
+    line->set_border_width(theme::border::width);
+    line->set_border_radius(theme::border::radius_md);
+    line->set_border_color(theme::color::Border);
+
+    Toggle* enabled = context.create_element<Toggle>(line, ToggleSize::Medium);
+    enabled->set_flex_shrink(0.0f);
+    enabled->set_checked(settings.fly_enabled);
+    enabled->add_checked_callback([](bool checked) {
+        tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
+        changed.fly_enabled = checked;
+        store_cheats(changed);
+    });
+
+    Label* name = context.create_element<Label>(line, "Fly (take off as from a flight pad)", theme::Typography::LabelMD);
+    name->set_flex_grow(1.0f);
+
+    Element* picker = context.create_element<Element>(line);
+    picker->set_flex_shrink(0.0f);
+    picker->set_width(180.0f);
+    static const char* const labels[] = {"D-Pad Up", "D-Pad Down", "D-Pad Left", "D-Pad Right"};
+    std::vector<SelectOption> options;
+    for (Direction direction : {Direction::Up, Direction::Down, Direction::Left, Direction::Right}) {
+        options.emplace_back(labels[int(direction)], tooie_dev_cheats::direction_name(direction));
+    }
+
+    Select* select = context.create_element<Select>(picker, options, tooie_dev_cheats::direction_name(settings.fly_direction));
+    select->set_width(100.0f, Unit::Percent);
+    select->add_change_callback([](SelectOption& option, int) {
+        tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
+        changed.fly_direction = tooie_dev_cheats::direction_from_name(option.value).value_or(Direction::Up);
+        store_cheats(changed);
+    });
+}
+
 void build_contents(ContextId context, Element* root) {
 
     context.create_element<Label>(root, "Dev Mode", theme::Typography::Header2);
@@ -292,6 +359,7 @@ void build_contents(ContextId context, Element* root) {
         Button* accept = context.create_element<Button>(root, "Accept and unlock", ButtonStyle::Danger, ButtonSize::Medium);
         accept->add_pressed_callback([]() {
             g_state.unlocked = true;
+            tooie_dev_cheats::set_unlocked(true);
             rebuild();
         });
         return;
@@ -305,6 +373,8 @@ void build_contents(ContextId context, Element* root) {
         g_state.status.clear();
         rebuild();
     });
+
+    build_cheats(context, root);
 
     if (g_state.warp_open) {
         build_warp_modal(context, root);

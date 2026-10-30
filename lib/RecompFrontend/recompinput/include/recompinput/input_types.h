@@ -37,10 +37,15 @@ namespace recompinput {
         DEFINE_INPUT(TAB_LEFT_MENU, 0, "Tab Left (Menu)") \
         DEFINE_INPUT(TAB_RIGHT_MENU, 0, "Tab Right (Menu)")
 
+    // Inputs read by the game project itself; they never reach the N64 controller.
+    #define DEFINE_EXTRA_INPUTS() \
+        DEFINE_INPUT(DEBUG, 0, "Debug Button")
+
     #define DEFINE_ALL_INPUTS() \
         DEFINE_N64_AXIS_INPUTS() \
         DEFINE_N64_BUTTON_INPUTS() \
-        DEFINE_RECOMP_UI_INPUTS()
+        DEFINE_RECOMP_UI_INPUTS() \
+        DEFINE_EXTRA_INPUTS()
 
     #define DEFINE_INPUT(name, value, readable) name,
     // - Enum containing every recomp input.

@@ -371,23 +371,25 @@ namespace recompinput {
         return "SERIAL_" + guid.serial + "_VID_" + std::to_string(guid.vendor) + "_PID_" + std::to_string(guid.product) +"_VERSION_" + std::to_string(guid.version) +"_CRC16_" + std::to_string(guid.crc16);
     }
 
+    static void get_player_mappings(int player_index, bool merged, input_mapping_array& controller_mappings, input_mapping_array& keyboard_mappings) {
+        auto slot = players::get_player(player_index);
+        std::lock_guard lock{ profiles_mutex };
+        int controller_profile = merged ? profiles::get_sp_controller_profile_index()
+            : slot.controller ? players_input_profile_indices[player_index].first : -1;
+        int keyboard_profile = merged ? profiles::get_sp_keyboard_profile_index()
+            : slot.keyboard_enabled ? players_input_profile_indices[player_index].second : -1;
+        if (controller_profile >= 0) controller_mappings = input_profiles[controller_profile].mappings;
+        if (keyboard_profile >= 0) keyboard_mappings = input_profiles[keyboard_profile].mappings;
+    }
+
     static bool read_n64_input(int player_index, bool merged, uint16_t* buttons_out, float* x_out, float* y_out) {
         uint16_t cur_buttons = 0;
         float cur_x = 0.0f;
         float cur_y = 0.0f;
         if (!recompinput::game_input_disabled()) {
-            auto slot = players::get_player(player_index);
             input_mapping_array controller_mappings{};
             input_mapping_array keyboard_mappings{};
-            {
-                std::lock_guard lock{ profiles_mutex };
-                int controller_profile = merged ? profiles::get_sp_controller_profile_index()
-                    : slot.controller ? players_input_profile_indices[player_index].first : -1;
-                int keyboard_profile = merged ? profiles::get_sp_keyboard_profile_index()
-                    : slot.keyboard_enabled ? players_input_profile_indices[player_index].second : -1;
-                if (controller_profile >= 0) controller_mappings = input_profiles[controller_profile].mappings;
-                if (keyboard_profile >= 0) keyboard_mappings = input_profiles[keyboard_profile].mappings;
-            }
+            get_player_mappings(player_index, merged, controller_mappings, keyboard_mappings);
             int controller_num = merged ? -1 : player_index;
             auto check_buttons = [&](const input_mapping_array& mappings) {
                 for (size_t i = 0; i < n64_button_values.size(); i++) {
@@ -418,6 +420,20 @@ namespace recompinput {
 
     bool profiles::get_merged_n64_input(uint16_t* buttons_out, float* x_out, float* y_out) {
         return read_n64_input(0, true, buttons_out, x_out, y_out);
+    }
+
+    bool profiles::get_game_input_held(int player_index, GameInput input) {
+        if (recompinput::game_input_disabled()) {
+            return false;
+        }
+
+        const bool merged = players::is_single_player_mode();
+        input_mapping_array controller_mappings{};
+        input_mapping_array keyboard_mappings{};
+        get_player_mappings(player_index, merged, controller_mappings, keyboard_mappings);
+        const int controller_num = merged ? -1 : player_index;
+        return recompinput::get_input_digital(controller_num, controller_mappings[(size_t)input]) ||
+            recompinput::get_input_digital(controller_num, keyboard_mappings[(size_t)input]);
     }
 
     void profiles::save_player_config() {

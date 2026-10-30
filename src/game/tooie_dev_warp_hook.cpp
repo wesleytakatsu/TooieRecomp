@@ -3,6 +3,7 @@
 // teleport the UI queued. See docs/reverse-engineering/systems/warp-and-player-position.md for the addresses.
 
 #include "tooie_dev_warp.h"
+#include "tooie_dev_cheats.h"
 
 #include <chrono>
 #include <cstdio>
@@ -14,6 +15,8 @@ extern "C" void yaw_update(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_set(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8009C0F8(uint8_t* rdram, recomp_context* ctx); // player position setter (PlayerState*, f32[3])
+extern "C" void bs_setState(uint8_t* rdram, recomp_context* ctx);        // (PlayerState*, state)
+extern "C" void bs_getCurrentState(uint8_t* rdram, recomp_context* ctx); // (PlayerState*) -> state
 extern "C" void _gcgoto_entrypoint_1(uint8_t* rdram, recomp_context* ctx); // go to (map, entrance), as warp pads do
 
 namespace {
@@ -106,6 +109,26 @@ void apply_position(uint8_t* rdram, const recomp_context* ctx, uint32_t player, 
     yaw_setIdeal(rdram, &local);
 }
 
+// Dev Mode fly cheat: put player 1 in the launch state a flight pad uses; the game then goes on to flying by itself.
+void launch_flight(uint8_t* rdram, const recomp_context* ctx, uint32_t player) {
+    recomp_context local = *ctx;
+    local.r29 = ADD32(ctx->r29, -0x40);
+    local.r4 = kseg0(player);
+    bs_getCurrentState(rdram, &local);
+    const uint32_t current = static_cast<uint32_t>(local.r2);
+    if (!tooie_dev_cheats::can_launch_flight(current)) {
+        std::fprintf(stderr, "[tooie-cheat] fly ignored in state 0x%X\n", unsigned(current));
+        return;
+    }
+
+    local = *ctx;
+    local.r29 = ADD32(ctx->r29, -0x40);
+    local.r4 = kseg0(player);
+    local.r5 = static_cast<gpr>(static_cast<int32_t>(tooie_dev_cheats::kStateFlyLaunch));
+    bs_setState(rdram, &local);
+    std::fprintf(stderr, "[tooie-cheat] fly from state 0x%X\n", unsigned(current));
+}
+
 } // namespace
 
 extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
@@ -141,5 +164,9 @@ extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
         break;
     default:
         break;
+    }
+
+    if (tooie_dev_cheats::take_fly_request() && state.gameplay && (state.player != 0) && !tooie_dev_warp::teleport_busy()) {
+        launch_flight(rdram, ctx, player);
     }
 }

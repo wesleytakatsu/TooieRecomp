@@ -48,7 +48,7 @@ RT64 Viewport & Swapchain Presentation
 | **REQ-WIN-08** | Aspect Ratio Auto-Resize | Selecting 4:3 or 16:9 in windowed mode resizes window on SDL event thread. | `IMPLEMENTED` |
 | **REQ-CFG-01** | Menu Policy Enforcement | Interpolation OFF enforces Manual 30; ON unlocks user framerate controls. | `IMPLEMENTED` |
 | **REQ-CFG-02** | Resolution Scaling | Exposes `Original3x` and `Original4x` in UI and config serialization. | `IMPLEMENTED` |
-| **REQ-DEV-01** | Dev Mode tab | ESC menu tab locked behind an accepted warning; Warp saves, renames, deletes and teleports to player positions. | `IMPLEMENTED` |
+| **REQ-DEV-01** | Dev Mode tab | ESC menu tab locked behind an accepted warning; Warp saves, renames, deletes and teleports to player positions; Cheats are triggered by the Debug Button plus a D-pad direction. | `IMPLEMENTED` |
 
 ---
 
@@ -151,6 +151,8 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 - **mods.json**: Mod management infrastructure (`enabled_mods`, `mod_order`).
 - **dev_warps.json**: positions saved by the Dev Mode warp (section 4.5); written only when the user saves, renames or
   deletes one.
+- **dev_cheats.json**: Dev Mode cheat settings (section 4.5), `{"version": 1, "fly": {"enabled", "direction"}}` with
+  `direction` one of `up`, `down`, `left`, `right`; written when a cheat is switched or its direction changed.
 
 ### 4.2 Invariants & Operational Boundaries
 1. **Config Pointer Safety**:
@@ -227,3 +229,16 @@ that change the game's state directly.
   the JSON format and the map names are tested by `tests/tooie_dev_warp_test.cpp`. Addresses and their certainty:
   [warp and player position](../../reverse-engineering/systems/warp-and-player-position.md).
 - Not restored by a teleport: enemies, objects, timers and the camera, which follows the player after a few frames.
+- **Debug Button**: a `recompinput` input (`GameInput::DEBUG`, patch `recompfrontend-debug-input`) listed with the
+  other controls and bound like them; defaults R3 on a controller and T on the keyboard (`src/game/config.cpp`). It never
+  reaches the N64 controller, but a physical button bound to it keeps its other bindings (R3 is also N64 L by default).
+  `recompinput::profiles::get_game_input_held` reads it with the same profiles as player 1's N64 input.
+- **Cheats** (below Warp after unlocking): one line per cheat with a switch, its name and a D-pad direction selector.
+  Holding the Debug Button and pressing that direction triggers the cheat once per press, only while the tab is
+  unlocked in this session and the cheat is switched on (`tooie_dev_cheats`, `src/game/tooie_dev_cheats.cpp`; chord,
+  request queue and settings tested by `tests/tooie_dev_cheats_test.cpp`). The input callback in `src/main/main.cpp`
+  detects the chord for player 1; the `yaw_update` hook carries out the request on player 1's next gameplay frame.
+  - **Fly** (default D-pad up): puts player 1 in the launch state a flight pad uses (`0x23`), and the game goes on to
+    flying by itself. Allowed only from idle and ground movement states (`0x1`, `0x2`, `0x4`); in any other state the
+    request is dropped and `[tooie-cheat] fly ignored in state 0x..` goes to stderr. Validated by the user on Windows
+    (2026-10-30).

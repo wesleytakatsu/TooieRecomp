@@ -347,6 +347,10 @@ static void set_control_defaults() {
 
     // R3 -> L | Unused in BK but can be used in mods
     set_default_mapping_for_controller(GameInput::L, { InputField::controller_digital(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_RIGHTSTICK) });
+
+    // R3 / T -> Debug Button | Dev Mode cheats, held with a D-pad direction
+    set_default_mapping_for_controller(GameInput::DEBUG, { InputField::controller_digital(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_RIGHTSTICK) });
+    set_default_mapping_for_keyboard(GameInput::DEBUG, { InputField::keyboard(SDL_SCANCODE_T) });
 }
 
 static void set_control_descriptions() {
@@ -368,6 +372,7 @@ static void set_control_descriptions() {
     recompinput::set_game_input_description(recompinput::GameInput::DPAD_DOWN, "Unused. Mods may use it for additional features.");
     recompinput::set_game_input_description(recompinput::GameInput::DPAD_LEFT, "Unused. Mods may use it for additional features.");
     recompinput::set_game_input_description(recompinput::GameInput::DPAD_RIGHT, "Unused. Mods may use it for additional features.");
+    recompinput::set_game_input_description(recompinput::GameInput::DEBUG, "Hold it and press a D-Pad direction to use a Dev Mode cheat. Each cheat's direction is set in the Dev Mode tab, which must be unlocked first.");
 }
 
 banjo::CutsceneAspectRatioMode banjo::get_cutscene_aspect_ratio_mode() {
