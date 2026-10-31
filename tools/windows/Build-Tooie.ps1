@@ -452,6 +452,7 @@ $script:RequiredTests = @(
     'tooie_menu_policy_test',
     'tooie_menu_config_test',
     'rt64_host_endpoint_current_test',
+    'rt64_hidden_window_test',
     'p09_interp_burst_test',
     'p09_world_interpolation_guard_test',
     'p09_local_pair_snapshot_test',

@@ -729,10 +729,14 @@ set_target_properties(recompinput_player_slots_test PROPERTIES EXCLUDE_FROM_ALL 
 # Real librecomp Config integration (loaded 240 -> 30, registry reallocation, load callback, saved JSON).
 add_executable(tooie_menu_config_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_menu_config_test.cpp
+    ${CMAKE_SOURCE_DIR}/tests/graphics_window_mode_test.cpp
+    ${CMAKE_SOURCE_DIR}/lib/RecompFrontend/recompui/src/config/ui_config_tab_graphics.cpp
     ${N64MR}/librecomp/src/config.cpp
     ${N64MR}/librecomp/src/config_option.cpp
 )
 target_include_directories(tooie_menu_config_test PRIVATE
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
+    ${SDL2_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/include
     ${N64MR}/ultramodern/include
     ${N64MR}/librecomp/include
@@ -744,6 +748,7 @@ target_include_directories(tooie_menu_config_test PRIVATE
     ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz
 )
 set_target_properties(tooie_menu_config_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+target_compile_definitions(tooie_menu_config_test PRIVATE NOMINMAX)
 
 # T_INTRO projection-policy regression: proves source aspect comes from the
 # cinematic matrix and rejects the old VI 304/228 compensation at 16:9.
@@ -758,6 +763,26 @@ target_compile_options(tintro_projection_policy_test PRIVATE
     -Wno-unused-parameter
 )
 set_target_properties(tintro_projection_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Exercise real RT64 visibility transitions without opening the game.
+if(WIN32)
+    add_executable(rt64_hidden_window_test
+        tests/rt64_hidden_window_test.cpp
+        lib/rt64/src/hle/rt64_application_window.cpp
+    )
+    target_include_directories(rt64_hidden_window_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/plume
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/hlslpp/include
+        ${SDL2_INCLUDE_DIRS}
+    )
+    target_link_libraries(rt64_hidden_window_test PRIVATE SDL2::SDL2 user32 Shcore)
+    add_custom_command(TARGET rt64_hidden_window_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${sdl2_SOURCE_DIR}/lib/x64/SDL2.dll" "$<TARGET_FILE_DIR:rt64_hidden_window_test>"
+    )
+    set_target_properties(rt64_hidden_window_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
 
 # Demo7 drift diagnostic: capture gate (stage0 sub8 glidx 0..120) and bs layout.
 add_executable(tooie_demo7_drift_test

@@ -1,6 +1,7 @@
 #include "tooie_dev_mode_ui.h"
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -302,43 +303,63 @@ void build_warp_modal(ContextId context, Element* root) {
     });
 }
 
-// One line per cheat: a switch to enable it, its name and the D-pad direction that triggers it with the Debug Button.
-void build_cheat_row(ContextId context, Element* root, tooie_dev_cheats::Cheat cheat, const char* title) {
+// Shared layout keeps every shortcut's switch, copy and direction aligned.
+Element* option_card(ContextId context, Element* parent) {
+    Element* card = column(context, parent, 12.0f);
+    card->set_padding(12.0f);
+    card->set_border_width(theme::border::width);
+    card->set_border_radius(theme::border::radius_md);
+    card->set_border_color(theme::color::Border);
+    return card;
+}
+
+void option_description(ContextId context, Element* line, const char* title, const char* description) {
+    Element* copy = column(context, line, 4.0f);
+    copy->set_flex(1.0f, 1.0f, 0.0f, Unit::Dp);
+    copy->set_min_width(160.0f);
+    context.create_element<Label>(copy, title, theme::Typography::LabelMD);
+    auto* detail = context.create_element<Label>(copy, description, theme::Typography::LabelSM);
+    detail->set_color(theme::color::TextDim);
+}
+
+void direction_picker(ContextId context, Element* line, tooie_dev_cheats::Direction direction,
+    std::function<void(tooie_dev_cheats::Direction)> changed) {
     using tooie_dev_cheats::Direction;
-    const tooie_dev_cheats::CheatSettings settings = tooie_dev_cheats::settings()[cheat];
+    Element* picker = context.create_element<Element>(line);
+    // Select's own minimum is 192 dp. Reserve room for its text and caret.
+    picker->set_flex(0.0f, 0.0f, 224.0f, Unit::Dp);
+    picker->set_width(224.0f);
+    static const char* const labels[] = {"D-Pad Up", "D-Pad Down", "D-Pad Left", "D-Pad Right"};
+    std::vector<SelectOption> options;
+    for (Direction value : {Direction::Up, Direction::Down, Direction::Left, Direction::Right}) {
+        options.emplace_back(labels[int(value)], tooie_dev_cheats::direction_name(value));
+    }
+    auto* select = context.create_element<Select>(picker, options, tooie_dev_cheats::direction_name(direction));
+    select->set_width(100.0f, Unit::Percent);
+    select->set_padding_right(48.0f);
+    select->add_change_callback([changed](SelectOption& option, int) {
+        if (auto value = tooie_dev_cheats::direction_from_name(option.value)) changed(*value);
+    });
+}
 
-    Element* line = row(context, root, 16.0f);
-    line->set_padding(8.0f);
-    line->set_border_width(theme::border::width);
-    line->set_border_radius(theme::border::radius_md);
-    line->set_border_color(theme::color::Border);
-
+void build_cheat_row(ContextId context, Element* root, tooie_dev_cheats::Cheat cheat,
+    const char* title, const char* description) {
+    const auto settings = tooie_dev_cheats::settings()[cheat];
+    Element* card = option_card(context, root);
+    Element* line = row(context, card, 16.0f);
+    line->set_flex_wrap(FlexWrap::Wrap);
     Toggle* enabled = context.create_element<Toggle>(line, ToggleSize::Medium);
     enabled->set_flex_shrink(0.0f);
     enabled->set_checked(settings.enabled);
     enabled->add_checked_callback([cheat](bool checked) {
-        tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
+        auto changed = tooie_dev_cheats::settings();
         changed[cheat].enabled = checked;
         store_cheats(changed);
     });
-
-    Label* name = context.create_element<Label>(line, title, theme::Typography::LabelMD);
-    name->set_flex_grow(1.0f);
-
-    Element* picker = context.create_element<Element>(line);
-    picker->set_flex_shrink(0.0f);
-    picker->set_width(180.0f);
-    static const char* const labels[] = {"D-Pad Up", "D-Pad Down", "D-Pad Left", "D-Pad Right"};
-    std::vector<SelectOption> options;
-    for (Direction direction : {Direction::Up, Direction::Down, Direction::Left, Direction::Right}) {
-        options.emplace_back(labels[int(direction)], tooie_dev_cheats::direction_name(direction));
-    }
-
-    Select* select = context.create_element<Select>(picker, options, tooie_dev_cheats::direction_name(settings.direction));
-    select->set_width(100.0f, Unit::Percent);
-    select->add_change_callback([cheat](SelectOption& option, int) {
-        tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
-        changed[cheat].direction = tooie_dev_cheats::direction_from_name(option.value).value_or(changed[cheat].direction);
+    option_description(context, line, title, description);
+    direction_picker(context, line, settings.direction, [cheat](tooie_dev_cheats::Direction direction) {
+        auto changed = tooie_dev_cheats::settings();
+        changed[cheat].direction = direction;
         store_cheats(changed);
     });
 }
@@ -347,68 +368,78 @@ void build_cheats(ContextId context, Element* root) {
     ensure_cheats_loaded();
     context.create_element<Label>(root, "Cheats", theme::Typography::Header3);
     context.create_element<Label>(root,
-        "Hold the Debug Button (R3 or T by default, see the Controls tab) and press the D-Pad direction set here.",
+        "Hold R3 or your Debug Button + the selected direction. Each shortcut controls your own player.",
         theme::Typography::LabelSM);
-    build_cheat_row(context, root, tooie_dev_cheats::Cheat::Fly, "Fly (take off as from a flight pad)");
-    build_cheat_row(context, root, tooie_dev_cheats::Cheat::Blaster, "Breegull Blaster (switch on or off)");
+    build_cheat_row(context, root, tooie_dev_cheats::Cheat::Fly, "Fly", "Take off as from a flight pad.");
+    build_cheat_row(context, root, tooie_dev_cheats::Cheat::Blaster, "Breegull Blaster", "Switch first-person mode on or off.");
 }
 
 void build_character_selection(ContextId context, Element* root) {
+    const auto settings = tooie_dev_cheats::settings();
     context.create_element<Label>(root, "Character selection", theme::Typography::Header3);
-    Element* line = row(context, root, 16.0f);
+    Element* card = option_card(context, root);
+    Element* line = row(context, card, 16.0f);
+    line->set_flex_wrap(FlexWrap::Wrap);
     auto* toggle = context.create_element<Toggle>(line, ToggleSize::Medium);
-    toggle->set_checked(tooie_dev_cheats::settings().character_menu);
+    toggle->set_flex_shrink(0.0f);
+    toggle->set_checked(settings.character_menu);
     toggle->add_checked_callback([](bool checked) {
-        auto settings = tooie_dev_cheats::settings();
-        settings.character_menu = checked;
-        store_cheats(settings);
+        auto changed = tooie_dev_cheats::settings();
+        changed.character_menu = checked;
+        store_cheats(changed);
     });
-    context.create_element<Label>(line, "Enable character selection (R3 + D-pad down)", theme::Typography::LabelMD);
-    context.create_element<Label>(root,
-        "Select with D-pad/stick, A to transform, B to cancel. Each menu stays inside its player's view. "
-        "R3 works directly; the mapped Debug Button also works. Takes priority over cheats assigned to down.",
-        theme::Typography::LabelSM);
-    Element* buttons = row(context, root, 12.0f);
+    option_description(context, line, "Enable character selection", "Choose a form independently for each player.");
+    direction_picker(context, line, settings.character_menu_direction, [](tooie_dev_cheats::Direction direction) {
+        auto changed = tooie_dev_cheats::settings();
+        changed.character_menu_direction = direction;
+        store_cheats(changed);
+    });
+    context.create_element<Label>(card, "D-pad / stick: select    A: transform    B: cancel", theme::Typography::LabelSM);
+
+    const auto states = tooie_dev_forms::menus().snapshot();
+    Element* players = row(context, card, 16.0f);
+    players->set_align_items(AlignItems::Stretch);
+    players->set_flex_wrap(FlexWrap::Wrap);
     for (int player = 0; player < 2; ++player) {
-        auto* button = context.create_element<Button>(buttons, "Open for Player " + std::to_string(player + 1),
+        Element* action = column(context, players, 8.0f);
+        action->set_flex(1.0f, 1.0f, 0.0f, Unit::Dp);
+        action->set_min_width(240.0f);
+        auto* status = context.create_element<Label>(action,
+            std::string("Player ") + std::to_string(player + 1) +
+                (states[player].available ? " - Ready" : " - Waiting for gameplay"), theme::Typography::LabelSM);
+        status->set_color(theme::color::TextDim);
+        auto* button = context.create_element<Button>(action, "Open for Player " + std::to_string(player + 1),
             ButtonStyle::Secondary, ButtonSize::Medium);
+        button->set_width(100.0f, Unit::Percent);
+        button->set_flex_shrink(0.0f);
         button->add_pressed_callback([player]() {
-            auto settings = tooie_dev_cheats::settings();
-            settings.character_menu = true;
-            store_cheats(settings);
+            auto changed = tooie_dev_cheats::settings();
+            changed.character_menu = true;
+            store_cheats(changed);
             tooie_dev_forms::menus().request_open(player);
             recompui::hide_all_contexts();
         });
     }
-    const auto states = tooie_dev_forms::menus().snapshot();
-    context.create_element<Label>(root,
-        std::string("Gameplay status - Player 1: ") + (states[0].available ? "ready" : "waiting") +
-        "; Player 2: " + (states[1].available ? "ready" : "waiting") +
-        ". Open buttons return to the game; a player must be active.", theme::Typography::LabelSM);
+    auto* hint = context.create_element<Label>(card,
+        "Opening returns to the game and enables selection. The player must be active. "
+        "This shortcut takes priority if another cheat uses the same direction.", theme::Typography::LabelSM);
+    hint->set_color(theme::color::TextDim);
 }
 
 void build_experimental(ContextId context, Element* root) {
     context.create_element<Label>(root, "Experimental", theme::Typography::Header3);
-    Element* line = row(context, root, 16.0f);
-    line->set_padding(8.0f);
-    line->set_border_width(theme::border::width);
-    line->set_border_radius(theme::border::radius_md);
-    line->set_border_color(theme::color::Border);
-
+    Element* card = option_card(context, root);
+    Element* line = row(context, card, 16.0f);
     Toggle* enabled = context.create_element<Toggle>(line, ToggleSize::Medium);
     enabled->set_flex_shrink(0.0f);
     enabled->set_checked(tooie_dev_cheats::settings().two_players);
     enabled->add_checked_callback([](bool checked) {
-        tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
+        auto changed = tooie_dev_cheats::settings();
         changed.two_players = checked;
         store_cheats(changed);
     });
-
-    Label* name = context.create_element<Label>(line,
-        "Two players (split screen). Applies from the next map load. For a controller each, turn Multiplayer on in "
-        "General and assign two players.",
-        theme::Typography::LabelMD);
-    name->set_flex_grow(1.0f);
+    option_description(context, line, "Two players (split screen)",
+        "Applies on the next map load. Assign controllers in General > Multiplayer.");
 }
 
 void build_contents(ContextId context, Element* root) {
@@ -467,6 +498,9 @@ public:
         set_position(recompui::Position::Relative);
         set_width(100.0f, Unit::Percent);
         set_height(100.0f, Unit::Percent);
+        set_min_height(0.0f);
+        set_overflow_y(Overflow::Auto);
+        set_overflow_x(Overflow::Hidden);
         set_padding(24.0f);
         g_state.view = this;
         g_state.view_context = get_current_context();

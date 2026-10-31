@@ -70,6 +70,8 @@ static bool locked(recomp::config::Config& g) {
 }
 static nlohmann::json saved() { nlohmann::json j; std::ifstream(g_dir / "graphics.json") >> j; return j; }
 
+void test_graphics_window_mode();
+
 int main() {
 #if defined(_WIN32)
     _putenv_s("TOOIE_TEST_INTERPOLATION_FPS", "");
@@ -176,6 +178,7 @@ int main() {
     unsetenv("TOOIE_TEST_INTERPOLATION_FPS");
 #endif
 
+    test_graphics_window_mode();
     std::puts("tooie_menu_config_test PASS");
     return 0;
 }

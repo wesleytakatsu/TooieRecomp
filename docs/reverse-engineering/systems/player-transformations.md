@@ -55,6 +55,8 @@ Selector availability is checked again in live gameplay (mode 3, outside native 
 only during player creation. This allows unlocking Dev Mode in the current map, independent of the transitional mode
 at map load. The menu has its own persisted switch and explicit open buttons in the Dev Mode tab. Physical R3 is
 accepted in addition to the configurable Debug Button, without changing the player's saved control bindings.
+The host shortcut direction is configurable in the Dev Mode tab (default Down); it is independent of native
+transformation/transition data. The opening press is consumed before cheat dispatch for either player.
 
 Menu requests run on the game thread for their owner: native waiting state `0x74` ends the old behavior, the form and
 models are changed, the native base animation is refreshed, then the native default state starts. Blaster uses its

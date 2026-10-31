@@ -113,6 +113,45 @@ recomp_func_t* get_function(int32_t address) {
 int main() {
     using namespace tooie_dev_forms;
     Menus local;
+    // Every configured direction opens only its owner's menu. Holding the
+    // opening Up/Down press must not immediately move the selected entry.
+    for (auto direction : {tooie_dev_cheats::Direction::Up, tooie_dev_cheats::Direction::Down,
+        tooie_dev_cheats::Direction::Left, tooie_dev_cheats::Direction::Right}) {
+        local.reset();
+        local.publish(0, true, {}, 1, false);
+        local.publish(1, true, {}, 1, false);
+        const auto trigger = tooie_dev_cheats::direction_button(direction);
+        const uint16_t other = trigger == 0x0400 ? 0x0800 : 0x0400;
+        CHECK(!local.input(1, true, true, other, 0, 0, 0, trigger));
+        local.input(1, true, false, 0, 0, 0, .1, trigger);
+        CHECK(local.input(1, true, true, trigger, 0, 0, .2, trigger));
+        CHECK(local.snapshot()[1].open && !local.snapshot()[0].open);
+        CHECK(local.input(1, true, true, trigger, 0, 0, .3, trigger));
+        CHECK(local.snapshot()[1].selected == 0);
+        local.input(1, true, false, 0, 0, 0, .4, trigger);
+        local.input(1, true, false, 0x4000, 0, 0, .5, trigger);
+        CHECK(!local.snapshot()[1].open);
+    }
+    // The configured opener wins over a cheat on the same direction, for both owners.
+    {
+        auto settings = tooie_dev_cheats::Settings{};
+        settings.character_menu_direction = tooie_dev_cheats::Direction::Left;
+        settings[tooie_dev_cheats::Cheat::Fly] = {true, tooie_dev_cheats::Direction::Left};
+        tooie_dev_cheats::set_settings(settings);
+        tooie_dev_cheats::set_unlocked(true);
+        local.reset();
+        for (int player = 0; player < kPlayers; ++player) {
+            local.publish(player, true, {}, 1, false);
+            tooie_dev_cheats::on_player_input(player, false, 0);
+            const auto button = tooie_dev_cheats::direction_button(settings.character_menu_direction);
+            const bool consumed = local.input(player, true, true, button, 0, 0, 1, button);
+            tooie_dev_cheats::on_player_input(player, !consumed, button);
+            CHECK(consumed && local.snapshot()[player].open);
+            CHECK(!tooie_dev_cheats::take_request(player, tooie_dev_cheats::Cheat::Fly));
+        }
+        tooie_dev_cheats::set_settings(tooie_dev_cheats::Settings{});
+    }
+    local.reset();
     local.publish(0, true, {}, 1, false);
     local.publish(1, true, {0, .5f, 1, .5f}, 1, false);
     CHECK(!local.input(1, false, true, 0x0400, 0, 0, 0));

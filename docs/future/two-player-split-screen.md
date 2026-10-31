@@ -226,8 +226,9 @@ Revisão do checkpoint: sem achados bloqueantes; código gerado e dependências 
 ## 10. Seletor individual de transformação (2026-10-31, revisão aprovada pelo usuário)
 
 Implementação sobre `d772866f6c503e508f321d8fb2f41854655bd45b`: Dev Mode desbloqueado, Debug Button (R3 no controle,
-T no teclado por padrão) + D-pad baixo abre o menu do próprio jogador. Direcional/analógico navega, A confirma, B cancela.
-Na aba Dev Mode, **Character selection** tem chave de ativação (default on, `character_menu` no JSON) e botões
+T no teclado por padrão) + direção do D-pad configurada (baixo por padrão) abre o menu do próprio jogador. Direcional/analógico navega, A confirma, B cancela.
+Na aba Dev Mode, **Character selection** tem chave de ativação (default on, `character_menu` no JSON), dropdown
+de direção (`character_menu_direction`, default `down`, compatível com configurações antigas) e botões
 **Open for Player 1/2**. Os botões fecham ESC e abrem para o jogador ativo selecionado. R3 físico também é aceito
 diretamente, inclusive em perfis antigos sem Debug Button mapeado. Desbloquear no cenário atual não exige recarga:
 a disponibilidade é reavaliada durante gameplay, sem depender apenas da fase de carregamento.

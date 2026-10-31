@@ -68,6 +68,7 @@ int main() {
         const Settings defaults;
         CHECK(!defaults[Cheat::Fly].enabled && defaults[Cheat::Fly].direction == Direction::Up);
         CHECK(!defaults[Cheat::Blaster].enabled && defaults[Cheat::Blaster].direction == Direction::Right);
+        CHECK(defaults.character_menu_direction == Direction::Down);
     }
 
     // A request needs the unlock, the cheat enabled and its own direction, and is taken once.
@@ -267,11 +268,16 @@ int main() {
         settings[Cheat::Blaster] = {true, Direction::Left};
         settings.two_players = true;
         settings.character_menu = false;
+        settings.character_menu_direction = Direction::Left;
         const Settings back = parse_settings(serialize_settings(settings));
         CHECK(back[Cheat::Fly].enabled && back[Cheat::Fly].direction == Direction::Down);
         CHECK(back[Cheat::Blaster].enabled && back[Cheat::Blaster].direction == Direction::Left);
         CHECK(back.two_players);
         CHECK(!back.character_menu);
+        CHECK(back.character_menu_direction == Direction::Left);
+        CHECK(parse_settings("{}").character_menu_direction == Direction::Down);
+        CHECK(parse_settings("{\"character_menu_direction\":\"sideways\"}").character_menu_direction == Direction::Down);
+        CHECK(parse_settings("{\"character_menu_direction\":1}").character_menu_direction == Direction::Down);
         CHECK(parse_settings("{}").character_menu);
         CHECK(parse_settings("{\"character_menu\": 1}").character_menu);
         CHECK(!parse_settings("{\"two_players\": 1}").two_players);

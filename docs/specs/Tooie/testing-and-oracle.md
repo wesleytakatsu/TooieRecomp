@@ -67,7 +67,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_warp_test` (Dev Mode warp state machine, saved-position JSON, map names)
   - `tooie_dev_forms_test` (per-player selector and native handoff wrappers, with lifecycle stand-ins)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 18 required verification tests: the 10 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 19 required verification tests (including Windows-only `rt64_hidden_window_test`): the 10 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -83,6 +83,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `tooie_dev_forms_test` | `tests/tooie_dev_forms_test.cpp` | Independent menu input/confirmation/cancellation and repeat, all 17 catalog selections, Clockwork exclusion, Dragon/Mumbo order, Golden Goliath 120-second entry seed and restoration of the prior handoff, native-wrapper handoff isolation, reversion precedence, Dragon variant without save-flag writes, viewport publication and reset. Links `RecompiledFuncs` to execute native reload, same-ID cache and auxiliary Dragon selection for direct normal/Dragon round trips on each player; synthetic model pairs/tables and asset-install/lifecycle stand-ins, not a gameplay/render test |
 | `tooie_dev_cheats_test` | `tests/tooie_dev_cheats_test.cpp` | Dev Mode cheats: D-pad bits/names, per-player chord history and requests gated by unlock/enable/direction, simultaneous J1/J2 requests, disabled/reset/held-input suppression, invalid owner bounds, Fly/Blaster allowed states, actual game-thread executor with guest PlayerStates and native lifecycle stand-ins, J2 target isolation, independent Blaster exit/model cleanup, loading/Warp/map-reset drops; JSON round trip/defaults/fallbacks and two-player option/map gates. Does not execute native flight/Blaster animations, physics or rendering |
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
+| `rt64_hidden_window_test` | `tests/rt64_hidden_window_test.cpp` | Windows-only: exercises real RT64 fullscreen/windowed transitions on hidden and visible Win32 windows in a private test desktop. Checks visibility, mode and restored bounds without a ROM, game runtime or input injection. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |
 | `tintro_projection_policy_test` | `tests/tintro_projection_policy_test.cpp` | Tests cutscene projection source aspect ratio and compensation factor. |
 | `p09_exact_use_correlation_test` | `tests/p09_exact_use_correlation_test.cpp` | Tests seam-edge diagnostic keys, plan building, and memberships. |
@@ -93,7 +94,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `rt64_present_decimator_test` | `tests/rt64_present_decimator_test.cpp` | Tests integer accumulator presentation rate decimation. |
 | `tooie_fps_meter_test` | `tests/tooie_fps_meter_test.cpp` | Tests sliding-window presentation rate metering. |
 | `tooie_menu_policy_test` | `tests/tooie_menu_policy_test.cpp` | Tests menu config coercion and framerate option interactions. |
-| `tooie_menu_config_test` | `tests/tooie_menu_config_test.cpp` | Tests serialization and config sink callbacks. |
+| `tooie_menu_config_test` | `tests/tooie_menu_config_test.cpp`, `tests/graphics_window_mode_test.cpp` | Tests serialization and config sink callbacks. Links the real frontend graphics tab and shortcut with librecomp JSON storage; verifies Fullscreen/Windowed persistence across fresh config loads, a single renderer update per shortcut, pending-edit isolation and menu Apply. Uses a private config registry, temporary files and a renderer stand-in; no game/window is started. |
 | `rom_cart_import_test` | `tests/rom_cart_import_test.cpp` | Tests retail cartridge ROM loading and in-memory decompression. |
 | `stick_angle_thunk_test` | `tests/stick_angle_thunk_test.cpp` | Tests `func_80013B70` normalization across cardinals and diagonals. |
 | `bcf28_helpers_test` | `tests/bcf28_helpers_test.cpp` | Verifies `func_800BCF28` binding fix and gap stub replacements. |

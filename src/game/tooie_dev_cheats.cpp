@@ -197,6 +197,10 @@ Settings parse_settings(const std::string& json_text) {
     if (root.contains("character_menu") && root["character_menu"].is_boolean()) {
         result.character_menu = root["character_menu"].get<bool>();
     }
+    if (root.contains("character_menu_direction") && root["character_menu_direction"].is_string()) {
+        result.character_menu_direction = direction_from_name(root["character_menu_direction"].get<std::string>())
+            .value_or(result.character_menu_direction);
+    }
 
     return result;
 }
@@ -210,6 +214,7 @@ std::string serialize_settings(const Settings& settings) {
 
     root["two_players"] = settings.two_players;
     root["character_menu"] = settings.character_menu;
+    root["character_menu_direction"] = direction_name(settings.character_menu_direction);
     return root.dump(2) + "\n";
 }
 

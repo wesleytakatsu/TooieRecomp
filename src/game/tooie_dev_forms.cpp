@@ -38,7 +38,8 @@ void Menus::publish(int player, bool available, Rect rect, uint8_t form, bool dr
         state.open_requested = false;
     }
 }
-bool Menus::input(int player, bool unlocked, bool debug, uint16_t buttons, float x, float y, double time) {
+bool Menus::input(int player, bool unlocked, bool debug, uint16_t buttons, float x, float y, double time,
+    uint16_t open_button) {
     if (player < 0 || player >= kPlayers) return false;
     std::lock_guard lock(mutex);
     auto& state = players[player];
@@ -54,9 +55,10 @@ bool Menus::input(int player, bool unlocked, bool debug, uint16_t buttons, float
     }
     if (!unlocked || !state.menu.available) return false;
     if (!state.menu.open) {
-        if (!(debug && (pressed & 0x0400))) return false;
+        if (!(debug && (pressed & open_button))) return false;
         state.menu.open = true;
-        state.repeat_direction = 0x0400;
+        // Opening with Up/Down must not also navigate while that press is held.
+        state.repeat_direction = buttons & 0x0800 ? 0x0800 : buttons & 0x0400 ? 0x0400 : 0;
         state.repeat_at = time + 0.45;
         return true;
     }

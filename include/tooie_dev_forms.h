@@ -28,7 +28,8 @@ public:
     void reset();
     void request_open(int player);
     void publish(int player, bool available, Rect rect, uint8_t form, bool dragon);
-    bool input(int player, bool unlocked, bool debug, uint16_t buttons, float x, float y, double time);
+    bool input(int player, bool unlocked, bool debug, uint16_t buttons, float x, float y, double time,
+        uint16_t open_button = 0x0400);
     std::optional<int> take(int player);
     std::array<Menu, kPlayers> snapshot();
 private:

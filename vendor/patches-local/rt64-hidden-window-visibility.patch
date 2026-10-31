@@ -1,0 +1,55 @@
+diff --git a/src/hle/rt64_application_window.cpp b/src/hle/rt64_application_window.cpp
+index 08f83e5..b9795d7 100755
+--- a/src/hle/rt64_application_window.cpp
++++ b/src/hle/rt64_application_window.cpp
+@@ -177,6 +177,11 @@ namespace RT64 {
+         }
+ 
+ #   ifdef _WIN32
++        // A mode change must not show a host-owned hidden window (for example,
++        // the launcher's audio-only preview). Preserve visibility and focus.
++        const LONG_PTR windowStyle = GetWindowLongPtr(windowHandle, GWL_STYLE);
++        const bool visible = (windowStyle & WS_VISIBLE) != 0;
++        const UINT visibilityFlags = visible ? 0 : SWP_NOACTIVATE;
+         if (newFullScreen) {
+             // Save if window is maximized or not
+             WINDOWPLACEMENT windowPlacement;
+@@ -197,28 +202,29 @@ namespace RT64 {
+             RECT r = monitorInfo.rcMonitor;
+ 
+             // Set borderless full screen to that monitor
+-            LONG_PTR lStyle = GetWindowLongPtr(windowHandle, GWL_STYLE);
+-            lStyle = (lStyle | WS_VISIBLE | WS_POPUP) & ~WS_OVERLAPPEDWINDOW;
++            LONG_PTR lStyle = (windowStyle | WS_POPUP) & ~WS_OVERLAPPEDWINDOW;
+             SetWindowLongPtr(windowHandle, GWL_STYLE, lStyle);
+-            SetWindowPos(windowHandle, HWND_TOP, r.left, r.top, r.right - r.left, r.bottom - r.top, SWP_FRAMECHANGED);
++            SetWindowPos(windowHandle, HWND_TOP, r.left, r.top, r.right - r.left, r.bottom - r.top,
++                SWP_FRAMECHANGED | visibilityFlags);
+             if (windowMenu != nullptr) {
+                 SetMenu(windowHandle, nullptr);
+             }
+         }
+         else {
+             // Set in window mode with the last saved position and size.
+-            LONG_PTR lStyle = GetWindowLongPtr(windowHandle, GWL_STYLE);
+-            lStyle = (lStyle | WS_VISIBLE | WS_OVERLAPPEDWINDOW) & ~WS_POPUP;
++            LONG_PTR lStyle = (windowStyle | WS_OVERLAPPEDWINDOW) & ~WS_POPUP;
+             SetWindowLongPtr(windowHandle, GWL_STYLE, lStyle);
+ 
+             if (lastMaximizedState) {
+-                SetWindowPos(windowHandle, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
+-                ShowWindow(windowHandle, SW_MAXIMIZE);
++                SetWindowPos(windowHandle, NULL, 0, 0, 0, 0,
++                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | visibilityFlags);
++                if (visible) ShowWindow(windowHandle, SW_MAXIMIZE);
+             }
+             else {
+                 const RECT &r = lastWindowRect;
+-                SetWindowPos(windowHandle, NULL, r.left, r.top, r.right - r.left, r.bottom - r.top, SWP_FRAMECHANGED);
+-                ShowWindow(windowHandle, SW_RESTORE);
++                SetWindowPos(windowHandle, NULL, r.left, r.top, r.right - r.left, r.bottom - r.top,
++                    SWP_FRAMECHANGED | visibilityFlags);
++                if (visible) ShowWindow(windowHandle, SW_RESTORE);
+             }
+ 
+             if (windowMenu != nullptr) {

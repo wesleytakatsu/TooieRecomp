@@ -132,7 +132,9 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
   - `res_option`: `Original`, `Original2x`, `Original3x` (720p), `Original4x` (960p), `Auto`.
   - `ds_option`: Downsample factor (`0`, `2`, `4`), disabled when `res_option` is `Auto`.
   - `ar_option`: `Original` (4:3) and `Expand` (16:9).
-  - `wm_option`: `Windowed` or `Fullscreen`.
+  - `wm_option`: `Windowed` or `Fullscreen`. F11 / Alt+Enter commits and saves the new mode immediately, so the
+    next launch restores it. The shortcut writes committed graphics values only; unrelated pending edits remain
+    pending until Apply. Menu changes retain their Apply/Discard workflow.
   - `rr_option` & `rr_manual_value`: Locked to Manual 30 while `interpolation` is false; unlocked when `interpolation` is true.
   - `interpolation`: Boolean (default `false`). When false, forces CURRENT endpoint fallback; when true, unlocks high-framerate interpolation.
   - `show_fps_counter`: Boolean toggle for top-left present FPS counter.
@@ -152,7 +154,8 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 - **dev_warps.json**: positions saved by the Dev Mode warp (section 4.5); written only when the user saves, renames or
   deletes one.
 - **dev_cheats.json**: Dev Mode cheat settings (section 4.5), `{"version": 1, "fly": {"enabled", "direction"},
-  "blaster": {"enabled", "direction"}, "two_players": false, "character_menu": true}` with `direction` one of `up`, `down`, `left`, `right`;
+  "blaster": {"enabled", "direction"}, "two_players": false, "character_menu": true,
+  "character_menu_direction": "down"}` with `direction` one of `up`, `down`, `left`, `right`;
   written when a cheat, its direction or the experimental two-player option changes. A missing or malformed setting
   keeps its default (cheats and two players off; Fly up, Blaster right).
 
@@ -171,6 +174,12 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
      - `TOOIE_AUTO_START`: Skips launcher GUI.
      - `TOOIE_DISABLE_LAUNCHER_MUSIC`: Disables launcher preview audio.
      - `--launcher-music-child` and `--launcher-music-control`: Coordinates music playback process.
+   - On Windows, the ROM-backed audio preview owns a hidden window. RT64 fullscreen/windowed transitions preserve
+     its visibility and do not activate it. Changing window mode does not make an invisible preview into a second
+     visible game window. Visible game windows retain their normal mode transitions and restored bounds.
+   - This is enforced in `ApplicationWindow::setFullScreen` by retaining `WS_VISIBLE` and suppressing show/activation
+     operations for hidden windows. It does not rewrite the user's saved fullscreen preference or change manual
+     Start Game / explicit `TOOIE_AUTO_START` behavior. Regression: `rt64_hidden_window_test` (Windows only).
 
 ### 4.3 Menu Option Availability
 - `note_saving_mode`: Hidden from UI (`hidden = true`).
@@ -260,12 +269,17 @@ that change the game's state directly.
     on (it runs from `yaw_update`). The exit cleanup removes/reloads only the issuing player's models. J1 validated by
     the user on Windows (2026-10-30); J2 accepted by the user on Windows (2026-10-31), with host routing/cleanup tests.
 - **Per-player transformation selector** (after Dev Mode unlock): the **Character selection** section contains an
-  **Enable character selection (R3 + D-pad down)** toggle (default on, persisted as `character_menu`) and
+  **Enable character selection** toggle (default on, persisted as `character_menu`), a D-pad direction dropdown
+  (`character_menu_direction`, default `down`) and
   **Open for Player 1/2** buttons. These enable the selector, close ESC and queue opening for the selected active
   player, consuming the button's closing input until release. No map reload is required after unlocking/enabling.
+  All three shortcut rows use switch/name/description/direction alignment. Dropdowns reserve 224 dp for text and caret;
+  player actions use equal-width columns and wrap on narrow layouts. The Dev Mode content scrolls vertically when
+  needed. Player status is a snapshot when the tab is built; no continuous status polling is added.
   Holding physical R3 or the mapped Debug Button (default R3/T) and pressing
-  D-pad down opens the issuing player's selector, independently for J1/J2. This chord takes priority over an existing
-  cheat configured to down. D-pad up/down or the left stick navigates; A confirms and B cancels. Both players can open
+  the configured D-pad direction opens the issuing player's selector, independently for J1/J2. This chord takes
+  priority over a cheat configured to the same direction. Missing or invalid saved directions retain the Down default.
+  Holding the opening Up/Down press does not immediately navigate the list. D-pad up/down or the left stick navigates; A confirms and B cancels. Both players can open
   selectors simultaneously. Only the owner's game input is consumed, including the closing button until release;
   there is no global game pause. The selector uses a non-capturing overlay clipped to the native viewport layout.
   A single player's viewport covers the full game screen. ESC/global UI temporarily hides the selector.
@@ -317,7 +331,7 @@ that change the game's state directly.
     controlled players, shared map changes, item collection and attacks by player 2. This is an experimental checkpoint,
     with no complete cooperative-gameplay guarantee.
   - Known limits: enemies do not target player 2; player 2 cannot trigger doors/map changes; player 2's death kills the
-    shared player; Debug Button cheats affect only player 1. Camera orientation needs rechecking. Private lighting
+    shared player. Debug Button cheats act on their issuing player. Camera orientation needs rechecking. Private lighting
     outputs passed the instrumented Windows attract-map discriminator; the user confirmed the graphical lighting
     problem resolved in story mode on Windows (2026-10-31). The secondary-model/transform playtest and Linux remain
     `NOT_RUN`.

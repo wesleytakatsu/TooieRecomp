@@ -42,6 +42,7 @@ struct Settings {
     // Experimental: story maps start with two players (split screen) instead of one, from the next map load.
     bool two_players = false;
     bool character_menu = true;
+    Direction character_menu_direction = Direction::Down;
 
     CheatSettings& operator[](Cheat cheat) { return cheats[size_t(cheat)]; }
     const CheatSettings& operator[](Cheat cheat) const { return cheats[size_t(cheat)]; }
