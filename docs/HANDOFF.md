@@ -27,14 +27,14 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
-| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); primeiro cheat `Fly` (estado de decolagem `0x23` do pad de voo), validado pelo usuário no Windows (2026-10-30) | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
+| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
 | Testes | Windows `Build-Tooie.ps1 -Stage Test`: 17 obrigatórios (inclui 5 de idioma, `tooie_dev_warp_test`, `tooie_dev_cheats_test` e `tooie_texture_zip_mod_test`); Linux `build_linux.sh test`: 9 | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
-- Versão fonte `0.1.2`; pré-release `v0.1.2` para Windows x64 com o Debug Button e o cheat Fly do Dev Mode, a partir da
-  branch `feat/dev-mode`. `v0.1.1` (Dev Mode/Warp, otimizações RT64 e ZIPs de texturas) continua publicada. O pacote de
-  texturas do usuário não integra a distribuição.
+- Versão fonte `0.1.3`; pré-release `v0.1.3` para Windows x64 com o cheat Breegull Blaster do Dev Mode, a partir da
+  branch `feat/dev-mode`. `v0.1.2` (Debug Button e cheat Fly) e `v0.1.1` (Dev Mode/Warp, otimizações RT64 e ZIPs de
+  texturas) continuam publicadas. O pacote de texturas do usuário não integra a distribuição.
 - `v0.1.0-p08` permanece como release anterior, sem substituição dos seus arquivos. As notas publicadas dessa release
   registram pacotes Windows e Linux com idiomas; validação completa de gameplay no Linux continua pendente.
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.

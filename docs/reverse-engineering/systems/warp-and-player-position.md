@@ -1,6 +1,6 @@
 ---
 title: "Warp and player position"
-description: "Current map and entrance, the game's go-to-map entry point, player 1's PlayerState, position, facing and flight states, as used by the Dev Mode warp and cheats."
+description: "Current map and entrance, the game's go-to-map entry point, player 1's PlayerState, position, facing, transformation, flight and Breegull Blaster states, as used by the Dev Mode warp and cheats."
 status: current
 type: reverse-engineering
 project: TooieRecomp
@@ -71,3 +71,28 @@ The launch handlers are the first entry of `bskazfly` (`func_80800248_bskazfly`:
 | Requesting `0x23` from idle or walking (`0x1`, `0x2`, `0x4`) away from any pad takes off and flies normally | `PROVEN` (Dev Mode fly cheat, user playtest on Windows, 2026-10-30) |
 | `0x2` and `0x4` are the ground movement states | `STRONG_INFERENCE` (seen only while walking) |
 | Whether the pad spends a red feather before the launch state, and whether `0x23` is safe from other states or forms | `UNKNOWN` |
+
+## Transformation and the Breegull Blaster
+
+| Address / function | Meaning | Status |
+| --- | --- | --- |
+| `PlayerState + 0xA0` -> `+0x29` (u8) | transformation (`TransformationId`, `decomp/include/transformations.h`): `0x1` Banjo and Kazooie, `0x9` (`TRANSFORM_9_FIRSTPERSON`) the Breegull Blaster | `PROVEN` (getter `func_800A3274`; runtime: `0x1` -> `0x9` -> `0x1` around the Blaster) |
+| `func_800A3410(PlayerState*, transformation)` | sets the transformation (extra work when Banjo alone, `0xA`, is involved) | `PROVEN` (disassembly; called by the Blaster states, split-up, Humba's transformations) |
+| `func_800991B0(PlayerState*)` | per-player update, run every gameplay frame for each player; it calls the yaw dispatcher `func_8009D088` only under a condition, and that dispatcher calls `yaw_update` only for some yaw types | `PROVEN` (disassembly; runtime: the hook ran in the Blaster, `yaw_update` did not) |
+| `func_80092778(PlayerState*)` | loads the model of the current transformation (`func_80084F38` -> `func_80092EC8` model, `func_8009312C`) | `PROVEN` (disassembly; called after transformations by Humba, split-up and player setup) |
+| `func_8009359C(PlayerState*, model)` | sets the second model (`PlayerState+0x50` -> `+0x90` block); 0 removes it | `STRONG_INFERENCE` (disassembly; with `func_80092778` it restored Banjo and Kazooie after the Blaster) |
+
+A temporary log (2026-10-30, Windows, user entering the Blaster in Targitzan's Temple lobby, map 377, and walking out to
+Mayahem Temple, map 184) read: idle `0x1` -> `0xC8` (the transformation becomes `0x9`), then `0xCA` and `0xD1`
+alternating; after the map change the new player started in `0xCC`, went `0xCE`, `0xCC`, then `0xC9` (the transformation
+becomes `0x1`) and idle `0x1`. The handlers are in overlay `bsfirstp`: `func_80804B10_bsfirstp` (enter: transformation
+`0x9`, Blaster setup `func_80807DD4_bsfirstp`, which turns on a second model and pose flags) and
+`func_80804FD4_bsfirstp` (exit: once the put-away animation ends, transformation `0x1` and state `0x1`).
+
+| Claim | Status |
+| --- | --- |
+| `0xC8` enters and `0xC9` leaves the Blaster; `0xCA`, `0xCC`, `0xCE`, `0xD1` are states inside it | `PROVEN` (runtime trace above) |
+| Requesting `0xC8` from idle or walking away from any Blaster area turns the Blaster on | `PROVEN` (Dev Mode Blaster cheat, user playtest on Windows, 2026-10-30) |
+| Requesting `0xC9` in place restores the transformation but leaves the Blaster's models (a garbled Banjo); removing the second model and calling `func_80092778` fixes it | `PROVEN` (same playtest, before and after the fix) |
+| The game leaves the Blaster only through a map change | `STRONG_INFERENCE` (every exit seen; the exit handlers do not undo the model setup) |
+| Which of `0xCA`, `0xCC`, `0xCE`, `0xD1` is idle, walking or shooting, and whether the pose flags set by `func_80807DD4_bsfirstp` matter after the reload | `UNKNOWN` |

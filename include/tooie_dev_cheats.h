@@ -7,6 +7,8 @@
 // next frame. The Dev Mode tab (src/game/tooie_dev_mode_ui.cpp) edits the settings. This file's functions do not touch
 // guest memory. See docs/specs/Tooie/window-ui-and-config.md (Dev Mode).
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -17,23 +19,50 @@ namespace tooie_dev_cheats {
 
 enum class Direction { Up, Down, Left, Right };
 
-struct Settings {
-    bool fly_enabled = false;
-    Direction fly_direction = Direction::Up;
+enum class Cheat {
+    Fly,     // take off as from a flight pad
+    Blaster, // switch the Breegull Blaster on or off
+    Count
 };
 
-// Banjo states seen while taking off from a flight pad: idle -> launch -> flying.
+constexpr size_t kCheatCount = size_t(Cheat::Count);
+
+struct CheatSettings {
+    bool enabled = false;
+    Direction direction = Direction::Up;
+};
+
+struct Settings {
+    std::array<CheatSettings, kCheatCount> cheats = {{
+        {false, Direction::Up},    // Fly
+        {false, Direction::Right}, // Blaster
+    }};
+
+    CheatSettings& operator[](Cheat cheat) { return cheats[size_t(cheat)]; }
+    const CheatSettings& operator[](Cheat cheat) const { return cheats[size_t(cheat)]; }
+};
+
+// Player 1's transformation (PlayerState+0xA0 -> +0x29) and the player states the cheats use. See
+// docs/reverse-engineering/systems/warp-and-player-position.md.
+constexpr uint32_t kTransformBanjoKazooie = 0x1;
+constexpr uint32_t kTransformBlaster = 0x9;
 constexpr uint32_t kStateIdle = 0x1;
 constexpr uint32_t kStateFlyLaunch = 0x23;
 constexpr uint32_t kStateFlying = 0x24;
+constexpr uint32_t kStateBlasterEnter = 0xC8;
+constexpr uint32_t kStateBlasterExit = 0xC9;
 
 // The N64 D-pad button bit of a direction (the same values recompinput sends to the game).
 uint16_t direction_button(Direction direction);
 const char* direction_name(Direction direction); // "up", "down", "left", "right"
 std::optional<Direction> direction_from_name(std::string_view name);
+const char* cheat_key(Cheat cheat); // "fly", "blaster": the cheat's key in dev_cheats.json
 
-// Whether forcing the launch state from this state is known to work: player 1 standing or walking on the ground.
-bool can_launch_flight(uint32_t state);
+// The state to request for a cheat, or nullopt when it must not run in the given transformation and state. Fly and
+// entering the Breegull Blaster need Banjo and Kazooie standing or walking on the ground; leaving the Blaster needs one of
+// its own idle or movement states.
+std::optional<uint32_t> fly_state(uint32_t transform, uint32_t state);
+std::optional<uint32_t> blaster_state(uint32_t transform, uint32_t state);
 
 // Reports the D-pad buttons pressed on this sample while the Debug Button is held, each once per press.
 class Chord {
@@ -49,7 +78,7 @@ Settings settings();
 void set_settings(const Settings& settings);
 void set_unlocked(bool unlocked); // the Dev Mode warning was accepted; cheats do nothing before
 void on_player1_input(bool debug_held, uint16_t buttons);
-bool take_fly_request(); // true once per queued fly request
+bool take_request(Cheat cheat); // true once per queued request of that cheat
 
 // Settings file: <app folder>/dev_cheats.json.
 Settings parse_settings(const std::string& json_text);

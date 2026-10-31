@@ -302,15 +302,9 @@ void build_warp_modal(ContextId context, Element* root) {
 }
 
 // One line per cheat: a switch to enable it, its name and the D-pad direction that triggers it with the Debug Button.
-void build_cheats(ContextId context, Element* root) {
+void build_cheat_row(ContextId context, Element* root, tooie_dev_cheats::Cheat cheat, const char* title) {
     using tooie_dev_cheats::Direction;
-    ensure_cheats_loaded();
-    const tooie_dev_cheats::Settings settings = tooie_dev_cheats::settings();
-
-    context.create_element<Label>(root, "Cheats", theme::Typography::Header3);
-    context.create_element<Label>(root,
-        "Hold the Debug Button (R3 or T by default, see the Controls tab) and press the D-Pad direction set here.",
-        theme::Typography::LabelSM);
+    const tooie_dev_cheats::CheatSettings settings = tooie_dev_cheats::settings()[cheat];
 
     Element* line = row(context, root, 16.0f);
     line->set_padding(8.0f);
@@ -320,14 +314,14 @@ void build_cheats(ContextId context, Element* root) {
 
     Toggle* enabled = context.create_element<Toggle>(line, ToggleSize::Medium);
     enabled->set_flex_shrink(0.0f);
-    enabled->set_checked(settings.fly_enabled);
-    enabled->add_checked_callback([](bool checked) {
+    enabled->set_checked(settings.enabled);
+    enabled->add_checked_callback([cheat](bool checked) {
         tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
-        changed.fly_enabled = checked;
+        changed[cheat].enabled = checked;
         store_cheats(changed);
     });
 
-    Label* name = context.create_element<Label>(line, "Fly (take off as from a flight pad)", theme::Typography::LabelMD);
+    Label* name = context.create_element<Label>(line, title, theme::Typography::LabelMD);
     name->set_flex_grow(1.0f);
 
     Element* picker = context.create_element<Element>(line);
@@ -339,13 +333,23 @@ void build_cheats(ContextId context, Element* root) {
         options.emplace_back(labels[int(direction)], tooie_dev_cheats::direction_name(direction));
     }
 
-    Select* select = context.create_element<Select>(picker, options, tooie_dev_cheats::direction_name(settings.fly_direction));
+    Select* select = context.create_element<Select>(picker, options, tooie_dev_cheats::direction_name(settings.direction));
     select->set_width(100.0f, Unit::Percent);
-    select->add_change_callback([](SelectOption& option, int) {
+    select->add_change_callback([cheat](SelectOption& option, int) {
         tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
-        changed.fly_direction = tooie_dev_cheats::direction_from_name(option.value).value_or(Direction::Up);
+        changed[cheat].direction = tooie_dev_cheats::direction_from_name(option.value).value_or(changed[cheat].direction);
         store_cheats(changed);
     });
+}
+
+void build_cheats(ContextId context, Element* root) {
+    ensure_cheats_loaded();
+    context.create_element<Label>(root, "Cheats", theme::Typography::Header3);
+    context.create_element<Label>(root,
+        "Hold the Debug Button (R3 or T by default, see the Controls tab) and press the D-Pad direction set here.",
+        theme::Typography::LabelSM);
+    build_cheat_row(context, root, tooie_dev_cheats::Cheat::Fly, "Fly (take off as from a flight pad)");
+    build_cheat_row(context, root, tooie_dev_cheats::Cheat::Blaster, "Breegull Blaster (switch on or off)");
 }
 
 void build_contents(ContextId context, Element* root) {

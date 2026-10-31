@@ -17,8 +17,14 @@ constexpr uint16_t kDpadMask = 0x0F00; // D-pad up/down/left/right
 std::mutex settings_mutex;
 Settings current_settings;
 std::atomic<bool> unlocked{false};
-std::atomic<bool> fly_requested{false};
+std::array<std::atomic<bool>, kCheatCount> requests{};
 Chord player1_chord; // only touched by the input callback
+
+// Banjo and Kazooie standing or walking: the states seen before a flight pad takeoff and before the game switched the
+// Breegull Blaster on.
+bool on_ground(uint32_t transform, uint32_t state) {
+    return (transform == kTransformBanjoKazooie) && ((state == kStateIdle) || (state == 0x2) || (state == 0x4));
+}
 
 } // namespace
 
@@ -62,10 +68,39 @@ std::optional<Direction> direction_from_name(std::string_view name) {
     return std::nullopt;
 }
 
-bool can_launch_flight(uint32_t state) {
-    // Idle and the two ground movement states seen around the flight pad trace. Other states (swimming, other forms,
-    // cutscenes) are left alone until each one is tried.
-    return (state == kStateIdle) || (state == 0x2) || (state == 0x4);
+const char* cheat_key(Cheat cheat) {
+    switch (cheat) {
+    case Cheat::Fly:
+        return "fly";
+    case Cheat::Blaster:
+        return "blaster";
+    case Cheat::Count:
+        break;
+    }
+
+    return "";
+}
+
+std::optional<uint32_t> fly_state(uint32_t transform, uint32_t state) {
+    if (on_ground(transform, state)) {
+        return kStateFlyLaunch;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<uint32_t> blaster_state(uint32_t transform, uint32_t state) {
+    if (on_ground(transform, state)) {
+        return kStateBlasterEnter;
+    }
+
+    // The Blaster's own idle and movement states, seen between the game's enter and exit requests.
+    const bool in_blaster_move = (state == 0xCA) || (state == 0xCC) || (state == 0xCE) || (state == 0xD1);
+    if ((transform == kTransformBlaster) && in_blaster_move) {
+        return kStateBlasterExit;
+    }
+
+    return std::nullopt;
 }
 
 uint16_t Chord::step(bool debug_held, uint16_t buttons) {
@@ -96,39 +131,52 @@ void on_player1_input(bool debug_held, uint16_t buttons) {
     }
 
     const Settings current = settings();
-    if (current.fly_enabled && ((pressed & direction_button(current.fly_direction)) != 0)) {
-        fly_requested = true;
+    for (size_t i = 0; i < kCheatCount; i++) {
+        const CheatSettings& cheat = current.cheats[i];
+        if (cheat.enabled && ((pressed & direction_button(cheat.direction)) != 0)) {
+            requests[i] = true;
+        }
     }
 }
 
-bool take_fly_request() {
-    return fly_requested.exchange(false);
+bool take_request(Cheat cheat) {
+    return requests[size_t(cheat)].exchange(false);
 }
 
 Settings parse_settings(const std::string& json_text) {
     Settings result;
     const nlohmann::json root = nlohmann::json::parse(json_text, nullptr, false);
-    if (!root.is_object() || !root.contains("fly") || !root["fly"].is_object()) {
+    if (!root.is_object()) {
         return result;
     }
 
-    const nlohmann::json& fly = root["fly"];
-    if (fly.contains("enabled") && fly["enabled"].is_boolean()) {
-        result.fly_enabled = fly["enabled"].get<bool>();
-    }
+    for (size_t i = 0; i < kCheatCount; i++) {
+        const char* key = cheat_key(Cheat(i));
+        if (!root.contains(key) || !root[key].is_object()) {
+            continue;
+        }
 
-    if (fly.contains("direction") && fly["direction"].is_string()) {
-        result.fly_direction = direction_from_name(fly["direction"].get<std::string>()).value_or(Direction::Up);
+        const nlohmann::json& item = root[key];
+        CheatSettings& cheat = result.cheats[i];
+        if (item.contains("enabled") && item["enabled"].is_boolean()) {
+            cheat.enabled = item["enabled"].get<bool>();
+        }
+
+        if (item.contains("direction") && item["direction"].is_string()) {
+            cheat.direction = direction_from_name(item["direction"].get<std::string>()).value_or(cheat.direction);
+        }
     }
 
     return result;
 }
 
 std::string serialize_settings(const Settings& settings) {
-    const nlohmann::json root = {
-        {"version", 1},
-        {"fly", {{"enabled", settings.fly_enabled}, {"direction", direction_name(settings.fly_direction)}}},
-    };
+    nlohmann::json root = {{"version", 1}};
+    for (size_t i = 0; i < kCheatCount; i++) {
+        const CheatSettings& cheat = settings.cheats[i];
+        root[cheat_key(Cheat(i))] = {{"enabled", cheat.enabled}, {"direction", direction_name(cheat.direction)}};
+    }
+
     return root.dump(2) + "\n";
 }
 

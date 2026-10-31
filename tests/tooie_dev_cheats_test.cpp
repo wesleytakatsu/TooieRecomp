@@ -9,12 +9,13 @@ using namespace tooie_dev_cheats;
 int main() {
     const uint16_t up = direction_button(Direction::Up);
     const uint16_t left = direction_button(Direction::Left);
+    const uint16_t right = direction_button(Direction::Right);
     const uint16_t b_button = 0x4000;
 
     // Directions map to the N64 D-pad bits and round-trip through their names.
     {
         CHECK(up == 0x0800 && direction_button(Direction::Down) == 0x0400);
-        CHECK(left == 0x0200 && direction_button(Direction::Right) == 0x0100);
+        CHECK(left == 0x0200 && right == 0x0100);
         for (Direction direction : {Direction::Up, Direction::Down, Direction::Left, Direction::Right}) {
             CHECK(direction_from_name(direction_name(direction)) == direction);
         }
@@ -36,56 +37,87 @@ int main() {
         CHECK(chord.step(true, left) == left);    // Debug Button pressed first, then the direction
     }
 
-    // The fly request needs the unlock, the cheat enabled and its own direction, and is taken once.
+    // Defaults: everything off, Fly on up and the Blaster on right.
+    {
+        const Settings defaults;
+        CHECK(!defaults[Cheat::Fly].enabled && defaults[Cheat::Fly].direction == Direction::Up);
+        CHECK(!defaults[Cheat::Blaster].enabled && defaults[Cheat::Blaster].direction == Direction::Right);
+    }
+
+    // A request needs the unlock, the cheat enabled and its own direction, and is taken once.
     {
         set_settings(Settings{});
         on_player1_input(true, 0);
         on_player1_input(true, up);
-        CHECK(!take_fly_request()); // locked and disabled
+        CHECK(!take_request(Cheat::Fly)); // locked and disabled
 
         set_unlocked(true);
         on_player1_input(true, 0);
         on_player1_input(true, up);
-        CHECK(!take_fly_request()); // disabled
+        CHECK(!take_request(Cheat::Fly)); // disabled
 
         Settings enabled;
-        enabled.fly_enabled = true;
-        enabled.fly_direction = Direction::Left;
+        enabled[Cheat::Fly] = {true, Direction::Left};
+        enabled[Cheat::Blaster] = {true, Direction::Right};
         set_settings(enabled);
         on_player1_input(true, 0);
         on_player1_input(true, up);
-        CHECK(!take_fly_request()); // other direction
+        CHECK(!take_request(Cheat::Fly) && !take_request(Cheat::Blaster)); // no cheat on up
         on_player1_input(true, 0);
         on_player1_input(true, left);
-        CHECK(take_fly_request());
-        CHECK(!take_fly_request());
+        CHECK(take_request(Cheat::Fly) && !take_request(Cheat::Blaster));
+        CHECK(!take_request(Cheat::Fly));
+        on_player1_input(true, 0);
+        on_player1_input(true, right);
+        CHECK(take_request(Cheat::Blaster) && !take_request(Cheat::Fly));
 
         set_unlocked(false);
         on_player1_input(true, 0);
         on_player1_input(true, left);
-        CHECK(!take_fly_request());
+        CHECK(!take_request(Cheat::Fly));
     }
 
-    // Only the ground states seen before a flight pad takeoff may launch.
+    // Fly: only Banjo and Kazooie standing or walking.
     {
-        CHECK(can_launch_flight(kStateIdle) && can_launch_flight(0x2) && can_launch_flight(0x4));
-        CHECK(!can_launch_flight(0x0) && !can_launch_flight(kStateFlyLaunch) && !can_launch_flight(kStateFlying));
-        CHECK(!can_launch_flight(0x2F));
+        CHECK(fly_state(kTransformBanjoKazooie, kStateIdle) == kStateFlyLaunch);
+        CHECK(fly_state(kTransformBanjoKazooie, 0x2) == kStateFlyLaunch);
+        CHECK(fly_state(kTransformBanjoKazooie, 0x4) == kStateFlyLaunch);
+        CHECK(!fly_state(kTransformBanjoKazooie, kStateFlying));
+        CHECK(!fly_state(kTransformBanjoKazooie, 0x2F));
+        CHECK(!fly_state(kTransformBlaster, kStateIdle));
+        CHECK(!fly_state(0xD, kStateIdle)); // Mumbo
+    }
+
+    // Blaster: enters from the ground, leaves from its own idle or movement states, nothing else.
+    {
+        CHECK(blaster_state(kTransformBanjoKazooie, kStateIdle) == kStateBlasterEnter);
+        CHECK(blaster_state(kTransformBanjoKazooie, 0x4) == kStateBlasterEnter);
+        for (uint32_t state : {0xCAu, 0xCCu, 0xCEu, 0xD1u}) {
+            CHECK(blaster_state(kTransformBlaster, state) == kStateBlasterExit);
+        }
+
+        CHECK(!blaster_state(kTransformBlaster, kStateBlasterEnter)); // still switching on
+        CHECK(!blaster_state(kTransformBlaster, kStateBlasterExit));
+        CHECK(!blaster_state(kTransformBanjoKazooie, kStateFlying));
+        CHECK(!blaster_state(kTransformBanjoKazooie, 0xCA));
+        CHECK(!blaster_state(0xD, kStateIdle));
     }
 
     // Settings round-trip, and bad input falls back to the defaults.
     {
         Settings settings;
-        settings.fly_enabled = true;
-        settings.fly_direction = Direction::Right;
+        settings[Cheat::Fly] = {true, Direction::Down};
+        settings[Cheat::Blaster] = {true, Direction::Left};
         const Settings back = parse_settings(serialize_settings(settings));
-        CHECK(back.fly_enabled && back.fly_direction == Direction::Right);
+        CHECK(back[Cheat::Fly].enabled && back[Cheat::Fly].direction == Direction::Down);
+        CHECK(back[Cheat::Blaster].enabled && back[Cheat::Blaster].direction == Direction::Left);
 
         const Settings defaults = parse_settings("{not json");
-        CHECK(!defaults.fly_enabled && defaults.fly_direction == Direction::Up);
+        CHECK(!defaults[Cheat::Fly].enabled && defaults[Cheat::Blaster].direction == Direction::Right);
         const Settings partial = parse_settings("{\"fly\": {\"enabled\": true, \"direction\": \"sideways\"}}");
-        CHECK(partial.fly_enabled && partial.fly_direction == Direction::Up);
-        CHECK(!parse_settings("{\"fly\": 1}").fly_enabled);
+        CHECK(partial[Cheat::Fly].enabled && partial[Cheat::Fly].direction == Direction::Up);
+        CHECK(!partial[Cheat::Blaster].enabled && partial[Cheat::Blaster].direction == Direction::Right);
+        CHECK(!parse_settings("{\"fly\": 1}")[Cheat::Fly].enabled);
     }
 
     std::puts("tooie_dev_cheats_test: OK");

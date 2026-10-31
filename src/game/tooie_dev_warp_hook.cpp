@@ -1,6 +1,7 @@
-// Game-thread side of the Dev Mode warp: a hook on yaw_update (0x8009C88C), which the game runs once per frame for each
-// player in gameplay. For player 1 it reads the map, entrance, position and facing, publishes them and carries out the
-// teleport the UI queued. See docs/reverse-engineering/systems/warp-and-player-position.md for the addresses.
+// Game-thread side of the Dev Mode warp and cheats. A hook on yaw_update (0x8009C88C), which the game runs once per frame
+// for each player in most forms, reads player 1's map, entrance, position and facing, publishes them and carries out the
+// teleport the UI queued; a hook on the per-player update (0x800991B0) carries out the cheats the Debug Button queued.
+// See docs/reverse-engineering/systems/warp-and-player-position.md for the addresses.
 
 #include "tooie_dev_warp.h"
 #include "tooie_dev_cheats.h"
@@ -8,10 +9,14 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <optional>
 
 #include "recomp.h"
 
 extern "C" void yaw_update(uint8_t* rdram, recomp_context* ctx);
+extern "C" void func_800991B0(uint8_t* rdram, recomp_context* ctx); // per-player update (PlayerState*)
+extern "C" void func_80092778(uint8_t* rdram, recomp_context* ctx); // load the model of the current transformation
+extern "C" void func_8009359C(uint8_t* rdram, recomp_context* ctx); // set the second model (0 removes it)
 extern "C" void yaw_set(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8009C0F8(uint8_t* rdram, recomp_context* ctx); // player position setter (PlayerState*, f32[3])
@@ -31,6 +36,8 @@ constexpr uint32_t kCurrentMap = 0x80132DC2u;      // u16, read by func_800EA05C
 constexpr uint32_t kCurrentEntrance = 0x80132DC8u; // s16, read by func_800EA090 (compared with warp pad entrances)
 constexpr int32_t kPlayerPositionOffset = 0xE4; // PlayerState+0xE4 -> struct with the position (f32[3]) at +0x0
 constexpr int32_t kPlayerYawOffset = 0xF8;      // PlayerState+0xF8 -> BaYaw, value (f32, degrees) at +0x0
+constexpr int32_t kPlayerFormOffset = 0xA0;     // PlayerState+0xA0 -> struct with the transformation (u8) at +0x29
+constexpr int32_t kTransformOffset = 0x29;
 
 gpr kseg0(uint32_t addr) {
     return static_cast<gpr>(static_cast<int32_t>(addr));
@@ -109,24 +116,58 @@ void apply_position(uint8_t* rdram, const recomp_context* ctx, uint32_t player, 
     yaw_setIdeal(rdram, &local);
 }
 
-// Dev Mode fly cheat: put player 1 in the launch state a flight pad uses; the game then goes on to flying by itself.
-void launch_flight(uint8_t* rdram, const recomp_context* ctx, uint32_t player) {
+// Set when the Blaster cheat asks the game to leave the Breegull Blaster, until the model has been reloaded.
+bool blaster_model_reload_pending = false;
+
+// The game only leaves the Breegull Blaster through a map change, which builds the player again; leaving it in place
+// keeps the Blaster's two models (Banjo holding Kazooie). Once the exit has put Banjo and Kazooie back, drop the second
+// model and load the model of the current transformation.
+void reload_model(uint8_t* rdram, const recomp_context* ctx, uint32_t player) {
+    recomp_context local = *ctx;
+    local.r29 = ADD32(ctx->r29, -0x40);
+    local.r4 = kseg0(player);
+    local.r5 = 0;
+    func_8009359C(rdram, &local);
+
+    local = *ctx;
+    local.r29 = ADD32(ctx->r29, -0x40);
+    local.r4 = kseg0(player);
+    func_80092778(rdram, &local);
+}
+
+// Dev Mode cheats: put player 1 in the state the game itself uses (flight pad launch, Breegull Blaster on or off); the game
+// carries on from there. A cheat requested in any other state is dropped.
+void run_cheat(uint8_t* rdram, const recomp_context* ctx, uint32_t player, tooie_dev_cheats::Cheat cheat) {
+    const uint32_t form = static_cast<uint32_t>(MEM_W(kPlayerFormOffset, kseg0(player)));
+    if (!is_rdram_pointer(form)) {
+        return;
+    }
+
+    const uint32_t transform = MEM_BU(kTransformOffset, kseg0(form));
     recomp_context local = *ctx;
     local.r29 = ADD32(ctx->r29, -0x40);
     local.r4 = kseg0(player);
     bs_getCurrentState(rdram, &local);
     const uint32_t current = static_cast<uint32_t>(local.r2);
-    if (!tooie_dev_cheats::can_launch_flight(current)) {
-        std::fprintf(stderr, "[tooie-cheat] fly ignored in state 0x%X\n", unsigned(current));
+    const std::optional<uint32_t> next = (cheat == tooie_dev_cheats::Cheat::Fly)
+        ? tooie_dev_cheats::fly_state(transform, current)
+        : tooie_dev_cheats::blaster_state(transform, current);
+    const char* name = tooie_dev_cheats::cheat_key(cheat);
+    if (!next) {
+        std::fprintf(stderr, "[tooie-cheat] %s ignored (transformation 0x%X, state 0x%X)\n", name, unsigned(transform),
+            unsigned(current));
         return;
     }
 
     local = *ctx;
     local.r29 = ADD32(ctx->r29, -0x40);
     local.r4 = kseg0(player);
-    local.r5 = static_cast<gpr>(static_cast<int32_t>(tooie_dev_cheats::kStateFlyLaunch));
+    local.r5 = static_cast<gpr>(static_cast<int32_t>(*next));
     bs_setState(rdram, &local);
-    std::fprintf(stderr, "[tooie-cheat] fly from state 0x%X\n", unsigned(current));
+    std::fprintf(stderr, "[tooie-cheat] %s: state 0x%X -> 0x%X\n", name, unsigned(current), unsigned(*next));
+    if (*next == tooie_dev_cheats::kStateBlasterExit) {
+        blaster_model_reload_pending = true;
+    }
 }
 
 } // namespace
@@ -165,8 +206,51 @@ extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
     default:
         break;
     }
+}
 
-    if (tooie_dev_cheats::take_fly_request() && state.gameplay && (state.player != 0) && !tooie_dev_warp::teleport_busy()) {
-        launch_flight(rdram, ctx, player);
+// The game skips yaw_update in some forms (the Breegull Blaster turns the player itself), so cheats run from the per-player
+// update instead, which runs every gameplay frame for each player in every form.
+extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) {
+    const uint32_t self = static_cast<uint32_t>(ctx->r4);
+    func_800991B0(rdram, ctx);
+
+    const uint32_t player = static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers)));
+    if ((self != player) || !is_rdram_pointer(player)) {
+        return;
+    }
+
+    if (blaster_model_reload_pending) {
+        const uint32_t form = static_cast<uint32_t>(MEM_W(kPlayerFormOffset, kseg0(player)));
+        recomp_context local = *ctx;
+        local.r29 = ADD32(ctx->r29, -0x40);
+        local.r4 = kseg0(player);
+        bs_getCurrentState(rdram, &local);
+        const uint32_t current = static_cast<uint32_t>(local.r2);
+        if (!is_rdram_pointer(form)) {
+            blaster_model_reload_pending = false;
+        }
+        else if ((MEM_BU(kTransformOffset, kseg0(form)) == tooie_dev_cheats::kTransformBanjoKazooie) &&
+                 (current != tooie_dev_cheats::kStateBlasterExit)) {
+            blaster_model_reload_pending = false;
+            reload_model(rdram, ctx, player);
+            std::fprintf(stderr, "[tooie-cheat] blaster: model reloaded in state 0x%X\n", unsigned(current));
+        }
+    }
+
+    const int16_t mode = MEM_H(0x2, kseg0(kGameState));
+    const bool gameplay = (mode == kPlayMode) || (mode == kDemoMode);
+    for (size_t i = 0; i < tooie_dev_cheats::kCheatCount; i++) {
+        const tooie_dev_cheats::Cheat cheat = tooie_dev_cheats::Cheat(i);
+        if (!tooie_dev_cheats::take_request(cheat)) {
+            continue;
+        }
+
+        if (!gameplay || tooie_dev_warp::teleport_busy()) {
+            std::fprintf(stderr, "[tooie-cheat] %s dropped (gameplay %d, teleport %d)\n", tooie_dev_cheats::cheat_key(cheat),
+                int(gameplay), int(tooie_dev_warp::teleport_busy()));
+            continue;
+        }
+
+        run_cheat(rdram, ctx, player, cheat);
     }
 }

@@ -63,5 +63,10 @@ func_800EA05C,800EA05C,core,MAP,returns the current map id (u16 at 0x80132DC2),P
 func_800EA090,800EA090,core,MAP,returns the entrance the map was entered through (s16 at 0x80132DC8),STRONG_INFERENCE,MEDIUM,warp back to the same entrance,systems/warp-and-player-position,warp pads compare it with their entrance table
 _gcgoto_entrypoint_1,80087A58,gcgoto,MAP,go to (map; entrance) like a warp pad,PROVEN,HIGH,warp to any map,systems/warp-and-player-position,no-op while D_80127194+0x42C != 0
 yaw_update,8009C88C,core,PLAYER,per-frame facing update for one PlayerState,STRONG_INFERENCE,MEDIUM,per-frame player hook point,systems/warp-and-player-position,hooked by the Dev Mode warp
-bs_getCurrentState,8009E6F8,core,PLAYER,current player state id,PROVEN,HIGH,gate state changes,systems/warp-and-player-position,Dev Mode fly cheat reads it before requesting 0x23
+bs_getCurrentState,8009E6F8,core,PLAYER,current player state id,PROVEN,HIGH,gate state changes,systems/warp-and-player-position,Dev Mode cheats read it before requesting a state
+func_800A3274,800A3274,core,PLAYER,player transformation getter (PlayerState+0xA0 -> +0x29),PROVEN,HIGH,detect the Breegull Blaster (0x9),systems/warp-and-player-position,PROPOSED_ALIAS player_getTransformation
+func_800A3410,800A3410,core,PLAYER,player transformation setter,PROVEN,HIGH,change form,systems/warp-and-player-position,called by bsfirstp/split-up/Humba transformations
+func_800991B0,800991B0,core,PLAYER,per-player update every gameplay frame,PROVEN,HIGH,per-frame hook point in every form,systems/warp-and-player-position,hooked by the Dev Mode cheats; yaw_update is skipped in the Blaster
+func_80092778,80092778,core,MODEL,load the model of the current transformation,PROVEN,HIGH,refresh the player model,systems/warp-and-player-position,used by the Blaster cheat after leaving the Blaster
+func_8009359C,8009359C,core,MODEL,set the player's second model (0 removes it),STRONG_INFERENCE,MEDIUM,drop the Blaster's Kazooie model,systems/warp-and-player-position,used by the Blaster cheat after leaving the Blaster
 func_8009C0F8,8009C0F8,core,PLAYER,sets player position (PlayerState*; f32[3]) into *(self+0xE4),PROVEN,HIGH,teleport the player,systems/warp-and-player-position,func_8009C128 is the getter

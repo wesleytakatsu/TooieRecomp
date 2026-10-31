@@ -79,7 +79,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | :--- | :--- | :--- |
 | `tooie_texture_zip_mod_test` | `tests/tooie_texture_zip_mod_test.cpp` | Synthetic ZIP roots and relative metadata reads, ambiguity/invalid roots, real `ModContext` scanning, default manifest, `.rtz` regression and texture-only detection with an `.nrm` control; no ROM or game assets |
 | `tooie_dev_warp_test` | `tests/tooie_dev_warp_test.cpp` | Dev Mode warp: teleport state machine (same map, other map, load detection, timeout), `dev_warps.json` round trip and malformed input, map names |
-| `tooie_dev_cheats_test` | `tests/tooie_dev_cheats_test.cpp` | Dev Mode cheats: D-pad bits and names, Debug Button chord (once per press, only while held), fly request gated by unlock, switch and direction, launch-allowed states, `dev_cheats.json` round trip and fallbacks |
+| `tooie_dev_cheats_test` | `tests/tooie_dev_cheats_test.cpp` | Dev Mode cheats: D-pad bits and names, Debug Button chord (once per press, only while held), per-cheat requests gated by unlock, switch and direction, Fly and Breegull Blaster allowed transformations/states, `dev_cheats.json` round trip, defaults and fallbacks |
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |
 | `tintro_projection_policy_test` | `tests/tintro_projection_policy_test.cpp` | Tests cutscene projection source aspect ratio and compensation factor. |

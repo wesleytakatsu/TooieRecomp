@@ -151,8 +151,9 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 - **mods.json**: Mod management infrastructure (`enabled_mods`, `mod_order`).
 - **dev_warps.json**: positions saved by the Dev Mode warp (section 4.5); written only when the user saves, renames or
   deletes one.
-- **dev_cheats.json**: Dev Mode cheat settings (section 4.5), `{"version": 1, "fly": {"enabled", "direction"}}` with
-  `direction` one of `up`, `down`, `left`, `right`; written when a cheat is switched or its direction changed.
+- **dev_cheats.json**: Dev Mode cheat settings (section 4.5), `{"version": 1, "fly": {"enabled", "direction"},
+  "blaster": {"enabled", "direction"}}` with `direction` one of `up`, `down`, `left`, `right`; written when a cheat is
+  switched or its direction changed. A missing or malformed cheat keeps its default (off; Fly up, Blaster right).
 
 ### 4.2 Invariants & Operational Boundaries
 1. **Config Pointer Safety**:
@@ -236,9 +237,17 @@ that change the game's state directly.
 - **Cheats** (below Warp after unlocking): one line per cheat with a switch, its name and a D-pad direction selector.
   Holding the Debug Button and pressing that direction triggers the cheat once per press, only while the tab is
   unlocked in this session and the cheat is switched on (`tooie_dev_cheats`, `src/game/tooie_dev_cheats.cpp`; chord,
-  request queue and settings tested by `tests/tooie_dev_cheats_test.cpp`). The input callback in `src/main/main.cpp`
-  detects the chord for player 1; the `yaw_update` hook carries out the request on player 1's next gameplay frame.
+  request queue, allowed states and settings tested by `tests/tooie_dev_cheats_test.cpp`). The input callback in
+  `src/main/main.cpp` detects the chord for player 1; a hook on the per-player update (`0x800991B0`) carries out the
+  request on player 1's next gameplay frame. It is not the `yaw_update` hook because the game skips `yaw_update` in the
+  Breegull Blaster. A request in a state the cheat does not allow is dropped with
+  `[tooie-cheat] <cheat> ignored (transformation 0x.., state 0x..)` on stderr.
   - **Fly** (default D-pad up): puts player 1 in the launch state a flight pad uses (`0x23`), and the game goes on to
-    flying by itself. Allowed only from idle and ground movement states (`0x1`, `0x2`, `0x4`); in any other state the
-    request is dropped and `[tooie-cheat] fly ignored in state 0x..` goes to stderr. Validated by the user on Windows
-    (2026-10-30).
+    flying by itself. Allowed only for Banjo and Kazooie (transformation `0x1`) idle or walking (`0x1`, `0x2`, `0x4`).
+    Validated by the user on Windows (2026-10-30).
+  - **Breegull Blaster** (default D-pad right): switches the first-person Blaster on or off. On: the game's enter state
+    (`0xC8`) from Banjo and Kazooie idle or walking. Off: the game's exit state (`0xC9`) from the Blaster's idle or
+    movement states (`0xCA`, `0xCC`, `0xCE`, `0xD1`); once the exit has restored transformation `0x1`, the hook removes
+    the Blaster's second model and reloads the model of the current transformation, because the game normally leaves
+    the Blaster only through a map change, which builds the player again. The Warp does not step while the Blaster is
+    on (it runs from `yaw_update`). Validated by the user on Windows (2026-10-30).
