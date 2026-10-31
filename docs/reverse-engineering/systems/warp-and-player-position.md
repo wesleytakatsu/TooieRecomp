@@ -96,3 +96,31 @@ becomes `0x1`) and idle `0x1`. The handlers are in overlay `bsfirstp`: `func_808
 | Requesting `0xC9` in place restores the transformation but leaves the Blaster's models (a garbled Banjo); removing the second model and calling `func_80092778` fixes it | `PROVEN` (same playtest, before and after the fix) |
 | The game leaves the Blaster only through a map change | `STRONG_INFERENCE` (every exit seen; the exit handlers do not undo the model setup) |
 | Which of `0xCA`, `0xCC`, `0xCE`, `0xD1` is idle, walking or shooting, and whether the pose flags set by `func_80807DD4_bsfirstp` matter after the reload | `UNKNOWN` |
+
+## Extra player and split screen
+
+Current model from the experimental split-screen investigation. Runtime observations below are reported by the prior
+Windows investigation and user playtests in the [continuation handoff](../../future/two-player-split-screen.md);
+they were not repeated for this checkpoint.
+
+| Address / function | Meaning | Status |
+| --- | --- | --- |
+| `PlayerState* D_80135490[8]` | player slots; index 1 holds the extra player | `PROVEN` (prior runtime logs and controlled second player) |
+| `func_800F73C4(count)` | creates the map's players; normally one outside game mode `0x1B`; requesting two creates player 2 | `PROVEN` (prior runtime investigation) |
+| `func_800F6140` / `func_800A907C(slot, controller, viewport)` | allocates a free player slot / associates its controller and viewport | `PROVEN` (prior investigation and slot logs) |
+| `0x801276D0` | slot table: `+0x0` count, `+0x2` viewport count (s16), `+0x4` controller uses, `+0x8` controller per slot, `+0x18` viewport per slot, `+0x38` camera per slot | `PROVEN` (prior investigation and slot logs) |
+| `func_800A8D70` / `func_800A8FDC` | map load sets one viewport outside multiplayer maps / adds one viewport | `PROVEN` (prior investigation; two viewports rendered) |
+| `func_80016BDC(channels)` | `osContSetCh`; save selection reduces reads to one port, so two-player creation requests two ports | `PROVEN` (prior input logs and user control of player 2) |
+| player state `0x74` | extra player waits without input or physics; position must be set while waiting before requesting idle `0x1` | `PROVEN` (prior state logs and failed/successful spawn experiments) |
+| `func_800F65D0(index)` | active-player gate: all players in mode `0x1B`, otherwise only focused index `D_801354DC` | `PROVEN` (prior investigation; admitting index 1 enabled item collection and attacks) |
+| `func_800F54E4()` | returns focused player index `D_801354DC`, used by actor queries | `PROVEN` (prior investigation); which individual enemies need explicit target selection remains `UNKNOWN` |
+
+Player-to-actor collision path (`PROVEN` by the prior native stack trace): `func_800991B0` -> `func_8008E6F0` ->
+gate `func_8008DAA8` / `func_800F65D0` -> `func_800CDBA8` -> `func_8008E530` -> `func_800EB210` ->
+`func_80109F18` -> `func_8010114C` -> `func_8010108C` -> actor callback (e.g. `chhoney`) ->
+`func_800FFAB0` (marks actor for deletion).
+
+Replacing global focus `D_801354DC` with the nearest player for each actor is `REFUTED` as a fix: the prior experiment
+broke player 2's eggs and the camera without making enemies pursue it, and was reverted. Actor loop:
+`func_800FF62C`; `func_80100368(actor)` returns ActorData. Enemy target selection, player 2's door triggers and per-player
+lighting remain `UNKNOWN`; the collision gate alone does not solve them.

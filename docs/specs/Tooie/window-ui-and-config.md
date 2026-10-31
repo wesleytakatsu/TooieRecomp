@@ -152,8 +152,9 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 - **dev_warps.json**: positions saved by the Dev Mode warp (section 4.5); written only when the user saves, renames or
   deletes one.
 - **dev_cheats.json**: Dev Mode cheat settings (section 4.5), `{"version": 1, "fly": {"enabled", "direction"},
-  "blaster": {"enabled", "direction"}}` with `direction` one of `up`, `down`, `left`, `right`; written when a cheat is
-  switched or its direction changed. A missing or malformed cheat keeps its default (off; Fly up, Blaster right).
+  "blaster": {"enabled", "direction"}, "two_players": false}` with `direction` one of `up`, `down`, `left`, `right`;
+  written when a cheat, its direction or the experimental two-player option changes. A missing or malformed setting
+  keeps its default (cheats and two players off; Fly up, Blaster right).
 
 ### 4.2 Invariants & Operational Boundaries
 1. **Config Pointer Safety**:
@@ -251,3 +252,19 @@ that change the game's state directly.
     the Blaster's second model and reloads the model of the current transformation, because the game normally leaves
     the Blaster only through a map change, which builds the player again. The Warp does not step while the Blaster is
     on (it runs from `yaw_update`). Validated by the user on Windows (2026-10-30).
+- **Experimental: Two players (split screen)**: default off, persisted as the boolean `two_players`. Requires the
+  session warning to be accepted, Multiplayer enabled in General and two players assigned in Controls. Player creation
+  applies the option on the next eligible map load; game select and the excluded cutscene maps remain unchanged.
+  The map-creation hook (`0x800F73C4`) changes an original request for one player to two, adds a second viewport when
+  the map has one and enables reads from two controller ports. Player 2 is placed beside player 1, then placed again
+  2 s later once player 1 is idle, 60 game units above player 1; on its next update it leaves waiting state `0x74`
+  for idle `0x1`. The active-player hook (`0x800F65D0`) admits player 2 for collisions while the option is active.
+  Warp also places player 2 beside player 1 while the option is active. Turning the option off does not destroy
+  player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
+  collision and Warp hooks consult the current option.
+  - User playtests recorded in the [split-screen handoff](../../future/two-player-split-screen.md) report two
+    controlled players, shared map changes, item collection and attacks by player 2. This is an experimental checkpoint,
+    with no complete cooperative-gameplay guarantee.
+  - Known limits: enemies do not target player 2; player 2 cannot trigger doors/map changes; character lighting is
+    shared; player 2's death kills the shared player; Debug Button cheats affect only player 1. Camera orientation needs
+    rechecking. Linux and a clean game reproduction after diagnostic removal are `NOT_RUN`.

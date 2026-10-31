@@ -9,8 +9,9 @@ tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
 
-Estado corrente para um agente ou chat novo. Não há pasta de planos nem de evidências: investigações antigas, planos
-concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`git log -- <caminho>`). Contratos estáveis:
+Estado corrente para um agente ou chat novo. Investigações antigas, planos concluídos (multijogador, idiomas) e
+evidências ficam no histórico do git (`git log -- <caminho>`); propostas futuras e o checkpoint experimental de tela
+dividida estão em `docs/future/`. Contratos estáveis:
 [[specs/index]]. Conhecimento do jogo: [[reverse-engineering/README]].
 
 ## Estado por área
@@ -50,6 +51,11 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
   attract); causa `UNKNOWN`.
 - Captura burst `TOOIE_TEST_INTERP_BURST_AT_WORKLOAD` encerrou o processo no Windows/D3D12 (1×, `UNKNOWN`).
 - Wrappers de diagnóstico `ud4`/`ud5` não-macro ainda registrados (custo baixo; logs desligados por padrão).
+- **Checkpoint experimental**, branch `codex/two-player-split-screen`: dois jogadores em tela dividida no Dev Mode
+  (J2 controlável, pega itens e ataca, conforme playtest anterior; faltam inimigos mirarem o J2, portas, iluminação).
+  Diagnósticos temporários removidos; reprodução limpa após a remoção `NOT_RUN`. Handoff: [[future/two-player-split-screen]].
+- Plano futuro (proposto, não implementado): cooperativo com dois processos, cada um com um jogador, vendo-se no mesmo
+  mapa e compartilhando progresso. Ver [[future/two-process-coop]].
 
 ## Notas operacionais
 
@@ -68,6 +74,5 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: abrir o PR de `feat/dev-mode` quando o usuário encerrar o modo debug (Dev Mode + desempenho
-RT64, validados no Windows); onde ainda houver queda de FPS, salvar o ponto com o Dev Mode → Warp para medição; depois, validação Linux
-(widescreen, interpolação, desempenho, multijogador, idiomas, Dev Mode) e pacotes Linux novos.
+`NEXT_SINGLE_ACTION`: repetir no Windows o teste dos dois jogadores após a remoção dos diagnósticos, com backup dos
+saves/configs: controles independentes, spawn, coleta, ataques e troca de mapa pelo J1.

@@ -75,6 +75,20 @@ int main() {
         on_player1_input(true, 0);
         on_player1_input(true, left);
         CHECK(!take_request(Cheat::Fly));
+
+        // The two-player option also needs the unlock.
+        Settings two;
+        two.two_players = true;
+        set_settings(two);
+        CHECK(!two_players_active());
+        set_unlocked(true);
+        CHECK(two_players_active());
+        set_settings(Settings{});
+        CHECK(!two_players_active());
+        set_unlocked(false);
+
+        CHECK(two_players_map(0x142) && two_players_map(0xB8)); // Jinjo Village, Mayahem Temple
+        CHECK(!two_players_map(0x158) && !two_players_map(0x18B) && !two_players_map(0xA1) && !two_players_map(0x19C));
     }
 
     // Fly: only Banjo and Kazooie standing or walking.
@@ -108,9 +122,12 @@ int main() {
         Settings settings;
         settings[Cheat::Fly] = {true, Direction::Down};
         settings[Cheat::Blaster] = {true, Direction::Left};
+        settings.two_players = true;
         const Settings back = parse_settings(serialize_settings(settings));
         CHECK(back[Cheat::Fly].enabled && back[Cheat::Fly].direction == Direction::Down);
         CHECK(back[Cheat::Blaster].enabled && back[Cheat::Blaster].direction == Direction::Left);
+        CHECK(back.two_players);
+        CHECK(!parse_settings("{\"two_players\": 1}").two_players);
 
         const Settings defaults = parse_settings("{not json");
         CHECK(!defaults[Cheat::Fly].enabled && defaults[Cheat::Blaster].direction == Direction::Right);

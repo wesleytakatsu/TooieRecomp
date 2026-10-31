@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-10-28
+updated: 2026-10-30
 tags: [vault, index, tooierecomp]
 ---
 
@@ -13,6 +13,11 @@ tags: [vault, index, tooierecomp]
 - [[HANDOFF]] — Estado atual, pendências e próxima ação
 - [[AGENTS]] — Regras para agentes
 - [[README]] — Entrada da documentação
+
+## future
+
+- [[future/two-process-coop]] — Plano futuro: cooperativo com dois processos (proposto, não implementado)
+- [[future/two-player-split-screen]] — Dois jogadores em tela dividida (Dev Mode, checkpoint experimental)
 
 ## specs
 

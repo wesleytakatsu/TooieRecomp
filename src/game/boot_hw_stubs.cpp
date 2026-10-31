@@ -6229,6 +6229,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kUpdateVram), tooie_bgm_on_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kYawUpdateVram), tooie_dev_on_yaw_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerUpdateVram), tooie_dev_on_player_update);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kCreatePlayersVram), tooie_dev_on_create_players);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerActiveVram), tooie_dev_on_player_active);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
     // Census and the GeoCmd experiment are off unless their env vars say otherwise.
     // 10/11/12 also register for the experiment so the extra walk runs with census off.

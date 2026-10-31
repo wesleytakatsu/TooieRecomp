@@ -7,6 +7,7 @@
 #include "tooie_dev_cheats.h"
 
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <optional>
@@ -17,6 +18,10 @@ extern "C" void yaw_update(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800991B0(uint8_t* rdram, recomp_context* ctx); // per-player update (PlayerState*)
 extern "C" void func_80092778(uint8_t* rdram, recomp_context* ctx); // load the model of the current transformation
 extern "C" void func_8009359C(uint8_t* rdram, recomp_context* ctx); // set the second model (0 removes it)
+extern "C" void func_800F73C4(uint8_t* rdram, recomp_context* ctx); // create the players of a loaded map (count)
+extern "C" void func_800A8FDC(uint8_t* rdram, recomp_context* ctx); // add one split-screen viewport
+extern "C" void func_80016BDC(uint8_t* rdram, recomp_context* ctx); // osContSetCh(channels): controller ports read
+extern "C" void func_800F65D0(uint8_t* rdram, recomp_context* ctx); // is player index active (collides, takes damage)
 extern "C" void yaw_set(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8009C0F8(uint8_t* rdram, recomp_context* ctx); // player position setter (PlayerState*, f32[3])
@@ -38,6 +43,11 @@ constexpr int32_t kPlayerPositionOffset = 0xE4; // PlayerState+0xE4 -> struct wi
 constexpr int32_t kPlayerYawOffset = 0xF8;      // PlayerState+0xF8 -> BaYaw, value (f32, degrees) at +0x0
 constexpr int32_t kPlayerFormOffset = 0xA0;     // PlayerState+0xA0 -> struct with the transformation (u8) at +0x29
 constexpr int32_t kTransformOffset = 0x29;
+constexpr float kSecondPlayerSide = 70.0f;      // how far beside player 1 player 2 appears (game units)
+constexpr double kSecondPlayerDelay = 2.0;      // after a map load, wait this long and for player 1 to stand still
+constexpr float kSecondPlayerLift = 60.0f;      // player 2 appears this far above player 1's height and lands
+constexpr uint32_t kViewportCount = 0x801276D2u; // s16: split-screen viewports of the map, set by func_800A8D70
+constexpr uint32_t kStateWaiting = 0x74;         // state the game leaves an extra player in (no input, base animation)
 
 gpr kseg0(uint32_t addr) {
     return static_cast<gpr>(static_cast<int32_t>(addr));
@@ -115,6 +125,27 @@ void apply_position(uint8_t* rdram, const recomp_context* ctx, uint32_t player, 
     local.r5 = yaw;
     yaw_setIdeal(rdram, &local);
 }
+
+// Experimental two players: puts player 2 (D_80135490[1]) close to player 1's right, facing the same way, so the two do
+// not overlap.
+void place_second_player(uint8_t* rdram, const recomp_context* ctx, const tooie_dev_warp::Position& first) {
+    const uint32_t second = static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers)));
+    if (!is_rdram_pointer(second)) {
+        return;
+    }
+
+    tooie_dev_warp::Position beside = first;
+    const float radians = first.yaw * 3.14159265f / 180.0f;
+    // (sin, cos) of the facing points to the player's right (first two-player playtest).
+    beside.pos[0] += std::sin(radians) * kSecondPlayerSide;
+    beside.pos[2] += std::cos(radians) * kSecondPlayerSide;
+    apply_position(rdram, ctx, second, beside);
+}
+
+// Time from which player 2 may be placed beside player 1 after a map load, or a negative value when nothing is pending.
+double second_player_due = -1.0;
+// Set when player 2 has just been placed beside player 1 and must be started on its next frame.
+bool second_player_start_next = false;
 
 // Set when the Blaster cheat asks the game to leave the Breegull Blaster, until the model has been reloaded.
 bool blaster_model_reload_pending = false;
@@ -198,6 +229,9 @@ extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
             apply_position(rdram, ctx, player, target);
             std::fprintf(stderr, "[tooie-warp] placed player 1 at %.1f %.1f %.1f yaw %.1f in map %d\n",
                 double(target.pos[0]), double(target.pos[1]), double(target.pos[2]), double(target.yaw), int(target.map));
+            if (tooie_dev_cheats::two_players_active()) {
+                place_second_player(rdram, ctx, target);
+            }
         }
         break;
     case tooie_dev_warp::Action::GiveUp:
@@ -215,6 +249,48 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
     func_800991B0(rdram, ctx);
 
     const uint32_t player = static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers)));
+    const uint32_t second = static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers)));
+    if (tooie_dev_cheats::two_players_active() && (self == second) && is_rdram_pointer(second) &&
+        is_rdram_pointer(player)) {
+        // Outside the multiplayer minigames the game leaves player 2 waiting in state 0x74, parked where there is no
+        // ground. Once the map has been loaded for kSecondPlayerDelay and player 1 stands still, put player 2 beside
+        // player 1 while it still waits (its physics are stopped, so it keeps the new place), then start it idle on the
+        // next frame so it takes its controller.
+        recomp_context local = *ctx;
+        local.r29 = ADD32(ctx->r29, -0x40);
+        local.r4 = kseg0(second);
+        bs_getCurrentState(rdram, &local);
+        const uint32_t second_state = static_cast<uint32_t>(local.r2);
+        local = *ctx;
+        local.r29 = ADD32(ctx->r29, -0x40);
+        local.r4 = kseg0(player);
+        bs_getCurrentState(rdram, &local);
+        const uint32_t first_state = static_cast<uint32_t>(local.r2);
+        if (second_player_start_next) {
+            second_player_start_next = false;
+            if (second_state == kStateWaiting) {
+                local = *ctx;
+                local.r29 = ADD32(ctx->r29, -0x40);
+                local.r4 = kseg0(second);
+                local.r5 = static_cast<gpr>(static_cast<int32_t>(tooie_dev_cheats::kStateIdle));
+                bs_setState(rdram, &local);
+            }
+        }
+
+        if ((second_player_due >= 0.0) && (now_seconds() >= second_player_due) &&
+            (first_state == tooie_dev_cheats::kStateIdle)) {
+            second_player_due = -1.0;
+            const tooie_dev_warp::GameState first_frame = read_state(rdram, player);
+            if (first_frame.player != 0) {
+                // Placed at player 1's exact height, player 2 starts inside the ground and falls through it.
+                tooie_dev_warp::Position above = first_frame.position;
+                above.pos[1] += kSecondPlayerLift;
+                place_second_player(rdram, ctx, above);
+                second_player_start_next = true;
+            }
+        }
+    }
+
     if ((self != player) || !is_rdram_pointer(player)) {
         return;
     }
@@ -252,5 +328,59 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
         }
 
         run_cheat(rdram, ctx, player, cheat);
+    }
+}
+
+// Experimental two players: the game creates the players of every map it loads here, one outside the multiplayer
+// minigames (gcstatusDll_entrypoint_11). Asking for two makes both appear at the entrance; player 2 is then moved ahead.
+// Each new player takes the next free controller and the viewport of that number, clamped to the map's viewport count
+// (func_800A907C); func_800A8D70 sets that count to 1 outside the multiplayer maps, so add a second viewport first. The
+// game select also sets the controller ports read to one (osContSetCh), so ask for two.
+extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx) {
+    const int32_t requested = static_cast<int32_t>(ctx->r4);
+    const bool two = tooie_dev_cheats::two_players_active() && (requested == 1) &&
+        tooie_dev_cheats::two_players_map(MEM_HU(0, kseg0(kCurrentMap)));
+    recomp_context local = *ctx;
+    if (two) {
+        local.r29 = ADD32(ctx->r29, -0x40);
+        if (MEM_H(0, kseg0(kViewportCount)) == 1) {
+            func_800A8FDC(rdram, &local);
+        }
+
+        // The game select limits the controller ports read to one for a save file; player 2 reads port 2.
+        local.r4 = 2;
+        func_80016BDC(rdram, &local);
+        ctx->r4 = 2;
+    }
+
+    local = *ctx;
+    func_800F73C4(rdram, ctx);
+    if (!two) {
+        return;
+    }
+
+    const uint32_t first = static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers)));
+    // Put player 2 beside player 1 at once (it waits there with its physics stopped); after kSecondPlayerDelay it is
+    // placed beside player 1 again, wherever player 1 walked to, and started.
+    if (is_rdram_pointer(first)) {
+        const tooie_dev_warp::GameState state = read_state(rdram, first);
+        if (state.player != 0) {
+            place_second_player(rdram, &local, state.position);
+        }
+    }
+
+    second_player_due = now_seconds() + kSecondPlayerDelay;
+}
+
+// Experimental two players: func_800F65D0(index) says whether a player is active; the player update only checks
+// collisions with items, enemies and doors for active players (func_8008E6F0 -> func_8008DAA8). It answers yes for
+// every player in the multiplayer minigames (game mode 0x1B) and only for the focused player (D_801354DC) otherwise,
+// so answer yes for player 2 too.
+extern "C" void tooie_dev_on_player_active(uint8_t* rdram, recomp_context* ctx) {
+    const int32_t index = static_cast<int32_t>(ctx->r4);
+    func_800F65D0(rdram, ctx);
+    if ((ctx->r2 == 0) && (index == 1) && tooie_dev_cheats::two_players_active() &&
+        is_rdram_pointer(static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers))))) {
+        ctx->r2 = 1;
     }
 }

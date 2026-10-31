@@ -143,6 +143,17 @@ bool take_request(Cheat cheat) {
     return requests[size_t(cheat)].exchange(false);
 }
 
+bool two_players_active() {
+    return unlocked && settings().two_players;
+}
+
+bool two_players_map(int map) {
+    // MAP_*_CS_* and MAP_158_GAME_SELECT of decomp/include/maps.h.
+    const bool cutscene = ((map >= 0xA1) && (map <= 0xAC)) || (map == 0x159) || (map == 0x17E) || (map == 0x18B) ||
+        ((map >= 0x191) && (map <= 0x199)) || (map == 0x19C) || (map == 0x19D);
+    return !cutscene && (map != 0x158);
+}
+
 Settings parse_settings(const std::string& json_text) {
     Settings result;
     const nlohmann::json root = nlohmann::json::parse(json_text, nullptr, false);
@@ -167,6 +178,10 @@ Settings parse_settings(const std::string& json_text) {
         }
     }
 
+    if (root.contains("two_players") && root["two_players"].is_boolean()) {
+        result.two_players = root["two_players"].get<bool>();
+    }
+
     return result;
 }
 
@@ -177,6 +192,7 @@ std::string serialize_settings(const Settings& settings) {
         root[cheat_key(Cheat(i))] = {{"enabled", cheat.enabled}, {"direction", direction_name(cheat.direction)}};
     }
 
+    root["two_players"] = settings.two_players;
     return root.dump(2) + "\n";
 }
 

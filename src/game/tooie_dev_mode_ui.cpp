@@ -352,6 +352,30 @@ void build_cheats(ContextId context, Element* root) {
     build_cheat_row(context, root, tooie_dev_cheats::Cheat::Blaster, "Breegull Blaster (switch on or off)");
 }
 
+void build_experimental(ContextId context, Element* root) {
+    context.create_element<Label>(root, "Experimental", theme::Typography::Header3);
+    Element* line = row(context, root, 16.0f);
+    line->set_padding(8.0f);
+    line->set_border_width(theme::border::width);
+    line->set_border_radius(theme::border::radius_md);
+    line->set_border_color(theme::color::Border);
+
+    Toggle* enabled = context.create_element<Toggle>(line, ToggleSize::Medium);
+    enabled->set_flex_shrink(0.0f);
+    enabled->set_checked(tooie_dev_cheats::settings().two_players);
+    enabled->add_checked_callback([](bool checked) {
+        tooie_dev_cheats::Settings changed = tooie_dev_cheats::settings();
+        changed.two_players = checked;
+        store_cheats(changed);
+    });
+
+    Label* name = context.create_element<Label>(line,
+        "Two players (split screen). Applies from the next map load. For a controller each, turn Multiplayer on in "
+        "General and assign two players.",
+        theme::Typography::LabelMD);
+    name->set_flex_grow(1.0f);
+}
+
 void build_contents(ContextId context, Element* root) {
 
     context.create_element<Label>(root, "Dev Mode", theme::Typography::Header2);
@@ -379,6 +403,7 @@ void build_contents(ContextId context, Element* root) {
     });
 
     build_cheats(context, root);
+    build_experimental(context, root);
 
     if (g_state.warp_open) {
         build_warp_modal(context, root);
