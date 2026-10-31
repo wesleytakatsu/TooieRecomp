@@ -327,7 +327,7 @@ function Invoke-Package {
     Copy-Item -LiteralPath (Join-Path $Root 'recompcontrollerdb.txt') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $Root 'LICENSE') -Destination (Join-Path $stage 'LICENSE.txt')
     # Same notice set as tools/package_linux.sh (superset of what is linked), gathered from the vendored tree (repo-relative paths).
-    foreach ($d in 'vendor\licenses', 'lib\rt64', 'lib\N64ModernRuntime', 'lib\RecompFrontend', 'lib\SlotMap', 'lib\SDL2-windows') {
+    foreach ($d in 'vendor\licenses', 'lib\rt64', 'lib\N64ModernRuntime', 'lib\RecompFrontend', 'lib\SlotMap', 'lib\SDL2-windows', 'lib\dr_libs') {
         Get-ChildItem -Path (Join-Path $Root $d) -Recurse -Depth 6 -File |
             Where-Object { $_.Name -match '^(LICENSE|LICENCE|COPYING)' } |
             ForEach-Object { $dst = Join-Path "$stage\licenses" $_.FullName.Substring($Root.Length + 1); New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null; Copy-Item $_.FullName $dst }

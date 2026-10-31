@@ -41,3 +41,5 @@ rt64	lib/rt64	patches-local/rt64-p09-spike-elementwise.patch	e16a7dea73ce58b8260
 rt64	lib/rt64	patches-local/rt64-perf-match-checkset-keys.patch	706819f70c1f4b41a2a8b3a66ed52e445bfa65007e299d7e567e3b72e397087f	6f1c2d99a4ea571c139f449c326fd176ba8f3496 + 15 rt64 patches above
 rt64	lib/rt64	patches-local/rt64-perf-tmem-hash-cache.patch	a78230ba5e0336faac9623e60c1b3d4ee493e3a5aef2965deaca27dc4c9dce23	6f1c2d99a4ea571c139f449c326fd176ba8f3496 + 16 rt64 patches above
 plume	lib/rt64/src/contrib/plume	patches-applied/rt64/rt64-plume-texture-to-buffer-copy.patch	49c218efa703a8946d65652474b209934cd8ec96a55c2053b93826cf8d070852	d890ac899e505fb30040e037a4037cdeca68f033
+N64ModernRuntime	lib/N64ModernRuntime	patches-local/n64modernruntime-audio-content-roots.patch	deaa6d67fc5e0b26786bcf39469ef191e5c1bf1ab4352c3a363bd5e529399af9	f42fdae plus existing patches
+RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-audio-zip-installer.patch	51825a628b78b7bfb3256af4488f6c8623a6014c3bb65983d189f0e1900a3da8	f42fdae plus existing patches

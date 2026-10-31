@@ -205,6 +205,7 @@ namespace recomp {
         };
 
         ZipContentRootResult find_zip_content_root(const ZipModFileHandle& handle, const std::string& marker_filename);
+        ZipContentRootResult find_zip_content_root(const ZipModFileHandle& handle, const std::vector<std::string>& marker_filenames);
 
         struct LooseModFileHandle final : public ModFileHandle {
             std::filesystem::path root_path;

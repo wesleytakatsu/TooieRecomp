@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-10-28
+updated: 2026-10-31
 tags: [vault, index, tooierecomp]
 ---
 
@@ -22,7 +22,7 @@ tags: [vault, index, tooierecomp]
 - [[specs/Tooie/packaging-and-dependencies]] — Empacotamento, releases e dependências
 - [[specs/Tooie/asset-and-licensing-manifest]] — Fronteiras de assets e licenças
 - [[specs/Tooie/runtime-and-overlays]] — Runtime, overlays dinâmicos e preempção
-- [[specs/Tooie/audio-system]] — Áudio e microcódigo RSP
+- [[specs/Tooie/audio-system]] — Áudio, microcódigo RSP e pacotes MP3
 - [[specs/Tooie/graphics-and-presentation]] — RT64, widescreen e interpolação
 - [[specs/Tooie/input-and-controllers]] — Entrada e controles
 - [[specs/Tooie/window-ui-and-config]] — Janela, UI e configuração

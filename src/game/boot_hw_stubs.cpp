@@ -6226,6 +6226,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E3E8C), tooie_wrap_func_800E3E8C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kCspSetVolVram), tooie_bgm_on_csp_set_vol);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80016ED0u), tooie_bgm_on_sequence_start);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kUpdateVram), tooie_bgm_on_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kYawUpdateVram), tooie_dev_on_yaw_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerUpdateVram), tooie_dev_on_player_update);

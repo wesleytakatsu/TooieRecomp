@@ -38,7 +38,7 @@ LAUNCH
 chmod 755 "$STAGE/run-tooie.sh"
 
 # License texts of the code linked into the executable (gathered from the vendored tree; paths stay repo-relative).
-( cd "$ROOT" && find vendor/licenses lib/rt64 lib/N64ModernRuntime lib/RecompFrontend lib/SlotMap lib/SDL2-windows -maxdepth 7 -type f \
+( cd "$ROOT" && find vendor/licenses lib/rt64 lib/N64ModernRuntime lib/RecompFrontend lib/SlotMap lib/SDL2-windows lib/dr_libs -maxdepth 7 -type f \
     \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'LICENCE*' \) ) |
   while read -r f; do mkdir -p "$STAGE/licenses/$(dirname "$f")"; cp "$ROOT/$f" "$STAGE/licenses/$f"; done
 

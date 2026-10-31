@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -17,10 +17,10 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (39 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (42 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
-| Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
+| Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável; protótipo nativo de ZIP `audio.json`; usuário testou por cópia na pasta mods e logs confirmam os três MP3s; camadas superfície/água sincronizadas host-testadas e com relato positivo do usuário no Windows; instalação pela UI exige tela inicial | [[specs/Tooie/audio-system]], [[specs/Tooie/modding-and-extensions]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
@@ -40,6 +40,22 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
 
 ## Pendências conhecidas
+
+- Protótipo de áudio `0.2.0`: Game Select (`0x67`), Blue Eggs (`0x04`) e Spiral Mountain (`0x32`). O teste anterior
+  do usuário confirmou os três MP3s então ativos; os canais `0x63FF <-> 0x1C00` permaneceram na sequência `0x32`,
+  slot 1. Associação superfície/água: `STRONG_INFERENCE` pelo relato/percurso.
+  Implementado schema 2: duas camadas com clock e loop compartilhados; ganhos vêm dos canais nativos CSP, com
+  dezipper de 5 ms. Desativar/reativar preserva fase; reversões preservam ambas as camadas. Máscaras não observadas
+  voltam ao áudio original. Volume events não reativam jingles encerrados por ID residual.
+  Host tests confirmam seek em 1:20, múltiplos loops, envelope parcial, reversão e reativação. Build Windows: PASS;
+  suíte obrigatória: 17/17 PASS; vendor reverse-check: 42 patches, OK. Proveniência no `BUILD-INFO-AUDIO.json`
+  privado. Usuário relatou que a versão 0.2.0 parece funcionar corretamente no jogo no Windows; validação
+  perceptiva positiva, sem medição acústica ou novo log analisado. Testes de host usam aceitação de fila simulada.
+  Com `TOOIE_AUDIO_MOD_LOG=<arquivo>`, `PLAY` exige MP3 não nulo + `SDL_QueueAudio == 0`; cada camada registra
+  `timeline_frame`, `source_frame`, ganho e extremos dos canais. Isso prova contribuição na fila, não saída física.
+  Instalação/refresh só na tela inicial; alternância de pacote já instalado pode ser feita pelo menu ESC.
+  Sem validação completa de campanha, paridade acústica ou instalação pela UI. MP3s/ZIP continuam privados.
+  Branch `feat/dev-mode`, worktree separado `E:\projetos\TooieRecomp-audio`; nenhuma execução nova do jogo pelo agente.
 
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
@@ -68,6 +84,5 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: abrir o PR de `feat/dev-mode` quando o usuário encerrar o modo debug (Dev Mode + desempenho
-RT64, validados no Windows); onde ainda houver queda de FPS, salvar o ponto com o Dev Mode → Warp para medição; depois, validação Linux
-(widescreen, interpolação, desempenho, multijogador, idiomas, Dev Mode) e pacotes Linux novos.
+`NEXT_SINGLE_ACTION`: validar o protótipo de áudio 0.2.0 no PC Linux do usuário com o mesmo pacote privado.
+PR continua aguardando o usuário encerrar o modo debug; validação Linux permanece pendente.
