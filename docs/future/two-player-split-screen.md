@@ -350,4 +350,38 @@ depois pousar e usar R3 + direita para ligar/desligar Blaster. Confirmar que J1 
 ficam normais ao sair. Repetir com os dois acionando Blaster e saindo em momentos diferentes. Se as direções foram
 personalizadas, usar as direções selecionadas. Encerrar pela janela, sem "Save and Quit".
 
-`NEXT_SINGLE_ACTION`: testar a persistência de Bee no J1 e Stony no J2 ao entrar/sair da tenda da Humba.
+## 12. Glowbo repetido pelo J2 afastado (correção, 2026-10-31)
+
+Usuário relatou inventário compartilhado incrementando repetidamente sem remover o Glowbo; confirmou que J1 coleta
+corretamente e que J2 estava afastado. `STRONG_INFERENCE`: o gate original de atualização ainda usa J1, enquanto o
+hook experimental já admite colisões do J2. Glowbo credita no evento `0x3E`, mas só pede remoção no update de estado
+`1`. O evento não tem guarda contra nova coleta nesse estado. Modelo canônico e endereços:
+[[reverse-engineering/systems/warp-and-player-position#Glowbo collection and deferred actor cleanup]].
+
+Implementação em `src/game/tooie_dev_collectibles_hook.cpp`, registrada no dispatcher residente `0x8010108C`.
+Restrita a evento `0x3E`, classe Glowbo (prefixo `0x0039021B`), opção experimental ativa, dois slots vivos e modo
+história/attract; multijogador nativo `0x1B` fica fora. O callback original continua responsável por crédito, flags,
+diálogo, som e transição. Após estado `1`, o hook chama a liberação do efeito opcional e a marcação de remoção
+nativas, na mesma ordem do cleanup original. Eventos repetidos para o ator coletado/marcado não creditam de novo.
+Também termina um estado coletado que já existia antes do hook receber outro contato. Não troca foco global,
+não amplia atualização de atores por jogador e não adiciona logs, contadores ou polling ao jogo.
+
+Regressão versionada `tooie_glowbo_collection_test`: execução real do encaminhamento de coleta, dispatcher,
+getter de classe relocável, callback/update Glowbo, setter de estado, inventário, gate/distância e marcação de
+remoção. J1/J2, perto/longe, contatos repetidos antes do próximo tick, estado `1` prévio, efeito liberado uma vez
+antes da remoção, setor bloqueado, Mega Glowbo (flag/diálogo/contador próprio), outras classes/eventos e modos
+originais cobertos. Mundo/assets, extensão do ator, flags de save, UI/efeitos e remoção física da lista simulados;
+não equivale a playtest de mapa/controladores/render. O teste roda nas suítes Windows (21 obrigatórios) e Linux
+(11 configurados; Linux `NOT_RUN`).
+
+Usuário confirmou no Windows (2026-10-31) que a correção resolveu o problema relatado (`PROVEN` para esse playtest).
+A revisão removeu a chave temporária de A/B e o caminho de rollback do teste. A regressão permanece num executável
+separado; nenhum contador, log ou ramo de teste desse harness é vinculado ao jogo. Gerados e dependências
+vendorizadas inalterados. A/B e comandos da investigação pertencem à mensagem do commit.
+
+Suíte Windows: 21/21 obrigatórios; três testes auxiliares de registro e build passaram. `markdown_vault_audit`
+indisponível; auditoria local de UTF-8/links e `git diff --check` executada. Linux `NOT_RUN`.
+Mega Glowbo e mapas de Jolly Roger's Lagoon precisam de playtest específico; a aprovação do caso relatado não
+substitui uma bateria completa de mapas/formas. IA/portas continuam fora desta correção.
+
+`NEXT_SINGLE_ACTION`: validar Mega Glowbo no splitscreen com J2 afastado de J1.

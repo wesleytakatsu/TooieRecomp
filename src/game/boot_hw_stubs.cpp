@@ -30,6 +30,7 @@
 #include "tooie_bgm_volume.h"
 #include "tooie_dev_warp_hook.h"
 #include "tooie_dev_forms_hook.h"
+#include "tooie_dev_collectibles_hook.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -6232,6 +6233,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerUpdateVram), tooie_dev_on_player_update);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kCreatePlayersVram), tooie_dev_on_create_players);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerActiveVram), tooie_dev_on_player_active);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_collectibles::kActorEventVram), tooie_dev_on_actor_event);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPrimaryPlayerModelVram), tooie_dev_on_primary_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kSecondaryPlayerModelVram), tooie_dev_on_secondary_player_model);

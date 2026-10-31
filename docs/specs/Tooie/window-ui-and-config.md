@@ -312,6 +312,17 @@ that change the game's state directly.
   Warp also places player 2 beside player 1 while the option is active. Turning the option off does not destroy
   player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
   collision and Warp hooks consult the current option.
+  - **Glowbo collection**: with the experimental option active, two live story players and game mode `3`/`5`, the
+    resident actor-event hook (`0x8010108C`) handles collection event `0x3E` only for the normal Glowbo class descriptor
+    prefix `0x0039021B` (also used by Mega Glowbo). The original callback owns inventory, flags, dialogue, sound and
+    state transition. Once in state `1`, the integration releases the optional effect through `func_800C8B84` and
+    marks the actor for native deferred deletion through `func_800FFAB0`, completing the original cleanup without
+    waiting for J1's update radius or sector. Further collection events for that collected/deletion-marked actor are
+    acknowledged without crediting it again. The inventory stays shared. Other classes/events, native multiplayer,
+    one-player mode and disabled experimental mode keep the original dispatcher. No global focus change, frame
+    polling, runtime counter or new diagnostic log is involved. Native-function regression:
+    `tooie_glowbo_collection_test`. The user confirmed the reported collection bug fixed
+    on Windows (2026-10-31); Mega Glowbo/JRL-specific playtests and Linux remain `NOT_RUN`.
   - **Lighting outputs**: when this map's original one-player creation request is expanded to two, primary, LOD and
     secondary player-model setup request one native private output vertex buffer for CPU-lit models that originally
     requested none. The scope also covers initialization before the players enter the slot table. Existing private

@@ -29,7 +29,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 20 obrigatórios (inclui 5 de idioma, `tooie_dev_forms_test` e regressão Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 10 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 21 obrigatórios (inclui 5 de idioma, regressão Glowbo e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 11 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -79,6 +79,14 @@ dividida estão em `docs/future/`. Contratos estáveis:
   Diagnósticos temporários por desenho removidos; captura leve opt-in disponível em
   `tools/windows/Test-SplitScreenLighting.ps1` (backup + logs). Handoff: [[future/two-player-split-screen]];
   RE: [[reverse-engineering/systems/player-lighting]].
+- Glowbo no splitscreen: usuário relatou coleta repetida pelo J2 afastado; J1 coleta corretamente. `PROVEN` no
+  harness nativo isolado que crédito imediato e cleanup adiado podem se separar quando o gate de atualização usa
+  a posição de J1. Causa da sessão: `STRONG_INFERENCE`, sem captura dos flags/mapa reais. Correção implementada no
+  evento residente: callback original credita; estado coletado termina limpeza nativa uma vez, inclusive fora de
+  alcance/setor de J1; contatos repetidos não creditam novamente. Restrita à classe Glowbo e splitscreen experimental,
+  sem logs/contadores no jogo. Usuário confirmou a correção no Windows (2026-10-31); chave temporária de A/B removida.
+  Regressão nativa e suíte Windows 21/21 passaram. Mega Glowbo/JRL específicos e Linux `NOT_RUN`.
+  RE: [[reverse-engineering/systems/warp-and-player-position]]; teste/roteiro: [[future/two-player-split-screen]] seção 12.
 - Seletor de transformações por jogador implementado para teste: Dev Mode desbloqueado, seção **Character selection**
   com chave, dropdown de direção e botões **Open for Player 1/2**; sem exigir recarga de mapa após desbloquear.
   R3 físico ou Debug Button + direção configurada (baixo por padrão), direcional/analógico para selecionar, A confirma, B cancela.
@@ -128,5 +136,4 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: usuário executar `build-win/Diagnosticar API.cmd`, validar launcher/API/música e iniciar gameplay;
-enviar a pasta de diagnóstico em caso de falha. Plano temporário consolidado nos contratos permanentes e removido.
+`NEXT_SINGLE_ACTION`: validar Mega Glowbo no splitscreen com J2 afastado de J1.

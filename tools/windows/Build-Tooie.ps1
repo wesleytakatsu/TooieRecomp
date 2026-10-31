@@ -463,6 +463,7 @@ $script:RequiredTests = @(
     'tooie_dev_warp_test'
     'tooie_dev_cheats_test'
     'tooie_dev_forms_test'
+    'tooie_glowbo_collection_test'
     'tooie_texture_zip_mod_test'
 )
 # Bare invocation prints a usage line and exits non-zero. Built under -AllTests; not run.

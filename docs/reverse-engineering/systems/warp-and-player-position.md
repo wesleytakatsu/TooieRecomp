@@ -158,3 +158,50 @@ broke player 2's eggs and the camera without making enemies pursue it, and was r
 `UNKNOWN`; the collision gate alone does not solve them. Lighting inputs are per player, but the CPU lighting output
 could alias shared model vertices (`CORRECTED` from the earlier unknown/shared-light-value hypothesis). See
 [player lighting](player-lighting.md) for the proven conflict and the integration fix.
+
+### Glowbo collection and deferred actor cleanup
+
+`PROVEN` by native code and an isolated host fixture: `func_80800880_chglowbo(actor, event, payload)` handles
+event `0x3E` by recording the normal Glowbo's collectible flag (`func_800D0BD4(index, 3)`), adding one to inventory
+(`func_800D1844(0x48)`) and setting actor state `1` through `func_80101FDC`. The callback does not immediately mark
+the actor for deletion, and it does not reject another `0x3E` when the actor is already in state `1`.
+`func_808002F4_chglowbo` performs the later state-`1` cleanup, including its optional effect and `func_800FFAB0`.
+See `decomp/src/overlays/ch/glowbo.c:213-255` and `:109-209`.
+
+`PROVEN`: the actor loop `func_800FF62C` caches the focused player's position with `func_8010D1E8` and tests
+`func_8010038C(actor, position)` before invoking the actor's update callback. The position producer uses
+`func_8008FE68` -> `func_800F54E4` -> `func_800F5A00`; it does not select the nearest active split-screen player.
+For distance-gated actors, `func_8010038C` uses the radius from the high halfword at `actor+0x7C` and
+`func_800EFFB4`'s squared-distance test. The canonical normal Glowbo descriptor has radius `5000` (`0x1388` at
+`chglowbo+0x14D8`). Other actor activity flags can bypass or suppress this range test; distance alone is not the
+complete scheduling contract. The Glowbo update also has an independent sector gate in Jolly Roger's Lagoon maps.
+
+The experimental `tooie_dev_on_player_active` hook admits J2 to player/actor collisions. It does not extend actor
+update scheduling to J2. `PROVEN` in the host fixture: repeated native collection callbacks can credit the same
+actor while the real actor loop's range gate suppresses its cleanup; moving the focused-player position into range
+allows the native update to request deletion. The fixture executes the native loop, gate/distance arithmetic,
+Glowbo callback/update, state setter and inventory arithmetic. Actor enumeration, player-position input, assets,
+save-flag/UI/effect services and final actor-list removal are synthetic. It does not execute collision detection,
+real controllers, a map or the renderer.
+
+`STRONG_INFERENCE` for the reported Windows bug (2026-10-31): J2 was away from J1, repeatedly credited one Glowbo,
+and J1 could collect it correctly. This matches deferred cleanup blocked by focused-player scheduling.
+The actual session's actor flags, map, separation and selected gate were not captured. The user confirmed the fix
+resolves the reported Windows collection bug (2026-10-31); the precise gate in that session remains inferred.
+Immediate deletion by other collectibles is not evidence that their deferred lifecycle supports J2.
+The inventory remains shared; splitting it or replacing global focus is not required by this finding.
+
+`PROVEN` from the canonical ROM descriptor and native code: the normal class descriptor returned through
+`func_80100368` and `chglowbo_entrypoint_0` has prefix `0x0039021B`; the same class handles Mega Glowbo via bit
+`0x20000000` at `actor+0x74`. The regression executes the native descriptor getter with synthetic relocation/data.
+Native `func_8010108C` admits events only with bit `0x10000000` at `actor+0x74`; its original early
+return is preserved by the integration. `func_800FFAB0` sets the deferred-delete bit (`actor+0x65 & 2`) and queues
+native removal; the integration does not directly reclaim actor storage.
+
+The experimental host hook `tooie_dev_on_actor_event` narrows that resident dispatch to collection events for this
+class and live two-player story sessions. It calls the original dispatcher, then completes the original state-`1`
+effect release and deferred-delete request synchronously. Repeated collected/deletion-marked events do not rerun
+the credit callback. This scheduling change avoids both the focused-player range gate and Glowbo's sector gate
+without changing either gate, global focus or general actor scheduling. The reported Windows case is user-validated;
+Mega Glowbo/JRL-specific acceptance and Linux remain `NOT_RUN`. Neither that acceptance nor the native regression
+establishes complete map/effect/rendering parity.
