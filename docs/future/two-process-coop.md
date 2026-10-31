@@ -58,8 +58,10 @@ Pendente para o nível 1:
 
 - **Animação** (`UNKNOWN`): descobrir o identificador e o quadro da animação atual de um `PlayerState` e como forçá-los
   no fantasma (provavelmente pelo `AnimCtrl` de `baanim_getAnimCtrlPtr`).
-- **Iluminação** (`UNKNOWN`): o modo de um processo mostrou que dois jogadores dividem a mesma iluminação; o fantasma
-  herdaria o problema.
+- **Iluminação do fantasma** (`HYPOTHESIS`, não implementada): a disputa no modo de um processo foi corrigida com
+  vértices de saída próprios por modelo; cálculo e luzes já eram individuais (`PROVEN` no Windows, ver
+  [[reverse-engineering/systems/player-lighting]]). O fantasma também precisará dessa saída própria; a correção atual
+  está limitada ao modo história com dois jogadores, não implementa o modo de dois processos.
 - **Interações indesejadas** (`HYPOTHESIS`): inimigos podem perseguir o fantasma se o jogo os mandar para o jogador mais
   próximo; o modo de dois processos não deve ligar o foco por proximidade do modo de um processo.
 
@@ -138,7 +140,8 @@ Seção nova "Two processes (experimental)":
 
 ## 6. Riscos e perguntas em aberto
 
-- Animação e iluminação do fantasma: `UNKNOWN`, exigem RE.
+- Animação do fantasma: `UNKNOWN`, exige RE. Iluminação: preservar saída de vértices própria por instância, ainda não
+  implementada/validada para o fantasma deste plano.
 - Flags de história fora de ordem podem travar sequências: começar com lista restrita.
 - Duas instâncias no mesmo PC podem disputar áudio e foco de janela; validar `background_input_mode` com dois
   processos.

@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -52,8 +52,13 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Captura burst `TOOIE_TEST_INTERP_BURST_AT_WORKLOAD` encerrou o processo no Windows/D3D12 (1×, `UNKNOWN`).
 - Wrappers de diagnóstico `ud4`/`ud5` não-macro ainda registrados (custo baixo; logs desligados por padrão).
 - **Checkpoint experimental**, branch `codex/two-player-split-screen`: dois jogadores em tela dividida no Dev Mode
-  (J2 controlável, pega itens e ataca, conforme playtest anterior; faltam inimigos mirarem o J2, portas, iluminação).
-  Diagnósticos temporários removidos; reprodução limpa após a remoção `NOT_RUN`. Handoff: [[future/two-player-split-screen]].
+  (J2 controlável, pega itens e ataca; uso pai/filho aprovado pelo usuário). Faltam inimigos mirarem o J2 e portas.
+  Iluminação: vértices de saída próprios por modelo de jogador; A/B instrumentado no attract Windows eliminou alias
+  simultâneo e sobrescrita RGB. `PROVEN` no teste visual do usuário no Windows (2026-10-31): problema gráfico resolvido;
+  captura manual terminou com exit 0. Linux e playtest específico de transformações/modelo secundário `NOT_RUN`.
+  Diagnósticos temporários por desenho removidos; captura leve opt-in disponível em
+  `tools/windows/Test-SplitScreenLighting.ps1` (backup + logs). Handoff: [[future/two-player-split-screen]];
+  RE: [[reverse-engineering/systems/player-lighting]].
 - Plano futuro (proposto, não implementado): cooperativo com dois processos, cada um com um jogador, vendo-se no mesmo
   mapa e compartilhando progresso. Ver [[future/two-process-coop]].
 
@@ -74,5 +79,5 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: repetir no Windows o teste dos dois jogadores após a remoção dos diagnósticos, com backup dos
-saves/configs: controles independentes, spawn, coleta, ataques e troca de mapa pelo J1.
+`NEXT_SINGLE_ACTION`: rastrear a seleção de alvo de um inimigo que persegue J1 para permitir que também escolha J2,
+sem trocar o foco global `D_801354DC` (tentativa anterior `REFUTED`).

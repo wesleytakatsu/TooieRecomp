@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [vault, index, tooierecomp]
 ---
 
@@ -56,6 +56,7 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/systems/view-volume]] — Volume de visão e culling
 - [[reverse-engineering/systems/transform-interpolation]] — Interpolação de transforms (RT64)
 - [[reverse-engineering/systems/model-renderer]] — Renderizador de modelos
+- [[reverse-engineering/systems/player-lighting]] — Iluminação por jogador e vértices de saída independentes
 - [[reverse-engineering/systems/geocmd]] — GeoCmd
 - [[reverse-engineering/systems/animation]] — Animação
 - [[reverse-engineering/systems/secondary-animation]] — Animação secundária (bawobble)

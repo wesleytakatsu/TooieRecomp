@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <optional>
 
@@ -22,6 +23,9 @@ extern "C" void func_800F73C4(uint8_t* rdram, recomp_context* ctx); // create th
 extern "C" void func_800A8FDC(uint8_t* rdram, recomp_context* ctx); // add one split-screen viewport
 extern "C" void func_80016BDC(uint8_t* rdram, recomp_context* ctx); // osContSetCh(channels): controller ports read
 extern "C" void func_800F65D0(uint8_t* rdram, recomp_context* ctx); // is player index active (collides, takes damage)
+extern "C" void func_80092EC8(uint8_t* rdram, recomp_context* ctx); // primary player model setter
+extern "C" void func_800941C8(uint8_t* rdram, recomp_context* ctx); // player LOD model setter
+extern "C" void func_80100D24(uint8_t* rdram, recomp_context* ctx); // allocate model instance (a2: private vertex buffers)
 extern "C" void yaw_set(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8009C0F8(uint8_t* rdram, recomp_context* ctx); // player position setter (PlayerState*, f32[3])
@@ -146,6 +150,84 @@ void place_second_player(uint8_t* rdram, const recomp_context* ctx, const tooie_
 double second_player_due = -1.0;
 // Set when player 2 has just been placed beside player 1 and must be started on its next frame.
 bool second_player_start_next = false;
+
+// Latched before native player creation so model setup can request private lit vertices for this story map.
+bool story_two_players = false;
+// Player initialization builds the model before publishing the new PlayerState in kPlayers.
+bool creating_story_players = false;
+thread_local bool private_player_vertices_scope = false;
+thread_local uint32_t player_model_owner = 0;
+thread_local const char* player_model_kind = "none";
+
+// Opt-in model-allocation trace. No per-frame hooks, RGB hashing or guest function calls are added for logging.
+double player_lighting_time() {
+    static const double start = now_seconds();
+    return now_seconds() - start;
+}
+
+FILE* player_lighting_log() {
+    static FILE* file = []() -> FILE* {
+        const char* path = std::getenv("TOOIE_DIAG_2P_LIGHTING_LOG");
+        if (path == nullptr || path[0] == '\0') {
+            return nullptr;
+        }
+        FILE* opened = std::fopen(path, "w");
+        if (opened != nullptr) {
+            const auto utc_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            (void)player_lighting_time();
+            std::fprintf(opened, "# Player lighting allocation trace; opened_utc_ms=%lld; t=seconds since log opened.\n",
+                static_cast<long long>(utc_ms));
+            std::fflush(opened);
+        } else {
+            std::fprintf(stderr, "[tooie-2p-lighting] cannot open log: %s\n", path);
+        }
+        return opened;
+    }();
+    return file;
+}
+
+uint32_t lighting_word(uint8_t* rdram, uint32_t pointer, uint32_t offset) {
+    return is_rdram_pointer(pointer) && offset <= 0x807FFFFCu - pointer ?
+        static_cast<uint32_t>(MEM_W(offset, kseg0(pointer))) : 0;
+}
+
+uint32_t lighting_instance(uint8_t* rdram, uint32_t index) {
+    const uint32_t pool = lighting_word(rdram, 0x80135A60u, 0);
+    if (!is_rdram_pointer(pool) || index == 0 || index > 0xFF) {
+        return 0;
+    }
+    const int stride = MEM_H(0, kseg0(pool)); // freelist_at: pool + 4 + index * signed stride
+    if (stride < 12 || stride > 256 || (stride & 3) != 0) {
+        return 0;
+    }
+    const uint32_t entry = pool + 4 + index * static_cast<uint32_t>(stride);
+    return is_rdram_pointer(entry) && entry <= 0x807FFFF4u ? entry : 0;
+}
+
+bool private_player_vertices_enabled() {
+    static const bool enabled = [] {
+        const char* value = std::getenv("TOOIE_TEST_2P_PRIVATE_VERTICES");
+        return value == nullptr || value[0] != '0';
+    }();
+    return enabled;
+}
+
+void set_player_model(uint8_t* rdram, recomp_context* ctx, void (*native)(uint8_t*, recomp_context*), const char* kind) {
+    const uint32_t self = static_cast<uint32_t>(ctx->r4);
+    const bool previous = private_player_vertices_scope;
+    const uint32_t previous_owner = player_model_owner;
+    const char* previous_kind = player_model_kind;
+    player_model_owner = self;
+    player_model_kind = kind;
+    private_player_vertices_scope = previous || (story_two_players && private_player_vertices_enabled() &&
+        is_rdram_pointer(self) && (creating_story_players || self == static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers))) ||
+        self == static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers)))));
+    native(rdram, ctx);
+    private_player_vertices_scope = previous;
+    player_model_owner = previous_owner;
+    player_model_kind = previous_kind;
+}
 
 // Set when the Blaster cheat asks the game to leave the Breegull Blaster, until the model has been reloaded.
 bool blaster_model_reload_pending = false;
@@ -340,6 +422,12 @@ extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx)
     const int32_t requested = static_cast<int32_t>(ctx->r4);
     const bool two = tooie_dev_cheats::two_players_active() && (requested == 1) &&
         tooie_dev_cheats::two_players_map(MEM_HU(0, kseg0(kCurrentMap)));
+    story_two_players = two;
+    if (FILE* file = player_lighting_log()) {
+        std::fprintf(file, "MAP t=%.3f map=%u requested=%d two=%u private_vertices=%u\n", player_lighting_time(),
+            unsigned(MEM_HU(0, kseg0(kCurrentMap))), requested, unsigned(two), unsigned(private_player_vertices_enabled()));
+        std::fflush(file);
+    }
     recomp_context local = *ctx;
     if (two) {
         local.r29 = ADD32(ctx->r29, -0x40);
@@ -354,7 +442,10 @@ extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx)
     }
 
     local = *ctx;
+    const bool previous_creation = creating_story_players;
+    creating_story_players = two;
     func_800F73C4(rdram, ctx);
+    creating_story_players = previous_creation;
     if (!two) {
         return;
     }
@@ -370,6 +461,50 @@ extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx)
     }
 
     second_player_due = now_seconds() + kSecondPlayerDelay;
+}
+
+extern "C" void tooie_dev_on_primary_player_model(uint8_t* rdram, recomp_context* ctx) {
+    set_player_model(rdram, ctx, func_80092EC8, "primary");
+}
+
+extern "C" void tooie_dev_on_lod_player_model(uint8_t* rdram, recomp_context* ctx) {
+    set_player_model(rdram, ctx, func_800941C8, "lod");
+}
+
+extern "C" void tooie_dev_on_secondary_player_model(uint8_t* rdram, recomp_context* ctx) {
+    set_player_model(rdram, ctx, func_8009359C, "secondary");
+}
+
+extern "C" void tooie_dev_on_model_instance(uint8_t* rdram, recomp_context* ctx) {
+    FILE* file = player_model_owner != 0 ? player_lighting_log() : nullptr;
+    const uint32_t requested = static_cast<uint32_t>(ctx->r6);
+    const uint32_t lighting = static_cast<uint32_t>(ctx->r7);
+    const uint32_t model = static_cast<uint32_t>(ctx->r4);
+    const uint32_t asset = static_cast<uint32_t>(ctx->r5);
+    // Native player setup requests no private vertices for models without vertex animation. CPU lighting then writes
+    // into the cached model's vertices, shared by two identical characters. Ask the existing model-instance allocator
+    // for one private vertex buffer when this scoped player model uses CPU lighting. Native instance teardown owns it.
+    if (private_player_vertices_scope && ctx->r6 == 0 && ctx->r7 != 0) {
+        ctx->r6 = 1;
+    }
+    const uint32_t actual = static_cast<uint32_t>(ctx->r6);
+    func_80100D24(rdram, ctx);
+    if (file != nullptr) {
+        const uint32_t index = static_cast<uint32_t>(ctx->r2);
+        const uint32_t instance = lighting_instance(rdram, index);
+        const uint32_t private_vertices = lighting_word(rdram, instance, 0);
+        const uint32_t output = private_vertices != 0 ? private_vertices : model + lighting_word(rdram, model, 0x10);
+        int slot = -1; // Initial model setup may precede publication in the player table.
+        for (int i = 0; i < 2; ++i) {
+            if (lighting_word(rdram, kPlayers, i * 4) == player_model_owner) slot = i;
+        }
+        std::fprintf(file, "MODEL t=%.3f map=%u kind=%s owner=%08X slot=%d creating=%u asset=%X instance=%u requested=%u actual=%u lighting=%u model=%08X output=%08X private=%08X private1=%08X lightstate=%08X tintstate=%08X\n",
+            player_lighting_time(), unsigned(MEM_HU(0, kseg0(kCurrentMap))), player_model_kind, player_model_owner, slot,
+            unsigned(creating_story_players), asset, index, requested, actual, lighting, model, output, private_vertices,
+            lighting_word(rdram, instance, 4), lighting_word(rdram, player_model_owner, 0xB4),
+            lighting_word(rdram, player_model_owner, 0x108));
+        std::fflush(file);
+    }
 }
 
 // Experimental two players: func_800F65D0(index) says whether a player is active; the player update only checks

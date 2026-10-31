@@ -4,7 +4,7 @@ description: "Current map and entrance, the game's go-to-map entry point, player
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [reverse-engineering, map, warp, player]
 ---
 
@@ -122,5 +122,7 @@ gate `func_8008DAA8` / `func_800F65D0` -> `func_800CDBA8` -> `func_8008E530` -> 
 
 Replacing global focus `D_801354DC` with the nearest player for each actor is `REFUTED` as a fix: the prior experiment
 broke player 2's eggs and the camera without making enemies pursue it, and was reverted. Actor loop:
-`func_800FF62C`; `func_80100368(actor)` returns ActorData. Enemy target selection, player 2's door triggers and per-player
-lighting remain `UNKNOWN`; the collision gate alone does not solve them.
+`func_800FF62C`; `func_80100368(actor)` returns ActorData. Enemy target selection and player 2's door triggers remain
+`UNKNOWN`; the collision gate alone does not solve them. Lighting inputs are per player, but the CPU lighting output
+could alias shared model vertices (`CORRECTED` from the earlier unknown/shared-light-value hypothesis). See
+[player lighting](player-lighting.md) for the proven conflict and the integration fix.

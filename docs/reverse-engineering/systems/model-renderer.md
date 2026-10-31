@@ -4,7 +4,7 @@ description: "func_800DE448 / DE498 and the player vs backpack callsites."
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-22
+updated: 2026-10-31
 tags: [reverse-engineering, model, renderer]
 ---
 
@@ -153,6 +153,12 @@ recommendation. Provenance:
 
 Current RT64 temporal semantics and proof boundaries are maintained in
 [[transform-interpolation]]; visual root remains `UNKNOWN`.
+
+## Player lighting
+
+Player CPU lighting can mutate shared model vertices when instances lack private output vertices. The experimental
+story split-screen integration allocates those outputs through the native instance allocator. See
+[[player-lighting]] for the proven path, ownership and runtime/visual verification boundary.
 
 ## Modding relevance
 

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution, dev-mode, warp]
 ---
 
@@ -262,9 +262,21 @@ that change the game's state directly.
   Warp also places player 2 beside player 1 while the option is active. Turning the option off does not destroy
   player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
   collision and Warp hooks consult the current option.
+  - **Lighting outputs**: when this map's original one-player creation request is expanded to two, primary, LOD and
+    secondary player-model setup request one native private output vertex buffer for CPU-lit models that originally
+    requested none. The scope also covers initialization before the players enter the slot table. Existing private
+    buffers and native instance teardown/defragmentation retain their behavior. Other callers, unlit models and
+    original multiplayer creation requests retain their allocation arguments. This prevents one player's CPU lighting
+    from overwriting the other's output colors; `TOOIE_TEST_2P_PRIVATE_VERTICES=0` disables it for A/B reproduction.
+    Mechanism and proof boundary: [player lighting](../../reverse-engineering/systems/player-lighting.md).
+    `TOOIE_DIAG_2P_LIGHTING_LOG=<file>` optionally logs map/model allocation events and output pointers; default OFF,
+    without per-frame probes. `tools/windows/Test-SplitScreenLighting.ps1` starts a manual capture with backups,
+    stdout/stderr and build metadata, preserving normal session unlock and player-assignment requirements.
   - User playtests recorded in the [split-screen handoff](../../future/two-player-split-screen.md) report two
     controlled players, shared map changes, item collection and attacks by player 2. This is an experimental checkpoint,
     with no complete cooperative-gameplay guarantee.
-  - Known limits: enemies do not target player 2; player 2 cannot trigger doors/map changes; character lighting is
-    shared; player 2's death kills the shared player; Debug Button cheats affect only player 1. Camera orientation needs
-    rechecking. Linux and a clean game reproduction after diagnostic removal are `NOT_RUN`.
+  - Known limits: enemies do not target player 2; player 2 cannot trigger doors/map changes; player 2's death kills the
+    shared player; Debug Button cheats affect only player 1. Camera orientation needs rechecking. Private lighting
+    outputs passed the instrumented Windows attract-map discriminator; the user confirmed the graphical lighting
+    problem resolved in story mode on Windows (2026-10-31). The secondary-model/transform playtest and Linux remain
+    `NOT_RUN`.
