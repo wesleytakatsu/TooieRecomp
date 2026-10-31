@@ -294,4 +294,59 @@ Os eventos `[tooie-forms]` em `stderr.log` incluem horário UTC em milissegundos
 Revisão para commit: sem achados bloqueantes; 18/18 testes obrigatórios Windows passaram novamente.
 Código gerado e dependências vendorizadas permanecem inalterados.
 
+Investigação após `a2e43c7`: usuário relatou falha visual de Banjo/Dragon Kazooie no J2. Escolha Dragão está separada
+no host, mas a recarga nativa retorna antecipadamente quando o ID do modelo base permanece igual. O harness anterior
+substituía essa recarga, sem provar a aparência. `STRONG_INFERENCE`: falta atualizar a variante visual; o caminho de atualização
+posterior do modelo auxiliar ainda impede concluir a causa apenas pelo retorno antecipado. Usuário confirmou no Windows
+que Bee → Banjo/Dragon Kazooie funciona no J2, reforçando o diagnóstico de atualização/cache.
+Detalhes e limites em [[reverse-engineering/systems/player-transformations]].
+
+Correção: a confirmação de uma forma combinada que mantém modelo base `0x607` chama `func_80093FD4` no escopo do
+próprio jogador para atualizar o auxiliar. A instalação continua nativa, inclusive os vértices de iluminação privados.
+Sem limpeza manual de estado, alteração da flag no save ou recarga por frame.
+
+Regressão: `tooie_dev_forms_test` agora liga `RecompiledFuncs` e executa recarga/cache/seletor reais com fixtures de
+modelos e alocação/instalação simuladas. O comando `pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Test`
+falhou antes da correção (exit 1; `FAIL line 238: primary(p) == 0x607 && auxiliary(p) == 0x901`); após a correção,
+18/18 testes passaram (exit 0). Abrange ida/volta direta normal/Dragão em ambos os slots, isolamento do outro jogador,
+dois Dragões simultâneos e ausência de reinstalação por frame. Usuário aprovou a correção no Windows (2026-10-31);
+bateria exaustiva de combinações e Linux: `NOT_RUN`.
+
+Build da correção sobre `a2e43c7e7e44acdd944bfe4c9304606308ab853b`:
+`pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Build`, exit 0.
+`build-win/TooieRecompiled.exe`, SHA-256 `109427bbb836493dd44f208d287099c8b0ce76c9c2265b72516b5cda8c63b894`.
+Verificações estáticas: UTF-8, links locais da documentação e `git diff --check` passaram; gerados e vendor inalterados.
+Esse executável do Dragão foi substituído pelo da seção 11, que também inclui os atalhos do J2.
+
+## 11. Atalhos Fly/Blaster por jogador (2026-10-31, validados pelo usuário no Windows)
+
+A investigação comprovou restrições host ao J1 na entrada, fila e executor. Agora, com as opções ligadas e Dev Mode
+desbloqueado, J1/J2 usam R3 físico ou Debug Button + direção configurada para agir no próprio personagem. Histórico
+das direções, pedidos e recarga do Blaster são separados; configuração/desbloqueio continuam compartilhados. O seletor
+de personagens mantém prioridade. N64 bindings, foco global e magia da Humba não foram alterados.
+
+Execução isolada em `tooie_dev_cheats_hook.cpp`, chamada pelo mesmo hook por jogador. Sair do Blaster remove/recarrega
+apenas os modelos do dono, após a saída nativa concluir. Trocas de mapa/sessão limpam pedidos e recargas; uma direção
+segurada não é repetida sem soltar. Pedidos em loading/Warp/transição pendente são descartados. Desativar opções
+descarta ações enfileiradas; uma saída de Blaster já iniciada ainda termina sua limpeza visual.
+
+Validação: `pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Test`, exit 0, 18/18 testes obrigatórios.
+`tooie_dev_cheats_test` cobre filas simultâneas, estado e modelos do dono, saída independente dos dois Blasters,
+desbloqueio/opções, estados proibidos e limpeza de ações ao reset. Usa executor real com memória guest e chamadas
+nativas simuladas; não prova física, câmera ou animações. Usuário confirmou que os atalhos corrigidos funcionam no
+Windows (2026-10-31). Bateria exaustiva de combinações/cenários e Linux: `NOT_RUN`.
+RE: [[reverse-engineering/systems/warp-and-player-position]]. Correção anterior do Dragão preservada.
+
+Build: `pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Build`, exit 0, sobre
+`a2e43c7e7e44acdd944bfe4c9304606308ab853b` com as alterações locais do Dragão e dos atalhos.
+Executável `build-win/TooieRecompiled.exe`, SHA-256
+`5c08ebeb3484d52eb810abb11c697d65c3d2e5cf813961143038d5119c446429`.
+UTF-8, links locais da documentação e `git diff --check` passaram. Gerados e dependências vendorizadas inalterados.
+Revisão para commit sem achados bloqueantes; 18/18 testes obrigatórios Windows reconfirmados.
+
+Roteiro: habilitar Fly e Breegull Blaster; deixar ambos como Banjo/Kazooie no chão. No J2, usar R3 + cima (Voar),
+depois pousar e usar R3 + direita para ligar/desligar Blaster. Confirmar que J1 permanece igual e que os modelos do J2
+ficam normais ao sair. Repetir com os dois acionando Blaster e saindo em momentos diferentes. Se as direções foram
+personalizadas, usar as direções selecionadas. Encerrar pela janela, sem "Save and Quit".
+
 `NEXT_SINGLE_ACTION`: testar a persistência de Bee no J1 e Stony no J2 ao entrar/sair da tenda da Humba.

@@ -2,9 +2,9 @@
 
 // Dev Mode cheats: shortcuts made of the Debug Button (a recompinput input, R3 by default) held with a D-pad direction.
 //
-// The input callback (src/main/main.cpp) feeds player 1's buttons to on_player1_input on the game thread; a chord of an
-// enabled cheat queues a request, and the yaw_update hook (src/game/tooie_dev_warp_hook.cpp) carries it out on player 1's
-// next frame. The Dev Mode tab (src/game/tooie_dev_mode_ui.cpp) edits the settings. This file's functions do not touch
+// The input callback feeds each player's buttons to on_player_input; an enabled chord queues a request for its owner.
+// The per-player update hook carries it out on that player's next frame. The Dev Mode tab edits shared settings.
+// This file's functions do not touch
 // guest memory. See docs/specs/Tooie/window-ui-and-config.md (Dev Mode).
 
 #include <array>
@@ -26,6 +26,7 @@ enum class Cheat {
 };
 
 constexpr size_t kCheatCount = size_t(Cheat::Count);
+constexpr int kPlayerCount = 2;
 
 struct CheatSettings {
     bool enabled = false;
@@ -46,7 +47,7 @@ struct Settings {
     const CheatSettings& operator[](Cheat cheat) const { return cheats[size_t(cheat)]; }
 };
 
-// Player 1's transformation (PlayerState+0xA0 -> +0x29) and the player states the cheats use. See
+// The player's transformation (PlayerState+0xA0 -> +0x29) and the player states the cheats use. See
 // docs/reverse-engineering/systems/warp-and-player-position.md.
 constexpr uint32_t kTransformBanjoKazooie = 0x1;
 constexpr uint32_t kTransformBlaster = 0x9;
@@ -82,8 +83,9 @@ Settings settings();
 void set_settings(const Settings& settings);
 void set_unlocked(bool unlocked); // the Dev Mode warning was accepted; cheats do nothing before
 bool is_unlocked();
-void on_player1_input(bool debug_held, uint16_t buttons);
-bool take_request(Cheat cheat); // true once per queued request of that cheat
+void on_player_input(int player, bool debug_held, uint16_t buttons);
+bool take_request(int player, Cheat cheat); // consumes only this owner's request; rechecks unlock/enable
+void reset_requests(); // discard pending actions; keep held-button history until release
 bool two_players_active();      // unlocked and the two-player option is on
 // Whether the two-player option applies to this map: not the title intro, the game select or the cutscene maps.
 bool two_players_map(int map);

@@ -85,6 +85,10 @@ The Dev Mode transformation selector reads Debug Button and game buttons from ea
 also supports old profiles without a Debug Button binding. Navigation/confirmation are consumed
 only for that player until the closing buttons/stick are released. The other port continues supplying game input.
 The selector does not create a globally capturing UI context. Details: [window/UI contract](window-ui-and-config.md).
+Fly/Blaster shortcuts also accept physical R3 or the mapped Debug Button for J1/J2, with separate button-edge history
+and owner-indexed requests. Their shared enable/direction settings apply to both players. Physical D-pad directions
+are read only for host shortcuts; saved bindings and N64 game input remain unchanged. An open/closing character
+selector suppresses cheats for that owner until its input is released.
 
 - **N64 Controller Port Policy (`include/tooie_controller_ports.h`)**:
   - Implemented as pure logic header validated via `tests/tooie_controller_ports_test.cpp`.

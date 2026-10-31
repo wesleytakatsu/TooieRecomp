@@ -17,8 +17,8 @@ constexpr uint16_t kDpadMask = 0x0F00; // D-pad up/down/left/right
 std::mutex settings_mutex;
 Settings current_settings;
 std::atomic<bool> unlocked{false};
-std::array<std::atomic<bool>, kCheatCount> requests{};
-Chord player1_chord; // only touched by the input callback
+std::array<std::array<std::atomic<bool>, kCheatCount>, kPlayerCount> requests{};
+std::array<Chord, kPlayerCount> player_chords; // only touched by the input callback
 
 // Banjo and Kazooie standing or walking: the states seen before a flight pad takeoff and before the game switched the
 // Breegull Blaster on.
@@ -116,18 +116,23 @@ Settings settings() {
 }
 
 void set_settings(const Settings& settings) {
-    std::lock_guard lock(settings_mutex);
-    current_settings = settings;
+    {
+        std::lock_guard lock(settings_mutex);
+        current_settings = settings;
+    }
+    reset_requests();
 }
 
 void set_unlocked(bool value) {
     unlocked = value;
+    if (!value) reset_requests();
 }
 
 bool is_unlocked() { return unlocked.load(); }
 
-void on_player1_input(bool debug_held, uint16_t buttons) {
-    const uint16_t pressed = player1_chord.step(debug_held, buttons);
+void on_player_input(int player, bool debug_held, uint16_t buttons) {
+    if (player < 0 || player >= kPlayerCount) return;
+    const uint16_t pressed = player_chords[player].step(debug_held, buttons);
     if ((pressed == 0) || !unlocked) {
         return;
     }
@@ -136,13 +141,19 @@ void on_player1_input(bool debug_held, uint16_t buttons) {
     for (size_t i = 0; i < kCheatCount; i++) {
         const CheatSettings& cheat = current.cheats[i];
         if (cheat.enabled && ((pressed & direction_button(cheat.direction)) != 0)) {
-            requests[i] = true;
+            requests[player][i] = true;
         }
     }
 }
 
-bool take_request(Cheat cheat) {
-    return requests[size_t(cheat)].exchange(false);
+bool take_request(int player, Cheat cheat) {
+    if (player < 0 || player >= kPlayerCount || size_t(cheat) >= kCheatCount) return false;
+    const bool pending = requests[player][size_t(cheat)].exchange(false);
+    return pending && unlocked && settings()[cheat].enabled;
+}
+
+void reset_requests() {
+    for (auto& player : requests) for (auto& request : player) request = false;
 }
 
 bool two_players_active() {

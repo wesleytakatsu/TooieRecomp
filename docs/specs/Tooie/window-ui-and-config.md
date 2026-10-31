@@ -234,24 +234,31 @@ that change the game's state directly.
 - **Debug Button**: a `recompinput` input (`GameInput::DEBUG`, patch `recompfrontend-debug-input`) listed with the
   other controls and bound like them; defaults R3 on a controller and T on the keyboard (`src/game/config.cpp`). It never
   reaches the N64 controller, but a physical button bound to it keeps its other bindings (R3 is also N64 L by default).
-  `recompinput::profiles::get_game_input_held` reads it with the same profiles as player 1's N64 input.
+  `recompinput::profiles::get_game_input_held` reads it with the issuing player's N64 input profile. Physical R3 is also
+  accepted directly for the selector and Fly/Blaster shortcuts, including profiles without a Debug Button binding.
 - **Cheats** (below Warp after unlocking): one line per cheat with a switch, its name and a D-pad direction selector.
   Holding the Debug Button and pressing that direction triggers the cheat once per press, only while the tab is
   unlocked in this session and the cheat is switched on (`tooie_dev_cheats`, `src/game/tooie_dev_cheats.cpp`; chord,
   request queue, allowed states and settings tested by `tests/tooie_dev_cheats_test.cpp`). The input callback in
-  `src/main/main.cpp` detects the chord for player 1; a hook on the per-player update (`0x800991B0`) carries out the
-  request on player 1's next gameplay frame. It is not the `yaw_update` hook because the game skips `yaw_update` in the
-  Breegull Blaster. A request in a state the cheat does not allow is dropped with
-  `[tooie-cheat] <cheat> ignored (transformation 0x.., state 0x..)` on stderr.
-  - **Fly** (default D-pad up): puts player 1 in the launch state a flight pad uses (`0x23`), and the game goes on to
+  `src/main/main.cpp` detects the chord separately for J1/J2; the per-player update (`0x800991B0`) applies each request
+  to its owner's `PlayerState` through `tooie_dev_cheats_hook.cpp`. Settings/unlock are shared; button-edge history,
+  pending actions and Blaster exit cleanup are per player. Simultaneous shortcuts do not consume each other's requests.
+  The character selector takes input priority. New maps/session reset discard pending actions/cleanup; held-button
+  history is retained until release so resetting does not replay the chord. Settings changes discard queued requests,
+  and execution rechecks unlock/enable. A Blaster exit already in progress still finishes its model cleanup after the
+  cheat is disabled. Requests during loading, Warp or a pending map transition are dropped.
+  This uses the per-player update because the game skips `yaw_update` in the Blaster. Disallowed states are logged as
+  `[tooie-cheat] player=<1|2> <cheat> ignored (transformation 0x.., state 0x..)` on stderr.
+  - **Fly** (default D-pad up): puts the issuing player in the launch state a flight pad uses (`0x23`), and the game goes on to
     flying by itself. Allowed only for Banjo and Kazooie (transformation `0x1`) idle or walking (`0x1`, `0x2`, `0x4`).
-    Validated by the user on Windows (2026-10-30).
+    J1 validated by the user on Windows (2026-10-30); J2 accepted by the user on Windows (2026-10-31), with host routing tests.
   - **Breegull Blaster** (default D-pad right): switches the first-person Blaster on or off. On: the game's enter state
     (`0xC8`) from Banjo and Kazooie idle or walking. Off: the game's exit state (`0xC9`) from the Blaster's idle or
     movement states (`0xCA`, `0xCC`, `0xCE`, `0xD1`); once the exit has restored transformation `0x1`, the hook removes
     the Blaster's second model and reloads the model of the current transformation, because the game normally leaves
     the Blaster only through a map change, which builds the player again. The Warp does not step while the Blaster is
-    on (it runs from `yaw_update`). Validated by the user on Windows (2026-10-30).
+    on (it runs from `yaw_update`). The exit cleanup removes/reloads only the issuing player's models. J1 validated by
+    the user on Windows (2026-10-30); J2 accepted by the user on Windows (2026-10-31), with host routing/cleanup tests.
 - **Per-player transformation selector** (after Dev Mode unlock): the **Character selection** section contains an
   **Enable character selection (R3 + D-pad down)** toggle (default on, persisted as `character_menu`) and
   **Open for Player 1/2** buttons. These enable the selector, close ESC and queue opening for the selected active
@@ -275,6 +282,9 @@ that change the game's state directly.
     player's native transition data is captured and selected during the next player allocation/setup. Native changes
     and reversions remain authoritative; the selector does not continuously reapply a previous selection.
     Humba's native spell range is unchanged. The selected form is session state; only the menu enable switch is saved.
+    Combined normal/Dragon selections that retain primary model `0x607` explicitly refresh the owner's auxiliary
+    variant through the native selector, since the primary-model setter skips same-ID reloads. This runs only on
+    menu confirmation; it does not reload the other player or continuously reapply the choice.
   - New maps/session reset discard open menus and old confirmations. Requests during loading are dropped. Native
     multiplayer and attract mode do not activate the selector. `TOOIE_TEST_PLAYER_FORMS=0` disables the new integration;
     `TOOIE_DIAG_PLAYER_FORMS=1` enables allocation/selection/transition events on stderr (default OFF).

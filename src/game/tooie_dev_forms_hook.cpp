@@ -1,6 +1,7 @@
 #include "tooie_dev_forms_hook.h"
 #include "tooie_dev_forms.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_dev_cheats_hook.h"
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
@@ -16,6 +17,8 @@ void func_8009E9D8(uint8_t*, recomp_context*);
 void func_8009EB00(uint8_t*, recomp_context*); // transition duration in f12, read by Goliath's native entry
 void func_800A3410(uint8_t*, recomp_context*);
 void func_80092778(uint8_t*, recomp_context*);
+void func_80092B80(uint8_t*, recomp_context*); // current primary model ID
+void func_80093FD4(uint8_t*, recomp_context*); // select/install the owner's auxiliary model variant
 void func_8009359C(uint8_t*, recomp_context*);
 void _badata_entrypoint_34(uint8_t*, recomp_context*);
 void _badata_entrypoint_5(uint8_t*, recomp_context*);
@@ -143,7 +146,21 @@ void update_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self) {
         local.r5 = 0;
         func_8009359C(rdram, &local);
         local = call_context(ctx, self);
+        func_80092B80(rdram, &local);
+        const uint32_t previous_model = uint32_t(local.r2);
+        local = call_context(ctx, self);
         func_80092778(rdram, &local);
+        if (target.id == 1 && previous_model == 0x607) {
+            local = call_context(ctx, self);
+            func_80092B80(rdram, &local);
+            if (uint32_t(local.r2) == previous_model) {
+                // Normal/Dragon share primary 607. Its native setter returns early on the same ID,
+                // skipping this auxiliary selection. Refresh through the native API in the owner's scope.
+                local = call_context(ctx, self);
+                local.r5 = previous_model;
+                func_80093FD4(rdram, &local);
+            }
+        }
         // Same base animation refresh as the native transformation handler.
         local = call_context(ctx, self);
         local.r5 = ADD32(local.r29, 0x60);
@@ -227,6 +244,7 @@ extern "C" void tooie_forms_on_teardown(uint8_t* rdram, recomp_context* ctx) {
     }
 }
 extern "C" void tooie_forms_on_reset(uint8_t* rdram, recomp_context* ctx) {
+    tooie_dev_cheats::reset_gameplay();
     saved = {};
     enabled_map = false;
     tooie_dev_forms::menus().reset();

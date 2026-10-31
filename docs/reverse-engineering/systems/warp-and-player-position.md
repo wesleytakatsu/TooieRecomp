@@ -101,6 +101,34 @@ becomes `0x1`) and idle `0x1`. The handlers are in overlay `bsfirstp`: `func_808
 | The game leaves the Blaster only through a map change | `STRONG_INFERENCE` (every exit seen; the exit handlers do not undo the model setup) |
 | Which of `0xCA`, `0xCC`, `0xCE`, `0xD1` is idle, walking or shooting, and whether the pose flags set by `func_80807DD4_bsfirstp` matter after the reload | `UNKNOWN` |
 
+## Dev Mode cheat ownership
+
+`CORRECTED/SUPERSEDED`: the `a2e43c7` implementation was J1-only. Static inspection proved three host restrictions:
+input filtered `controller == 0`, chord/requests had no owner, and the execution block returned for `self != slot 0`.
+Its single Blaster cleanup bool was likewise J1-only. These restrictions explained the user's J2 report; they did not
+establish a native engine limitation.
+
+Current integration:
+
+- `on_player_input(player, ...)` keeps independent edge histories and atomic request flags for J1/J2. Unlock and
+  enable/direction settings remain shared. `take_request(player, cheat)` consumes only that owner's action and rechecks
+  unlock/enable. Physical R3 and the mapped Debug Button work for both; physical D-pad reads do not change N64 bindings.
+- The existing per-player hook calls `tooie_dev_cheats::update_player` inside the owner's transformation scope.
+  This executor lives in `tooie_dev_cheats_hook.cpp` so the guest routing and cleanup can be exercised directly by the
+  host test. It resolves `self` against slots 0/1 in `D_80135490` and uses that actual pointer for state/model calls.
+- Blaster cleanup is per slot: wait for that owner's native exit to restore form 1, remove its secondary model, then
+  reload its primary model. Other forms cancel stale cleanup. Finishing an exit is allowed after disabling new cheats.
+- Player creation and session reset call `reset_gameplay`, clearing pending actions and cleanup. Chord history remains
+  input-owned until button release, avoiding a held chord being replayed after reset. The selector retains input priority.
+- Gameplay/Warp/map-transition gates and original allowed form/state rules still apply. Global actor focus is unchanged.
+  Logs identify `player=1` or `player=2`.
+
+`PROVEN` in the host harness: actual executor routing targets J2 without changing J1, supports simultaneous Fly/Blaster
+requests and independent exit cleanup, honors disabled/locked gates, rejects invalid owners and disallowed forms, and
+discards loading/blocked/reset actions. Native state/model calls are stand-ins. The user confirmed the corrected J2
+shortcuts work on Windows (2026-10-31); exhaustive state/map combinations and Linux validation remain `NOT_RUN`.
+Earlier J1 gameplay acceptance remains as recorded above.
+
 ## Extra player and split screen
 
 Current model from the experimental split-screen investigation. Runtime observations below are reported by the prior

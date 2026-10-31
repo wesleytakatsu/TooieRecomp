@@ -69,6 +69,20 @@ dividida estão em `docs/future/`. Contratos estáveis:
   a duração zero relatada; contagem/expiração continuam nativas. Usuário aprovou a revisão no Windows (2026-10-31).
   Persistência/alcance e expiração completa ainda aguardam teste específico; dois Goliaths compartilham o timer nativo.
   RE: [[reverse-engineering/systems/player-transformations]].
+- Dragão no J2: usuário relatou que Banjo/Dragon Kazooie mantém aparência normal com dois jogadores. Investigação
+  estática encontrou retorno antecipado na recarga quando o modelo base não muda; o teste host anterior cobria o getter
+  isolado, substituindo a recarga nativa. Usuário confirmou que Bee → Banjo/Dragon Kazooie funciona no J2: trocar o modelo base
+  permite exibir Dragão. Correção implementada: quando a seleção mantém modelo base `0x607`, atualiza o auxiliar
+  pelo seletor nativo no escopo do próprio jogador. Regressão com cache/seletor nativos reais falha sem a correção e
+  passa com ela; assets e instalação são simulados. Build Windows e 18/18 testes passaram; usuário aprovou a correção
+  no Windows (2026-10-31). Isso não substitui a bateria exaustiva de formas/cenários.
+  Ver [[reverse-engineering/systems/player-transformations]].
+- Atalhos Fly/Blaster no J2 validados pelo usuário no Windows (2026-10-31): entrada, histórico, pedidos e recarga do Blaster separados por
+  jogador; opções/desbloqueio compartilhados. R3 físico ou Debug Button + direção configurada atua no próprio personagem.
+  Mantém regras originais de forma/estado e prioridade do seletor; mapa/sessão descartam ações e recargas antigas.
+  Executor real com memória guest e funções nativas simuladas passou; build Windows e 18/18 testes passaram.
+  Aprovação em jogo não substitui a bateria exaustiva de combinações/cenários; Linux `NOT_RUN`.
+  Ver [[reverse-engineering/systems/warp-and-player-position]].
 - Plano futuro (proposto, não implementado): cooperativo com dois processos, cada um com um jogador, vendo-se no mesmo
   mapa e compartilhando progresso. Ver [[future/two-process-coop]].
 

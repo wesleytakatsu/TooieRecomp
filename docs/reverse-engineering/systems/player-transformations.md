@@ -106,3 +106,49 @@ publication and session reset. It does not execute native movement/animations or
 validation is `NOT_RUN`. The user confirmed general selection works and approved the revised Windows build;
 their screenshot proved the former help-label overlap. Header, rows and footer now have explicit widths, heights and
 non-wrapping text. This approval does not establish exhaustive form, map-range or timer-expiry compatibility.
+
+## Dragon appearance after an in-place selection
+
+Reported on Windows after `a2e43c7`: with two story players, selecting Banjo/Dragon Kazooie for J2 leaves its normal
+appearance while J1 is Banjo/Kazooie. The report establishes the visual failure, not a shared-state overwrite.
+
+`PROVEN` statically:
+
+- The menu writes `saved[index].dragon` before calling `func_80092778(self)`. The getter hook selects this per-player
+  optional value inside update/model/draw scopes. Both combined variants retain native form ID 1.
+- `func_80092778` asks `bapreload_entrypoint_0` for the model pair, then calls `func_80092EC8` and `func_8009312C`.
+  The ordinary story path chooses its primary ID from the form table; Dragon is tested there only for solo form B.
+- At `0x80092EE4`, `func_80092EC8` returns when the requested primary ID equals `PlayerState+0x50 -> +0xC`.
+  This skips `func_80093FD4(self, model)` at `0x80092F44`. For primary ID `0x607`, that function selects the
+  Dragon-sensitive auxiliary model through `func_80093F30`, then installs it with `func_800941C8`.
+- This auxiliary model selection reads the Dragon getter, but the loaded and pending auxiliary IDs are per-player
+  fields at `PlayerState+0x50 -> +0x10C/+0x110`. `func_80094070`, called during drawing, can also request a changed
+  auxiliary ID. Therefore the early return alone does not prove that the appearance stays wrong indefinitely.
+- Before this fix, the host test replaced `func_80092778` with an owner-recording stand-in. Its Dragon isolation
+  assertion covered getter state, not the model cache, auxiliary selection or visual appearance.
+
+`STRONG_INFERENCE`: the selector's refresh is incomplete when changing the Dragon variant without changing the
+combined form/model ID. A cached auxiliary model or its later refresh path is the leading discriminator. Exact runtime
+failure location remains `UNKNOWN`; a global flag overwrite or model-memory alias has not been established.
+
+`PROVEN` by the user's Windows test (2026-10-31): J2 Bee -> Banjo/Dragon Kazooie displays Dragon, whereas the reported
+direct selection from normal Banjo/Kazooie does not. Changing the base form makes the requested appearance work.
+This strengthens the refresh/cache explanation and shows that J2 can display the variant. It does not by itself
+identify which native refresh step fails or prove every simultaneous normal/Dragon combination.
+
+The selector now compares primary IDs before/after native reload using `func_80092B80(self)`. When a combined selection
+retains primary `0x607`, it calls native `func_80093FD4(self, 0x607)` inside the selecting player's scope. This executes
+the auxiliary selection skipped by the primary setter; native `func_800941C8` remains responsible for installation,
+including the existing private-lighting-vertices hook. No primary state is force-cleared. The save flag, Humba range
+and original transformation flows remain unchanged. Refresh occurs only on menu confirmation.
+
+`PROVEN` in the host regression: linking `RecompiledFuncs` and executing actual `func_80092778`, `func_80092EC8`,
+`func_80093FD4` and `func_80093F30` reproduces the old failure on direct normal -> Dragon selection. The test fails at
+the expected auxiliary-ID assertion without the fix, and passes with it. Model pairs/LOD tables are synthetic;
+asset allocation/installation and unrelated lifecycle routines remain stand-ins. Direct normal -> Dragon -> normal
+works for both player slots in this harness, preserving the other slot and the shared save flag. Both Dragon at once,
+returning J1 to normal while J2 remains Dragon, and absence of per-frame reinstallation are also covered.
+
+The user approved the corrected Windows build on 2026-10-31. This closes the reported visual regression and prior
+cache-coverage gap, without establishing exhaustive form/map or later-LOD compatibility. Linux validation remains
+`NOT_RUN`.

@@ -1441,6 +1441,9 @@ int main(int argc, char** argv) {
                                     y != nullptr ? *y : 0.0f,
                                     buttons != nullptr ? *buttons : 0);
         bool forms_input = false;
+        bool debug_held = !recompinput::game_input_disabled() &&
+            recompinput::profiles::get_game_input_held(controller, recompinput::GameInput::DEBUG);
+        uint16_t shortcut_buttons = buttons != nullptr ? *buttons : 0;
         if (buttons != nullptr && x != nullptr && y != nullptr) {
             const double time = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
             const int physical_player = recompinput::players::is_single_player_mode() ||
@@ -1451,15 +1454,16 @@ int main(int argc, char** argv) {
                     recompinput::InputField::controller_digital(button));
             };
             const bool r3 = physical_button(SDL_CONTROLLER_BUTTON_RIGHTSTICK);
-            uint16_t form_buttons = *buttons;
-            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) form_buttons |= 0x0400;
-            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_UP)) form_buttons |= 0x0800;
+            debug_held = debug_held || r3;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) shortcut_buttons |= 0x0400;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_UP)) shortcut_buttons |= 0x0800;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) shortcut_buttons |= 0x0200;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) shortcut_buttons |= 0x0100;
             forms_input = tooie_dev_forms::menus().input(controller, tooie_dev_cheats::is_unlocked(),
-                r3 || recompinput::profiles::get_game_input_held(controller, recompinput::GameInput::DEBUG), form_buttons, *x, *y, time);
+                debug_held, shortcut_buttons, *x, *y, time);
         }
-        if ((controller == 0) && (buttons != nullptr)) {
-            tooie_dev_cheats::on_player1_input(
-                !forms_input && recompinput::profiles::get_game_input_held(0, recompinput::GameInput::DEBUG), *buttons);
+        if (buttons != nullptr) {
+            tooie_dev_cheats::on_player_input(controller, !forms_input && debug_held, shortcut_buttons);
         }
         if (forms_input) { *buttons = 0; *x = 0; *y = 0; }
         return ok;
