@@ -84,7 +84,7 @@ void publish() {
 struct Selection {
     std::array<const Rule*, max_layers> layers{};
     size_t count = 0;
-    std::string id;
+    const std::string* id = nullptr;
 };
 Selection select(const Catalog& catalog, int sequence, uint32_t channels) {
     // First entry in the Mods list wins, matching the texture pack order.
@@ -92,7 +92,7 @@ Selection select(const Catalog& catalog, int sequence, uint32_t channels) {
         for (const auto& rule : entry.pack->rules) {
             if (rule.sequence != sequence || (channels & rule.mask) != rule.value) continue;
             Selection result;
-            result.id = entry.id;
+            result.id = &entry.id;
             if (!rule.native_mask) result.layers[result.count++] = &rule;
             else for (const auto& layer : entry.pack->rules)
                 if (layer.sequence == sequence) result.layers[result.count++] = &layer;
@@ -183,6 +183,32 @@ struct PendingProof {
     unsigned native_min = 0, native_max = 0;
 };
 std::array<std::array<PendingProof, max_layers>, slot_count> pending_proofs;
+
+template<bool RecordProof>
+size_t mix_layer(Voice::Layer& layer, float* stereo, size_t frames, float wanted, float gain,
+    float weight, std::array<float, 1024 * 2>& pcm) {
+    size_t positive = 0;
+    const float clip_gain = layer.stream.clip ? layer.stream.clip->gain : 0;
+    for (size_t offset = 0; offset < frames;) {
+        size_t n = std::min<size_t>(1024, frames - offset);
+        layer.stream.read(pcm.data(), n);
+        for (size_t i = 0; i < n; ++i) {
+            gain += (wanted - gain) * (1.0f / 240.0f);
+            // Follow the native envelope, with a 5 ms dezipper.
+            layer.weight += (weight - layer.weight) * (1.0f / 240.0f);
+            if (weight == 0 && layer.weight < 0.000001f) layer.weight = 0;
+            for (unsigned c = 0; c < 2; ++c) {
+                float contribution = pcm[i * 2 + c] * clip_gain * layer.weight * gain;
+                stereo[(offset + i) * 2 + c] += contribution;
+                if constexpr (RecordProof) {
+                    if (contribution != 0) ++positive;
+                }
+            }
+        }
+        offset += n;
+    }
+    return positive;
+}
 }
 
 void initialize_diagnostics() {
@@ -201,6 +227,7 @@ void initialize_diagnostics() {
 void note_queue_result(int result, bool undecimated) {
     if (!playback_log) return;
     std::lock_guard lock(log_mutex);
+    bool wrote = false;
     for (unsigned slot = 0; slot < slot_count; ++slot) {
         auto& voice = voices[slot];
         for (size_t index = 0; index < max_layers; ++index) {
@@ -209,6 +236,7 @@ void note_queue_result(int result, bool undecimated) {
             auto& layer = voice.layers[index];
             if (result != 0) {
                 std::fprintf(playback_log, "QUEUE_ERROR slot=%u sequence=%d result=%d\n", slot, voice.sequence, result);
+                wrote = true;
             }
             // Only full buffers have verified per-source contribution counts.
             else if (undecimated && layer.stream.clip) {
@@ -226,12 +254,13 @@ void note_queue_result(int result, bool undecimated) {
                         voice.gain, pending.weight, pending.native_min, pending.native_max);
                     layer.announced = true; layer.logged_channels = pending.channels;
                     layer.logged_weight = pending.weight; layer.reported_samples = layer.positive_samples;
+                    wrote = true;
                 }
             }
             pending.available = false;
         }
     }
-    std::fflush(playback_log);
+    if (wrote) std::fflush(playback_log);
 }
 
 void note_native_gain(unsigned slot, int sequence, int16_t posted, bool replaced) {
@@ -369,7 +398,8 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
     { std::lock_guard lock(state_mutex); snapshot = states; }
     std::array<float, 1024 * 2> pcm{};
     bool mixed = false;
-    pending_proofs = {};
+    const bool record_proof = playback_log != nullptr;
+    if (record_proof) pending_proofs = {};
     for (unsigned slot = 0; slot < slot_count; ++slot) {
         auto& voice = voices[slot]; const auto& state = snapshot[slot];
         auto selected = select(*catalog, state.sequence, state.channels);
@@ -378,7 +408,11 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
             voice.elapsed = 0; voice.gain = 0;
             for (auto& layer : voice.layers) { layer.stream.clear(); layer.weight = 0; }
         }
-        voice.sequence = state.sequence; voice.serial = state.serial; voice.mod_id = selected.id;
+        voice.sequence = state.sequence; voice.serial = state.serial;
+        if (record_proof) {
+            if (selected.id) voice.mod_id = *selected.id;
+            else voice.mod_id.clear();
+        }
         const float wanted = std::clamp(state.authored / 32767.0f, 0.0f, 1.0f) *
             std::clamp(bgm_percent, 0, 100) / 100.0f * std::clamp(main_volume, 0.0f, 1.0f) * 0.5f;
         // The native sequence clock runs even without an enabled mapping. This
@@ -396,7 +430,8 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
                     const unsigned q = state.native.gain[channel];
                     // 80029DCC: 255 bypasses multiplication, otherwise q/256.
                     weight += q == 255 ? 1.0f : q / 256.0f;
-                    low = std::min(low, q); high = std::max(high, q); ++count;
+                    if (record_proof) { low = std::min(low, q); high = std::max(high, q); }
+                    ++count;
                 }
                 if (count) weight /= count;
             }
@@ -405,32 +440,19 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
                 layer.stream.open(clip, voice.elapsed);
                 layer.native_mask = rule ? rule->native_mask : 0;
                 layer.weight = weight;
-                layer.announced = false; layer.logged_weight = -1;
-                layer.positive_samples = layer.reported_samples = 0;
+                if (record_proof) {
+                    layer.announced = false; layer.logged_weight = -1;
+                    layer.positive_samples = layer.reported_samples = 0;
+                }
             }
             if (!clip) continue;
-            const uint64_t source = layer.stream.position;
-            size_t positive = 0;
-            float gain = voice.gain;
-            for (size_t offset = 0; offset < frames;) {
-                size_t n = std::min<size_t>(1024, frames - offset);
-                layer.stream.read(pcm.data(), n);
-                for (size_t i = 0; i < n; ++i) {
-                    gain += (wanted - gain) * (1.0f / 240.0f);
-                    // 5 ms dezipper follows native gain observations. It does
-                    // not replace the game's envelope with a fixed crossfade.
-                    layer.weight += (weight - layer.weight) * (1.0f / 240.0f);
-                    if (weight == 0 && layer.weight < 0.000001f) layer.weight = 0;
-                    for (unsigned c = 0; c < 2; ++c) {
-                        float contribution = pcm[i * 2 + c] * clip->gain * layer.weight * gain;
-                        stereo[(offset + i) * 2 + c] += contribution;
-                        if (contribution != 0) ++positive;
-                    }
-                }
-                offset += n;
+            if (record_proof) {
+                const uint64_t source = layer.stream.position;
+                const size_t positive = mix_layer<true>(layer, stereo, frames, wanted, voice.gain, weight, pcm);
+                if (positive) pending_proofs[slot][index] = {true, state.channels, frames, positive,
+                    voice.elapsed, source, layer.weight, low, high};
             }
-            if (positive) pending_proofs[slot][index] = {true, state.channels, frames, positive,
-                voice.elapsed, source, layer.weight, low, high};
+            else mix_layer<false>(layer, stereo, frames, wanted, voice.gain, weight, pcm);
             mixed = true;
         }
         // Update the master ramp exactly once, independently of layer count.

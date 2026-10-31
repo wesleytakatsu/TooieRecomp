@@ -53,6 +53,10 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
   perceptiva positiva, sem medição acústica ou novo log analisado. Testes de host usam aceitação de fila simulada.
   Com `TOOIE_AUDIO_MOD_LOG=<arquivo>`, `PLAY` exige MP3 não nulo + `SDL_QueueAudio == 0`; cada camada registra
   `timeline_frame`, `source_frame`, ganho e extremos dos canais. Isso prova contribuição na fila, não saída física.
+  Após revisão de custo, contagem por amostra/estatísticas do mod só executam com log aberto. Telemetria geral de
+  syscalls/áudio e scan extra de pico/não zeros exigem `TOOIE_DIAG`; divisor medido exige `TOOIE_DIAG_TIMING`.
+  Launcher privado `Jogar.cmd` (e alias `Iniciar teste.cmd`) sem logs; `Diagnosticar audio.cmd` ativa prova por opção.
+  PCM de host idêntico com prova ON/OFF; launchers verificados com processo de sondagem, sem abrir o jogo.
   Instalação/refresh só na tela inicial; alternância de pacote já instalado pode ser feita pelo menu ESC.
   Sem validação completa de campanha, paridade acústica ou instalação pela UI. MP3s/ZIP continuam privados.
   Branch `feat/dev-mode`, worktree separado `E:\projetos\TooieRecomp-audio`; nenhuma execução nova do jogo pelo agente.
@@ -84,5 +88,5 @@ concluídos (multijogador, idiomas) e evidências ficam no histórico do git (`g
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: validar o protótipo de áudio 0.2.0 no PC Linux do usuário com o mesmo pacote privado.
+`NEXT_SINGLE_ACTION`: usuário validar gameplay normal no Windows com `Jogar.cmd` após a limpeza de telemetria.
 PR continua aguardando o usuário encerrar o modo debug; validação Linux permanece pendente.

@@ -3239,6 +3239,7 @@ void note_13b70(uint32_t ra, float y, float x, float mag, float angle) {
 
 void note_syscall_dispatch(uint32_t ovl, uint32_t ep) {
     ensure_init();
+    if (!g_enabled.load(std::memory_order_relaxed)) return;
     g_syscall_dispatch.fetch_add(1, std::memory_order_relaxed);
     g_last_ovl.store(ovl, std::memory_order_relaxed);
     g_last_ep.store(ep, std::memory_order_relaxed);
@@ -3254,6 +3255,7 @@ void note_syscall_dispatch(uint32_t ovl, uint32_t ep) {
 
 void note_syscall_return(uint32_t ovl, uint32_t ep) {
     ensure_init();
+    if (!g_enabled.load(std::memory_order_relaxed)) return;
     (void)ovl;
     (void)ep;
     g_syscall_return.fetch_add(1, std::memory_order_relaxed);
@@ -3265,17 +3267,20 @@ void note_syscall_return(uint32_t ovl, uint32_t ep) {
 
 void note_sched_ack() {
     ensure_init();
+    if (!g_enabled.load(std::memory_order_relaxed)) return;
     g_sched_ack.fetch_add(1, std::memory_order_relaxed);
 }
 
 void note_rsp_audtask() {
     ensure_init();
+    if (!g_enabled.load(std::memory_order_relaxed)) return;
     g_rsp_aud.fetch_add(1, std::memory_order_relaxed);
 }
 
 void note_queue_samples(size_t sample_count, uint32_t queued_bytes_after,
                         int16_t peak_abs, size_t nonzero) {
     ensure_init();
+    if (!g_enabled.load(std::memory_order_relaxed)) return;
     g_queue_calls.fetch_add(1, std::memory_order_relaxed);
     g_queue_samples.fetch_add(sample_count, std::memory_order_relaxed);
     g_queue_nonzero.fetch_add(nonzero, std::memory_order_relaxed);
@@ -3289,6 +3294,7 @@ void note_queue_samples(size_t sample_count, uint32_t queued_bytes_after,
 
 void note_audio_device(uint32_t device_id, const char* driver, const char* device_name) {
     ensure_init();
+    if (!g_enabled.load(std::memory_order_relaxed)) return;
     g_audio_device.store(device_id, std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(g_name_mu);
     if (driver) {
@@ -3318,10 +3324,10 @@ void note_guest_vi() {
 
 void note_game_logic(int32_t divisor) {
     ensure_init();
-    if (divisor > 0) {
-        g_frame_divisor.store(divisor, std::memory_order_relaxed);
-    }
     if (g_timing_enabled.load(std::memory_order_relaxed)) {
+        if (divisor > 0) {
+            g_frame_divisor.store(divisor, std::memory_order_relaxed);
+        }
         g_game_logic.fetch_add(1, std::memory_order_relaxed);
     }
 }

@@ -33,8 +33,21 @@ int main(int argc, char** argv) {
     using namespace tooie_audio_mod;
     std::string error;
     initialize_diagnostics();
+    const bool check_log = argc >= 3 && std::string(argv[2]) != "-";
+    std::ofstream pcm_capture;
+    if (argc >= 5) {
+        pcm_capture.open(std::filesystem::u8path(argv[4]), std::ios::binary);
+        expect(bool(pcm_capture), "PCM capture opened");
+    }
+    auto capture_pcm = [&](const std::vector<float>& samples) {
+        if (pcm_capture.is_open()) {
+            pcm_capture.write(reinterpret_cast<const char*>(samples.data()),
+                static_cast<std::streamsize>(samples.size() * sizeof(float)));
+            expect(bool(pcm_capture), "PCM capture written");
+        }
+    };
     auto log_text = [&]() {
-        if (argc < 3) return std::string{};
+        if (!check_log) return std::string{};
         std::ifstream log(argv[2]);
         return std::string(std::istreambuf_iterator<char>(log), {});
     };
@@ -69,7 +82,8 @@ int main(int argc, char** argv) {
         std::fill(pcm.begin(), pcm.end(), 0); update(0, 4, 32767, ~0u, true);
         mix(pcm.data(), pcm.size()/2, 1, 100); float loud = energy(pcm);
         expect(loud > 0, "MP3 decoded and mixed");
-        if (argc >= 3) {
+        capture_pcm(pcm);
+        if (check_log) {
             expect(log_text().find("PACK_ENABLED") != std::string::npos && log_text().find("PLAY mod=") == std::string::npos, "enabled alone is not playback proof");
             note_queue_result(-1);
             expect(log_text().find("QUEUE_ERROR") != std::string::npos && log_text().find("PLAY mod=") == std::string::npos, "failed queue cannot report PLAY");
@@ -161,6 +175,7 @@ int main(int argc, char** argv) {
         enable("layers", 0, layered);
         expect(replaces(50, 0x63FF) && replaces(50, 0x1C00) && !replaces(50, 0x7FFF), "only observed arrangements activate layered family");
         const auto first = render(480);
+        capture_pcm(first);
         for (size_t i = 0; i < first.size(); ++i)
             if (std::abs(first[i] - phase_reference[i] * 0.75f) > 0.00002f) { expect(false, "enable at 1:20 seeks exact decoded loop phase"); break; }
         note_queue_result(0);
@@ -172,6 +187,7 @@ int main(int argc, char** argv) {
                 native.gain[c] = static_cast<uint8_t>((0x63FFu & (1u << c)) ? gains.first : gains.second);
             update(0, 50, 32767, gains.second ? 0x1C00u : 0x63FFu, false, native);
             auto actual = render(480);
+            capture_pcm(actual);
             float dry_target = gains.first == 255 ? 1 : gains.first / 256.0f;
             float wet_target = gains.second == 255 ? 1 : gains.second / 256.0f;
             bool agrees = true;
@@ -187,7 +203,7 @@ int main(int argc, char** argv) {
             expect(agrees, "native envelope and reversal preserve both decoded phases and current gains");
             reference_offset += actual.size(); note_queue_result(0);
         }
-        if (argc >= 3) expect(log_text().find("timeline_frame=3840000 source_frame=19200") != std::string::npos &&
+        if (check_log) expect(log_text().find("timeline_frame=3840000 source_frame=19200") != std::string::npos &&
             log_text().find("layer_channels=0x1C00") != std::string::npos, "accepted-buffer logs expose shared clock and underwater contribution");
         disable("layers");
         if (argc >= 4) {
@@ -207,9 +223,11 @@ int main(int argc, char** argv) {
                 render(80 * 48000); note_queue_result(0);
                 for (unsigned c = 0; c < 16; ++c) native.gain[c] = 128;
                 update(0, 50, 32767, 0x1C00, false, native);
-                expect(energy(render(4800)) > 0, "real surface and underwater MP3s mix at shared 1:20 phase");
+                auto actual = render(4800);
+                expect(energy(actual) > 0, "real surface and underwater MP3s mix at shared 1:20 phase");
+                capture_pcm(actual);
                 note_queue_result(0);
-                if (argc >= 3) expect(log_text().find("source_frame=3840000") != std::string::npos &&
+                if (check_log) expect(log_text().find("source_frame=3840000") != std::string::npos &&
                     log_text().find("audio/09. Spiral Mountain (Underwater).mp3") != std::string::npos,
                     "real pack underwater queue proof includes 1:20 source position");
                 disable("real-pack-fixture");
@@ -218,6 +236,10 @@ int main(int argc, char** argv) {
         std::printf("MP3 playback, loops, retriggers, native layers at 1:20, reversals, selectors and gains tested.\n");
     }
     else std::printf("SKIP MP3 playback fixture (pass a 48000 Hz stereo MP3); manifest and passthrough checks ran.\n");
+    if (pcm_capture.is_open()) {
+        pcm_capture.flush();
+        expect(bool(pcm_capture), "PCM capture flushed");
+    }
     std::printf("audio mod failures=%d\n", failures);
     return failures ? 1 : 0;
 }

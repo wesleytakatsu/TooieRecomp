@@ -704,23 +704,26 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
         cap_post.sdl_queue_result = sdl_queue_result;
         tooie_audio_capture::commit(cap_post);
     }
-    int16_t peak = 0;
-    size_t nonzero = 0;
-    for (size_t i = 0; i < sample_count; ++i) {
-        int16_t s = audio_data[i];
-        if (s != 0) {
-            ++nonzero;
-            int16_t a = s < 0 ? static_cast<int16_t>(-s) : s;
-            if (a > peak) {
-                peak = a;
+    // Peak/nonzero statistics are development telemetry, not playback work.
+    if (tooie_diag::enabled()) {
+        int16_t peak = 0;
+        size_t nonzero = 0;
+        for (size_t i = 0; i < sample_count; ++i) {
+            int16_t s = audio_data[i];
+            if (s != 0) {
+                ++nonzero;
+                int16_t a = s < 0 ? static_cast<int16_t>(-s) : s;
+                if (a > peak) {
+                    peak = a;
+                }
             }
         }
+        tooie_diag::note_queue_samples(
+            sample_count,
+            static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device)),
+            peak,
+            nonzero);
     }
-    tooie_diag::note_queue_samples(
-        sample_count,
-        static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device)),
-        peak,
-        nonzero);
 }
 
 size_t get_frames_remaining() {

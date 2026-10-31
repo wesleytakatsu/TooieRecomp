@@ -143,7 +143,10 @@ weight changes and `PLAYING` reports subsequent accepted samples. `MUTE_EVENT`/`
 after the original CSP dispatcher returns. `QUEUE_ERROR` never counts as successful playback. This is queue-level
 evidence, not a measurement of the physical audio device. Latency-decimated blocks are excluded from proof records
 because the pre-decimation per-source counts do not describe the accepted subset. Diagnostic I/O is off when the
-environment variable is absent.
+environment variable is absent. Without an open proof log, the mixer uses a separately instantiated playback path
+with no per-sample nonzero counting, channel-group minimum/maximum statistics, proof-buffer resets or mod-ID string
+copies. The shared musical clock, native channel weights and both synchronized streams remain playback work.
+With proof logging enabled, buffers are flushed only when a record is written.
 
 Host verification: `tooie_audio_mod_test <48000-Hz-stereo.mp3>`, `tooie_bgm_hooks_test`, `tooie_bgm_volume_test` and
 `tooie_texture_zip_mod_test`. A fixture-free invocation of the first test explicitly skips codec playback checks.
