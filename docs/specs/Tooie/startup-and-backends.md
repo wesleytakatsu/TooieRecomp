@@ -1,0 +1,166 @@
+---
+title: "Launcher startup, graphics backends and independent music"
+description: "TK64 integration, Windows startup recovery, API selection, launcher audio and opt-in graphics logs."
+status: current
+area: "specs/Tooie"
+updated: 2026-10-31
+tags: [launcher, graphics, tk64, audio, config]
+---
+
+# Launcher startup and graphics backends
+
+## Product integration and requirements
+
+The vendored `lib/rt64` contains TK64 changes from `6476b4b944e2d0a7e584fd62d977d47c651e9d96`, merged over
+TooieRecomp's existing renderer changes. The CMake target remains `rt64`; normal builds do not use sibling checkouts.
+The integrated patch and subsequent host changes are recorded in `vendor/patches-applied/ORDER.tsv`.
+SPIRV-Cross sources translate existing SPIR-V shaders; the DX11 raster ubershaders are baked during the build.
+No new prebuilt binary or game asset is vendored for this integration.
+
+| API | Requirement / scope |
+| --- | --- |
+| DirectX 12 | Compatible D3D12 device, driver and RT64 feature support; Windows. |
+| Vulkan | Compatible Vulkan device, driver and required RT64 extensions/features. |
+| DirectX 11 | Feature level 11_0 or newer; Windows. |
+| OpenGL | Desktop OpenGL 4.3 or newer. This does not provide an OpenGL 3.3 path. |
+
+TK64's new backends retain their documented limitations, including unavailable MSAA and pending hardware/long-session
+validation. Integrating a backend does not establish correctness on every GPU or driver.
+
+## Windows startup and failure recovery
+
+`src/main/tooie_startup.cpp` runs a lightweight supervisor before initializing SDL, preloading the executable or
+starting the runtime. The supervisor reads the graphics preference and starts one renderer worker at a time.
+
+An explicit preference is attempted first. Remaining candidates follow DX12, Vulkan, DX11, OpenGL, without duplicate
+entries. Automatic mode uses RT64's Vulkan-first preference under Wine and DX12-first preference otherwise.
+The first automatic attempt retains RT64's driver compatibility workarounds. A candidate can resolve to another API
+through such a workaround; the UI and diagnostic log report the API actually created.
+
+Each worker initializes the real renderer and frontend, including shader setup. Its window remains hidden until the
+launcher update runs after renderer initialization. The worker then reports readiness and becomes the visible
+launcher and subsequent game process. The supervisor remains waiting; it does not run a second game, poll per frame
+or initialize a GPU. Successful startup does not require a second complete shader compilation.
+
+Before readiness, process exit/crash or a 180-second timeout advances to the next candidate. Failed workers are
+terminated/reaped. A Windows job bounds worker lifetime to the supervisor; only the readiness handle is inherited.
+Startup failures in a managed worker do not open the runtime's blocking renderer-error dialog. When all candidates
+fail, the supervisor displays one native Windows error with attempted APIs and exit codes/timeouts.
+
+Once ready, a crash or device loss is not treated as a request to boot another game. Exit codes are propagated;
+changing the API does not restart the current application or game. Modern graphics DLLs are
+delay-loaded so their absence does not prevent reaching the supervisor. Required packaged DXC libraries remain required.
+
+The readiness handshake establishes successful renderer/frontend initialization, not an exhaustive GPU conformance
+test or proof of subsequent gameplay. Driver failures that occur later remain runtime failures.
+
+## Configuration and launcher controls
+
+The Graphics tab's `graphics_backend` preference is stored in `graphics.json` (including portable mode), using keys
+`auto`, `d3d11`, `d3d12`, `opengl`, `vulkan`. **Auto** is the default and tries the complete compatibility chain:
+DX12 -> Vulkan -> DX11 -> OpenGL, stopping at a usable backend. Wine preference and known driver rules remain applicable.
+This is a startup compatibility priority, not an FPS benchmark or a universal ranking of API performance.
+
+`startup.json` records startup metadata and remains a migration input for the previous selector:
+
+```json
+{
+  "version": 1,
+  "preference": "auto",
+  "last_successful_api": "d3d12"
+}
+```
+
+Startup reads `graphics.json`'s `graphics_backend` first, then legacy `startup.json` preference, then legacy `api_option`.
+Invalid values use automatic selection. Fallback records the effective API separately and does not overwrite an
+explicit preference. Last success is informational and never substitutes for initializing the current device.
+
+API selection is located only in **Settings -> Graphics -> Graphics API**, available before and during gameplay.
+Compact labels **Auto / DX12 / Vulkan / DX11 / OpenGL** fit the existing option row; internal configuration keys are unchanged.
+It uses the existing Graphics **Apply/Cancel** behavior: pending changes do not affect startup until applied.
+Apply saves the preference for the next application launch, without replacing the running renderer or restarting a
+game session. The option description names the API currently in use after renderer initialization; diagnostic logs also
+identify the actual API/GPU. No selector, status panel or restart button is added to the launcher artwork/menu.
+The original hidden `api_option` setting remains a legacy migration input.
+
+Normal game execution starts through the launcher's Start Game/game-mode action. A single-shot pre-start callback
+stops launcher music and records the actual backend before requesting `recomp::start_game`. The explicit
+`TOOIE_AUTO_START` / `TOOIE_LAUNCHER_MUSIC_SMOKE` test paths remain exceptions; neither is enabled normally.
+The obsolete `--launcher-music-child` and control mode are rejected. No guest process exists to generate launcher music.
+
+## Independent pause music
+
+`src/main/tooie_launcher_audio.cpp` decodes a locally imported stereo MP3 with `dr_mp3` and streams it through its own
+SDL queue. It automatically reads `<config>/launcher_audio/pause.mp3`; there is no music selection button or file
+dialog in the launcher. The file is private user
+content and is never embedded in the executable, Git, or public package. No imported file means a silent launcher.
+Invalid MP3 input is not played. Audio device failure does not prevent launcher startup. No runtime import/selection
+helper or test counter is part of the music player.
+
+Optional loop metadata is configured locally at `<config>/launcher_audio/loop.json`:
+
+```json
+{"start_frame": 384000, "end_frame": 3148422}
+```
+
+Frames refer to decoded PCM at the MP3's sample rate; the end is exclusive. Playback begins at frame zero, then repeats
+the selected region. Without loop metadata it repeats the whole recording. Invalid bounds suppress playback.
+General imports require their own authored loop points; numbers above describe the private Pause Screen recording
+prepared for the user's Windows test, not a universal MP3 preset.
+
+Master and BGM volume multiply once. Volume changes use a 5 ms ramp; stopping fades over 120 ms and drains the bounded
+queue before guest audio begins. Device shutdown has a two-second bound. Music stops on game start
+and application exit. `TOOIE_DISABLE_LAUNCHER_MUSIC=1` disables it. Neither decoder nor launcher music runs the guest.
+
+## Opt-in diagnostic logs and manual test
+
+Normal startup does not create a graphics log. For a diagnostic session:
+
+```powershell
+pwsh -NoProfile -File tools/windows/Diagnose-Graphics.ps1
+```
+
+The script runs `build-win/TooieRecompiled.exe` with its asset directory as working directory. It creates a timestamped
+folder under `build-win/graphics-diagnostics`, sets `TOOIE_GRAPHICS_LOG` for that session and clears automatic-game-start
+test flags. Previous environment values are restored afterwards. An alternate executable/output directory can be
+specified with `-Executable` / `-OutputDirectory`.
+
+`graphics.jsonl` records startup preference, candidate attempts/failures, selected backend/GPU, readiness, game start
+and exit. Each event has PID and timestamp. `selected` includes `guest_started: false`; `game_start` identifies the
+backend used when Start Game was requested. `worker-<PID>.log` contains each attempted worker's stdout/stderr, including
+driver/shader errors. No graphics log event is generated per frame or input sample. Direct use of
+`TOOIE_GRAPHICS_LOG=<UTF-8 path>` is also supported; its parent directory must already exist.
+
+The local test build additionally has `build-win/Diagnosticar API.cmd`. It is a convenience launcher, not a release asset.
+The script creates only diagnostic files; the game retains its normal save/config behavior.
+
+Manual acceptance: open Settings -> Graphics, inspect Graphics API, wait without starting, select/apply and reopen for each available API,
+then start gameplay, pause, change map and close. Send the session directory if anything fails. Test persisted
+window mode and existing Mods/Character Selection controls as regressions. Logs identify startup/API selection;
+they do not prove visual fidelity or compatibility on another computer.
+
+## Validation boundaries
+
+- `tooie_startup_test` executes the actual Windows supervisor/config/log code with fake renderer workers. It covers
+  normal failure, a driver-like process crash, readiness, retained preference, effective metadata, invalid config and
+  absence of a game-start event. It also links real librecomp Config to test Graphics Apply/Cancel, persistence across
+  reopening, automatic selection and unchanged window mode. A second process round verifies Auto reaches OpenGL after
+  failures in DX12, Vulkan and DX11. It does not initialize a real GPU or execute the game.
+- `tooie_launcher_audio_test <MP3>` runs the real decoder and SDL dummy audio queue, covering playback, bounded stop,
+  restart, repeated short loops and invalid input. Observation is injected from `tests/launcher_audio_test_sink.h`
+  into the test target only; production code has no counter or instrumentation branch. It is an argument-driven
+  host test, separate from the required suite.
+- Windows build and required host tests are automated. Full startup, backend visuals, loop listening and gameplay
+  after this integration are `PENDING_USER`. Intel/old GPU compatibility and Linux runtime are not established here.
+- Windows has supervised recovery. Linux retains its direct renderer initialization; OpenGL can be selected before
+  initialization, but equivalent process supervision/fallback and UI/runtime validation are `NOT_IMPLEMENTED` / `NOT_RUN`.
+
+Related: [window/UI/config](window-ui-and-config.md), [graphics](graphics-and-presentation.md),
+[audio](audio-system.md), [tests](testing-and-oracle.md), [dependencies](packaging-and-dependencies.md).
+
+## Diagnostic boundary after review
+
+The TK64 per-frame timing/statistics logger (`TK64_FRAME_STATS`) and its present-loop call were removed from the
+vendored product. The frontend's option-hover print was also removed. The game audio path no longer links PCM capture
+or scans samples for diagnostic peak/nonzero counts. Functional FPS display, audio scheduling and shutdown timeouts
+remain part of the game. The requested graphics startup log remains opt-in, with no per-frame events.

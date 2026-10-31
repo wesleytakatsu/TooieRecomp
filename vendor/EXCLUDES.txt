@@ -3,7 +3,7 @@
 
 [repositories not vendored]
 lib/rt64/src/contrib/mupen64plus-win32-deps  de8111fdcb89144abc16c85650ce4e21e028bfb5  Windows SDL/zlib bundle; replaced by lib/SDL2-windows (official SDL2 2.30.3 devel zip). No licence file at its root.
-lib/rt64/src/contrib/spirv-cross             6173e24b31f09a0c3217103a130e74c4ddec14a6  macOS-only path (rt64 builds it only on Apple); TooieRecomp targets Linux + Windows x64.
+# SPIRV-Cross 6173e24b31f09a0c3217103a130e74c4ddec14a6 sources/CMake/notices restored by TK64 integration for GL/DX11 shader translation.
 
 [files removed from vendored trees after export (unneeded prebuilt executables / sample binaries)]
 lib/rt64/src/contrib/ddspp/premake/{linux,osx}/premake5, premake/win/premake5.exe        project generator binaries, unused by CMake
@@ -16,7 +16,7 @@ lib/rt64/src/contrib/stb/tests/oversample/oversample.exe                        
 [deny-list applied during export (regex on destination-relative path; this is the literal list used)]
 ^lib/rt64/src/contrib/dxc/(bin|lib)/arm64/                       Windows-arm64 DXC (target is x86_64 only; CMake FATAL_ERRORs on other arches)
 ^lib/rt64/src/contrib/dxc/.*(dxc-macos|\.dylib)$                 macOS DXC
-^lib/rt64/src/contrib/mupen64plus-win32-deps/  ^lib/rt64/src/contrib/spirv-cross/   (see repositories above)
+^lib/rt64/src/contrib/mupen64plus-win32-deps/   (see repositories above)
 ^lib/rt64/src/contrib/zstd/tests/   ^lib/rt64/src/contrib/plume/examples/   ^lib/N64ModernRuntime/N64Recomp/lib/ELFIO/(tests|examples)/
 ^decomp/tools/elfio/(tests|examples)/   ^decomp/tools/toml11/(docs|tests)/        test/example/doc trees (some embed nested submodules)
 ^lib/RecompFrontend/recompui/lib/freetype-windows-binaries/(.*/)?(win32|demos)/   32-bit + demo binaries

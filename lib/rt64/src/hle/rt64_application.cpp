@@ -5,6 +5,15 @@
 #include "rt64_application.h"
 #include "rhi/rt64_render_hooks.h"
 
+#ifdef TK64_GLES_BACKEND
+#   include <cstring>
+#   include "plume_gles.h"
+#endif
+
+#ifdef TK64_D3D11_BACKEND
+#   include "plume_d3d11.h"
+#endif
+
 #include <cinttypes>
 #include <filesystem>
 
@@ -90,7 +99,7 @@ namespace RT64 {
 #   ifdef _WIN64
         if (!DynamicLibraries::load()) {
             fprintf(stderr, "Failed to load dynamic libraries. Make sure the dependencies are next to the Plugin's DLL.\n");
-            return SetupResult::Success;
+            return SetupResult::DynamicLibrariesNotFound;
         }
 #   endif
 
@@ -134,9 +143,57 @@ namespace RT64 {
 
 #   ifdef _WIN64
         // Windows can try falling back to the other API option in case of failure.
-        const uint32_t CreationAttempts = (userConfig.graphicsAPI == UserConfiguration::GraphicsAPI::Automatic) ? 2 : 1;
+        const uint32_t CreationAttempts = ((std::getenv("TOOIE_GRAPHICS_STRICT") == nullptr) && (userConfig.graphicsAPI == UserConfiguration::GraphicsAPI::Automatic)) ? 2 : 1;
 #   else
         const uint32_t CreationAttempts = 1;
+#   endif
+
+        // TK64: the OpenGL ES device is the auto signal for the weak profile, and this stays in scope when that
+        // backend is compiled out (docs/specs/weak-gpu-profile.md).
+        bool tk64OpenGLESDevice = false;
+
+#   ifdef TK64_GLES_BACKEND
+        // TK64: TK64_GRAPHICS_API=opengl or opengles selects the OpenGL backend (docs/specs/integration-contract.md). If it
+        // fails, the configured API is used as before. The host only knows RT64's API values, so it is told Automatic.
+        const char *tk64GraphicsAPI = std::getenv("TK64_GRAPHICS_API");
+        const bool tk64OpenGL = (tk64GraphicsAPI != nullptr) && (std::strcmp(tk64GraphicsAPI, "opengl") == 0);
+        const bool tk64OpenGLES = (tk64GraphicsAPI != nullptr) && (std::strcmp(tk64GraphicsAPI, "opengles") == 0);
+        if (tk64OpenGL || tk64OpenGLES) {
+            renderInterface = plume::CreateGLESInterface(appWindow->windowHandle, tk64OpenGLES ? plume::RenderGLProfile::ES : plume::RenderGLProfile::DESKTOP);
+            if (renderInterface != nullptr) {
+                device = renderInterface->createDevice();
+            }
+
+            if (device != nullptr) {
+                chosenGraphicsAPI = UserConfiguration::GraphicsAPI::Automatic;
+                tk64OpenGLESDevice = tk64OpenGLES;
+            }
+            else {
+                fprintf(stderr, "TK64: the OpenGL backend could not be created; using the configured graphics API.\n");
+                renderInterface.reset();
+                if (std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) return SetupResult::GraphicsDeviceNotFound;
+            }
+        }
+#   endif
+
+#   ifdef TK64_D3D11_BACKEND
+        // TK64: TK64_GRAPHICS_API=d3d11 selects the Direct3D 11 backend, with the same fallback and host reporting.
+        const char *tk64D3D11API = std::getenv("TK64_GRAPHICS_API");
+        if ((device == nullptr) && (tk64D3D11API != nullptr) && (std::strcmp(tk64D3D11API, "d3d11") == 0)) {
+            renderInterface = plume::CreateD3D11Interface();
+            if (renderInterface != nullptr) {
+                device = renderInterface->createDevice();
+            }
+
+            if (device != nullptr) {
+                chosenGraphicsAPI = UserConfiguration::GraphicsAPI::Automatic;
+            }
+            else {
+                fprintf(stderr, "TK64: the Direct3D 11 backend could not be created; using the configured graphics API.\n");
+                renderInterface.reset();
+                if (std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) return SetupResult::GraphicsDeviceNotFound;
+            }
+        }
 #   endif
 
         for (uint32_t creationAttempt = 0; (creationAttempt < CreationAttempts) && (device == nullptr); creationAttempt++) {
@@ -279,6 +336,11 @@ namespace RT64 {
             deviceDescription = device->getDescription();
         }
 
+        // TK64: override the host configuration before HDR and the queues read it (docs/specs/weak-gpu-profile.md).
+        tk64Profile = tk64::selectProfile(tk64OpenGLESDevice);
+        fprintf(stdout, "TK64: %s GPU profile.\n", tk64::profileName(tk64Profile));
+        tk64::applyProfile(tk64Profile, userConfig);
+
         // Detect if the application should use HDR framebuffers or not.
         bool usesHDR;
         switch (userConfig.internalColorFormat) {
@@ -293,6 +355,11 @@ namespace RT64 {
             usesHDR = false;
             break;
         }
+
+        effectiveGraphicsBackend = (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::D3D12) ? "d3d12" :
+            (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::Vulkan) ? "vulkan" :
+            (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::Metal) ? "metal" :
+            (std::getenv("TK64_GRAPHICS_API") != nullptr ? std::getenv("TK64_GRAPHICS_API") : "unknown");
 
         // Call the init hook if one was attached.
         RenderHookInit *initHook = GetRenderHookInit();
@@ -383,6 +450,8 @@ namespace RT64 {
 
         // Create the queues.
         workloadQueue = std::make_unique<WorkloadQueue>();
+        // TK64: specialized raster shaders compile too slowly on the weak profile's CPUs (docs/specs/weak-gpu-profile.md).
+        workloadQueue->ubershadersOnly = tk64::usesUbershadersOnly(tk64Profile);
         presentQueue = std::make_unique<PresentQueue>();
 
         // Create the shared resources for the queues.
@@ -739,6 +808,8 @@ namespace RT64 {
     }
 
     void Application::updateUserConfig(bool discardFBs) {
+        // TK64: the host writes its settings again; the profile overrides them (docs/specs/weak-gpu-profile.md).
+        tk64::applyProfile(tk64Profile, userConfig);
         sharedQueueResources->setUserConfig(userConfig, discardFBs);
     }
 

@@ -10,13 +10,22 @@
 namespace interop {
 #endif
     struct RSPLight {
+        // TK64: every float3 starts at a multiple of 16 bytes and the size is a multiple of 16, so this struct has the
+        // same layout in C++, in D3D structured buffers and in GLSL std430 storage buffers (docs/specs/shader-translation.md).
         float3 posDir;
-        float3 col;
-        float3 colc;
         uint kc;
+        float3 col;
         uint kl;
+        float3 colc;
         uint kq;
     };
+#ifdef HLSL_CPU
+    // TK64: keep the layout identical in C++, D3D structured buffers and GLSL std430.
+    static_assert((sizeof(RSPLight) % 16) == 0, "RSPLight must stay std430-compatible (docs/specs/shader-translation.md)");
+    static_assert((offsetof(RSPLight, posDir) % 16) == 0, "RSPLight::posDir must stay std430-compatible (docs/specs/shader-translation.md)");
+    static_assert((offsetof(RSPLight, col) % 16) == 0, "RSPLight::col must stay std430-compatible (docs/specs/shader-translation.md)");
+    static_assert((offsetof(RSPLight, colc) % 16) == 0, "RSPLight::colc must stay std430-compatible (docs/specs/shader-translation.md)");
+#endif
 
 #ifndef HLSL_CPU
     float computeAttenuation(float distance, const RSPLight light) {

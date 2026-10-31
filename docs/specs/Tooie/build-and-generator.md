@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Build System and Recompiler Generator"
 description: "Technical specification for the CMake build pipeline, Clang compiler toolchains, static recompilation generator, metadata inputs, and dependency linking in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-31
 tags: [specs, tooierecomp, build, cmake, n64recomp, rsprecomp]
 ---
 
@@ -132,3 +132,10 @@ CMake defines isolated verification targets:
    - `python3 tools/check_generated_fresh.py` verifies that generated sources correspond exactly to metadata tables and recompiler configuration.
 3. **Static Function Sizing Invariant**:
    - Static function emitters in `N64Recomp` must not truncate function bodies when zero-sized symbols or non-code labels share the entry address (`n64recomp-zero-size-static.patch`).
+
+## TK64 renderer closure
+
+`lib/rt64` retains target `rt64` and vendors the TK64 `6476b4b` source integration plus local host startup patches.
+SPIRV-Cross translates SPIR-V for the new backends; DX11 raster ubershaders are compiled to DXBC during the build.
+No sibling TK64 checkout, network fetch or prebuilt shader binary is required by a normal standalone build.
+Provenance and hashes are recorded in `vendor/`; [startup contract](startup-and-backends.md).

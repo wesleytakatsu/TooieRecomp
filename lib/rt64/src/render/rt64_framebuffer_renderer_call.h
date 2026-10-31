@@ -38,6 +38,9 @@ namespace RT64 {
                 RenderRect scissor;
                 uint32_t indexStart;
                 uint32_t faceCount;
+                uint32_t tileIndex;
+                uint32_t tileCount;
+                RenderDescriptorSet *textureSlotSet;
                 bool vertexTestZ : 1;
                 bool postBlendDitherNoise : 1;
                 bool postBlendDitherNoiseNegative : 1;

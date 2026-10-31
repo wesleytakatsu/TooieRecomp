@@ -67,3 +67,7 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/systems/text-and-fonts]] — Texto e fontes (assets de texto, mapeamento de glifos)
 - [[reverse-engineering/modding/README]] — Mapa de modding
 - [[reverse-engineering/modding/known-extension-points]] — Pontos de extensão
+
+## Launcher startup and graphics backend selection
+
+[Launcher Startup and Backends](specs/Tooie/startup-and-backends.md) — TK64 integration, Windows recovery, API preference, independent pause music and opt-in logs.

@@ -1,0 +1,202 @@
+diff --git a/src/hle/rt64_application.cpp b/src/hle/rt64_application.cpp
+index afe7b68..96a11ce 100644
+--- a/src/hle/rt64_application.cpp
++++ b/src/hle/rt64_application.cpp
+@@ -99,7 +99,7 @@ namespace RT64 {
+ #   ifdef _WIN64
+         if (!DynamicLibraries::load()) {
+             fprintf(stderr, "Failed to load dynamic libraries. Make sure the dependencies are next to the Plugin's DLL.\n");
+-            return SetupResult::Success;
++            return SetupResult::DynamicLibrariesNotFound;
+         }
+ #   endif
+ 
+@@ -143,7 +143,7 @@ namespace RT64 {
+ 
+ #   ifdef _WIN64
+         // Windows can try falling back to the other API option in case of failure.
+-        const uint32_t CreationAttempts = (userConfig.graphicsAPI == UserConfiguration::GraphicsAPI::Automatic) ? 2 : 1;
++        const uint32_t CreationAttempts = ((std::getenv("TOOIE_GRAPHICS_STRICT") == nullptr) && (userConfig.graphicsAPI == UserConfiguration::GraphicsAPI::Automatic)) ? 2 : 1;
+ #   else
+         const uint32_t CreationAttempts = 1;
+ #   endif
+@@ -171,6 +171,7 @@ namespace RT64 {
+             else {
+                 fprintf(stderr, "TK64: the OpenGL backend could not be created; using the configured graphics API.\n");
+                 renderInterface.reset();
++                if (std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) return SetupResult::GraphicsDeviceNotFound;
+             }
+         }
+ #   endif
+@@ -190,6 +191,7 @@ namespace RT64 {
+             else {
+                 fprintf(stderr, "TK64: the Direct3D 11 backend could not be created; using the configured graphics API.\n");
+                 renderInterface.reset();
++                if (std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) return SetupResult::GraphicsDeviceNotFound;
+             }
+         }
+ #   endif
+@@ -354,6 +356,11 @@ namespace RT64 {
+             break;
+         }
+ 
++        effectiveGraphicsBackend = (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::D3D12) ? "d3d12" :
++            (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::Vulkan) ? "vulkan" :
++            (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::Metal) ? "metal" :
++            (std::getenv("TK64_GRAPHICS_API") != nullptr ? std::getenv("TK64_GRAPHICS_API") : "unknown");
++
+         // Call the init hook if one was attached.
+         RenderHookInit *initHook = GetRenderHookInit();
+         if (initHook != nullptr) {
+diff --git a/src/hle/rt64_application.h b/src/hle/rt64_application.h
+index 3948e1e..7d63f0d 100644
+--- a/src/hle/rt64_application.h
++++ b/src/hle/rt64_application.h
+@@ -110,7 +110,7 @@ namespace RT64 {
+         EmulatorConfiguration emulatorConfig;
+         EnhancementConfiguration enhancementConfig;
+         ApplicationConfiguration appConfig;
+-        UserConfiguration::GraphicsAPI chosenGraphicsAPI;
++        UserConfiguration::GraphicsAPI chosenGraphicsAPI = UserConfiguration::GraphicsAPI::Automatic;
+         bool freeCamClearQueued;
+         UserPaths userPaths;
+         std::unique_ptr<Interpreter> interpreter;
+@@ -156,6 +156,7 @@ namespace RT64 {
+ 
+         Application(const Core &core, const ApplicationConfiguration &appConfig);
+         virtual ~Application();
++        std::string effectiveGraphicsBackend;
+         SetupResult setup(uint32_t threadId);
+         void processDisplayLists(uint8_t *memory, uint32_t dlStartAddress, uint32_t dlEndAddress, bool isHLE);
+         void updateScreen();
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index cfc4c9b..768c0e0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -410,7 +410,6 @@ set (SOURCES
+     "${PROJECT_SOURCE_DIR}/src/rhi/rt64_render_hooks.cpp"
+ 
+     "${PROJECT_SOURCE_DIR}/src/tk64/tk64_profile.cpp"
+-    "${PROJECT_SOURCE_DIR}/src/tk64/tk64_frame_stats.cpp"
+ 
+     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui.cpp"
+     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui_demo.cpp"
+diff --git a/src/hle/rt64_present_queue.cpp b/src/hle/rt64_present_queue.cpp
+index 1851ef0..d4e8d29 100644
+--- a/src/hle/rt64_present_queue.cpp
++++ b/src/hle/rt64_present_queue.cpp
+@@ -12,8 +12,6 @@
+ #include "rt64_present_stats.h"
+ #include "rt64_workload_queue.h"
+ 
+-#include "tk64/tk64_frame_stats.h"
+-
+ namespace RT64 {
+     // PresentQueue
+ 
+@@ -469,7 +467,6 @@ namespace RT64 {
+                 swapChainValid = ext.swapChain->present(swapChainIndex, &waitSemaphore, 1);
+                 if (swapChainValid) {
+                     presentSuccessCount.fetch_add(1, std::memory_order_relaxed);
+-                    tk64::framePresented();
+                 }
+ 
+                 // Only a frame that was actually presented is kept.
+diff --git a/src/tk64/tk64_frame_stats.cpp b/src/tk64/tk64_frame_stats.cpp
+deleted file mode 100644
+index 6e31605..0000000
+--- a/src/tk64/tk64_frame_stats.cpp
++++ /dev/null
+@@ -1,71 +0,0 @@
+-//
+-// TK64
+-//
+-// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
+-//
+-
+-#include "tk64_frame_stats.h"
+-
+-#include <chrono>
+-#include <cstdio>
+-#include <cstdlib>
+-#include <cstring>
+-#include <ctime>
+-
+-namespace tk64 {
+-    static bool frameStatsEnabled() {
+-        static const bool enabled = []() {
+-            const char *value = std::getenv("TK64_FRAME_STATS");
+-            return (value != nullptr) && (std::strcmp(value, "1") == 0);
+-        }();
+-
+-        return enabled;
+-    }
+-
+-    void framePresented() {
+-        if (!frameStatsEnabled()) {
+-            return;
+-        }
+-
+-        // Only the present thread calls this, so the state needs no lock.
+-        using Clock = std::chrono::steady_clock;
+-        static Clock::time_point windowStart;
+-        static Clock::time_point lastPresent;
+-        static double worstMs = 0.0;
+-        static unsigned frames = 0;
+-        static bool started = false;
+-
+-        const Clock::time_point now = Clock::now();
+-        if (!started) {
+-            windowStart = now;
+-            lastPresent = now;
+-            started = true;
+-        }
+-
+-        const double intervalMs = std::chrono::duration<double, std::milli>(now - lastPresent).count();
+-        if (intervalMs > worstMs) {
+-            worstMs = intervalMs;
+-        }
+-
+-        lastPresent = now;
+-        frames++;
+-
+-        if ((now - windowStart) >= std::chrono::seconds(1)) {
+-            const std::time_t wall = std::time(nullptr);
+-            std::tm local = {};
+-#       ifdef _WIN32
+-            localtime_s(&local, &wall);
+-#       else
+-            localtime_r(&wall, &local);
+-#       endif
+-            char clock[16];
+-            std::strftime(clock, sizeof(clock), "%H:%M:%S", &local);
+-            const double windowMs = std::chrono::duration<double, std::milli>(now - windowStart).count();
+-            fprintf(stdout, "TK64: frames %s %u in %.0f ms, worst %.1f ms\n", clock, frames, windowMs, worstMs);
+-            fflush(stdout);
+-            windowStart = now;
+-            worstMs = 0.0;
+-            frames = 0;
+-        }
+-    }
+-};
+diff --git a/src/tk64/tk64_frame_stats.h b/src/tk64/tk64_frame_stats.h
+deleted file mode 100644
+index 52e002c..0000000
+--- a/src/tk64/tk64_frame_stats.h
++++ /dev/null
+@@ -1,15 +0,0 @@
+-//
+-// TK64
+-//
+-// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
+-//
+-// Frame timing printed to stdout for measurements on slow devices. See docs/specs/testing.md.
+-//
+-
+-#pragma once
+-
+-namespace tk64 {
+-    // Called by the present thread after each present. With TK64_FRAME_STATS=1, prints once per second the local time,
+-    // the frames presented in that second and the longest interval between two presents; otherwise does nothing.
+-    void framePresented();
+-};

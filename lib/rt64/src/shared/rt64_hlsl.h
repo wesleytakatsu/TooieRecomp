@@ -7,6 +7,7 @@
 #ifdef HLSL_CPU
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "common/rt64_hlslpp.h"
 

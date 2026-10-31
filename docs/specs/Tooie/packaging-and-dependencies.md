@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Packaging, Releases and Dependency Boundaries"
 description: "Technical specification for standalone Linux and Windows packaging, clean-room asset separation, legal ROM requirements, and runtime dependencies."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-28
+updated: 2026-10-31
 tags: [specs, tooierecomp, packaging, release, linux, windows, dependencies, assets]
 ---
 
@@ -128,3 +128,11 @@ Static components (`RT64`, `N64ModernRuntime`, `ultramodern`, `fmt`, `toml11`, `
 
 - **[Asset Ownership & Licensing Manifest](asset-and-licensing-manifest.md)**: Copyright boundaries, legal ROM requirements, third-party component licenses, and package distribution policies.
 - **[Operational Handoff](../../HANDOFF.md)**: Current system status, open packaging items, and release readiness.
+
+## TK64 and launcher audio dependencies
+
+Windows supports compatible DX12/Vulkan, DX11 FL 11_0 and OpenGL 4.3 backends through the vendored TK64 integration.
+Graphics DLLs are delay-loaded; Windows provides D3D11/DXGI/OpenGL, and the existing DXC DLLs remain packaged requirements.
+Source notices for restored SPIRV-Cross and `lib/dr_libs` are collected with the package licenses. No new prebuilt
+binary was added. Imported launcher MP3/loop settings and diagnostic logs remain user data, outside release assets.
+The source/build pin and startup behavior are specified in [Launcher Startup and Backends](startup-and-backends.md).

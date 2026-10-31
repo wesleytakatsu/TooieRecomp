@@ -1,0 +1,117 @@
+diff --git a/recompui/include/recompui/renderer.h b/recompui/include/recompui/renderer.h
+index 33f79ab..9661cea 100644
+--- a/recompui/include/recompui/renderer.h
++++ b/recompui/include/recompui/renderer.h
+@@ -45,6 +45,8 @@ namespace recompui {
+ 
+         std::unique_ptr<ultramodern::renderer::RendererContext> create_render_context(uint8_t *rdram, ultramodern::renderer::WindowHandle window_handle, ultramodern::renderer::PresentationMode presentation_mode, bool developer_mode);
+ 
++        std::string get_graphics_backend_name();
++        std::string get_graphics_device_name();
+         RT64::UserConfiguration::Antialiasing RT64MaxMSAA();
+         bool RT64SamplePositionsSupported();
+         bool RT64HighPrecisionFBEnabled();
+diff --git a/recompui/src/renderer/rt64_render_context.cpp b/recompui/src/renderer/rt64_render_context.cpp
+index 34140b9..683f872 100644
+--- a/recompui/src/renderer/rt64_render_context.cpp
++++ b/recompui/src/renderer/rt64_render_context.cpp
+@@ -20,6 +20,9 @@ using namespace recompui;
+ static RT64::UserConfiguration::Antialiasing device_max_msaa = RT64::UserConfiguration::Antialiasing::None;
+ static bool sample_positions_supported = false;
+ static bool high_precision_fb_enabled = false;
++static std::string backend_name, device_name;
++std::string renderer::get_graphics_backend_name() { return backend_name; }
++std::string renderer::get_graphics_device_name() { return device_name; }
+ 
+ static uint8_t DMEM[0x1000];
+ static uint8_t IMEM[0x1000];
+@@ -302,6 +305,13 @@ renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::renderer::Window
+             break;
+     }
+ 
++    // An isolated host worker owns fallback; RT64's public enum remains unchanged.
++    const char* forced = std::getenv("TK64_GRAPHICS_API");
++    if (forced != nullptr && std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) {
++        app->userConfig.graphicsAPI = std::strcmp(forced,"d3d12")==0 ? RT64::UserConfiguration::GraphicsAPI::D3D12 :
++            std::strcmp(forced,"vulkan")==0 ? RT64::UserConfiguration::GraphicsAPI::Vulkan : RT64::UserConfiguration::GraphicsAPI::Automatic;
++        if (std::getenv("TOOIE_GRAPHICS_AUTOMATIC") != nullptr) app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Automatic;
++    }
+     // Set up the RT64 application.
+     uint32_t thread_id = 0;
+ #ifdef _WIN32
+@@ -315,6 +325,9 @@ renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::renderer::Window
+         return;
+     }
+ 
++    backend_name = app->effectiveGraphicsBackend;
++    device_name = app->device->getDescription().name;
++
+     // Set the application's fullscreen state.
+     app->setFullScreen(cur_config.wm_option == ultramodern::renderer::WindowMode::Fullscreen);
+ 
+diff --git a/recompui/src/base/ui_launcher.cpp b/recompui/src/base/ui_launcher.cpp
+index 6de7a94..07b01a8 100644
+--- a/recompui/src/base/ui_launcher.cpp
++++ b/recompui/src/base/ui_launcher.cpp
+@@ -12,6 +12,18 @@
+ #include "elements/ui_config_page.h"
+ #include "ui_utils.h"
+ 
++namespace recompui {
++    static std::function<void()> launcher_start_callback;
++    void register_launcher_start_callback(std::function<void()> callback) { launcher_start_callback = std::move(callback); }
++    bool notify_launcher_start() {
++        static bool started = false;
++        if (started) return false;
++        started = true;
++        if (launcher_start_callback) launcher_start_callback();
++        return true;
++    }
++}
++
+ namespace Constants {
+     constexpr float option_height = 136.0f;
+     constexpr float option_padding = 8.0f;
+@@ -296,7 +308,7 @@ namespace recompui {
+ 
+         void on_start_game_mode() {
+             get_launcher_menu()->hide_game_mode_menu();
+-            recomp::start_game(this->game_id, this->cur_game_mode_id);
++            if (notify_launcher_start()) recomp::start_game(this->game_id, this->cur_game_mode_id);
+             recompui::hide_all_contexts();
+         }
+ 
+@@ -460,7 +472,7 @@ namespace recompui {
+                 if (recomp::mods::game_mode_count(this->mod_game_id, false) > 0) {
+                     get_launcher_menu()->show_game_mode_menu(this->game_id, this->game_display_name, this->game_thumbnail);
+                 } else {
+-                    recomp::start_game(this->game_id, {});
++                    if (notify_launcher_start()) recomp::start_game(this->game_id, {});
+                     recompui::hide_all_contexts();
+                 }
+             } else {
+diff --git a/recompui/src/base/ui_launcher.h b/recompui/src/base/ui_launcher.h
+index eb8833e..3680234 100644
+--- a/recompui/src/base/ui_launcher.h
++++ b/recompui/src/base/ui_launcher.h
+@@ -10,6 +10,8 @@
+ 
+ namespace recompui {
+     class GameOption;
++    void register_launcher_start_callback(std::function<void()> callback);
++    bool notify_launcher_start();
+ 
+     class GameOptionsMenu : public Element {
+     private:
+diff --git a/recompui/src/elements/ui_select.cpp b/recompui/src/elements/ui_select.cpp
+index c2c6e1c..64289ae 100644
+--- a/recompui/src/elements/ui_select.cpp
++++ b/recompui/src/elements/ui_select.cpp
+@@ -58,7 +58,6 @@ namespace recompui {
+         case EventType::Click:
+             break;
+         case EventType::Hover:
+-            printf("Option hovered: %s\n", option.text.c_str());
+             set_style_enabled(hover_state, std::get<EventHover>(e.variant).active && is_enabled());
+             break;
+         case EventType::Enable:

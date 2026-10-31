@@ -43,3 +43,7 @@ rt64	lib/rt64	patches-local/rt64-perf-tmem-hash-cache.patch	a78230ba5e0336faac96
 plume	lib/rt64/src/contrib/plume	patches-applied/rt64/rt64-plume-texture-to-buffer-copy.patch	49c218efa703a8946d65652474b209934cd8ec96a55c2053b93826cf8d070852	d890ac899e505fb30040e037a4037cdeca68f033
 rt64	lib/rt64	patches-local/rt64-hidden-window-visibility.patch	a9ad5dceb7bfd7a3a6482602d32a73ea5264fefcfa9c44bdf56a694e2fdb8073	cab242e plus existing rt64 patches
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-persist-window-mode.patch	b153b576c33b2afc1871c09a19acc54fe7fe729c75ef09bb931e30c9932ddbbd	cab242e plus existing frontend patches
+rt64	lib/rt64	patches-local/rt64-tk64-backends.patch	0ebd52046c957ebf799cb5c8bd2c5f33623171579effacb790c99bd1d282ee52	cefcc6f + TK64@6476b4b944e2d0a7e584fd62d977d47c651e9d96 three-way integration
+rt64	lib/rt64	patches-local/rt64-tk64-host-startup.patch	ce2469499f2a4b701608af37b830a34276a239979813c49f771501fbd256d5e9	rt64-tk64-backends
+RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-tk64-launcher.patch	c1229c27cf0dda7eba3fd52efaf2b19526f17e4c89f1d616f1b52eebba54756d	cefcc6f
+N64ModernRuntime	lib/N64ModernRuntime	patches-local/n64modernruntime-graphics-worker-error.patch	7057dcf6313344d47a2bfde13d00754f194010f72f3e2af2d825696ea82e405e	cefcc6f

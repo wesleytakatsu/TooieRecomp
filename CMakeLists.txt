@@ -176,8 +176,9 @@ endif()
 # --- Main executable ---
 add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/launcher_animation.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_startup.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_launcher_audio.cpp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
-    ${CMAKE_SOURCE_DIR}/src/main/tooie_audio_capture.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_patches.cpp
     ${CMAKE_SOURCE_DIR}/src/main/theme.cpp
@@ -282,7 +283,7 @@ if(WIN32)
         Threads::Threads
     )
     # Identical-code folding would merge functions and break mod function patching (as in BanjoRecomp).
-    target_link_options(TooieRecompiled PRIVATE /OPT:NOICF)
+    target_link_options(TooieRecompiled PRIVATE /OPT:NOICF /DELAYLOAD:d3d12.dll /DELAYLOAD:dxgi.dll /DELAYLOAD:d3d11.dll /DELAYLOAD:dxcompiler.dll)
     set_target_properties(TooieRecompiled PROPERTIES
         LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
         LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
@@ -392,6 +393,25 @@ add_custom_command(
 )
 add_custom_target(TooieLauncherLogo DEPENDS "${TOOIE_LAUNCHER_LOGO}")
 add_dependencies(TooieRecompiled TooieLauncherLogo)
+
+if(WIN32)
+    add_executable(tooie_startup_test tests/tooie_startup_test.cpp src/main/tooie_startup.cpp
+        ${N64MR}/librecomp/src/config.cpp ${N64MR}/librecomp/src/config_option.cpp)
+    target_include_directories(tooie_startup_test PRIVATE
+        $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(tooie_startup_test PRIVATE TOOIE_STARTUP_TEST NOMINMAX)
+    target_link_libraries(tooie_startup_test PRIVATE rt64 SDL2::SDL2 user32)
+    set_target_properties(tooie_startup_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    add_executable(tooie_launcher_audio_test tests/tooie_launcher_audio_test.cpp src/main/tooie_launcher_audio.cpp)
+    target_include_directories(tooie_launcher_audio_test PRIVATE
+        $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(tooie_launcher_audio_test PRIVATE NOMINMAX)
+    target_compile_options(tooie_launcher_audio_test PRIVATE "/FI${CMAKE_SOURCE_DIR}/tests/launcher_audio_test_sink.h")
+    target_link_libraries(tooie_launcher_audio_test PRIVATE SDL2::SDL2)
+    set_target_properties(tooie_launcher_audio_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
 
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")

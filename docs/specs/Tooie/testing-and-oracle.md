@@ -67,7 +67,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_warp_test` (Dev Mode warp state machine, saved-position JSON, map names)
   - `tooie_dev_forms_test` (per-player selector and native handoff wrappers, with lifecycle stand-ins)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 19 required verification tests (including Windows-only `rt64_hidden_window_test`): the 10 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 20 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 10 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -141,3 +141,17 @@ To establish bit-accurate ground truth independent of host graphics drivers, Too
   - Acts exclusively as an offline measurement oracle and regression detector.
   - Captures golden Z-buffer depth arrays, player coordinates, and pad state.
   - **Invariant**: TooieRecomp renders strictly via RT64; Angrylion is never bundled into the production game client.
+
+## TK64 startup and independent audio tests
+
+The Windows required suite now contains 20 tests. `tooie_startup_test` exercises the real Win32 supervisor with
+fake renderer workers: normal failure, crash recovery, readiness, effective API logging, preference preservation,
+legacy/corrupt config handling and no game-start event. This is process/config proof, not GPU validation.
+
+`tooie_launcher_audio_test <MP3>` is an argument-driven test using real `dr_mp3` and SDL dummy output. It covers
+playback, repeated loops, bounded shutdown/restart and invalid input; copyrighted input stays private. Its SDL observation
+shim is injected into the test executable only, with no production measurement hook. Build it explicitly
+with the documented CMake build environment and run it with a user-supplied MP3. It is not part of the argument-free suite.
+
+Real four-backend startup, visual/gameplay tests and loop listening remain `PENDING_USER`; Linux `NOT_RUN`.
+See [startup diagnostics and manual procedure](startup-and-backends.md).

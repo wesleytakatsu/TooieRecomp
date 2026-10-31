@@ -257,6 +257,7 @@ namespace RT64 {
                     const auto &tile = rdp->tiles[tileIndex];
                     const uint32_t callTileIndex = drawCall.tileIndex + t;
                     auto &dstCallTile = drawData.callTiles[callTileIndex];
+                    dstCallTile.drawSlot = uint8_t(t);
 
                     // Failsafe cases.
                     if (tile.line == 0) {
@@ -1322,7 +1323,7 @@ namespace RT64 {
                     std::pair<size_t, size_t> gpuTileRange;
                     gpuTileRange.first = gpuTileCursor;
                     gpuTileRange.second = rdpTileCursor;
-                    framebufferRenderer->createGPUTiles(&workload.drawData.callTiles[gpuTileCursor], rdpTileCursor - gpuTileCursor,
+                    framebufferRenderer->createGPUTiles(&workload.drawData.callTiles[gpuTileCursor], uint32_t(gpuTileCursor), rdpTileCursor - gpuTileCursor,
                         &workload.drawData.gpuTiles[gpuTileCursor], &framebufferManager, ext.textureCache, workload.submissionFrame);
 
                     // Upload the GPU tiles.

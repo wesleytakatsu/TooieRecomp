@@ -12,8 +12,12 @@
 namespace interop {
 #endif
     struct RSPViewport {
+        // TK64: every float3 starts at a multiple of 16 bytes and the size is a multiple of 16, so this struct has the
+        // same layout in C++, in D3D structured buffers and in GLSL std430 storage buffers (docs/specs/shader-translation.md).
         float3 scale;
+        float scalePadding;
         float3 translate;
+        float translatePadding;
 
         static RSPViewport identity() {
             RSPViewport viewport;
@@ -40,6 +44,12 @@ namespace interop {
         }
 #endif
     };
+#ifdef HLSL_CPU
+    // TK64: keep the layout identical in C++, D3D structured buffers and GLSL std430.
+    static_assert((sizeof(RSPViewport) % 16) == 0, "RSPViewport must stay std430-compatible (docs/specs/shader-translation.md)");
+    static_assert((offsetof(RSPViewport, scale) % 16) == 0, "RSPViewport::scale must stay std430-compatible (docs/specs/shader-translation.md)");
+    static_assert((offsetof(RSPViewport, translate) % 16) == 0, "RSPViewport::translate must stay std430-compatible (docs/specs/shader-translation.md)");
+#endif
 #ifdef HLSL_CPU
 };
 #endif

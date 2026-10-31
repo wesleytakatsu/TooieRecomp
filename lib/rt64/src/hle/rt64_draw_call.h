@@ -154,6 +154,9 @@ namespace RT64 {
         bool rawTMEM;
         bool valid;
 
+        // TK64: position of this tile inside its draw call, used as the texture slot when descriptor indexing is unavailable.
+        uint8_t drawSlot;
+
         bool validTexcoords() const {
             return (minTexcoord.x <= maxTexcoord.x) && (minTexcoord.y <= maxTexcoord.y);
         }

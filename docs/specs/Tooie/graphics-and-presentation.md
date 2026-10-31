@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Technical specification for RT64 integration, widescreen culling hooks, projection policies, host endpoint-CURRENT fallback, transform interpolation guards, and presentation controls."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -229,3 +229,9 @@ stages (the verification code is not kept). Upstream RT64 had no fix as of `d981
 Detailed reverse-engineering models and transform interpolation mechanisms are documented in:
 - **[Transform Interpolation System](../../reverse-engineering/systems/transform-interpolation.md)**: Current RT64 interpolation pipeline, pairing, P09 guards, and refuted hypotheses.
 - **[Operational Handoff](../../HANDOFF.md)**: Current rendering guardrails and active visual residuals.
+
+## Startup API selection
+
+The vendored renderer includes TK64's DX11/OpenGL additions while retaining existing RT64 presentation/interpolation
+changes. Windows selects a usable backend before the launcher, with supervised startup recovery. Requirements,
+effective backend reporting and validation limits: [Launcher Startup and Backends](startup-and-backends.md).

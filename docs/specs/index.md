@@ -3,7 +3,7 @@ title: "Specifications Index and Master Requirements Matrix"
 description: "Master technical specifications index and requirements verification matrix for the TooieRecomp project."
 status: current
 area: "specs"
-updated: 2026-10-28
+updated: 2026-10-31
 tags:
   - docs
   - index
@@ -84,3 +84,7 @@ This matrix tracks the implementation and verification status of all core TooieR
 - **[Tooie Specifications Directory](Tooie/index.md)** — Domain specification index.
 - **[Reverse Engineering Knowledge Base](../reverse-engineering/README.md)** — Decompiled structures, function contracts, and system analysis.
 - **[Operational Handoff](../HANDOFF.md)** — Project status, open residuals, and active focus areas.
+
+## Launcher startup and graphics backend selection
+
+[Launcher Startup and Backends](Tooie/startup-and-backends.md) — TK64 integration, Windows recovery, API preference, independent pause music and opt-in logs.

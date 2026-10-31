@@ -1,0 +1,15 @@
+diff --git a/ultramodern/src/events.cpp b/ultramodern/src/events.cpp
+index 4ca2117..4882a04 100644
+--- a/ultramodern/src/events.cpp
++++ b/ultramodern/src/events.cpp
+@@ -588,6 +588,10 @@ void ultramodern::init_events(RDRAM_ARG ultramodern::renderer::WindowHandle wind
+ 
+     ultramodern::renderer::SetupResult setup_result = renderer_setup_result.load();
+     if (setup_result != ultramodern::renderer::SetupResult::Success) {
++        if (std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) {
++            std::fprintf(stderr,"Graphics worker initialization failed: %d\n",static_cast<int>(setup_result));
++            std::_Exit(EXIT_FAILURE);
++        }
+         auto show_renderer_error = [](const std::string& msg) {
+             std::string error_msg = "An error has been encountered on startup: " + msg;
+ 

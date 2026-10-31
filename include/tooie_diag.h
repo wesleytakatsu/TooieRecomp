@@ -150,8 +150,6 @@ void note_syscall_dispatch(uint32_t ovl, uint32_t ep);
 void note_syscall_return(uint32_t ovl, uint32_t ep);
 void note_sched_ack();
 void note_rsp_audtask();
-void note_queue_samples(size_t sample_count, uint32_t queued_bytes_after,
-                        int16_t peak_abs = 0, size_t nonzero = 0);
 void note_audio_device(uint32_t device_id, const char* driver, const char* device_name);
 
 // Timing counters (TOOIE_DIAG_TIMING=1).

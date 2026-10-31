@@ -3,7 +3,7 @@ title: "TooieRecomp Native Port Specifications — Index"
 description: "Hub and architectural index for the technical specifications of TooieRecomp, the native static recompilation of Banjo-Tooie."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-28
+updated: 2026-10-31
 tags: [specs, tooierecomp, index, architecture]
 ---
 
@@ -75,3 +75,7 @@ The TooieRecomp system is specified across 15 core functional domains:
 
 - **[Reverse Engineering Knowledge Base](../../reverse-engineering/README.md)**: Game mechanics, decompiled data structures, and function contracts.
 - **[Operational Handoff](../../HANDOFF.md)**: Active work items, known residuals, and current operational status.
+
+## Launcher startup and graphics backend selection
+
+[Launcher Startup and Backends](startup-and-backends.md) — TK64 integration, Windows recovery, API preference, independent pause music and opt-in logs.

@@ -4,7 +4,7 @@ description: "Reverse engineering knowledge base for Banjo-Tooie sequence player
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-20
+updated: 2026-10-31
 tags: [reverse-engineering, audio, bgm, sequence-player, csp]
 ---
 
@@ -93,8 +93,10 @@ Audio RSP Task Dispatch (n_aspMain)
   4. **Thread Safety**:
      - Guest thread reads volume strictly from an atomic integer (`g_percent`).
      - Configuration callbacks update the atomic percentage without capturing `Config` references.
-  5. **Launcher Preview IPC**:
-     - Linux launcher preview child process receives volume updates over a nonblocking datagram `socketpair` (`CLOEXEC`) on `stdin` (fd 0). Parent monitor sends 1 byte only when volume percentage changes.
+  5. **Launcher Audio Boundary**:
+      - The host launcher now plays an independent imported MP3, without invoking the guest sequence player or its IPC preview.
+        This does not change the native volume model above; host behavior is specified in
+        [Launcher Startup and Backends](../../specs/Tooie/startup-and-backends.md).
 
 ---
 

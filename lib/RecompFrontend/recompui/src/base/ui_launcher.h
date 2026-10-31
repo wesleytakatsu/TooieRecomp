@@ -10,6 +10,8 @@
 
 namespace recompui {
     class GameOption;
+    void register_launcher_start_callback(std::function<void()> callback);
+    bool notify_launcher_start();
 
     class GameOptionsMenu : public Element {
     private:

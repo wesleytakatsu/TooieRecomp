@@ -58,7 +58,6 @@ namespace recompui {
         case EventType::Click:
             break;
         case EventType::Hover:
-            printf("Option hovered: %s\n", option.text.c_str());
             set_style_enabled(hover_state, std::get<EventHover>(e.variant).active && is_enabled());
             break;
         case EventType::Enable:

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Audio Subsystem and RSP Microcode"
 description: "Technical specification for n_aspMain RSP microcode execution, M_AUDTASK audio task dispatch, SoundManager event scheduling, and audio stream management."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-31
 tags: [specs, tooierecomp, audio, rsp, n_aspmain, soundmanager]
 ---
 
@@ -75,11 +75,12 @@ SDL2 Audio Output Sink (SDL_QueueAudio, src/main/main.cpp)
     ```
   - Safeguard: When queue exceeds 100 ms (`skip_factor = cur_queued_microseconds / 100000`), decimation skips excess audio chunks to prevent runaway latency.
 - **Diagnostic Capture**:
-  - Controlled via `TOOIE_AUDIO_CAPTURE_DIR` (destination directory) and `TOOIE_AUDIO_CAPTURE_SECONDS` (10..20 s, default 12 s; `kDefaultMaxChunks = 2400`).
-  - Hot path executes a single atomic load when inactive.
+  - The old PCM capture module is retained only as standalone development/test tooling. It is not linked into or
+    called by the game executable; `TOOIE_AUDIO_CAPTURE_DIR` does not enable capture in the game.
 - **Telemetry Hooks**:
+  - Runtime audio no longer scans buffers for peak/nonzero measurements or collects extra queue sizes for telemetry.
+    Queue-size queries used by latency control and guest audio scheduling remain functional requirements.
   ```cpp
-  void tooie_diag::note_queue_samples(size_t sample_count, uint32_t queued_bytes_after, int16_t peak_abs, size_t nonzero);
   void tooie_diag::note_audio_device(uint32_t device_id, const char* driver, const char* device_name);
   ```
 
@@ -93,8 +94,9 @@ SDL2 Audio Output Sink (SDL_QueueAudio, src/main/main.cpp)
   - `0x80025ED0` (`tooie_bgm_on_csp_set_vol`): Intercepts CSP sequence volume events, scaling the authored master volume by the configured user percentage (0–100%).
   - `0x800FB968` (`tooie_bgm_on_update`): Updates active music tracks without mutating authored volume fades in RDRAM.
   - Reverse engineering details on player layouts and sequence track structures are maintained in [Audio Sequence Volume System](../../reverse-engineering/systems/audio-sequence-volume.md).
-- **Launcher Preview IPC**:
-  - Launcher background music preview supports Linux and Windows (`--launcher-music-control` in `main.cpp`).
+- **Independent Launcher Music**:
+  - A host MP3/SDL player owns the launcher's audio; it stops before game start. The old guest preview/IPC was removed.
+  - Local import, loop metadata, volumes and failure handling: [Launcher Startup and Backends](startup-and-backends.md).
 
 ---
 

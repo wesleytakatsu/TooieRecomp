@@ -169,17 +169,12 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 4. **Launcher Wordmark & UI Assets**:
    - Restored vector wordmark is loaded from `ui_assets/TooieLogo.svg`.
    - UI assets (icons, character art, fonts) are vendored in `assets/` and synchronized to the build directory by CMake target `TooieUIAssets`.
-5. **Launcher Music Controls**:
-   - Launcher background music preview is controlled via command-line flags and environment switches:
-     - `TOOIE_AUTO_START`: Skips launcher GUI.
-     - `TOOIE_DISABLE_LAUNCHER_MUSIC`: Disables launcher preview audio.
-     - `--launcher-music-child` and `--launcher-music-control`: Coordinates music playback process.
-   - On Windows, the ROM-backed audio preview owns a hidden window. RT64 fullscreen/windowed transitions preserve
-     its visibility and do not activate it. Changing window mode does not make an invisible preview into a second
-     visible game window. Visible game windows retain their normal mode transitions and restored bounds.
-   - This is enforced in `ApplicationWindow::setFullScreen` by retaining `WS_VISIBLE` and suppressing show/activation
-     operations for hidden windows. It does not rewrite the user's saved fullscreen preference or change manual
-     Start Game / explicit `TOOIE_AUTO_START` behavior. Regression: `rt64_hidden_window_test` (Windows only).
+5. **Launcher Startup and Independent Music**:
+   - Windows initializes TK64 through a supervised candidate chain before showing the animated launcher.
+   - Graphics API preference is in Settings -> Graphics, with native Apply/Cancel and next-launch application.
+   - `graphics.json` stores `graphics_backend`; `startup.json` stores last successful backend and legacy preference.
+   - Music uses a locally imported MP3 and a host SDL player; no hidden game/ROM-backed preview is started.
+   - Full contract, private audio import and opt-in logs: [Launcher Startup and Backends](startup-and-backends.md).
 
 ### 4.3 Menu Option Availability
 - `note_saving_mode`: Hidden from UI (`hidden = true`).

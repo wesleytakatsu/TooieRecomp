@@ -113,10 +113,14 @@ set (DXC_CS_OPTS "${DXC_COMMON_OPTS}" "-E" "CSMain" "-T cs_6_3")
 set (DXC_GS_OPTS "${DXC_COMMON_OPTS}" "-E" "GSMain" "-T gs_6_3")
 set (DXC_RT_OPTS "${DXC_COMMON_OPTS}" "-D" "RT_SHADER" "-T" "lib_6_3" "-fspv-target-env=vulkan1.1spirv1.4" "-fspv-extension=SPV_KHR_ray_tracing" "-fspv-extension=SPV_EXT_descriptor_indexing")
 
+# TK64: shader commands depend on the included headers too, so a change to a shared struct or .hlsli rebuilds the
+# blobs (upstream RT64 only tracks the main .hlsl file, which leaves stale shaders after header changes).
+file(GLOB RT64_SHADER_HEADERS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/shaders/*.hlsli" "${PROJECT_SOURCE_DIR}/src/shared/*.h")
+
 function(build_shader_spirv_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
     add_custom_command(OUTPUT ${OUTNAME}.spv
         COMMAND ${DXC} ${DXC_SPV_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.spv
-        DEPENDS ${FILENAME})
+        DEPENDS ${FILENAME} ${RT64_SHADER_HEADERS})
     add_custom_command(OUTPUT ${OUTNAME}.spirv.c
         COMMAND file_to_c ${OUTNAME}.spv ${TARGET_NAME}BlobSPIRV ${OUTNAME}.spirv.c ${OUTNAME}.spirv.h
         DEPENDS ${OUTNAME}.spv file_to_c
@@ -127,7 +131,7 @@ endfunction()
 function(build_shader_dxil_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
     add_custom_command(OUTPUT ${OUTNAME}.dxil
         COMMAND ${DXC} ${DXC_DXIL_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.dxil
-        DEPENDS ${FILENAME})
+        DEPENDS ${FILENAME} ${RT64_SHADER_HEADERS})
     add_custom_command(OUTPUT ${OUTNAME}.dxil.c
         COMMAND file_to_c ${OUTNAME}.dxil ${TARGET_NAME}BlobDXIL ${OUTNAME}.dxil.c ${OUTNAME}.dxil.h
         DEPENDS ${OUTNAME}.dxil file_to_c
@@ -138,7 +142,7 @@ endfunction()
 function(build_shader_msl_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
     add_custom_command(OUTPUT ${OUTNAME}.spv
             COMMAND ${DXC} ${DXC_SPV_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.spv
-            DEPENDS ${FILENAME})
+            DEPENDS ${FILENAME} ${RT64_SHADER_HEADERS})
     add_custom_command(OUTPUT ${OUTNAME}.metal
             COMMAND spirv_cross_msl ${OUTNAME}.spv ${OUTNAME}.metal
             DEPENDS ${OUTNAME}.spv spirv_cross_msl)
@@ -405,6 +409,8 @@ set (SOURCES
 
     "${PROJECT_SOURCE_DIR}/src/rhi/rt64_render_hooks.cpp"
 
+    "${PROJECT_SOURCE_DIR}/src/tk64/tk64_profile.cpp"
+
     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui.cpp"
     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui_demo.cpp"
     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui_draw.cpp"
@@ -448,6 +454,42 @@ target_link_libraries(rt64 re-spirv)
 target_link_libraries(rt64 nfd)
 target_link_libraries(rt64 libzstd_static)
 target_link_libraries(rt64 plume)
+
+# TK64: OpenGL / OpenGL ES backend for plume and the SPIR-V translator it uses (docs/specs/backend-contract.md).
+# Not on Apple, where the Metal path builds its own SPIRV-Cross for spirv_cross_msl.
+if (NOT APPLE)
+    set(SPIRV_CROSS_CLI OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_ENABLE_MSL OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_ENABLE_CPP OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_ENABLE_REFLECT OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_ENABLE_C_API OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_ENABLE_UTIL OFF CACHE BOOL "" FORCE)
+    set(SPIRV_CROSS_SKIP_INSTALL ON CACHE BOOL "" FORCE)
+    add_subdirectory(src/contrib/spirv-cross EXCLUDE_FROM_ALL)
+    add_library(tk64_shader_translator STATIC "${PROJECT_SOURCE_DIR}/src/tk64/tk64_shader_translator.cpp")
+    target_include_directories(tk64_shader_translator PUBLIC "${PROJECT_SOURCE_DIR}/src/tk64")
+    target_link_libraries(tk64_shader_translator PUBLIC spirv-cross-glsl spirv-cross-hlsl)
+    target_sources(plume PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/plume/plume_gles.cpp")
+    target_link_libraries(plume PUBLIC tk64_shader_translator)
+    if (WIN32)
+        target_link_libraries(plume PUBLIC opengl32)
+
+        # TK64: Direct3D 11 backend (docs/specs/d3d11-backend.md). d3dcompiler_47.dll is loaded at run time, by the
+        # backend and by the build-time tool that compiles the ubershaders (see the end of the shader list).
+        target_sources(tk64_shader_translator PRIVATE "${PROJECT_SOURCE_DIR}/src/tk64/tk64_hlsl_compiler.cpp")
+        target_sources(plume PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/plume/plume_d3d11.cpp")
+        target_link_libraries(plume PUBLIC d3d11 dxgi)
+        target_compile_definitions(rt64 PRIVATE TK64_D3D11_BACKEND)
+        add_executable(tk64_dxbc_bake "${PROJECT_SOURCE_DIR}/src/tk64/tk64_dxbc_bake.cpp")
+        target_link_libraries(tk64_dxbc_bake PRIVATE tk64_shader_translator)
+    else()
+        # EGL, GL and Wayland are loaded with dlopen.
+        target_link_libraries(plume PUBLIC ${CMAKE_DL_LIBS})
+    endif()
+
+    target_compile_definitions(rt64 PRIVATE TK64_GLES_BACKEND)
+endif()
 
 # Add tools.
 add_subdirectory(src/tools/texture_hasher)
@@ -499,6 +541,8 @@ preprocess_shader(rt64 "src/shaders/RenderParams.hlsli")
 if (${WIN32})
     build_library_shader(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSLibrary.hlsl")
     build_library_shader(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSLibraryMS.hlsl" "-D MULTISAMPLING")
+    build_library_shader(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSLibrarySlots.hlsl" "-D TEXTURE_SLOTS")
+    build_library_shader(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSLibrarySlotsMS.hlsl" "-D TEXTURE_SLOTS" "-D MULTISAMPLING")
     build_library_shader(rt64 "src/shaders/RasterVS.hlsl" "src/shaders/RasterVSLibrary.hlsl")
 endif()
 
@@ -508,6 +552,13 @@ build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/
 build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantMS.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D MULTISAMPLING")
 build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantFlat.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D VERTEX_FLAT_COLOR")
 build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantFlatMS.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D VERTEX_FLAT_COLOR" "-D MULTISAMPLING")
+# TK64: texture-slot variants of the raster pixel shader (docs/specs/texture-slots.md).
+build_pixel_shader(  rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSDynamicSlots.hlsl" "-D DYNAMIC_RENDER_PARAMS" "-D TEXTURE_SLOTS")
+build_pixel_shader(  rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSDynamicSlotsMS.hlsl" "-D DYNAMIC_RENDER_PARAMS" "-D TEXTURE_SLOTS" "-D MULTISAMPLING")
+build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantSlots.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D TEXTURE_SLOTS")
+build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantSlotsMS.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D TEXTURE_SLOTS" "-D MULTISAMPLING")
+build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantFlatSlots.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D VERTEX_FLAT_COLOR" "-D TEXTURE_SLOTS")
+build_pixel_shader_spec_constants(rt64 "src/shaders/RasterPS.hlsl" "src/shaders/RasterPSSpecConstantFlatSlotsMS.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D VERTEX_FLAT_COLOR" "-D TEXTURE_SLOTS" "-D MULTISAMPLING")
 build_vertex_shader( rt64 "src/shaders/RasterVS.hlsl" "src/shaders/RasterVSDynamic.hlsl" "-D DYNAMIC_RENDER_PARAMS")
 build_vertex_shader_spec_constants( rt64 "src/shaders/RasterVS.hlsl" "src/shaders/RasterVSSpecConstant.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS")
 build_vertex_shader_spec_constants( rt64 "src/shaders/RasterVS.hlsl" "src/shaders/RasterVSSpecConstantFlat.hlsl" "-D SPEC_CONSTANT_RENDER_PARAMS" "-D VERTEX_FLAT_COLOR")
@@ -558,6 +609,47 @@ build_pixel_shader(  rt64 "src/shaders/ComposePS.hlsl")
 build_pixel_shader(  rt64 "src/shaders/DebugPS.hlsl")
 build_pixel_shader(  rt64 "src/shaders/Im3DPS.hlsl")
 build_pixel_shader(  rt64 "src/shaders/PostProcessPS.hlsl")
+
+# TK64: Direct3D 11 compiles the raster ubershaders to DXBC at build time; D3DCompile needs minutes for each, too long
+# for a game start (docs/specs/d3d11-backend.md). Other shaders compile at run time into a disk cache.
+if (TARGET tk64_dxbc_bake)
+    set(TK64_DXBC_BAKED_SHADERS RasterPSDynamicSlots RasterVSDynamic)
+    set(TK64_DXBC_REGISTRY "${CMAKE_BINARY_DIR}/src/shaders/tk64_dxbc_baked.cpp")
+    set(TK64_DXBC_DECLARATIONS "")
+    set(TK64_DXBC_ENTRIES "")
+    foreach (SHADER ${TK64_DXBC_BAKED_SHADERS})
+        set(SHADER_OUT "${CMAKE_BINARY_DIR}/src/shaders/${SHADER}.hlsl")
+        add_custom_command(OUTPUT ${SHADER_OUT}.dxbc.c
+            COMMAND tk64_dxbc_bake ${SHADER_OUT}.spv ${SHADER_OUT}.dxbc.c ${SHADER}
+            DEPENDS ${SHADER_OUT}.spv tk64_dxbc_bake)
+        target_sources(rt64 PRIVATE ${SHADER_OUT}.dxbc.c)
+        string(APPEND TK64_DXBC_DECLARATIONS "    extern const uint64_t ${SHADER}Key;\n    extern const uint32_t ${SHADER}Size;\n    extern const uint8_t ${SHADER}DXBC[];\n")
+        string(APPEND TK64_DXBC_ENTRIES "        { ${SHADER}Key, ${SHADER}DXBC, ${SHADER}Size },\n")
+    endforeach()
+
+    file(CONFIGURE OUTPUT ${TK64_DXBC_REGISTRY} CONTENT "// Generated by TK64's CMakeLists.txt: the shaders tk64_dxbc_bake compiled for this build.
+#include \"tk64_hlsl_compiler.h\"
+
+extern \"C\" {
+${TK64_DXBC_DECLARATIONS}}
+
+namespace tk64 {
+    const BakedShader *findBakedShader(uint64_t key) {
+        static const BakedShader shaders[] = {
+${TK64_DXBC_ENTRIES}        };
+
+        for (const BakedShader &shader : shaders) {
+            if (shader.key == key) {
+                return &shader;
+            }
+        }
+
+        return nullptr;
+    }
+};
+" @ONLY)
+    target_sources(rt64 PRIVATE ${TK64_DXBC_REGISTRY})
+endif()
 
 target_include_directories(rt64 PRIVATE ${CMAKE_BINARY_DIR}/src)
 
