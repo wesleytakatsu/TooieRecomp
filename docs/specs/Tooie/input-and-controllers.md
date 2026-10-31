@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Input and Controller Subsystem"
 description: "Technical specification for SDL2 controller mapping, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-31
 tags: [specs, tooierecomp, input, controller, sdl2, stick-angle, demo]
 ---
 
@@ -79,6 +79,12 @@ Banjo-Tooie Player Physics & Attract Demo Engine
   - *Dormant Hooks*: `recomp_get_gyro_deltas` and `recomp_get_mouse_deltas` are defined in `recomp_api.cpp` but registration remains commented out in `main.cpp`. Guest-side camera consumer hooks remain unimplemented in the Tooie engine, so camera options remain disabled in the user interface.
 
 ### 3.4 Local Multiplayer
+
+The Dev Mode transformation selector reads Debug Button and game buttons from each issuing player's profile in
+`tooie_get_n64_input`. Physical R3 or Debug Button + D-pad down opens that player's overlay; the direct R3 fallback
+also supports old profiles without a Debug Button binding. Navigation/confirmation are consumed
+only for that player until the closing buttons/stick are released. The other port continues supplying game input.
+The selector does not create a globally capturing UI context. Details: [window/UI contract](window-ui-and-config.md).
 
 - **N64 Controller Port Policy (`include/tooie_controller_ports.h`)**:
   - Implemented as pure logic header validated via `tests/tooie_controller_ports_test.cpp`.

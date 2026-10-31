@@ -29,6 +29,7 @@
 #include "tooie_bgm_hooks.h"
 #include "tooie_bgm_volume.h"
 #include "tooie_dev_warp_hook.h"
+#include "tooie_dev_forms_hook.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -6235,6 +6236,13 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kSecondaryPlayerModelVram), tooie_dev_on_secondary_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kModelInstanceVram), tooie_dev_on_model_instance);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F43A8), tooie_forms_on_allocate);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80084FB0), tooie_forms_on_setup);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80098E64), tooie_forms_on_teardown);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009E8D4), tooie_forms_on_reset);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009EA2C), tooie_forms_on_dragon_get);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009EAAC), tooie_forms_on_dragon_set);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009E9D8), tooie_forms_on_transition_form);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
     // Census and the GeoCmd experiment are off unless their env vars say otherwise.
     // 10/11/12 also register for the experiment so the extra walk runs with census off.

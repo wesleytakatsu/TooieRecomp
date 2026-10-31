@@ -205,6 +205,9 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_mode_ui.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
@@ -561,6 +564,8 @@ foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
         ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
         ${CMAKE_SOURCE_DIR}/tests/support/recompui_window_stub.cpp
@@ -682,6 +687,19 @@ target_include_directories(tooie_dev_cheats_test PRIVATE
     ${N64MR}/thirdparty
 )
 set_target_properties(tooie_dev_cheats_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_dev_forms_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_forms_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+)
+target_include_directories(tooie_dev_forms_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+)
+set_target_properties(tooie_dev_forms_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # Pure N64 controller port policy, independent of SDL and the runtime.
 add_executable(tooie_controller_ports_test

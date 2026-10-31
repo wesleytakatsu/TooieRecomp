@@ -5,6 +5,7 @@
 
 #include "tooie_dev_warp.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_dev_forms_hook.h"
 
 #include <chrono>
 #include <cmath>
@@ -150,6 +151,8 @@ void place_second_player(uint8_t* rdram, const recomp_context* ctx, const tooie_
 double second_player_due = -1.0;
 // Set when player 2 has just been placed beside player 1 and must be started on its next frame.
 bool second_player_start_next = false;
+std::optional<tooie_dev_warp::Position> second_player_last_first;
+double second_player_still_since = -1.0;
 
 // Latched before native player creation so model setup can request private lit vertices for this story map.
 bool story_two_players = false;
@@ -215,6 +218,7 @@ bool private_player_vertices_enabled() {
 
 void set_player_model(uint8_t* rdram, recomp_context* ctx, void (*native)(uint8_t*, recomp_context*), const char* kind) {
     const uint32_t self = static_cast<uint32_t>(ctx->r4);
+    tooie_dev_forms::PlayerScope player_scope(rdram, self);
     const bool previous = private_player_vertices_scope;
     const uint32_t previous_owner = player_model_owner;
     const char* previous_kind = player_model_kind;
@@ -328,7 +332,9 @@ extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
 // update instead, which runs every gameplay frame for each player in every form.
 extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t self = static_cast<uint32_t>(ctx->r4);
+    tooie_dev_forms::PlayerScope player_scope(rdram, self);
     func_800991B0(rdram, ctx);
+    tooie_dev_forms::update_player(rdram, ctx, self);
 
     const uint32_t player = static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers)));
     const uint32_t second = static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers)));
@@ -354,21 +360,37 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
                 local = *ctx;
                 local.r29 = ADD32(ctx->r29, -0x40);
                 local.r4 = kseg0(second);
-                local.r5 = static_cast<gpr>(static_cast<int32_t>(tooie_dev_cheats::kStateIdle));
+                local.r5 = tooie_dev_forms::default_state(rdram, ctx, second);
                 bs_setState(rdram, &local);
             }
         }
 
-        if ((second_player_due >= 0.0) && (now_seconds() >= second_player_due) &&
-            (first_state == tooie_dev_cheats::kStateIdle)) {
+        if (second_player_due >= 0.0 && second_state != kStateWaiting && !second_player_start_next) {
+            // A menu transformation can start J2 before the delayed release; do not teleport it again later.
             second_player_due = -1.0;
+        }
+        if (second_player_due >= 0.0) {
             const tooie_dev_warp::GameState first_frame = read_state(rdram, player);
             if (first_frame.player != 0) {
-                // Placed at player 1's exact height, player 2 starts inside the ground and falls through it.
-                tooie_dev_warp::Position above = first_frame.position;
-                above.pos[1] += kSecondPlayerLift;
-                place_second_player(rdram, ctx, above);
-                second_player_start_next = true;
+                const double now = now_seconds();
+                float movement = 0;
+                if (second_player_last_first) {
+                    for (int axis = 0; axis < 3; ++axis) {
+                        const float delta = first_frame.position.pos[axis] - second_player_last_first->pos[axis];
+                        movement += delta * delta;
+                    }
+                }
+                if (!second_player_last_first || movement > 0.01f) second_player_still_since = now;
+                second_player_last_first = first_frame.position;
+                // Observe position instead of a Banjo-specific idle ID (Blaster/Bee/etc. have other states).
+                if (now >= second_player_due && now - second_player_still_since >= 0.2 && first_state != kStateWaiting) {
+                    second_player_due = -1.0;
+                    // Placed at player 1's exact height, player 2 starts inside the ground and falls through it.
+                    tooie_dev_warp::Position above = first_frame.position;
+                    above.pos[1] += kSecondPlayerLift;
+                    place_second_player(rdram, ctx, above);
+                    second_player_start_next = true;
+                }
             }
         }
     }
@@ -420,6 +442,12 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
 // game select also sets the controller ports read to one (osContSetCh), so ask for two.
 extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx) {
     const int32_t requested = static_cast<int32_t>(ctx->r4);
+    second_player_due = -1.0;
+    second_player_start_next = false;
+    second_player_last_first.reset();
+    second_player_still_since = -1.0;
+    tooie_dev_forms::begin_map(requested == 1 && MEM_BU(0, kseg0(0x8012762Cu)) != 0x1B &&
+        tooie_dev_cheats::two_players_map(MEM_HU(0, kseg0(kCurrentMap))));
     const bool two = tooie_dev_cheats::two_players_active() && (requested == 1) &&
         tooie_dev_cheats::two_players_map(MEM_HU(0, kseg0(kCurrentMap)));
     story_two_players = two;

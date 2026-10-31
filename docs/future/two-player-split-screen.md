@@ -223,5 +223,75 @@ os eventos de alocação não substituem um playtest específico de cada transfo
 
 Revisão do checkpoint: sem achados bloqueantes; código gerado e dependências vendorizadas não foram alterados.
 
-`NEXT_SINGLE_ACTION`: rastrear a seleção de alvo de um inimigo que persegue J1 para permitir que também escolha J2,
-sem trocar o foco global `D_801354DC` (tentativa anterior `REFUTED`).
+## 10. Seletor individual de transformação (2026-10-31, revisão aprovada pelo usuário)
+
+Implementação sobre `d772866f6c503e508f321d8fb2f41854655bd45b`: Dev Mode desbloqueado, Debug Button (R3 no controle,
+T no teclado por padrão) + D-pad baixo abre o menu do próprio jogador. Direcional/analógico navega, A confirma, B cancela.
+Na aba Dev Mode, **Character selection** tem chave de ativação (default on, `character_menu` no JSON) e botões
+**Open for Player 1/2**. Os botões fecham ESC e abrem para o jogador ativo selecionado. R3 físico também é aceito
+diretamente, inclusive em perfis antigos sem Debug Button mapeado. Desbloquear no cenário atual não exige recarga:
+a disponibilidade é reavaliada durante gameplay, sem depender apenas da fase de carregamento.
+Os dois menus podem ficar abertos ao mesmo tempo. O jogo continua; somente a entrada de quem seleciona é consumida.
+O overlay usa o layout nativo da viewport; com um jogador, ocupa a tela inteira. O atalho tem prioridade sobre cheats
+configurados para baixo. ESC oculta temporariamente o overlay.
+
+Catálogo: 17 entradas, com Clockwork Kazooie removido após crash relatado e Banjo/Dragon Kazooie em segundo.
+Kazooie, Dragon Kazooie, Mumbo e Snowball ficam consecutivos nessa ordem. Golden Goliath selecionado pelo menu
+recebe 120 segundos antes da entrada no estado nativo: `func_8009EB00(f12=120)` fornece a duração de transição,
+consumida pelo `bsstatue` para iniciar o timer nativo 2. A duração anterior de transição é restaurada após a chamada;
+não há renovação contínua, nem alteração da magia original. A regressão de duração zero é coberta no harness;
+o usuário aprovou a revisão no Windows. A expiração completa ainda requer teste específico. O HUD timer 2 continua global/nativo.
+São 15 das formas declaradas em `transformations.h`, mais as duas variantes Dragão. Troca usa
+setters nativos de forma/modelo e estado inicial da forma. J2 também deixa a espera no estado próprio da forma.
+Snapshots individuais do handoff nativo evitam que J2 sobrescreva a forma e o contexto de transição de J1. Reversões
+nativas são capturadas; não há reaplicação contínua nem patch nas rotinas de alcance da Humba. Detalhes e limites:
+[[reverse-engineering/systems/player-transformations]]. A forma escolhida não é gravada em save/config;
+somente a chave de ativação do menu é persistida.
+
+Validação host: `pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Build` e `-Stage Test`. O teste novo
+`tooie_dev_forms_test` executa os wrappers reais com memória guest e funções nativas substituídas, cobrindo isolamento,
+17 seleções, exclusão de Clockwork, ordem Dragão, handoff por jogador, prioridade de reversão nativa e variantes Dragão. Isso não valida as animações,
+colisão, timers e câmeras dos personagens reais. Playtest exaustivo e Linux: `NOT_RUN`.
+
+Resultado final Windows: ambos os comandos terminaram com exit 0; 18/18 testes obrigatórios passaram. Build emitiu
+os sete avisos preexistentes de símbolos não usados em `boot_hw_stubs.cpp`. Executável para o playtest:
+`build-win/TooieRecompiled.exe`, SHA-256 `ffcddcd03b993f568ec202707e94929963a2b3047767fccc81d6cc5311778d96`.
+Revisão de ordem/Goliath: 18/18 testes passaram. O primeiro link recebeu `permission denied`; a repetição depois
+de o jogo não aparecer mais em execução terminou com exit 0 e gerou o executável acima.
+Build e 18 testes host passaram após a revisão da ativação. Verificação visual automatizada não executou:
+as duas interfaces de computer use falharam ao iniciar com `failed to write kernel assets` (os error 3).
+
+O usuário confirmou que a seleção funciona. A captura mostrou a legenda de controles quebrada em palavras e sobreposta
+aos nomes; o layout agora separa cabeçalho, sete linhas de nomes sem quebra e rodapé A/B, todos com dimensões explícitas.
+Build e 18/18 testes passaram nesta revisão; usuário aprovou o resultado no Windows após os ajustes de ordem e Goliath.
+Essa aprovação não substitui os testes específicos de persistência, alcance e expiração completa. Investigação de formas
+adicionais não confirmou outro tipo jogável independente; variantes de modelo do multijogador e IDs sem comportamento
+próprio não foram adicionados. Ver RE acima para os limites da conclusão.
+
+Roteiro manual, com backup dos saves/configs e encerramento pela janela (sem "Save and Quit"):
+
+1. Desbloquear Dev Mode; conferir **Character selection** e chave ligada; usar **Open for Player 1** ou R3 + baixo
+   no jogo. Testar com um jogador e conferir tela inteira, A e B, sem recarregar o mapa após desbloquear.
+2. Ligar dois jogadores, carregar um mapa, escolher Bee para J1 e Stony para J2; conferir recorte e controle isolados.
+3. Abrir os dois menus simultaneamente; cancelar um e confirmar o outro, sem disparar ações no jogo.
+4. Entrar/sair da tenda da Humba e conferir as duas formas; repetir com transformação recebida da própria Humba.
+5. Conferir a reversão nativa no limite da magia; testar Dragão em apenas um jogador e Blaster/Mumbo/T. rex.
+   Confirmar Clockwork ausente, Dragão em segundo e legenda sem sobreposição.
+6. Conferir Kazooie → Dragon Kazooie → Mumbo → Snowball; selecionar Golden Goliath e verificar início em 2:00,
+   queda normal do contador, ausência de recarga por frame e expiração nativa.
+
+Captura opcional (o wrapper existente faz backup e captura stdout/stderr; não restaura os saves):
+
+```powershell
+$env:TOOIE_DIAG_PLAYER_FORMS = '1'
+pwsh -NoProfile -File "E:\projetos\TooieRecomp-win\tools\windows\Test-SplitScreenLighting.ps1"
+Remove-Item Env:TOOIE_DIAG_PLAYER_FORMS
+```
+
+Os eventos `[tooie-forms]` em `stderr.log` incluem horário UTC em milissegundos, mapa, jogador, evento, forma e variante.
+`TOOIE_TEST_PLAYER_FORMS=0` desliga a integração nova para comparação. Logs por padrão desligados.
+
+Revisão para commit: sem achados bloqueantes; 18/18 testes obrigatórios Windows passaram novamente.
+Código gerado e dependências vendorizadas permanecem inalterados.
+
+`NEXT_SINGLE_ACTION`: testar a persistência de Bee no J1 e Stony no J2 ao entrar/sair da tenda da Humba.

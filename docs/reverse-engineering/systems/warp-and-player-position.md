@@ -74,6 +74,10 @@ The launch handlers are the first entry of `bskazfly` (`func_80800248_bskazfly`:
 
 ## Transformation and the Breegull Blaster
 
+For the Dev Mode per-player selector, shared transition banks and independent Dragon Kazooie variants, see
+[player transformations](player-transformations.md). The user approved the revised Windows selector; exhaustive
+gameplay and map-handoff validation remain pending.
+
 | Address / function | Meaning | Status |
 | --- | --- | --- |
 | `PlayerState + 0xA0` -> `+0x29` (u8) | transformation (`TransformationId`, `decomp/include/transformations.h`): `0x1` Banjo and Kazooie, `0x9` (`TRANSFORM_9_FIRSTPERSON`) the Breegull Blaster | `PROVEN` (getter `func_800A3274`; runtime: `0x1` -> `0x9` -> `0x1` around the Blaster) |

@@ -123,10 +123,14 @@ int main() {
         settings[Cheat::Fly] = {true, Direction::Down};
         settings[Cheat::Blaster] = {true, Direction::Left};
         settings.two_players = true;
+        settings.character_menu = false;
         const Settings back = parse_settings(serialize_settings(settings));
         CHECK(back[Cheat::Fly].enabled && back[Cheat::Fly].direction == Direction::Down);
         CHECK(back[Cheat::Blaster].enabled && back[Cheat::Blaster].direction == Direction::Left);
         CHECK(back.two_players);
+        CHECK(!back.character_menu);
+        CHECK(parse_settings("{}").character_menu);
+        CHECK(parse_settings("{\"character_menu\": 1}").character_menu);
         CHECK(!parse_settings("{\"two_players\": 1}").two_players);
 
         const Settings defaults = parse_settings("{not json");

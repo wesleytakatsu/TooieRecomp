@@ -124,6 +124,8 @@ void set_unlocked(bool value) {
     unlocked = value;
 }
 
+bool is_unlocked() { return unlocked.load(); }
+
 void on_player1_input(bool debug_held, uint16_t buttons) {
     const uint16_t pressed = player1_chord.step(debug_held, buttons);
     if ((pressed == 0) || !unlocked) {
@@ -181,6 +183,9 @@ Settings parse_settings(const std::string& json_text) {
     if (root.contains("two_players") && root["two_players"].is_boolean()) {
         result.two_players = root["two_players"].get<bool>();
     }
+    if (root.contains("character_menu") && root["character_menu"].is_boolean()) {
+        result.character_menu = root["character_menu"].get<bool>();
+    }
 
     return result;
 }
@@ -193,6 +198,7 @@ std::string serialize_settings(const Settings& settings) {
     }
 
     root["two_players"] = settings.two_players;
+    root["character_menu"] = settings.character_menu;
     return root.dump(2) + "\n";
 }
 

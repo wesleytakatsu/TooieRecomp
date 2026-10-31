@@ -16,6 +16,7 @@
 #include "util/file.h"
 
 #include "tooie_dev_cheats.h"
+#include "tooie_dev_forms.h"
 #include "tooie_dev_warp.h"
 
 namespace {
@@ -352,6 +353,40 @@ void build_cheats(ContextId context, Element* root) {
     build_cheat_row(context, root, tooie_dev_cheats::Cheat::Blaster, "Breegull Blaster (switch on or off)");
 }
 
+void build_character_selection(ContextId context, Element* root) {
+    context.create_element<Label>(root, "Character selection", theme::Typography::Header3);
+    Element* line = row(context, root, 16.0f);
+    auto* toggle = context.create_element<Toggle>(line, ToggleSize::Medium);
+    toggle->set_checked(tooie_dev_cheats::settings().character_menu);
+    toggle->add_checked_callback([](bool checked) {
+        auto settings = tooie_dev_cheats::settings();
+        settings.character_menu = checked;
+        store_cheats(settings);
+    });
+    context.create_element<Label>(line, "Enable character selection (R3 + D-pad down)", theme::Typography::LabelMD);
+    context.create_element<Label>(root,
+        "Select with D-pad/stick, A to transform, B to cancel. Each menu stays inside its player's view. "
+        "R3 works directly; the mapped Debug Button also works. Takes priority over cheats assigned to down.",
+        theme::Typography::LabelSM);
+    Element* buttons = row(context, root, 12.0f);
+    for (int player = 0; player < 2; ++player) {
+        auto* button = context.create_element<Button>(buttons, "Open for Player " + std::to_string(player + 1),
+            ButtonStyle::Secondary, ButtonSize::Medium);
+        button->add_pressed_callback([player]() {
+            auto settings = tooie_dev_cheats::settings();
+            settings.character_menu = true;
+            store_cheats(settings);
+            tooie_dev_forms::menus().request_open(player);
+            recompui::hide_all_contexts();
+        });
+    }
+    const auto states = tooie_dev_forms::menus().snapshot();
+    context.create_element<Label>(root,
+        std::string("Gameplay status - Player 1: ") + (states[0].available ? "ready" : "waiting") +
+        "; Player 2: " + (states[1].available ? "ready" : "waiting") +
+        ". Open buttons return to the game; a player must be active.", theme::Typography::LabelSM);
+}
+
 void build_experimental(ContextId context, Element* root) {
     context.create_element<Label>(root, "Experimental", theme::Typography::Header3);
     Element* line = row(context, root, 16.0f);
@@ -403,6 +438,7 @@ void build_contents(ContextId context, Element* root) {
     });
 
     build_cheats(context, root);
+    build_character_selection(context, root);
     build_experimental(context, root);
 
     if (g_state.warp_open) {

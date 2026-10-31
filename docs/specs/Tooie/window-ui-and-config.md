@@ -152,7 +152,7 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 - **dev_warps.json**: positions saved by the Dev Mode warp (section 4.5); written only when the user saves, renames or
   deletes one.
 - **dev_cheats.json**: Dev Mode cheat settings (section 4.5), `{"version": 1, "fly": {"enabled", "direction"},
-  "blaster": {"enabled", "direction"}, "two_players": false}` with `direction` one of `up`, `down`, `left`, `right`;
+  "blaster": {"enabled", "direction"}, "two_players": false, "character_menu": true}` with `direction` one of `up`, `down`, `left`, `right`;
   written when a cheat, its direction or the experimental two-player option changes. A missing or malformed setting
   keeps its default (cheats and two players off; Fly up, Blaster right).
 
@@ -252,13 +252,44 @@ that change the game's state directly.
     the Blaster's second model and reloads the model of the current transformation, because the game normally leaves
     the Blaster only through a map change, which builds the player again. The Warp does not step while the Blaster is
     on (it runs from `yaw_update`). Validated by the user on Windows (2026-10-30).
+- **Per-player transformation selector** (after Dev Mode unlock): the **Character selection** section contains an
+  **Enable character selection (R3 + D-pad down)** toggle (default on, persisted as `character_menu`) and
+  **Open for Player 1/2** buttons. These enable the selector, close ESC and queue opening for the selected active
+  player, consuming the button's closing input until release. No map reload is required after unlocking/enabling.
+  Holding physical R3 or the mapped Debug Button (default R3/T) and pressing
+  D-pad down opens the issuing player's selector, independently for J1/J2. This chord takes priority over an existing
+  cheat configured to down. D-pad up/down or the left stick navigates; A confirms and B cancels. Both players can open
+  selectors simultaneously. Only the owner's game input is consumed, including the closing button until release;
+  there is no global game pause. The selector uses a non-capturing overlay clipped to the native viewport layout.
+  A single player's viewport covers the full game screen. ESC/global UI temporarily hides the selector.
+  - Catalog: 17 entries. Banjo/Kazooie is first and Banjo/Dragon Kazooie second, followed by Banjo, Kazooie,
+    solo Dragon Kazooie, Mumbo, Snowball, Bee, Washing Machine, Stony, Breegull Blaster, Submarine, Golden Goliath,
+    Detonator, Van and Small/Large T. rex. Clockwork Kazooie is excluded after a reported crash when replacing the owner player;
+    native Clockwork egg/remote mechanics are unchanged. There is no map availability filter in this catalog.
+    The overlay has a full-width header, seven fixed-height non-wrapping name rows, and a separate A/B footer.
+  - Selecting Golden Goliath seeds its native entry duration with 120 seconds. The temporary transition seed is
+    restored after entry; the native countdown/expiry continues without a per-frame refill. Humba/Mumbo's original
+    transformation flows and spell-range rules are unchanged.
+    Simultaneous Goliaths still use the game's shared HUD timer 2; separate countdowns are not implemented.
+  - The game-thread request changes the owner's native form, models, animation and default behavior state. Each
+    player's native transition data is captured and selected during the next player allocation/setup. Native changes
+    and reversions remain authoritative; the selector does not continuously reapply a previous selection.
+    Humba's native spell range is unchanged. The selected form is session state; only the menu enable switch is saved.
+  - New maps/session reset discard open menus and old confirmations. Requests during loading are dropped. Native
+    multiplayer and attract mode do not activate the selector. `TOOIE_TEST_PLAYER_FORMS=0` disables the new integration;
+    `TOOIE_DIAG_PLAYER_FORMS=1` enables allocation/selection/transition events on stderr (default OFF).
+  - RE and proof boundary: [player transformations](../../reverse-engineering/systems/player-transformations.md).
+    The user approved the revised selector on Windows. Host harness/build validation and that approval do not prove
+    all special characters' gameplay in arbitrary maps; exhaustive manual testing remains pending.
 - **Experimental: Two players (split screen)**: default off, persisted as the boolean `two_players`. Requires the
   session warning to be accepted, Multiplayer enabled in General and two players assigned in Controls. Player creation
   applies the option on the next eligible map load; game select and the excluded cutscene maps remain unchanged.
   The map-creation hook (`0x800F73C4`) changes an original request for one player to two, adds a second viewport when
   the map has one and enables reads from two controller ports. Player 2 is placed beside player 1, then placed again
-  2 s later once player 1 is idle, 60 game units above player 1; on its next update it leaves waiting state `0x74`
-  for idle `0x1`. The active-player hook (`0x800F65D0`) admits player 2 for collisions while the option is active.
+  2 s later once player 1's position has been still for 0.2 s, 60 game units above player 1; on its next update it leaves
+  waiting state `0x74` for its own native default state (`0x1` for Banjo/Kazooie). The active-player hook
+  (`0x800F65D0`) admits player 2 for collisions while the option is active.
+  Transforming J2 through the menu before the delayed release cancels the later repositioning.
   Warp also places player 2 beside player 1 while the option is active. Turning the option off does not destroy
   player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
   collision and Warp hooks consult the current option.

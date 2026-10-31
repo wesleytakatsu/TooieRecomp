@@ -40,6 +40,7 @@ struct Settings {
 
     // Experimental: story maps start with two players (split screen) instead of one, from the next map load.
     bool two_players = false;
+    bool character_menu = true;
 
     CheatSettings& operator[](Cheat cheat) { return cheats[size_t(cheat)]; }
     const CheatSettings& operator[](Cheat cheat) const { return cheats[size_t(cheat)]; }
@@ -80,6 +81,7 @@ private:
 Settings settings();
 void set_settings(const Settings& settings);
 void set_unlocked(bool unlocked); // the Dev Mode warning was accepted; cheats do nothing before
+bool is_unlocked();
 void on_player1_input(bool debug_held, uint16_t buttons);
 bool take_request(Cheat cheat); // true once per queued request of that cheat
 bool two_players_active();      // unlocked and the two-player option is on

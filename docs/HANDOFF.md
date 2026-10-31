@@ -29,7 +29,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 17 obrigatórios (inclui 5 de idioma, `tooie_dev_warp_test`, `tooie_dev_cheats_test` e `tooie_texture_zip_mod_test`); Linux `build_linux.sh test`: 9 | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 18 obrigatórios (inclui 5 de idioma e `tooie_dev_forms_test`); Linux `build_linux.sh test`: 10 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -59,6 +59,16 @@ dividida estão em `docs/future/`. Contratos estáveis:
   Diagnósticos temporários por desenho removidos; captura leve opt-in disponível em
   `tools/windows/Test-SplitScreenLighting.ps1` (backup + logs). Handoff: [[future/two-player-split-screen]];
   RE: [[reverse-engineering/systems/player-lighting]].
+- Seletor de transformações por jogador implementado para teste: Dev Mode desbloqueado, seção **Character selection**
+  com chave e botões **Open for Player 1/2**; sem exigir recarga de mapa após desbloquear. R3 físico ou Debug Button + D-pad
+  baixo, direcional/analógico para selecionar, A confirma, B cancela. Overlay por viewport, entrada e pedidos
+  independentes, 17 entradas (Clockwork removido após crash relatado; Banjo/Dragon Kazooie em segundo). Handoff nativo preservado por jogador entre
+  cenários; rotinas de alcance/reversão da Humba não foram alteradas. Build Windows e harness/testes host validados;
+  usuário confirmou que a seleção funciona; a legenda sobreposta foi separada da lista com linhas de dimensão fixa.
+  Ordem: Kazooie → Dragon Kazooie → Mumbo → Snowball. Golden Goliath recebe 120 s na entrada pelo menu, corrigindo
+  a duração zero relatada; contagem/expiração continuam nativas. Usuário aprovou a revisão no Windows (2026-10-31).
+  Persistência/alcance e expiração completa ainda aguardam teste específico; dois Goliaths compartilham o timer nativo.
+  RE: [[reverse-engineering/systems/player-transformations]].
 - Plano futuro (proposto, não implementado): cooperativo com dois processos, cada um com um jogador, vendo-se no mesmo
   mapa e compartilhando progresso. Ver [[future/two-process-coop]].
 
@@ -79,5 +89,5 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: rastrear a seleção de alvo de um inimigo que persegue J1 para permitir que também escolha J2,
-sem trocar o foco global `D_801354DC` (tentativa anterior `REFUTED`).
+`NEXT_SINGLE_ACTION`: testar a persistência de Bee no J1 e Stony no J2 ao entrar/sair da tenda da Humba
+(roteiro em [[future/two-player-split-screen]]).

@@ -66,6 +66,7 @@ extern char** environ;
 #include "tooie_menu_policy.h"
 #include "tooie_controller_ports.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_dev_forms.h"
 #include "tooie_language_pack_loader.h"
 #include "tooie_error.h"
 #include "recomp_data.h"
@@ -1439,10 +1440,28 @@ int main(int argc, char** argv) {
                                     x != nullptr ? *x : 0.0f,
                                     y != nullptr ? *y : 0.0f,
                                     buttons != nullptr ? *buttons : 0);
+        bool forms_input = false;
+        if (buttons != nullptr && x != nullptr && y != nullptr) {
+            const double time = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            const int physical_player = recompinput::players::is_single_player_mode() ||
+                source == tooie_controller_ports::PortInput::MergedFallback ? -1 : controller;
+            const bool physical_enabled = !recompinput::game_input_disabled();
+            const auto physical_button = [physical_player, physical_enabled](SDL_GameControllerButton button) {
+                return physical_enabled && recompinput::get_input_digital(physical_player,
+                    recompinput::InputField::controller_digital(button));
+            };
+            const bool r3 = physical_button(SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+            uint16_t form_buttons = *buttons;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) form_buttons |= 0x0400;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_UP)) form_buttons |= 0x0800;
+            forms_input = tooie_dev_forms::menus().input(controller, tooie_dev_cheats::is_unlocked(),
+                r3 || recompinput::profiles::get_game_input_held(controller, recompinput::GameInput::DEBUG), form_buttons, *x, *y, time);
+        }
         if ((controller == 0) && (buttons != nullptr)) {
             tooie_dev_cheats::on_player1_input(
-                recompinput::profiles::get_game_input_held(0, recompinput::GameInput::DEBUG), *buttons);
+                !forms_input && recompinput::profiles::get_game_input_held(0, recompinput::GameInput::DEBUG), *buttons);
         }
+        if (forms_input) { *buttons = 0; *x = 0; *y = 0; }
         return ok;
     };
 

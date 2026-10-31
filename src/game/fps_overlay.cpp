@@ -2,6 +2,7 @@
 // always-on overlay hook, so it runs on the present thread and shares no state with the game threads.
 #include "tooie_fps_overlay.h"
 #include "tooie_fps_meter.h"
+#include "tooie_dev_forms.h"
 
 #include <atomic>
 #include <chrono>
@@ -95,7 +96,11 @@ namespace {
 }
 
 void tooie::register_fps_overlay() {
-    recompui::set_overlay_update_callback(update_overlay);
+    recompui::set_overlay_update_callback([](bool shutting_down) {
+        const bool forms = tooie_dev_forms::update_overlay(shutting_down);
+        const bool fps = update_overlay(shutting_down);
+        return forms || fps;
+    });
 
     // Default-OFF diagnostic TOOIE_DIAG_PRESENT_LOG=1: one stderr line every 250 ms with the cumulative present count, so a
     // timestamped log shows where the present rate drops (map loads, stalls). Detached sampler thread, reads one atomic.

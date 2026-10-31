@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Testing Framework and Measurement Oracle"
 description: "Technical specification for the host unit test harness, regression test suite, and the ANGRYLION_CONTROL software-rendered ground truth oracle."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-30
+updated: 2026-10-31
 tags: [specs, tooierecomp, tests, oracle, angrylion, regression]
 ---
 
@@ -55,7 +55,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 `TOOIE_WRAPPED_SYMBOLS` wrapping contract; independent subsystem tests do not require those guest stubs.
 
 ### 3.1 Test Execution Commands
-- **Linux (`tools/build_linux.sh test`)**: Executes 9 core verification tests:
+- **Linux (`tools/build_linux.sh test`)**: Executes 10 core verification tests:
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
   - `rt64_host_endpoint_current_test`
@@ -65,8 +65,9 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `p09_exact_use_correlation_test`
   - `rt64_present_decimator_test`
   - `tooie_dev_warp_test` (Dev Mode warp state machine, saved-position JSON, map names)
+  - `tooie_dev_forms_test` (per-player selector and native handoff wrappers, with lifecycle stand-ins)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 17 required verification tests: the 9 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 18 required verification tests: the 10 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -79,6 +80,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | :--- | :--- | :--- |
 | `tooie_texture_zip_mod_test` | `tests/tooie_texture_zip_mod_test.cpp` | Synthetic ZIP roots and relative metadata reads, ambiguity/invalid roots, real `ModContext` scanning, default manifest, `.rtz` regression and texture-only detection with an `.nrm` control; no ROM or game assets |
 | `tooie_dev_warp_test` | `tests/tooie_dev_warp_test.cpp` | Dev Mode warp: teleport state machine (same map, other map, load detection, timeout), `dev_warps.json` round trip and malformed input, map names |
+| `tooie_dev_forms_test` | `tests/tooie_dev_forms_test.cpp` | Independent menu input/confirmation/cancellation and repeat, all 17 catalog selections, Clockwork exclusion, Dragon/Mumbo order, Golden Goliath 120-second entry seed and restoration of the prior handoff, native-wrapper handoff isolation, reversion precedence, Dragon variant without save-flag writes, viewport publication and reset; native lifecycle stand-ins, not a gameplay/render test |
 | `tooie_dev_cheats_test` | `tests/tooie_dev_cheats_test.cpp` | Dev Mode cheats: D-pad bits and names, Debug Button chord (once per press, only while held), per-cheat requests gated by unlock, switch and direction, Fly and Breegull Blaster allowed transformations/states, `dev_cheats.json` round trip, defaults and fallbacks; experimental two-player unlock/option gates, map exclusions and boolean JSON validation |
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |

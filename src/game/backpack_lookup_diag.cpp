@@ -4,6 +4,7 @@
 #include "recomp.h"
 #include "funcs.h"
 #include "tooie_diag.h"
+#include "tooie_dev_forms_hook.h"
 
 extern "C" void __real_func_800D674C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800DE448(uint8_t* rdram, recomp_context* ctx);
@@ -59,6 +60,7 @@ extern "C" void __wrap_func_80098BA8(uint8_t* rdram, recomp_context* ctx) {
 }
 
 extern "C" void __wrap_func_80092444(uint8_t* rdram, recomp_context* ctx) {
+    tooie_dev_forms::PlayerScope player_scope(rdram, ctx != nullptr ? uint32_t(ctx->r4) : 0);
     bool scoped = false;
     if (tooie_diag::secondary_sway_enabled() && ctx != nullptr) {
         scoped = tooie_diag::secondary_sway_player_draw_begin(
