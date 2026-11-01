@@ -72,7 +72,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_enemy_ai_test` (native perception/target/chase and Shovel update with scoped J1/J2 integration)
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 25 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 15 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 27 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 15 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -83,6 +83,8 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 
 | Target | Source File | Scope / Purpose |
 | :--- | :--- | :--- |
+| `rt64_widescreen_bounds_test` | `tests/rt64_widescreen_bounds_test.cpp` | Real RT64 State/WorkloadQueue/RSP triangle submission without GPU/device/window/game; retained lateral Y bounds, upper/lower rows, depth-update policy, face-index identity, vertical scissor and Original/Manual/orthographic guards. `--disabled` checks the startup kill switch in a separate process. Synthetic geometry; visual gameplay acceptance remains separate. |
+| `tooie_projection_reload_test` | `tests/tooie_projection_reload_test.cpp` | Native `func_800BC948` cache constructor and `func_800BCC90` with production projection hooks; checks both 48-byte banks, untouched surrounding bytes, frame-arena P/V display list, segment-8 path and reset. Matrix services are synthetic; no renderer or visual acceptance. |
 | `tooie_texture_zip_mod_test` | `tests/tooie_texture_zip_mod_test.cpp` | Synthetic ZIP roots and relative metadata reads, ambiguity/invalid roots, real `ModContext` scanning, default manifest, `.rtz` regression and texture-only detection with an `.nrm` control; no ROM or game assets |
 | `tooie_dev_warp_test` | `tests/tooie_dev_warp_test.cpp` | Dev Mode warp: teleport state machine (same map, other map, load detection, timeout), `dev_warps.json` round trip and malformed input, map names |
 | `tooie_glowbo_collection_test` | `tests/tooie_glowbo_collection_test.cpp` | Executes real native collection forwarding, actor event/class dispatch, Glowbo callback/update, state setter, actor loop/range arithmetic, inventory arithmetic and deletion marking. Reproduces repeated credit without the hook, then checks J1/J2 near/far, repeated contacts, effect cleanup order/exactly once, prior collected state, sector gate, Mega Glowbo flag/dialogue/distinct counter, other classes/events and original-mode pass-through. World/assets, extension storage, save/UI/effect services and final actor-list reclamation are synthetic; no map, ROM or GPU is used. |

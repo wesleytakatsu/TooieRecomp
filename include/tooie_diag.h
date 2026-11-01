@@ -76,9 +76,7 @@
 // Passive high-rate temporal coherency (P09, RT64 CPU):
 // TOOIE_DIAG_FEATHER_TEMPORAL_COHERENCY=1 writes
 // /tmp/tooie-feather-temporal-coherency-status.txt (schema VERSION=4).
-// Also enables the CPU P/V scale witness in func_800E44FC:
-// /tmp/tooie-pv-scale-status.txt. TOOIE_DIAG_PV_SCALE=1 enables only
-// the scale witness. Neither mutates weights, matrices, or GPU state.
+// Does not mutate weights, matrices, or GPU state.
 //
 // RSP endpoint sidecar bind proof (P09, RT64 CPU, default-off):
 // TOOIE_DIAG_RSP_ENDPOINT_BINDING=1 writes

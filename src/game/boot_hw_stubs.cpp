@@ -6280,9 +6280,5 @@ void register_boot_lookup_stubs() {
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }
-    std::fprintf(stderr,
-                 "[tooie] registered %zu ultra LOOKUP hooks + 5 core helper hooks + %zu gap stubs\n",
-                 sizeof(kUltraLookupHooks) / sizeof(kUltraLookupHooks[0]),
-                 sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]));
 }
 } // namespace banjo

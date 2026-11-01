@@ -5,6 +5,7 @@
 #include "rt64_rsp.h"
 
 #include <cassert>
+#include <cstdlib>
 
 #include "../include/rt64_extended_gbi.h"
 #include "common/rt64_common.h"
@@ -1148,6 +1149,27 @@ namespace RT64 {
                 drawRect.uly = std::min(drawRect.uly, int32_t(v[1] * 4.0f));
                 drawRect.lrx = std::max(drawRect.lrx, int32_t(hlslpp::ceil(v.x).x * 4.0f));
                 drawRect.lry = std::max(drawRect.lry, int32_t(hlslpp::ceil(v.y).x * 4.0f));
+            }
+
+            // The native X scissor does not cover the added widescreen strips.
+            // Submitted triangles there still need their Y extent represented:
+            // framebuffer height is inferred from these rectangles, before the
+            // renderer widens the projection. Dropping the whole rectangle can
+            // leave the color/depth target shorter than the submitted geometry.
+            static const bool extendedDrawBoundsEnabled = []() {
+                const char *value = std::getenv("TOOIE_TEST_WS_DRAW_BOUNDS");
+                return value == nullptr || value[0] != '0';
+            }();
+            const UserConfiguration *userConfig = state->ext.userConfig;
+            const bool expandedOutput = userConfig != nullptr &&
+                ((userConfig->aspectRatio == UserConfiguration::AspectRatio::Expand) ||
+                 ((userConfig->aspectRatio == UserConfiguration::AspectRatio::Manual) &&
+                  (userConfig->aspectTarget > (4.0 / 3.0))));
+            if (extendedDrawBoundsEnabled && expandedOutput &&
+                (projType == Projection::Type::Perspective) &&
+                ((drawRect.lrx <= scissorRect.ulx) || (drawRect.ulx >= scissorRect.lrx))) {
+                drawRect.ulx = scissorRect.ulx;
+                drawRect.lrx = scissorRect.lrx;
             }
 
             drawRect = scissorRect.intersection(drawRect);

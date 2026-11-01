@@ -144,6 +144,35 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 - Implementation: `src/game/tooie_object_distance.cpp` and `tooie_object_distance_config.cpp`; no generated C
   or vendored dependency edits. Regression: `tooie_object_distance_test`, using native functions and real Config.
 
+### Widescreen framebuffer bounds
+
+RT64 retains the vertical extent of submitted perspective triangles wholly outside the native horizontal
+scissor when output is configured as Expand or Manual above 4:3. Their bounds use the native scissor's
+horizontal span for framebuffer bookkeeping, then intersect the original vertical scissor normally.
+This prevents source-width rejection from omitting rows needed by the expanded view when framebuffer
+dimensions and write regions are inferred. Color and depth-update bounds follow the same policy.
+
+The policy changes metadata only: face indices, vertex transforms, actual draw-call scissors, viewport,
+depth comparison and native game visibility predicates remain unchanged. Original, Manual at/below 4:3,
+orthographic draws and vertically disjoint geometry retain the existing path. Expand may conservatively
+reserve extra rows even in a narrow window; actual raster clipping remains active.
+`TOOIE_TEST_WS_DRAW_BOUNDS=0` restores the previous bounds bookkeeping at process startup.
+Patch: `vendor/patches-local/rt64-widescreen-draw-bounds.patch`.
+
+### Projection reload command budget
+
+`func_800E4640` emits exactly one eight-byte command, matching native callers' allocation contracts.
+With split P/V active, it calls a frame-local display list containing P LOAD, V MUL and ENDDL, allocated
+as one additional aligned 64-byte block in the same dynamic matrix arena. The initial projection submission
+is unchanged. The native segment-8 path remains one display-list call, and clearing the projection cache
+also invalidates the saved reload list. The combined-matrix fallback remains available before initialization.
+
+Native `func_800BC948` builds two reload lists in each 48-byte bank. The integration must not emit two
+inline matrix commands per reload: that writes 56 bytes and overlaps the next bank. The compact reload
+uses 40 bytes. `tooie_projection_reload_test` executes the native builder with production hooks and checks
+both banks, surrounding bytes, P/V ordering, segment 8 and cache reset, without starting the game.
+This memory-safety contract does not establish the cause of a particular widescreen visual defect.
+
 ### 3.2 Cutscene Projection Compensation (`tooie_tintro_projection_policy`)
 ```cpp
 namespace tooie_tintro_projection_policy {

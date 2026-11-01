@@ -18,7 +18,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (46 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (47 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
@@ -29,7 +29,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 25 obrigatórios (inclui distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 15 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 27 obrigatórios (inclui bounds reais do RSP, bancos nativos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 15 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -67,6 +67,19 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - `tools/build_linux.sh test` ainda não roda os 5 testes de idioma, o teste ZIP nem o de cheats (só o Windows os executa).
 - `.deb` e AppImage foram gerados à mão no Linux; não há script versionado para eles.
 - Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
+- Cortes laterais no widescreen: usuário aprovou a correção no Windows (2026-11-01), nos casos de coletáveis,
+  inimigos e sombras em Jinjo Village, inclusive cortes perto/acima do meio. `PROVEN`: RSP enviava triângulos
+  das faixas extras, mas descartava sua extensão Y ao calcular regiões/dimensões do framebuffer.
+  Expand/Manual >4:3 preservam esses limites; índices, scissor de desenho, câmera, regras de profundidade
+  e culling permanecem iguais. Original/Manual <=4:3 e ortográfico preservados. Chave de desligamento:
+  `TOOIE_TEST_WS_DRAW_BOUNDS=0`. Patch `rt64-widescreen-draw-bounds.patch` com proveniência/manifest.
+  Correção independente do estouro P/V preservada: recargas usam 40 bytes nos bancos nativos de 48.
+  Removidos capturador temporário, hooks/F8, script de coleta, fixture diagnóstica, logger/contadores de
+  escala P/V e print de registro de hooks. As duas regressões permanentes não integram o executável do jogo.
+  Windows após limpeza: suíte 27/27, build, três helpers de integração e regressão com a chave desligada passaram.
+  Confirmada ausência das strings do diagnóstico removido no executável e de suas referências/target.
+  Vendor: 8335 arquivos, 47 patches no reverse-check. Outros mapas/backends e Linux não validados.
+  RE: [[reverse-engineering/systems/view-volume#Lateral framebuffer bounds after triangle submission]].
 - Distância de objetos: Graphics -> Object Distance, Original/2x/4x/Unlimited, padrão Original, persistida
   em `graphics.json`; Load/Apply publica o valor, Cancel preserva a política aplicada. História (modo 3),
   fora do multijogador nativo; attract segue nativo. Usuário aprovou a revisão no Windows (2026-11-01), após
@@ -184,4 +197,4 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: validar manualmente o intro (`T_INTRO`) em 4:3 e ultrawide com proporção automática.
+`NEXT_SINGLE_ACTION`: repetir a reprodução lateral em Jinjo Village no Linux nativo.

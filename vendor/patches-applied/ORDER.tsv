@@ -47,3 +47,4 @@ rt64	lib/rt64	patches-local/rt64-tk64-backends.patch	0ebd52046c957ebf799cb5c8bd2
 rt64	lib/rt64	patches-local/rt64-tk64-host-startup.patch	ce2469499f2a4b701608af37b830a34276a239979813c49f771501fbd256d5e9	rt64-tk64-backends
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-tk64-launcher.patch	c1229c27cf0dda7eba3fd52efaf2b19526f17e4c89f1d616f1b52eebba54756d	cefcc6f
 N64ModernRuntime	lib/N64ModernRuntime	patches-local/n64modernruntime-graphics-worker-error.patch	7057dcf6313344d47a2bfde13d00754f194010f72f3e2af2d825696ea82e405e	cefcc6f
+rt64	lib/rt64	patches-local/rt64-widescreen-draw-bounds.patch	6e40e32b2a6db20f4863357a2fab8dc04a4e8671fed6b1f840e5e5d363fe2b6b	fd498a8 integrated RT64/TK64 tree

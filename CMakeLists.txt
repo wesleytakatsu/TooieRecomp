@@ -769,6 +769,26 @@ target_compile_definitions(tooie_object_distance_test PRIVATE NOMINMAX)
 target_link_libraries(tooie_object_distance_test PRIVATE RecompiledFuncs)
 set_target_properties(tooie_object_distance_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# Real RSP framebuffer bounds with synthetic geometry; no GPU or game launch.
+add_executable(rt64_widescreen_bounds_test tests/rt64_widescreen_bounds_test.cpp)
+target_include_directories(rt64_widescreen_bounds_test PRIVATE
+    $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
+target_compile_definitions(rt64_widescreen_bounds_test PRIVATE NOMINMAX SDL_MAIN_HANDLED)
+target_link_libraries(rt64_widescreen_bounds_test PRIVATE rt64)
+set_target_properties(rt64_widescreen_bounds_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Native cache-bank bounds with production split-projection reloads; no renderer launch.
+add_executable(tooie_projection_reload_test
+    tests/tooie_projection_reload_test.cpp
+    src/game/transform_hooks.cpp
+)
+target_include_directories(tooie_projection_reload_test PRIVATE
+    include src/game RecompiledFuncs ${N64MR}/N64Recomp/include
+)
+target_compile_definitions(tooie_projection_reload_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_projection_reload_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_projection_reload_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 add_executable(tooie_dev_enemy_ai_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_dev_enemy_ai_test.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_enemy_ai.cpp

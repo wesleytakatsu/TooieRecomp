@@ -90,6 +90,67 @@ No TooieRecomp, para evitar os defeitos visuais do modo anamórfico e permitir q
 5. **Proteção de replay de demos**:
    Quando a engine está reproduzindo um demo gravado do attract mode (`0x80127632 == 5`), a substituição de aspecto é ignorada, mantendo os planos estritamente em 4:3 para evitar dessincronização dos movimentos gravados do jogador.
 
+## Lower-corner pickup visibility in widescreen
+
+`PROVEN` by Windows user acceptance (2026-11-01): preserving lateral framebuffer bounds resolves the
+reported angle-dependent cuts of pickups/enemies/shadows in the added widescreen strips of Jinjo Village.
+The supplied cases include lower corners and positions near/above mid-height. The defect predates Object
+Distance and also occurs with interpolation disabled. A 4:3 view omits the affected lateral strips.
+This acceptance covers the tested Windows reproduction, not every map, projection, backend or Linux.
+
+`PROVEN` native visibility boundaries: `func_800CACEC` rejects whole model spheres; GeoCmd AABB gates can
+separately reject child subtrees. Sprite preparation `func_800E1C00` uses view depth, distance, size and an
+optional callback, without an X/Y screen-edge test. The native-plane integration changes only lateral
+aspect during its three builders. The vertical vector at `+0x104` in `func_800CA218` uses its angle
+independently of `+0xE8`; `func_800CAF34` rotates it into planes at `+0x44` and `+0x54`.
+Widening vertical planes or forcing model draws was not the fix for this defect.
+
+`PROVEN` native render plumbing: `func_800E9F20` obtains the Gfx context through `func_800A7180`;
+its entry a0 is not that context. The requested rectangle `{x,y,width,height}` occupies the first four
+halfwords at `0x8012D5D0`; `func_800E7FB0` writes it. `func_800E7DAC` forwards it to `func_800E7A90`,
+which emits a changed scissor and caches the applied rectangle in the following four halfwords through
+`0x8012D5DE`. Viewport payloads are separate `G_MOVEMEM` data.
+
+`CORRECTED`: a 104-byte submission at `[-7127,-920,4412]` must not be identified as a shadow from its
+pointer or command count. Its captured vertices form a volumetric mesh (local Y 0..30); the paired
+232-byte submission contains three animated quads. Those facts alone do not establish actor/resource roles.
+
+### Native projection reload cache bounds
+
+`PROVEN` static native code and isolated execution: `func_800BC948` uses two banks at
+`0x801282E0 + 0xC8 + bank * 0x30`. Each contains a projection reload, `func_800BCC90` matrix command,
+ENDDL, another projection reload and ENDDL. Native `func_800E4640` emits one command, consuming 40 of
+48 bytes. Two inline P/V matrix commands per reload consumed 56 bytes and overwrote the following bank.
+
+The integration restores split P/V through one G_DL pointing to a frame-local P LOAD / V MUL / ENDDL list
+in the matrix arena. Segment 8 and cleared-cache fallback retain native sizes. The real native constructor
+regression fails under the former implementation and checks both banks and surrounding bytes after correction.
+`REFUTED` as a sufficient visual fix: user testing still showed the corner defect after this independent
+overflow correction.
+
+### Lateral framebuffer bounds after triangle submission
+
+`PROVEN` host bookkeeping defect: `RSP::drawIndexedTri` submits indices before intersecting triangle
+screen-space bounds with the native scissor. A triangle wholly outside that X range lost all recorded
+Y extent even when the widened projection made it visible. `State::submitFramebufferPair` and
+`fullSync` derive framebuffer height/write rows from those bounds.
+
+Expand and Manual above 4:3 retain lateral triangles by using the native scissor X span for bounds
+metadata, then applying the original Y intersection. Original, Manual at/below 4:3 and orthographic
+draws retain native bookkeeping. Submitted indices, actual draw scissors, transforms, depth rules and
+native visibility predicates remain unchanged. `TOOIE_TEST_WS_DRAW_BOUNDS=0` restores the previous
+metadata policy at startup. See [[../../specs/Tooie/graphics-and-presentation#Widescreen framebuffer bounds]].
+
+The regression executes real RT64 State/WorkloadQueue/RSP with synthetic geometry, without GPU or game:
+a submitted right-strip triangle spanning Y 190..210 formerly left height at 180; the corrected path
+records 210. It also covers left/right strips, upper write bounds, vertical scissor rejection,
+depth-update policy, unchanged face indices, mode guards and the disabled policy.
+
+`PROVEN` visual acceptance is limited to the Windows cases reported by the user. Exhaustive map/backend
+coverage is unverified; Linux is `NOT_RUN`. The temporary guest-command observer, capture script, F8
+trigger and diagnostic-only fixture were removed after acceptance. No visibility logging or counters
+from that investigation remain in the production path.
+
 ## Cinematic projection compensation scope
 
 `CORRECTED`: the former `intro_context` accepted **mode 3 OR map 395**, which did not restrict compensation to T_INTRO.
