@@ -12,6 +12,7 @@
 #include <fenv.h>
 
 #include "recomp.h"
+#include "tooie_analog_camera_hook.h"
 #include "funcs.h"
 #include "librecomp/game.hpp"
 #include "librecomp/addresses.hpp"
@@ -2207,17 +2208,6 @@ extern "C" void func_800EE7F8(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80116218(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80116024(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
-static uint32_t s_rt_cam1c_tracked_val = 0xFFFFFFFFu;
-static uint32_t s_rt_node34_tracked_val = 0xFFFFFFFFu;
-static uint32_t s_rt_node3c_tracked_val = 0xFFFFFFFFu;
-static uint32_t s_rt_src_mem_a = 0;
-static uint32_t s_rt_src_base_a = 0;
-static uint32_t s_rt_src_mem_a_bits = 0;
-static unsigned s_rt_cam_upd_ord = 0;
-static unsigned s_rt_efa4c_ord = 0;
-static unsigned s_rt_10970_ord = 0;
-static unsigned s_rt_fe34_ord = 0;
-static int s_rt_heading_glidx = -1;
 
 extern "C" void func_8010FDEC(uint8_t* rdram, recomp_context* ctx);
 extern "C" void _plcamera_entrypoint_13(uint8_t* rdram, recomp_context* ctx);
@@ -2225,67 +2215,6 @@ extern "C" void func_800EFA4C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80110970(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8010FE34(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800A9318(uint8_t* rdram, recomp_context* ctx);
-
-static void tooie_check_node3c_mutation(uint8_t* rdram, const char* context, uint32_t pc) {
-    int glidx = -1;
-    if (!tooie_ud5_bainput_window(rdram, &glidx) && !tooie_ud5_p60_writer_window(rdram, &glidx)) {
-        return;
-    }
-    if (glidx < 22 || glidx > 27) {
-        return;
-    }
-    uint32_t node = 0;
-    const uint32_t ps = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
-    if (tooie_is_guest(ps)) {
-        const uint32_t sel = static_cast<uint32_t>(MEM_W(0x184, kseg0_gpr(ps)));
-        if (sel <= 7) {
-            node = static_cast<uint32_t>(MEM_W(sel * 4, kseg0_gpr(0x80127728u)));
-        }
-    }
-    if (tooie_is_guest(s_rt_src_mem_a)) {
-        const uint32_t latched = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(s_rt_src_mem_a)));
-        if (latched != s_rt_src_mem_a_bits) {
-            fprintf(stderr,
-                    "[ud5-watch-src-mem-a] runtime=RT glidx=%d pc=%08x context=%s src_base=%08x src_mem_a=%08x old_bits=%08x (%.6f) new_bits=%08x (%.6f)\n",
-                    glidx, pc, context, s_rt_src_base_a, s_rt_src_mem_a,
-                    s_rt_src_mem_a_bits, tooie_bits_f32(int32_t(s_rt_src_mem_a_bits)),
-                    latched, tooie_bits_f32(int32_t(latched)));
-            fflush(stderr);
-            s_rt_src_mem_a_bits = latched;
-        }
-    }
-    if (!tooie_is_guest(node)) {
-        return;
-    }
-    const uint32_t cur_val = static_cast<uint32_t>(MEM_W(0x3C, kseg0_gpr(node)));
-    if (cur_val != s_rt_node3c_tracked_val) {
-        fprintf(stderr,
-                "[ud5-watch-node3c] runtime=RT glidx=%d pc=%08x context=%s node=%08x target=%08x old_val=%08x (%.6f) new_val=%08x (%.6f)\n",
-                glidx, pc, context, node, node + 0x3Cu, s_rt_node3c_tracked_val, tooie_bits_f32(int32_t(s_rt_node3c_tracked_val)),
-                cur_val, tooie_bits_f32(int32_t(cur_val)));
-        fflush(stderr);
-        s_rt_node3c_tracked_val = cur_val;
-    }
-}
-
-static bool tooie_ud5_heading_window(uint8_t* rdram, int* glidx_out) {
-    int glidx = -1;
-    const bool win = tooie_ud5_bainput_window(rdram, &glidx) || tooie_ud5_p60_writer_window(rdram, &glidx);
-    if (glidx_out) {
-        *glidx_out = glidx;
-    }
-    return win && glidx >= 22 && glidx <= 27;
-}
-
-static void tooie_ud5_reset_heading_ords(int glidx) {
-    if (glidx != s_rt_heading_glidx) {
-        s_rt_heading_glidx = glidx;
-        s_rt_cam_upd_ord = 0;
-        s_rt_efa4c_ord = 0;
-        s_rt_10970_ord = 0;
-        s_rt_fe34_ord = 0;
-    }
-}
 
 // Cached once. default OFF; set TOOIE_DIAG_UD5=1 to enable.
 static bool tooie_diag_ud5_on() {
@@ -3130,7 +3059,10 @@ static void tooie_wrap_func_80110588(uint8_t* rdram, recomp_context* ctx) {
         fprintf(stderr, "\n");
         fflush(stderr);
     }
-    func_80110588(rdram, ctx);
+    {
+        tooie_analog_camera::UpdateScope analog_camera(rdram, ctx);
+        func_80110588(rdram, ctx);
+    }
     if (win) {
         fprintf(stderr,
                 "[ud5-p60-gate-0588] leave seq=%u glidx=%d pc=80110588 node=%08x",
@@ -6212,6 +6144,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110E00), tooie_wrap_func_80110E00);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801111D0), tooie_wrap_func_801111D0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112D90), tooie_wrap_func_80112D90);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112C3C), tooie_camera_filter_yaw);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115750), tooie_camera_filter_pitch);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110588), tooie_wrap_func_80110588);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80116218), tooie_wrap_func_80116218);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112E84), tooie_wrap_func_80112E84);

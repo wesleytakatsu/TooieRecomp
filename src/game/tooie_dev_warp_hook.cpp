@@ -4,6 +4,7 @@
 // See docs/reverse-engineering/systems/warp-and-player-position.md for the addresses.
 
 #include "tooie_dev_warp.h"
+#include "tooie_analog_camera_hook.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_cheats_hook.h"
 #include "tooie_dev_forms_hook.h"
@@ -279,7 +280,9 @@ extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
 extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t self = static_cast<uint32_t>(ctx->r4);
     tooie_dev_forms::PlayerScope player_scope(rdram, self);
+    tooie_analog_camera::refresh_player(rdram, ctx, self);
     func_800991B0(rdram, ctx);
+    tooie_analog_camera::refresh_player(rdram, ctx, self);
     tooie_dev_forms::update_player(rdram, ctx, self);
 
     const uint32_t player = static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers)));

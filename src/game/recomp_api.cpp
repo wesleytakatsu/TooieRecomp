@@ -211,12 +211,6 @@ extern "C" void recomp_get_right_analog_inputs(uint8_t* rdram, recomp_context* c
     recompinput::get_right_analog(0, x_out, y_out);
 }
 
-extern "C" void recomp_set_right_analog_suppressed(uint8_t* rdram, recomp_context* ctx) {
-    s32 suppressed = _arg<0, s32>(rdram, ctx);
-
-    recompinput::set_right_analog_suppressed(suppressed);
-}
-
 constexpr uint32_t k1_to_phys(uint32_t addr) {
     return addr & 0x1FFFFFFF;
 }

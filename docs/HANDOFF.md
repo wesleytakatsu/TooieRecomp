@@ -18,7 +18,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (47 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (48 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
@@ -29,7 +29,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 27 obrigatórios (inclui bounds reais do RSP, bancos nativos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 15 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 29 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 17 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -41,6 +41,27 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
 
 ## Pendências conhecidas
+
+- Analog Camera: General disponibiliza On/Off (padrão Off), sensibilidade e inversão da câmera em terceira pessoa.
+  Entrada proporcional/radial com suavização pelo tempo nativo; Z lógico restaura os bindings C do analógico
+  imediatamente na leitura do controle. C físico/teclado e demais bindings preservados. Amostras por porta,
+  movimento por jogador; resolve separadamente jogador, câmera nativa (oito slots) e controle. Não muda foco global.
+  Integração nos filtros yaw/pitch dos controladores string/pan/pivot, antes da colisão nativa. Modos especiais,
+  minigames em salas dedicadas, Blaster, primeira pessoa, câmeras bloqueadas/não suportadas e attract seguem nativos.
+  Guarda atual do guest é refeita antes de mover; entrada host usa a última elegibilidade publicada por jogador.
+  Sem novos logs/contadores no jogo. Regressões permanentes fora do executável; cobertura sintética não comprova
+  sensação visual, colisão real ou todos os desafios/transformações. Usuário confirmou o funcionamento no Windows
+  (2026-11-01); aceite limitado aos casos testados. Linux: `NOT_RUN`.
+  Patch `recompfrontend-per-player-camera-input.patch`; verificação vendor: 8335 arquivos, 48 patches.
+  Windows: suíte 29/29, regressão de câmera 77 verificações, três helpers de integração e build passaram.
+  Executável atualizado em `build-win/TooieRecompiled.exe`; agente não iniciou/controlou o jogo.
+  Revisão final sem instrumentação temporária no caminho da câmera; removidos scripts locais de inspeção da ROM/
+  código gerado e de preparação do patch/relatório. Regressões permanentes continuam fora do executável do jogo.
+  Removida a supressão global antiga sem consumidores, seu setter guest não registrado e o estado `first_poll`
+  sem uso. A leitura dos eixos deixa de consultar essa flag atômica; reserva por jogador/Z+C permanece funcional.
+  Removidos também três observadores antigos da câmera sem chamadores, seus logs e onze variáveis/contadores órfãos.
+  Contrato: [[specs/Tooie/input-and-controllers#3.3.1 Analog Camera]];
+  RE: [[reverse-engineering/systems/camera-controls]].
 
 - Persistência do modo de janela: `PROVEN` que F11/Alt+Enter aplicava o modo apenas em memória, sem gravar
   `graphics.json`. Atalho agora salva valores confirmados e aplica pelo callback, mantendo outras edições pendentes.
@@ -197,4 +218,4 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: repetir a reprodução lateral em Jinjo Village no Linux nativo.
+`NEXT_SINGLE_ACTION`: validar Analog Camera no Linux nativo.

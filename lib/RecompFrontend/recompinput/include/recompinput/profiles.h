@@ -59,10 +59,13 @@ namespace recompinput {
         int get_sp_keyboard_profile_index();
         int get_or_create_mp_keyboard_profile_index(int player_index);
         std::string get_string_from_controller_guid(ControllerGUID guid);
-        bool get_n64_input(int player_index, uint16_t* buttons_out, float* x_out, float* y_out);
+        // Reserve only right-stick bindings of C buttons, unless this player's logical Z is held.
+        bool get_n64_input(int player_index, uint16_t* buttons_out, float* x_out, float* y_out,
+            bool reserve_right_stick_c = false);
 
         int get_or_create_mp_controller_profile_index(int player_index);
-        bool get_merged_n64_input(uint16_t* buttons_out, float* x_out, float* y_out);
+        bool get_merged_n64_input(uint16_t* buttons_out, float* x_out, float* y_out,
+            bool reserve_right_stick_c = false);
         // Whether any binding of input is held for the given player, using the same profiles as get_n64_input.
         bool get_game_input_held(int player_index, GameInput input);
         void save_player_config();

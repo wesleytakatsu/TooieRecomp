@@ -1,4 +1,5 @@
 #include "tooie_dev_forms_hook.h"
+#include "tooie_analog_camera_hook.h"
 #include "tooie_dev_forms.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_cheats_hook.h"
@@ -244,6 +245,7 @@ extern "C" void tooie_forms_on_teardown(uint8_t* rdram, recomp_context* ctx) {
     }
 }
 extern "C" void tooie_forms_on_reset(uint8_t* rdram, recomp_context* ctx) {
+    tooie_analog_camera::reset_motion();
     tooie_dev_cheats::reset_gameplay();
     saved = {};
     enabled_map = false;

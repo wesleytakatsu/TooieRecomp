@@ -201,6 +201,9 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
@@ -586,6 +589,8 @@ foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
     target_sources(${_t} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
@@ -725,6 +730,8 @@ add_executable(tooie_dev_forms_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_dev_forms_test.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
 )
@@ -768,6 +775,20 @@ target_include_directories(tooie_object_distance_test PRIVATE
 target_compile_definitions(tooie_object_distance_test PRIVATE NOMINMAX)
 target_link_libraries(tooie_object_distance_test PRIVATE RecompiledFuncs)
 set_target_properties(tooie_object_distance_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_analog_camera_test
+    tests/tooie_analog_camera_test.cpp
+    src/game/tooie_analog_camera.cpp
+    src/game/tooie_analog_camera_hook.cpp
+    src/game/tooie_analog_camera_config.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_analog_camera_test PRIVATE
+    $<TARGET_PROPERTY:tooie_object_distance_test,INCLUDE_DIRECTORIES>)
+target_compile_definitions(tooie_analog_camera_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_analog_camera_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_analog_camera_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # Real RSP framebuffer bounds with synthetic geometry; no GPU or game launch.
 add_executable(rt64_widescreen_bounds_test tests/rt64_widescreen_bounds_test.cpp)

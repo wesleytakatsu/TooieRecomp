@@ -455,6 +455,8 @@ $script:RequiredTests = @(
     'tooie_projection_reload_test',
     'rt64_widescreen_bounds_test',
     'tooie_object_distance_test',
+    'tooie_analog_camera_test',
+    'recompinput_player_slots_test',
     'rt64_host_endpoint_current_test',
     'rt64_hidden_window_test',
     'tooie_startup_test',

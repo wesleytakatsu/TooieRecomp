@@ -1,4 +1,5 @@
 #include "banjo_config.h"
+#include "tooie_analog_camera.h"
 #include "recompui/recompui.h"
 #include "recompui/config.h"
 #include "recompinput/recompinput.h"
@@ -86,14 +87,16 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::analog_cam_mode,
         "Analog Camera",
-        "Currently unavailable in Banjo-Tooie.",
+        "Uses the right stick for smooth third-person camera movement in normal story gameplay. "
+        "Hold Z (LT by default) to use the stick as the original C buttons. Special modes retain native controls. "
+        "Applies separately to each player's camera, including split screen.",
         analog_cam_mode_options,
         banjo::AnalogCamMode::Off
     );
     config.add_number_option(
         banjo::configkeys::general::analog_camera_sensitivity,
         "Analog Camera Sensitivity",
-        "Currently unavailable in Banjo-Tooie.",
+        "Maximum analog camera speed. Partial stick deflection moves the camera more slowly.",
         1, 10, 1, 0, false, 3
     );
     static EnumOptionVector camera_invert_mode_options = {
@@ -105,7 +108,7 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::third_person_camera_invert_mode,
         "Invert Camera",
-        "Currently unavailable in Banjo-Tooie.",
+        "Inverts the horizontal and/or vertical right-stick camera axis. Z + C and special modes keep their original controls.",
         camera_invert_mode_options,
         banjo::CameraInvertMode::InvertX
     );
@@ -136,14 +139,12 @@ static void add_general_options(recomp::config::Config &config) {
         banjo::CameraInvertMode::InvertY
     );
     for (const char* id : {
-        banjo::configkeys::general::analog_cam_mode.c_str(),
-        banjo::configkeys::general::analog_camera_sensitivity.c_str(),
-        banjo::configkeys::general::third_person_camera_invert_mode.c_str(),
         banjo::configkeys::general::first_person_invert_mode.c_str(),
         banjo::configkeys::general::flying_and_swimming_invert_mode.c_str(),
     }) {
         config.update_option_disabled(id, true);
     }
+    tooie_analog_camera::install_config(config);
 }
 
 template <typename T = uint32_t>

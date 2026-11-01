@@ -165,6 +165,63 @@ static uint16_t buttons(int player, bool merged = false) {
     return result;
 }
 
+static void camera_input_tests(SDL_GameController* first, SDL_GameController* second, int p1, int p3) {
+    const std::array<GameInput,5> inputs{GameInput::Z,GameInput::C_UP,GameInput::C_DOWN,GameInput::C_LEFT,GameInput::C_RIGHT};
+    std::array<std::array<std::array<InputField,2>,5>,3> saved{};
+    const std::array<int,3> profiles_to_test{p1,p3,profiles::get_sp_controller_profile_index()};
+    for(size_t p=0;p<profiles_to_test.size();++p) for(size_t i=0;i<inputs.size();++i) for(size_t b=0;b<2;++b)
+        saved[p][i][b]=profiles::get_input_binding(profiles_to_test[p],inputs[i],b);
+    for(int profile:profiles_to_test) {
+        for(auto input:inputs) profiles::clear_input_binding(profile,input);
+        profiles::set_input_binding(profile,GameInput::Z,0,InputField::controller_digital(SDL_CONTROLLER_BUTTON_LEFTSHOULDER));
+        profiles::set_input_binding(profile,GameInput::C_RIGHT,0,InputField::controller_analog(SDL_CONTROLLER_AXIS_RIGHTX,true));
+        profiles::set_input_binding(profile,GameInput::C_LEFT,0,InputField::controller_analog(SDL_CONTROLLER_AXIS_RIGHTX,false));
+        profiles::set_input_binding(profile,GameInput::C_DOWN,0,InputField::controller_analog(SDL_CONTROLLER_AXIS_RIGHTY,true));
+        profiles::set_input_binding(profile,GameInput::C_UP,0,InputField::controller_analog(SDL_CONTROLLER_AXIS_RIGHTY,false));
+        profiles::set_input_binding(profile,GameInput::C_RIGHT,1,InputField::controller_digital(SDL_CONTROLLER_BUTTON_X));
+    }
+    auto axis=[](SDL_GameController* pad,SDL_GameControllerAxis which,Sint16 amount) {
+        CHECK(SDL_JoystickSetVirtualAxis(SDL_GameControllerGetJoystick(pad),which,amount)==0);
+        SDL_JoystickUpdate(); poll_inputs();
+    };
+    auto read=[](int player,bool reserve,bool merged=false) {
+        uint16_t b=0; float x=0,y=0;
+        CHECK(merged ? profiles::get_merged_n64_input(&b,&x,&y,reserve) : profiles::get_n64_input(player,&b,&x,&y,reserve));
+        return b;
+    };
+    for(int direction=0;direction<4;++direction) {
+        const auto which=direction<2?SDL_CONTROLLER_AXIS_RIGHTX:SDL_CONTROLLER_AXIS_RIGHTY;
+        const Sint16 amount=direction%2 ? -25000 : 25000;
+        const uint16_t expected=direction==0?1:direction==1?2:direction==2?4:8;
+        axis(first,which,amount); axis(second,which,amount);
+        CHECK((read(0,false)&15)==expected && (read(2,false)&15)==expected);
+        CHECK((read(0,true)&15)==0 && (read(2,true)&15)==0);
+        // Z is intentionally remapped: use logical Z, not a hardcoded LT check.
+        press(first,SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+        CHECK((read(0,true)&0x200F)==(0x2000|expected)); CHECK((read(2,true)&0x200F)==0);
+        CHECK(SDL_JoystickSetVirtualButton(SDL_GameControllerGetJoystick(first),SDL_CONTROLLER_BUTTON_LEFTSHOULDER,0)==0);
+        SDL_JoystickUpdate(); poll_inputs();
+        CHECK((read(0,true)&15)==0); CHECK((read(2,false)&15)==expected);
+        // Single-player merged fallback uses the same reservation and Z priority.
+        CHECK((read(0,true,true)&15)==0);
+        press(first,SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+        CHECK((read(0,true,true)&0x200F)==(0x2000|expected));
+        CHECK(SDL_JoystickSetVirtualButton(SDL_GameControllerGetJoystick(first),SDL_CONTROLLER_BUTTON_LEFTSHOULDER,0)==0);
+        axis(first,which,0); axis(second,which,0);
+    }
+    axis(first,SDL_CONTROLLER_AXIS_RIGHTX,25000);
+    press(first,SDL_CONTROLLER_BUTTON_X);
+    CHECK((read(0,true)&1)==1); CHECK((read(2,true)&1)==0); // physical C survives; other owner unaffected
+    CHECK(read(0,true)&0x8000); // unrelated A (Y held by the fixture) survives
+    float x=0,y=0; get_right_analog_raw(0,&x,&y); CHECK(x>0.7f && y==0);
+    get_right_analog_raw(2,&x,&y); CHECK(x==0 && y==0);
+    capturing_input=true; CHECK(read(0,true)==0); CHECK(read(2,true)==0); capturing_input=false;
+    CHECK(SDL_JoystickSetVirtualButton(SDL_GameControllerGetJoystick(first),SDL_CONTROLLER_BUTTON_X,0)==0);
+    axis(first,SDL_CONTROLLER_AXIS_RIGHTX,0);
+    for(size_t p=0;p<profiles_to_test.size();++p) for(size_t i=0;i<inputs.size();++i) for(size_t b=0;b<2;++b)
+        profiles::set_input_binding(profiles_to_test[p],inputs[i],b,saved[p][i][b]);
+}
+
 static void frontend_tests() {
     CHECK(SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) == 0);
     CHECK(players::is_single_player_mode());
@@ -213,6 +270,8 @@ static void frontend_tests() {
     CHECK(profiles::get_input_binding(p3_keyboard, GameInput::A, 0).input_id == SDL_SCANCODE_SPACE);
     CHECK(buttons(0) & 0x8000);
     CHECK(!(buttons(2) & 0x8000));
+
+    camera_input_tests(first, second, p1_controller, p3_controller);
 
     // Route a deterministic virtual button through the keyboard profile to prove
     // that profile reads follow keyboard ownership, independently of defaults.

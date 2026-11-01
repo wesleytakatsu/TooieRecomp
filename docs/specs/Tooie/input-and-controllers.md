@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Input and Controller Subsystem"
 description: "Technical specification for SDL2 controller mapping, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-31
+updated: 2026-11-01
 tags: [specs, tooierecomp, input, controller, sdl2, stick-angle, demo]
 ---
 
@@ -43,7 +43,7 @@ Banjo-Tooie Player Physics & Attract Demo Engine
 | **REQ-INP-03** | Bidirectional Input | WASD keyboard and analog sticks navigate in all directions without quadrant bias. | `IMPLEMENTED` |
 | **REQ-INP-04** | Input Helper Contract | `0x800979D8` evaluates held state and ring buffer `0x800BCE84`. | `IMPLEMENTED` |
 | **REQ-INP-05** | Attract Parity | Attract sequences serve as regression detection suite. | `PARTIAL` |
-| **REQ-INP-06** | Camera Controls | Camera inversion and analog camera bindings in guest engine. | `NOT_IMPLEMENTED` |
+| **REQ-INP-06** | Camera Controls | Proportional third-person right-stick camera, logical Z+C priority and per-player ownership. | `IMPLEMENTED`; Windows user-validated. First-person/flying inversion remains unavailable; Linux pending. |
 | **REQ-INP-07** | Local Multiplayer (up to 4) | 4-slot controller/keyboard routing, per-player profiles, and N64 port policy. | `IMPLEMENTED` (Windows, user-validated; Linux pending) |
 
 ---
@@ -76,7 +76,44 @@ Banjo-Tooie Player Physics & Attract Demo Engine
 - **Registered Guest Input Exports (`src/main/main.cpp`)**:
   - `recomp_get_inverted_axes`: Registered via `REGISTER_FUNC(recomp_get_inverted_axes)`. Reads `get_camera_invert_mode()`.
   - `recomp_get_analog_inverted_axes`, `recomp_get_analog_cam_enabled`, `recomp_get_right_analog_inputs`, `recomp_get_bgm_volume`.
-  - *Dormant Hooks*: `recomp_get_gyro_deltas` and `recomp_get_mouse_deltas` are defined in `recomp_api.cpp` but registration remains commented out in `main.cpp`. Guest-side camera consumer hooks remain unimplemented in the Tooie engine, so camera options remain disabled in the user interface.
+  - *Dormant Hooks*: `recomp_get_gyro_deltas` and `recomp_get_mouse_deltas` are defined in `recomp_api.cpp` but registration remains commented out in `main.cpp`. The legacy guest analog exports are not the consumer used by Tooie's host integration below.
+
+### 3.3.1 Analog Camera
+
+General -> **Analog Camera** is Off by default. **Analog Camera Sensitivity** (1–10, default 3) and
+**Invert Camera** (None/X/Y/Both, existing default X) configure its two axes. Applied/load values are
+published independently of UI objects; temporary values in a confirmation-based config do not affect gameplay.
+The ordinary General tab retains its existing immediate-save behavior.
+
+- Normal eligible story cameras consume continuous right-stick X/Y values. Radial deadzone preserves the
+  direction/proportion of diagonals, with normalized maximum magnitude. Rotation speed scales with deflection
+  and sensitivity; a short exponential ramp is integrated using native simulation time, independent of present FPS.
+- Neutral axes stop manual rotation immediately. R retains native recenter priority.
+- Logical N64 **Z**, including remapped gamepad or keyboard bindings, restores the original right-stick C bindings
+  at controller read time. No hardcoded LT check is used. Native Z is checked again before moving the camera.
+- Reservation filters only right-axis bindings belonging to C-Up/Down/Left/Right. Physical C buttons, keyboard C
+  bindings, other actions, the left stick, and user mapping profiles remain unchanged.
+- Story mode, live owner, native player input availability, ba-camera class and supported manual-camera callbacks
+  are required. The supported callbacks are string/pan/pivot. Locked/scripted cameras, first person, Breegull
+  Blaster, remote control, attract, native multiplayer and dedicated minigame/race rooms keep original controls.
+  Flight/swim and other unsupported camera controllers also retain native inputs.
+- Eligibility is published by each player's update and rechecked at the camera update. The host controller read
+  uses the latest publication; map reset clears publications, samples and smoothing. A camera never moves from a
+  sample that was routed as ordinary C input. Closing/opening ESC or a character selector blocks that owner's sample.
+- Each camera resolves its owner from its native node, then the owner's native controller index. Samples are indexed
+  by controller; smoothing and update scopes are indexed by player. Single-player merged input and port-0 fallback
+  use the same device source as N64 input. Global player focus is unchanged. The unused global right-stick
+  suppression mechanism and its unregistered guest setter were removed; reservation is per read/player only.
+- Native yaw/pitch restrictions and subsequent collision resolution remain in the path. Manual pitch additionally
+  stays within -75..75 degrees. Projection, rendered matrices and interpolation are unchanged.
+
+Implementation: `tooie_analog_camera*.cpp`, the scoped filters in `boot_hw_stubs.cpp`, per-player publication in
+`tooie_dev_warp_hook.cpp`, and `recompfrontend-per-player-camera-input.patch`. No runtime logger or counters added.
+Permanent host regressions cover the policy/config, native string controller and native orbit filters with synthetic
+memory/math/collision services, plus actual SDL virtual controllers and mapping profiles. This does not establish
+exhaustive map/transformation/minigame coverage. The user confirmed the feature working on Windows (2026-11-01),
+limited to the cases tested. Linux: `NOT_RUN`.
+Native contracts: [camera controls](../../reverse-engineering/systems/camera-controls.md).
 
 ### 3.4 Local Multiplayer
 

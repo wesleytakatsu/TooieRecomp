@@ -179,8 +179,11 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
 
 ### 4.3 Menu Option Availability
 - `note_saving_mode`: Hidden from UI (`hidden = true`).
-- `analog_cam_mode`, `analog_camera_sensitivity`: Disabled (`UI_DISABLED`).
-- `third_person_camera_invert_mode`, `first_person_invert_mode`, `flying_and_swimming_invert_mode`: Disabled (`UI_DISABLED`).
+- `analog_cam_mode`, `analog_camera_sensitivity`, `third_person_camera_invert_mode`: Available in General.
+  Analog Camera defaults Off; sensitivity 1–10 defaults 3. Inversion keeps its existing X default and saved values.
+  Logical Z restores C bindings; special-camera contexts remain native. Settings are shared, input/camera state is
+  per player, including experimental split screen. See [input contract](input-and-controllers.md#331-analog-camera).
+- `first_person_invert_mode`, `flying_and_swimming_invert_mode`: Disabled (`UI_DISABLED`).
 - `cutscene_aspect_ratio_mode`: Disabled (`UI_DISABLED`).
 - `hr_option`: HUD placement option disabled (`UI_DISABLED`).
 

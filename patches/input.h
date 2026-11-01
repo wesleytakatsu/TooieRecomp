@@ -26,6 +26,5 @@ DECLARE_FUNC(void, recomp_get_analog_inverted_axes, s32* x, s32* y);
 DECLARE_FUNC(void, recomp_get_flying_and_swimming_inverted_axes, s32* x, s32* y);
 DECLARE_FUNC(void, recomp_get_first_person_inverted_axes, s32* x, s32* y);
 DECLARE_FUNC(void, recomp_get_right_analog_inputs, float* x, float* y);
-DECLARE_FUNC(void, recomp_set_right_analog_suppressed, s32 suppressed);
 
 #endif

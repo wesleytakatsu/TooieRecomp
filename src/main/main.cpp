@@ -55,6 +55,7 @@ extern char** environ;
 #include "recompinput/recompinput.h"
 #include "recompinput/profiles.h"
 #include "banjo_config.h"
+#include "tooie_analog_camera.h"
 #include "banjo_sound.h"
 #include "banjo_support.h"
 #include "banjo_game.h"
@@ -1015,14 +1016,16 @@ int main(int argc, char** argv) {
     auto tooie_get_n64_input = [](int controller, uint16_t* buttons, float* x, float* y) -> bool {
         const auto source = tooie_controller_ports::port_input_source(get_controller_port_query(), controller);
         if (source == tooie_controller_ports::PortInput::NoResponse) {
+            tooie_analog_camera::on_input(controller, {}, 0, 0, true, false);
             if (buttons != nullptr) *buttons = 0;
             if (x != nullptr) *x = 0.0f;
             if (y != nullptr) *y = 0.0f;
             return false;
         }
+        const bool reserve_camera = tooie_analog_camera::reserve(controller);
         const bool ok = source == tooie_controller_ports::PortInput::MergedFallback
-            ? recompinput::profiles::get_merged_n64_input(buttons, x, y)
-            : recompinput::profiles::get_n64_input(controller, buttons, x, y);
+            ? recompinput::profiles::get_merged_n64_input(buttons, x, y, reserve_camera)
+            : recompinput::profiles::get_n64_input(controller, buttons, x, y, reserve_camera);
         if (x != nullptr && y != nullptr) {
             tooie_diag::apply_synthetic_input(controller, buttons, x, y);
         }
@@ -1059,6 +1062,16 @@ int main(int argc, char** argv) {
             tooie_dev_cheats::on_player_input(controller, !forms_input && debug_held, shortcut_buttons);
         }
         if (forms_input) { *buttons = 0; *x = 0; *y = 0; }
+        const bool camera_blocked = !ok || forms_input || recompinput::game_input_disabled();
+        tooie_analog_camera::Axes camera_axes;
+        if (reserve_camera && !camera_blocked) {
+            const int physical_player = recompinput::players::is_single_player_mode() ||
+                source == tooie_controller_ports::PortInput::MergedFallback ? -1 : controller;
+            recompinput::get_right_analog_raw(physical_player, &camera_axes.x, &camera_axes.y);
+        }
+        tooie_analog_camera::on_input(controller, camera_axes,
+            float(recompui::config::general::get_joystick_deadzone()) / 100.0f,
+            buttons != nullptr ? *buttons : 0, camera_blocked, reserve_camera);
         return ok;
     };
 

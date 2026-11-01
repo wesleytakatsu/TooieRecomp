@@ -38,8 +38,8 @@ namespace recompinput {
     void get_gyro_deltas(int controller_num, float* x, float* y);
     void get_mouse_deltas(float* x, float* y);
     void get_right_analog(int controller_num, float* x, float* y);
+    void get_right_analog_raw(int controller_num, float* x, float* y);
     void apply_joystick_deadzone(float x_in, float y_in, float* x_out, float* y_out);
-    void set_right_analog_suppressed(bool suppressed);
     bool game_input_disabled();
     bool all_input_disabled();
     ControllerState &get_controller_state(SDL_JoystickID joystick_id);

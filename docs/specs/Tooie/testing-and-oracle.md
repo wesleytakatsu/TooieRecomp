@@ -60,6 +60,8 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_menu_config_test`
   - `tintro_projection_policy_test` (production context gate and dynamic window-aspect policy)
   - `tooie_object_distance_test` (native model cutoff/reset and actor gates with production distance/config policy)
+  - `tooie_analog_camera_test` (production config/input policy and scoped native orbit/controller regression)
+  - `recompinput_player_slots_test` (real SDL controller slots/profiles and per-read right-stick C reservation)
   - `rt64_host_endpoint_current_test`
   - `p09_interp_burst_test`
   - `p09_world_interpolation_guard_test`
@@ -72,7 +74,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_enemy_ai_test` (native perception/target/chase and Shovel update with scoped J1/J2 integration)
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 27 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 15 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 29 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 17 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -122,7 +124,8 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `tooie_bgm_hooks_test` | `tests/tooie_bgm_hooks_test.cpp` | Tests audio driver sequence update intercept hooks. |
 | `tooie_demo7_drift_test` | `tests/tooie_demo7_drift_test.cpp` | Tests attract demo kinematic monitoring. |
 | `tooie_controller_ports_test` | `tests/tooie_controller_ports_test.cpp` | Tests N64 controller port policy for single-player and local multiplayer. |
-| `recompinput_player_slots_test` | `tests/recompinput_player_slots_test.cpp` | Tests per-player controller/keyboard slot assignment. |
+| `recompinput_player_slots_test` | `tests/recompinput_player_slots_test.cpp` | Real SDL virtual controller assignment/profiles; four C directions with reservation on/off, remapped logical Z priority, merged fallback, physical C preservation, unrelated buttons and independent player routing. |
+| `tooie_analog_camera_test` | `tests/tooie_analog_camera_test.cpp` | Production radial deadzone/proportional integration/config callbacks, Apply/Cancel/defaults/persistence, guest ownership/mode guards and actual native string controller plus pitch/yaw filters. Synthetic memory, target/math services and collision sink; no game or rendered-world acceptance. |
 | `tooie_language_pack_test` | `tests/tooie_language_pack_test.cpp` | Tests TLPK parse/serialize and asset-table rewrite. |
 | `tooie_text_font_map_test` | `tests/tooie_text_font_map_test.cpp` | Tests USA and European glyph mapping (`func_800D35D0`). |
 | `tooie_language_import_test` | `tests/tooie_language_import_test.cpp` | Tests FR/DE/ES pack extraction from European + USA images. |
