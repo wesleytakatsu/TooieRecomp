@@ -33,6 +33,7 @@
 #include "tooie_dev_collectibles_hook.h"
 #include "tooie_dev_enemy_ai.h"
 #include "tooie_dev_travel_menu.h"
+#include "tooie_object_distance.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -6238,7 +6239,16 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerActiveVram), tooie_dev_on_player_active);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_collectibles::kActorEventVram), tooie_dev_on_actor_event);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F54E4), tooie_dev_enemy_focus);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010038C), tooie_dev_enemy_range);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010038C),
+        [](uint8_t* r, recomp_context* c) { tooie_object_distance::actor_range(r, c, tooie_dev_enemy_range); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80100230),
+        [](uint8_t* r, recomp_context* c) { tooie_object_distance::residency(r, c, func_80100230); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E42C0), tooie_distance_view_scale);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFFB4), tooie_distance_radius);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40), tooie_distance_squared);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D3104), tooie_distance_collect);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D2F44), tooie_distance_cell);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E1C00), tooie_distance_sprite);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EB51C), tooie_dev_on_draw_queue);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPrimaryPlayerModelVram), tooie_dev_on_primary_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);

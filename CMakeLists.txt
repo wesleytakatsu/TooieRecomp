@@ -199,6 +199,8 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
@@ -583,6 +585,7 @@ set_target_properties(stick_angle_thunk_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
     target_sources(${_t} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
@@ -743,6 +746,28 @@ target_include_directories(tooie_glowbo_collection_test PRIVATE
 )
 target_link_libraries(tooie_glowbo_collection_test PRIVATE RecompiledFuncs)
 set_target_properties(tooie_glowbo_collection_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_object_distance_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_object_distance_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_object_distance_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/include
+    ${N64MR}/thirdparty
+    ${N64MR}/thirdparty/concurrentqueue
+    ${N64MR}/thirdparty/miniz
+    ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz
+)
+target_compile_definitions(tooie_object_distance_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_object_distance_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_object_distance_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable(tooie_dev_enemy_ai_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_dev_enemy_ai_test.cpp

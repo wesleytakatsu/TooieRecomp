@@ -4,7 +4,7 @@ description: "func_800DE448 / DE498 and the player vs backpack callsites."
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-31
+updated: 2026-11-01
 tags: [reverse-engineering, model, renderer]
 ---
 
@@ -102,6 +102,127 @@ A rotina de renderização `func_800DE498` possui múltiplos acoplamentos entre 
 - **Tentativa de desenho forçado (`REFUTED`)**:
   A tentativa de forçar o desenho em `func_800DE498` para widescreen restaurando `0x8012C940`/`v0` divergia a simulação com os callbacks ativos; com os callbacks zerados (para não divergir) os atores ficavam congelados na borda (a lógica ainda os trata como fora da tela) e algumas entidades eram desenhadas através de paredes/chão ou com estado errado (`USER_OBSERVED`; atribuição aos callbacks zerados = `STRONG_INFERENCE`). A correção adotada foi via planos nativos no volume de visão (ver [[view-volume]] e `p08-widescreen-native-planes-20261022`).
 
+
+## Model distance rejection and fade (`PROVEN` static code)
+
+Distance rejection is separate from the side-plane sphere test described above. In `func_800DE498`:
+
+- `0x800DE4F8..0x800DE560` computes model position minus camera position, then rejects excessive absolute
+  displacement on any axis against the three constants at `0x80125D54..0x80125D5C`. Their numerical values were
+  not established in this analysis; these checks must not be assumed safe to remove as ordinary visual distance.
+- `0x800DE578..0x800DE60C` obtains two unsigned model measures from offsets `+0x12` and `+0x14` of the model's
+  auxiliary header, or fallback globals when no model is supplied. `func_800EEF94` computes Euclidean camera
+  distance from the displacement vector.
+- `0x800DE610..0x800DE688`: at distance at least `4000`, if the current limit equals the default comparison
+  constant at `0x80125D60`, the limit at `0x8012C82C` can be reduced to
+  `header_measure_12 * model_scale * value_at_8012C830 * 50`. The precise asset meaning of measure `+0x12`
+  remains `UNKNOWN`; `+0x14 * model_scale` supplies the later sphere radius.
+- `0x800DE68C..0x800DE6C8` multiplies that limit by `func_800E42C0()` and rejects when distance is greater than
+  or equal to the result, before the frustum test and registered callbacks. `func_800E42C0` delegates to
+  `func_800CA6E8`, which reads the current view-volume float at `+0x164`; this is not proof of a far-clip role.
+- `0x800DE800..0x800DE880` optionally fades alpha over the last `700` units before the resulting limit.
+  `func_800DF470` sets the fade enable at `0x8012C834`. This is a model distance fade, not the map's fog contract.
+
+`func_800DE318` resets `0x8012C82C` from `0x80125D50` and `0x8012C830` to `1.0` for subsequent draws.
+`func_800DF428(float)` exchanges the distance-limit float and returns its previous value;
+`func_800DF464(float)` writes `0x8012C830`. A one-time global write does not implement a persistent menu policy,
+and multiplying only the initial limit can change the default-equality branch above.
+
+Primary executable representation: `RecompiledFuncs/funcs_326.c` (`func_800DE498`), `funcs_367.c`
+(`func_800DE318`), `funcs_296.c` (`func_800DF428`), `funcs_112.c` (`func_800DF464`), `funcs_353.c`
+(`func_800DF470`), `funcs_193.c` (`func_800EEF94`), and `funcs_201.c` (`func_800CA6E8`). Generated files were
+read only. No live game capture established universal class/map coverage.
+
+### Boundary with actor scheduling and map visibility
+
+`PROVEN`: increasing the model limit alone does not widen `func_8010038C`'s actor update radius. The actor loop
+`func_800FF62C` tests that separate gate before invoking descriptor update callbacks. See
+[[warp-and-player-position#Glowbo collection and deferred actor cleanup]] for its flags, focused-player position,
+radius and sector limitations. `func_8010A79C` also checks initialization/activity/deletion-related flags before
+dispatching descriptor draw callback `+0x14`; receiving a draw request is not unconditional drawing.
+
+`INFERENCE`: a configurable distance policy should preserve frustum/sector/state checks and coordinate any
+necessary animation/resource residency changes per actor family. Render-all by disabling all culling is not
+equivalent to removing distance rejection. The documented forced-frustum experiment remains `REFUTED`.
+`UNKNOWN`: complete coverage of Jinjos, Jiggies, sprites, enemies, map-specific props and effects by the model
+limit, the necessary upstream residency changes, and performance at increased distances. A shared renderer path
+does not prove every class reaches it at arbitrary distance. No universal safe multiplier has been validated.
+
+### Actor scheduling and resource retention
+
+`PROVEN` static code: `func_8010A79C` requires bit `0x8000` of actor halfword `+0x7E`, clear bit `0x20000`
+of word `+0x64`, and set bit 0 of **halfword** `+0x64`, before obtaining the descriptor through `func_80100368`
+and invoking its draw callback `+0x14`. Halfword `+0x64` is the high half of the big-endian word.
+
+The resource gate `func_80100230` (`RecompiledFuncs/funcs_411.c`) requires actor bit `0x4000` at `+0x7C`.
+For nonzero high-halfword radius, it compares `func_800EEB40(player_point, actor+4)` to the squared radius and
+returns 1 outside the radius; radius zero also returns 1. `func_801002C0` uses a positive result before checking
+the actor's syscall/overlay reference with `func_80081D34` and calling `func_800819B4`. Classification as a
+distance resource-retention boundary is `STRONG_INFERENCE`; the branches/calls are `PROVEN` static code.
+The integration scales only this gate's matching squared-distance result, preserving radius storage,
+unload APIs and special zero-radius semantics. Existing distant actors can fail later draw selection;
+absence from rendering does not establish absence of an actor record.
+
+### Spatial collection and sprite paths (`PROVEN` static code)
+
+The normal collection path is `func_800BD594` -> `func_800D3104` -> `func_800EB5E0`. Map flag `0x200`
+selects the alternate all-actor collector `func_8010A874`. In `func_800D3104`, candidate grid bounds are
+clipped to `4 * func_800E42C0()` cells from the camera cell (`0x800D3264..0x800D333C`). Each nonempty
+candidate passes `func_800D2F44` before its entries reach the queue. That function first compares squared
+camera-to-cell-center distance with a radius derived from four cell widths, view scale and the constant
+at `0x80125B00`, then calls the native AABB test on cell bounds plus margins. Extending only a model cutoff
+or update radius cannot extend these earlier bounds. Primary generated spans: `funcs_160.c`, `funcs_311.c`,
+`funcs_87.c` and `funcs_45.c`.
+
+Placed props need not have actor records. `func_800EB51C` dispatches entries with word `+0x08` bit 0 set
+through `func_800EC7D4`; other entries go through `_gspropprop_entrypoint_3`. Its model branch calls
+`func_800BFAD0` -> `func_800DE448`, installing a grid-derived limit and model fade. Its sprite branch calls
+`func_800BFB58` -> `func_800E2AA4`, installing a separate sprite limit/fade. Both depend on cell selection.
+Primary generated spans: `funcs_96.c`, `funcs_226.c`, `funcs_77.c` and `funcs_270.c`.
+
+`subaddiedraw25d_entrypoint_1` renders through `func_800E2C54` -> `func_800E1C00`, not `func_800DE498`.
+`subaddiedraw25d_entrypoint_3` installs descriptor `+0x1A`'s limit, or a grid-derived default through
+`func_800D2F20`/`func_800E249C`. Sprite cutoff is word `0x8012D494`; fade enable is byte `0x8012D492`.
+`func_800E1C00` uses view-depth from `func_800E3928`, rejects negative depth or depth beyond the scaled limit,
+has a default-limit projected-size shortcut controlled by byte `0x8012D491`, and fades alpha across the
+final **500** units when enabled (`0x800E1D68..0x800E1DDC`). Primary generated spans: `funcs_159.c`,
+`funcs_211.c`, `funcs_412.c`, `funcs_399.c`, `funcs_373.c` and `funcs_99.c`.
+
+Marker `+0x14` identifies a model/resource, not an actor class. Native descriptors associate resource 1954
+with `chsignpost` (radius 450, draw `func_80101870`) and 1649 with `chdiggerground` (radius 3000,
+draw `func_808001C8_chdiggerground`, whose normal branch calls `func_80101870`). `chpickups` descriptors
+also include model callbacks; not every pickup is a sprite. Current map is halfword `0x80132DC2`, read by
+`func_800EA05C`; `0x80127630` is the game-state header.
+
+### Coordinated distance policy (`PROVEN` fixture; Windows user-validated)
+
+The integration scopes `func_800D3104` and matching `func_800D2F44` invocations. Only their exact native-stack
+calls to `func_800E42C0` receive an enlarged distance scalar; unrelated queries retain their native value.
+Native grid bounds are clipped less for 2x/4x, or not within ordinary map extents for the finite Unlimited
+scalar. Native cell eligibility and AABB tests still run; no global FOV/projection change is made.
+
+The model policy preserves physical length and adjusts the finalized limit at its scoped `func_800E42C0`
+call. For the default limit, resolving the native 4000-unit optimization gives
+`min(default * S, max(4000, size_limit * S))`, where `S` is the viewport scalar. Native 700-unit alpha
+operates on physical distance and the enlarged boundary. Player models and native-frustum-disabled draws
+retain native cutoff/alpha. Coordinate guards, callbacks and reset remain native.
+
+Sprite preparation receives an extended limit for story world views 0..3 outside player draw scopes.
+Input limit and shortcut/fade flags are restored after preparation; native output position and alpha remain
+available to geometry. Physical view-depth and the 500-unit fade calculation remain native. The projected-size
+shortcut is bypassed within enhanced preparation, including when a multiplied limit equals its sentinel.
+
+`CORRECTED/SUPERSEDED`: dividing physical model distance removed radial fade, and a later temporal appearance
+cache could restart transparency after omitted drawing without a new actor lifetime. Both approaches were
+removed. The final policy has no temporal cache, frame counter or diagnostics in the game executable.
+
+The regression executes native model cutoff/reset/alpha, update/retention gates, grid collection and radial
+cell rejection together, and sprite preparation/fade. It covers policy/zoom, AABB/empty-cell rejection,
+unscoped helper isolation, physical distance, scripted transparency, player/UI exclusions, initialization,
+zero-radius semantics, living J2, mode guards and real Config Apply/Cancel/persistence/defaults. World/grid,
+camera/frustum, player/resource services and sqrt are synthetic; model probes stop before geometry/GPU.
+The user accepted the revised Windows gameplay behavior; exhaustive class/map/performance coverage and Linux
+remain `UNKNOWN` / `NOT_RUN`.
 
 ## Player-table callsite (`PROVEN` `STATIC_MIPS` / generated C)
 

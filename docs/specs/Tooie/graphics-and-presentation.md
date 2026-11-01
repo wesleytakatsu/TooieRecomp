@@ -64,6 +64,7 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 | **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. | `IMPLEMENTED` |
 | **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode. | `IMPLEMENTED` |
 | **REQ-GFX-11** | Intro Cinematic Walls | 16:9 projection compensation implemented; edge geometry and ultrawide remain open. | `PARTIAL` |
+| **REQ-GFX-12** | Object Distance | Persisted Original/2x/4x/Unlimited policy coordinating cell selection, models, sprites and actor gates; Windows user-validated cases, broader map/performance coverage unverified. | `EXPERIMENTAL` |
 
 ---
 
@@ -95,6 +96,53 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
    - `TOOIE_TEST_WS_MODEL_DRAW_ASPECT`: Experimental forced draw pass for `func_800DE498`. Only enables if explicitly set to `"1"` AND `TOOIE_TEST_OBJECT_FRUSTUM_ASPECT_AWARE != 0`. `REFUTED` as a fix (causes actor freeze at screen edges and drawing through walls; superseded by native planes).
    - `TOOIE_TEST_WS_GEO_SPHERE_ASPECT`: Experimental draw-only walk of GeoCmd type 14 subtrees. Only enables if explicitly set to `"1"`.
    - `TOOIE_DIAG_WS_CULL_CENSUS=<path>`: Diagnostic census file logger.
+
+### 3.1.1 Object distance
+
+- Graphics registers `object_distance` with values `Original`, `Double`, `Quadruple`, `Unlimited`, displayed as
+  Original/2x/4x/Unlimited. Default/missing/invalid values select Original. Load and Apply atomically publish the
+  applied enum; temporary edits and Cancel do not change the running policy. No restart is required.
+- Enhancement applies only in mode `3`, excluding native multiplayer submode `0x1B`. Other modes, including
+  recorded attract demos, retain native distances. Original passes through the existing integration.
+- A call-local scope around `func_800DE498` preserves physical distance. At its `func_800E42C0` query, the final
+  per-draw limit is extended; the getter's return, projection/FOV and world positions remain native. The default
+  size-dependent cutoff is resolved as `min(default * view_scale, max(4000, size_limit * view_scale))`, accounting
+  for the native 4000-unit fast path without introducing a jump inside the extended range. Custom positive limits
+  are multiplied directly; zero/invalid limits keep native behavior. Unlimited uses a large finite cutoff.
+- Native model distance alpha uses the original 700-unit transition at the extended limit, multiplying existing
+  scripted transparency. There is no appearance cache, extra temporal ramp or reset caused by an omitted draw.
+  Unlimited puts the radial fade boundary beyond ordinary map coordinates; scripted fades remain native.
+- Player model submissions (including their attached model calls) and draws with native frustum testing disabled
+  keep their native cutoff/alpha. Camera planes, native callbacks and renderer reset remain active.
+  No model limit persists beyond its native per-draw reset.
+- Spatial collection `func_800D3104` extends the camera-cell search and `func_800D2F44`'s radial cell test together.
+  Only the exact native-stack invocations of the distance scalar receive 2x/4x; Unlimited uses a finite scalar
+  of 32768 so the native bounds cover the map's existing grid. Grid extents, cell eligibility and AABB/frustum
+  checks stay native. These scopes do not mutate viewport FOV, projection, cell size or world positions.
+- World-sprite preparation `func_800E1C00` temporarily extends its input limit and enables its native 500-unit
+  depth fade. Its default-limit projected-size shortcut is bypassed for enhanced world sprites, avoiding another
+  cutoff (including when a multiplied limit equals the default sentinel). Native depth, negative-depth rejection,
+  callbacks and prepared alpha/position remain native. Input limit/flags are restored after preparation. Player
+  draw scopes, global UI viewport 4, other modes and nonpositive limits pass through unchanged.
+- The native actor scheduling gate `func_8010038C` retains activity flags and initialization side effects. Its
+  exact `func_800EFFB4` invocation receives the multiplied float radius, or `100000000` for Unlimited. This
+  finite radius exceeds normal map-coordinate spans and avoids infinities or 16-bit radius overflow.
+- `func_80100230` retains its native resource-eviction decisions, including zero-radius special semantics;
+  only its matching `func_800EEB40` result is divided by the squared multiplier, or set to zero for Unlimited.
+  The gate stack and actor-position pointer must match; unrelated distance/attack/interaction queries pass through.
+- Extended actor scheduling/retention uses the closer live player's point in experimental story split-screen.
+  Guest scratch storage is scoped and stack restored; no global player-focus mutation is used. The existing enemy
+  target integration remains in the scheduling chain.
+- Camera planes, coordinate-safety rejection, sector visibility, map geometry, fog, save/collection state and
+  class-specific conditions are preserved. Unlimited removes the **covered radial limits**, not every possible
+  reason for hiding an entity. Additional actor updates can advance world state earlier; this is an enhancement,
+  not a promise of original simulation parity. Universal class/map coverage and performance are unverified.
+- Placed map props can use model or sprite paths without an actor record. Their spatial selection and renderer
+  limits are covered by the same policy. Additional class/map/performance coverage remains unverified;
+  this does not bypass every reason an entity can be hidden. See
+  [[reverse-engineering/systems/model-renderer#Spatial collection and sprite paths (`PROVEN` static code)]].
+- Implementation: `src/game/tooie_object_distance.cpp` and `tooie_object_distance_config.cpp`; no generated C
+  or vendored dependency edits. Regression: `tooie_object_distance_test`, using native functions and real Config.
 
 ### 3.2 Cutscene Projection Compensation (`tooie_tintro_projection_policy`)
 ```cpp

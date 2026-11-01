@@ -5,6 +5,7 @@
 #include "funcs.h"
 #include "tooie_diag.h"
 #include "tooie_dev_forms_hook.h"
+#include "tooie_object_distance.h"
 
 extern "C" void __real_func_800D674C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800DE448(uint8_t* rdram, recomp_context* ctx);
@@ -66,7 +67,7 @@ extern "C" void __wrap_func_80092444(uint8_t* rdram, recomp_context* ctx) {
         scoped = tooie_diag::secondary_sway_player_draw_begin(
             rdram, static_cast<uint32_t>(ctx->r4));
     }
-    __real_func_80092444(rdram, ctx);
+    tooie_object_distance::player_draw(rdram, ctx, __real_func_80092444);
     if (scoped) {
         tooie_diag::secondary_sway_player_draw_end();
     }
@@ -122,7 +123,7 @@ extern "C" void __wrap_func_800DE498(uint8_t* rdram, recomp_context* ctx) {
         tooie_diag::backpack_note_de498();
     }
     const bool tree_scope = tooie_diag::secondary_sway_de498_begin(rdram, ctx);
-    __real_func_800DE498(rdram, ctx);
+    tooie_object_distance::draw(rdram, ctx, __real_func_800DE498);
     if (tree_scope) {
         tooie_diag::secondary_sway_de498_end();
     }

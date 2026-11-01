@@ -452,6 +452,7 @@ $script:RequiredTests = @(
     'tooie_menu_policy_test',
     'tooie_menu_config_test',
     'tintro_projection_policy_test',
+    'tooie_object_distance_test',
     'rt64_host_endpoint_current_test',
     'rt64_hidden_window_test',
     'tooie_startup_test',
