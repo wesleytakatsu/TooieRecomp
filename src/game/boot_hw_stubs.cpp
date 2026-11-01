@@ -31,6 +31,7 @@
 #include "tooie_dev_warp_hook.h"
 #include "tooie_dev_forms_hook.h"
 #include "tooie_dev_collectibles_hook.h"
+#include "tooie_dev_enemy_ai.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -1106,6 +1107,7 @@ extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx) {
         // text_size may omit trailing data (for example 0x230 vs section 0x240),
         // which otherwise makes load_overlays select no section at all.
         load_overlays(mapping_rom, static_cast<int32_t>(text_start), mapping_size);
+        tooie_dev_enemy_ai::loaded_overlay(mapping_rom, static_cast<int32_t>(text_start), mapping_size);
         // default OFF; set TOOIE_DIAG_OVERLAY_LOG=1 to enable
         if (tooie_diag_overlay_log_on()) {
             std::fprintf(stderr,
@@ -6234,6 +6236,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kCreatePlayersVram), tooie_dev_on_create_players);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerActiveVram), tooie_dev_on_player_active);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_collectibles::kActorEventVram), tooie_dev_on_actor_event);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F54E4), tooie_dev_enemy_focus);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010038C), tooie_dev_enemy_range);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPrimaryPlayerModelVram), tooie_dev_on_primary_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kSecondaryPlayerModelVram), tooie_dev_on_secondary_player_model);

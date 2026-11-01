@@ -145,7 +145,7 @@ they were not repeated for this checkpoint.
 | `func_80016BDC(channels)` | `osContSetCh`; save selection reduces reads to one port, so two-player creation requests two ports | `PROVEN` (prior input logs and user control of player 2) |
 | player state `0x74` | extra player waits without input or physics; position must be set while waiting before requesting idle `0x1` | `PROVEN` (prior state logs and failed/successful spawn experiments) |
 | `func_800F65D0(index)` | active-player gate: all players in mode `0x1B`, otherwise only focused index `D_801354DC` | `PROVEN` (prior investigation; admitting index 1 enabled item collection and attacks) |
-| `func_800F54E4()` | returns focused player index `D_801354DC`, used by actor queries | `PROVEN` (prior investigation); which individual enemies need explicit target selection remains `UNKNOWN` |
+| `func_800F54E4()` | returns focused player index `D_801354DC`, used by actor queries | `PROVEN`; the enemy-query paths below demonstrate focused-player priority and shared caches, not a universal per-enemy target field |
 
 Player-to-actor collision path (`PROVEN` by the prior native stack trace): `func_800991B0` -> `func_8008E6F0` ->
 gate `func_8008DAA8` / `func_800F65D0` -> `func_800CDBA8` -> `func_8008E530` -> `func_800EB210` ->
@@ -154,10 +154,119 @@ gate `func_8008DAA8` / `func_800F65D0` -> `func_800CDBA8` -> `func_8008E530` -> 
 
 Replacing global focus `D_801354DC` with the nearest player for each actor is `REFUTED` as a fix: the prior experiment
 broke player 2's eggs and the camera without making enemies pursue it, and was reverted. Actor loop:
-`func_800FF62C`; `func_80100368(actor)` returns ActorData. Enemy target selection and player 2's door triggers remain
-`UNKNOWN`; the collision gate alone does not solve them. Lighting inputs are per player, but the CPU lighting output
+`func_800FF62C`; `func_80100368(actor)` returns ActorData. Enemy query mechanisms are described below; player 2's door
+triggers remain `UNKNOWN`. The collision gate alone does not solve either limitation. Lighting inputs are per player, but the CPU lighting output
 could alias shared model vertices (`CORRECTED` from the earlier unknown/shared-light-value hypothesis). See
 [player lighting](player-lighting.md) for the proven conflict and the integration fix.
+
+### Enemy perception and focused-player priority
+
+`PROVEN` from native code and an isolated Windows host fixture: adding player 2 and admitting its player-to-actor
+collisions does not give story enemies a second perception/target context. There are at least two query paths:
+
+- **Cached position:** `func_8010D1E8` populates `0x80136F50` with the focused player's position through
+  `func_8008FE68` -> `func_800F54E4` -> `func_800F5A00`. It also stores query state at offsets `+0xC`, `+0xE`,
+  `+0x10`, `+0x14`. `func_8010D254(out)` copies the position; `func_8010C9FC(origin, radius, top, bottom)` tests
+  that single cached position, gated by the cached halfword at `+0xE`, using native `func_800F00A4`.
+  `func_8010C668` likewise uses the cached position for its vertical/region test. Enemy examples:
+  `func_8080082C_chseaweedbaddy` and `func_808007F0_chflowerbaddie` call these tests before entering their active
+  behavior. Their update paths copy this same cached position into actor-relative working vectors.
+- **Explicit index:** `func_8010D290(excluded_forms)` first reads `func_800F54E4`. It returns that index immediately
+  if `func_800F6438(index)` succeeds and `func_800F64A4(index, excluded_forms)` is zero. Only otherwise does it
+  scan the other slots, in index order, for an available non-excluded form. Focus `-1` returns `-1` immediately.
+  It takes no actor/origin/position argument and performs no nearest-player comparison. This mask is an
+  **exclusion** mask in this caller, despite the generic transformation enum's name.
+  `func_80800610_chnewshovel` uses mask `0x10000`, then checks the selected player's additional state and region
+  through `func_800F6478` and `func_8010C550`. Its update `func_8080004C_chnewshovel` also uses `func_8010D290`
+  followed by `func_800F5A00` to obtain the selected player's position.
+
+`PROVEN`: `suchase_entrypoint_0` / syscall `0x80089EF8` has another shared cache, native overlay offset `+0x1D0`:
+one tick value and one actor marker. On a new `func_8001211C()` value it copies the focused-position cache and calls
+`func_808000A8_suchase`, which chooses the closest eligible actor marker from the spatial enumeration. Other calls
+with the same tick reuse that marker, regardless of a subsequently changed player position. The Seaweed/Flower
+predicates compare this marker with their own. This is selection of a pursuing **actor**, not selection of a player.
+The complete rules deciding which actors qualify remain outside this investigation.
+
+`PROVEN`: `suchase_entrypoint_1(actor)` / syscall `0x80089F00` calls entrypoint `0` directly, then returns true
+when there is no selected marker or when the marker equals `actor->marker`. Intercepting only syscall entrypoint
+`0` does not isolate the call made inside entrypoint `1`. Both outer query entrypoints must own the cache scope.
+
+The fixture executes the native selector, slot lookup, transformation-mask predicate, focus getter, position-cache
+producer/copy, range arithmetic, and both `suchase` routines with synthetic overlay data. Player-validity/form/position
+leaf services, the four cached-state queries, spatial enumeration, marker-to-actor mapping and tick input are stand-ins.
+It proves: J1 is returned without querying an eligible J2; a J1 position at 6000 excludes a J2 position at 100 from a
+1000-unit perception test; focus changes alone leave the cached position stale; refreshing it for J2 makes the test
+succeed; excluded/unavailable J1 can fall back to J2; no available player returns `-1`; and a second perception context
+within one tick reuses the first `suchase` result until the tick changes. This is bounded native-function proof, not
+execution of an enemy's full update/attack, a real map, damage delivery or gameplay.
+
+`STRONG_INFERENCE` for the initial report: retaining J1 as focus explains J2 being ignored by these paths even though
+J2 can hit enemies and collect items. The native fixture alone does not identify the session's enemies; the later
+read-only sample below identifies two affected classes. Neither finding proves that every enemy or boss shares these
+paths, or that J2 cannot receive incidental contact damage.
+The actor loop's focused-player update gate is an additional potential blocker when J2 is far from J1 (see Glowbo
+below); it is distinct from choosing an attack target.
+
+`CORRECTED/SUPERSEDED`: "enemy AI always calls `func_800F54E4` directly" is too broad. Some paths use a previously
+filled cache; some explicitly prefer focus and can fall back to another slot; some arbitrate a single pursuing actor
+per tick. Replacing global focus or only changing `func_8010D290` is not a complete two-player AI contract. An
+implementation must first scope a supported enemy family, keep perception/target/attack ownership coherent, address
+its shared chase cache and activation scheduling, and preserve camera/projectile focus.
+
+#### Experimental per-enemy integration
+
+`PROVEN` in the host regression: the integration wraps update callbacks
+for these canonical descriptors. Entries were read from the verified decompressed ROM; the callback is at descriptor
+offset `+0xC`, and the radius shown is the descriptor's native activation radius.
+
+| Overlay | ROM section | Descriptor offset / prefix | Update offset | Radius |
+| --- | --- | --- | --- | --- |
+| `ch2dbaddy` | `0x020058F0` | `+0xA9C` / `0x02F70464` | `+0xA0` | 3000 |
+| `chcrystalbaddie` | `0x0200F1F0` | `+0x664` / `0x03040426` | `+0x54` | 2000 |
+| `chflowerbaddie` | `0x0200F9B0` | `+0xC14` / `0x01A9046B` | `+0x5C` | 2000 |
+| `chnewshovel` | `0x02025560` | `+0xFB4` / `0x000A011A` | `+0x4C` | 2000 |
+| `chseaweedbaddy` | `0x01FBCDC0` | `+0xEB4` / `0x02EF035C` | `+0x18` | 3000 |
+| `chhillbilly` | `0x01F9D080` | `+0xC60` / `0x01A10150` | `+0x64` | 3000 |
+| `chdiggerground` | `0x01F9DE20` | `+0x408` / `0x01A20131` | `+0xC` | 3000 |
+| `chdiggerfly` | `0x01F9E8F0` | `+0xF8` / `0x01A40133` | syscall `0x80089ED8` -> `sucoasterfly+0xE8` | 2500 |
+
+`PROVEN` by read-only sampling of the user's existing Windows process: Jinjo Village (map `322`, mode `3`) contains
+`chdiggerground` and `chdiggerfly` actor records in the native `0x9C`-stride vector at `0x80136EE0`. Both player slots
+were live, with focus `0`; the nearby flying actor was within J2's vicinity while J1 was far away. Neither class was
+included in the first five-family build. In that build, the user reported contact damage worked but J2 was not pursued.
+This proves the original coverage gap for the observed classes, not failure of the whole scoped-target design or of the other
+five families. `chhillbilly` is included from the native descriptor/control path; its association with the reported
+mine cowboy remains `STRONG_INFERENCE`, without a live mine sample.
+
+The seven overlay-owned update hooks are bound at physical load and canonical remapping, not at a shared transient
+VRAM without overlay identity. Fly's update callback is a resident syscall, so its scope surrounds the shared native
+`sucoasterfly_entrypoint_3` only after the original dispatcher activates that overlay, and only for its class prefix.
+It validates the actor's descriptor prefix. Only live experimental two-player story mode `3` is eligible; native
+multiplayer and attract mode keep native execution. Native availability predicates (`func_800F6438`, `func_800F6478`)
+are required; Shovel also excludes mask `0x10000`. Per-actor target selection and retention are enhancement policy,
+not recovered original two-player behavior. See the [UI contract](../../specs/Tooie/window-ui-and-config.md).
+
+`D_801354DC` is never rewritten. A thread-local index overrides `func_800F54E4` only within the audited update;
+`func_8010D1E8` fills all six perception words for that context and the previous words are restored after it. Nested
+scopes restore their parent. Native `suchase` dispatch for both query entrypoints uses its original overlay lifecycle, with separate tick/marker
+words per player and restoration of its shared storage. Supported activation gates retain native flag/initialization
+logic and use the nearer original/J2 point. Map player creation resets the integration's target/chase state.
+
+The regression runs the real native Shovel update and selection path through acquisition and pursuit into its attack
+state's target-position assignment. The regression also executes `func_8080000C_chdiggerground` and native
+`sucoaster_entrypoint_2` through `func_80802760_sucoaster` and the player's position getter, and executes the shared
+Fly update with native `func_80801AB0_sucoasterfly`, range/region checks and chase predicate. Pose/state-application,
+parts of the behavior/movement pipeline and external services are stand-ins. The other five update bodies are
+probes; their bindings, query scope and nested restoration are tested, not their full AI. Original
+query/range/chase arithmetic runs natively with synthetic player/world/overlay data. The user accepted the revised fix
+for the reported Windows gameplay case (2026-10-31). Exhaustive attack collision/damage, camera/projectile parity and
+family/map coverage remain `UNKNOWN`. This implementation does not establish a safe universal enemy/boss hook and
+does not reopen the refuted global-focus experiment.
+
+`CORRECTED`: the first fixture exercised chase entrypoint `0` only. Adding an entrypoint-`1` regression failed on
+shared-cache restoration before its scope was added, then passed. The user's first playtest did not approve the
+five-family build; the revised coverage/cache fix was subsequently accepted for the reported case. This does not
+identify the mine cowboy's class or prove universal enemy support.
 
 ### Glowbo collection and deferred actor cleanup
 

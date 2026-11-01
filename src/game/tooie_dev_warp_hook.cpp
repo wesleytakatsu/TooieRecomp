@@ -7,6 +7,7 @@
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_cheats_hook.h"
 #include "tooie_dev_forms_hook.h"
+#include "tooie_dev_enemy_ai.h"
 
 #include <chrono>
 #include <cmath>
@@ -351,6 +352,7 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
 // (func_800A907C); func_800A8D70 sets that count to 1 outside the multiplayer maps, so add a second viewport first. The
 // game select also sets the controller ports read to one (osContSetCh), so ask for two.
 extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx) {
+    tooie_dev_enemy_ai::reset();
     const int32_t requested = static_cast<int32_t>(ctx->r4);
     tooie_dev_cheats::reset_gameplay();
     second_player_due = -1.0;

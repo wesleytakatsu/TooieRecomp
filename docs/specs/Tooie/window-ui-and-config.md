@@ -312,6 +312,30 @@ that change the game's state directly.
   Warp also places player 2 beside player 1 while the option is active. Turning the option off does not destroy
   player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
   collision and Warp hooks consult the current option.
+  - **Enemy targeting (experimental)**: in story game mode `3`, with this option active, two live slots and native
+    multiplayer excluded, `tooie_dev_enemy_ai.cpp` wraps the audited update callbacks of `ch2dbaddy`,
+    `chcrystalbaddie`, `chflowerbaddie`, `chnewshovel`, `chseaweedbaddy`, `chhillbilly` and `chdiggerground`.
+    `chdiggerfly` delegates update to `sucoasterfly_entrypoint_3`; its scope is entered in the syscall dispatcher
+    after normal overlay activation, with the same class-prefix check. Physical overlay loads and canonical
+    mapping restorations reinstall these bindings by ROM identity and callback offset; guest code/data is not patched.
+    Class descriptor prefixes are checked again before applying the scope. Other enemy families and bosses retain
+    their native behavior; this is not complete cooperative AI support.
+    Each supported actor selects the nearer available player, applying the native Shovel form-exclusion mask where
+    appropriate. Idle targets use a 20% distance improvement threshold for switching; states above `2` retain their
+    engaged target while it remains available and within the actor's activation radius (5000 units if no radius).
+    Only during that enemy update, the focus-query hook returns its selected index and native perception state is
+    rebuilt for that player, then restored. `D_801354DC` itself is never changed. Both `suchase` query entrypoints
+    (`0` and `1`, whose native body calls `0` directly) retain normal overlay activation and execute with a separate
+    tick/marker cache for each player, restoring the original shared
+    cache afterward. Target/chase state is reset at player creation on map load.
+    The supported actors' native activation gate receives the closer of its original point and active J2's position;
+    it runs once and retains its original activity flags and initialization side effects. Disabling the experimental
+    option restores native behavior immediately. No per-frame diagnostic logger, metric or new test switch is added.
+    Regression `tooie_dev_enemy_ai_test` covers native Shovel acquisition/pursuit/attack targeting, Ground's callback
+    and native controller target-position path, Fly's shared update/pursuit predicate and isolated query scopes.
+    Animation/behavior services, world and player state are synthetic. The user accepted the revised fix for the
+    reported Windows gameplay case (2026-10-31); exhaustive damage, camera/projectile and family/map coverage
+    remains unverified.
   - **Glowbo collection**: with the experimental option active, two live story players and game mode `3`/`5`, the
     resident actor-event hook (`0x8010108C`) handles collection event `0x3E` only for the normal Glowbo class descriptor
     prefix `0x0039021B` (also used by Mega Glowbo). The original callback owns inventory, flags, dialogue, sound and
@@ -336,8 +360,10 @@ that change the game's state directly.
   - User playtests recorded in the [split-screen handoff](../../future/two-player-split-screen.md) report two
     controlled players, shared map changes, item collection and attacks by player 2. This is an experimental checkpoint,
     with no complete cooperative-gameplay guarantee.
-  - Known limits: enemies do not target player 2; player 2 cannot trigger doors/map changes; player 2's death kills the
-    shared player. Debug Button cheats act on their issuing player. Camera orientation needs rechecking. Private lighting
+  - Known limits: J2 enemy targeting is user-accepted for the reported case, with the audited families above;
+    exhaustive family/map coverage is unverified and other enemies/bosses are not covered. Player 2 cannot trigger
+    doors/map changes; player 2's death kills the shared player. Debug Button cheats act on their issuing player.
+    Camera orientation needs rechecking. Private lighting
     outputs passed the instrumented Windows attract-map discriminator; the user confirmed the graphical lighting
     problem resolved in story mode on Windows (2026-10-31). The secondary-model/transform playtest and Linux remain
     `NOT_RUN`.

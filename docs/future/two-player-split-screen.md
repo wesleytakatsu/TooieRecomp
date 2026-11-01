@@ -27,17 +27,18 @@ independente; IA e portas continuam fora desta correção. O A/B automatizado de
 - Tela dividida com duas viewports; J2 aparece e é controlado pelo controle 2; os dois trocam de mapa juntos.
 - J2 aparece ao lado do J1 (spawn imediato ao lado; 2 s depois, com o J1 parado, é recolocado ao lado e liberado).
 - J2 pega itens, ataca inimigos e os ovos dele acertam inimigos.
+- IA J1/J2: usuário confirmou funcionamento da correção revisada no Windows (2026-10-31), no caso relatado.
+  Oito famílias auditadas; cobertura exaustiva de famílias/mapas não validada (seção 13).
 - Iluminação independente: problema gráfico resolvido, confirmado pelo usuário no Windows em 2026-10-31. O cálculo já
   era individual; a correção separa os vértices de saída RGB de cada jogador/modelo (`PROVEN`, seção 8).
 
 ## 2. O que falta (prioridade)
 
-1. **Inimigos não perseguem nem atacam o J2.**
-2. **J2 não usa portas/trocas de mapa.**
-3. Morte do J2 (queda) mata "o jogador" (morte conjunta).
-4. Cheats do Debug Button só valem para o J1.
-5. Câmera do J2 levemente desorientada (observado; pode ter sido efeito de tentativas já revertidas — reavaliar).
-6. Playtest específico de transformações/modelo secundário e Linux `NOT_RUN`.
+1. **J2 não usa portas/trocas de mapa.**
+2. Morte do J2 (queda) mata "o jogador" (morte conjunta).
+3. Câmera do J2 levemente desorientada (observado; pode ter sido efeito de tentativas já revertidas — reavaliar).
+4. IA: validar a matriz restante de famílias/mapas; outros inimigos/bosses continuam fora do escopo (seção 13).
+5. Playtest específico de transformações/modelo secundário e Linux `NOT_RUN`.
 
 ## 3. Como foi feito (código)
 
@@ -73,10 +74,10 @@ Fatos de RE descobertos (todos `PROVEN` por log em jogo, salvo indicação):
 
 ## 4. Próximos passos sugeridos
 
-1. **Inimigos perseguirem/atacarem o J2:** IA usa `func_800F54E4()` (sempre J1). Rastrear um inimigo perseguindo o J1
-   com o método de pilha nativa (seção 5) a partir de uma função de dano ao jogador ou da chamada de posição do
-   jogador dentro do update do inimigo; preferir um gate do tipo `func_800F65D0` ou uma escolha de alvo explícita no
-   inimigo em vez de trocar o foco global.
+1. **Inimigos perseguirem/atacarem o J2:** há consultas por cache, seletor explícito com prioridade ao foco e
+   arbitragem de um inimigo por tick. A descrição anterior de uma chamada direta universal a `func_800F54E4()` é
+   `CORRECTED/SUPERSEDED`. Integração revisada para oito famílias mantém contexto por update e ativação com J2
+   distante, sem escrever o foco global. Usuário aprovou a correção do caso relatado; matriz restante na seção 13.
 2. **Portas:** procurar quem dispara a troca de mapa (`func_800A7990` / `_gcgoto_entrypoint_1`) e se o gatilho testa
    só o jogador em foco; rastrear com pilha nativa uma porta usada pelo J1.
 3. **Iluminação resolvida:** usuário confirmou a correção visual no Windows (seção 8). Hipótese de
@@ -384,4 +385,75 @@ indisponível; auditoria local de UTF-8/links e `git diff --check` executada. Li
 Mega Glowbo e mapas de Jolly Roger's Lagoon precisam de playtest específico; a aprovação do caso relatado não
 substitui uma bateria completa de mapas/formas. IA/portas continuam fora desta correção.
 
-`NEXT_SINGLE_ACTION`: validar Mega Glowbo no splitscreen com J2 afastado de J1.
+Aceite adicional da correção Glowbo: validar Mega Glowbo no splitscreen com J2 afastado de J1.
+
+## 13. Inimigos ignoram J2 (integração experimental, 2026-10-31)
+
+Usuário relata inimigos perseguindo/atacando J1, mas ignorando J2 no modo história experimental. Análise no HEAD
+`e8b785a43e419f5960715eafe7eaa60855b133a6`; implementação posterior na camada de integração, sem editar gerados.
+Modelo canônico:
+[[reverse-engineering/systems/warp-and-player-position#Enemy perception and focused-player priority]].
+
+`PROVEN` no código nativo e harness isolado Windows:
+
+- Cache de percepção `0x80136F50` pertence ao jogador em foco; Seaweed/Flower consultam esse cache.
+- Seletor `func_8010D290` prefere foco válido/não excluído, sem comparar distâncias. New Shovel usa esse caminho.
+  Pode selecionar J2 se J1 estiver indisponível ou excluído pela máscara; não é um índice 0 fixo universal.
+- `suchase_entrypoint_0` escolhe um marcador de inimigo ao redor da posição em cache e reutiliza o resultado
+  durante o mesmo tick. Não mantém dois resultados, um por jogador.
+- Trocar somente foco não atualiza cache de posição; atualizar posição ainda não invalida a arbitragem do mesmo tick.
+  Experimento global já refutado continua refutado. A correção Glowbo trata apenas seu evento/cleanup.
+
+Investigação nativa incorporada a `tests/tooie_dev_enemy_ai_test.cpp`, separado do jogo e vinculado à biblioteca
+gerada existente. Os sete grupos originais de verificações permanecem:
+J1 a 6000/J2 a 100: seletor retorna J1 sem consultar J2; percepção de raio 1000 ignora J2; recache para J2 aceita;
+fallback por máscara/indisponibilidade funciona; arbitragem só muda de inimigo quando o tick avança. Serviços-folha
+de jogador, estado de percepção, mundo espacial, marcadores e tick são simulados. Sem ROM, GPU, mapa ou gameplay;
+sem instrumentação/log novo no jogo. O teste agora integra as suítes Windows/Linux; não prova dano completo no jogo.
+
+O primeiro build não resolveu os exemplos do usuário: cowboy enterrado na mina, verdes e voador na Jinjo Village.
+`PROVEN` em leitura do processo já aberto, sem alterar memória nem controlar o jogo: mapa `322`, modo `3`, foco `0`,
+dois slots disponíveis e atores `chdiggerground`/`chdiggerfly` no vetor nativo de stride `0x9C`. Estavam fora da lista
+inicial. Usuário confirmou dano por contato, mas ausência de perseguição ao J2. A associação do cowboy à classe
+`chhillbilly` é `STRONG_INFERENCE`, sem captura na mina.
+
+Outro defeito `PROVEN`: `suchase_entrypoint_1` chama `0` diretamente, escapando do isolamento anterior. Regressão
+nova falhou na restauração do cache antes da revisão e passou ao isolar ambos os entrypoints.
+
+Implementação em `src/game/tooie_dev_enemy_ai.cpp`: callbacks de `ch2dbaddy`, `chcrystalbaddie`, `chflowerbaddie`,
+`chnewshovel`, `chseaweedbaddy`, `chhillbilly`, `chdiggerground`, reinstalados por ROM/offset após carga física e
+remapeamento canônico. `chdiggerfly` entra no dispatcher de `sucoasterfly_entrypoint_3` após ativação nativa, pois seu
+descritor delega update ao syscall `0x80089ED8`, sem callback local de update para interceptar. Prefixo de
+descritor confere classe; só modo história `3`, opção ativa e dois slots válidos. Alvo por ator com filtros nativos,
+histerese de 20% em idle e retenção nos estados acima de `2` enquanto disponível/no alcance. Consulta de foco retorna
+alvo apenas no escopo de update; a variável global fica intacta. Percepção nativa inteira é salva/reconstruída e
+restaurada; ambas as consultas `suchase` têm dois caches próprios, sem destruir o original. Gate dessas classes recebe ponto
+mais próximo entre original/J2 e executa uma vez, preservando flags/efeitos. Estado limpo ao criar jogadores no mapa.
+Opção experimental existente desliga a integração; sem nova chave de teste, logs ou métricas de runtime.
+
+Regressão executa update nativo da pá: aquisição `1 -> 2`, entrada em perseguição `2 -> 3`, posição-alvo de J2 e
+retenção no estado `4`, inclusive com J1 mais perto. Exclusão de forma redireciona ao jogador elegível. Serviços de
+animação/pose/aplicação de estado são simulados; não é prova de animação/colisão/dano real. Ground usa callback e
+controller nativos até a seleção/escrita da posição do alvo; Fly usa update e predicado de perseguição nativos até
+entrar no estado `4`. Animação, movimento e partes do behavior são simulados; outros cinco updates são probes.
+Percepção, seletores, alcance e ambas as consultas `suchase` são nativos.
+Também cobre J1/J2 no mesmo tick, escopos aninhados, restauração global/cache, histerese, flags inativas, reset,
+opção desligada, multijogador nativo, J2 ausente/indisponível e outras classes.
+
+Comandos Windows: `rtk proxy pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Test -Jobs 12` (22/22,
+exit `0`); `rtk proxy pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Build -Jobs 12` (exit `0`).
+Linux: 12 configurados, execução `NOT_RUN`. Nenhum jogo iniciado/controlado pelo agente. Primeiro playtest falhou;
+usuário confirmou funcionamento do build revisado no Windows (2026-10-31), no caso relatado. Esse aceite não equivale
+à execução de toda a matriz abaixo. Scripts de leitura ao vivo, fixture preliminar e logs locais temporários removidos;
+o harness permanente continua separado do jogo, sem adicionar logs ou métricas ao runtime.
+
+Matriz manual para ampliar a cobertura, usando o splitscreen experimental já configurado:
+
+1. Na Jinjo Village, aproximar J2 do verde e do voador com J1 afastado; confirmar perseguição e ataque dirigido a J2.
+2. Na mina, testar o cowboy enterrado. Se ainda ignorar J2, identificar sua classe com leitura ao vivo.
+3. Inverter jogadores; conferir J1. Depois deixar ambos próximos e verificar estabilidade do alvo durante o ataque.
+4. Repetir com dois inimigos separados e conferir câmera/ovos dos dois jogadores; depois trocar de mapa.
+5. Testar pá e demais famílias auditadas. Se outro inimigo ignorar J2, registrar mapa/tipo: pode não estar coberto.
+
+`NEXT_SINGLE_ACTION`: investigar o gatilho de uma porta usada por J1 para identificar a restrição que impede J2
+de iniciar a troca de mapa (seção 4).

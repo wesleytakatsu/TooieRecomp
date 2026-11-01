@@ -55,7 +55,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 `TOOIE_WRAPPED_SYMBOLS` wrapping contract; independent subsystem tests do not require those guest stubs.
 
 ### 3.1 Test Execution Commands
-- **Linux (`tools/build_linux.sh test`)**: Configures 11 core verification tests (execution of this change `NOT_RUN`):
+- **Linux (`tools/build_linux.sh test`)**: Configures 12 core verification tests (execution of this change `NOT_RUN`):
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
   - `rt64_host_endpoint_current_test`
@@ -67,8 +67,9 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_warp_test` (Dev Mode warp state machine, saved-position JSON, map names)
   - `tooie_dev_forms_test` (per-player selector and native handoff wrappers, with lifecycle stand-ins)
   - `tooie_glowbo_collection_test` (native actor dispatch/loop, deferred cleanup and shared inventory regression)
+  - `tooie_dev_enemy_ai_test` (native perception/target/chase and Shovel update with scoped J1/J2 integration)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 21 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 11 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 22 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 12 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -84,6 +85,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `tooie_glowbo_collection_test` | `tests/tooie_glowbo_collection_test.cpp` | Executes real native collection forwarding, actor event/class dispatch, Glowbo callback/update, state setter, actor loop/range arithmetic, inventory arithmetic and deletion marking. Reproduces repeated credit without the hook, then checks J1/J2 near/far, repeated contacts, effect cleanup order/exactly once, prior collected state, sector gate, Mega Glowbo flag/dialogue/distinct counter, other classes/events and original-mode pass-through. World/assets, extension storage, save/UI/effect services and final actor-list reclamation are synthetic; no map, ROM or GPU is used. |
 | `tooie_dev_forms_test` | `tests/tooie_dev_forms_test.cpp` | Independent menu input/confirmation/cancellation and repeat, all 17 catalog selections, Clockwork exclusion, Dragon/Mumbo order, Golden Goliath 120-second entry seed and restoration of the prior handoff, native-wrapper handoff isolation, reversion precedence, Dragon variant without save-flag writes, viewport publication and reset. Links `RecompiledFuncs` to execute native reload, same-ID cache and auxiliary Dragon selection for direct normal/Dragon round trips on each player; synthetic model pairs/tables and asset-install/lifecycle stand-ins, not a gameplay/render test |
 | `tooie_dev_cheats_test` | `tests/tooie_dev_cheats_test.cpp` | Dev Mode cheats: D-pad bits/names, per-player chord history and requests gated by unlock/enable/direction, simultaneous J1/J2 requests, disabled/reset/held-input suppression, invalid owner bounds, Fly/Blaster allowed states, actual game-thread executor with guest PlayerStates and native lifecycle stand-ins, J2 target isolation, independent Blaster exit/model cleanup, loading/Warp/map-reset drops; JSON round trip/defaults/fallbacks and two-player option/map gates. Does not execute native flight/Blaster animations, physics or rendering |
+| `tooie_dev_enemy_ai_test` | `tests/tooie_dev_enemy_ai_test.cpp` | Real native focus/selector/perception/range/chase and Shovel update; scoped J2 acquisition/pursuit/attack target vector; Ground callback and native controller target-position path; Fly shared update/native pursuit predicate; both chase queries including entry 1's direct internal call; form exclusion, native activation flags, cache restoration, same-tick arbitration, nested scopes, hysteresis, eight-family routing, disabled/native-multiplayer/missing-player/other-class guards and reset. Player/world/animation/behavior services and five update bodies are stand-ins; no real map, attack damage, camera, projectile or renderer acceptance |
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
 | `rt64_hidden_window_test` | `tests/rt64_hidden_window_test.cpp` | Windows-only: exercises real RT64 fullscreen/windowed transitions on hidden and visible Win32 windows in a private test desktop. Checks visibility, mode and restored bounds without a ROM, game runtime or input injection. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |
