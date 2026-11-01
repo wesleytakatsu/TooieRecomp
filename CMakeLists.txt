@@ -812,14 +812,22 @@ target_include_directories(tooie_menu_config_test PRIVATE
 set_target_properties(tooie_menu_config_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 target_compile_definitions(tooie_menu_config_test PRIVATE NOMINMAX)
 
-# T_INTRO projection-policy regression: proves source aspect comes from the
-# cinematic matrix and rejects the old VI 304/228 compensation at 16:9.
+# Exercise the production projection policy and dynamic window-aspect calculation;
+# only window/config services are simulated, without opening SDL or the game.
 add_executable(tintro_projection_policy_test
     ${CMAKE_SOURCE_DIR}/tests/tintro_projection_policy_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
 )
 target_include_directories(tintro_projection_policy_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/game
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/thirdparty
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
 )
+target_link_libraries(tintro_projection_policy_test PRIVATE SDL2::SDL2 rmlui_core)
+target_compile_definitions(tintro_projection_policy_test PRIVATE NOMINMAX RMLUI_STATIC_LIB)
 target_compile_options(tintro_projection_policy_test PRIVATE
     -fno-strict-aliasing
     -Wno-unused-parameter

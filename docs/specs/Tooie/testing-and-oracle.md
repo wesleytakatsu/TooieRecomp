@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Testing Framework and Measurement Oracle"
 description: "Technical specification for the host unit test harness, regression test suite, and the ANGRYLION_CONTROL software-rendered ground truth oracle."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-31
+updated: 2026-11-01
 tags: [specs, tooierecomp, tests, oracle, angrylion, regression]
 ---
 
@@ -55,9 +55,10 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 `TOOIE_WRAPPED_SYMBOLS` wrapping contract; independent subsystem tests do not require those guest stubs.
 
 ### 3.1 Test Execution Commands
-- **Linux (`tools/build_linux.sh test`)**: Configures 13 core verification tests (execution of this change `NOT_RUN`):
+- **Linux (`tools/build_linux.sh test`)**: Configures 14 core verification tests (execution of this change `NOT_RUN`):
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
+  - `tintro_projection_policy_test` (production context gate and dynamic window-aspect policy)
   - `rt64_host_endpoint_current_test`
   - `p09_interp_burst_test`
   - `p09_world_interpolation_guard_test`
@@ -70,7 +71,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_enemy_ai_test` (native perception/target/chase and Shovel update with scoped J1/J2 integration)
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 23 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 13 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 24 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 14 above, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
@@ -91,7 +92,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `rt64_host_endpoint_current_test` | `tests/rt64_host_endpoint_current_test.cpp` | Validates host endpoint-current latch semantics and environment overrides. |
 | `rt64_hidden_window_test` | `tests/rt64_hidden_window_test.cpp` | Windows-only: exercises real RT64 fullscreen/windowed transitions on hidden and visible Win32 windows in a private test desktop. Checks visibility, mode and restored bounds without a ROM, game runtime or input injection. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |
-| `tintro_projection_policy_test` | `tests/tintro_projection_policy_test.cpp` | Tests cutscene projection source aspect ratio and compensation factor. |
+| `tintro_projection_policy_test` | `tests/tintro_projection_policy_test.cpp` | Executes production projection policy/window calculation with simulated host services: story/intro context, dynamic dimensions (4:3 through ultrawide), Original/Expand, invalid sizes and scene transitions. |
 | `p09_exact_use_correlation_test` | `tests/p09_exact_use_correlation_test.cpp` | Tests seam-edge diagnostic keys, plan building, and memberships. |
 | `p09_ordered_match_test` | `tests/p09_ordered_match_test.cpp` | Tests draw-call hash-ordered transform pairing. |
 | `p09_world_interpolation_guard_test`| `tests/p09_world_interpolation_guard_test.cpp` | Tests P09 world transform interpolation guards. |

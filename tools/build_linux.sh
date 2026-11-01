@@ -16,7 +16,7 @@ source "$ROOT/tools/toolchain.lock"; source "$ROOT/tools/paths.sh"
 JOBS="${TOOIE_JOBS:-2}"
 VENV="$BUILD/venv"
 STAGES=("$@"); [[ ${#STAGES[@]} -gt 0 ]] || STAGES=(preflight verify extract recomp configure build test package)
-TESTS=(tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test
+TESTS=(tooie_menu_policy_test tooie_menu_config_test tintro_projection_policy_test rt64_host_endpoint_current_test p09_interp_burst_test
        p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test tooie_dev_warp_test tooie_dev_forms_test tooie_glowbo_collection_test tooie_dev_enemy_ai_test tooie_dev_travel_menu_test)
 log() { echo "[build_linux] $(date -u +%H:%M:%SZ) $*"; }
 

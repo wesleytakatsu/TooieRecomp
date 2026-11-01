@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-10-31
+updated: 2026-11-01
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -29,7 +29,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 23 obrigatórios (inclui 5 de idioma, regressões Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 13 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 24 obrigatórios (inclui 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 14 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -67,6 +67,16 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - `tools/build_linux.sh test` ainda não roda os 5 testes de idioma, o teste ZIP nem o de cheats (só o Windows os executa).
 - `.deb` e AppImage foram gerados à mão no Linux; não há script versionado para eles.
 - Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
+- Cenas esticadas em 1 jogador: usuário relata na explicação de habilidade do Jamjars, com retorno normal depois.
+  `PROVEN` no harness: gate antigo aplicava compensação de `T_INTRO` a mapas comuns no modo 3; regressão falhou
+  antes e passou após exigir modo 3 **e** mapa 395. Cenas comuns mantêm projeção nativa + ajuste normal RT64.
+  Auto/Expand continua seguindo dimensões atuais da janela, inclusive 4:3; nenhuma proporção 16:9 é imposta.
+  Regressão compila política/cálculo de janela reais; serviços host e matrizes são simulados. Cobre Original/Expand,
+  4:3, 5:4, retrato, 16:10, 16:9, ultrawide, tamanhos irregulares/inválidos e transições, preservando a fórmula do intro.
+  Windows: regressão 1200/1200, suíte 24/24 e build passaram. Sem novos logs/métricas no jogo.
+  Usuário aprovou a correção visual no Windows (2026-11-01), restrita ao caso relatado; matriz visual exaustiva de
+  proporções/intro não confirmada. `STRONG_INFERENCE` como causa; valores da cena ao vivo `UNKNOWN`. Linux `NOT_RUN`.
+  RE: [[reverse-engineering/systems/view-volume#Cinematic projection compensation scope]].
 - Pular o matching de frames do RT64 com Interpolation OFF: `REFUTED` (processo encerrou sem log na troca de cena do
   attract); causa `UNKNOWN`.
 - Captura burst `TOOIE_TEST_INTERP_BURST_AT_WORKLOAD` encerrou o processo no Windows/D3D12 (1×, `UNKNOWN`).
@@ -160,4 +170,4 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: validar manualmente o build Windows corrigido com J1 usando um Silo e J2 distante.
+`NEXT_SINGLE_ACTION`: validar manualmente o intro (`T_INTRO`) em 4:3 e ultrawide com proporção automática.

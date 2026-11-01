@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Technical specification for RT64 integration, widescreen culling hooks, projection policies, host endpoint-CURRENT fallback, transform interpolation guards, and presentation controls."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-31
+updated: 2026-11-01
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -115,7 +115,16 @@ namespace tooie_tintro_projection_policy {
     void apply(uint8_t* rdram, float proj[4][4]);
 }
 ```
-Validated via `tests/tintro_projection_policy_test.cpp`.
+The exception requires **both** mode 3 and T_INTRO map 395. Ordinary story cinematics, including ability explanations,
+keep their guest projection and the normal RT64 aspect adjustment; they receive no additional horizontal compensation.
+The target remains dynamic: `calculate_target_aspect_ratio` reads the current window dimensions for Expand, with a
+4:3 lower bound and invalid-size fallback. Original keeps 4:3. No fixed 16:9 target is introduced, and resizing requires
+no cached policy reset. The existing T_INTRO formula above is preserved.
+
+`tests/tintro_projection_policy_test.cpp` compiles production `apply` and the window-aspect calculation, simulating
+only window/config services. It covers ordinary story/intro contexts, Original/Expand, 4:3, 5:4, portrait, 16:10, 16:9,
+ultrawide, irregular and invalid sizes, plus scene/map transitions. This is a host regression, not rendered-game proof.
+Investigation and validation limits: [[reverse-engineering/systems/view-volume#Cinematic projection compensation scope]].
 
 ### 3.3 Shader-Local CURRENT `tfPos` Fallback & Host Switch
 ```cpp

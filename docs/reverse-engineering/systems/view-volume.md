@@ -4,7 +4,7 @@ description: "View volume layout 0x8012D500, vector generators, plane tests, nat
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-22
+updated: 2026-11-01
 tags: [reverse-engineering, view-volume, frustum, culling, widescreen]
 ---
 
@@ -89,3 +89,35 @@ No TooieRecomp, para evitar os defeitos visuais do modo anamórfico e permitir q
    Com os planos nativos ativos, as expansões manuais por teste de AABB e esfera fixam $k = 1.0$, prevenindo ampliações duplas.
 5. **Proteção de replay de demos**:
    Quando a engine está reproduzindo um demo gravado do attract mode (`0x80127632 == 5`), a substituição de aspecto é ignorada, mantendo os planos estritamente em 4:3 para evitar dessincronização dos movimentos gravados do jogador.
+
+## Cinematic projection compensation scope
+
+`CORRECTED`: the former `intro_context` accepted **mode 3 OR map 395**, which did not restrict compensation to T_INTRO.
+Mode 3 also covers ordinary story gameplay; it is not an intro identity. The implementation now requires
+**mode 3 AND map 395**. Ordinary story maps bypass compensation regardless of their projection or window aspect.
+See [[warp-and-player-position]] for the independently established game-mode semantics.
+
+The projection hook `func_800E44FC` calls `tooie_tintro_projection_policy::apply` for perspective submissions.
+For an accepted context, `apply` multiplies the first projection column when `abs(P11/P00)` lies in `[1.50, 2.10]`
+and the target aspect exceeds 4:3. A 4:3 gameplay matrix bypasses this path. The native projection builder
+`func_800CB124` already sets `P00 = volume[+0xF4] / volume[+0xE8]` and `P11 = volume[+0xF4]`; the ratio is a
+projection parameter, not proof that a particular map or cinematic needs special compensation.
+
+`PROVEN` in the standalone regression compiling production `apply` and `calculate_target_aspect_ratio`, with synthetic
+RDRAM contexts/matrices and simulated window/config services: the old gate changes an ordinary story cinematic
+projection and fails the unchanged-matrix assertion. The corrected gate passes. The T_INTRO formula remains active
+only in its verified context; other modes, including attract mode, pass through. Original and 4:3 targets add no scale.
+Expand continues deriving the target from current dimensions, including 16:10, 16:9, ultrawide and irregular windows;
+dimensions at/below 4:3 and invalid sizes use the existing 4:3 baseline. The test changes dimensions and maps in one
+process, checking both the intro exception and unchanged ordinary projections.
+
+`STRONG_INFERENCE`: this unintended scope explains the user's single-player report that Jamjars's ability
+explanation stretches horizontally and normal gameplay immediately restores the aspect. RT64's normal AUTO
+projection adjustment remains in place after the added factor. **UNKNOWN**: the exact projection, viewport/scissor
+and factor during the user's Jamjars event; no live event was captured. The fixture is not a rendered gameplay test.
+
+The previous formula-only regression could not detect this scope error. It now executes the production policy.
+This does not refute the historical T_INTRO-specific visual acceptance or reopen its separate edge-geometry residual.
+`PROVEN` by the user's Windows visual acceptance (2026-11-01): the correction resolved the reported single-player
+scene symptom. Acceptance does not establish the exact live projection values or an exhaustive visual matrix of
+Original/Expand, window aspects and T_INTRO. Those broader visual checks remain unconfirmed; Linux is `NOT_RUN`.
