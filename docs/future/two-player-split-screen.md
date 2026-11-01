@@ -34,11 +34,13 @@ independente; IA e portas continuam fora desta correção. O A/B automatizado de
 
 ## 2. O que falta (prioridade)
 
-1. **J2 não usa portas/trocas de mapa.**
-2. Morte do J2 (queda) mata "o jogador" (morte conjunta).
-3. Câmera do J2 levemente desorientada (observado; pode ter sido efeito de tentativas já revertidas — reavaliar).
-4. IA: validar a matriz restante de famílias/mapas; outros inimigos/bosses continuam fora do escopo (seção 13).
-5. Playtest específico de transformações/modelo secundário e Linux `NOT_RUN`.
+1. **Menu de Warp Pads/Silos em teste:** retenção seletiva implementada para impedir perda na coleta da câmera
+   de J2, mantendo o uso exclusivo de J1. Regressão nativa passou; visual com J2 distante `PENDING_USER` (seção 14).
+2. **J2 não usa portas/trocas de mapa.** Warp Pads/Silos exclusivos de J1 são a política desejada pelo usuário.
+3. Morte do J2 (queda) mata "o jogador" (morte conjunta).
+4. Câmera do J2 levemente desorientada (observado; pode ter sido efeito de tentativas já revertidas — reavaliar).
+5. IA: validar a matriz restante de famílias/mapas; outros inimigos/bosses continuam fora do escopo (seção 13).
+6. Playtest específico de transformações/modelo secundário e Linux `NOT_RUN`.
 
 ## 3. Como foi feito (código)
 
@@ -455,5 +457,34 @@ Matriz manual para ampliar a cobertura, usando o splitscreen experimental já co
 4. Repetir com dois inimigos separados e conferir câmera/ovos dos dois jogadores; depois trocar de mapa.
 5. Testar pá e demais famílias auditadas. Se outro inimigo ignorar J2, registrar mapa/tipo: pode não estar coberto.
 
-`NEXT_SINGLE_ACTION`: investigar o gatilho de uma porta usada por J1 para identificar a restrição que impede J2
-de iniciar a troca de mapa (seção 4).
+## 14. Menu de viagem invisível com J2 distante (2026-10-31)
+
+J1 opera Silos/Warp Pads e escolhe destinos, mas a lista fica invisível no splitscreen. O usuário confirmou que o
+Silo volta a exibir a lista quando J2 está junto de J1. A reprodução nativa mostra que a limpeza da fila entre as
+câmeras remove a entrada de UI antes do pass global. RE:
+[[reverse-engineering/systems/warp-and-player-position#Warp Pad and Silo destination menu drawing]].
+
+`tooie_dev_travel_menu.cpp` intercepta apenas o dispatcher residente `0x800EB51C`. Captura menus ativos das duas
+classes na fila `3` de J1 ao iniciar a fila `1` da viewport `0`. No pass global `3`/viewport `4`, executa o dispatcher
+original e só repõe callbacks ausentes. Usa gate de desenho e renderer nativos, com estado global de projeção/recorte
+já configurado; não refaz as cenas 3D nem altera as filas do mundo. Identidades e estado aberto são revalidados;
+retenção termina no pass global, próxima coleta de J1, criação de jogadores ou desativação do guard.
+
+Guard: Dev Mode desbloqueado, splitscreen experimental ligado, modo história `3`, dois slots válidos/distintos,
+duas viewports e multijogador nativo excluído. Debug desligado usa dispatcher original. Controle de destinos continua
+exclusivo de J1; sem mudar foco global, destinos ou transições, nem criar logs, métricas ou switches temporários.
+
+`tooie_dev_travel_menu_test` executa inserção/ordenação, limpeza, dispatcher/gate de desenho e callbacks reais de
+Silo/Warp Pad. A reprodução sem correção perde o menu; verificação corrigida falhou antes e passou depois. Cobre
+J2 perto/longe, desenho único, outros atores, menus fechados/apagados/substituídos, reset/próximo frame, índice do pass
+restaurado e guards com configuração/desbloqueio reais. Mundo, lookup de ator, extensões e renderer final são
+simulados; o teste não prova aparência em GPU ou o gate exato da sessão original. Windows 23/23, três helpers e build
+passaram. Linux (13 configurados) `NOT_RUN`. Nenhum jogo iniciado/controlado pelo agente. Build/teste:
+`rtk proxy pwsh -NoProfile -File tools/windows/Build-Tooie.ps1 -Stage Build -Jobs 12` e `-Stage Test -Jobs 12`,
+ambos exit `0`; `git diff --check` e verificações locais de UTF-8/links passaram. `markdown_vault_audit` indisponível.
+
+Aceite manual pendente: J1 entra no Silo com J2 longe; depois repetir no Warp Pad. Confirmar lista legível, navegação,
+cancelamento, destino correto e transição dos dois jogadores. Com J2 perto, confirmar lista sem duplicação. Reabrir
+com Dev Mode bloqueado e um jogador para conferir o caminho original.
+
+`NEXT_SINGLE_ACTION`: validar manualmente o build Windows corrigido com J1 usando um Silo e J2 distante.

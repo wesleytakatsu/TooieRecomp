@@ -32,6 +32,7 @@
 #include "tooie_dev_forms_hook.h"
 #include "tooie_dev_collectibles_hook.h"
 #include "tooie_dev_enemy_ai.h"
+#include "tooie_dev_travel_menu.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -6238,6 +6239,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_collectibles::kActorEventVram), tooie_dev_on_actor_event);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F54E4), tooie_dev_enemy_focus);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010038C), tooie_dev_enemy_range);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EB51C), tooie_dev_on_draw_queue);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPrimaryPlayerModelVram), tooie_dev_on_primary_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kSecondaryPlayerModelVram), tooie_dev_on_secondary_player_model);

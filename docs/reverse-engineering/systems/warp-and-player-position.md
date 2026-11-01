@@ -159,6 +159,53 @@ triggers remain `UNKNOWN`. The collision gate alone does not solve either limita
 could alias shared model vertices (`CORRECTED` from the earlier unknown/shared-light-value hypothesis). See
 [player lighting](player-lighting.md) for the proven conflict and the integration fix.
 
+### Warp Pad and Silo destination menu drawing
+
+`PROVEN` by the user's Windows report (2026-10-31): in experimental split screen, J1 opens Warp Pad and Silo
+destination menus and can select a destination, but the list is invisible. This is distinct from J2's interaction
+restriction. The requested policy is to keep travel interactions owned by J1; enabling J2 is not part of this issue.
+
+`PROVEN` from native code:
+
+- Warp Pad's `func_8080000C_chwarppad` and Silo's `func_808011C8_chsilo` call
+  `gcnewoption_entrypoint_1(option, gfx)` only when `func_800EB854()` returns draw pass `3`. Other passes draw the
+  world actor. The getter reads the current queue index at `0x80132E9C`, not a multiplayer flag.
+- `gcnewoption_entrypoint_1` draws the list through `gczoombox_entrypoint_2`; updating the option state is separate.
+  Thus responding to selection input does not establish that the drawing callback ran.
+- `func_800A73F4` iterates the viewports through `func_800A8BD4` and `func_800E9F20`, then switches to the global
+  drawing setup through `func_800A8CCC`. It dispatches queues `3` and `4` afterward, gated by `func_800EA358()`.
+  That getter reads `0x80132DCC`; it is not the viewport-count getter (`func_800A946C`, `0x801276D2`).
+- The per-viewport path calls `func_800BD594` -> `func_800D3104`. The latter clears the seven shared draw queues
+  through `func_800EB800`, then rebuilds them through `func_800EB5E0`. The final global pass therefore consumes the
+  queues surviving the last viewport's collection, rather than an independent menu list captured for J1.
+
+`PROVEN` by the user's additional Windows playtest (2026-10-31): the Silo menu becomes visible when J2 stands beside
+J1 while J1 enters the Silo. The equivalent nearby-J2 Warp Pad test has not been reported.
+
+`STRONG_INFERENCE`: the active menu actor is lost while rebuilding the shared queues for J2; a global menu attached
+to that world actor then disappears with J2's visibility/sector collection even though J1 continues operating it.
+The Silo proximity discriminator agrees with this mechanism and weakens a fixed viewport/scissor-layout failure.
+Exact queue contents and the responsible collection gate remain `UNKNOWN`: no live draw-queue/display-list sample
+or native rendering regression has established them. The common pass-`3` path makes the same cause plausible for
+Warp Pads, without proving it in that separate proximity case.
+
+`PROVEN` in the isolated native regression: a menu queued for J1 is removed by `func_800EB800`/`vector_clear` before
+the global pass. Without the integration it receives no draw callback; retaining its identity restores the actual
+Warp Pad and Silo draw callbacks through `func_800EC7D4` -> `func_8010A79C` -> `gcnewoption` dispatch. The native
+queue's insertion/sorting, vector operations and draw gates execute with synthetic actor lookup, extensions and
+visibility input; the final option renderer is a stand-in. This proves the mechanism under the reproduced collection
+sequence, not the precise sector/culling gate from the user's session or the final on-screen appearance.
+
+Canonical descriptor prefixes are `0x01C401E5` (`chwarppad`, ROM `0x01F88DB0`, descriptor `+0x12FC`) and
+`0x00B9019D` (`chsilo`, ROM `0x0207F4E0`, descriptor `+0x1384`). Native `gcnewoption_entrypoint_1` admits option
+states `2..11`. The integration captures only these active menus from J1 before queue `1` in viewport `0`; it runs
+only missing callbacks after native queue `3` in global viewport `4`. Marker, actor, descriptor prefix and option
+identity are revalidated. Native actor draw guards still apply; world queues, global focus, input and destination
+logic are unchanged. See the [UI contract](../../specs/Tooie/window-ui-and-config.md) for eligibility and lifetime.
+
+`NEXT_SINGLE_ACTION`: manually validate the revised Windows build with J1 using a Silo while J2 is distant.
+Warp Pad, nearby-J2 deduplication and normal single-player remain additional visual acceptance cases.
+
 ### Enemy perception and focused-player priority
 
 `PROVEN` from native code and an isolated Windows host fixture: adding player 2 and admitting its player-to-actor

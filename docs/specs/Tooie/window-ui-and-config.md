@@ -312,6 +312,19 @@ that change the game's state directly.
   Warp also places player 2 beside player 1 while the option is active. Turning the option off does not destroy
   player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
   collision and Warp hooks consult the current option.
+  - **Travel menu drawing**: Warp Pads and Silos remain operated by J1. With Dev Mode unlocked, `two_players`
+    enabled, story mode `3`, two valid distinct player slots and exactly two viewports (native multiplayer excluded),
+    `tooie_dev_travel_menu.cpp` retains active Warp Pad/Silo menu identities from J1's pass-`3` queue when viewport
+    `0` begins queue `1`. At global viewport `4`, queue `3` first runs normally; missing retained menus then run
+    through the native actor draw gate and option renderer using the existing global projection/scissor setup.
+    Menus already in J2's queue are not drawn twice. The current native queue index is restored afterward.
+    Only the two canonical class prefixes and native option draw states `2..11` qualify; closed, deleted, replaced
+    or reset menus cannot be replayed. Retention is cleared at the next J1 collection, after global rendering,
+    on player creation and whenever the eligibility guard fails. Ordinary world-actor culling, interaction input,
+    destinations, map transitions and global player focus remain native. With Dev Mode locked, the option disabled,
+    one viewport or original multiplayer, the hook calls the original queue dispatcher without retaining menus.
+    No runtime logging, metrics, draw forcing for other classes or new diagnostic switch is added.
+    Native queue/callback regression passes; visual Windows acceptance with J2 distant remains `PENDING_USER`.
   - **Enemy targeting (experimental)**: in story game mode `3`, with this option active, two live slots and native
     multiplayer excluded, `tooie_dev_enemy_ai.cpp` wraps the audited update callbacks of `ch2dbaddy`,
     `chcrystalbaddie`, `chflowerbaddie`, `chnewshovel`, `chseaweedbaddy`, `chhillbilly` and `chdiggerground`.
