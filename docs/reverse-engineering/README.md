@@ -4,7 +4,7 @@ description: "Current best model of Banjo-Tooie for TooieRecomp and future mods.
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-09-09
+updated: 2026-11-02
 tags: [reverse-engineering, tooie, modding]
 ---
 
@@ -48,7 +48,8 @@ Optional provenance tags: `STATIC_ROM`, `STATIC_MIPS`, `RUNTIME_CPU`,
   [[systems/secondary-animation]] / [[systems/model-renderer]] /
   [[systems/geocmd]] / [[systems/transform-interpolation]] /
   [[systems/overlays]] / [[systems/audio-sequence-volume]] /
-  [[systems/text-and-fonts]] / [[systems/warp-and-player-position]] / [[systems/camera-controls]]
+  [[systems/text-and-fonts]] / [[systems/warp-and-player-position]] / [[systems/camera-controls]] /
+  [[systems/minigames]]
 - [[characters/kazooie]] — live `0x62B` right/left plumes + crest DLs; V7 VERSION=3 admits all 14; downstream closed; guest compose `parent⊗child` XYZW; clip/sample time open
 - [[systems/geocmd]] — compact DCF48 + type-0x11/`0x18`; plume GeoCmd parent 107
 - [[systems/animation]] — AE820 local 4x4 / first-class scale channels

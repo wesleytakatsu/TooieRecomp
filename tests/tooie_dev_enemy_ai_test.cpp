@@ -1,3 +1,4 @@
+#include "support/story_coop_fixture.h"
 // Native targeting/perception/chase and Shovel update. Player/world/animation
 // services are synthetic; this is not a map, damage or rendering playtest.
 #include "tooie_dev_enemy_ai.h"
@@ -181,6 +182,7 @@ static void invoke(uint8_t* rdram, uint32_t vram, uint32_t actor = origin) {
 int main() {
     std::vector<uint8_t> memory(8 * 1024 * 1024); auto* r = memory.data(); auto* rdram = r;
     MEM_W(0, guest(0x80135490)) = p1; MEM_W(4, guest(0x80135490)) = p2;
+    commit_fixture_story_pair(r);
     MEM_W(0, guest(0x801354DC)) = 0;
     CHECK(target(r) == 0 && checks[0] == 1 && checks[1] == 0);
     std::puts("PASS: native selector returns J1 without consulting eligible J2; J2 position is not an input.");

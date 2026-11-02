@@ -1,4 +1,5 @@
 #include "tooie_analog_camera.h"
+#include "tooie_story_coop.h"
 #include "tooie_analog_camera_hook.h"
 #include <algorithm>
 #include <bit>
@@ -53,6 +54,8 @@ bool eligible(uint8_t* rdram, const recomp_context* ctx, uint32_t self, uint32_t
     if (player_node(rdram, self) != node || !MEM_BU(0x70, guest(node)) || MEM_BU(0x72, guest(node))) return false;
     const unsigned owner = MEM_W(0x68, guest(node));
     if (owner >= kControllers || uint32_t(MEM_W(owner * 4, guest(0x80135490))) != self) return false;
+    if (owner != 0 && (!tooie_story_coop::created_pair(rdram) ||
+        tooie_story_coop::owned_slot(rdram, self) != 1)) return false;
     const uint32_t top = MEM_W(0x64, guest(node));
     if (!pointer(top) || MEM_H(0x16, guest(top)) != 2) return false; // native ba-camera class; special callbacks excluded below
     const unsigned mode = MEM_W(0x6C, guest(node));

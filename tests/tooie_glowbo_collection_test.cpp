@@ -1,3 +1,4 @@
+#include "support/story_coop_fixture.h"
 // Real actor loop, event dispatch, Glowbo behavior, range test and inventory arithmetic.
 // World/assets, save/UI/effect services and actor-list reclamation are synthetic.
 #include "tooie_dev_collectibles_hook.h"
@@ -136,6 +137,7 @@ int main() {
         MEM_B(0, guest(0x8012762C)) = 0;
         MEM_W(0, guest(0x80135490)) = 0x80010000;
         MEM_W(4, guest(0x80135490)) = 0x80011000;
+        commit_fixture_story_pair(rdram);
         MEM_W(0, guest(descriptor)) = 0x0039021B;
         MEM_W(0, guest(0x801354DC)) = 0;
         updates = range_checks = effect_frees = save_calls = mega_dialogues = 0;

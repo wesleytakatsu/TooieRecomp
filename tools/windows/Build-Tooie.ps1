@@ -466,6 +466,7 @@ $script:RequiredTests = @(
     'p09_exact_use_correlation_test',
     'rt64_present_decimator_test',
     'rom_cart_import_test',
+    'tooie_story_coop_test'
     'tooie_dev_warp_test'
     'tooie_dev_cheats_test'
     'tooie_dev_forms_test'

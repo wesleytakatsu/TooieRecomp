@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-01
+updated: 2026-11-02
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -29,7 +29,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 29 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 17 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 30 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 18 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -42,6 +42,24 @@ dividida estão em `docs/future/`. Contratos estáveis:
 
 ## Pendências conhecidas
 
+- Minigames e cooperativo: implementada suspensão por sala para as 15 famílias/23 etapas, segmentos Saucer,
+  aliases Mayan conservadores e salas MP relacionadas. Subtipo nativo `0x1B` e pedidos diferentes de um jogador
+  permanecem nativos. Witchyworld `0xD6` só recusa promoção no retorno Saucer com seletor nativo 6.
+  Preferência salva continua ligada; J2 volta no próximo carregamento elegível, sem criação/destruição no meio da sala.
+  `tooie_story_coop` verifica proveniência de alocação e identidade; auxiliares não viram J2. Atividade de construção
+  e serialização de saída têm escopos próprios. Formas, iluminação, IA, Glowbo, menus, Warp e distância usam a
+  identidade apropriada. Entrada host publicada pela porta nativa, com rearme após neutralização; controles nativos
+  continuam intactos. Reservas/suavização analógicas são limpas na recriação/retirada. Sem novos logs/métricas no jogo.
+  Windows: suíte 30/30, regressão cooperativa 9339 verificações, câmera 83 verificações e três helpers de
+  integração passaram; build final atualizado em `build-win/TooieRecompiled.exe`. Hash completo na seção 15 do plano.
+  Aceite parcial do usuário no Windows (2026-11-02): alguns eventos funcionaram, sem identificação individual.
+  Limitação confirmada pelo usuário: na corrida de trenzinho com o pássaro, J2 continua acessível. Identidade
+  formal/mapa/caminho nativo dessa corrida não foram capturados; não atribuir o relato a um dos 23 eventos.
+  Usuário decidiu manter o comportamento atual. Correção dessa corrida adiada; não ampliar blacklist de mapas.
+  Matriz manual completa, câmera/resultado do Saucer e Linux continuam `NOT_RUN`. Plano mantido como referência
+  da validação parcial e da pendência; não registrar aceite universal.
+  Ver [[reverse-engineering/systems/minigames]], [[specs/Tooie/window-ui-and-config]] e
+  [plano técnico na raiz](../PLANO-SPLITSCREEN-MINIGAMES.md), seções 15–16.
 - Analog Camera: General disponibiliza On/Off (padrão Off), sensibilidade e inversão da câmera em terceira pessoa.
   Entrada proporcional/radial com suavização pelo tempo nativo; Z lógico restaura os bindings C do analógico
   imediatamente na leitura do controle. C físico/teclado e demais bindings preservados. Amostras por porta,
@@ -218,4 +236,4 @@ dividida estão em `docs/future/`. Contratos estáveis:
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: validar Analog Camera no Linux nativo.
+`NEXT_SINGLE_ACTION`: se o usuário solicitar retomar a pendência, identificar o controlador e as fronteiras de início/fim da corrida de trenzinho com o pássaro; comportamento atual mantido por decisão do usuário.

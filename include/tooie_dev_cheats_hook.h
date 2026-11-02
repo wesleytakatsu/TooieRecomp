@@ -4,5 +4,6 @@
 namespace tooie_dev_cheats {
 // Game-thread execution, called inside the owner's PlayerScope by the per-player update hook.
 void update_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self, bool gameplay, bool blocked);
-void reset_gameplay(); // new map/session: discard requests and per-player Blaster cleanup
+void reset_gameplay(); // new map/session: discard all requests and Blaster cleanup
+void retire_player(int player); // discard requests and Blaster cleanup for this owner
 }

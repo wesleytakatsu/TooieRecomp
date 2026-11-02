@@ -1,3 +1,4 @@
+#include "support/story_coop_fixture.h"
 // Production scopes + native model cutoff/reset and actor update/residency gates.
 // Synthetic RDRAM, camera/frustum, resource services and player positions; no GPU/map.
 #include "tooie_object_distance.h"
@@ -268,6 +269,7 @@ int main() {
     c = context(); c.r4 = guest(point); c.r5 = bits(5000); c.r6 = guest(actor + 4); tooie_distance_radius(r, &c); CHECK(c.r2 == 0);
     // J2 affects generic extended scheduling/retention, without modifying global focus.
     split = true; MEM_W(0, guest(0x80135490)) = 0x80040000; MEM_W(4, guest(0x80135490)) = 0x80041000;
+    commit_fixture_story_pair(r);
     second_x = 29500; tooie_object_distance::set_mode(1);
     CHECK(gate(r, false, 30000) == 1); CHECK(gate(r, true, 30000) == 0);
     alive = false; CHECK(gate(r, false, 30000) == 0); CHECK(gate(r, true, 30000) == 1); split = false;

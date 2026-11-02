@@ -9,7 +9,7 @@ public:
 private:
     int previous;
 };
-void begin_map(bool enabled);
+void begin_map(bool enabled, bool native_entry = false);
 void update_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self);
 uint32_t default_state(uint8_t* rdram, const recomp_context* ctx, uint32_t self);
 }

@@ -28,3 +28,5 @@ extern "C" void tooie_dev_on_primary_player_model(uint8_t* rdram, recomp_context
 extern "C" void tooie_dev_on_lod_player_model(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_dev_on_secondary_player_model(uint8_t* rdram, recomp_context* ctx);
 extern "C" void tooie_dev_on_model_instance(uint8_t* rdram, recomp_context* ctx);
+
+extern "C" void tooie_dev_on_normal_player_allocate(uint8_t*, recomp_context*);

@@ -1,4 +1,5 @@
 #include "tooie_dev_cheats.h"
+#include "tooie_story_coop.h"
 
 #include <atomic>
 #include <fstream>
@@ -161,10 +162,7 @@ bool two_players_active() {
 }
 
 bool two_players_map(int map) {
-    // MAP_*_CS_* and MAP_158_GAME_SELECT of decomp/include/maps.h.
-    const bool cutscene = ((map >= 0xA1) && (map <= 0xAC)) || (map == 0x159) || (map == 0x17E) || (map == 0x18B) ||
-        ((map >= 0x191) && (map <= 0x199)) || (map == 0x19C) || (map == 0x19D);
-    return !cutscene && (map != 0x158);
+    return tooie_story_coop::original_map_allowed(unsigned(map));
 }
 
 Settings parse_settings(const std::string& json_text) {

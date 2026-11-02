@@ -1,5 +1,6 @@
 #include "tooie_object_distance.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_story_coop.h"
 #include <array>
 #include <algorithm>
 #include <atomic>
@@ -101,7 +102,7 @@ float model_limit(uint8_t* rdram, const Model& frame, float view_scale) {
 // policy, retain/update relative to the nearer live split-screen player without
 // changing focus. This does not widen attack, hearing or interaction queries.
 bool nearer_second(uint8_t* rdram, const recomp_context& input, Point& second) {
-    if (!tooie_dev_cheats::two_players_active()) return false;
+    if (!tooie_story_coop::running(rdram)) return false;
     const auto first = uint32_t(MEM_W(0, guest(0x80135490)));
     const auto other = uint32_t(MEM_W(4, guest(0x80135490)));
     if (first == other || !readable(first, 4) || !readable(other, 4)) return false;

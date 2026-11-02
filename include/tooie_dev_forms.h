@@ -25,7 +25,8 @@ struct Menu {
 // Host-only state machine. Input and game publication share a lock; render receives a value copy.
 class Menus {
 public:
-    void reset();
+    void reset(bool rearm = false);
+    void cancel(int player);
     void request_open(int player);
     void publish(int player, bool available, Rect rect, uint8_t form, bool dragon);
     bool input(int player, bool unlocked, bool debug, uint16_t buttons, float x, float y, double time,
@@ -37,6 +38,7 @@ private:
         Menu menu;
         uint16_t previous = 0;
         bool drain = false;
+        bool rearm = false;
         bool open_requested = false;
         double repeat_at = 0;
         uint16_t repeat_direction = 0;

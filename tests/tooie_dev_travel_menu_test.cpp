@@ -1,3 +1,4 @@
+#include "support/story_coop_fixture.h"
 // Real native queue insertion/clear/dispatch and Warp Pad/Silo draw callbacks.
 // Actor lookup/extension storage, world visibility and the final UI renderer are synthetic.
 #include "tooie_dev_travel_menu.h"
@@ -107,6 +108,7 @@ static void setup(uint8_t* rdram) {
     MEM_H(0, guest(0x80127632)) = 3; MEM_BU(0, guest(0x8012762C)) = 0;
     MEM_H(0, guest(0x801276D2)) = 2;
     MEM_W(0, guest(0x80135490)) = kFirst; MEM_W(4, guest(0x80135490)) = kSecond;
+    commit_fixture_story_pair(rdram);
     MEM_W(0, guest(0x801354DC)) = 0;
     for (unsigned pass = 0; pass < 7; ++pass) {
         const uint32_t vec = 0x80070000 + pass * 0x100;

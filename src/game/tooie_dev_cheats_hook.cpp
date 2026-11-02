@@ -1,5 +1,6 @@
 #include "tooie_dev_cheats_hook.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_story_coop.h"
 #include <cstdio>
 
 extern "C" void bs_getCurrentState(uint8_t*, recomp_context*);
@@ -29,6 +30,11 @@ void reload_model(uint8_t* rdram, const recomp_context* ctx, uint32_t self) {
 }
 
 namespace tooie_dev_cheats {
+void retire_player(int player) {
+    if (player < 0 || player >= kPlayerCount) return;
+    blaster_reload_pending[player] = false;
+    for (size_t i = 0; i < kCheatCount; ++i) (void)take_request(player, Cheat(i));
+}
 void reset_gameplay() {
     blaster_reload_pending = {};
     reset_requests();
@@ -41,6 +47,10 @@ void update_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self, boo
         if (uint32_t(MEM_W(i * 4, guest(0x80135490))) == self) { player = i; break; }
     }
     if (player < 0) return;
+    if (player > 0 && tooie_story_coop::owned_slot(rdram, self) != 1) {
+        retire_player(player);
+        return;
+    }
 
     const uint32_t form = MEM_W(0xA0, guest(self));
     if (!pointer(form)) {

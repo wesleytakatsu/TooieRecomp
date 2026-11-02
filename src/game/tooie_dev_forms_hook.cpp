@@ -1,4 +1,5 @@
 #include "tooie_dev_forms_hook.h"
+#include "tooie_story_coop.h"
 #include "tooie_analog_camera_hook.h"
 #include "tooie_dev_forms.h"
 #include "tooie_dev_cheats.h"
@@ -40,6 +41,7 @@ bool feature_enabled() {
     return enabled;
 }
 thread_local int current_player = -1;
+thread_local bool allocating_form = false;
 thread_local std::optional<uint8_t>* serializing_form = nullptr;
 // Native transition banks and their mode/timer fields (8009E880..8009EB24).
 // These contain values, not PlayerState/model pointers. Keep the complete handoff per player, so J2's
@@ -58,8 +60,10 @@ std::array<SavedForm, 2> saved{};
 
 int slot(uint8_t* rdram, uint32_t self) {
     if (!pointer(self)) return -1;
-    const int index = MEM_W(0x184, guest(self));
-    return index >= 0 && index < 2 ? index : -1;
+    if (uint32_t(MEM_W(0, guest(0x80135490))) == self) return 0;
+    if (tooie_story_coop::owned_slot(rdram, self) == 1) return 1;
+    // Allocation/setup runs before publication; use only its enclosing slot scope.
+    return allocating_form ? current_player : -1;
 }
 uint8_t form(uint8_t* rdram, uint32_t self) {
     const uint32_t state = MEM_W(0xA0, guest(self));
@@ -94,7 +98,7 @@ class TransitionForm {
 public:
     TransitionForm(uint8_t* memory, int index) : rdram(memory), previous(read_transition(memory)) {
         if (index >= 0 && index < 2) {
-            if (saved[index].valid) {
+            if (index == 1 && saved[index].valid) {
                 write_transition(rdram, saved[index].transition);
                 MEM_B(0, guest(0x8012704C)) = saved[index].form;
             } else if (index == 1) MEM_B(0, guest(0x8012704C)) = 1;
@@ -112,9 +116,10 @@ PlayerScope::PlayerScope(uint8_t* rdram, uint32_t self) : previous(current_playe
     current_player = enabled_map && tooie_dev_cheats::is_unlocked() ? slot(rdram, self) : -1;
 }
 PlayerScope::~PlayerScope() { current_player = previous; }
-void begin_map(bool enabled) {
+void begin_map(bool enabled, bool native_entry) {
     enabled_map = enabled && feature_enabled();
-    menus().reset(); // A confirmation from the old map must never target a new PlayerState.
+    if (native_entry) saved[0].dragon.reset();
+    menus().reset(true); // A confirmation from the old map must never target a new PlayerState.
 }
 uint32_t default_state(uint8_t* rdram, const recomp_context* ctx, uint32_t self) {
     auto local = call_context(ctx, self);
@@ -131,7 +136,8 @@ void update_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self) {
         tooie_dev_cheats::two_players_map(MEM_HU(0, guest(0x80132DC2)));
     if (story) enabled_map = true;
     PlayerScope scope(rdram, self);
-    const bool available = enabled_map && story && tooie_dev_cheats::is_unlocked() &&
+    const bool owner_available = index == 0 || tooie_story_coop::created_pair(rdram);
+    const bool available = owner_available && enabled_map && story && tooie_dev_cheats::is_unlocked() &&
         tooie_dev_cheats::settings().character_menu && MEM_BU(0, guest(0x80127642)) == 0;
     if (auto request = menus().take(index); request && available) {
         const Form target = kForms[*request];
@@ -208,13 +214,25 @@ void update_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self) {
 
 extern "C" void tooie_forms_on_allocate(uint8_t* rdram, recomp_context* ctx) {
     const int index = int(ctx->r4);
-    if (!enabled_map || !tooie_dev_cheats::is_unlocked() || index < 0 || index >= 2) { func_800F43A8(rdram, ctx); return; }
+    if (!enabled_map || !tooie_dev_cheats::is_unlocked() || index < 0 || index >= 2 ||
+        (index == 1 && tooie_story_coop::allocation_slot() != 1)) {
+        const int previous = current_player;
+        current_player = -1;
+        func_800F43A8(rdram, ctx);
+        current_player = previous;
+        return;
+    }
     const int previous = current_player;
     current_player = index;
+    const bool previous_allocation = allocating_form;
+    allocating_form = true;
     TransitionForm transition(rdram, index);
+    if (index == 0 && saved[0].valid && read_transition(rdram) != saved[0].transition)
+        saved[0].dragon.reset();
     (void)dragon(rdram, ctx, index);
     func_800F43A8(rdram, ctx);
     trace(rdram, index, "allocated", form(rdram, uint32_t(ctx->r2)));
+    allocating_form = previous_allocation;
     current_player = previous;
 }
 extern "C" void tooie_forms_on_setup(uint8_t* rdram, recomp_context* ctx) {
@@ -228,6 +246,7 @@ extern "C" void tooie_forms_on_setup(uint8_t* rdram, recomp_context* ctx) {
 extern "C" void tooie_forms_on_teardown(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t self = uint32_t(ctx->r4);
     const int index = slot(rdram, self);
+    tooie_story_coop::SerializationScope serialization(rdram, self);
     tooie_dev_forms::PlayerScope scope(rdram, self);
     const TransitionCache previous = read_transition(rdram);
     std::optional<uint8_t> serialized;
@@ -243,13 +262,23 @@ extern "C" void tooie_forms_on_teardown(uint8_t* rdram, recomp_context* ctx) {
         trace(rdram, index, "transition", saved[index].form);
         if (index == 1) write_transition(rdram, previous);
     }
+    std::lock_guard shortcut_lock(tooie_story_coop::shortcut_mutex());
+    tooie_story_coop::retire(rdram, self);
+    if (index >= 0) {
+        tooie_analog_camera::reset_motion();
+        tooie_dev_forms::menus().cancel(index);
+        tooie_dev_cheats::retire_player(index);
+    }
 }
 extern "C" void tooie_forms_on_reset(uint8_t* rdram, recomp_context* ctx) {
+    std::unique_lock shortcut_lock(tooie_story_coop::shortcut_mutex());
+    tooie_story_coop::reset();
     tooie_analog_camera::reset_motion();
     tooie_dev_cheats::reset_gameplay();
     saved = {};
     enabled_map = false;
     tooie_dev_forms::menus().reset();
+    shortcut_lock.unlock();
     func_8009E8D4(rdram, ctx);
 }
 extern "C" void tooie_forms_on_dragon_get(uint8_t* rdram, recomp_context* ctx) {

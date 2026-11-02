@@ -18,6 +18,7 @@ tags: [vault, index, tooierecomp]
 
 - [[future/two-process-coop]] — Plano futuro: cooperativo com dois processos (proposto, não implementado)
 - [[future/two-player-split-screen]] — Dois jogadores em tela dividida (Dev Mode, checkpoint experimental)
+- [Plano técnico de suspensão nos minigames](../PLANO-SPLITSCREEN-MINIGAMES.md) — Checkpoint técnico na raiz, 15 famílias / 23 etapas; validação parcial e corrida pendente
 
 ## specs
 
@@ -55,6 +56,7 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/characters/mumbo]] — Mumbo
 - [[reverse-engineering/systems/view-volume]] — Volume de visão e culling
 - [[reverse-engineering/systems/camera-controls]] — Entrada, propriedade por jogador e filtros nativos da câmera
+- [[reverse-engineering/systems/minigames]] — Catálogo de 23 sinalizadores de replay e suspensão por sala do cooperativo e limitação conhecida
 - [[reverse-engineering/systems/transform-interpolation]] — Interpolação de transforms (RT64)
 - [[reverse-engineering/systems/model-renderer]] — Renderizador de modelos
 - [[reverse-engineering/systems/player-lighting]] — Iluminação por jogador e vértices de saída independentes

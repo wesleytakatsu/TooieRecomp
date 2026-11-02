@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Input and Controller Subsystem"
 description: "Technical specification for SDL2 controller mapping, stick-angle thunk override (80013B70), input helper contracts (800979D8), and attract playback."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-01
+updated: 2026-11-02
 tags: [specs, tooierecomp, input, controller, sdl2, stick-angle, demo]
 ---
 
@@ -174,6 +174,19 @@ selector suppresses cheats for that owner until its input is released.
   - Measured (`TOOIE_DIAG_CONT_PORTS`): `D_80079D6C[0..3]` follows per-frame port presence (`err_no == 0`).
 
 ---
+
+### Story co-op challenge boundaries
+
+Host form/cheat shortcuts use the published native owner-to-controller binding rather than assuming slot equals
+port. A port token changes at player recreation, retirement or binding change; held Debug/R3, D-pad, A/B or menu
+navigation must return to neutral before a fresh shortcut is admitted. Creation/retirement cancellation and input
+admission share a mutex. The input callback reads no mutable guest pointers. A suspended/auxiliary J2 receives no
+host shortcut publication. Native multiplayer keeps its port assignments and original controller values.
+Unavailable host menus discard pending opens and confirmation drain instead of consuming native input.
+Analog Camera resets samples, reservations and smoothing at every recreation, including same-room retries;
+Mini-Sub/Saucer segment rooms retain native C controls. Native auxiliary cameras cannot inherit story J2 ownership.
+Co-op suspension changes player creation, not physical connectivity/polling or controller profiles. See
+[[window-ui-and-config]] and [[reverse-engineering/systems/minigames]].
 
 ## 4. Attract Mode Parity & Verification Scope
 

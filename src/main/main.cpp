@@ -67,6 +67,7 @@ extern char** environ;
 #include "tooie_controller_ports.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_forms.h"
+#include "tooie_story_coop.h"
 #include "tooie_language_pack_loader.h"
 #include "tooie_error.h"
 #include "tooie_startup.h"
@@ -1052,14 +1053,14 @@ int main(int argc, char** argv) {
             if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_UP)) shortcut_buttons |= 0x0800;
             if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) shortcut_buttons |= 0x0200;
             if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) shortcut_buttons |= 0x0100;
+            std::lock_guard shortcut_lock(tooie_story_coop::shortcut_mutex());
+            const int shortcut_player = tooie_story_coop::input_player(controller, debug_held, shortcut_buttons, *x, *y);
             const auto form_settings = tooie_dev_cheats::settings();
-            forms_input = tooie_dev_forms::menus().input(controller,
+            forms_input = tooie_dev_forms::menus().input(shortcut_player,
                 tooie_dev_cheats::is_unlocked() && form_settings.character_menu,
                 debug_held, shortcut_buttons, *x, *y, time,
                 tooie_dev_cheats::direction_button(form_settings.character_menu_direction));
-        }
-        if (buttons != nullptr) {
-            tooie_dev_cheats::on_player_input(controller, !forms_input && debug_held, shortcut_buttons);
+            tooie_dev_cheats::on_player_input(shortcut_player, !forms_input && debug_held, shortcut_buttons);
         }
         if (forms_input) { *buttons = 0; *x = 0; *y = 0; }
         const bool camera_blocked = !ok || forms_input || recompinput::game_input_disabled();

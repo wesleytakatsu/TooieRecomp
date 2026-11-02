@@ -4,6 +4,7 @@
 // See docs/reverse-engineering/systems/warp-and-player-position.md for the addresses.
 
 #include "tooie_dev_warp.h"
+#include "tooie_story_coop.h"
 #include "tooie_analog_camera_hook.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_cheats_hook.h"
@@ -20,6 +21,9 @@
 
 #include "recomp.h"
 
+extern "C" void func_800F61E4(uint8_t*, recomp_context*);
+extern "C" void func_800DA564(uint8_t*, recomp_context*);
+extern "C" void bakey_getControllerIndex(uint8_t*, recomp_context*);
 extern "C" void yaw_update(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800991B0(uint8_t* rdram, recomp_context* ctx); // per-player update (PlayerState*)
 extern "C" void func_8009359C(uint8_t* rdram, recomp_context* ctx); // set the second model (0 removes it)
@@ -226,8 +230,8 @@ void set_player_model(uint8_t* rdram, recomp_context* ctx, void (*native)(uint8_
     player_model_owner = self;
     player_model_kind = kind;
     private_player_vertices_scope = previous || (story_two_players && private_player_vertices_enabled() &&
-        is_rdram_pointer(self) && (creating_story_players || self == static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers))) ||
-        self == static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers)))));
+        is_rdram_pointer(self) && (creating_story_players || (tooie_story_coop::created_pair(rdram) &&
+        tooie_story_coop::owned_slot(rdram, self) >= 0)));
     native(rdram, ctx);
     private_player_vertices_scope = previous;
     player_model_owner = previous_owner;
@@ -262,7 +266,7 @@ extern "C" void tooie_dev_on_yaw_update(uint8_t* rdram, recomp_context* ctx) {
             apply_position(rdram, ctx, player, target);
             std::fprintf(stderr, "[tooie-warp] placed player 1 at %.1f %.1f %.1f yaw %.1f in map %d\n",
                 double(target.pos[0]), double(target.pos[1]), double(target.pos[2]), double(target.yaw), int(target.map));
-            if (tooie_dev_cheats::two_players_active()) {
+            if (tooie_story_coop::running(rdram)) {
                 place_second_player(rdram, ctx, target);
             }
         }
@@ -283,11 +287,18 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
     tooie_analog_camera::refresh_player(rdram, ctx, self);
     func_800991B0(rdram, ctx);
     tooie_analog_camera::refresh_player(rdram, ctx, self);
+    if (is_rdram_pointer(self) && is_rdram_pointer(uint32_t(MEM_W(0x40, kseg0(self))))) {
+        auto input = *ctx;
+        input.r29 = ADD32(ctx->r29, -0x40);
+        input.r4 = kseg0(self);
+        bakey_getControllerIndex(rdram, &input);
+        tooie_story_coop::publish_input(rdram, self, int32_t(input.r2));
+    }
     tooie_dev_forms::update_player(rdram, ctx, self);
 
     const uint32_t player = static_cast<uint32_t>(MEM_W(0, kseg0(kPlayers)));
     const uint32_t second = static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers)));
-    if (tooie_dev_cheats::two_players_active() && (self == second) && is_rdram_pointer(second) &&
+    if (tooie_story_coop::owns_second(rdram, self) && (self == second) && is_rdram_pointer(second) &&
         is_rdram_pointer(player)) {
         // Outside the multiplayer minigames the game leaves player 2 waiting in state 0x74, parked where there is no
         // ground. Once the map has been loaded for kSecondPlayerDelay and player 1 stands still, put player 2 beside
@@ -356,6 +367,7 @@ extern "C" void tooie_dev_on_player_update(uint8_t* rdram, recomp_context* ctx) 
 // (func_800A907C); func_800A8D70 sets that count to 1 outside the multiplayer maps, so add a second viewport first. The
 // game select also sets the controller ports read to one (osContSetCh), so ask for two.
 extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx) {
+    std::unique_lock shortcut_lock(tooie_story_coop::shortcut_mutex());
     tooie_dev_enemy_ai::reset();
     tooie_dev_travel_menu::reset();
     const int32_t requested = static_cast<int32_t>(ctx->r4);
@@ -364,10 +376,25 @@ extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx)
     second_player_start_next = false;
     second_player_last_first.reset();
     second_player_still_since = -1.0;
-    tooie_dev_forms::begin_map(requested == 1 && MEM_BU(0, kseg0(0x8012762Cu)) != 0x1B &&
-        tooie_dev_cheats::two_players_map(MEM_HU(0, kseg0(kCurrentMap))));
-    const bool two = tooie_dev_cheats::two_players_active() && (requested == 1) &&
-        tooie_dev_cheats::two_players_map(MEM_HU(0, kseg0(kCurrentMap)));
+    tooie_analog_camera::reset_motion();
+    tooie_story_coop::CreationInput input{MEM_HU(0, kseg0(kCurrentMap)),
+        MEM_BU(0, kseg0(0x8012762C)), requested, tooie_dev_cheats::settings().two_players,
+        tooie_dev_cheats::is_unlocked()};
+    if (input.map == 0xD6 && tooie_story_coop::decide_creation(input).inject_second_player) {
+        auto route = *ctx;
+        route.r29 = ADD32(ctx->r29, -0x40);
+        route.r4 = 0xA34;
+        route.r5 = 3;
+        func_800DA564(rdram, &route); // Read-only native field, before Saucer actor initialization.
+        input.saucer_route = uint8_t(route.r2);
+    }
+    const auto decision = tooie_story_coop::decide_creation(input);
+    const bool two = decision.inject_second_player;
+    tooie_dev_forms::begin_map(requested == 1 && input.native_subtype != 0x1B &&
+        tooie_dev_cheats::two_players_map(input.map), tooie_story_coop::challenge_room(input.map) ||
+        decision.reason == tooie_story_coop::BlockReason::SaucerReturn);
+    tooie_story_coop::begin_creation(input.map, two);
+    shortcut_lock.unlock();
     story_two_players = two;
     if (FILE* file = player_lighting_log()) {
         std::fprintf(file, "MAP t=%.3f map=%u requested=%d two=%u private_vertices=%u\n", player_lighting_time(),
@@ -392,7 +419,7 @@ extern "C" void tooie_dev_on_create_players(uint8_t* rdram, recomp_context* ctx)
     creating_story_players = two;
     func_800F73C4(rdram, ctx);
     creating_story_players = previous_creation;
-    if (!two) {
+    if (!tooie_story_coop::finish_creation(rdram)) {
         return;
     }
 
@@ -460,8 +487,14 @@ extern "C" void tooie_dev_on_model_instance(uint8_t* rdram, recomp_context* ctx)
 extern "C" void tooie_dev_on_player_active(uint8_t* rdram, recomp_context* ctx) {
     const int32_t index = static_cast<int32_t>(ctx->r4);
     func_800F65D0(rdram, ctx);
-    if ((ctx->r2 == 0) && (index == 1) && tooie_dev_cheats::two_players_active() &&
-        is_rdram_pointer(static_cast<uint32_t>(MEM_W(4, kseg0(kPlayers))))) {
+    if (ctx->r2 == 0 && tooie_story_coop::extra_activity(rdram, index)) {
         ctx->r2 = 1;
     }
+}
+
+// Only normal/fallback allocation uses this entry; descriptor allocation uses 800F6204.
+extern "C" void tooie_dev_on_normal_player_allocate(uint8_t* rdram, recomp_context* ctx) {
+    tooie_story_coop::begin_normal_allocation();
+    func_800F61E4(rdram, ctx);
+    tooie_story_coop::end_normal_allocation(rdram, int32_t(ctx->r2));
 }

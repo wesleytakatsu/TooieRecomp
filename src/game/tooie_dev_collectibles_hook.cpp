@@ -1,5 +1,6 @@
 #include "tooie_dev_collectibles_hook.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_story_coop.h"
 
 extern "C" void func_8010108C(uint8_t*, recomp_context*); // original actor event dispatcher
 extern "C" void func_80100368(uint8_t*, recomp_context*); // class descriptor
@@ -13,7 +14,7 @@ bool readable(uint32_t address, uint32_t size) {
     return address >= 0x80000000u && address <= 0x80800000u - size && (address & 3u) == 0;
 }
 bool enabled(uint8_t* rdram) {
-    if (!tooie_dev_cheats::two_players_active()) return false;
+    if (!tooie_story_coop::running(rdram)) return false;
     const int mode = MEM_H(0, guest(0x80127632));
     if ((mode != 3 && mode != 5) || MEM_BU(0, guest(0x8012762C)) == 0x1B) return false;
     const uint32_t first = MEM_W(0, guest(0x80135490));

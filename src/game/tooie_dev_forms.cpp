@@ -4,9 +4,16 @@
 
 namespace tooie_dev_forms {
 Menus& menus() { static Menus instance; return instance; }
-void Menus::reset() {
+void Menus::reset(bool rearm) {
     std::lock_guard lock(mutex);
     players = {};
+    for (auto& player : players) player.rearm = rearm;
+}
+void Menus::cancel(int player) {
+    if (player < 0 || player >= kPlayers) return;
+    std::lock_guard lock(mutex);
+    players[player] = {};
+    players[player].rearm = true;
 }
 void Menus::request_open(int player) {
     if (player < 0 || player >= kPlayers) return;
@@ -23,6 +30,8 @@ void Menus::publish(int player, bool available, Rect rect, uint8_t form, bool dr
     if (!available) {
         state.menu.open = false;
         state.request.reset();
+        state.open_requested = false;
+        state.drain = false;
     }
     if (!state.menu.open) {
         dragon = dragon && (form == 1 || form == 0xB);
@@ -48,6 +57,14 @@ bool Menus::input(int player, bool unlocked, bool debug, uint16_t buttons, float
     if (!unlocked || !state.menu.available) {
         state.menu.open = false;
         state.request.reset();
+        state.open_requested = false;
+        state.drain = false;
+        return false; // Unavailable host UI must never swallow native input.
+    }
+    if (state.rearm) {
+        if (!debug && !(buttons & 0xCF00) && std::abs(x) < .25f && std::abs(y) < .25f)
+            state.rearm = false;
+        return false;
     }
     if (state.drain) {
         if (buttons == 0 && std::abs(x) < 0.25f && std::abs(y) < 0.25f) state.drain = false;

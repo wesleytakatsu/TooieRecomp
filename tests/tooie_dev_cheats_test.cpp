@@ -1,3 +1,4 @@
+#include "support/story_coop_fixture.h"
 #include <cstdio>
 #include <cstdlib>
 #include "tooie_dev_cheats.h"
@@ -170,6 +171,8 @@ int main() {
             form(rdram, p, kTransformBanjoKazooie);
             states[p] = kStateIdle;
         }
+        commit_fixture_story_pair(rdram);
+        auto enabled_pair = settings(); enabled_pair.two_players = true; set_settings(enabled_pair);
         auto queue = [&](int p, uint16_t button) {
             on_player_input(p, true, 0);
             on_player_input(p, true, button);
@@ -212,6 +215,7 @@ int main() {
         Settings enabled;
         enabled[Cheat::Fly] = {true, Direction::Up};
         enabled[Cheat::Blaster] = {true, Direction::Right};
+        enabled.two_players = true;
         set_settings(enabled);
         queue(1, up); update(1, false);
         update(1);

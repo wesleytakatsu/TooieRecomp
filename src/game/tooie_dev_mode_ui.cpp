@@ -439,7 +439,7 @@ void build_experimental(ContextId context, Element* root) {
         store_cheats(changed);
     });
     option_description(context, line, "Two players (split screen)",
-        "Applies on the next map load. Assign controllers in General > Multiplayer.");
+        "Applies on the next map load. Paused in minigame rooms; resumes on the next eligible map. Assign controllers in General > Multiplayer.");
 }
 
 void build_contents(ContextId context, Element* root) {

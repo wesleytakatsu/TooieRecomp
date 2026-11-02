@@ -1,3 +1,4 @@
+#include "support/story_coop_fixture.h"
 // Real menu state machine and integration hooks, with guest memory and native lifecycle stand-ins.
 // The model-cache/Dragon selector regression executes generated native functions read-only.
 // Asset allocation and other lifecycle APIs remain stand-ins; this is not a gameplay/render test.
@@ -211,6 +212,9 @@ int main() {
         const gpr rect = guest(0x8011A420 + (p + 1) * 8);
         MEM_H(0, rect) = 0; MEM_H(2, rect) = p; MEM_H(4, rect) = 2; MEM_H(6, rect) = 1;
     }
+    commit_fixture_story_pair(rdram);
+    auto pair_settings = tooie_dev_cheats::settings(); pair_settings.two_players = true;
+    tooie_dev_cheats::set_settings(pair_settings);
     MEM_H(0, guest(0x80117DF0)) = 0; // Map -> LOD row 0.
     MEM_H(2, guest(0x80117DF0)) = 0;
     MEM_H(4, guest(0x80117DF0)) = -1;
@@ -234,9 +238,12 @@ int main() {
     }
     CHECK(MEM_BU(0, guest(0x8012704C)) == 6); // J2 did not replace J1 transition form
     CHECK(MEM_W(0, guest(0x80127044)) == 100); // its animation/movement handoff did not leak either
+    tooie_story_coop::begin_creation(0, true);
     for (int p = 0; p < 2; ++p) {
+        tooie_story_coop::begin_normal_allocation();
         ctx.r4 = p;
         tooie_forms_on_allocate(rdram, &ctx);
+        tooie_story_coop::end_normal_allocation(rdram, p);
         CHECK(read_form(rdram, selves[p]) == (p == 0 ? 6 : 8));
         ctx.r4 = guest(selves[p]);
         tooie_forms_on_setup(rdram, &ctx);
@@ -244,6 +251,7 @@ int main() {
         CHECK(read_form(rdram, selves[p]) == (p == 0 ? 6 : 8));
         CHECK(MEM_BU(0, guest(0x8012704C)) == 6);
     }
+    CHECK(tooie_story_coop::finish_creation(rdram));
     native_revert = true;
     ctx.r4 = guest(selves[0]);
     tooie_forms_on_teardown(rdram, &ctx);
@@ -252,6 +260,7 @@ int main() {
     tooie_forms_on_allocate(rdram, &ctx);
     CHECK(read_form(rdram, selves[0]) == 1); // respect native reversion, never force the old Bee back
 
+    commit_fixture_story_pair(rdram);
     double time = 10;
     auto select = [&](int p, int target) {
         update_player(rdram, &ctx, selves[p]);

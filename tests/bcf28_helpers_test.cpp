@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "recomp.h"
+#include "tooie_dev_warp_hook.h"
 #include "librecomp/overlays.hpp"
 
 namespace banjo {
@@ -42,6 +43,11 @@ int main() {
     std::printf("[bcf28_test] registering lookup stubs...\n");
     banjo::register_boot_lookup_stubs();
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800BCE84), func_800BCE84);
+    if (get_function(static_cast<int32_t>(0x800F61E4)) != tooie_dev_on_normal_player_allocate) {
+        std::fprintf(stderr, "FAIL: normal player allocation hook is not registered\n");
+        return 1;
+    }
+    std::puts("PASS: story allocation provenance hook registered at 0x800F61E4");
 
     // 8 MiB simulated RDRAM buffer for memory reads
     std::vector<uint8_t> rdram_buffer(8 * 1024 * 1024, 0);

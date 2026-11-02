@@ -1,5 +1,6 @@
 #include "tooie_dev_enemy_ai.h"
 #include "tooie_dev_cheats.h"
+#include "tooie_story_coop.h"
 #include "librecomp/overlays.hpp"
 
 #include <array>
@@ -58,7 +59,7 @@ recomp_context local_call(const recomp_context& input) {
     return c;
 }
 bool enabled(uint8_t* rdram) {
-    if (!tooie_dev_cheats::two_players_active() || MEM_H(0, guest(0x80127632)) != 3 ||
+    if (!tooie_story_coop::running(rdram) || MEM_H(0, guest(0x80127632)) != 3 ||
         MEM_BU(0, guest(0x8012762C)) == 0x1B) return false;
     const uint32_t first = MEM_W(0, guest(kPlayers)), second = MEM_W(4, guest(kPlayers));
     return first != second && readable(first, 4) && readable(second, 4);

@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-01
+updated: 2026-11-02
 tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution, dev-mode, warp]
 ---
 
@@ -307,6 +307,28 @@ that change the game's state directly.
 - **Experimental: Two players (split screen)**: default off, persisted as the boolean `two_players`. Requires the
   session warning to be accepted, Multiplayer enabled in General and two players assigned in Controls. Player creation
   applies the option on the next eligible map load; game select and the excluded cutscene maps remain unchanged.
+  **Known limitation:** the user reports J2 remains accessible during the train/cart race with the bird.
+  The current checkpoint deliberately retains this behavior. Individual native event identity/map were not
+  captured; do not infer coverage of races or every activity from the 23 replay flags. Suspension is a room-load
+  policy, not a universal live event detector. Some events worked in the user test; the complete matrix is unverified.
+  Dedicated minigame rooms suspend host promotion for the whole visit (instructions/play/retry/results), covering
+  the 15 replay families/23 stages, the named Saucer segments, conservative Mayan aliases and related native MP rooms.
+  Witchyworld remains eligible except for the native Saucer route-6 return/result load, read through the native
+  `(0xA34,3)` getter. Clearing that field later does not create J2 mid-map. The saved option remains On; J2 returns
+  at the next eligible native player creation. Native multiplayer subtype `0x1B` and non-one requests pass through.
+  `tooie_story_coop` distinguishes preference, construction intent, normal-allocation provenance and a committed
+  pair. Descriptor/fallback actors are never adopted merely because slot 1 is non-null. Activity during construction
+  and synchronous outgoing serialization has a restricted owner scope; gameplay stops when either owner retires.
+  AI/Glowbo/travel/distance/Warp extensions require the effective pair. Private lighting and J2 form ownership
+  remain tied to the created owners even when the option is turned Off mid-map. No actor is deleted to suspend co-op.
+  Host shortcut ownership is published by the native controller binding. Creation/retirement and input admission
+  share a mutex; per-port epoch tokens require released Debug/R3, D-pad, A/B and neutral navigation before rearming.
+  Unavailable menus cancel pending opens/drain without consuming native controller input. Analog samples/reservations
+  reset on every player recreation. Native viewport layout and persistent controller polling have separate lifetimes;
+  declining promotion never forces a single polling channel or clears guest pad buffers.
+  J1 initialization reads the native transition bank; stale host caches cannot replace an event-required form.
+  J2 retains value-only handoff through its own verified construction/serialization, respecting native reversion/reset.
+  Windows harness/build results and manual acceptance are tracked in [[HANDOFF]]; complete event gameplay remains pending.
   The map-creation hook (`0x800F73C4`) changes an original request for one player to two, adds a second viewport when
   the map has one and enables reads from two controller ports. Player 2 is placed beside player 1, then placed again
   2 s later once player 1's position has been still for 0.2 s, 60 game units above player 1; on its next update it leaves
@@ -317,7 +339,7 @@ that change the game's state directly.
   player 2 or its viewport in the current map; creation is reconsidered on the next map load, while these update,
   collision and Warp hooks consult the current option.
   - **Travel menu drawing**: Warp Pads and Silos remain operated by J1. With Dev Mode unlocked, `two_players`
-    enabled, story mode `3`, two valid distinct player slots and exactly two viewports (native multiplayer excluded),
+    enabled, story mode `3`, a verified live host-created pair and exactly two viewports (native multiplayer excluded),
     `tooie_dev_travel_menu.cpp` retains active Warp Pad/Silo menu identities from J1's pass-`3` queue when viewport
     `0` begins queue `1`. At global viewport `4`, queue `3` first runs normally; missing retained menus then run
     through the native actor draw gate and option renderer using the existing global projection/scissor setup.
@@ -329,7 +351,7 @@ that change the game's state directly.
     one viewport or original multiplayer, the hook calls the original queue dispatcher without retaining menus.
     No runtime logging, metrics, draw forcing for other classes or new diagnostic switch is added.
     Native queue/callback regression passes; visual Windows acceptance with J2 distant remains `PENDING_USER`.
-  - **Enemy targeting (experimental)**: in story game mode `3`, with this option active, two live slots and native
+  - **Enemy targeting (experimental)**: in story game mode `3`, with this option active, a verified live host-created pair and native
     multiplayer excluded, `tooie_dev_enemy_ai.cpp` wraps the audited update callbacks of `ch2dbaddy`,
     `chcrystalbaddie`, `chflowerbaddie`, `chnewshovel`, `chseaweedbaddy`, `chhillbilly` and `chdiggerground`.
     `chdiggerfly` delegates update to `sucoasterfly_entrypoint_3`; its scope is entered in the syscall dispatcher

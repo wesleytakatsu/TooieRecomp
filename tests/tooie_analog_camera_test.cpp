@@ -1,3 +1,5 @@
+#include "support/story_coop_fixture.h"
+namespace tooie_dev_cheats { bool two_players_active() { return true; } }
 // Production input policy, config callbacks, scopes and native orbit filters/controller.
 // Synthetic memory, vector math services and collision sink; no ROM, game or renderer.
 #include "tooie_analog_camera.h"
@@ -151,6 +153,7 @@ static void native_tests() {
     reset_motion(); set_enabled(true); set_invert(0); set_sensitivity(3);
     std::vector<uint8_t> memory(8*1024*1024); auto* rdram=memory.data();
     prepare(rdram,0); prepare(rdram,1);
+    commit_fixture_story_pair(rdram);
     for(int n=0;n<2;++n) { auto c=context(player(n)); refresh_player(rdram,&c,player(n)); CHECK(reserve(n)); }
     const auto p0=tick(rdram,0,{1,0}), p1=tick(rdram,1,{-1,0});
     CHECK(p0[0]>0 && p1[0]<0); CHECK(approximately(p0[0],-p1[0])); CHECK(collisions==2);
@@ -169,7 +172,7 @@ static void native_tests() {
     const auto recenter=tick(rdram,0,{1,1}); CHECK(approximately(recenter[0],crouched[0]));
     MEM_B(0x23,guest(buffer(0)))=0;
     auto c=context(player(0));
-    for(unsigned map : {0xC6u,0xDCu,0xE4u,0x10Au,0x123u,0x124u,0x137u,0x139u,0x13Du,0x161u,0x162u,0x182u}) {
+    for(unsigned map : {0xC6u,0xDCu,0xE4u,0x10Au,0x123u,0x124u,0x137u,0x139u,0x13Du,0x181u,0x13Bu,0x13Cu,0x161u,0x162u,0x182u}) {
         MEM_H(0,guest(0x80132DC2))=map; refresh_player(rdram,&c,player(0)); CHECK(!reserve(0)); CHECK(reserve(1));
     }
     MEM_H(0,guest(0x80132DC2))=0x142;

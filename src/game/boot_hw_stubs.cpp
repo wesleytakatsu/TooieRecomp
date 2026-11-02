@@ -6188,6 +6188,7 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kSecondaryPlayerModelVram), tooie_dev_on_secondary_player_model);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kModelInstanceVram), tooie_dev_on_model_instance);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F61E4), tooie_dev_on_normal_player_allocate);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F43A8), tooie_forms_on_allocate);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80084FB0), tooie_forms_on_setup);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80098E64), tooie_forms_on_teardown);

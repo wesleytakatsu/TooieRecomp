@@ -209,6 +209,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_story_coop.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
@@ -594,6 +595,7 @@ foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_story_coop.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
@@ -834,6 +836,28 @@ target_include_directories(tooie_dev_travel_menu_test PRIVATE
 )
 target_link_libraries(tooie_dev_travel_menu_test PRIVATE RecompiledFuncs)
 set_target_properties(tooie_dev_travel_menu_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Story co-op policy and real native creation/teardown/layout regressions.
+add_executable(tooie_story_coop_test
+    tests/tooie_story_coop_test.cpp
+    src/game/tooie_story_coop.cpp
+    src/game/tooie_dev_warp_hook.cpp
+    src/game/tooie_dev_forms_hook.cpp
+    src/game/tooie_dev_forms.cpp
+    src/game/tooie_dev_cheats.cpp
+    src/game/tooie_dev_cheats_hook.cpp
+    src/game/tooie_dev_warp.cpp
+    src/game/generated/map_names.gen.cpp
+    src/game/tooie_analog_camera.cpp
+    src/game/tooie_analog_camera_hook.cpp
+)
+target_include_directories(tooie_story_coop_test PRIVATE include ${N64MR}/N64Recomp/include ${N64MR}/thirdparty)
+target_link_libraries(tooie_story_coop_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_story_coop_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+foreach(_t tooie_analog_camera_test tooie_dev_forms_test tooie_dev_cheats_test tooie_glowbo_collection_test
+    tooie_dev_enemy_ai_test tooie_dev_travel_menu_test tooie_object_distance_test)
+    target_sources(${_t} PRIVATE src/game/tooie_story_coop.cpp)
+endforeach()
 
 # Pure N64 controller port policy, independent of SDL and the runtime.
 add_executable(tooie_controller_ports_test
