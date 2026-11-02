@@ -77,12 +77,6 @@ std::atomic<uint64_t> g_syscall_dispatch{0};
 std::atomic<uint64_t> g_syscall_return{0};
 std::atomic<uint64_t> g_sched_ack{0};
 std::atomic<uint64_t> g_rsp_aud{0};
-std::atomic<uint64_t> g_queue_calls{0};
-std::atomic<uint64_t> g_queue_samples{0};
-std::atomic<uint64_t> g_queue_nonzero{0};
-std::atomic<uint32_t> g_last_queue_bytes{0};
-std::atomic<int32_t> g_last_peak{0};
-std::atomic<int32_t> g_max_peak{0};
 std::atomic<uint32_t> g_audio_device{0};
 std::atomic<uint32_t> g_last_ovl{0};
 std::atomic<uint32_t> g_last_ep{0};
@@ -495,11 +489,6 @@ uint64_t g_secondary_sway_tree_draws = 0;
 uint32_t g_secondary_sway_last_handler_table = 0;
 uint32_t g_secondary_sway_last_geocmd_mode = 0xFFFFFFFFu;
 uint64_t g_secondary_sway_ade2c_snout_samples = 0;
-uint64_t g_secondary_sway_e2180_in_span = 0;
-uint64_t g_secondary_sway_e2180_type2 = 0;
-uint64_t g_secondary_sway_e2180_bone42 = 0;
-uint64_t g_secondary_sway_e2180_rel_11cb8 = 0;
-uint64_t g_secondary_sway_e2180_tuple_rows = 0;
 uint64_t g_secondary_sway_durable_register_hits = 0;
 uint64_t g_secondary_sway_hip_consume_entry_hits = 0;
 uint64_t g_secondary_sway_hip_consume_hits = 0;
@@ -727,7 +716,6 @@ std::array<SingleMtxTraceToken, kSingleMtxTraceSlots> g_single_mtx_tokens{};
 uint64_t g_single_mtx_token_next = 1;
 uint64_t g_single_mtx_guest_matrix_rows = 0;
 uint64_t g_single_mtx_identity_rows = 0;
-uint64_t g_single_mtx_vertex_rows = 0;
 uint64_t g_single_mtx_match_rows = 0;
 uint64_t g_single_mtx_match_matched = 0;
 uint64_t g_single_mtx_match_unmatched = 0;
@@ -3273,20 +3261,6 @@ void note_rsp_audtask() {
     g_rsp_aud.fetch_add(1, std::memory_order_relaxed);
 }
 
-void note_queue_samples(size_t sample_count, uint32_t queued_bytes_after,
-                        int16_t peak_abs, size_t nonzero) {
-    ensure_init();
-    g_queue_calls.fetch_add(1, std::memory_order_relaxed);
-    g_queue_samples.fetch_add(sample_count, std::memory_order_relaxed);
-    g_queue_nonzero.fetch_add(nonzero, std::memory_order_relaxed);
-    g_last_queue_bytes.store(queued_bytes_after, std::memory_order_relaxed);
-    g_last_peak.store(peak_abs, std::memory_order_relaxed);
-    int32_t maxp = g_max_peak.load(std::memory_order_relaxed);
-    while (peak_abs > maxp &&
-           !g_max_peak.compare_exchange_weak(maxp, peak_abs, std::memory_order_relaxed)) {
-    }
-}
-
 void note_audio_device(uint32_t device_id, const char* driver, const char* device_name) {
     ensure_init();
     g_audio_device.store(device_id, std::memory_order_relaxed);
@@ -3696,7 +3670,6 @@ void report_now(const char* reason) {
                      "[tooie-diag] %s "
                      "syscall d=%llu r=%llu inflight=%lld "
                      "sched_ack=%llu rsp_aud=%llu "
-                     "queue_calls=%llu queue_samp=%llu nonzero=%llu peak=%d maxpeak=%d queue_bytes=%u "
                      "audio_dev=%u/%s/\"%s\" "
                      "last_ovl=%u:%u depth=%u max_depth=%u stack=%s\n",
                      reason ? reason : "report",
@@ -3705,12 +3678,6 @@ void report_now(const char* reason) {
                      static_cast<long long>(g_syscall_dispatch.load() - g_syscall_return.load()),
                      static_cast<unsigned long long>(g_sched_ack.load()),
                      static_cast<unsigned long long>(g_rsp_aud.load()),
-                     static_cast<unsigned long long>(g_queue_calls.load()),
-                     static_cast<unsigned long long>(g_queue_samples.load()),
-                     static_cast<unsigned long long>(g_queue_nonzero.load()),
-                     g_last_peak.load(),
-                     g_max_peak.load(),
-                     g_last_queue_bytes.load(),
                      g_audio_device.load(),
                      driver,
                      dname,
@@ -6196,14 +6163,12 @@ void secondary_sway_note_ade2c(uint8_t* rdram, void* raw_ctx) {
                       words[7]);
     }
     DurableModelBin matched{};
-    uint32_t rel = 0;
     std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
     ++g_secondary_sway_ade2c_snout_samples;
     ++g_secondary_sway_snout_matrix_hits;
     ++g_secondary_sway_snout_matrix_samples;
     if (g_durable_bin_count != 0) {
         matched = g_durable_bins[0];
-        rel = kSecondarySwaySnoutNodeOffset;
     }
     if (g_secondary_sway_snout_csv == nullptr) {
         g_secondary_sway_snout_csv =

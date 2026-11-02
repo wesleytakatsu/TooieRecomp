@@ -49,9 +49,9 @@ namespace recompui {
                 installation.mod_file = target_path;
             }
         }
-        else if (file_path.extension() == ".rtz") {
-            // When it's an rtz file, check if the texture database file exists.
-            exists = mz_zip_reader_locate_file(file_handle.archive.get(), TextureDatabaseFilename, nullptr, 0) >= 0;
+        else if ((file_path.extension() == ".rtz") || (file_path.extension() == ".zip")) {
+            // Without a manifest, check for a texture database inside the selected root.
+            exists = file_handle.file_exists(TextureDatabaseFilename);
 
             if (exists) {
                 installation.mod_id = std::string((const char *)(target_path.stem().u8string().c_str()));
@@ -324,6 +324,25 @@ namespace recompui {
             // TODO hook into the runtime's container registration to check the extension instead of using hardcoded values.
             if ((path.extension() == ".rtz") || (path.extension() == ".nrm")) {
                 start_single_mod_installation(path, file_handle, progress_callback, result);
+            }
+            else if (path.extension() == ".zip") {
+                recomp::mods::ZipContentRootResult root = recomp::mods::find_zip_content_root(file_handle, TextureDatabaseFilename);
+                if (root.status == recomp::mods::ZipContentRootStatus::Found) {
+                    file_handle.content_root = std::move(root.root);
+                    start_single_mod_installation(path, file_handle, progress_callback, result);
+                }
+                else if (root.status == recomp::mods::ZipContentRootStatus::NotFound) {
+                    start_package_mod_installation(path, file_handle, progress_callback, result);
+                }
+                else {
+                    recomp::mods::ModOpenError error = root.status == recomp::mods::ZipContentRootStatus::Ambiguous ?
+                        recomp::mods::ModOpenError::AmbiguousContentRoot : recomp::mods::ModOpenError::InvalidContentRoot;
+                    std::string message = path.filename().string() + ": " + recomp::mods::error_to_string(error);
+                    for (const std::string& candidate : root.candidates) {
+                        message += " [" + candidate + "]";
+                    }
+                    result.error_messages.emplace_back(std::move(message));
+                }
             }
             else {
                 // Scan the container for compatible mods instead. This is the case for packages made by users or how they're tipically uploaded to Thunderstore.

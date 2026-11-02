@@ -521,6 +521,9 @@ namespace RT64 {
             rspProcess.pipeline = device->createComputePipeline(pipelineDesc);
         }
 
+        // TK64: only the ray tracing path, which is compiled out, uses this pipeline. Not creating it keeps backends
+        // whose shading languages cannot express the shader (HLSL 5.0, GLSL) from failing at start-up.
+#   if RT_ENABLED
         // RSP Smooth Normal.
         {
             RSPSmoothNormalDescriptorSet descriptorSet;
@@ -534,6 +537,7 @@ namespace RT64 {
             RenderComputePipelineDesc pipelineDesc(rspSmoothNormal.pipelineLayout.get(), computeShader.get(), 64, 1, 1);
             rspSmoothNormal.pipeline = device->createComputePipeline(pipelineDesc);
         }
+#   endif
 
         // RSP World.
         {
@@ -852,6 +856,9 @@ namespace RT64 {
             postProcess.pipeline = device->createGraphicsPipeline(pipelineDesc);
         }
         
+        // TK64: only the ray tracing path, which is compiled out, uses this pipeline. Not creating it keeps backends
+        // whose shading languages cannot express the shader (HLSL 5.0, GLSL) from failing at start-up.
+#   if RT_ENABLED
         // Raytracing debug.
         {
             FramebufferRendererDescriptorCommonSet descriptorCommonSet(samplerLibrary, deviceCapabilities.raytracing);
@@ -876,6 +883,7 @@ namespace RT64 {
             pipelineDesc.multisampling = multisampling;
             debug.pipeline = device->createGraphicsPipeline(pipelineDesc);
         }
+#   endif
 
         // RSP Vertex Test Z.
         {

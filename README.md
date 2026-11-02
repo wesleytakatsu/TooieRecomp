@@ -31,6 +31,8 @@ Graphics, audio, and game data are read and decompressed directly from the ROM a
 - **Modern Controller & Keyboard Support:** Gamepad support powered by SDL2 alongside customizable keyboard controls.
 - **Native Launcher:** Built-in graphical launcher with ROM selection.
 - **Texture Packs:** RT64 texture packs (`.rtz`) via the in-game `Mods` menu.
+- **Dev Mode:** an ESC menu tab unlocked after a warning. `Warp` saves where Banjo stands and teleports back there
+  later, also from another level. It changes the game's state directly: save your game before using it.
 
 ---
 

@@ -1,4 +1,5 @@
 #include "banjo_config.h"
+#include "tooie_analog_camera.h"
 #include "recompui/recompui.h"
 #include "recompui/config.h"
 #include "recompinput/recompinput.h"
@@ -11,6 +12,9 @@
 #include "tooie_menu_policy.h"
 #include "tooie_bgm_volume.h"
 #include "tooie_language_import_ui.h"
+#include "tooie_dev_mode_ui.h"
+#include "tooie_startup.h"
+#include "tooie_object_distance.h"
 #include "hle/rt64_host_endpoint_current.h"
 #include "util/file.h"
 #include <filesystem>
@@ -83,14 +87,16 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::analog_cam_mode,
         "Analog Camera",
-        "Currently unavailable in Banjo-Tooie.",
+        "Uses the right stick for smooth third-person camera movement in normal story gameplay. "
+        "Hold Z (LT by default) to use the stick as the original C buttons. Special modes retain native controls. "
+        "Applies separately to each player's camera, including split screen.",
         analog_cam_mode_options,
         banjo::AnalogCamMode::Off
     );
     config.add_number_option(
         banjo::configkeys::general::analog_camera_sensitivity,
         "Analog Camera Sensitivity",
-        "Currently unavailable in Banjo-Tooie.",
+        "Maximum analog camera speed. Partial stick deflection moves the camera more slowly.",
         1, 10, 1, 0, false, 3
     );
     static EnumOptionVector camera_invert_mode_options = {
@@ -102,7 +108,7 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::third_person_camera_invert_mode,
         "Invert Camera",
-        "Currently unavailable in Banjo-Tooie.",
+        "Inverts the horizontal and/or vertical right-stick camera axis. Z + C and special modes keep their original controls.",
         camera_invert_mode_options,
         banjo::CameraInvertMode::InvertX
     );
@@ -133,14 +139,12 @@ static void add_general_options(recomp::config::Config &config) {
         banjo::CameraInvertMode::InvertY
     );
     for (const char* id : {
-        banjo::configkeys::general::analog_cam_mode.c_str(),
-        banjo::configkeys::general::analog_camera_sensitivity.c_str(),
-        banjo::configkeys::general::third_person_camera_invert_mode.c_str(),
         banjo::configkeys::general::first_person_invert_mode.c_str(),
         banjo::configkeys::general::flying_and_swimming_invert_mode.c_str(),
     }) {
         config.update_option_disabled(id, true);
     }
+    tooie_analog_camera::install_config(config);
 }
 
 template <typename T = uint32_t>
@@ -238,6 +242,8 @@ int banjo::get_bgm_volume() {
 }
 
 static void add_graphics_options(recomp::config::Config &config) {
+    tooie_startup::add_graphics_option(config);
+    tooie_object_distance::add_config(config);
     using EnumOptionVector = const std::vector<recomp::config::ConfigOptionEnumOption>;
     static EnumOptionVector cutscene_aspect_ratio_mode_options = {
         {banjo::CutsceneAspectRatioMode::Original, "Original", "Original"},
@@ -346,6 +352,10 @@ static void set_control_defaults() {
 
     // R3 -> L | Unused in BK but can be used in mods
     set_default_mapping_for_controller(GameInput::L, { InputField::controller_digital(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_RIGHTSTICK) });
+
+    // R3 / T -> Debug Button | Dev Mode cheats, held with a D-pad direction
+    set_default_mapping_for_controller(GameInput::DEBUG, { InputField::controller_digital(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_RIGHTSTICK) });
+    set_default_mapping_for_keyboard(GameInput::DEBUG, { InputField::keyboard(SDL_SCANCODE_T) });
 }
 
 static void set_control_descriptions() {
@@ -367,6 +377,7 @@ static void set_control_descriptions() {
     recompinput::set_game_input_description(recompinput::GameInput::DPAD_DOWN, "Unused. Mods may use it for additional features.");
     recompinput::set_game_input_description(recompinput::GameInput::DPAD_LEFT, "Unused. Mods may use it for additional features.");
     recompinput::set_game_input_description(recompinput::GameInput::DPAD_RIGHT, "Unused. Mods may use it for additional features.");
+    recompinput::set_game_input_description(recompinput::GameInput::DEBUG, "Hold it and press a D-Pad direction to use a Dev Mode cheat. Each cheat's direction is set in the Dev Mode tab, which must be unlocked first.");
 }
 
 banjo::CutsceneAspectRatioMode banjo::get_cutscene_aspect_ratio_mode() {
@@ -401,6 +412,8 @@ void banjo::init_config() {
     add_sound_options(sound_config);
 
     recompui::config::create_mods_tab();
+
+    tooie_dev_mode_ui::create_tab();
 
     recompui::config::finalize();
 

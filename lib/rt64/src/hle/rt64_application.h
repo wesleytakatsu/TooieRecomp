@@ -25,6 +25,7 @@
 #include "rt64_application_window.h"
 #include "rt64_interpreter.h"
 #include "rt64_shared_queue_resources.h"
+#include "tk64/tk64_profile.h"
 
 #if RT_ENABLED
 #   include "render/rt64_raytracing_shader_cache.h"
@@ -104,10 +105,12 @@ namespace RT64 {
 
         Core core;
         UserConfiguration userConfig;
+        // TK64: GPU profile applied on top of the host configuration (docs/specs/weak-gpu-profile.md).
+        tk64::Profile tk64Profile = tk64::Profile::Full;
         EmulatorConfiguration emulatorConfig;
         EnhancementConfiguration enhancementConfig;
         ApplicationConfiguration appConfig;
-        UserConfiguration::GraphicsAPI chosenGraphicsAPI;
+        UserConfiguration::GraphicsAPI chosenGraphicsAPI = UserConfiguration::GraphicsAPI::Automatic;
         bool freeCamClearQueued;
         UserPaths userPaths;
         std::unique_ptr<Interpreter> interpreter;
@@ -153,6 +156,7 @@ namespace RT64 {
 
         Application(const Core &core, const ApplicationConfiguration &appConfig);
         virtual ~Application();
+        std::string effectiveGraphicsBackend;
         SetupResult setup(uint32_t threadId);
         void processDisplayLists(uint8_t *memory, uint32_t dlStartAddress, uint32_t dlEndAddress, bool isHLE);
         void updateScreen();

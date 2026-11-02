@@ -54,7 +54,8 @@ std::vector<char> recomp::mods::ZipModFileHandle::read_file(const std::string& f
     std::vector<char> ret{};
 
     mz_uint32 file_index;
-    if (!mz_zip_reader_locate_file_v2(archive.get(), filepath.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
+    std::string full_path = content_root.empty() ? filepath : content_root + "/" + filepath;
+    if (!mz_zip_reader_locate_file_v2(archive.get(), full_path.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
         exists = false;
         return ret;
     }
@@ -77,11 +78,72 @@ std::vector<char> recomp::mods::ZipModFileHandle::read_file(const std::string& f
 
 bool recomp::mods::ZipModFileHandle::file_exists(const std::string& filepath) const {
     mz_uint32 file_index;
-    if (!mz_zip_reader_locate_file_v2(archive.get(), filepath.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
+    std::string full_path = content_root.empty() ? filepath : content_root + "/" + filepath;
+    if (!mz_zip_reader_locate_file_v2(archive.get(), full_path.c_str(), nullptr, MZ_ZIP_FLAG_CASE_SENSITIVE, &file_index)) {
         return false;
     }
 
     return true;
+}
+
+recomp::mods::ZipContentRootResult recomp::mods::find_zip_content_root(const ZipModFileHandle& handle, const std::string& marker_filename) {
+    ZipContentRootResult result;
+    bool has_archive_root = false;
+    const std::string suffix = "/" + marker_filename;
+    mz_uint count = mz_zip_reader_get_num_files(handle.archive.get());
+    for (mz_uint i = 0; i < count; i++) {
+        mz_zip_archive_file_stat stat;
+        if (!mz_zip_reader_file_stat(handle.archive.get(), i, &stat)) {
+            result.status = ZipContentRootStatus::Invalid;
+            return result;
+        }
+        if (stat.m_is_directory) {
+            continue;
+        }
+
+        std::string filename = stat.m_filename;
+        if (filename == marker_filename) {
+            has_archive_root = true;
+        }
+        else if (filename.ends_with(suffix)) {
+            result.candidates.emplace_back(filename.substr(0, filename.size() - suffix.size()));
+        }
+    }
+
+    if (has_archive_root) {
+        result.status = ZipContentRootStatus::Found;
+        result.candidates.clear();
+        return result;
+    }
+
+    for (const std::string& candidate : result.candidates) {
+        bool invalid = candidate.empty() || candidate.front() == '/' || candidate.find(':') != std::string::npos;
+        size_t start = 0;
+        while (!invalid && start < candidate.size()) {
+            size_t end = candidate.find('/', start);
+            std::string component = candidate.substr(start, end == std::string::npos ? end : end - start);
+            invalid = component == "." || component == "..";
+            if (end == std::string::npos) {
+                break;
+            }
+            start = end + 1;
+        }
+        if (invalid) {
+            result.status = ZipContentRootStatus::Invalid;
+            result.candidates = {candidate};
+            return result;
+        }
+    }
+
+    if (result.candidates.size() == 1) {
+        result.status = ZipContentRootStatus::Found;
+        result.root = result.candidates.front();
+        result.candidates.clear();
+    }
+    else if (result.candidates.size() > 1) {
+        result.status = ZipContentRootStatus::Ambiguous;
+    }
+    return result;
 }
 
 recomp::mods::LooseModFileHandle::~LooseModFileHandle() {
@@ -957,7 +1019,8 @@ recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_manifest(ModM
     return ModOpenError::Good;
 }
 
-recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const std::filesystem::path& mod_path, std::string& error_param, const std::vector<ModContentTypeId>& supported_content_types, bool requires_manifest) {
+recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const std::filesystem::path& mod_path, std::string& error_param, const std::vector<ModContentTypeId>& supported_content_types, bool requires_manifest, bool search_nested_content_root, bool& skipped) {
+    skipped = false;
     ModManifest manifest{};
     manifest.mod_root_path = mod_path;
 
@@ -993,6 +1056,25 @@ recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const st
 
     if (handle_error != ModOpenError::Good) {
         return handle_error;
+    }
+
+    if (is_file && search_nested_content_root && supported_content_types.size() == 1) {
+        ZipModFileHandle& zip_handle = static_cast<ZipModFileHandle&>(*manifest.file_handle);
+        ZipContentRootResult root = find_zip_content_root(zip_handle, content_types[supported_content_types.front().value].content_filename);
+        if (root.status == ZipContentRootStatus::NotFound) {
+            skipped = true;
+            return ModOpenError::Good;
+        }
+        if (root.status == ZipContentRootStatus::Ambiguous || root.status == ZipContentRootStatus::Invalid) {
+            for (const std::string& candidate : root.candidates) {
+                if (!error_param.empty()) {
+                    error_param += ", ";
+                }
+                error_param += candidate;
+            }
+            return root.status == ZipContentRootStatus::Ambiguous ? ModOpenError::AmbiguousContentRoot : ModOpenError::InvalidContentRoot;
+        }
+        zip_handle.content_root = std::move(root.root);
     }
 
     return open_mod_from_manifest(manifest, error_param, supported_content_types, requires_manifest);
@@ -1053,6 +1135,10 @@ std::string recomp::mods::error_to_string(ModOpenError error) {
             return "Invalid hidden option dependency in mod.json";
         case ModOpenError::DuplicateEnumStrings:
             return "Duplicate enum strings found in mod.json (enum strings are case insensitive)";
+        case ModOpenError::AmbiguousContentRoot:
+            return "Multiple texture pack roots found";
+        case ModOpenError::InvalidContentRoot:
+            return "Invalid texture pack root";
     }
     return "Unknown mod opening error: " + std::to_string((int)error);
 }

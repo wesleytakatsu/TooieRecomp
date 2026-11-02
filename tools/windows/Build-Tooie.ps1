@@ -327,7 +327,7 @@ function Invoke-Package {
     Copy-Item -LiteralPath (Join-Path $Root 'recompcontrollerdb.txt') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $Root 'LICENSE') -Destination (Join-Path $stage 'LICENSE.txt')
     # Same notice set as tools/package_linux.sh (superset of what is linked), gathered from the vendored tree (repo-relative paths).
-    foreach ($d in 'vendor\licenses', 'lib\rt64', 'lib\N64ModernRuntime', 'lib\RecompFrontend', 'lib\SlotMap', 'lib\SDL2-windows') {
+    foreach ($d in 'vendor\licenses', 'lib\rt64', 'lib\N64ModernRuntime', 'lib\RecompFrontend', 'lib\SlotMap', 'lib\SDL2-windows', 'lib\dr_libs') {
         Get-ChildItem -Path (Join-Path $Root $d) -Recurse -Depth 6 -File |
             Where-Object { $_.Name -match '^(LICENSE|LICENCE|COPYING)' } |
             ForEach-Object { $dst = Join-Path "$stage\licenses" $_.FullName.Substring($Root.Length + 1); New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null; Copy-Item $_.FullName $dst }
@@ -385,7 +385,7 @@ function Invoke-Package {
         '(SHA-1 af1a89e12b638b8d82cc4c085c8e01d4cba03fb3, .z64 or .n64).',
         'The launcher accepts that retail cart (it decompresses internally) or the decompressed image',
         '(35098224 bytes, SHA-1 af479771ff5e91ce3732f3d84146614ab71d8d79).',
-        'GPU: Direct3D 12.',
+        'GPU: compatible Direct3D 12, Vulkan, Direct3D 11 (FL 11_0), or OpenGL 4.3 device/driver.',
         '',
         'How to play: double-click TooieRecompiled.exe and select your ROM in the launcher.',
         'Data: user config and saves go to %LOCALAPPDATA%\TooieRecompiled, never into this directory.',
@@ -451,17 +451,34 @@ $script:RequiredTests = @(
     'tooie_language_bundle_test',
     'tooie_menu_policy_test',
     'tooie_menu_config_test',
+    'tintro_projection_policy_test',
+    'tooie_projection_reload_test',
+    'rt64_widescreen_bounds_test',
+    'tooie_object_distance_test',
+    'tooie_analog_camera_test',
+    'recompinput_player_slots_test',
     'rt64_host_endpoint_current_test',
+    'rt64_hidden_window_test',
+    'tooie_startup_test',
     'p09_interp_burst_test',
     'p09_world_interpolation_guard_test',
     'p09_local_pair_snapshot_test',
     'p09_exact_use_correlation_test',
     'rt64_present_decimator_test',
-    'rom_cart_import_test'
+    'rom_cart_import_test',
+    'tooie_story_coop_test'
+    'tooie_dev_warp_test'
+    'tooie_dev_cheats_test'
+    'tooie_dev_forms_test'
+    'tooie_glowbo_collection_test'
+    'tooie_dev_enemy_ai_test'
+    'tooie_dev_travel_menu_test'
+    'tooie_texture_zip_mod_test'
 )
 # Bare invocation prints a usage line and exits non-zero. Built under -AllTests; not run.
 # tools/build_linux.sh does not run this set either.
 $script:ArgumentDrivenTests = @{
+    'tooie_launcher_audio_test'        = 'user-supplied stereo MP3 path (SDL dummy output)'
     'tooie_demo1_parity_test'           = 'hook.h path'
     'tooie_demo1_projectile_test'       = 'hook.h path'
     'tooie_demo1_target_selector_test'  = 'cur.csv orc.csv'

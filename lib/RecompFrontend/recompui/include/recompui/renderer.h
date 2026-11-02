@@ -45,6 +45,8 @@ namespace recompui {
 
         std::unique_ptr<ultramodern::renderer::RendererContext> create_render_context(uint8_t *rdram, ultramodern::renderer::WindowHandle window_handle, ultramodern::renderer::PresentationMode presentation_mode, bool developer_mode);
 
+        std::string get_graphics_backend_name();
+        std::string get_graphics_device_name();
         RT64::UserConfiguration::Antialiasing RT64MaxMSAA();
         bool RT64SamplePositionsSupported();
         bool RT64HighPrecisionFBEnabled();

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <array>
 #include <stdint.h>
 
 #include "common/rt64_emulator_configuration.h"
@@ -34,6 +35,16 @@ namespace RT64 {
         const RenderTexture *texture = nullptr;
         uint32_t dstIndex = 0;
         const RenderTextureView *textureView = nullptr;
+    };
+
+    // TK64: the texture a texture cache index resolves to in the current frame. Used by the texture-slot mode.
+    struct TextureSlotSource {
+        const RenderTexture *texture = nullptr;
+        const RenderTextureView *textureView = nullptr;
+
+        bool operator==(const TextureSlotSource &other) const {
+            return (texture == other.texture) && (textureView == other.textureView);
+        }
     };
 
     struct RasterScene {
@@ -98,6 +109,19 @@ namespace RT64 {
         std::vector<uint32_t> descriptorTextureVersions;
         uint32_t descriptorTextureGlobalVersion = 0;
         bool descriptorTextureReplacementMapEnabled = false;
+
+        // TK64 texture-slot mode, used when the device lacks descriptor indexing or TK64_FORCE_TEXTURE_SLOTS=1 is set.
+        // GPU tiles store the tile's slot inside its draw call instead of the texture cache index, and every draw binds a
+        // small texture set holding its own textures in those slots. The shaders are the same as in the bindless mode.
+        // The sets are written when the bindless set would be, from the textures of the current frame only.
+        static const uint32_t TextureSlotCount = 8;
+        typedef std::array<TextureSlotSource, TextureSlotCount> TextureSlotSources;
+        bool textureSlotsEnabled = false;
+        std::vector<uint32_t> tileTextureIndices;
+        std::vector<TextureSlotSource> textureSlotDynamicSources;
+        std::vector<std::unique_ptr<FramebufferRendererDescriptorTextureSet>> textureSlotSets;
+        uint32_t textureSlotSetsUsed = 0;
+        TextureSlotSources lastTextureSlotSources;
         std::unique_ptr<RSPSmoothNormalDescriptorSet> smoothDescSet;
         std::unique_ptr<RSPVertexTestZDescriptorSet> vertexTestZSet;
         interop::FrameParams frameParams;
@@ -153,12 +177,15 @@ namespace RT64 {
         ~FramebufferRenderer();
         void resetFramebuffers(RenderWorker *worker, bool ubershadersVisible, float ditherNoiseStrength, const RenderMultisampling &multisampling);
         void updateTextureCache(TextureCache *textureCache);
-        void createGPUTiles(const DrawCallTile *callTiles, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager, TextureCache *textureCache, uint64_t submissionFrame);
+        void createGPUTiles(const DrawCallTile *callTiles, uint32_t firstTileIndex, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager, TextureCache *textureCache, uint64_t submissionFrame);
         uint32_t getDestinationIndex();
         uint32_t getTextureIndex(RenderTarget *renderTarget);
         uint32_t getTextureIndex(const FramebufferManager::TileCopy &tileCopy);
         void updateMultisampling();
         void updateShaderDescriptorSet(RenderWorker *worker, const DrawBuffers *drawBuffers, const OutputBuffers *outputBuffers, bool raytracingEnabled);
+        TextureSlotSource resolveTextureSlotSource(uint32_t textureIndex) const;
+        RenderDescriptorSet *getTextureSlotSet(RenderWorker *worker, uint32_t tileIndex, uint32_t tileCount);
+        void updateTextureSlotSets(RenderWorker *worker);
         void updateRSPSmoothNormalSet(RenderWorker *worker, const DrawBuffers *drawBuffers, const OutputBuffers *outputBuffers);
         void updateRSPVertexTestZSet(RenderWorker *worker, const DrawBuffers *drawBuffers, const OutputBuffers *outputBuffers);
         void updateShaderViews(RenderWorker *worker, const DrawBuffers *drawBuffers, const OutputBuffers *outputBuffers, bool raytracingEnabled);

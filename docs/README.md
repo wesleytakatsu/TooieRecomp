@@ -2,7 +2,7 @@
 title: "Documentação"
 status: current
 area: "root"
-updated: 2026-10-23
+updated: 2026-11-02
 ---
 
 # Documentação
@@ -15,6 +15,7 @@ para Linux e Windows.
 - [Especificações](specs/index.md) — contratos do sistema atual
 - [Engenharia reversa](reverse-engineering/README.md) — modelo atual do jogo
 - [Índice do vault](VAULT.md)
+- [Cogitações futuras](future/implementation-ideas.md) — propostas não implementadas, separadas dos contratos atuais
 
 ## Regra de manutenção
 

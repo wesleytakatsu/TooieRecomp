@@ -12,6 +12,7 @@
 #include <fenv.h>
 
 #include "recomp.h"
+#include "tooie_analog_camera_hook.h"
 #include "funcs.h"
 #include "librecomp/game.hpp"
 #include "librecomp/addresses.hpp"
@@ -28,6 +29,12 @@
 #include "generated/overlay_dispatch.inc.h"
 #include "tooie_bgm_hooks.h"
 #include "tooie_bgm_volume.h"
+#include "tooie_dev_warp_hook.h"
+#include "tooie_dev_forms_hook.h"
+#include "tooie_dev_collectibles_hook.h"
+#include "tooie_dev_enemy_ai.h"
+#include "tooie_dev_travel_menu.h"
+#include "tooie_object_distance.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -939,8 +946,6 @@ extern "C" void rom_dma_read(uint8_t* rdram, recomp_context* ctx) {
 // table_addr@0x50E0 still points at compressed overlay_table base (0x1E899B0).
 // On decompressed.us.z64 the usable table is at overlay_table_ROM_START.
 static constexpr uint32_t kOvlTableRom = 0x01F00020u;
-static constexpr uint32_t kOvlTableVram = 0x80137390u;
-static constexpr uint32_t kOvlTableSize = 0x00000DE0u;
 static constexpr uint32_t kAddr_D_80126730 = 0x80126730u;
 static constexpr uint32_t kAddr_D_80126738 = 0x80126738u;
 static constexpr uint32_t kAddr_D_80117C60 = 0x80117C60u;
@@ -1103,6 +1108,7 @@ extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx) {
         // text_size may omit trailing data (for example 0x230 vs section 0x240),
         // which otherwise makes load_overlays select no section at all.
         load_overlays(mapping_rom, static_cast<int32_t>(text_start), mapping_size);
+        tooie_dev_enemy_ai::loaded_overlay(mapping_rom, static_cast<int32_t>(text_start), mapping_size);
         // default OFF; set TOOIE_DIAG_OVERLAY_LOG=1 to enable
         if (tooie_diag_overlay_log_on()) {
             std::fprintf(stderr,
@@ -2200,17 +2206,6 @@ extern "C" void func_800EE7F8(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80116218(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80116024(uint8_t* rdram, recomp_context* ctx);
 extern "C" void yaw_setIdeal(uint8_t* rdram, recomp_context* ctx);
-static uint32_t s_rt_cam1c_tracked_val = 0xFFFFFFFFu;
-static uint32_t s_rt_node34_tracked_val = 0xFFFFFFFFu;
-static uint32_t s_rt_node3c_tracked_val = 0xFFFFFFFFu;
-static uint32_t s_rt_src_mem_a = 0;
-static uint32_t s_rt_src_base_a = 0;
-static uint32_t s_rt_src_mem_a_bits = 0;
-static unsigned s_rt_cam_upd_ord = 0;
-static unsigned s_rt_efa4c_ord = 0;
-static unsigned s_rt_10970_ord = 0;
-static unsigned s_rt_fe34_ord = 0;
-static int s_rt_heading_glidx = -1;
 
 extern "C" void func_8010FDEC(uint8_t* rdram, recomp_context* ctx);
 extern "C" void _plcamera_entrypoint_13(uint8_t* rdram, recomp_context* ctx);
@@ -2218,67 +2213,6 @@ extern "C" void func_800EFA4C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_80110970(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_8010FE34(uint8_t* rdram, recomp_context* ctx);
 extern "C" void func_800A9318(uint8_t* rdram, recomp_context* ctx);
-
-static void tooie_check_node3c_mutation(uint8_t* rdram, const char* context, uint32_t pc) {
-    int glidx = -1;
-    if (!tooie_ud5_bainput_window(rdram, &glidx) && !tooie_ud5_p60_writer_window(rdram, &glidx)) {
-        return;
-    }
-    if (glidx < 22 || glidx > 27) {
-        return;
-    }
-    uint32_t node = 0;
-    const uint32_t ps = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
-    if (tooie_is_guest(ps)) {
-        const uint32_t sel = static_cast<uint32_t>(MEM_W(0x184, kseg0_gpr(ps)));
-        if (sel <= 7) {
-            node = static_cast<uint32_t>(MEM_W(sel * 4, kseg0_gpr(0x80127728u)));
-        }
-    }
-    if (tooie_is_guest(s_rt_src_mem_a)) {
-        const uint32_t latched = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(s_rt_src_mem_a)));
-        if (latched != s_rt_src_mem_a_bits) {
-            fprintf(stderr,
-                    "[ud5-watch-src-mem-a] runtime=RT glidx=%d pc=%08x context=%s src_base=%08x src_mem_a=%08x old_bits=%08x (%.6f) new_bits=%08x (%.6f)\n",
-                    glidx, pc, context, s_rt_src_base_a, s_rt_src_mem_a,
-                    s_rt_src_mem_a_bits, tooie_bits_f32(int32_t(s_rt_src_mem_a_bits)),
-                    latched, tooie_bits_f32(int32_t(latched)));
-            fflush(stderr);
-            s_rt_src_mem_a_bits = latched;
-        }
-    }
-    if (!tooie_is_guest(node)) {
-        return;
-    }
-    const uint32_t cur_val = static_cast<uint32_t>(MEM_W(0x3C, kseg0_gpr(node)));
-    if (cur_val != s_rt_node3c_tracked_val) {
-        fprintf(stderr,
-                "[ud5-watch-node3c] runtime=RT glidx=%d pc=%08x context=%s node=%08x target=%08x old_val=%08x (%.6f) new_val=%08x (%.6f)\n",
-                glidx, pc, context, node, node + 0x3Cu, s_rt_node3c_tracked_val, tooie_bits_f32(int32_t(s_rt_node3c_tracked_val)),
-                cur_val, tooie_bits_f32(int32_t(cur_val)));
-        fflush(stderr);
-        s_rt_node3c_tracked_val = cur_val;
-    }
-}
-
-static bool tooie_ud5_heading_window(uint8_t* rdram, int* glidx_out) {
-    int glidx = -1;
-    const bool win = tooie_ud5_bainput_window(rdram, &glidx) || tooie_ud5_p60_writer_window(rdram, &glidx);
-    if (glidx_out) {
-        *glidx_out = glidx;
-    }
-    return win && glidx >= 22 && glidx <= 27;
-}
-
-static void tooie_ud5_reset_heading_ords(int glidx) {
-    if (glidx != s_rt_heading_glidx) {
-        s_rt_heading_glidx = glidx;
-        s_rt_cam_upd_ord = 0;
-        s_rt_efa4c_ord = 0;
-        s_rt_10970_ord = 0;
-        s_rt_fe34_ord = 0;
-    }
-}
 
 // Cached once. default OFF; set TOOIE_DIAG_UD5=1 to enable.
 static bool tooie_diag_ud5_on() {
@@ -3123,7 +3057,10 @@ static void tooie_wrap_func_80110588(uint8_t* rdram, recomp_context* ctx) {
         fprintf(stderr, "\n");
         fflush(stderr);
     }
-    func_80110588(rdram, ctx);
+    {
+        tooie_analog_camera::UpdateScope analog_camera(rdram, ctx);
+        func_80110588(rdram, ctx);
+    }
     if (win) {
         fprintf(stderr,
                 "[ud5-p60-gate-0588] leave seq=%u glidx=%d pc=80110588 node=%08x",
@@ -4605,12 +4542,6 @@ static void tooie_wrap_func_800CA218(uint8_t* rdram, recomp_context* ctx) {
 
 static void tooie_wrap_func_800CA2A8(uint8_t* rdram, recomp_context* ctx) {
     tooie_ws_call_with_native_aspect(rdram, ctx, func_800CA2A8);
-}
-
-// Historical entry point. Production tests go through the header; same formula.
-[[maybe_unused]] static void tooie_ws_expand_h_plane(float& nx, float& ny, float& nz, float& d,
-                                    const float cam[3], const float fwd[3], float k) {
-    tooie_ws_frustum::expand_h_plane(nx, ny, nz, d, cam, fwd, k);
 }
 
 // Same words the eval loops used to read: cam, forward, then plane {n, d} at +0x24 + i*0x10.
@@ -6205,6 +6136,8 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110E00), tooie_wrap_func_80110E00);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x801111D0), tooie_wrap_func_801111D0);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112D90), tooie_wrap_func_80112D90);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112C3C), tooie_camera_filter_yaw);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80115750), tooie_camera_filter_pitch);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80110588), tooie_wrap_func_80110588);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80116218), tooie_wrap_func_80116218);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80112E84), tooie_wrap_func_80112E84);
@@ -6226,6 +6159,35 @@ void register_boot_lookup_stubs() {
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8011447C), tooie_wrap_func_8011447C);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kCspSetVolVram), tooie_bgm_on_csp_set_vol);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_bgm::kUpdateVram), tooie_bgm_on_update);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kYawUpdateVram), tooie_dev_on_yaw_update);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerUpdateVram), tooie_dev_on_player_update);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kCreatePlayersVram), tooie_dev_on_create_players);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPlayerActiveVram), tooie_dev_on_player_active);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_collectibles::kActorEventVram), tooie_dev_on_actor_event);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F54E4), tooie_dev_enemy_focus);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8010038C),
+        [](uint8_t* r, recomp_context* c) { tooie_object_distance::actor_range(r, c, tooie_dev_enemy_range); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80100230),
+        [](uint8_t* r, recomp_context* c) { tooie_object_distance::residency(r, c, func_80100230); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E42C0), tooie_distance_view_scale);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFFB4), tooie_distance_radius);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40), tooie_distance_squared);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D3104), tooie_distance_collect);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D2F44), tooie_distance_cell);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E1C00), tooie_distance_sprite);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EB51C), tooie_dev_on_draw_queue);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kPrimaryPlayerModelVram), tooie_dev_on_primary_player_model);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kLodPlayerModelVram), tooie_dev_on_lod_player_model);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kSecondaryPlayerModelVram), tooie_dev_on_secondary_player_model);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_dev_warp::kModelInstanceVram), tooie_dev_on_model_instance);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F61E4), tooie_dev_on_normal_player_allocate);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800F43A8), tooie_forms_on_allocate);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80084FB0), tooie_forms_on_setup);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80098E64), tooie_forms_on_teardown);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009E8D4), tooie_forms_on_reset);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009EA2C), tooie_forms_on_dragon_get);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009EAAC), tooie_forms_on_dragon_set);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8009E9D8), tooie_forms_on_transition_form);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(tooie_demo1_projectile::kCacecPureDrawB97A4), tooie_wrap_func_800B97A4);
     // Census and the GeoCmd experiment are off unless their env vars say otherwise.
     // 10/11/12 also register for the experiment so the extra walk runs with census off.
@@ -6245,9 +6207,5 @@ void register_boot_lookup_stubs() {
     for (size_t i = 0; i < sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]); ++i) {
         recomp::overlays::add_loaded_function(kLookupGapAddrs[i], kLookupGapFuncs[i]);
     }
-    std::fprintf(stderr,
-                 "[tooie] registered %zu ultra LOOKUP hooks + 5 core helper hooks + %zu gap stubs\n",
-                 sizeof(kUltraLookupHooks) / sizeof(kUltraLookupHooks[0]),
-                 sizeof(kLookupGapAddrs) / sizeof(kLookupGapAddrs[0]));
 }
 } // namespace banjo

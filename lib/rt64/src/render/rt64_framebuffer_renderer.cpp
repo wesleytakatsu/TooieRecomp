@@ -15,6 +15,7 @@
 
 #include "rt64_descriptor_sets.h"
 #include "rt64_render_worker.h"
+#include "rt64_texture_slots.h"
 
 // TODO: Move to shared.
 
@@ -152,6 +153,13 @@ namespace RT64 {
         shaderUploader = std::make_unique<BufferUploader>(worker->device);
         descCommonSet = std::make_unique<FramebufferRendererDescriptorCommonSet>(shaderLibrary->samplerLibrary, worker->device->getCapabilities().raytracing, worker->device);
 
+        // TK64: use per-draw texture slots when the bindless texture set is not available, or when forced for testing.
+        textureSlotsEnabled = useTextureSlots(worker->device);
+        if (textureSlotsEnabled) {
+            fprintf(stdout, "TK64: texture-slot mode enabled%s.\n", textureSlotsForced() ? " (forced)" : "");
+            fflush(stdout);
+        }
+
 #   if RT_ENABLED
         if (rtSupport) {
             this->rtSupport = rtSupport;
@@ -172,6 +180,7 @@ namespace RT64 {
         hitGroupVector.clear();
         renderIndicesVector.clear();
         rspSmoothNormalVector.clear();
+        textureSlotSetsUsed = 0;
         frameParams.viewUbershaders = ubershadersVisible;
         frameParams.ditherNoiseStrength = ditherNoiseStrength;
         framebufferCount = 0;
@@ -223,16 +232,28 @@ namespace RT64 {
         dynamicTextureBarrierVector.clear();
     }
 
-    void FramebufferRenderer::createGPUTiles(const DrawCallTile *callTiles, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager, 
+    void FramebufferRenderer::createGPUTiles(const DrawCallTile *callTiles, uint32_t firstTileIndex, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager,
         TextureCache *textureCache, uint64_t submissionFrame)
     {
+        if (textureSlotsEnabled && (tileTextureIndices.size() < (firstTileIndex + callTileCount))) {
+            tileTextureIndices.resize(firstTileIndex + callTileCount, UINT32_MAX);
+        }
+
         for (uint32_t i = 0; i < callTileCount; i++) {
             const DrawCallTile &callTile = callTiles[i];
+
+            // TK64: until a texture is found the tile points at no texture cache entry, and the shader reads the draw's slot.
+            if (textureSlotsEnabled) {
+                tileTextureIndices[firstTileIndex + i] = UINT32_MAX;
+                dstGPUTiles[i].textureIndex = callTile.drawSlot;
+            }
+
             if (!callTile.valid) {
                 continue;
             }
             
             interop::GPUTile &gpuTile = dstGPUTiles[i];
+            bool textureFound = false;
             if (callTile.tileCopyUsed) {
                 const auto &it = fbManager->tileCopies.find(callTile.tmemHashOrID);
                 if (it != fbManager->tileCopies.end()) {
@@ -244,6 +265,7 @@ namespace RT64 {
                     gpuTile.texelShift = tileCopy.texelShift;
                     gpuTile.texelMask = tileCopy.texelMask;
                     gpuTile.textureIndex = getTextureIndex(tileCopy);
+                    textureFound = true;
                     gpuTile.textureDimensions = interop::float3(float(tileCopy.textureWidth), float(tileCopy.textureHeight), 1.0f);
                     gpuTile.flags.alphaIsCvg = !callTile.reinterpretTile;
                     gpuTile.flags.highRes = true;
@@ -266,12 +288,19 @@ namespace RT64 {
                 gpuTile.texelShift = { 0, 0 };
                 gpuTile.texelMask = { UINT_MAX, UINT_MAX };
                 gpuTile.textureIndex = textureIndex;
+                textureFound = true;
                 gpuTile.flags.alphaIsCvg = false;
                 gpuTile.flags.highRes = textureReplaced;
                 gpuTile.flags.fromCopy = false;
                 gpuTile.flags.rawTMEM = !textureReplaced && callTile.rawTMEM;
                 gpuTile.flags.hasMipmaps = hasMipmaps;
                 gpuTile.flags.shiftedByHalf = shiftedByHalf;
+            }
+
+            // TK64: the shader indexes the draw's own texture set, so the GPU tile holds the slot and the cache index is kept here.
+            if (textureSlotsEnabled && textureFound) {
+                tileTextureIndices[firstTileIndex + i] = gpuTile.textureIndex;
+                gpuTile.textureIndex = callTile.drawSlot;
             }
         }
     }
@@ -310,15 +339,17 @@ namespace RT64 {
         assert(worker != nullptr);
         assert(drawBuffers != nullptr);
         
-        const bool createSet = (descTextureSet == nullptr) || (descTextureSet->textureCacheSize < (textureCacheSize + 1));
-        if (createSet) {
-            descTextureSet = std::make_unique<FramebufferRendererDescriptorTextureSet>(worker->device, ((textureCacheSize + 1) * 3) / 2);
-        }
+        if (!textureSlotsEnabled) {
+            const bool createSet = (descTextureSet == nullptr) || (descTextureSet->textureCacheSize < (textureCacheSize + 1));
+            if (createSet) {
+                descTextureSet = std::make_unique<FramebufferRendererDescriptorTextureSet>(worker->device, ((textureCacheSize + 1) * 3) / 2);
+            }
 
-        if (createSet || (descriptorTextureReplacementMapEnabled != textureCacheReplacementMapEnabled)) {
-            descriptorTextureVersions.clear();
-            descriptorTextureGlobalVersion = 0;
-            descriptorTextureReplacementMapEnabled = textureCacheReplacementMapEnabled;
+            if (createSet || (descriptorTextureReplacementMapEnabled != textureCacheReplacementMapEnabled)) {
+                descriptorTextureVersions.clear();
+                descriptorTextureGlobalVersion = 0;
+                descriptorTextureReplacementMapEnabled = textureCacheReplacementMapEnabled;
+            }
         }
 
 #   if RT_ENABLED
@@ -378,6 +409,11 @@ namespace RT64 {
         descCommonSet->setBuffer(descCommonSet->GPUTiles, drawBuffers->gpuTilesBuffer.get(), RenderBufferStructuredView(sizeof(interop::GPUTile)));
         descCommonSet->setBuffer(descCommonSet->DynamicRenderParams, drawBuffers->renderParamsBuffer.get(), RenderBufferStructuredView(sizeof(interop::RenderParams)));
 
+        if (textureSlotsEnabled) {
+            updateTextureSlotSets(worker);
+            return;
+        }
+
         // Make sure the versions vector matches the texture cache size.
         descriptorTextureVersions.resize(textureCacheSize, 0);
 
@@ -411,6 +447,99 @@ namespace RT64 {
         for (const DynamicTextureView &dynamicView : dynamicTextureViewVector) {
             descTextureSet->setTexture(dynamicView.dstIndex, dynamicView.texture, RenderTextureLayout::SHADER_READ, dynamicView.textureView);
             descriptorTextureVersions[dynamicView.dstIndex] = 0;
+        }
+    }
+
+    TextureSlotSource FramebufferRenderer::resolveTextureSlotSource(uint32_t textureIndex) const {
+        // Same choice as the bindless set: a dynamic view of this frame, else the replacement, the decoded texture or the TMEM.
+        if ((textureIndex < textureSlotDynamicSources.size()) && (textureSlotDynamicSources[textureIndex].texture != nullptr)) {
+            return textureSlotDynamicSources[textureIndex];
+        }
+
+        if ((textureIndex >= textureCacheTextures.size()) || (textureCacheTextures[textureIndex] == nullptr)) {
+            return TextureSlotSource();
+        }
+
+        const Texture *cacheTexture = textureCacheTextures[textureIndex];
+        if (textureCacheReplacementMapEnabled && (textureIndex < textureCacheTextureReplacements.size()) && (textureCacheTextureReplacements[textureIndex] != nullptr)) {
+            return { textureCacheTextureReplacements[textureIndex]->texture.get(), nullptr };
+        }
+        else if (cacheTexture->texture != nullptr) {
+            return { cacheTexture->texture.get(), nullptr };
+        }
+        else {
+            return { cacheTexture->tmem.get(), nullptr };
+        }
+    }
+
+    RenderDescriptorSet *FramebufferRenderer::getTextureSlotSet(RenderWorker *worker, uint32_t tileIndex, uint32_t tileCount) {
+        assert(tileCount <= TextureSlotCount);
+
+        // Slots without a texture repeat the draw's first texture so the whole set is always written.
+        TextureSlotSources sources;
+        TextureSlotSource fallbackSource;
+        for (uint32_t t = 0; t < std::min(tileCount, TextureSlotCount); t++) {
+            const uint32_t globalTileIndex = tileIndex + t;
+            if (globalTileIndex < tileTextureIndices.size()) {
+                sources[t] = resolveTextureSlotSource(tileTextureIndices[globalTileIndex]);
+            }
+
+            if ((fallbackSource.texture == nullptr) && (sources[t].texture != nullptr)) {
+                fallbackSource = sources[t];
+            }
+        }
+
+        if (fallbackSource.texture == nullptr) {
+            fallbackSource = resolveTextureSlotSource(0);
+        }
+
+        for (TextureSlotSource &source : sources) {
+            if (source.texture == nullptr) {
+                source = fallbackSource;
+            }
+        }
+
+        // Consecutive draws usually share their textures.
+        if ((textureSlotSetsUsed > 0) && (sources == lastTextureSlotSources)) {
+            return textureSlotSets[textureSlotSetsUsed - 1]->get();
+        }
+
+        if (textureSlotSetsUsed == textureSlotSets.size()) {
+            textureSlotSets.emplace_back(std::make_unique<FramebufferRendererDescriptorTextureSet>(worker->device, TextureSlotCount));
+        }
+
+        FramebufferRendererDescriptorTextureSet *slotSet = textureSlotSets[textureSlotSetsUsed++].get();
+        for (uint32_t s = 0; s < TextureSlotCount; s++) {
+            if (sources[s].texture != nullptr) {
+                slotSet->setTexture(s, sources[s].texture, RenderTextureLayout::SHADER_READ, sources[s].textureView);
+            }
+        }
+
+        lastTextureSlotSources = sources;
+        return slotSet->get();
+    }
+
+    void FramebufferRenderer::updateTextureSlotSets(RenderWorker *worker) {
+        textureSlotDynamicSources.clear();
+        textureSlotDynamicSources.resize(textureCacheSize);
+        for (const DynamicTextureView &dynamicView : dynamicTextureViewVector) {
+            if (dynamicView.dstIndex >= textureSlotDynamicSources.size()) {
+                textureSlotDynamicSources.resize(dynamicView.dstIndex + 1);
+            }
+
+            textureSlotDynamicSources[dynamicView.dstIndex] = { dynamicView.texture, dynamicView.textureView };
+        }
+
+        for (InstanceDrawCall &drawCall : instanceDrawCallVector) {
+            switch (drawCall.type) {
+            case InstanceDrawCall::Type::IndexedTriangles:
+            case InstanceDrawCall::Type::RawTriangles:
+            case InstanceDrawCall::Type::RegularRect:
+                drawCall.triangles.textureSlotSet = getTextureSlotSet(worker, drawCall.triangles.tileIndex, drawCall.triangles.tileCount);
+                break;
+            default:
+                break;
+            }
         }
     }
 
@@ -474,15 +603,20 @@ namespace RT64 {
         RenderDescriptorSet *descRealFbSet = framebuffer.descRealFbSet->get();
         RenderDescriptorSet *descDummyFbSet = framebuffer.descDummyFbSet->get();
 
+        RenderDescriptorSet *previousTextureSlotSet = nullptr;
         auto switchToGraphicsPipeline = [&]() {
             previousCallType = InstanceDrawCall::Type::Unknown;
             previousVertexTestZ = false;
             previousPipeline = nullptr;
             previousScissor = RenderRect();
+            previousTextureSlotSet = nullptr;
             worker->commandList->setGraphicsPipelineLayout(rendererPipelineLayout);
             worker->commandList->setGraphicsDescriptorSet(descCommonSet->get(), 0);
-            worker->commandList->setGraphicsDescriptorSet(descTextureSet->get(), 1);
-            worker->commandList->setGraphicsDescriptorSet(descTextureSet->get(), 2);
+            if (!textureSlotsEnabled) {
+                worker->commandList->setGraphicsDescriptorSet(descTextureSet->get(), 1);
+                worker->commandList->setGraphicsDescriptorSet(descTextureSet->get(), 2);
+            }
+
             worker->commandList->setGraphicsDescriptorSet(depthState ? descRealFbSet : descDummyFbSet, 3);
             worker->commandList->setViewports(framebuffer.viewport);
         };
@@ -569,6 +703,12 @@ namespace RT64 {
                 if (previousPipeline != triangles.pipeline) {
                     worker->commandList->setPipeline(triangles.pipeline);
                     previousPipeline = triangles.pipeline;
+                }
+
+                if (textureSlotsEnabled && (previousTextureSlotSet != triangles.textureSlotSet)) {
+                    worker->commandList->setGraphicsDescriptorSet(triangles.textureSlotSet, 1);
+                    worker->commandList->setGraphicsDescriptorSet(triangles.textureSlotSet, 2);
+                    previousTextureSlotSet = triangles.textureSlotSet;
                 }
                 
                 rasterParams.renderIndex = i;
@@ -1620,6 +1760,9 @@ namespace RT64 {
                         }
                         
                         triangles.faceCount = call.callDesc.triangleCount;
+                        triangles.tileIndex = call.callDesc.tileIndex;
+                        triangles.tileCount = call.callDesc.tileCount;
+                        triangles.textureSlotSet = nullptr;
                         triangles.vertexTestZ = (vertexTestZCallIndex >= 0);
                         triangles.postBlendDitherNoise = false;
 

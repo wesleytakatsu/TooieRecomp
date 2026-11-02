@@ -3,6 +3,7 @@
 //
 
 #include "rt64_raster_shader.h"
+#include "rt64_texture_slots.h"
 
 #include "xxHash/xxh3.h"
 
@@ -13,6 +14,12 @@
 #include "shaders/RasterPSSpecConstantMS.hlsl.spirv.h"
 #include "shaders/RasterPSSpecConstantFlat.hlsl.spirv.h"
 #include "shaders/RasterPSSpecConstantFlatMS.hlsl.spirv.h"
+#include "shaders/RasterPSDynamicSlots.hlsl.spirv.h"
+#include "shaders/RasterPSDynamicSlotsMS.hlsl.spirv.h"
+#include "shaders/RasterPSSpecConstantSlots.hlsl.spirv.h"
+#include "shaders/RasterPSSpecConstantSlotsMS.hlsl.spirv.h"
+#include "shaders/RasterPSSpecConstantFlatSlots.hlsl.spirv.h"
+#include "shaders/RasterPSSpecConstantFlatSlotsMS.hlsl.spirv.h"
 #include "shaders/RasterVSDynamic.hlsl.spirv.h"
 #include "shaders/RasterVSSpecConstant.hlsl.spirv.h"
 #include "shaders/RasterVSSpecConstantFlat.hlsl.spirv.h"
@@ -22,9 +29,13 @@
 #ifdef _WIN32
 #   include "shaders/RasterPSLibrary.hlsl.dxil.h"
 #   include "shaders/RasterPSLibraryMS.hlsl.dxil.h"
+#   include "shaders/RasterPSLibrarySlots.hlsl.dxil.h"
+#   include "shaders/RasterPSLibrarySlotsMS.hlsl.dxil.h"
 #   include "shaders/RasterVSLibrary.hlsl.dxil.h"
 #   include "shaders/RasterPSDynamic.hlsl.dxil.h"
 #   include "shaders/RasterPSDynamicMS.hlsl.dxil.h"
+#   include "shaders/RasterPSDynamicSlots.hlsl.dxil.h"
+#   include "shaders/RasterPSDynamicSlotsMS.hlsl.dxil.h"
 #   include "shaders/RasterVSDynamic.hlsl.dxil.h"
 #   include "shaders/PostBlendDitherNoiseAddPS.hlsl.dxil.h"
 #   include "shaders/PostBlendDitherNoiseSubPS.hlsl.dxil.h"
@@ -32,10 +43,16 @@
 #elif defined(__APPLE__)
 #   include "shaders/RasterPSDynamic.hlsl.metal.h"
 #   include "shaders/RasterPSDynamicMS.hlsl.metal.h"
+#   include "shaders/RasterPSDynamicSlots.hlsl.metal.h"
+#   include "shaders/RasterPSDynamicSlotsMS.hlsl.metal.h"
 #   include "shaders/RasterPSSpecConstant.hlsl.metal.h"
 #   include "shaders/RasterPSSpecConstantMS.hlsl.metal.h"
 #   include "shaders/RasterPSSpecConstantFlat.hlsl.metal.h"
 #   include "shaders/RasterPSSpecConstantFlatMS.hlsl.metal.h"
+#   include "shaders/RasterPSSpecConstantSlots.hlsl.metal.h"
+#   include "shaders/RasterPSSpecConstantSlotsMS.hlsl.metal.h"
+#   include "shaders/RasterPSSpecConstantFlatSlots.hlsl.metal.h"
+#   include "shaders/RasterPSSpecConstantFlatSlotsMS.hlsl.metal.h"
 #   include "shaders/RasterVSDynamic.hlsl.metal.h"
 #   include "shaders/RasterVSSpecConstant.hlsl.metal.h"
 #   include "shaders/RasterVSSpecConstantFlat.hlsl.metal.h"
@@ -74,12 +91,20 @@ namespace RT64 {
         rasterPSMS.parse(RasterPSSpecConstantMSBlobSPIRV, std::size(RasterPSSpecConstantMSBlobSPIRV));
         rasterPSFlat.parse(RasterPSSpecConstantFlatBlobSPIRV, std::size(RasterPSSpecConstantFlatBlobSPIRV));
         rasterPSFlatMS.parse(RasterPSSpecConstantFlatMSBlobSPIRV, std::size(RasterPSSpecConstantFlatMSBlobSPIRV));
+        rasterPSSlots.parse(RasterPSSpecConstantSlotsBlobSPIRV, std::size(RasterPSSpecConstantSlotsBlobSPIRV));
+        rasterPSSlotsMS.parse(RasterPSSpecConstantSlotsMSBlobSPIRV, std::size(RasterPSSpecConstantSlotsMSBlobSPIRV));
+        rasterPSFlatSlots.parse(RasterPSSpecConstantFlatSlotsBlobSPIRV, std::size(RasterPSSpecConstantFlatSlotsBlobSPIRV));
+        rasterPSFlatSlotsMS.parse(RasterPSSpecConstantFlatSlotsMSBlobSPIRV, std::size(RasterPSSpecConstantFlatSlotsMSBlobSPIRV));
         assert(!rasterVS.empty());
         assert(!rasterVSFlat.empty());
         assert(!rasterPS.empty());
         assert(!rasterPSMS.empty());
         assert(!rasterPSFlat.empty());
         assert(!rasterPSFlatMS.empty());
+        assert(!rasterPSSlots.empty());
+        assert(!rasterPSSlotsMS.empty());
+        assert(!rasterPSFlatSlots.empty());
+        assert(!rasterPSFlatSlotsMS.empty());
     }
 
     // RasterShader
@@ -93,6 +118,7 @@ namespace RT64 {
         this->desc = desc;
         
         const bool useMSAA = (multisampling.sampleCount > 1);
+        const bool textureSlots = useTextureSlots(device);
         std::unique_ptr<RenderShader> vertexShader;
         std::unique_ptr<RenderShader> pixelShader;
 #ifdef __APPLE__
@@ -106,10 +132,20 @@ namespace RT64 {
 
             // Pick the correct SPIR-V based on the configuration.
             if (desc.flags.smoothShade) {
-                PS = useMSAA ? &optimizerCacheSPIRV->rasterPSMS : &optimizerCacheSPIRV->rasterPS;
+                if (textureSlots) {
+                    PS = useMSAA ? &optimizerCacheSPIRV->rasterPSSlotsMS : &optimizerCacheSPIRV->rasterPSSlots;
+                }
+                else {
+                    PS = useMSAA ? &optimizerCacheSPIRV->rasterPSMS : &optimizerCacheSPIRV->rasterPS;
+                }
             }
             else {
-                PS = useMSAA ? &optimizerCacheSPIRV->rasterPSFlatMS : &optimizerCacheSPIRV->rasterPSFlat;
+                if (textureSlots) {
+                    PS = useMSAA ? &optimizerCacheSPIRV->rasterPSFlatSlotsMS : &optimizerCacheSPIRV->rasterPSFlatSlots;
+                }
+                else {
+                    PS = useMSAA ? &optimizerCacheSPIRV->rasterPSFlatMS : &optimizerCacheSPIRV->rasterPSFlat;
+                }
             }
 
             thread_local std::vector<respv::SpecConstant> specConstants;
@@ -154,9 +190,17 @@ namespace RT64 {
             }
 
             // Pick the correct MSL based on the configuration.
-            if (desc.flags.smoothShade) {
+            if (desc.flags.smoothShade && textureSlots) {
+                PSBlob = useMSAA ? RasterPSSpecConstantSlotsMSBlobMSL : RasterPSSpecConstantSlotsBlobMSL;
+                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSSpecConstantSlotsMSBlobMSL) : std::size(RasterPSSpecConstantSlotsBlobMSL));
+            }
+            else if (desc.flags.smoothShade) {
                 PSBlob = useMSAA ? RasterPSSpecConstantMSBlobMSL : RasterPSSpecConstantBlobMSL;
                 PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSSpecConstantMSBlobMSL) : std::size(RasterPSSpecConstantBlobMSL));
+            }
+            else if (textureSlots) {
+                PSBlob = useMSAA ? RasterPSSpecConstantFlatSlotsMSBlobMSL : RasterPSSpecConstantFlatSlotsBlobMSL;
+                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSSpecConstantFlatSlotsMSBlobMSL) : std::size(RasterPSSpecConstantFlatSlotsBlobMSL));
             }
             else {
                 PSBlob = useMSAA ? RasterPSSpecConstantFlatMSBlobMSL : RasterPSSpecConstantFlatBlobMSL;
@@ -189,6 +233,10 @@ namespace RT64 {
 
             const void *PSLibraryBlob = useMSAA ? RasterPSLibraryMSBlobDXIL : RasterPSLibraryBlobDXIL;
             uint32_t PSLibraryBlobSize = useMSAA ? sizeof(RasterPSLibraryMSBlobDXIL) : sizeof(RasterPSLibraryBlobDXIL);
+            if (textureSlots) {
+                PSLibraryBlob = useMSAA ? RasterPSLibrarySlotsMSBlobDXIL : RasterPSLibrarySlotsBlobDXIL;
+                PSLibraryBlobSize = useMSAA ? sizeof(RasterPSLibrarySlotsMSBlobDXIL) : sizeof(RasterPSLibrarySlotsBlobDXIL);
+            }
             shaderCompiler->dxcUtils->CreateBlobFromPinned(PSLibraryBlob, PSLibraryBlobSize, DXC_CP_ACP, (IDxcBlobEncoding **)(&blobPSLibraries[1]));
                 
             // Compile both the vertex and pixel shader functions as libraries.
@@ -413,6 +461,7 @@ namespace RT64 {
         uint32_t VSBlobSize = 0;
         uint32_t PSBlobSize = 0;
         const bool useMSAA = (multisampling.sampleCount > 1);
+        const bool textureSlots = useTextureSlots(device);
         switch (shaderFormat) {
 #   ifdef _WIN32
         case RenderShaderFormat::DXIL:
@@ -420,6 +469,10 @@ namespace RT64 {
             PSBlob = useMSAA ? RasterPSDynamicMSBlobDXIL : RasterPSDynamicBlobDXIL;
             VSBlobSize = uint32_t(std::size(RasterVSDynamicBlobDXIL));
             PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicMSBlobDXIL) : std::size(RasterPSDynamicBlobDXIL));
+            if (textureSlots) {
+                PSBlob = useMSAA ? RasterPSDynamicSlotsMSBlobDXIL : RasterPSDynamicSlotsBlobDXIL;
+                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicSlotsMSBlobDXIL) : std::size(RasterPSDynamicSlotsBlobDXIL));
+            }
             break;
 #   endif
         case RenderShaderFormat::SPIRV:
@@ -427,6 +480,10 @@ namespace RT64 {
             PSBlob = useMSAA ? RasterPSDynamicMSBlobSPIRV : RasterPSDynamicBlobSPIRV;
             VSBlobSize = uint32_t(std::size(RasterVSDynamicBlobSPIRV));
             PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicMSBlobSPIRV) : std::size(RasterPSDynamicBlobSPIRV));
+            if (textureSlots) {
+                PSBlob = useMSAA ? RasterPSDynamicSlotsMSBlobSPIRV : RasterPSDynamicSlotsBlobSPIRV;
+                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicSlotsMSBlobSPIRV) : std::size(RasterPSDynamicSlotsBlobSPIRV));
+            }
             break;
 #   ifdef __APPLE__
         case RenderShaderFormat::METAL:
@@ -434,6 +491,10 @@ namespace RT64 {
             PSBlob = useMSAA ? RasterPSDynamicMSBlobMSL : RasterPSDynamicBlobMSL;
             VSBlobSize = uint32_t(std::size(RasterVSDynamicBlobMSL));
             PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicMSBlobMSL) : std::size(RasterPSDynamicBlobMSL));
+            if (textureSlots) {
+                PSBlob = useMSAA ? RasterPSDynamicSlotsMSBlobMSL : RasterPSDynamicSlotsBlobMSL;
+                PSBlobSize = uint32_t(useMSAA ? std::size(RasterPSDynamicSlotsMSBlobMSL) : std::size(RasterPSDynamicSlotsBlobMSL));
+            }
             break;
 #   endif
         default:

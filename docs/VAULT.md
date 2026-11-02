@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-10-28
+updated: 2026-11-02
 tags: [vault, index, tooierecomp]
 ---
 
@@ -13,6 +13,15 @@ tags: [vault, index, tooierecomp]
 - [[HANDOFF]] — Estado atual, pendências e próxima ação
 - [[AGENTS]] — Regras para agentes
 - [[README]] — Entrada da documentação
+
+## future
+
+- [[future/implementation-ideas]] — Cogitações futuras: dois processos não implementado e extensão da corrida adiada
+
+Planos de implementação antigos foram retirados. Contratos atuais ficam nas specs; detalhes dos controladores em
+[[reverse-engineering/systems/minigame-controllers]]; validação manual pendente em [[specs/Tooie/testing-and-oracle]].
+Propostas não implementadas ficam somente na nota de cogitações, sem autorização automática de execução.
+Histórico de implementação e medições permanece no Git.
 
 ## specs
 
@@ -49,8 +58,13 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/characters/kazooie]] — Kazooie
 - [[reverse-engineering/characters/mumbo]] — Mumbo
 - [[reverse-engineering/systems/view-volume]] — Volume de visão e culling
+- [[reverse-engineering/systems/camera-controls]] — Entrada, propriedade por jogador e filtros nativos da câmera
+- [[reverse-engineering/systems/minigames]] — Catálogo de 23 sinalizadores de replay e suspensão por sala do cooperativo e limitação conhecida
+- [[reverse-engineering/systems/minigame-controllers]] — Descritores, callbacks e fluxo nativo por família de minigame
 - [[reverse-engineering/systems/transform-interpolation]] — Interpolação de transforms (RT64)
 - [[reverse-engineering/systems/model-renderer]] — Renderizador de modelos
+- [[reverse-engineering/systems/player-lighting]] — Iluminação por jogador e vértices de saída independentes
+- [[reverse-engineering/systems/player-transformations]] — Transformações individuais e transição entre cenários
 - [[reverse-engineering/systems/geocmd]] — GeoCmd
 - [[reverse-engineering/systems/animation]] — Animação
 - [[reverse-engineering/systems/secondary-animation]] — Animação secundária (bawobble)
@@ -60,3 +74,7 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/systems/text-and-fonts]] — Texto e fontes (assets de texto, mapeamento de glifos)
 - [[reverse-engineering/modding/README]] — Mapa de modding
 - [[reverse-engineering/modding/known-extension-points]] — Pontos de extensão
+
+## Launcher startup and graphics backend selection
+
+[Launcher Startup and Backends](specs/Tooie/startup-and-backends.md) — TK64 integration, Windows recovery, API preference, independent pause music and opt-in logs.

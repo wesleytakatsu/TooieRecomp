@@ -55,18 +55,24 @@ extern char** environ;
 #include "recompinput/recompinput.h"
 #include "recompinput/profiles.h"
 #include "banjo_config.h"
+#include "tooie_analog_camera.h"
 #include "banjo_sound.h"
 #include "banjo_support.h"
 #include "banjo_game.h"
 #include "banjo_launcher.h"
 #include "tooie_diag.h"
-#include "tooie_audio_capture.h"
 #include "tooie_bgm_volume.h"
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
 #include "tooie_controller_ports.h"
+#include "tooie_dev_cheats.h"
+#include "tooie_dev_forms.h"
+#include "tooie_story_coop.h"
 #include "tooie_language_pack_loader.h"
 #include "tooie_error.h"
+#include "tooie_startup.h"
+#include "tooie_launcher_audio.h"
+#include "base/ui_launcher.h"
 #include "recomp_data.h"
 #include "ovl_patches.hpp"
 #include "theme.h"
@@ -89,278 +95,12 @@ extern char** environ;
 
 #include "stb/stb_image.h"
 
-const std::string version_string = "0.1.0-p08";
+const std::string version_string = "0.1.3";
 
 namespace {
 
 constexpr char kGitHubUrl[] = "https://github.com/wesleytakatsu/TooieRecomp";
 
-bool launcher_music_child = false;
-bool launcher_music_preview_started = false;
-
-#if defined(__linux__)
-std::atomic<pid_t> launcher_music_pid{-1};
-bool launcher_music_control = false;
-
-void stop_launcher_music_preview() {
-    const pid_t child = launcher_music_pid.exchange(-1);
-    if (child <= 0) {
-        return;
-    }
-
-    int status = 0;
-    pid_t wait_result = 0;
-    do {
-        wait_result = waitpid(child, &status, WNOHANG);
-    } while (wait_result < 0 && errno == EINTR);
-    if (wait_result == child || (wait_result < 0 && errno == ECHILD)) {
-        return;
-    }
-    if (wait_result < 0) {
-        std::fprintf(stderr, "[tooie] launcher music: waitpid failed (%d)\n", errno);
-        return;
-    }
-
-    if (kill(child, SIGTERM) != 0 && errno != ESRCH) {
-        std::fprintf(stderr, "[tooie] launcher music: SIGTERM failed (%d)\n", errno);
-    }
-
-    // Reap the helper so a normal Start Game does not leave a zombie for the
-    // lifetime of the visible game process. Give graceful termination one
-    // second, then force only this known child to exit.
-    for (int attempt = 0; attempt < 100; attempt++) {
-        wait_result = waitpid(child, &status, WNOHANG);
-        if (wait_result == child || (wait_result < 0 && errno == ECHILD)) {
-            return;
-        }
-        if (wait_result < 0 && errno != EINTR) {
-            std::fprintf(stderr, "[tooie] launcher music: reap failed (%d)\n", errno);
-            return;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    if (kill(child, SIGKILL) == 0 || errno == ESRCH) {
-        do {
-            wait_result = waitpid(child, &status, 0);
-        } while (wait_result < 0 && errno == EINTR);
-    }
-}
-
-bool start_launcher_music_preview() {
-    std::array<char, PATH_MAX> executable{};
-    const ssize_t length = readlink("/proc/self/exe", executable.data(), executable.size() - 1);
-    if (length <= 0 || static_cast<size_t>(length) >= executable.size()) {
-        std::fprintf(stderr, "[tooie] launcher music: failed to resolve executable\n");
-        return false;
-    }
-    executable[static_cast<size_t>(length)] = '\0';
-
-    // Keep the ROM-backed preview's music gain in sync without polling config files.
-    int control[2];
-    if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0, control) != 0) {
-        std::fprintf(stderr, "[tooie] launcher music: control channel failed (%d)\n", errno);
-        return false;
-    }
-    posix_spawn_file_actions_t actions;
-    int result = posix_spawn_file_actions_init(&actions);
-    if (result != 0) {
-        close(control[0]);
-        close(control[1]);
-        return false;
-    }
-    result = posix_spawn_file_actions_adddup2(&actions, control[0], STDIN_FILENO);
-    if (result == 0 && control[0] != STDIN_FILENO) {
-        result = posix_spawn_file_actions_addclose(&actions, control[0]);
-    }
-    if (result == 0) {
-        result = posix_spawn_file_actions_addclose(&actions, control[1]);
-    }
-    char child_flag[] = "--launcher-music-child";
-    char control_flag[] = "--launcher-music-control";
-    char* child_argv[] = {executable.data(), child_flag, control_flag, nullptr};
-    pid_t child = -1;
-    if (result == 0) {
-        result = posix_spawn(&child, executable.data(), &actions, nullptr, child_argv, environ);
-    }
-    posix_spawn_file_actions_destroy(&actions);
-    close(control[0]);
-    if (result != 0) {
-        close(control[1]);
-        std::fprintf(stderr, "[tooie] launcher music: posix_spawn failed (%d)\n", result);
-        return false;
-    }
-
-    launcher_music_pid.store(child);
-    launcher_music_preview_started = true;
-    std::atexit(stop_launcher_music_preview);
-
-    // start_game is single-shot in ModernRuntime. Keep the preview in its own
-    // process, then stop it as soon as the visible instance starts from boot.
-    std::thread([child, fd = control[1]]() {
-        int last_percent = -1;
-        while (!ultramodern::is_game_started() && launcher_music_pid.load() == child) {
-            const int percent = tooie_bgm::get_percent();
-            if (percent != last_percent) {
-                const uint8_t value = static_cast<uint8_t>(percent);
-                if (send(fd, &value, sizeof(value), MSG_DONTWAIT | MSG_NOSIGNAL) == sizeof(value)) {
-                    last_percent = percent;
-                } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-                    break;
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        close(fd);
-        if (launcher_music_pid.load() == child) {
-            std::fprintf(stderr, "[tooie] launcher music: stopping preview\n");
-            stop_launcher_music_preview();
-        }
-    }).detach();
-
-    std::fprintf(stderr, "[tooie] launcher music: hidden ROM-backed preview started\n");
-    return true;
-}
-#elif defined(_WIN32)
-// Same protocol as Linux: the child's stdin is the read end of an anonymous
-// pipe and every control message is one byte (music volume percent).
-std::atomic<HANDLE> launcher_music_process{nullptr};
-HANDLE launcher_music_job = nullptr;
-HANDLE launcher_music_stdin = nullptr; // child only; null if no control channel
-bool launcher_music_control = false;
-
-void stop_launcher_music_preview() {
-    HANDLE child = launcher_music_process.exchange(nullptr);
-    if (child == nullptr) {
-        return;
-    }
-
-    // The sender thread closes the pipe at game start, which makes the child
-    // exit on EOF. Give it one second, then force only this known child.
-    if (WaitForSingleObject(child, 1000) != WAIT_OBJECT_0) {
-        TerminateProcess(child, 1);
-        WaitForSingleObject(child, 1000);
-    }
-    CloseHandle(child);
-    if (launcher_music_job != nullptr) {
-        CloseHandle(launcher_music_job);
-        launcher_music_job = nullptr;
-    }
-}
-
-bool start_launcher_music_preview() {
-    std::wstring executable(MAX_PATH, L'\0');
-    for (;;) {
-        const DWORD length = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
-        if (length == 0) {
-            std::fprintf(stderr, "[tooie] launcher music: failed to resolve executable\n");
-            return false;
-        }
-        if (length < executable.size()) {
-            executable.resize(length);
-            break;
-        }
-        executable.resize(executable.size() * 2);
-    }
-
-    SECURITY_ATTRIBUTES inherit{sizeof(inherit), nullptr, TRUE};
-    HANDLE read_end = nullptr;
-    HANDLE write_end = nullptr;
-    if (!CreatePipe(&read_end, &write_end, &inherit, 0)) {
-        std::fprintf(stderr, "[tooie] launcher music: control channel failed (%lu)\n", GetLastError());
-        return false;
-    }
-    // Only the read end may be inherited by the child.
-    SetHandleInformation(write_end, HANDLE_FLAG_INHERIT, 0);
-    DWORD nowait = PIPE_NOWAIT;
-    SetNamedPipeHandleState(write_end, &nowait, nullptr, nullptr);
-
-    HANDLE job = CreateJobObjectW(nullptr, nullptr);
-    if (job != nullptr) {
-        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
-            CloseHandle(job);
-            job = nullptr;
-        }
-    }
-    if (job == nullptr) {
-        std::fprintf(stderr, "[tooie] launcher music: job object failed (%lu)\n", GetLastError());
-        CloseHandle(read_end);
-        CloseHandle(write_end);
-        return false;
-    }
-
-    std::wstring command = L"\"" + executable + L"\" --launcher-music-child --launcher-music-control";
-    STARTUPINFOW startup{};
-    startup.cb = sizeof(startup);
-    startup.dwFlags = STARTF_USESTDHANDLES;
-    startup.hStdInput = read_end;
-    startup.hStdOutput = nullptr;
-    startup.hStdError = nullptr;
-    PROCESS_INFORMATION info{};
-    // Suspended so the child is in the job before it runs any code.
-    const BOOL created = CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, TRUE,
-        CREATE_NO_WINDOW | CREATE_SUSPENDED, nullptr, nullptr, &startup, &info);
-    CloseHandle(read_end);
-    if (!created) {
-        std::fprintf(stderr, "[tooie] launcher music: CreateProcess failed (%lu)\n", GetLastError());
-        CloseHandle(write_end);
-        CloseHandle(job);
-        return false;
-    }
-    if (!AssignProcessToJobObject(job, info.hProcess)) {
-        std::fprintf(stderr, "[tooie] launcher music: failed to bind child lifetime (%lu)\n", GetLastError());
-        TerminateProcess(info.hProcess, 1);
-        CloseHandle(info.hThread);
-        CloseHandle(info.hProcess);
-        CloseHandle(write_end);
-        CloseHandle(job);
-        return false;
-    }
-    ResumeThread(info.hThread);
-    CloseHandle(info.hThread);
-
-    HANDLE child = info.hProcess;
-    launcher_music_job = job;
-    launcher_music_process.store(child);
-    launcher_music_preview_started = true;
-    std::atexit(stop_launcher_music_preview);
-
-    // start_game is single-shot in ModernRuntime. Keep the preview in its own
-    // process, then stop it as soon as the visible instance starts from boot.
-    std::thread([child, pipe = write_end]() {
-        int last_percent = -1;
-        while (!ultramodern::is_game_started() && launcher_music_process.load() == child) {
-            const int percent = tooie_bgm::get_percent();
-            if (percent != last_percent) {
-                const uint8_t value = static_cast<uint8_t>(percent);
-                DWORD written = 0;
-                if (WriteFile(pipe, &value, sizeof(value), &written, nullptr)) {
-                    // Full pipe in PIPE_NOWAIT mode reports 0 bytes: drop and retry later.
-                    if (written == sizeof(value)) {
-                        last_percent = percent;
-                    }
-                } else if (GetLastError() != ERROR_PIPE_BUSY) {
-                    break;
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        CloseHandle(pipe);
-        if (launcher_music_process.load() == child) {
-            std::fprintf(stderr, "[tooie] launcher music: stopping preview\n");
-            stop_launcher_music_preview();
-        }
-    }).detach();
-
-    std::fprintf(stderr, "[tooie] launcher music: hidden ROM-backed preview started\n");
-    return true;
-}
-#else
-void stop_launcher_music_preview() {}
-bool start_launcher_music_preview() { return false; }
-#endif
 
 } // namespace
 
@@ -473,10 +213,9 @@ SDL_Window* window;
 
 ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::gfx_data_t) {
     uint32_t flags = SDL_WINDOW_RESIZABLE;
+    if (tooie_startup::is_worker()) flags |= SDL_WINDOW_HIDDEN;
 
-    if (launcher_music_child) {
-        flags |= SDL_WINDOW_HIDDEN;
-    }
+
 
 #if defined(__APPLE__)
     flags |= SDL_WINDOW_METAL;
@@ -523,34 +262,8 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 
 void update_gfx(void*) {
     recompinput::handle_events();
-#if defined(__linux__)
-    if (launcher_music_child && launcher_music_control) {
-        uint8_t percent;
-        while (recv(STDIN_FILENO, &percent, sizeof(percent), MSG_DONTWAIT) == sizeof(percent)) {
-            tooie_bgm::set_percent(percent);
-        }
-    }
-#elif defined(_WIN32)
-    if (launcher_music_child && launcher_music_control && launcher_music_stdin != nullptr) {
-        DWORD available = 0;
-        // Broken pipe (parent gone / closed its end) -> exit like PDEATHSIG would.
-        if (!PeekNamedPipe(launcher_music_stdin, nullptr, 0, nullptr, &available, nullptr)) {
-            std::fprintf(stderr, "[tooie] launcher music: control channel closed\n");
-            std::_Exit(0);
-        }
-        while (available > 0) {
-            uint8_t buffer[64];
-            DWORD got = 0;
-            if (!ReadFile(launcher_music_stdin, buffer, (available < sizeof(buffer) ? available : static_cast<DWORD>(sizeof(buffer))), &got, nullptr) || got == 0) {
-                break;
-            }
-            for (DWORD i = 0; i < got; i++) {
-                tooie_bgm::set_percent(buffer[i]);
-            }
-            available -= got;
-        }
-    }
-#endif
+    if (window != nullptr && tooie_startup::is_ready() && (SDL_GetWindowFlags(window) & SDL_WINDOW_HIDDEN)) SDL_ShowWindow(window);
+    tooie_launcher_audio::update_volume(recompui::config::sound::get_main_volume()/100.0f, tooie_bgm::get_percent()/100.0f);
     // UI callbacks enqueue the request; SDL window operations stay on the event thread.
     const double target_aspect = tooie_menu::take_window_aspect_request();
     if (target_aspect > 0.0 && window != nullptr &&
@@ -658,22 +371,6 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
     // Prevent audio latency from building up by skipping samples in incoming audio when too many samples are already queued.
     // Skip samples based on how many microseconds of samples are queued already.
     uint32_t skip_factor = cur_queued_microseconds / 100000;
-    const uint32_t pre_skip_bytes = num_bytes_to_queue;
-    bool audio_cap = false;
-    if (tooie_audio_capture::hot()) {
-        tooie_audio_capture::Pre cap_pre;
-        cap_pre.guest = audio_data;
-        cap_pre.guest_s16_samples = sample_count;
-        cap_pre.pre_skip = samples_to_queue;
-        cap_pre.pre_skip_bytes = pre_skip_bytes;
-        cap_pre.input_rate = sample_rate;
-        cap_pre.output_rate = output_sample_rate;
-        cap_pre.skip_factor = skip_factor;
-        cap_pre.sdl_queued_bytes_before = sdl_queued_bytes_before;
-        cap_pre.discarded_output_frames = discarded_output_frames;
-        cap_pre.pipeline_volume = cur_main_volume;
-        audio_cap = tooie_audio_capture::begin_and_stash(cap_pre);
-    }
     if (skip_factor != 0) {
         uint32_t skip_ratio = 1 << skip_factor;
         num_bytes_to_queue /= skip_ratio;
@@ -685,33 +382,7 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
 
     // Queue the swapped audio data.
     // Offset the data start by only half the discarded frame count as the other half of the discarded frames are at the end of the buffer.
-    const int sdl_queue_result = SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
-    if (audio_cap) {
-        tooie_audio_capture::Post cap_post;
-        cap_post.post_skip = samples_to_queue;
-        cap_post.post_skip_bytes = num_bytes_to_queue;
-        cap_post.sdl_queued_bytes_after =
-            static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device));
-        cap_post.sdl_queue_result = sdl_queue_result;
-        tooie_audio_capture::commit(cap_post);
-    }
-    int16_t peak = 0;
-    size_t nonzero = 0;
-    for (size_t i = 0; i < sample_count; ++i) {
-        int16_t s = audio_data[i];
-        if (s != 0) {
-            ++nonzero;
-            int16_t a = s < 0 ? static_cast<int16_t>(-s) : s;
-            if (a > peak) {
-                peak = a;
-            }
-        }
-    }
-    tooie_diag::note_queue_samples(
-        sample_count,
-        static_cast<uint32_t>(SDL_GetQueuedAudioSize(audio_device)),
-        peak,
-        nonzero);
+    SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
 }
 
 size_t get_frames_remaining() {
@@ -1147,55 +818,9 @@ static void activate_tooie_guest_preemption() {
 }
 
 int main(int argc, char** argv) {
-    for (int i = 1; i < argc; i++) {
-        if (std::strcmp(argv[i], "--launcher-music-child") == 0) {
-            launcher_music_child = true;
-        }
-#if defined(__linux__) || defined(_WIN32)
-        if (std::strcmp(argv[i], "--launcher-music-control") == 0) {
-            launcher_music_control = true;
-        }
-#endif
-    }
-
-#if defined(_WIN32)
-    if (launcher_music_child && launcher_music_control) {
-        HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
-        if (in != nullptr && in != INVALID_HANDLE_VALUE && GetFileType(in) == FILE_TYPE_PIPE) {
-            launcher_music_stdin = in;
-        } else {
-            launcher_music_control = false;
-            std::fprintf(stderr, "[tooie] launcher music: invalid control channel\n");
-        }
-    }
-#endif
-
-#if defined(__linux__)
-    if (launcher_music_child && launcher_music_control) {
-        int type = 0;
-        socklen_t length = sizeof(type);
-        if (getsockopt(STDIN_FILENO, SOL_SOCKET, SO_TYPE, &type, &length) != 0 || type != SOCK_DGRAM) {
-            launcher_music_control = false;
-            std::fprintf(stderr, "[tooie] launcher music: invalid control channel\n");
-        }
-    }
-    if (launcher_music_child) {
-        // Never leave an invisible audio/runtime process behind if the launcher
-        // is closed or crashes before Start Game is selected.
-        const pid_t launcher_parent = getppid();
-        // A crashed/killed parent cannot perform the normal SIGTERM + reap
-        // sequence, so use SIGKILL for the kernel-owned orphan safeguard.
-        if (launcher_parent <= 1 || prctl(PR_SET_PDEATHSIG, SIGKILL) != 0) {
-            std::fprintf(stderr, "[tooie] launcher music: failed to bind child lifetime\n");
-            return EXIT_FAILURE;
-        }
-        // Close the fork-to-prctl race: the parent may have exited between
-        // posix_spawn and PR_SET_PDEATHSIG becoming active.
-        if (getppid() != launcher_parent) {
-            return EXIT_FAILURE;
-        }
-    }
-#endif
+    const int startup_result=tooie_startup::enter(argc,argv);
+    if(startup_result>=0) return startup_result;
+    std::atexit(tooie_launcher_audio::stop);
     recomp::Version project_version{};
     if (!recomp::Version::from_string(version_string, project_version)) {
         ultramodern::error_handling::message_box(("Invalid version string: " + version_string).c_str());
@@ -1273,8 +898,7 @@ int main(int argc, char** argv) {
     // Initialize SDL audio and set the output frequency.
     SDL_InitSubSystem(SDL_INIT_AUDIO);
     if (!reset_audio(48000)) {
-        // It is not possible to initialize without an audio device.
-        return EXIT_FAILURE;
+        std::fprintf(stderr, "Audio unavailable; continuing silently.\n");
     }
 
     // Source controller mappings file
@@ -1293,20 +917,6 @@ int main(int argc, char** argv) {
     // Register supported games and patches
     for (const auto& game : supported_games) {
         recomp::register_game(game);
-    }
-
-    const char* auto_start_env = std::getenv("TOOIE_AUTO_START");
-    const bool explicit_auto_start = auto_start_env != nullptr &&
-        auto_start_env[0] != '\0' && auto_start_env[0] != '0';
-    const char* disable_launcher_music = std::getenv("TOOIE_DISABLE_LAUNCHER_MUSIC");
-    const bool launcher_music_disabled = disable_launcher_music != nullptr &&
-        disable_launcher_music[0] != '\0' && disable_launcher_music[0] != '0';
-
-    if (!launcher_music_child && !explicit_auto_start && !launcher_music_disabled) {
-        recomp::check_all_stored_roms();
-        if (recomp::is_rom_valid(supported_games[0].game_id)) {
-            start_launcher_music_preview();
-        }
     }
 
     recomp::mods::register_deprecated_mod("bk_recomp_mod_fov_slider", recomp::mods::DeprecationStatus::BrokenVersion, recomp::Version(1, 1, 0));
@@ -1342,28 +952,13 @@ int main(int argc, char** argv) {
         recompinput::players::set_player_count_range(1, 4);
     }
 
+    recompui::register_launcher_start_callback([]() { tooie_launcher_audio::stop(); tooie_startup::note_game_start(); });
     recompui::register_launcher_init_callback(on_launcher_init);
     recompui::register_launcher_update_callback([](recompui::LauncherMenu* menu) {
         banjo::launcher_animation_update(menu);
 
-        // If this is the first run and the ROM is selected from the launcher,
-        // begin the preview as soon as validation succeeds.
-        static int launcher_music_check_frames = 0;
-        if (!launcher_music_child && !launcher_music_preview_started &&
-            ++launcher_music_check_frames >= 60) {
-            launcher_music_check_frames = 0;
-            const char* disable_music = std::getenv("TOOIE_DISABLE_LAUNCHER_MUSIC");
-            const char* forced_start = std::getenv("TOOIE_AUTO_START");
-            const bool disabled = disable_music != nullptr && disable_music[0] != '\0' && disable_music[0] != '0';
-            const bool auto_starting = forced_start != nullptr && forced_start[0] != '\0' && forced_start[0] != '0';
-            if (!disabled && !auto_starting) {
-                recomp::check_all_stored_roms();
-                if (recomp::is_rom_valid(supported_games[0].game_id)) {
-                    start_launcher_music_preview();
-                }
-            }
-        }
-
+        tooie_startup::launcher_ready();
+        tooie_launcher_audio::start();
         // Deferred + frame delay so RT64/UI finish first init before game thread starts.
         static int auto_start_frames = 0;
         static bool auto_start_done = false;
@@ -1374,13 +969,12 @@ int main(int argc, char** argv) {
         const char* launcher_music_smoke = std::getenv("TOOIE_LAUNCHER_MUSIC_SMOKE");
         const bool smoke_start_requested = launcher_music_smoke != nullptr &&
             launcher_music_smoke[0] != '\0' && launcher_music_smoke[0] != '0';
-        const bool auto_start_requested = launcher_music_child ||
-            smoke_start_requested ||
+        const bool auto_start_requested = smoke_start_requested ||
             (auto_start != nullptr && auto_start[0] != '\0' && auto_start[0] != '0');
         if (!auto_start_requested) {
             return;
         }
-        const int start_delay_frames = launcher_music_child ? 1 : (smoke_start_requested ? 180 : 30);
+        const int start_delay_frames = smoke_start_requested ? 180 : 30;
         if (++auto_start_frames < start_delay_frames) {
             return;
         }
@@ -1390,7 +984,7 @@ int main(int argc, char** argv) {
         if (recomp::is_rom_valid(game_id)) {
             // Match launcher Start Game: hide UI so RT64 game frames are visible.
             std::fprintf(stderr, "[tooie] TOOIE_AUTO_START: starting game\n");
-            recomp::start_game(game_id, {});
+            if (recompui::notify_launcher_start()) recomp::start_game(game_id, {});
             recompui::hide_all_contexts();
         } else {
             std::fprintf(stderr, "[tooie] TOOIE_AUTO_START: ROM not valid/stored; staying on launcher\n");
@@ -1423,14 +1017,16 @@ int main(int argc, char** argv) {
     auto tooie_get_n64_input = [](int controller, uint16_t* buttons, float* x, float* y) -> bool {
         const auto source = tooie_controller_ports::port_input_source(get_controller_port_query(), controller);
         if (source == tooie_controller_ports::PortInput::NoResponse) {
+            tooie_analog_camera::on_input(controller, {}, 0, 0, true, false);
             if (buttons != nullptr) *buttons = 0;
             if (x != nullptr) *x = 0.0f;
             if (y != nullptr) *y = 0.0f;
             return false;
         }
+        const bool reserve_camera = tooie_analog_camera::reserve(controller);
         const bool ok = source == tooie_controller_ports::PortInput::MergedFallback
-            ? recompinput::profiles::get_merged_n64_input(buttons, x, y)
-            : recompinput::profiles::get_n64_input(controller, buttons, x, y);
+            ? recompinput::profiles::get_merged_n64_input(buttons, x, y, reserve_camera)
+            : recompinput::profiles::get_n64_input(controller, buttons, x, y, reserve_camera);
         if (x != nullptr && y != nullptr) {
             tooie_diag::apply_synthetic_input(controller, buttons, x, y);
         }
@@ -1438,6 +1034,45 @@ int main(int argc, char** argv) {
                                     x != nullptr ? *x : 0.0f,
                                     y != nullptr ? *y : 0.0f,
                                     buttons != nullptr ? *buttons : 0);
+        bool forms_input = false;
+        bool debug_held = !recompinput::game_input_disabled() &&
+            recompinput::profiles::get_game_input_held(controller, recompinput::GameInput::DEBUG);
+        uint16_t shortcut_buttons = buttons != nullptr ? *buttons : 0;
+        if (buttons != nullptr && x != nullptr && y != nullptr) {
+            const double time = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            const int physical_player = recompinput::players::is_single_player_mode() ||
+                source == tooie_controller_ports::PortInput::MergedFallback ? -1 : controller;
+            const bool physical_enabled = !recompinput::game_input_disabled();
+            const auto physical_button = [physical_player, physical_enabled](SDL_GameControllerButton button) {
+                return physical_enabled && recompinput::get_input_digital(physical_player,
+                    recompinput::InputField::controller_digital(button));
+            };
+            const bool r3 = physical_button(SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+            debug_held = debug_held || r3;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) shortcut_buttons |= 0x0400;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_UP)) shortcut_buttons |= 0x0800;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) shortcut_buttons |= 0x0200;
+            if (physical_button(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) shortcut_buttons |= 0x0100;
+            std::lock_guard shortcut_lock(tooie_story_coop::shortcut_mutex());
+            const int shortcut_player = tooie_story_coop::input_player(controller, debug_held, shortcut_buttons, *x, *y);
+            const auto form_settings = tooie_dev_cheats::settings();
+            forms_input = tooie_dev_forms::menus().input(shortcut_player,
+                tooie_dev_cheats::is_unlocked() && form_settings.character_menu,
+                debug_held, shortcut_buttons, *x, *y, time,
+                tooie_dev_cheats::direction_button(form_settings.character_menu_direction));
+            tooie_dev_cheats::on_player_input(shortcut_player, !forms_input && debug_held, shortcut_buttons);
+        }
+        if (forms_input) { *buttons = 0; *x = 0; *y = 0; }
+        const bool camera_blocked = !ok || forms_input || recompinput::game_input_disabled();
+        tooie_analog_camera::Axes camera_axes;
+        if (reserve_camera && !camera_blocked) {
+            const int physical_player = recompinput::players::is_single_player_mode() ||
+                source == tooie_controller_ports::PortInput::MergedFallback ? -1 : controller;
+            recompinput::get_right_analog_raw(physical_player, &camera_axes.x, &camera_axes.y);
+        }
+        tooie_analog_camera::on_input(controller, camera_axes,
+            float(recompui::config::general::get_joystick_deadzone()) / 100.0f,
+            buttons != nullptr ? *buttons : 0, camera_blocked, reserve_camera);
         return ok;
     };
 
@@ -1473,9 +1108,10 @@ int main(int argc, char** argv) {
 
     // Register the .rtz texture pack file format with the previous content type as its only allowed content type.
     recomp::mods::register_mod_container_type("rtz", std::vector{ texture_pack_content_type_id }, false);
+    // Register plain .zip texture packs with an optional directory around rt64.json.
+    recomp::mods::register_mod_container_type("zip", std::vector{ texture_pack_content_type_id }, false, true);
 
     activate_tooie_guest_preemption();
-    tooie_audio_capture::init_from_env();
 
     try {
         recomp::start(
@@ -1496,6 +1132,7 @@ int main(int argc, char** argv) {
         const bool is_renderer_failure = what_str.find("renderer") != std::string::npos ||
                                          what_str.find("RT64") != std::string::npos ||
                                          what_str.find("graphics") != std::string::npos;
+        if (tooie_startup::is_worker() && !tooie_startup::is_ready()) std::_Exit(EXIT_FAILURE);
         tooie_error::report_error({
             is_renderer_failure ? tooie_error::ErrorClass::RT64_INIT_FAILED : tooie_error::ErrorClass::UNKNOWN_GRAPHICS_ERROR,
             is_renderer_failure ? "Banjo-Tooie: Graphics Error" : "Banjo-Tooie: Runtime Error",
@@ -1503,14 +1140,12 @@ int main(int argc, char** argv) {
                                 : "A fatal runtime exception occurred during execution.",
             e.what()
         });
-        stop_launcher_music_preview();
-        tooie_audio_capture::shutdown();
+        tooie_launcher_audio::stop();
         NFD_Quit();
         return EXIT_FAILURE;
     }
 
-    stop_launcher_music_preview();
-    tooie_audio_capture::shutdown();
+    tooie_launcher_audio::stop();
 
     NFD_Quit();
 

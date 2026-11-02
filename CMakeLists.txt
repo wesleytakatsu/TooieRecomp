@@ -176,8 +176,9 @@ endif()
 # --- Main executable ---
 add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/launcher_animation.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_startup.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_launcher_audio.cpp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
-    ${CMAKE_SOURCE_DIR}/src/main/tooie_audio_capture.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_patches.cpp
     ${CMAKE_SOURCE_DIR}/src/main/theme.cpp
@@ -198,10 +199,28 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_error.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_diag.cpp
     ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_story_coop.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_collectibles_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_enemy_ai.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_travel_menu.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_mode_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
     ${CMAKE_SOURCE_DIR}/src/game/generated/overlay_dispatch.gen.cpp
     ${CMAKE_SOURCE_DIR}/rsp/n_aspMain.cpp
 )
@@ -273,7 +292,7 @@ if(WIN32)
         Threads::Threads
     )
     # Identical-code folding would merge functions and break mod function patching (as in BanjoRecomp).
-    target_link_options(TooieRecompiled PRIVATE /OPT:NOICF)
+    target_link_options(TooieRecompiled PRIVATE /OPT:NOICF /DELAYLOAD:d3d12.dll /DELAYLOAD:dxgi.dll /DELAYLOAD:d3d11.dll /DELAYLOAD:dxcompiler.dll)
     set_target_properties(TooieRecompiled PROPERTIES
         LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
         LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
@@ -384,6 +403,25 @@ add_custom_command(
 add_custom_target(TooieLauncherLogo DEPENDS "${TOOIE_LAUNCHER_LOGO}")
 add_dependencies(TooieRecompiled TooieLauncherLogo)
 
+if(WIN32)
+    add_executable(tooie_startup_test tests/tooie_startup_test.cpp src/main/tooie_startup.cpp
+        ${N64MR}/librecomp/src/config.cpp ${N64MR}/librecomp/src/config_option.cpp)
+    target_include_directories(tooie_startup_test PRIVATE
+        $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(tooie_startup_test PRIVATE TOOIE_STARTUP_TEST NOMINMAX)
+    target_link_libraries(tooie_startup_test PRIVATE rt64 SDL2::SDL2 user32)
+    set_target_properties(tooie_startup_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    add_executable(tooie_launcher_audio_test tests/tooie_launcher_audio_test.cpp src/main/tooie_launcher_audio.cpp)
+    target_include_directories(tooie_launcher_audio_test PRIVATE
+        $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(tooie_launcher_audio_test PRIVATE NOMINMAX)
+    target_compile_options(tooie_launcher_audio_test PRIVATE "/FI${CMAKE_SOURCE_DIR}/tests/launcher_audio_test_sink.h")
+    target_link_libraries(tooie_launcher_audio_test PRIVATE SDL2::SDL2)
+    set_target_properties(tooie_launcher_audio_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
+
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")
 if(WIN32)
@@ -450,6 +488,19 @@ target_link_libraries(bcf28_helpers_test PRIVATE
     Threads::Threads
 )
 set_target_properties(bcf28_helpers_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_texture_zip_mod_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_texture_zip_mod_test.cpp
+)
+target_include_directories(tooie_texture_zip_mod_test PRIVATE
+    ${N64MR}/librecomp/include
+    ${N64MR}/N64Recomp/include
+)
+target_link_libraries(tooie_texture_zip_mod_test PRIVATE
+    librecomp
+    Threads::Threads
+)
+set_target_properties(tooie_texture_zip_mod_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # P08 core1 RA-wrapper regression: 0x800137D4 / 0x800137F4 / 0x80013A5C / 0x80013A7C.
 add_executable(core1_ra_wrappers_test
@@ -538,8 +589,22 @@ set_target_properties(stick_angle_thunk_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
     target_sources(${_t} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_story_coop.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp_hook.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_collectibles_hook.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_enemy_ai.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_travel_menu.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
         ${CMAKE_SOURCE_DIR}/tests/support/recompui_window_stub.cpp
     )
@@ -638,6 +703,162 @@ target_include_directories(tooie_menu_policy_test PRIVATE
 )
 set_target_properties(tooie_menu_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
+# Dev Mode warp: teleport state machine, saved-position JSON and map names (no guest memory).
+add_executable(tooie_dev_warp_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_warp_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_warp.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/generated/map_names.gen.cpp
+)
+target_include_directories(tooie_dev_warp_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/thirdparty
+)
+set_target_properties(tooie_dev_warp_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Dev Mode cheats: per-player input, execution and Blaster cleanup with guest lifecycle stand-ins.
+add_executable(tooie_dev_cheats_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_cheats_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
+)
+target_include_directories(tooie_dev_cheats_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+)
+set_target_properties(tooie_dev_cheats_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_dev_forms_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_forms_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_forms_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats_hook.cpp
+)
+target_include_directories(tooie_dev_forms_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+)
+set_target_properties(tooie_dev_forms_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+target_link_libraries(tooie_dev_forms_test PRIVATE RecompiledFuncs)
+
+add_executable(tooie_glowbo_collection_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_glowbo_collection_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_collectibles_hook.cpp
+)
+target_include_directories(tooie_glowbo_collection_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+)
+target_link_libraries(tooie_glowbo_collection_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_glowbo_collection_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_object_distance_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_object_distance_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_object_distance_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/librecomp/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/include
+    ${N64MR}/thirdparty
+    ${N64MR}/thirdparty/concurrentqueue
+    ${N64MR}/thirdparty/miniz
+    ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz
+)
+target_compile_definitions(tooie_object_distance_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_object_distance_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_object_distance_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_analog_camera_test
+    tests/tooie_analog_camera_test.cpp
+    src/game/tooie_analog_camera.cpp
+    src/game/tooie_analog_camera_hook.cpp
+    src/game/tooie_analog_camera_config.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_analog_camera_test PRIVATE
+    $<TARGET_PROPERTY:tooie_object_distance_test,INCLUDE_DIRECTORIES>)
+target_compile_definitions(tooie_analog_camera_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_analog_camera_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_analog_camera_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Real RSP framebuffer bounds with synthetic geometry; no GPU or game launch.
+add_executable(rt64_widescreen_bounds_test tests/rt64_widescreen_bounds_test.cpp)
+target_include_directories(rt64_widescreen_bounds_test PRIVATE
+    $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
+target_compile_definitions(rt64_widescreen_bounds_test PRIVATE NOMINMAX SDL_MAIN_HANDLED)
+target_link_libraries(rt64_widescreen_bounds_test PRIVATE rt64)
+set_target_properties(rt64_widescreen_bounds_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Native cache-bank bounds with production split-projection reloads; no renderer launch.
+add_executable(tooie_projection_reload_test
+    tests/tooie_projection_reload_test.cpp
+    src/game/transform_hooks.cpp
+)
+target_include_directories(tooie_projection_reload_test PRIVATE
+    include src/game RecompiledFuncs ${N64MR}/N64Recomp/include
+)
+target_compile_definitions(tooie_projection_reload_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_projection_reload_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_projection_reload_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_dev_enemy_ai_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_enemy_ai_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_enemy_ai.cpp
+)
+target_include_directories(tooie_dev_enemy_ai_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/librecomp/include
+)
+target_link_libraries(tooie_dev_enemy_ai_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_dev_enemy_ai_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_dev_travel_menu_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_dev_travel_menu_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_travel_menu.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_dev_cheats.cpp
+)
+target_include_directories(tooie_dev_travel_menu_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/N64Recomp/include
+    ${N64MR}/thirdparty
+)
+target_link_libraries(tooie_dev_travel_menu_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_dev_travel_menu_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Story co-op policy and real native creation/teardown/layout regressions.
+add_executable(tooie_story_coop_test
+    tests/tooie_story_coop_test.cpp
+    src/game/tooie_story_coop.cpp
+    src/game/tooie_dev_warp_hook.cpp
+    src/game/tooie_dev_forms_hook.cpp
+    src/game/tooie_dev_forms.cpp
+    src/game/tooie_dev_cheats.cpp
+    src/game/tooie_dev_cheats_hook.cpp
+    src/game/tooie_dev_warp.cpp
+    src/game/generated/map_names.gen.cpp
+    src/game/tooie_analog_camera.cpp
+    src/game/tooie_analog_camera_hook.cpp
+)
+target_include_directories(tooie_story_coop_test PRIVATE include ${N64MR}/N64Recomp/include ${N64MR}/thirdparty)
+target_link_libraries(tooie_story_coop_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_story_coop_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+foreach(_t tooie_analog_camera_test tooie_dev_forms_test tooie_dev_cheats_test tooie_glowbo_collection_test
+    tooie_dev_enemy_ai_test tooie_dev_travel_menu_test tooie_object_distance_test)
+    target_sources(${_t} PRIVATE src/game/tooie_story_coop.cpp)
+endforeach()
+
 # Pure N64 controller port policy, independent of SDL and the runtime.
 add_executable(tooie_controller_ports_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_controller_ports_test.cpp
@@ -660,10 +881,14 @@ set_target_properties(recompinput_player_slots_test PROPERTIES EXCLUDE_FROM_ALL 
 # Real librecomp Config integration (loaded 240 -> 30, registry reallocation, load callback, saved JSON).
 add_executable(tooie_menu_config_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_menu_config_test.cpp
+    ${CMAKE_SOURCE_DIR}/tests/graphics_window_mode_test.cpp
+    ${CMAKE_SOURCE_DIR}/lib/RecompFrontend/recompui/src/config/ui_config_tab_graphics.cpp
     ${N64MR}/librecomp/src/config.cpp
     ${N64MR}/librecomp/src/config_option.cpp
 )
 target_include_directories(tooie_menu_config_test PRIVATE
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
+    ${SDL2_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/include
     ${N64MR}/ultramodern/include
     ${N64MR}/librecomp/include
@@ -675,20 +900,49 @@ target_include_directories(tooie_menu_config_test PRIVATE
     ${CMAKE_BINARY_DIR}/N64ModernRuntime/librecomp/miniz
 )
 set_target_properties(tooie_menu_config_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+target_compile_definitions(tooie_menu_config_test PRIVATE NOMINMAX)
 
-# T_INTRO projection-policy regression: proves source aspect comes from the
-# cinematic matrix and rejects the old VI 304/228 compensation at 16:9.
+# Exercise the production projection policy and dynamic window-aspect calculation;
+# only window/config services are simulated, without opening SDL or the game.
 add_executable(tintro_projection_policy_test
     ${CMAKE_SOURCE_DIR}/tests/tintro_projection_policy_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_window.cpp
 )
 target_include_directories(tintro_projection_policy_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/game
+    ${CMAKE_SOURCE_DIR}/include
+    ${N64MR}/ultramodern/include
+    ${N64MR}/thirdparty
+    $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES>
 )
+target_link_libraries(tintro_projection_policy_test PRIVATE SDL2::SDL2 rmlui_core)
+target_compile_definitions(tintro_projection_policy_test PRIVATE NOMINMAX RMLUI_STATIC_LIB)
 target_compile_options(tintro_projection_policy_test PRIVATE
     -fno-strict-aliasing
     -Wno-unused-parameter
 )
 set_target_properties(tintro_projection_policy_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+# Exercise real RT64 visibility transitions without opening the game.
+if(WIN32)
+    add_executable(rt64_hidden_window_test
+        tests/rt64_hidden_window_test.cpp
+        lib/rt64/src/hle/rt64_application_window.cpp
+    )
+    target_include_directories(rt64_hidden_window_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/plume
+        ${CMAKE_SOURCE_DIR}/lib/rt64/src/contrib/hlslpp/include
+        ${SDL2_INCLUDE_DIRS}
+    )
+    target_link_libraries(rt64_hidden_window_test PRIVATE SDL2::SDL2 user32 Shcore)
+    add_custom_command(TARGET rt64_hidden_window_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${sdl2_SOURCE_DIR}/lib/x64/SDL2.dll" "$<TARGET_FILE_DIR:rt64_hidden_window_test>"
+    )
+    set_target_properties(rt64_hidden_window_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
 
 # Demo7 drift diagnostic: capture gate (stage0 sub8 glidx 0..120) and bs layout.
 add_executable(tooie_demo7_drift_test

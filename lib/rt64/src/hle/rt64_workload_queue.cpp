@@ -650,7 +650,7 @@ namespace RT64 {
                 std::pair<size_t, size_t> gpuTileRange;
                 gpuTileRange.first = 0;
                 gpuTileRange.second = workload.drawData.gpuTiles.size();
-                framebufferRenderer->createGPUTiles(workload.drawData.callTiles.data(), uint32_t(workload.drawData.gpuTiles.size()),
+                framebufferRenderer->createGPUTiles(workload.drawData.callTiles.data(), 0, uint32_t(workload.drawData.gpuTiles.size()),
                     workload.drawData.gpuTiles.data(), &fbManager, ext.textureCache, workload.submissionFrame);
 
                 // Upload the GPU tiles.

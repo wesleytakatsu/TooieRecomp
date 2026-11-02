@@ -12,6 +12,18 @@
 #include "elements/ui_config_page.h"
 #include "ui_utils.h"
 
+namespace recompui {
+    static std::function<void()> launcher_start_callback;
+    void register_launcher_start_callback(std::function<void()> callback) { launcher_start_callback = std::move(callback); }
+    bool notify_launcher_start() {
+        static bool started = false;
+        if (started) return false;
+        started = true;
+        if (launcher_start_callback) launcher_start_callback();
+        return true;
+    }
+}
+
 namespace Constants {
     constexpr float option_height = 136.0f;
     constexpr float option_padding = 8.0f;
@@ -296,7 +308,7 @@ namespace recompui {
 
         void on_start_game_mode() {
             get_launcher_menu()->hide_game_mode_menu();
-            recomp::start_game(this->game_id, this->cur_game_mode_id);
+            if (notify_launcher_start()) recomp::start_game(this->game_id, this->cur_game_mode_id);
             recompui::hide_all_contexts();
         }
 
@@ -460,7 +472,7 @@ namespace recompui {
                 if (recomp::mods::game_mode_count(this->mod_game_id, false) > 0) {
                     get_launcher_menu()->show_game_mode_menu(this->game_id, this->game_display_name, this->game_thumbnail);
                 } else {
-                    recomp::start_game(this->game_id, {});
+                    if (notify_launcher_start()) recomp::start_game(this->game_id, {});
                     recompui::hide_all_contexts();
                 }
             } else {

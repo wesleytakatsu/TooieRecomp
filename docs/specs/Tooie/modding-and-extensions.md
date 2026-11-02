@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Modding, Extensions and Asset Customization"
 description: "Specification for the recomp extension API, extended object data structures, texture pack container formats (.rtz), and mod callback hooks."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-27
+updated: 2026-10-30
 tags: [specs, tooierecomp, modding, extensions, rtz, textures, api]
 ---
 
@@ -38,8 +38,8 @@ TooieRecomp incorporates modding and extension APIs inherited from the static re
 | :--- | :--- | :--- | :--- |
 | **REQ-MOD-01** | Extended Object Data | Modding API allows attaching custom memory blocks to spawned entities. | `INHERITED_UNTESTED` |
 | **REQ-MOD-02** | Type Contexts & Slots | `dod::slot_map32` manages per-object extension lifecycle. | `INHERITED_UNTESTED` |
-| **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` texture archives containing replacement RT64 textures. | `VALIDATED_WINDOWS` (§4) |
-| **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | `INHERITED_UNTESTED` |
+| **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` and structurally identified `.zip` texture archives containing replacement RT64 textures. | `VALIDATED_WINDOWS` (§4) |
+| **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | ZIP enable/disable `VALIDATED_WINDOWS`; reordering `NOT_RUN` |
 | **REQ-MOD-05** | Deprecated Mod Rejection| Rejects incompatible legacy mods (`bk_recomp_mod_fov_slider`). | `IMPLEMENTED` |
 
 ---
@@ -91,9 +91,26 @@ struct ExtensionContext {
   do not match. Hashes come from RT64's texture dump (developer mode → texture replacements → "Start dumping textures";
   dump base names are `<hash>.v5`).
 - **Registration (`src/main/main.cpp`)**:
-  - Registers `rtz` container format with runtime mod manager.
+  - Registers `rtz` and lowercase `zip` container formats with runtime mod manager; both permit only texture content.
   - Registers deprecated mod rejection for `bk_recomp_mod_fov_slider` via `recomp::mods::register_deprecated_mod`.
   - Legacy initialization calls `register_bk_overlays()` and `register_bk_patches()` are retained from the recompiler architecture.
+
+### 3.4 Plain ZIP Texture Packs
+
+- A `.zip` file can be copied intact to the mods directory or installed through the Mods interface. Installation copies
+  the entire archive without extracting, converting, renaming or repacking its contents.
+- The shared `find_zip_content_root` probe searches case-sensitively for `rt64.json`. A marker at the archive root takes
+  precedence; otherwise exactly one internal directory must contain it. Multiple internal roots are rejected with an
+  explicit error. Roots beginning with `/`, containing `:` or containing `.`/`..` path components are rejected.
+- The selected root is stored in `ZipModFileHandle`. Manifest, content-marker and thumbnail reads use that same root;
+  the renderer receives the physical ZIP filename plus the root through RT64's existing `zipBasePath` interface.
+- A ZIP without a marker is ignored by the startup scanner. The installer retains its existing collection-of-mods
+  fallback for such ZIPs. `.rtz`, `.nrm`, loose directories and embedded mods retain their existing root behavior.
+- `mod.json` is optional. Without it, the default id is the ZIP filename stem. A present but invalid manifest reports
+  the existing manifest error. The content whitelist prevents detection of code content inside the texture ZIP.
+- Detection is structural; RT64 validates the texture database when loading it. This does not convert a Rice-only pack
+  or discover mappings for a collection of numbered images. Uppercase `.ZIP` extensions and backslash-separated entry
+  names are outside this format's supported input contract.
 
 ---
 
@@ -106,6 +123,11 @@ While the modding and extension infrastructure compiles cleanly into `TooieRecom
   in the mods folder, the pack was auto-enabled at startup and every captured frame (8/15/25/40 s) showed the
   replacements; without it the same frames are the original art. Runtime toggling from the Mods menu (REQ-MOD-04) and
   Linux were not tested.
+
+- **Plain ZIP `VALIDATED_WINDOWS` (2026-10-30, user validation)**: BT Reloaded 0.1.1 was tested through manual copy into
+  the mods directory, installation through the interface and enable/disable of its texture replacements. The original
+  ZIP remains unchanged. Host test `tooie_texture_zip_mod_test` covers root selection, relative reads, the real mod-folder
+  scanner, the default manifest and texture-only content detection (C1-C13). Linux and reordering remain `NOT_RUN`.
 
 Code mods (`.nrm`) load through the same manager, but Tooie publishes no mod SDK yet (no `RECOMP_EXPORT` patches, no
 headers or mod-tool symbol file), and there is no data-file replacement or external-audio API. In-game text languages

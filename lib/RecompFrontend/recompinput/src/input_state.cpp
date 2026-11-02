@@ -34,7 +34,6 @@ static struct {
 void recompinput::poll_inputs() {
     InputState.keys = SDL_GetKeyboardState(&InputState.numkeys);
     InputState.keymod = SDL_GetModState();
-    static bool first_poll = true;
 
     {
         std::lock_guard lock{ InputState.controllers_mutex };
@@ -159,9 +158,7 @@ bool controller_button_state(int controller_num, int32_t input_id) {
     return false;
 }
 
-static std::atomic_bool right_analog_suppressed = false;
-
-float controller_axis_state(int controller_num, int32_t input_id, bool allow_suppression) {
+float controller_axis_state(int controller_num, int32_t input_id) {
     if (abs(input_id) - 1 < SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_MAX) {
         SDL_GameControllerAxis axis = (SDL_GameControllerAxis)(abs(input_id) - 1);
         bool negative_range = input_id < 0;
@@ -172,12 +169,6 @@ float controller_axis_state(int controller_num, int32_t input_id, bool allow_sup
                 float cur_val = SDL_GameControllerGetAxis(controller, axis) * (1 / 32768.0f);
                 if (negative_range) {
                     cur_val = -cur_val;
-                }
-
-                // Check if this input is a right analog axis and suppress it accordingly.
-                if (allow_suppression && right_analog_suppressed.load() &&
-                    (axis == SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX || axis == SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY)) {
-                    cur_val = 0;
                 }
 
                 return std::clamp(cur_val, 0.0f, 1.0f);
@@ -229,7 +220,7 @@ float recompinput::get_input_analog(int controller_num, const InputField& field)
     case InputType::ControllerDigital:
         return controller_button_state(controller_num, field.input_id) ? 1.0f : 0.0f;
     case InputType::ControllerAnalog:
-        return controller_axis_state(controller_num, field.input_id, true);
+        return controller_axis_state(controller_num, field.input_id);
     case InputType::Mouse:
         // TODO mouse support
         return 0.0f;
@@ -260,7 +251,7 @@ bool recompinput::get_input_digital(int controller_num, const InputField& field)
         return controller_button_state(controller_num, field.input_id);
     case InputType::ControllerAnalog:
         // TODO adjustable threshold
-        return controller_axis_state(controller_num, field.input_id, true) >= recompinput::axis_digital_threshold;
+        return controller_axis_state(controller_num, field.input_id) >= recompinput::axis_digital_threshold;
     case InputType::Mouse:
         // TODO mouse support
         return false;
@@ -351,17 +342,20 @@ void recompinput::apply_joystick_deadzone(float x_in, float y_in, float* x_out, 
 }
 
 void recompinput::get_right_analog(int controller_num, float* x, float* y) {
-    float x_val =
-        controller_axis_state(controller_num, (SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX + 1), false) -
-        controller_axis_state(controller_num, -(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX + 1), false);
-    float y_val =
-        controller_axis_state(controller_num, (SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY + 1), false) -
-        controller_axis_state(controller_num, -(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY + 1), false);
-    apply_joystick_deadzone(x_val, y_val, x, y);
+    float raw_x, raw_y;
+    get_right_analog_raw(controller_num, &raw_x, &raw_y);
+    apply_joystick_deadzone(raw_x, raw_y, x, y);
 }
 
-void recompinput::set_right_analog_suppressed(bool suppressed) {
-    right_analog_suppressed.store(suppressed);
+void recompinput::get_right_analog_raw(int controller_num, float* x, float* y) {
+    float x_val =
+        controller_axis_state(controller_num, (SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX + 1)) -
+        controller_axis_state(controller_num, -(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX + 1));
+    float y_val =
+        controller_axis_state(controller_num, (SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY + 1)) -
+        controller_axis_state(controller_num, -(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY + 1));
+    *x = x_val;
+    *y = y_val;
 }
 
 // Disable input if any menu that blocks input is open.

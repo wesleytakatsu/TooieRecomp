@@ -1,91 +1,11 @@
 #include <cstdint>
 #include <cstring>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
 #include "recomp.h"
 #include "funcs.h"
 #include "tintro_projection_policy.h"
-#include "tooie_diag_path.h"
 
-// Saved pointers for func_800E4640 reload
-static uint32_t s_saved_P_mtx = 0;
-static uint32_t s_saved_V_mtx = 0;
-
-static bool tooie_pv_scale_diag_on() {
-    static const bool enabled = []() {
-        const char *env = std::getenv("TOOIE_DIAG_FEATHER_TEMPORAL_COHERENCY");
-        if ((env == nullptr) || (env[0] == '\0') || (env[0] == '0')) {
-            env = std::getenv("TOOIE_DIAG_PV_SCALE");
-        }
-        return (env != nullptr) && (env[0] != '\0') && (env[0] != '0');
-    }();
-    return enabled;
-}
-
-static void tooie_pv_scale_note(int overflow, float scale, float inv_scale,
-    const float proj[4][4], const float v_view[4][4]) {
-    if (!tooie_pv_scale_diag_on()) {
-        return;
-    }
-    static uint64_t seq = 0;
-    static uint64_t scale_change = 0;
-    static uint64_t overflow_change = 0;
-    static int last_overflow = -1;
-    static float last_scale = 0.0f;
-    static bool have_last = false;
-    ++seq;
-    if (have_last) {
-        if (std::fabs(scale - last_scale) > (1.0e-6f * std::max(1.0f, std::fabs(last_scale)))) {
-            ++scale_change;
-        }
-        if (overflow != last_overflow) {
-            ++overflow_change;
-        }
-    }
-    last_overflow = overflow;
-    last_scale = scale;
-    have_last = true;
-    FILE *f = std::fopen(tooie_diag_path("tooie-pv-scale-status.txt").c_str(), "w");
-    if (f == nullptr) {
-        return;
-    }
-    std::fprintf(f,
-        "SCHEMA=P09_TOOIE_PV_SCALE_WITNESS\n"
-        "VERSION=1\n"
-        "GPU_READBACK_USED=NO\n"
-        "CALLS=%llu\n"
-        "LAST_OVERFLOW=%d\n"
-        "LAST_SCALE=%.9g\n"
-        "LAST_INV_SCALE=%.9g\n"
-        "LAST_P00=%.9g\n"
-        "LAST_P23=%.9g\n"
-        "LAST_P33=%.9g\n"
-        "LAST_V00=%.9g\n"
-        "LAST_VTX=%.9g\n"
-        "LAST_VTY=%.9g\n"
-        "LAST_VTZ=%.9g\n"
-        "SCALE_CHANGE_ADJACENT_COUNT=%llu\n"
-        "OVERFLOW_CHANGE_ADJACENT_COUNT=%llu\n"
-        "TOOIE_SCALE_CHANGES_BETWEEN_CALLS=%s\n"
-        "TOOIE_OVERFLOW_BRANCH_DIFFERS_BETWEEN_CALLS=%s\n",
-        static_cast<unsigned long long>(seq),
-        overflow,
-        static_cast<double>(scale),
-        static_cast<double>(inv_scale),
-        static_cast<double>(proj[0][0]),
-        static_cast<double>(proj[2][3]),
-        static_cast<double>(proj[3][3]),
-        static_cast<double>(v_view[0][0]),
-        static_cast<double>(v_view[3][0]),
-        static_cast<double>(v_view[3][1]),
-        static_cast<double>(v_view[3][2]),
-        static_cast<unsigned long long>(scale_change),
-        static_cast<unsigned long long>(overflow_change),
-        (scale_change > 0) ? "YES" : "NO",
-        (overflow_change > 0) ? "YES" : "NO");
-    std::fclose(f);
-}
+// One-command reload preserves native callers' fixed-size display-list banks.
+static uint32_t s_saved_projection_dl = 0;
 
 static inline int32_t& GUEST_W(uint8_t* rdram, uint32_t vram) {
     return *reinterpret_cast<int32_t*>(rdram + (vram & 0x1FFFFFFFu));
@@ -205,9 +125,7 @@ extern "C" void func_800E44FC(uint8_t* rdram, recomp_context* ctx) {
 
     // Check fixed-point overflow
     LOOKUP_FUNC(0x80018BC4)(rdram, ctx);
-    int overflow = 0;
     if (ctx->r2 != 0) {
-        overflow = 1;
         scale = 2.0f * scale;
         ctx->r4 = (int64_t)(int32_t)temp_proj_addr;
         ctx->r5 = (int64_t)(int32_t)temp_trans_addr;
@@ -237,7 +155,6 @@ extern "C" void func_800E44FC(uint8_t* rdram, recomp_context* ctx) {
 
     float v_view[4][4];
     mtxf_mul(v_view, t_s, v_rot);
-    tooie_pv_scale_note(overflow, scale, inv_scale, proj, v_view);
 
     tooie_tintro_projection_policy::apply(rdram, proj);
 
@@ -249,7 +166,10 @@ extern "C" void func_800E44FC(uint8_t* rdram, recomp_context* ctx) {
     const uint32_t mtx_v = cur_mtx + 0x40;
     const uint32_t mtx_combined = cur_mtx + 0x80;
     const uint32_t mtx_ident = cur_mtx + 0xC0;
-    GUEST_W(rdram, gfx_ctx + 0x04) = static_cast<int32_t>(cur_mtx + 0x100);
+    // Allocate one aligned matrix-sized block for P LOAD / V MUL / ENDDL.
+    // It shares the matrices' frame lifetime and is never executed inline.
+    const uint32_t projection_dl = cur_mtx + 0x100;
+    GUEST_W(rdram, gfx_ctx + 0x04) = static_cast<int32_t>(cur_mtx + 0x140);
 
     // Write fixed-point matrices
     mtxf_to_mtx(rdram, mtx_p, proj);
@@ -265,8 +185,13 @@ extern "C" void func_800E44FC(uint8_t* rdram, recomp_context* ctx) {
 
     // 7. Update guest-visible D_8012D558 and cache pointers
     GUEST_W(rdram, 0x8012D558u) = static_cast<int32_t>(mtx_combined);
-    s_saved_P_mtx = mtx_p;
-    s_saved_V_mtx = mtx_v;
+    GUEST_W(rdram, projection_dl) = static_cast<int32_t>(0xDA380007u);
+    GUEST_W(rdram, projection_dl + 0x04) = static_cast<int32_t>(mtx_p & 0x1FFFFFFFu);
+    GUEST_W(rdram, projection_dl + 0x08) = static_cast<int32_t>(0xDA380005u);
+    GUEST_W(rdram, projection_dl + 0x0C) = static_cast<int32_t>(mtx_v & 0x1FFFFFFFu);
+    GUEST_W(rdram, projection_dl + 0x10) = static_cast<int32_t>(0xDF000000u);
+    GUEST_W(rdram, projection_dl + 0x14) = 0;
+    s_saved_projection_dl = projection_dl;
 
     // 8. Emit display list commands
     // 8.1 gSPPerspNormalize(persp_norm)
@@ -323,14 +248,11 @@ extern "C" void func_800E4640(uint8_t* rdram, recomp_context* ctx) {
         GUEST_W(rdram, cur_gfx + 0x04) = static_cast<int32_t>(0x08000000u);
         cur_gfx += 8;
     } else {
-        if (s_saved_P_mtx != 0 && s_saved_V_mtx != 0) {
-            // Re-emit pure P LOAD then V MUL
-            GUEST_W(rdram, cur_gfx + 0x00) = static_cast<int32_t>(0xDA380007u);
-            GUEST_W(rdram, cur_gfx + 0x04) = static_cast<int32_t>(s_saved_P_mtx & 0x1FFFFFFFu);
-            cur_gfx += 8;
-
-            GUEST_W(rdram, cur_gfx + 0x00) = static_cast<int32_t>(0xDA380005u);
-            GUEST_W(rdram, cur_gfx + 0x04) = static_cast<int32_t>(s_saved_V_mtx & 0x1FFFFFFFu);
+        if (s_saved_projection_dl != 0) {
+            // Native func_800BC948 reserves only 0x30 bytes for TWO reload lists.
+            // Two inline matrix commands per reload overflow that bank (56 bytes).
+            GUEST_W(rdram, cur_gfx + 0x00) = static_cast<int32_t>(0xDE000000u);
+            GUEST_W(rdram, cur_gfx + 0x04) = static_cast<int32_t>(s_saved_projection_dl & 0x1FFFFFFFu);
             cur_gfx += 8;
         } else {
             const uint32_t d558 = static_cast<uint32_t>(GUEST_W(rdram, 0x8012D558u));
@@ -349,6 +271,5 @@ extern "C" void func_800E4640(uint8_t* rdram, recomp_context* ctx) {
 extern "C" void func_800E4628(uint8_t* rdram, recomp_context* ctx) {
     GUEST_W(rdram, 0x8012D554u) = 0;
     GUEST_W(rdram, 0x8012D558u) = 0;
-    s_saved_P_mtx = 0;
-    s_saved_V_mtx = 0;
+    s_saved_projection_dl = 0;
 }

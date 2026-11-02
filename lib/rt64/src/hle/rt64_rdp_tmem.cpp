@@ -51,7 +51,48 @@ namespace RT64 {
 
     uint64_t TextureManager::uploadTexture(State *state, const LoadTile &loadTile, TextureCache *textureCache, uint64_t creationFrame, uint16_t width, uint16_t height, uint32_t tlut) {
         const uint8_t *TMEM = reinterpret_cast<const uint8_t *>(state->rdp->TMEM);
-        uint64_t hash = TMEMHasher::hash(TMEM, loadTile, width, height, tlut, TMEMHasher::CurrentHashVersion);
+        XXH3_state_t cacheState;
+        XXH3_128bits_reset(&cacheState);
+        XXH3_128bits_update(&cacheState, TMEM, RDP_TMEM_BYTES);
+        auto hashField = [&](const auto &field) {
+            XXH3_128bits_update(&cacheState, &field, sizeof(field));
+        };
+        hashField(loadTile.fmt);
+        hashField(loadTile.siz);
+        hashField(loadTile.line);
+        hashField(loadTile.tmem);
+        hashField(loadTile.palette);
+        hashField(loadTile.cms);
+        hashField(loadTile.cmt);
+        hashField(loadTile.masks);
+        hashField(loadTile.maskt);
+        hashField(loadTile.shifts);
+        hashField(loadTile.shiftt);
+        hashField(loadTile.uls);
+        hashField(loadTile.ult);
+        hashField(loadTile.lrs);
+        hashField(loadTile.lrt);
+        hashField(width);
+        hashField(height);
+        hashField(tlut);
+        const uint32_t hashVersion = TMEMHasher::CurrentHashVersion;
+        hashField(hashVersion);
+        const XXH128_hash_t digest = XXH3_128bits_digest(&cacheState);
+        const TextureHashKey key = { digest.low64, digest.high64 };
+        const auto cacheIt = textureHashCache.find(key);
+        const bool cacheHit = cacheIt != textureHashCache.end();
+        uint64_t hash;
+        if (cacheHit) {
+            hash = cacheIt->second;
+        }
+        else {
+            hash = TMEMHasher::hash(TMEM, loadTile, width, height, tlut, TMEMHasher::CurrentHashVersion);
+            if (textureHashCache.size() >= 65536) {
+                textureHashCache.clear();
+            }
+
+            textureHashCache.emplace(key, hash);
+        }
         if (hashSet.find(hash) == hashSet.end()) {
             hashSet.insert(hash);
             textureCache->queueGPUUploadTMEM(hash, creationFrame, TMEM, RDP_TMEM_BYTES, width, height, tlut, loadTile, true);

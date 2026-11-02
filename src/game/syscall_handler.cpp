@@ -15,13 +15,13 @@
 
 #include "generated/overlay_dispatch.inc.h"
 #include "tooie_diag.h"
+#include "tooie_dev_enemy_ai.h"
 
 // Core2 hosts the overlay_syscalls trampoline table.
 // VRAM/ROM bases match section_16_core2 in recomp_overlays.inl.
 static constexpr uint32_t kCore2Ram = 0x800815C0u;
 static constexpr uint32_t kCore2Rom = 0x01E5AEB0u;
 static constexpr int32_t kOverlayVram = static_cast<int32_t>(0x80800000u);
-static constexpr uint32_t kOverlayWindowSize = 0x00200000u;
 
 extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx);
 extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx);
@@ -84,10 +84,12 @@ static void park_canonical_mapping() {
 static void activate_canonical_mapping(const ActiveOverlayMapping& mapping,
                                        bool restore_dynamic) {
     load_overlays(mapping.rom_addr, kOverlayVram, mapping.code_size);
+    tooie_dev_enemy_ai::loaded_overlay(mapping.rom_addr, kOverlayVram, mapping.code_size);
 
     if (restore_dynamic && mapping.dynamic_alive && mapping.text_start != 0 &&
         mapping.text_size != 0) {
         load_overlays(mapping.rom_addr, mapping.text_start, mapping.code_size);
+        tooie_dev_enemy_ai::loaded_overlay(mapping.rom_addr, mapping.text_start, mapping.code_size);
     }
 
     s_canonical_mapping = mapping;
@@ -916,7 +918,7 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         tooie_shot_note_overlay(rdram, ctx, overlay_index, entry_index, 0);
     }
 
-    func(rdram, ctx);
+    tooie_dev_enemy_ai::dispatch(rdram, ctx, func);
 
     if (tooie_diag::attract_enabled() && overlay_index == 781u && entry_index == 3u) {
         tooie_ud4_ncbapivot_ep3_leave(rdram, ctx);

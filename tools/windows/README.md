@@ -116,6 +116,26 @@ You can execute any individual stage:
 .\tools\windows\Build-Tooie.ps1 -Stage Package [-ReleaseVersion <ver>]
 ```
 
+### Manual split-screen lighting capture
+
+For manual story split-screen lighting tests, run the existing build with lightweight logs and a save/config backup:
+
+```powershell
+pwsh -NoProfile -File .\tools\windows\Test-SplitScreenLighting.ps1
+```
+
+The script prints a new capture directory under `%TEMP%` containing `lighting.log`, `stdout.log`, `stderr.log`, build
+identity in `run.json`, and `backup/`. Accept the Dev Mode warning and enable the experimental two-player option in
+the game before loading a story map. Capture video separately; close the game window to finish without using
+"Save and Quit". `-DisablePrivateVertices` runs the same capture with the lighting fix disabled for an optional A/B.
+`-LogDir <new-directory>` selects another output directory without overwriting earlier captures. The wrapper restores
+its process environment after the game exits. It does not restore or overwrite the player's saves/configs.
+
+The diagnostic is default OFF outside this wrapper (`TOOIE_DIAG_2P_LIGHTING_LOG=<file>`). It records map and model
+allocation events, including requested/actual private-buffer counts and output pointers; it does not install per-frame
+draw probes or compute RGB hashes. These logs identify allocation/LOD paths and possible aliasing, not a measured RGB
+overwrite or visual result. See [player lighting](../../docs/reverse-engineering/systems/player-lighting.md).
+
 ### 4.3 Pipeline Parameters
 
 - `-Stage <name>`: `Check | Extract | Recomp | Verify | Configure | Build | Test | Package | All | ImportGenerated` (default: `Check`).

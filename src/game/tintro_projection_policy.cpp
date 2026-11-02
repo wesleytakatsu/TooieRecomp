@@ -11,7 +11,7 @@ namespace {
 
 constexpr uint32_t kModeAddr = 0x80127632u;
 constexpr uint32_t kMapAddr = 0x80127640u;
-constexpr int kIntroMode = 3;
+constexpr int kStoryMode = 3;
 constexpr int kIntroMap = 395;
 constexpr float kViAspect = 4.0f / 3.0f;
 
@@ -32,7 +32,9 @@ static int16_t read_s16(const uint8_t* rdram, uint32_t address) {
 }
 
 static bool intro_context(const uint8_t* rdram) {
-    return read_s16(rdram, kModeAddr) == kIntroMode ||
+    // Mode 3 also covers normal gameplay and in-map cinematics (e.g. Jamjars).
+    // Only T_INTRO needs this exception to the ordinary RT64 aspect policy.
+    return read_s16(rdram, kModeAddr) == kStoryMode &&
            read_s16(rdram, kMapAddr) == kIntroMap;
 }
 

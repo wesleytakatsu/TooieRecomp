@@ -20,6 +20,9 @@ using namespace recompui;
 static RT64::UserConfiguration::Antialiasing device_max_msaa = RT64::UserConfiguration::Antialiasing::None;
 static bool sample_positions_supported = false;
 static bool high_precision_fb_enabled = false;
+static std::string backend_name, device_name;
+std::string renderer::get_graphics_backend_name() { return backend_name; }
+std::string renderer::get_graphics_device_name() { return device_name; }
 
 static uint8_t DMEM[0x1000];
 static uint8_t IMEM[0x1000];
@@ -302,6 +305,13 @@ renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::renderer::Window
             break;
     }
 
+    // An isolated host worker owns fallback; RT64's public enum remains unchanged.
+    const char* forced = std::getenv("TK64_GRAPHICS_API");
+    if (forced != nullptr && std::getenv("TOOIE_GRAPHICS_STRICT") != nullptr) {
+        app->userConfig.graphicsAPI = std::strcmp(forced,"d3d12")==0 ? RT64::UserConfiguration::GraphicsAPI::D3D12 :
+            std::strcmp(forced,"vulkan")==0 ? RT64::UserConfiguration::GraphicsAPI::Vulkan : RT64::UserConfiguration::GraphicsAPI::Automatic;
+        if (std::getenv("TOOIE_GRAPHICS_AUTOMATIC") != nullptr) app->userConfig.graphicsAPI = RT64::UserConfiguration::GraphicsAPI::Automatic;
+    }
     // Set up the RT64 application.
     uint32_t thread_id = 0;
 #ifdef _WIN32
@@ -314,6 +324,9 @@ renderer::RT64Context::RT64Context(uint8_t* rdram, ultramodern::renderer::Window
         app = nullptr;
         return;
     }
+
+    backend_name = app->effectiveGraphicsBackend;
+    device_name = app->device->getDescription().name;
 
     // Set the application's fullscreen state.
     app->setFullScreen(cur_config.wm_option == ultramodern::renderer::WindowMode::Fullscreen);
@@ -469,7 +482,7 @@ void renderer::RT64Context::check_texture_pack_actions() {
         std::vector<RT64::ReplacementDirectory> replacement_directories;
         replacement_directories.reserve(enabled_texture_packs.size());
         for (const std::string &mod_id : sorted_texture_packs) {
-            replacement_directories.emplace_back(RT64::ReplacementDirectory(recomp::mods::get_mod_filename(mod_id)));
+            replacement_directories.emplace_back(RT64::ReplacementDirectory(recomp::mods::get_mod_filename(mod_id), recomp::mods::get_mod_content_root(mod_id)));
         }
 
         if (!replacement_directories.empty()) {

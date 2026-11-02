@@ -4,6 +4,10 @@
 # Preserve upstream whitespace in patch context; validate applied source on replay.
 /vendor/patches-*/**/*.patch whitespace=-blank-at-eol,-blank-at-eof
 
+# Imported upstream sources retain byte-exact formatting; project-authored code keeps normal whitespace checks.
+/lib/dr_libs/dr_mp3.h whitespace=-blank-at-eol
+/lib/rt64/src/contrib/spirv-cross/** whitespace=-blank-at-eol,-blank-at-eof
+
 # Windows clones (core.autocrlf=true): shell scripts and the sourced lock file must stay LF; vendored trees and patches are
 # hashed byte-exact (vendor/MANIFEST.sha256), so no EOL conversion may touch them. Nested upstream .gitattributes were not imported.
 *.sh text eol=lf
