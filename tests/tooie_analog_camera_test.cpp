@@ -125,6 +125,7 @@ static void prepare(uint8_t* rdram,int n) {
     MEM_W(0xF0,guest(player(n)))=player(n)+0x500;
     MEM_W(0xA0,guest(player(n)))=player(n)+0x600;
     MEM_B(0x29,guest(player(n)+0x600))=1;
+    MEM_W(0x80,guest(player(n)))=player(n)+0x700;
     MEM_W(0x184,guest(player(n)))=n;
     MEM_W(n*4,guest(0x80127728))=top(n);
     MEM_W(4,guest(top(n)))=node(n);
@@ -211,6 +212,56 @@ static void native_tests() {
     reset_motion(); CHECK(!reserve(0) && !reserve(1)); CHECK(!sample(0).reserved);
 }
 
+static void first_person_tests() {
+    reset_motion(); set_enabled(true); set_invert(0); set_sensitivity(3);
+    std::vector<uint8_t> memory(8*1024*1024); auto* rdram=memory.data();
+    prepare(rdram,0); prepare(rdram,1); commit_fixture_story_pair(rdram);
+    // J2's port and camera index need not equal the player slot.
+    MEM_B(6,guest(buffer(1)))=2;
+    MEM_W(0x184,guest(player(1)))=5;
+    MEM_W(5*4,guest(0x80127728))=top(1);
+    MEM_W(1*4,guest(0x80127728))=0;
+    for(int n=0;n<2;++n) { auto c=context(player(n)); refresh_player(rdram,&c,player(n)); }
+    for(int n=0;n<2;++n) {
+        const int port=MEM_BU(6,guest(buffer(n)));
+        const int other_port=MEM_BU(6,guest(buffer(1-n)));
+        auto c=context(player(n));
+        tick(rdram,n,{1,1}); // establish smoothing and a reserved sample before entering aim
+        MEM_B(0x17,guest(player(n)+0x700))=1; // BA_FLAG_17_FIRST_PERSON_VIEW
+        // Keep the same otherwise eligible orbit controller: the player state must win.
+        refresh_player(rdram,&c,player(n));
+        CHECK(!reserve(port)); CHECK(reserve(other_port)); CHECK(!sample(port).reserved);
+        on_input(port,{1,1},0,0,false,true); CHECK(!sample(port).reserved);
+        const auto other_before=value(rdram,node(1-n)+0x74);
+        tick(rdram,1-n,{1,0}); CHECK(value(rdram,node(1-n)+0x74)>other_before);
+        // No camera update during aim: player publication must clear accumulated motion itself.
+        MEM_B(0x17,guest(player(n)+0x700))=0;
+        refresh_player(rdram,&c,player(n)); CHECK(reserve(port));
+        auto camera=context(node(n));
+        { UpdateScope scope(rdram,&camera);
+          camera.r5=guest(bits(12)); tooie_camera_filter_yaw(rdram,&camera);
+          CHECK(approximately(camera.f0.fl,12)); } // pre-aim sample cannot rotate on exit
+        on_input(port,{1,0},0,0,false,true);
+        camera=context(node(n));
+        { UpdateScope scope(rdram,&camera);
+          camera.r5=guest(bits(12)); tooie_camera_filter_yaw(rdram,&camera);
+          Motion fresh; const auto delta=fresh.step({1,0},1.0f/30,settings());
+          CHECK(approximately(camera.f0.fl,12+delta.x)); }
+        // Camera-time recheck also rejects an input sampled just before aim began.
+        MEM_B(0x17,guest(player(n)+0x700))=1;
+        camera=context(node(n));
+        { UpdateScope scope(rdram,&camera);
+          camera.r5=guest(bits(12)); tooie_camera_filter_yaw(rdram,&camera);
+          CHECK(approximately(camera.f0.fl,12));
+          camera.r5=guest(bits(8)); tooie_camera_filter_pitch(rdram,&camera);
+          CHECK(approximately(camera.f0.fl,8)); }
+        CHECK(!reserve(port)); CHECK(reserve(other_port));
+        MEM_B(0x17,guest(player(n)+0x700))=0;
+        refresh_player(rdram,&c,player(n));
+    }
+    reset_motion();
+}
+
 static void policy_tests() {
     const auto a=radial_deadzone({0.3f,0.6f},0.15f); CHECK(approximately(a.y,2*a.x));
     CHECK(radial_deadzone({0.05f,0},0.15f).x==0);
@@ -254,6 +305,6 @@ static void config_tests() {
     std::filesystem::remove(config_dir/"general.json"); std::filesystem::remove(config_dir);
 }
 int main() {
-    policy_tests(); native_tests(); config_tests();
+    policy_tests(); native_tests(); first_person_tests(); config_tests();
     std::printf("tooie_analog_camera_test PASS (%d checks)\n",checks);
 }

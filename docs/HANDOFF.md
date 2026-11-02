@@ -66,12 +66,16 @@ dividida estão em `docs/future/`. Contratos estáveis:
   movimento por jogador; resolve separadamente jogador, câmera nativa (oito slots) e controle. Não muda foco global.
   Integração nos filtros yaw/pitch dos controladores string/pan/pivot, antes da colisão nativa. Modos especiais,
   minigames em salas dedicadas, Blaster, primeira pessoa, câmeras bloqueadas/não suportadas e attract seguem nativos.
+  Mira/zoom: guarda explícita `BA_FLAG_17_FIRST_PERSON_VIEW` libera os C do analógico por jogador.
+  Revogação descarta amostra e suavização, inclusive sem update orbital durante a mira; reentrada usa amostra nova.
+  Regressão falhou antes e passou depois: 107 verificações de câmera, incluindo J1/J2 com porta/câmera distintas;
+  suíte Windows 30/30 e build passaram. Usuário confirmou o funcionamento do ajuste de mira/zoom no Windows
+  (2026-11-02); aceite restrito aos casos testados, sem matriz exaustiva por jogador/mapa. Linux: `NOT_RUN`.
   Guarda atual do guest é refeita antes de mover; entrada host usa a última elegibilidade publicada por jogador.
   Sem novos logs/contadores no jogo. Regressões permanentes fora do executável; cobertura sintética não comprova
   sensação visual, colisão real ou todos os desafios/transformações. Usuário confirmou o funcionamento no Windows
   (2026-11-01); aceite limitado aos casos testados. Linux: `NOT_RUN`.
   Patch `recompfrontend-per-player-camera-input.patch`; verificação vendor: 8335 arquivos, 48 patches.
-  Windows: suíte 29/29, regressão de câmera 77 verificações, três helpers de integração e build passaram.
   Executável atualizado em `build-win/TooieRecompiled.exe`; agente não iniciou/controlou o jogo.
   Revisão final sem instrumentação temporária no caminho da câmera; removidos scripts locais de inspeção da ROM/
   código gerado e de preparação do patch/relatório. Regressões permanentes continuam fora do executável do jogo.

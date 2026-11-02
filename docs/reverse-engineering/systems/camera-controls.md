@@ -4,7 +4,7 @@ description: "Native digital camera requests, player ownership, orbit filters an
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-11-01
+updated: 2026-11-02
 tags: [reverse-engineering, camera, input, multiplayer]
 ---
 
@@ -46,6 +46,27 @@ port must not be assumed interchangeable.
 Native room identities come from `decomp/include/maps.h`. Some minigames share larger story maps, so a room
 list alone is not a universal active-minigame detector. Camera-controller/ownership/input guards are independent
 checks. Exhaustive coverage of all timed challenges remains `UNKNOWN`.
+
+## First-person zoom and input reservation (`PROVEN`, static MIPS)
+
+`PlayerState + 0x80` points to the native flag bytes. Flag `0x17` is named
+`BA_FLAG_17_FIRST_PERSON_VIEW` in `decomp/src/overlays/ba/flag.h`. First-person setup
+`func_80800704_bafpctrl` sets it through `baflag_set` (`0x80095760`); cleanup
+`func_8080064C_bafpctrl` clears it through `baflag_clear` (`0x80095774`). The flag belongs to the
+individual player, not global focus or controller port. `bafpctrl`'s main active update calls
+`func_80800114_bafpctrl`, which reads `bakey_held` (`0x800919F4`) with button IDs `0xA`/`0xD`
+(C-Left/C-Right) and updates the zoom value at `*(PlayerState + 0x90) + 0x18`. Its native ability/state
+gates and camera/FOV setter remain authoritative; enabling analog orbit must not emulate zoom separately.
+
+The integration rejects analog reservation while this flag is set, even if the current camera table entry
+still passes the supported orbit-controller guards. Revocation discards the controller sample; the player
+publication clears that owner's smoothing independently of whether an orbit callback runs during aim.
+The camera scope rechecks the flag to reject input sampled before entry. The synthetic regression covers
+both owners, a nonmatching J2 camera/port, independent J1/J2 reservation, stale-sample rejection, and fresh
+smoothing on exit without an intervening orbit update. It does not execute the native first-person zoom
+controller or prove the reported session's exact camera state. The user confirmed the fix working on Windows
+(2026-11-02, `USER_OBSERVED`), limited to the tested cases; exhaustive per-player/map coverage remains `UNKNOWN`
+and Linux remains `NOT_RUN`.
 
 ## Orbit processing (`PROVEN`, static MIPS; synthetic native-controller regression)
 

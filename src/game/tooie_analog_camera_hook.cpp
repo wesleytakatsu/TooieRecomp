@@ -49,6 +49,9 @@ bool eligible(uint8_t* rdram, const recomp_context* ctx, uint32_t self, uint32_t
     if (!settings().enabled || !pointer(self) || !pointer(node) ||
         MEM_H(0, guest(0x80127632)) != 3 || MEM_BU(0, guest(0x8012762C)) == 0x1B ||
         MEM_BU(0, guest(0x80127642)) || special_map(MEM_HU(0, guest(0x80132DC2)))) return false;
+    const uint32_t flags = MEM_W(0x80, guest(self));
+    // First-person zoom reads native C-Left/C-Right even if an orbit controller is still installed.
+    if (!pointer(flags) || MEM_BU(0x17, guest(flags))) return false; // BA_FLAG_17_FIRST_PERSON_VIEW
     const uint32_t form = MEM_W(0xA0, guest(self));
     if (!pointer(form) || MEM_BU(0x29, guest(form)) == 9) return false; // Breegull Blaster
     if (player_node(rdram, self) != node || !MEM_BU(0x70, guest(node)) || MEM_BU(0x72, guest(node))) return false;
@@ -77,7 +80,14 @@ namespace tooie_analog_camera {
 void refresh_player(uint8_t* rdram, const recomp_context* ctx, uint32_t self) {
     if (!settings().enabled) return;
     const int controller = controller_index(rdram, ctx, self);
-    if (controller >= 0) publish(controller, eligible(rdram, ctx, self, player_node(rdram, self)));
+    if (controller < 0) return;
+    const bool active = eligible(rdram, ctx, self, player_node(rdram, self));
+    publish(controller, active);
+    // Aiming can skip orbit updates entirely; discard smoothing at the player update boundary too.
+    if (!active) {
+        for (unsigned owner = 0; owner < motions.size(); ++owner)
+            if (uint32_t(MEM_W(owner * 4, guest(0x80135490))) == self) motions[owner] = {};
+    }
 }
 
 UpdateScope::UpdateScope(uint8_t* rdram, const recomp_context* ctx)

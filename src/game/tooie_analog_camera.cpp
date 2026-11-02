@@ -70,14 +70,21 @@ bool special_map(unsigned map) {
     }
 }
 
-void publish(int controller, bool value) { if (valid(controller)) eligible[controller].store(value); }
+void publish(int controller, bool value) {
+    if (!valid(controller)) return;
+    const bool previous = eligible[controller].exchange(value);
+    if (previous && !value) {
+        std::lock_guard lock(input_mutex);
+        inputs[controller] = {}; // a sample from before aim must not rotate the camera after aim
+    }
+}
 bool reserve(int controller) { return valid(controller) && settings().enabled && eligible[controller].load(); }
 void on_input(int controller, Axes raw, float deadzone, uint16_t buttons, bool blocked, bool reserved) {
     if (!valid(controller)) return;
+    std::lock_guard lock(input_mutex);
     Sample next;
     next.reserved = reserved && reserve(controller) && !blocked && !(buttons & 0x2000);
     if (next.reserved) next.axes = radial_deadzone(raw, deadzone);
-    std::lock_guard lock(input_mutex);
     inputs[controller] = next;
 }
 Sample sample(int controller) {

@@ -91,6 +91,11 @@ The ordinary General tab retains its existing immediate-save behavior.
 - Neutral axes stop manual rotation immediately. R retains native recenter priority.
 - Logical N64 **Z**, including remapped gamepad or keyboard bindings, restores the original right-stick C bindings
   at controller read time. No hardcoded LT check is used. Native Z is checked again before moving the camera.
+- First-person aiming releases the right stick's original C bindings for that player, including C-Left/C-Right
+  zoom. The native `BA_FLAG_17_FIRST_PERSON_VIEW` is checked independently of the camera controller. Leaving aim
+  resumes analog orbit only from a fresh reserved sample; revoked eligibility clears the previous sample and
+  that player's smoothing, even when aiming does not execute an orbit update. Zoom retains native bindings and
+  behavior rather than analog-orbit sensitivity or inversion. The other split-screen player remains independent.
 - Reservation filters only right-axis bindings belonging to C-Up/Down/Left/Right. Physical C buttons, keyboard C
   bindings, other actions, the left stick, and user mapping profiles remain unchanged.
 - Story mode, live owner, native player input availability, ba-camera class and supported manual-camera callbacks
@@ -112,7 +117,8 @@ Implementation: `tooie_analog_camera*.cpp`, the scoped filters in `boot_hw_stubs
 Permanent host regressions cover the policy/config, native string controller and native orbit filters with synthetic
 memory/math/collision services, plus actual SDL virtual controllers and mapping profiles. This does not establish
 exhaustive map/transformation/minigame coverage. The user confirmed the feature working on Windows (2026-11-01),
-limited to the cases tested. Linux: `NOT_RUN`.
+limited to the cases tested; the first-person zoom adjustment was also confirmed on Windows (2026-11-02).
+Linux: `NOT_RUN`.
 Native contracts: [camera controls](../../reverse-engineering/systems/camera-controls.md).
 
 ### 3.4 Local Multiplayer
