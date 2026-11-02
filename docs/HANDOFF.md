@@ -248,4 +248,12 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-`NEXT_SINGLE_ACTION`: se o usuário solicitar retomar a pendência, identificar o controlador e as fronteiras de início/fim da corrida de trenzinho com o pássaro; comportamento atual mantido por decisão do usuário.
+## Próxima release após o merge
+
+O usuário pediu a abertura da PR `codex/tk64-launcher` para `main` e fará o merge. O changelog aprovado, a separação
+do mod de músicas ainda em outra branch e os cuidados para o novo build estão em
+[RELEASE-NOTES-PENDENTES.md](../RELEASE-NOTES-PENDENTES.md), na raiz. O comparativo é contra `main`; antes das notas
+públicas, distinguir o que já foi publicado em `v0.1.3`. Build/publicação ocorrerão na etapa posterior ao merge.
+A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
+
+`NEXT_SINGLE_ACTION`: confirmar o merge da PR pelo usuário antes de preparar o novo build de release da `main`.
