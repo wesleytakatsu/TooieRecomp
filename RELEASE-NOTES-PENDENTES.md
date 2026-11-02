@@ -1,7 +1,7 @@
 ---
 title: "Changelog consolidado e continuidade da próxima release"
 description: "Rascunho aprovado na conversa, escopo da comparação com main e instruções para preparar a release após o merge."
-status: draft
+status: archived
 type: release-notes
 project: TooieRecomp
 updated: 2026-11-02
@@ -9,6 +9,16 @@ tags: [release, changelog, handoff]
 ---
 
 # Changelog consolidado e continuidade da próxima release
+
+## Retomada em 2026-11-02
+
+A PR [#1](https://github.com/wesleytakatsu/TooieRecomp/pull/1) foi mesclada em `171fef0`. O usuário autorizou o novo
+build e a publicação. Este rascunho foi consolidado nas [notas bilíngues da v0.1.4](docs/releases/v0.1.4.md), com
+inglês antes de português brasileiro e novidades separadas dos recursos das releases anteriores. A suíte local
+Windows passou em 30/30, incluindo o teste de snapshot que falhou no CI da PR; os 420 arquivos gerados e a
+integridade vendorizada foram conferidos. O estado da publicação fica no [handoff](docs/HANDOFF.md).
+
+O restante desta nota é o registro histórico do pedido inicial e não substitui as notas finais ou o handoff.
 
 ## Finalidade e ponto de retomada
 

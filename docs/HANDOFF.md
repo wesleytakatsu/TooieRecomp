@@ -34,9 +34,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
-- Versão fonte `0.1.3`; pré-release `v0.1.3` para Windows x64 com o cheat Breegull Blaster do Dev Mode, a partir da
-  branch `feat/dev-mode`. `v0.1.2` (Debug Button e cheat Fly) e `v0.1.1` (Dev Mode/Warp, otimizações RT64 e ZIPs de
-  texturas) continuam publicadas. O pacote de texturas do usuário não integra a distribuição.
+- Versão fonte `0.1.4`, em preparação para pré-release Windows x64 após o merge da PR #1 em `171fef0`.
+  Notas em inglês e português brasileiro: [[releases/v0.1.4]]. Suíte local Windows 30/30; verificação dos 420 arquivos
+  gerados e integridade vendorizada aprovadas. Build final, auditoria do pacote e publicação são as próximas etapas.
+  `v0.1.3`, `v0.1.2` e `v0.1.1` continuam publicadas. Músicas/texturas privadas não integram a distribuição.
 - `v0.1.0-p08` permanece como release anterior, sem substituição dos seus arquivos. As notas publicadas dessa release
   registram pacotes Windows e Linux com idiomas; validação completa de gameplay no Linux continua pendente.
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
@@ -248,12 +249,13 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Texto pt-BR que não cabe no layout USA: corrigir em `PTBR_TEXT_FIXES` (`tools/build_language_packs.py`), regenerar o
   bundle e atualizar a linha dele em `vendor/MANIFEST.sha256`.
 
-## Próxima release após o merge
+## Continuidade da release v0.1.4
 
-O usuário pediu a abertura da PR `codex/tk64-launcher` para `main` e fará o merge. O changelog aprovado, a separação
-do mod de músicas ainda em outra branch e os cuidados para o novo build estão em
-[RELEASE-NOTES-PENDENTES.md](../RELEASE-NOTES-PENDENTES.md), na raiz. O comparativo é contra `main`; antes das notas
-públicas, distinguir o que já foi publicado em `v0.1.3`. Build/publicação ocorrerão na etapa posterior ao merge.
+O usuário confirmou o merge e autorizou novo build/publicação. Notas finais em [[releases/v0.1.4]]; o rascunho
+[RELEASE-NOTES-PENDENTES.md](../RELEASE-NOTES-PENDENTES.md) fica arquivado na raiz, com aviso de consolidação.
+O mod de músicas da branch de áudio continua fora desta entrega. O CI Windows da PR falhou na escrita em `/tmp`
+do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde o diretório existe. A causa ambiental
+é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: confirmar o merge da PR pelo usuário antes de preparar o novo build de release da `main`.
+`NEXT_SINGLE_ACTION`: concluir o build/auditoria e publicar a pré-release Windows x64 v0.1.4 autorizada pelo usuário.

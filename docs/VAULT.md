@@ -14,6 +14,10 @@ tags: [vault, index, tooierecomp]
 - [[AGENTS]] — Regras para agentes
 - [[README]] — Entrada da documentação
 
+## releases
+
+- [[releases/v0.1.4]] — Notas da pré-release Windows x64 em inglês e português brasileiro
+
 ## future
 
 - [[future/implementation-ideas]] — Cogitações futuras: dois processos não implementado e extensão da corrida adiada
