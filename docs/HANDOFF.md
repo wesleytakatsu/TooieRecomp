@@ -34,10 +34,18 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
-- Versão fonte `0.1.4`, em preparação para pré-release Windows x64 após o merge da PR #1 em `171fef0`.
-  Notas em inglês e português brasileiro: [[releases/v0.1.4]]. Suíte local Windows 30/30; verificação dos 420 arquivos
-  gerados e integridade vendorizada aprovadas. Build final, auditoria do pacote e publicação são as próximas etapas.
+- Versão fonte `0.1.4`; [pré-release Windows x64 publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4)
+  em 2026-11-02, após o merge da PR #1. Tag `v0.1.4` aponta para `5621b25499675893174f38e68fe30a9cbfe88baa`.
+  Notas em inglês e português brasileiro: [[releases/v0.1.4]]. Suíte local Windows 30/30, 420 arquivos gerados,
+  integridade vendorizada, build Release e auditoria dos 111 arquivos do pacote aprovados. ZIP e `.sha256` publicados,
+  baixados do GitHub e comparados byte a byte com os locais; pacote baixado revalidado. Sem novo playtest em jogo.
   `v0.1.3`, `v0.1.2` e `v0.1.1` continuam publicadas. Músicas/texturas privadas não integram a distribuição.
+- ZIP `BanjoTooieRecompiled-v0.1.4-Windows-x64.zip`: 23056086 bytes, SHA-256
+  `1e1e6f5cccc2ce38af7cd5356f3f5573a1660e62eb2f0edc1bf90f011943e9ec`.
+  Executável: SHA-256 `17a757627fb80baab04cc34982cab2a0effbf764c6130b90a13664a297888646`.
+  `BUILD-INFO.txt` confirma versão `0.1.4`, commit da tag e `tooie_tree_dirty_files: 0`.
+  O manifesto de licenças mantém 37 entradas `UNKNOWN`/`UNVERIFIED`; auditoria valida cobertura/bytes, não resolve
+  essas pendências de atribuição já documentadas. Sem pacote Linux novo.
 - `v0.1.0-p08` permanece como release anterior, sem substituição dos seus arquivos. As notas publicadas dessa release
   registram pacotes Windows e Linux com idiomas; validação completa de gameplay no Linux continua pendente.
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
@@ -230,7 +238,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   consumidores mantidos. Não há alteração de comportamento pretendida ou novo teste/log vinculado ao jogo.
   Suíte Windows 30/30 e build aprovados; executável atualizado em `build-win/TooieRecompiled.exe`.
   Comandos, hashes, auditoria de 45 unidades C++ e limites da validação ficam na mensagem do commit.
-  Jogo não iniciado/controlado; Linux `NOT_RUN`. Nenhuma publicação solicitada.
+  Jogo não iniciado/controlado; Linux `NOT_RUN`. Publicação posterior registrada na seção Release.
 
 ## Notas operacionais
 
@@ -251,11 +259,11 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Continuidade da release v0.1.4
 
-O usuário confirmou o merge e autorizou novo build/publicação. Notas finais em [[releases/v0.1.4]]; o rascunho
+Build e publicação autorizados pelo usuário concluídos; notas finais em [[releases/v0.1.4]]. O rascunho
 [RELEASE-NOTES-PENDENTES.md](../RELEASE-NOTES-PENDENTES.md) fica arquivado na raiz, com aviso de consolidação.
 O mod de músicas da branch de áudio continua fora desta entrega. O CI Windows da PR falhou na escrita em `/tmp`
 do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde o diretório existe. A causa ambiental
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: concluir o build/auditoria e publicar a pré-release Windows x64 v0.1.4 autorizada pelo usuário.
+`NEXT_SINGLE_ACTION`: aguardar feedback do usuário sobre a pré-release v0.1.4 publicada.

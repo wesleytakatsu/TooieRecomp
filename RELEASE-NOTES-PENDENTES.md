@@ -16,7 +16,11 @@ A PR [#1](https://github.com/wesleytakatsu/TooieRecomp/pull/1) foi mesclada em `
 build e a publicação. Este rascunho foi consolidado nas [notas bilíngues da v0.1.4](docs/releases/v0.1.4.md), com
 inglês antes de português brasileiro e novidades separadas dos recursos das releases anteriores. A suíte local
 Windows passou em 30/30, incluindo o teste de snapshot que falhou no CI da PR; os 420 arquivos gerados e a
-integridade vendorizada foram conferidos. O estado da publicação fica no [handoff](docs/HANDOFF.md).
+integridade vendorizada foram conferidos.
+
+**Publicação concluída:** [v0.1.4 Windows x64](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4),
+tag no commit `5621b25499675893174f38e68fe30a9cbfe88baa`. Novo executável compilado; ZIP e sidecar publicados,
+baixados novamente e verificados. Hashes e limites da validação ficam no [handoff](docs/HANDOFF.md).
 
 O restante desta nota é o registro histórico do pedido inicial e não substitui as notas finais ou o handoff.
 
