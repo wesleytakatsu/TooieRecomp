@@ -4,7 +4,7 @@ description: "Current map and entrance, the game's go-to-map entry point, player
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-31
+updated: 2026-11-02
 tags: [reverse-engineering, map, warp, player]
 ---
 
@@ -132,8 +132,11 @@ Earlier J1 gameplay acceptance remains as recorded above.
 ## Extra player and split screen
 
 Current model from the experimental split-screen investigation. Runtime observations below are reported by the prior
-Windows investigation and user playtests in the [continuation handoff](../../future/two-player-split-screen.md);
-they were not repeated for this checkpoint.
+Windows investigation and user playtests preserved in Git history for `docs/future/two-player-split-screen.md`;
+they were not repeated during documentation consolidation. Current
+[contract](../../specs/Tooie/window-ui-and-config.md) and
+[manual coverage](../../specs/Tooie/testing-and-oracle.md#5-experimental-split-screen-manual-coverage) remain separate
+from those historical measurements.
 
 | Address / function | Meaning | Status |
 | --- | --- | --- |

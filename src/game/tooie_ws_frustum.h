@@ -40,7 +40,8 @@ inline bool normalize(float v[3]) {
     return true;
 }
 
-// Exactly today's tooie_ws_expand_h_plane math (fwd_unit already normalised; d recomputed from cam).
+// Expands the lateral normal around the forward axis; d is recomputed from cam.
+// fwd_unit must already be normalised.
 inline void expand_h_plane(float& nx, float& ny, float& nz, float& d, const float cam[3], const float fwd_unit[3], float k) {
     const float nf = nx * fwd_unit[0] + ny * fwd_unit[1] + nz * fwd_unit[2];
     nx = fwd_unit[0] * nf + (nx - fwd_unit[0] * nf) / k;

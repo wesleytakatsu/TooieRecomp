@@ -216,7 +216,7 @@ alterada por `func_808012A4_chflysaucer`) e seletor de percurso (`+0x26`). Não 
 
 Fontes: `RecompiledFuncs/funcs_20.c:2015`, `funcs_121.c:371`, `funcs_195.c:1539`, `:2720`,
 `funcs_38.c:1482`, `funcs_68.c:4835`; getter em `decomp/src/core2/1EB3750.c:219`.
-Tabelas escalares conferidas na ROM descomprimida canônica (SHA-1 documentado no plano); nenhuma reprodução
+Tabelas escalares conferidas na ROM descomprimida canônica (SHA-1 em [[specs/Tooie/asset-and-licensing-manifest]]); nenhuma reprodução
 ao vivo executada nesta revisão.
 
 ## Teardown após retirada do primeiro jogador
@@ -276,7 +276,9 @@ Não bloquear Witchyworld inteira. Se o resultado zerar o seletor sem recriar jo
 na próxima criação nativa elegível; não adicionar J2 no meio da simulação.
 Validar as 23 etapas, repetição, vitória, derrota, saída e retorno ao cooperativo; incluir as variantes de percurso
 do Saucer e as identidades de Kickball ainda não esclarecidas. A investigação original era apenas documental. Implementação host e regressões nativas/sintéticas agora existem;
-comandos/resultados atuais estão no [[HANDOFF]] e na seção 15 do plano. Matriz completa dos 23 eventos e Linux: `NOT_RUN`.
+resumo do estado atual está no [[HANDOFF]]; comandos/resultados detalhados permanecem nas mensagens de commit.
+Matriz manual e critérios por evento:
+[[specs/Tooie/testing-and-oracle#5.1 Minigame acceptance matrix]]. Matriz completa dos 23 eventos e Linux: `NOT_RUN`.
 
 ## Limitação conhecida: corrida de trenzinho com o pássaro
 
@@ -294,6 +296,7 @@ comandos/resultados atuais estão no [[HANDOFF]] e na seção 15 do plano. Matri
 - Se retomado: identificar primeiro o controlador e as fronteiras nativas de início/fim, incluindo repetição,
   vitória/derrota e retorno. A matriz dos 23 eventos continua sem aceite individual; não inventar nomes de casos PASS.
 
-Plano técnico temporário solicitado pelo usuário, mantido como referência da validação parcial e da pendência:
-[PLANO-SPLITSCREEN-MINIGAMES.md](../../../PLANO-SPLITSCREEN-MINIGAMES.md).
-Relacionados: [[camera-controls]], [[warp-and-player-position]], [[future/two-player-split-screen]].
+Plano técnico antigo retirado após consolidação: fatos estáticos por família em [[minigame-controllers]],
+critérios manuais em [[specs/Tooie/testing-and-oracle]] e extensão adiada em [[future/implementation-ideas]].
+Pseudocódigo e registros históricos permanecem no Git; a remoção do plano não representa aceite universal.
+Relacionados: [[camera-controls]], [[warp-and-player-position]], [[specs/Tooie/testing-and-oracle]].

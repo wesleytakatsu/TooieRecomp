@@ -396,7 +396,7 @@ that change the game's state directly.
     `TOOIE_DIAG_2P_LIGHTING_LOG=<file>` optionally logs map/model allocation events and output pointers; default OFF,
     without per-frame probes. `tools/windows/Test-SplitScreenLighting.ps1` starts a manual capture with backups,
     stdout/stderr and build metadata, preserving normal session unlock and player-assignment requirements.
-  - User playtests recorded in the [split-screen handoff](../../future/two-player-split-screen.md) report two
+  - User playtests recorded in [[HANDOFF]] report two
     controlled players, shared map changes, item collection and attacks by player 2. This is an experimental checkpoint,
     with no complete cooperative-gameplay guarantee.
   - Known limits: J2 enemy targeting is user-accepted for the reported case, with the audited families above;

@@ -49,7 +49,7 @@ Optional provenance tags: `STATIC_ROM`, `STATIC_MIPS`, `RUNTIME_CPU`,
   [[systems/geocmd]] / [[systems/transform-interpolation]] /
   [[systems/overlays]] / [[systems/audio-sequence-volume]] /
   [[systems/text-and-fonts]] / [[systems/warp-and-player-position]] / [[systems/camera-controls]] /
-  [[systems/minigames]]
+  [[systems/minigames]], [[systems/minigame-controllers]]
 - [[characters/kazooie]] — live `0x62B` right/left plumes + crest DLs; V7 VERSION=3 admits all 14; downstream closed; guest compose `parent⊗child` XYZW; clip/sample time open
 - [[systems/geocmd]] — compact DCF48 + type-0x11/`0x18`; plume GeoCmd parent 107
 - [[systems/animation]] — AE820 local 4x4 / first-class scale channels

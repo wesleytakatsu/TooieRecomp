@@ -4,14 +4,14 @@ description: "Per-player forms, shared native transition banks, Dragon Kazooie a
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-31
+updated: 2026-11-02
 tags: [reverse-engineering, player, transformation, multiplayer]
 ---
 
 # Player transformations and map handoff
 
 Related: [player position](warp-and-player-position.md), [player lighting](player-lighting.md),
-[UI contract](../../specs/Tooie/window-ui-and-config.md), [experimental handoff](../../future/two-player-split-screen.md).
+[UI contract](../../specs/Tooie/window-ui-and-config.md), [manual coverage](../../specs/Tooie/testing-and-oracle.md#5-experimental-split-screen-manual-coverage).
 
 ## Native mechanisms
 

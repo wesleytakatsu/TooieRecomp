@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Runtime, Dynamic Overlays and Guest Preemption"
 description: "Technical specification for N64ModernRuntime integration, the 884 dynamic overlay management system, syscall table dispatch, and Hybrid F' guest preemption."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-11-02
 tags: [specs, tooierecomp, runtime, overlays, syscalls, preemption, scheduling]
 ---
 
@@ -66,7 +66,6 @@ TooieRecomp virtualizes Nintendo 64 hardware execution via `N64ModernRuntime`. *
 static constexpr uint32_t kCore2Ram = 0x800815C0u;
 static constexpr uint32_t kCore2Rom = 0x01E5AEB0u;
 static constexpr int32_t  kOverlayVram = static_cast<int32_t>(0x80800000u);
-static constexpr uint32_t kOverlayWindowSize = 0x00200000u;
 static constexpr uint32_t kTooieOverlayCount = 884;
 static constexpr uint32_t kOvlTableRom = 0x01F00020u;
 ```

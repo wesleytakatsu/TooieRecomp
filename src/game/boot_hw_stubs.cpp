@@ -946,8 +946,6 @@ extern "C" void rom_dma_read(uint8_t* rdram, recomp_context* ctx) {
 // table_addr@0x50E0 still points at compressed overlay_table base (0x1E899B0).
 // On decompressed.us.z64 the usable table is at overlay_table_ROM_START.
 static constexpr uint32_t kOvlTableRom = 0x01F00020u;
-static constexpr uint32_t kOvlTableVram = 0x80137390u;
-static constexpr uint32_t kOvlTableSize = 0x00000DE0u;
 static constexpr uint32_t kAddr_D_80126730 = 0x80126730u;
 static constexpr uint32_t kAddr_D_80126738 = 0x80126738u;
 static constexpr uint32_t kAddr_D_80117C60 = 0x80117C60u;
@@ -4544,12 +4542,6 @@ static void tooie_wrap_func_800CA218(uint8_t* rdram, recomp_context* ctx) {
 
 static void tooie_wrap_func_800CA2A8(uint8_t* rdram, recomp_context* ctx) {
     tooie_ws_call_with_native_aspect(rdram, ctx, func_800CA2A8);
-}
-
-// Historical entry point. Production tests go through the header; same formula.
-[[maybe_unused]] static void tooie_ws_expand_h_plane(float& nx, float& ny, float& nz, float& d,
-                                    const float cam[3], const float fwd[3], float k) {
-    tooie_ws_frustum::expand_h_plane(nx, ny, nz, d, cam, fwd, k);
 }
 
 // Same words the eval loops used to read: cam, forward, then plane {n, d} at +0x24 + i*0x10.

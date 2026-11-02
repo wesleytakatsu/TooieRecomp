@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-11-01
+updated: 2026-11-02
 tags: [vault, index, tooierecomp]
 ---
 
@@ -16,9 +16,12 @@ tags: [vault, index, tooierecomp]
 
 ## future
 
-- [[future/two-process-coop]] — Plano futuro: cooperativo com dois processos (proposto, não implementado)
-- [[future/two-player-split-screen]] — Dois jogadores em tela dividida (Dev Mode, checkpoint experimental)
-- [Plano técnico de suspensão nos minigames](../PLANO-SPLITSCREEN-MINIGAMES.md) — Checkpoint técnico na raiz, 15 famílias / 23 etapas; validação parcial e corrida pendente
+- [[future/implementation-ideas]] — Cogitações futuras: dois processos não implementado e extensão da corrida adiada
+
+Planos de implementação antigos foram retirados. Contratos atuais ficam nas specs; detalhes dos controladores em
+[[reverse-engineering/systems/minigame-controllers]]; validação manual pendente em [[specs/Tooie/testing-and-oracle]].
+Propostas não implementadas ficam somente na nota de cogitações, sem autorização automática de execução.
+Histórico de implementação e medições permanece no Git.
 
 ## specs
 
@@ -57,6 +60,7 @@ tags: [vault, index, tooierecomp]
 - [[reverse-engineering/systems/view-volume]] — Volume de visão e culling
 - [[reverse-engineering/systems/camera-controls]] — Entrada, propriedade por jogador e filtros nativos da câmera
 - [[reverse-engineering/systems/minigames]] — Catálogo de 23 sinalizadores de replay e suspensão por sala do cooperativo e limitação conhecida
+- [[reverse-engineering/systems/minigame-controllers]] — Descritores, callbacks e fluxo nativo por família de minigame
 - [[reverse-engineering/systems/transform-interpolation]] — Interpolação de transforms (RT64)
 - [[reverse-engineering/systems/model-renderer]] — Renderizador de modelos
 - [[reverse-engineering/systems/player-lighting]] — Iluminação por jogador e vértices de saída independentes

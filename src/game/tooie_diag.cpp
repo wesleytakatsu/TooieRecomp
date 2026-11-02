@@ -489,11 +489,6 @@ uint64_t g_secondary_sway_tree_draws = 0;
 uint32_t g_secondary_sway_last_handler_table = 0;
 uint32_t g_secondary_sway_last_geocmd_mode = 0xFFFFFFFFu;
 uint64_t g_secondary_sway_ade2c_snout_samples = 0;
-uint64_t g_secondary_sway_e2180_in_span = 0;
-uint64_t g_secondary_sway_e2180_type2 = 0;
-uint64_t g_secondary_sway_e2180_bone42 = 0;
-uint64_t g_secondary_sway_e2180_rel_11cb8 = 0;
-uint64_t g_secondary_sway_e2180_tuple_rows = 0;
 uint64_t g_secondary_sway_durable_register_hits = 0;
 uint64_t g_secondary_sway_hip_consume_entry_hits = 0;
 uint64_t g_secondary_sway_hip_consume_hits = 0;
@@ -721,7 +716,6 @@ std::array<SingleMtxTraceToken, kSingleMtxTraceSlots> g_single_mtx_tokens{};
 uint64_t g_single_mtx_token_next = 1;
 uint64_t g_single_mtx_guest_matrix_rows = 0;
 uint64_t g_single_mtx_identity_rows = 0;
-uint64_t g_single_mtx_vertex_rows = 0;
 uint64_t g_single_mtx_match_rows = 0;
 uint64_t g_single_mtx_match_matched = 0;
 uint64_t g_single_mtx_match_unmatched = 0;
@@ -6169,14 +6163,12 @@ void secondary_sway_note_ade2c(uint8_t* rdram, void* raw_ctx) {
                       words[7]);
     }
     DurableModelBin matched{};
-    uint32_t rel = 0;
     std::lock_guard<std::mutex> lock(g_secondary_sway_mu);
     ++g_secondary_sway_ade2c_snout_samples;
     ++g_secondary_sway_snout_matrix_hits;
     ++g_secondary_sway_snout_matrix_samples;
     if (g_durable_bin_count != 0) {
         matched = g_durable_bins[0];
-        rel = kSecondarySwaySnoutNodeOffset;
     }
     if (g_secondary_sway_snout_csv == nullptr) {
         g_secondary_sway_snout_csv =

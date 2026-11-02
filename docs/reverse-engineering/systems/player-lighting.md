@@ -4,7 +4,7 @@ description: "Per-player light state, CPU vertex-color lighting and private outp
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-31
+updated: 2026-11-02
 tags: [reverse-engineering, player, lighting, models, split-screen]
 ---
 
@@ -63,8 +63,8 @@ provides the optional negative A/B case. Outside explicit capture, no lighting l
 The instrumented attract reproduction forced the existing experimental option in memory; it did not save the option
 or exercise independently controlled story-save gameplay. Its per-draw instrumentation patch and logs are local
 temporary artifacts; the lightweight opt-in allocation logger and manual capture script are retained in source.
-Current run details are in the
-[split-screen handoff](../../future/two-player-split-screen.md).
+Historical run details remain in Git history for the retired `docs/future/two-player-split-screen.md` checkpoint;
+current manual coverage is in the [test contract](../../specs/Tooie/testing-and-oracle.md#5-experimental-split-screen-manual-coverage).
 
 The user subsequently confirmed the visual lighting fix in story mode on Windows (2026-10-31). The manual capture
 completed with exit 0 and recorded primary, LOD and secondary model-allocation paths. This does not establish a complete

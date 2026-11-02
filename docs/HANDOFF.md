@@ -10,8 +10,9 @@ tags: [tooie-recomp, handoff, status]
 # Handoff — TooieRecomp
 
 Estado corrente para um agente ou chat novo. Investigações antigas, planos concluídos (multijogador, idiomas) e
-evidências ficam no histórico do git (`git log -- <caminho>`); propostas futuras e o checkpoint experimental de tela
-dividida estão em `docs/future/`. Contratos estáveis:
+evidências ficam no histórico do git (`git log -- <caminho>`). Planos antigos foram consolidados: propostas não
+implementadas em [[future/implementation-ideas]], contratos atuais nas specs, conhecimento nativo no RE e
+validação pendente na spec de testes. Não há plano de execução ativo na raiz. Contratos estáveis:
 [[specs/index]]. Conhecimento do jogo: [[reverse-engineering/README]].
 
 ## Estado por área
@@ -50,16 +51,16 @@ dividida estão em `docs/future/`. Contratos estáveis:
   e serialização de saída têm escopos próprios. Formas, iluminação, IA, Glowbo, menus, Warp e distância usam a
   identidade apropriada. Entrada host publicada pela porta nativa, com rearme após neutralização; controles nativos
   continuam intactos. Reservas/suavização analógicas são limpas na recriação/retirada. Sem novos logs/métricas no jogo.
-  Windows: suíte 30/30, regressão cooperativa 9339 verificações, câmera 83 verificações e três helpers de
-  integração passaram; build final atualizado em `build-win/TooieRecompiled.exe`. Hash completo na seção 15 do plano.
+  Windows: regressão cooperativa 9339 verificações e helpers de integração passaram no checkpoint da implementação
+  (`50bd9a2`); esses resultados não substituem o aceite dos eventos no jogo.
   Aceite parcial do usuário no Windows (2026-11-02): alguns eventos funcionaram, sem identificação individual.
   Limitação confirmada pelo usuário: na corrida de trenzinho com o pássaro, J2 continua acessível. Identidade
   formal/mapa/caminho nativo dessa corrida não foram capturados; não atribuir o relato a um dos 23 eventos.
   Usuário decidiu manter o comportamento atual. Correção dessa corrida adiada; não ampliar blacklist de mapas.
-  Matriz manual completa, câmera/resultado do Saucer e Linux continuam `NOT_RUN`. Plano mantido como referência
-  da validação parcial e da pendência; não registrar aceite universal.
-  Ver [[reverse-engineering/systems/minigames]], [[specs/Tooie/window-ui-and-config]] e
-  [plano técnico na raiz](../PLANO-SPLITSCREEN-MINIGAMES.md), seções 15–16.
+  Matriz manual completa, câmera/resultado do Saucer e Linux continuam `NOT_RUN`; não registrar aceite universal.
+  Plano antigo retirado: detalhes nativos em [[reverse-engineering/systems/minigame-controllers]], critérios em
+  [[specs/Tooie/testing-and-oracle#5.1 Minigame acceptance matrix]] e corrida adiada em [[future/implementation-ideas]].
+  Contrato atual: [[specs/Tooie/window-ui-and-config]]; RE: [[reverse-engineering/systems/minigames]].
 - Analog Camera: General disponibiliza On/Off (padrão Off), sensibilidade e inversão da câmera em terceira pessoa.
   Entrada proporcional/radial com suavização pelo tempo nativo; Z lógico restaura os bindings C do analógico
   imediatamente na leitura do controle. C físico/teclado e demais bindings preservados. Amostras por porta,
@@ -151,13 +152,13 @@ dividida estão em `docs/future/`. Contratos estáveis:
   attract); causa `UNKNOWN`.
 - Captura burst `TOOIE_TEST_INTERP_BURST_AT_WORKLOAD` encerrou o processo no Windows/D3D12 (1×, `UNKNOWN`).
 - Wrappers de diagnóstico `ud4`/`ud5` não-macro ainda registrados (custo baixo; logs desligados por padrão).
-- **Checkpoint experimental**, branch `codex/two-player-split-screen`: dois jogadores em tela dividida no Dev Mode
+- **Splitscreen experimental**: dois jogadores em tela dividida no Dev Mode
   (J2 controlável, pega itens e ataca; uso pai/filho aprovado pelo usuário). IA J1/J2 aprovada no caso relatado; portas pendentes.
   Iluminação: vértices de saída próprios por modelo de jogador; A/B instrumentado no attract Windows eliminou alias
   simultâneo e sobrescrita RGB. `PROVEN` no teste visual do usuário no Windows (2026-10-31): problema gráfico resolvido;
   captura manual terminou com exit 0. Linux e playtest específico de transformações/modelo secundário `NOT_RUN`.
   Diagnósticos temporários por desenho removidos; captura leve opt-in disponível em
-  `tools/windows/Test-SplitScreenLighting.ps1` (backup + logs). Handoff: [[future/two-player-split-screen]];
+  `tools/windows/Test-SplitScreenLighting.ps1` (backup + logs). Contrato: [[specs/Tooie/window-ui-and-config]];
   RE: [[reverse-engineering/systems/player-lighting]].
 - IA no splitscreen: primeiro build não resolveu os inimigos relatados. Leitura externa, sem alterar processo,
   confirmou Ground/Fly na Jinjo Village (322), J1/J2 vivos e foco 0; estavam fora da lista original. Revisão cobre
@@ -173,7 +174,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
   Cowboy=Hillbilly: `STRONG_INFERENCE`, sem amostra ao vivo na mina.
   Suíte Windows 22/22 e build passaram; outros inimigos/bosses não cobertos; Linux `NOT_RUN`. Sem logs/métricas
   novos no jogo; scripts, fixture e logs temporários da investigação removidos.
-  RE: [[reverse-engineering/systems/warp-and-player-position]]; roteiro: [[future/two-player-split-screen]] seção 13.
+  RE: [[reverse-engineering/systems/warp-and-player-position]]; roteiro: [[specs/Tooie/testing-and-oracle#5. Experimental split-screen manual coverage]].
 - Menus de viagem no splitscreen: usuário confirma que J1 abre Warp Pads/Silos e seleciona destinos, mas a lista
   fica invisível. Deve continuar exclusivo de J1. `PROVEN` estaticamente: ambos desenham via `gcnewoption` no pass `3`,
   global após as viewports; filas compartilhadas são refeitas por câmera. Usuário testou Silo com J2 junto de J1 e
@@ -190,7 +191,7 @@ dividida estão em `docs/future/`. Contratos estáveis:
   alcance/setor de J1; contatos repetidos não creditam novamente. Restrita à classe Glowbo e splitscreen experimental,
   sem logs/contadores no jogo. Usuário confirmou a correção no Windows (2026-10-31); chave temporária de A/B removida.
   Regressão nativa e suíte Windows 21/21 passaram. Mega Glowbo/JRL específicos e Linux `NOT_RUN`.
-  RE: [[reverse-engineering/systems/warp-and-player-position]]; teste/roteiro: [[future/two-player-split-screen]] seção 12.
+  RE: [[reverse-engineering/systems/warp-and-player-position]]; teste/roteiro: [[specs/Tooie/testing-and-oracle#5. Experimental split-screen manual coverage]].
 - Seletor de transformações por jogador implementado para teste: Dev Mode desbloqueado, seção **Character selection**
   com chave, dropdown de direção e botões **Open for Player 1/2**; sem exigir recarga de mapa após desbloquear.
   R3 físico ou Debug Button + direção configurada (baixo por padrão), direcional/analógico para selecionar, A confirma, B cancela.
@@ -220,8 +221,15 @@ dividida estão em `docs/future/`. Contratos estáveis:
   Executor real com memória guest e funções nativas simuladas passou; build Windows e 18/18 testes passaram.
   Aprovação em jogo não substitui a bateria exaustiva de combinações/cenários; Linux `NOT_RUN`.
   Ver [[reverse-engineering/systems/warp-and-player-position]].
-- Plano futuro (proposto, não implementado): cooperativo com dois processos, cada um com um jogador, vendo-se no mesmo
-  mapa e compartilhando progresso. Ver [[future/two-process-coop]].
+- Cogitações não implementadas centralizadas em [[future/implementation-ideas]]: cooperativo com dois processos
+  e extensão da suspensão para a corrida adiada. Testes manuais restantes não são propostas de implementação.
+- Manutenção (2026-11-02): planos antigos retirados após consolidação de fatos/contratos/aceite; removidos wrapper
+  sem chamadores, três constantes sem consumidores, seis contadores órfãos e cálculo local sem leitura.
+  Auditoria do compilador em 45 unidades C++ de produção; dependências/gerados preservados. Diagnósticos com
+  consumidores mantidos. Não há alteração de comportamento pretendida ou novo teste/log vinculado ao jogo.
+  Suíte Windows 30/30 e build aprovados; executável atualizado em `build-win/TooieRecompiled.exe`.
+  Comandos, hashes, auditoria de 45 unidades C++ e limites da validação ficam na mensagem do commit.
+  Jogo não iniciado/controlado; Linux `NOT_RUN`. Nenhuma publicação solicitada.
 
 ## Notas operacionais
 

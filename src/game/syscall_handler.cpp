@@ -22,7 +22,6 @@
 static constexpr uint32_t kCore2Ram = 0x800815C0u;
 static constexpr uint32_t kCore2Rom = 0x01E5AEB0u;
 static constexpr int32_t kOverlayVram = static_cast<int32_t>(0x80800000u);
-static constexpr uint32_t kOverlayWindowSize = 0x00200000u;
 
 extern "C" void ovl_load(uint8_t* rdram, recomp_context* ctx);
 extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx);
