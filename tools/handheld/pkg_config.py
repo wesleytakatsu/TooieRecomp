@@ -1,9 +1,9 @@
-# Minimal pkg-config for cross builds on Windows: reads .pc files from the sysroot. Only what CMake's FindPkgConfig calls.
+# Minimal pkg-config for the handheld cross build (Windows or Linux host): reads .pc files from the sysroot. Only what CMake's FindPkgConfig calls.
 import os
 import re
 import sys
 
-SYSROOT = os.environ["XU10_SYSROOT"].replace("\\", "/")
+SYSROOT = (os.environ.get("HANDHELD_SYSROOT") or os.environ["XU10_SYSROOT"]).replace("\\", "/")
 DIRS = ["usr/lib/aarch64-linux-gnu/pkgconfig", "usr/lib/pkgconfig", "usr/share/pkgconfig"]
 
 

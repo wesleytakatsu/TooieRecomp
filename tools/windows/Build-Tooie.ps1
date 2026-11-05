@@ -145,14 +145,11 @@ function Invoke-ImportGenerated {
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)" }
     "RecompiledFuncs imported ($((Get-ChildItem (Join-Path $Root 'RecompiledFuncs')).Count) files). Treat them as ROM-derived: never commit/upload."
 }
-function Invoke-Configure {   # clang-cl defaults live in CMAKE_*_FLAGS because -D replaces them; prefix-map via /clang:
+function Invoke-Configure {   # CMakePresets.json windows-x64: clang-cl Release; its flags keep clang-cl's defaults (-D replaces them) and the /tooie prefix map
     Enter-VsDev
-    $rootFwd = $Root -replace '\\', '/'
-    $pm = "/clang:-ffile-prefix-map=${rootFwd}=/tooie"
-    $cFlags = "/DWIN32 /D_WINDOWS $pm"
-    $cxxFlags = "/DWIN32 /D_WINDOWS /EHsc $pm"
-    # One argv each: PS 5.1/7 re-quote on whitespace, so a Root with spaces stays inside the -D value.
-    cmake -S $Root -B $BuildDir -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release "-DCMAKE_C_FLAGS=$cFlags" "-DCMAKE_CXX_FLAGS=$cxxFlags"
+    # cmake --preset reads CMakePresets.json from the current directory; -B keeps a custom -BuildDir.
+    Push-Location $Root
+    try { cmake --preset windows-x64 -B $BuildDir } finally { Pop-Location }
     if ($LASTEXITCODE) { throw 'cmake configure failed' }
 }
 function Invoke-Build {

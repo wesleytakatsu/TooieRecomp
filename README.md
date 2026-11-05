@@ -105,6 +105,9 @@ To build TooieRecomp from source, place your verified `Banjo-Tooie (USA).z64` RO
 - **Linux:** Run `tools/build_linux.sh` (tested on Ubuntu 24.04 / Linux Mint 22).
   Prerequisites: Clang, CMake, Ninja, SDL2, FreeType, GTK 3, and Python 3.
   See [tools/BUILDING.md](tools/BUILDING.md) for full instructions.
+- **Handhelds (aarch64, PortMaster):** cross build from Windows (`tools/handheld/build-handheld.ps1`) or Linux
+  (`tools/handheld/build-handheld.sh`), then `tools/handheld/package_portmaster.py`.
+  See [tools/BUILDING.md](tools/BUILDING.md) for the sysroot and steps.
 
 ---
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Builds the PortMaster zip from build-xu10 (TK64_MOBILE build). Refuses a build without TK64_MOBILE and any game data.
+"""Builds the PortMaster zip from build-handheld (TK64_MOBILE build). Refuses a build without TK64_MOBILE and any game data.
 
-    python tools/xu10/package_portmaster.py [--build-dir build-xu10] [--release-version 0.1.4]
+    python tools/handheld/package_portmaster.py [--build-dir build-handheld] [--release-version 0.1.4]
+
+llvm-strip comes from HANDHELD_LLVM, then PATH, then Visual Studio's LLVM on Windows.
 
 Writes dist/BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip and its .sha256.
 """
@@ -20,8 +22,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
-LLVM = os.environ.get('XU10_LLVM', 'C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/Llvm/x64/bin')
-STRIP = f'{LLVM}/llvm-strip.exe'
+def find_strip():
+    exe = 'llvm-strip.exe' if os.name == 'nt' else 'llvm-strip'
+    llvm = os.environ.get('HANDHELD_LLVM') or os.environ.get('XU10_LLVM')
+    if llvm:
+        return str(Path(llvm) / exe)
+    found = shutil.which(exe)
+    if found:
+        return found
+    if os.name == 'nt':
+        vswhere = Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
+        if vswhere.exists():
+            vs = subprocess.run([str(vswhere), '-latest', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Llvm.Clang', '-property', 'installationPath'], capture_output=True, text=True).stdout.strip()
+            candidate = Path(vs) / 'VC/Tools/Llvm/x64/bin' / exe
+            if vs and candidate.exists():
+                return str(candidate)
+    sys.exit('llvm-strip not found: set HANDHELD_LLVM or put it on PATH')
+
+
 LICENSE_DIRS = ['vendor/licenses', 'lib/rt64', 'lib/N64ModernRuntime', 'lib/RecompFrontend', 'lib/SlotMap', 'lib/dr_libs']
 # Game data never goes in: ROM images by name, and whatever a run leaves in a port folder.
 FORBIDDEN_NAME = re.compile(r'\.(z64|n64|v64|rom|eep|sra|fla)$|^(saves?|shadercache|log\.txt|stats\.txt)$', re.IGNORECASE)
@@ -69,7 +87,7 @@ def version_key(version):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--build-dir', default='build-xu10')
+    parser.add_argument('--build-dir', default='build-handheld')
     parser.add_argument('--release-version')
     args = parser.parse_args()
 
@@ -88,7 +106,7 @@ def main():
 
     binary = stage / 'TooieRecompiled'
     shutil.copyfile(build / 'TooieRecompiled', binary)
-    subprocess.run([STRIP, '--strip-all', str(binary)], check=True)
+    subprocess.run([find_strip(), '--strip-all', str(binary)], check=True)
 
     data = binary.read_bytes()
     if data[18:20] != struct.pack('<H', 183):

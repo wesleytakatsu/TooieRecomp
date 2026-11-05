@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 768c0e0..e9e4fd3 100644
+index 768c0e0..bc71ced 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -12,6 +12,12 @@ option(RT64_STATIC "Build RT64 as a static library" OFF)
@@ -15,7 +15,7 @@ index 768c0e0..e9e4fd3 100644
  
  if (NOT ${RT64_STATIC})
      set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-@@ -35,7 +41,10 @@ function(preprocess INFILE OUTFILE OPTIONS)
+@@ -35,7 +41,12 @@ function(preprocess INFILE OUTFILE OPTIONS)
      endif()
  endfunction()
  
@@ -23,11 +23,13 @@ index 768c0e0..e9e4fd3 100644
 +# TK64: cross-compiling from Windows, the shader tools run on the host (docs/specs/targets.md).
 +if (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32)
 +    set (DXC "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
++elseif (CMAKE_CROSSCOMPILING AND CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE)
++    set (DXC "LD_LIBRARY_PATH=${PROJECT_SOURCE_DIR}/src/contrib/dxc/lib/x64" "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc-linux")
 +elseif (WIN32)
      set (DXC "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
      add_compile_definitions(
          NOMINMAX
-@@ -69,7 +78,15 @@ set(ZSTD_LEGACY_SUPPORT OFF)
+@@ -69,7 +80,15 @@ set(ZSTD_LEGACY_SUPPORT OFF)
  set(ZSTD_BUILD_STATIC ON)
  set(ZSTD_BUILD_SHARED OFF)
  
@@ -44,7 +46,7 @@ index 768c0e0..e9e4fd3 100644
  add_subdirectory(src/contrib/re-spirv)
  add_subdirectory(src/contrib/nativefiledialog-extended)
  add_subdirectory(src/contrib/zstd/build/cmake)
-@@ -104,6 +121,9 @@ set(ANDROID_ABI arm64-v8a)
+@@ -104,6 +123,9 @@ set(ANDROID_ABI arm64-v8a)
  
  # For DXC
  set (DXC_COMMON_OPTS "-I${PROJECT_SOURCE_DIR}/src")
@@ -54,7 +56,7 @@ index 768c0e0..e9e4fd3 100644
  set (DXC_DXIL_OPTS "-Wno-ignored-attributes")
  set (DXC_SPV_OPTS "-spirv" "-fspv-target-env=vulkan1.0" "-fvk-use-dx-layout")
  set (DXC_LB_OPTS "${DXC_COMMON_OPTS}" "-D" "LIBRARY" "-T" "lib_6_3")
-@@ -470,7 +490,11 @@ if (NOT APPLE)
+@@ -470,7 +492,11 @@ if (NOT APPLE)
      add_library(tk64_shader_translator STATIC "${PROJECT_SOURCE_DIR}/src/tk64/tk64_shader_translator.cpp")
      target_include_directories(tk64_shader_translator PUBLIC "${PROJECT_SOURCE_DIR}/src/tk64")
      target_link_libraries(tk64_shader_translator PUBLIC spirv-cross-glsl spirv-cross-hlsl)
@@ -67,7 +69,7 @@ index 768c0e0..e9e4fd3 100644
      target_link_libraries(plume PUBLIC tk64_shader_translator)
      if (WIN32)
          target_link_libraries(plume PUBLIC opengl32)
-@@ -492,8 +516,10 @@ if (NOT APPLE)
+@@ -492,8 +518,10 @@ if (NOT APPLE)
  endif()
  
  # Add tools.

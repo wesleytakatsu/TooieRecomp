@@ -231,6 +231,32 @@ If you need to bypass local recompiler generation, you can import pre-generated 
 
 *(This is preserved solely as a fallback; native recompiler generation via `-Stage Recomp` is now fully supported and recommended).*
 
+### 4.4 Handheld: Linux aarch64 (PortMaster)
+
+The handheld build cross-compiles from a Windows or Linux x64 host with the CMake preset `linux-arm64-handheld`
+(`TK64_MOBILE=ON`). It needs a sysroot and a `file_to_c` built for the host, so build the desktop target of that host first.
+The target chip comes from a file in `tools/handheld/devices` (`rk3326`: MagicX XU10, R36S and other RK3326 handhelds).
+
+```powershell
+# Windows host (PowerShell 7, Visual Studio with the Clang component)
+python -I tools/handheld/fetch_sysroot.py <sysroot-dir>
+.\tools\windows\Build-Tooie.ps1 -Stage Build
+pwsh -NoProfile -File tools/handheld/build-handheld.ps1 -Sysroot <sysroot-dir> [-Device rk3326]
+python tools/handheld/package_portmaster.py
+```
+
+```bash
+# Linux host (clang, lld and llvm-ar/ranlib/strip on PATH, or HANDHELD_LLVM=<their folder>)
+python3 -I tools/handheld/fetch_sysroot.py <sysroot-dir>
+tools/build_linux.sh configure build
+HANDHELD_SYSROOT=<sysroot-dir> tools/handheld/build-handheld.sh [--device rk3326]
+python3 tools/handheld/package_portmaster.py
+```
+
+- **Outputs:** `build-handheld/TooieRecompiled` and `dist/BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip` with its `.sha256`.
+- **Desktop unchanged:** `python tools/handheld/check_desktop_unchanged.py --base <commit>` proves that the desktop sources did not change.
+- The Linux-host route has not been run yet. Details: [handheld build](../docs/specs/Tooie/handheld-portmaster.md).
+
 ---
 
 ## 5. Distribution & Licensing

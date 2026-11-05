@@ -21,8 +21,8 @@ Z-buffer in RAM is in [camera controls](../../reverse-engineering/systems/camera
 
 | Rule | How it holds |
 | --- | --- |
-| The CMake option `TK64_MOBILE` is `OFF` by default | Only `tools/xu10/build-xu10.ps1` turns it on |
-| With it off, every changed source resolves to the base commit's text | `python tools/xu10/check_desktop_unchanged.py` compares them byte by byte and fails otherwise |
+| The CMake option `TK64_MOBILE` is `OFF` by default | Only the preset `linux-arm64-handheld` turns it on |
+| With it off, every changed source resolves to the base commit's text | `python tools/handheld/check_desktop_unchanged.py` compares them byte by byte and fails otherwise |
 | With it off, the OpenGL backend is the unchanged `plume_gles.cpp` | With it on, `lib/rt64/CMakeLists.txt` compiles `plume_gles_mobile.cpp` instead |
 | Desktop shaders are not changed | `-D TK64_MOBILE` reaches DXC only with the option on |
 | Build script changes do not touch a native build | They are behind `TK64_MOBILE` or `CMAKE_CROSSCOMPILING`; the check prints these two files as `reviewed` |
@@ -54,11 +54,20 @@ measurements is not in the tree; it is kept outside the repository with the meas
 ## 4. Build
 
 ```powershell
-pwsh -NoProfile -File tools/xu10/build-xu10.ps1 -Configure
-python tools/xu10/package_portmaster.py
+pwsh -NoProfile -File tools/handheld/build-handheld.ps1 -Sysroot <dir> -Configure    # Windows host
+python tools/handheld/package_portmaster.py
 ```
 
-The cross build uses Visual Studio's clang, the sysroot from `tools/xu10/fetch_sysroot.py` and a host `file_to_c`. No WSL. Output:
+```bash
+HANDHELD_SYSROOT=<dir> tools/handheld/build-handheld.sh --configure                   # Linux host
+python3 tools/handheld/package_portmaster.py
+```
+
+Both scripts configure the CMake preset `linux-arm64-handheld` into `build-handheld`, with the toolchain
+`tools/handheld/aarch64-linux.cmake`. They take clang and lld from Visual Studio on Windows and from `PATH` (or `HANDHELD_LLVM`) on Linux, the
+sysroot from `tools/handheld/fetch_sysroot.py` and the host's `file_to_c` from the desktop build. No WSL.
+`-Device`/`--device` picks a file in `tools/handheld/devices`; `rk3326` (the default) is the only one. It covers the XU10, the R36S and other RK3326
+handhelds; only the XU10 has run the build. The Linux-host route is `NOT_RUN`. Output:
 `dist/BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip` and its `.sha256`. `--release-version <ver>` names a release; otherwise the name
 carries `git describe`, and `BUILD-INFO.txt` lists the dirty files.
 

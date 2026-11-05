@@ -55,10 +55,8 @@ stage_recomp() { # N64Recomp (vendored, patched generator; built OUT of the sour
     python3 "$ROOT/tools/check_generated_fresh.py"
     "$ROOT/tools/verify_generated.sh"                                              # byte-identical to the accepted baseline (metadata/recomp-output.sha256)
 }
-stage_configure() { # -ffile-prefix-map keeps build-host paths out of __FILE__/asserts in the shipped binary
-    local pm="-ffile-prefix-map=$ROOT=/tooie"
-    cmake -S "$ROOT" -B "$BUILD" -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="$pm" -DCMAKE_CXX_FLAGS="$pm"
+stage_configure() { # CMakePresets.json linux-x64: -ffile-prefix-map keeps build-host paths out of __FILE__/asserts in the shipped binary
+    (cd "$ROOT" && cmake --preset linux-x64 -B "$BUILD")
 }
 stage_build()     { cmake --build "$BUILD" --target TooieRecompiled -j"$JOBS"; }
 stage_test() {

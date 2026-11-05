@@ -108,6 +108,9 @@ Para compilar TooieRecomp desde el código fuente, coloca tu ROM verificada `Ban
 - **Linux:** Ejecuta `tools/build_linux.sh` (probado en Ubuntu 24.04 / Linux Mint 22).
   Requisitos previos: Clang, CMake, Ninja, SDL2, FreeType, GTK 3 y Python 3.
   Consulta [tools/BUILDING.md](tools/BUILDING.md) para ver las instrucciones completas.
+- **Portátiles (aarch64, PortMaster):** compilación cruzada desde Windows (`tools/handheld/build-handheld.ps1`) o Linux
+  (`tools/handheld/build-handheld.sh`), luego `tools/handheld/package_portmaster.py`.
+  Consulta [tools/BUILDING.md](tools/BUILDING.md) para el sysroot y los pasos.
 
 ---
 

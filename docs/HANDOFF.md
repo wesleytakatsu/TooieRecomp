@@ -53,7 +53,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Portáteis (2026-11-05, branch `feat/handheld`, base `ea5e31f`)
 
-- **Desktop não muda (`PROVEN`):** `tools/xu10/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado. O `.exe` Windows
+- **Desktop não muda (`PROVEN`):** `tools/handheld/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado. O `.exe` Windows
   deste código, comparado com o de `ea5e31f`, tem `.text` e `.rdata` idênticos; diferem 299 bytes, o carimbo PE e 37 identificadores de namespace anônimo derivados do caminho.
   Windows `-Stage Test`: 30/30. Linux x64 não foi compilado nem executado: depende da prova de fontes (`NOT_RUN`).
 - **Pacote no XU10 com `libmali`, pasta separada, instalação nova:** ROM original convertida e jogo aberto na mesma execução, Demo 1 igual ao PC em 420 linhas, 3 demos iguais até o fim
@@ -65,8 +65,11 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - **Limites:** só XU10 com ROCKNIX; sem caminho KMSDRM no backend; `port.json` sem screenshot.
 - **Causa `UNKNOWN`:** falta de memória na primeira rodada depois de trocar de driver, e o crescimento do EmulationStation (96 para mais de 320 MB).
 - **Unificação (fase 1):** o trabalho do clone `TooieRecomp-xu10` está nesta branch; o clone deixa de ser fonte. Patches `vendor/patches-local/rt64-tk64-mobile.patch` e
-  `recompfrontend-weak-no-interface-msaa.patch` em `ORDER.tsv`, `UPSTREAMS.tsv` e no manifesto (`VENDOR VERIFY OK`, 50 patches). Próximas fases (presets de build, menu de API por
-  plataforma, melhorias do portátil no desktop, release e CI) entram na mesma PR, aberta só com tudo testado.
+  `recompfrontend-weak-no-interface-msaa.patch` em `ORDER.tsv`, `UPSTREAMS.tsv` e no manifesto (`VENDOR VERIFY OK`, 50 patches). Próximas fases (menu de API por plataforma, melhorias do
+  portátil no desktop, release e CI) entram na mesma PR, aberta só com tudo testado.
+- **Presets (fase 2):** `CMakePresets.json` com `windows-x64`, `linux-x64` e `linux-arm64-handheld`; `Build-Tooie.ps1`, `build_linux.sh` e
+  `tools/handheld/build-handheld.{ps1,sh}` configuram por eles. Ferramentas em `tools/handheld/` (antes `tools/xu10/`), chip em `devices/rk3326.cmake`
+  (XU10, R36S). Build cruzado a partir de host Linux e `build_linux.sh` com preset: `NOT_RUN`.
 
 ## Pendências conhecidas
 
@@ -284,4 +287,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: fase 2 da unificação na branch `feat/handheld`: presets de build `windows-x64`, `linux-x64` e `linux-arm64-handheld`.
+`NEXT_SINGLE_ACTION`: fase 3 da unificação na branch `feat/handheld`: menu Graphics API lista só as APIs compiladas e disponíveis no aparelho.

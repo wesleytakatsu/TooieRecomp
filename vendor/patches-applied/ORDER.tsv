@@ -49,5 +49,5 @@ RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-tk64-launcher.pat
 N64ModernRuntime	lib/N64ModernRuntime	patches-local/n64modernruntime-graphics-worker-error.patch	7057dcf6313344d47a2bfde13d00754f194010f72f3e2af2d825696ea82e405e	cefcc6f
 rt64	lib/rt64	patches-local/rt64-widescreen-draw-bounds.patch	6e40e32b2a6db20f4863357a2fab8dc04a4e8671fed6b1f840e5e5d363fe2b6b	fd498a8 integrated RT64/TK64 tree
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-per-player-camera-input.patch	27853eb69e6632838298cebbc348238902bbe4a63101171fcaf29d261d5e48a9	1ba31b1 integrated frontend
-rt64	lib/rt64	patches-local/rt64-tk64-mobile.patch	93cd1ec6cb73a19993e4ac874f1807b6e2bede38579ba5ab3e23b58727f93662	ea5e31f integrated tree
+rt64	lib/rt64	patches-local/rt64-tk64-mobile.patch	97385c515101e1dda6d06650b55d1cfdf6414c5f58ec236273b3ad85f85a56df	ea5e31f integrated tree
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-weak-no-interface-msaa.patch	72dfd12822d0265b9eda176103bf4e1ca73b298c01696173b3485d50b409e7ab	ea5e31f integrated tree

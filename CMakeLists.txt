@@ -5,8 +5,8 @@ project(TooieRecomp LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Handheld build (PortMaster, tools/xu10): the OpenGL ES renderer path and the handheld game behavior. Off, the sources resolve to
-# the desktop code (tools/xu10/check_desktop_unchanged.py proves it).
+# Handheld build (PortMaster, tools/handheld, preset linux-arm64-handheld): the OpenGL ES renderer path and the handheld game behavior. Off, the sources resolve to
+# the desktop code (tools/handheld/check_desktop_unchanged.py proves it).
 option(TK64_MOBILE "Build for handheld GPUs (OpenGL ES only)" OFF)
 if(TK64_MOBILE)
   add_compile_definitions(TK64_MOBILE)

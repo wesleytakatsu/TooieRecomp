@@ -77,6 +77,7 @@ tools/oracle/angrylion-control/work/
 build-linux/
 build-win/
 build-xu10/
+build-handheld/
 build-ci/
 
 # --- Standalone vendoring (vendor/README.md) ---------------------------------------------------------------------------

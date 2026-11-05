@@ -5,7 +5,7 @@ Every modified source file, with TK64_MOBILE undefined (the desktop default), mu
 commit. The only symbol resolved is TK64_MOBILE; other preprocessor lines stay as they are. Files listed in REVIEWED are
 build scripts whose desktop paths were read by hand and are printed so the diff stays visible.
 
-    python tools/xu10/check_desktop_unchanged.py [--base <commit>]
+    python tools/handheld/check_desktop_unchanged.py [--base <commit>]
 
 The default base is where this branch left origin/main, or HEAD in a clone without that ref. Once the handheld work is on the
 branch being checked, pass the commit before it: comparing a commit with itself proves nothing.
@@ -75,8 +75,11 @@ def main():
         except subprocess.CalledProcessError:
             args.base = 'HEAD'
 
-    changed = git('diff', '--name-only', args.base, '--', 'lib', 'src', 'include', 'CMakeLists.txt').decode().split()
-    untracked = git('ls-files', '--others', '--exclude-standard', '--', 'lib', 'src', 'include').decode().split()
+    scope = ['--', 'lib', 'src', 'include', 'CMakeLists.txt']
+    changed = git('diff', '--name-only', '--diff-filter=a', args.base, *scope).decode().split()
+    # New since the base, committed or not: only the handheld build may compile them.
+    added = git('diff', '--name-only', '--diff-filter=A', args.base, *scope).decode().split()
+    added += git('ls-files', '--others', '--exclude-standard', '--', 'lib', 'src', 'include').decode().split()
     failures = 0
     identical = 0
     for path in changed:
@@ -85,6 +88,10 @@ def main():
             continue
         if Path(path).suffix.lower() not in SOURCE_SUFFIXES:
             print(f'FAIL      {path}: not a source file this check understands')
+            failures += 1
+            continue
+        if not (ROOT / path).exists():
+            print(f'FAIL      {path}: deleted since {args.base}')
             failures += 1
             continue
         current = (ROOT / path).read_bytes().decode('utf-8')
@@ -105,7 +112,7 @@ def main():
                 if a != b:
                     print(f'          first difference at line {number}:\n          now  {a[:120]}\n          base {b[:120]}')
                     break
-    for path in untracked:
+    for path in sorted(set(added)):
         if path in MOBILE_ONLY:
             print(f'mobile    {path}')
         else:
