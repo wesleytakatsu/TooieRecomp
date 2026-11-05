@@ -171,7 +171,11 @@ namespace RT64 {
             std::pair<size_t, size_t> uploadRange = { 0, drawData.viewProjTransforms.size() };
             uploads.emplace_back(BufferUploader::Upload{ drawData.modViewProjTransforms.data(), uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.viewProjTransformsBuffer });
             std::pair<size_t, size_t> endpointRange = { 0, drawData.endpointViewProjTransforms.size() };
+#           ifdef TK64_MOBILE
+            uploads.emplace_back(BufferUploader::Upload{ drawData.endpointViewProjTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::FORMATTED | RenderBufferFlag::STORAGE, { RenderFormat::R32G32B32A32_FLOAT }, &drawBuffers.endpointViewProjTransformsBuffer });
+#           else
             uploads.emplace_back(BufferUploader::Upload{ drawData.endpointViewProjTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.endpointViewProjTransformsBuffer });
+#           endif
         }
 
         bufferUploader->submit(p.worker, uploads);

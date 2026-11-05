@@ -5,6 +5,13 @@ project(TooieRecomp LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Handheld build (PortMaster, tools/xu10): the OpenGL ES renderer path and the handheld game behavior. Off, the sources resolve to
+# the desktop code (tools/xu10/check_desktop_unchanged.py proves it).
+option(TK64_MOBILE "Build for handheld GPUs (OpenGL ES only)" OFF)
+if(TK64_MOBILE)
+  add_compile_definitions(TK64_MOBILE)
+endif()
+
 # Standalone: rt64, N64ModernRuntime (+N64Recomp), RecompFrontend, SlotMap and SDL2 (Windows) are vendored as regular
 # files under lib/ (provenance, pins and patch chain: vendor/UPSTREAMS.tsv; integrity: tools/vendor_verify.sh).
 # No sibling checkout, submodule or download is used. assets/ and recompcontrollerdb.txt live in this repository.
@@ -81,7 +88,7 @@ set(DXC_PS_OPTS ${DXC_COMMON_OPTS} "-E" "PSMain" "-T" "ps_6_0" "-D" "DYNAMIC_REN
 set(DXC_VS_OPTS ${DXC_COMMON_OPTS} "-E" "VSMain" "-T" "vs_6_0" "-D" "DYNAMIC_RENDER_PARAMS" "-fvk-invert-y")
 set(DXC_CS_OPTS ${DXC_COMMON_OPTS} "-E" "CSMain" "-T" "cs_6_0")
 set(DXC_GS_OPTS ${DXC_COMMON_OPTS} "-E" "GSMain" "-T" "gs_6_0")
-if(WIN32)
+if(WIN32 OR (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32))
   set(DXC "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc.exe")
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   set(DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
@@ -424,7 +431,7 @@ endif()
 
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")
-if(WIN32)
+if(WIN32 OR (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32))
     set (DXC "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc.exe")
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
     set (DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")

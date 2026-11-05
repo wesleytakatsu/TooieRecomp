@@ -275,8 +275,16 @@ int tooie_startup::enter(int argc, char **argv) {
 #else
     (void)argc;
     (void)argv;
+#ifdef TK64_MOBILE
+    // A launcher that names the backend wins: handhelds have no Vulkan and need OpenGL ES.
+    if (const char *forced = std::getenv("TK64_GRAPHICS_API"); forced == nullptr || forced[0] == '\0') {
+        const auto s = preference();
+        set_environment("TK64_GRAPHICS_API", s == "opengl" ? "opengl" : "");
+    }
+#else
     const auto s = preference();
     set_environment("TK64_GRAPHICS_API", s == "opengl" ? "opengl" : "");
+#endif
     return -1;
 #endif
 }

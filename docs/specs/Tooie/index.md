@@ -78,4 +78,6 @@ The TooieRecomp system is specified across 15 core functional domains:
 
 ## Launcher startup and graphics backend selection
 
+[Handheld Build and PortMaster Package](handheld-portmaster.md) — aarch64 handheld build behind `TK64_MOBILE`, isolation from desktop builds, PortMaster zip.
+
 [Launcher Startup and Backends](startup-and-backends.md) — TK64 integration, Windows recovery, API preference, independent pause music and opt-in logs.

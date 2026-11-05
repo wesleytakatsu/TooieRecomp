@@ -6,6 +6,11 @@
 
 #include <cassert>
 #include <cinttypes>
+#ifdef TK64_MOBILE
+#include <cstring>
+
+#include "tk64/tk64_depth_ram.h"
+#endif
 
 #include "im3d/im3d.h"
 #include "im3d/im3d_math.h"
@@ -1779,6 +1784,36 @@ namespace RT64 {
         advanceWorkload(workload, false);
         ext.workloadQueue->advanceToNextWorkload();
 
+#       ifdef TK64_MOBILE
+        // TK64: the newest depth the GPU finished, for games that read the Z-buffer from RAM (docs/specs/mobile-driver-costs.md).
+        if (tk64::depthram::enabled()) {
+            tk64::depthram::Frame &depthFrame = tk64::depthram::frame();
+            const std::scoped_lock<std::mutex> depthLock(depthFrame.mutex);
+            if (depthFrame.fresh) {
+                // This depth is a frame or more old. If the game has moved its Z-buffer since, the old address can hold anything by now.
+                const bool sameBuffer = (depthFrame.address == rdp->depthImage.address);
+                for (uint32_t y = 0; sameBuffer && (y < depthFrame.height); y++) {
+                    const uint32_t rowAddress = depthFrame.address + y * depthFrame.width * 2;
+                    const uint32_t rowSize = depthFrame.width * 2;
+                    const uint8_t *row = depthFrame.mapped + y * depthFrame.rowBytes;
+                    if (((rowAddress & 3) == 0) && ((depthFrame.width & 1) == 0) && (((rowAddress & RDRAMSize) + rowSize - 1) <= RDRAMSize)) {
+                        memcpy(&RDRAM[rowAddress & RDRAMSize], row, rowSize);
+                        continue;
+                    }
+
+                    for (uint32_t x = 0; x < depthFrame.width; x++) {
+                        uint32_t word;
+                        memcpy(&word, row + (x / 2) * sizeof(uint32_t), sizeof(word));
+                        const uint32_t offset = (rowAddress + x * 2) & RDRAMSize;
+                        *reinterpret_cast<uint16_t *>(&RDRAM[offset ^ 2]) = uint16_t((x & 1) ? word : (word >> 16));
+                    }
+                }
+
+                depthFrame.fresh = false;
+            }
+        }
+
+#       endif
         // Make sure the profiler starts after the workload is advanced to ignore any waiting time.
         dlCpuProfiler.reset();
         dlCpuProfiler.start();

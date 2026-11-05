@@ -155,6 +155,9 @@ they do not prove visual fidelity or compatibility on another computer.
 - Windows has supervised recovery. Linux retains its direct renderer initialization; OpenGL can be selected before
   initialization, but equivalent process supervision/fallback and UI/runtime validation are `NOT_IMPLEMENTED` / `NOT_RUN`.
 
+The handheld build adds its own startup rules behind `TK64_MOBILE` (backend from the launcher, ROM from the folder, Select + Start): [handheld build](handheld-portmaster.md).
+None of them exist in a desktop build.
+
 Related: [window/UI/config](window-ui-and-config.md), [graphics](graphics-and-presentation.md),
 [audio](audio-system.md), [tests](testing-and-oracle.md), [dependencies](packaging-and-dependencies.md).
 

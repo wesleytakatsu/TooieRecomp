@@ -365,3 +365,10 @@ input parity does NOT refute NPC or mob timing divergence driven by VI or frame 
 Current status: VI handler cadence difference is observed; causal role in NPC/mob timing is
 `UNKNOWN / OPEN HYPOTHESIS`; `--nospeedlimit` is logical execution only, not realtime proof.
 `CORRECTED/SUPERSEDED`.
+
+## Attract demo divergence on the XU10 is not VI cadence
+
+Two XU10 runs with a different VI step in 147 of 419 frames gave identical `TOOIE_DIAG_DEMO1_PARITY` rows at nine digits, so cadence does not change Demo 1's player or camera up to row 420 on
+that build (`PROVEN`). The Windows/XU10 difference came from the Z-buffer in RDRAM: see [camera controls](systems/camera-controls.md). NPC and mob timing in the earlier open hypothesis above remains `UNKNOWN`.
+`REFUTED` for this divergence: arithmetic differences between x86 and ARM (no float to int conversion out of range in the run, and identical results once depth was present), guest heap layout, graphics settings,
+launcher environment and driver.

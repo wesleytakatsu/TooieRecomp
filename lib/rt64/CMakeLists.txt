@@ -12,6 +12,12 @@ option(RT64_STATIC "Build RT64 as a static library" OFF)
 
 
 option(RT64_SDL_WINDOW_VULKAN "Build RT64 to expect an SDL Window outside of Windows" OFF)
+# TK64: everything for handheld GPUs that bound the shaders or the OpenGL ES backend (docs/specs/mobile-driver-costs.md). Off, the
+# sources resolve to what desktop builds always compiled.
+option(TK64_MOBILE "Build RT64 for handheld GPUs (OpenGL ES only)" OFF)
+if (TK64_MOBILE)
+    add_compile_definitions(TK64_MOBILE)
+endif()
 
 if (NOT ${RT64_STATIC})
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -35,7 +41,10 @@ function(preprocess INFILE OUTFILE OPTIONS)
     endif()
 endfunction()
 
-if (WIN32)
+# TK64: cross-compiling from Windows, the shader tools run on the host (docs/specs/targets.md).
+if (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32)
+    set (DXC "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
+elseif (WIN32)
     set (DXC "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
     add_compile_definitions(
         NOMINMAX
@@ -69,7 +78,15 @@ set(ZSTD_LEGACY_SUPPORT OFF)
 set(ZSTD_BUILD_STATIC ON)
 set(ZSTD_BUILD_SHARED OFF)
 
-add_subdirectory(src/tools/file_to_c)
+if (CMAKE_CROSSCOMPILING)
+    if (NOT TK64_HOST_FILE_TO_C)
+        message(FATAL_ERROR "Cross-compiling needs TK64_HOST_FILE_TO_C, the path to a file_to_c built for the host")
+    endif()
+    add_executable(file_to_c IMPORTED GLOBAL)
+    set_target_properties(file_to_c PROPERTIES IMPORTED_LOCATION "${TK64_HOST_FILE_TO_C}")
+else()
+    add_subdirectory(src/tools/file_to_c)
+endif()
 add_subdirectory(src/contrib/re-spirv)
 add_subdirectory(src/contrib/nativefiledialog-extended)
 add_subdirectory(src/contrib/zstd/build/cmake)
@@ -104,6 +121,9 @@ set(ANDROID_ABI arm64-v8a)
 
 # For DXC
 set (DXC_COMMON_OPTS "-I${PROJECT_SOURCE_DIR}/src")
+if (TK64_MOBILE)
+    list(APPEND DXC_COMMON_OPTS "-D" "TK64_MOBILE")
+endif()
 set (DXC_DXIL_OPTS "-Wno-ignored-attributes")
 set (DXC_SPV_OPTS "-spirv" "-fspv-target-env=vulkan1.0" "-fvk-use-dx-layout")
 set (DXC_LB_OPTS "${DXC_COMMON_OPTS}" "-D" "LIBRARY" "-T" "lib_6_3")
@@ -470,7 +490,11 @@ if (NOT APPLE)
     add_library(tk64_shader_translator STATIC "${PROJECT_SOURCE_DIR}/src/tk64/tk64_shader_translator.cpp")
     target_include_directories(tk64_shader_translator PUBLIC "${PROJECT_SOURCE_DIR}/src/tk64")
     target_link_libraries(tk64_shader_translator PUBLIC spirv-cross-glsl spirv-cross-hlsl)
-    target_sources(plume PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/plume/plume_gles.cpp")
+    if (TK64_MOBILE)
+        target_sources(plume PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/plume/plume_gles_mobile.cpp")
+    else()
+        target_sources(plume PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/plume/plume_gles.cpp")
+    endif()
     target_link_libraries(plume PUBLIC tk64_shader_translator)
     if (WIN32)
         target_link_libraries(plume PUBLIC opengl32)
@@ -492,8 +516,10 @@ if (NOT APPLE)
 endif()
 
 # Add tools.
-add_subdirectory(src/tools/texture_hasher)
-add_subdirectory(src/tools/texture_packer)
+if (NOT CMAKE_CROSSCOMPILING)
+    add_subdirectory(src/tools/texture_hasher)
+    add_subdirectory(src/tools/texture_packer)
+endif()
 
 # Add any Apple-specific source files and libraries
 if (APPLE)

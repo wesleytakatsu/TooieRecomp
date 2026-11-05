@@ -544,7 +544,11 @@ namespace RT64 {
             srcLightIndices = builder.addFormattedBuffer(10);
             srcLightCounts = builder.addFormattedBuffer(11);
             srcLookAtIndices = builder.addFormattedBuffer(12);
+#           ifdef TK64_MOBILE
+            rspViewportVector = builder.addFormattedBuffer(13);
+#           else
             rspViewportVector = builder.addStructuredBuffer(13);
+#           endif
             rspFogVector = builder.addStructuredBuffer(14);
             rspLightVector = builder.addStructuredBuffer(15);
             rspLookAtVector = builder.addStructuredBuffer(16);
@@ -553,8 +557,13 @@ namespace RT64 {
             dstPos = builder.addReadWriteStructuredBuffer(19);
             dstTc = builder.addReadWriteStructuredBuffer(20);
             dstCol = builder.addReadWriteStructuredBuffer(21);
+#           ifdef TK64_MOBILE
+            endpointViewProj = builder.addFormattedBuffer(22);
+            endpointWorld = builder.addFormattedBuffer(23);
+#           else
             endpointViewProj = builder.addStructuredBuffer(22);
             endpointWorld = builder.addStructuredBuffer(23);
+#           endif
             builder.end();
 
             if (device != nullptr) {

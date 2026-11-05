@@ -712,6 +712,11 @@ namespace RT64 {
                 }
                 
                 rasterParams.renderIndex = i;
+#               ifdef TK64_MOBILE
+                rasterParams.vsRect = triangles.shaderDesc.flags.rect ? 1 : 0;
+                rasterParams.vsFixedDepth = ((otherMode.cycleType() != G_CYC_COPY) && (otherMode.zSource() == G_ZS_PRIM)) ? 1 : 0;
+                rasterParams.vsFixedDepthValue = triangles.primDepth;
+#               endif
                 rasterParams.screenScale = triangles.screenScale;
                 rasterParams.screenOffset = triangles.screenOffset;
                 worker->commandList->setGraphicsPushConstants(0, &rasterParams);
@@ -1760,6 +1765,9 @@ namespace RT64 {
                         }
                         
                         triangles.faceCount = call.callDesc.triangleCount;
+#                       ifdef TK64_MOBILE
+                        triangles.primDepth = call.callDesc.rdpParams.primDepth.x;
+#                       endif
                         triangles.tileIndex = call.callDesc.tileIndex;
                         triangles.tileCount = call.callDesc.tileCount;
                         triangles.textureSlotSet = nullptr;

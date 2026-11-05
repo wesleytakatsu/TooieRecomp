@@ -2,6 +2,9 @@
 // RT64
 //
 
+#ifdef TK64_MOBILE
+#include "tk64/tk64_depth_ram.h"
+#endif
 #include "rt64_workload_queue.h"
 
 #include "common/rt64_thread.h"
@@ -706,6 +709,10 @@ namespace RT64 {
             
             // Record all framebuffer pairs.
             uint32_t framebufferIndex = 0;
+#           ifdef TK64_MOBILE
+            Framebuffer *depthRamFb = nullptr;
+            RenderTarget *depthRamTarget = nullptr;
+#           endif
             for (uint32_t f = 0; f < fbPairCount; f++) {
                 const FramebufferPair &fbPair = workload.fbPairs[f];
                 bool validTargets = getTargetsFromPair(f);
@@ -790,6 +797,12 @@ namespace RT64 {
                     }
                     
                     framebufferRenderer->recordFramebuffer(ext.workloadGraphicsWorker, framebufferIndex++);
+#                   ifdef TK64_MOBILE
+                    if ((depthFb != nullptr) && (depthTarget != nullptr)) {
+                        depthRamFb = depthFb;
+                        depthRamTarget = depthTarget;
+                    }
+#                   endif
 
                     // Transition the render targets in case the present queue will show them so it doesn't have to perform transitions.
                     if (colorTarget != nullptr && depthTarget != nullptr) {
@@ -842,6 +855,13 @@ namespace RT64 {
             framebufferRenderer->waitForUploaders();
             ext.workloadGraphicsWorker->execute();
             ext.workloadGraphicsWorker->wait();
+#           ifdef TK64_MOBILE
+            // TK64: a game can read the Z-buffer from RAM, and render to RAM is off in the weak profile (docs/specs/mobile-driver-costs.md).
+            if (tk64::depthram::enabled() && (depthRamTarget != nullptr)) {
+                const hlslpp::float2 depthScale = depthRamTarget->resolutionScale;
+                plume::glesReadDepth16(depthRamTarget->texture.get(), depthRamFb->addressStart, depthRamFb->width, depthRamFb->height, float(depthScale.x), float(depthScale.y));
+            }
+#           endif
             workerMutex.unlock();
 
             // Update the GPU profiler with the results from the timestamps of the frame.

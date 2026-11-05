@@ -59,14 +59,23 @@ namespace RT64 {
         processSet->setBuffer(processSet->srcLightIndices, p.drawBuffers->lightIndicesBuffer.get(), p.drawBuffers->lightIndicesBuffer.getView(0));
         processSet->setBuffer(processSet->srcLightCounts, p.drawBuffers->lightCountsBuffer.get(), p.drawBuffers->lightCountsBuffer.getView(0));
         processSet->setBuffer(processSet->srcLookAtIndices, p.drawBuffers->lookAtIndicesBuffer.get(), p.drawBuffers->lookAtIndicesBuffer.getView(0));
+#       ifdef TK64_MOBILE
+        processSet->setBuffer(processSet->rspViewportVector, p.drawBuffers->rspViewportsBuffer.get(), p.drawBuffers->rspViewportsBuffer.getView(0));
+#       else
         processSet->setBuffer(processSet->rspViewportVector, p.drawBuffers->rspViewportsBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPViewport)));
+#       endif
         processSet->setBuffer(processSet->rspFogVector, p.drawBuffers->rspFogBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPFog)));
         processSet->setBuffer(processSet->rspLightVector, p.drawBuffers->rspLightsBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPLight)));
         processSet->setBuffer(processSet->rspLookAtVector, p.drawBuffers->rspLookAtBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPLookAt)));
         processSet->setBuffer(processSet->viewProjTransforms, p.drawBuffers->viewProjTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
         processSet->setBuffer(processSet->worldTransforms, p.drawBuffers->worldTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
+#       ifdef TK64_MOBILE
+        processSet->setBuffer(processSet->endpointViewProj, p.drawBuffers->endpointViewProjTransformsBuffer.get(), p.drawBuffers->endpointViewProjTransformsBuffer.getView(0));
+        processSet->setBuffer(processSet->endpointWorld, p.drawBuffers->endpointWorldTransformsBuffer.get(), p.drawBuffers->endpointWorldTransformsBuffer.getView(0));
+#       else
         processSet->setBuffer(processSet->endpointViewProj, p.drawBuffers->endpointViewProjTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
         processSet->setBuffer(processSet->endpointWorld, p.drawBuffers->endpointWorldTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
+#       endif
         processSet->setBuffer(processSet->dstPos, p.outputBuffers->screenPosBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 4));
         processSet->setBuffer(processSet->dstTc, p.outputBuffers->genTexCoordBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 2));
         processSet->setBuffer(processSet->dstCol, p.outputBuffers->shadedColBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 4));

@@ -140,6 +140,16 @@ namespace tk64 {
         // GL also puts row 0 of the framebuffer's memory at the top of the image.
         bool glClipSpaceFixup = true;
 
+#ifdef TK64_MOBILE
+        // GL targets without a depth clamp: keeps depth inside the clip volume in the vertex shader, so a pipeline with depth
+        // clipping off does not lose its geometry. Exact per vertex; a triangle crossing the planes interpolates between clamped values.
+        bool clampVertexDepth = false;
+
+        // GLSL on a driver with only the 16 fragment samplers GLES 3.1 guarantees: texture slots need 17 with the background
+        // depth, so the last TMEM slot is dropped and reads the one before it. Only a draw's eighth tile with raw TMEM can tell.
+        bool dropLastTmemSlot = false;
+
+#endif
         // GLSL ES: the format to declare for write-only storage images, by their SPIR-V (set, binding), instead of the one
         // DXC derived from the element type. Desktop GLSL declares write-only images without a format and ignores this.
         struct ImageFormat {
@@ -149,6 +159,21 @@ namespace tk64 {
         };
 
         std::vector<ImageFormat> imageFormats;
+#ifdef TK64_MOBILE
+
+        // GLSL ES on a driver without EXT_blend_func_extended. A dual-source pixel shader keeps its first output and turns the
+        // second one into a plain variable. With dualSourceBlend it also does in the shader what the fixed function blend with
+        // SRC1_ALPHA and INV_SRC1_ALPHA would, which needs EXT_shader_framebuffer_fetch, and the host turns that blend off.
+        bool dualSourceAsVariable = false;
+        bool dualSourceBlend = false;
+        bool dualSourceAddDstAlpha = false;
+
+        // GLSL ES with ARM_shader_framebuffer_fetch_depth_stencil: the texture at this (set, binding) is the depth target the pixel
+        // shader draws to, and it only reads its own pixel. Reads gl_LastFragDepthARM instead, which needs no end of the driver's pass.
+        bool depthFetch = false;
+        uint32_t depthFetchSet = 0;
+        uint32_t depthFetchBinding = 0;
+#endif
     };
 
     TranslatedShader translateSpirv(const uint32_t *words, size_t wordCount, ShaderLanguage language, const BindingMapper &mapper = BindingMapper(),

@@ -15,7 +15,11 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
     float4 ndcPos = iPosition;
     
     // Skip any sort of transformation on the coordinates when rendering rects.
+#ifdef TK64_MOBILE
+    if (gConstants.vsRect == 0) {
+#else
     if (!renderFlagRect(rp.flags)) {
+#endif
         ndcPos.xy -= float2(FbParams.resolution / 2);
         ndcPos.xy /= float2(FbParams.resolution.x / 2.0f, FbParams.resolution.y / -2.0f);
         ndcPos.xyz *= ndcPos.w;
@@ -25,6 +29,11 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
     ndcPos.xy = (ndcPos.xy * gConstants.screenScale) + gConstants.screenOffset * ndcPos.w;
     
     // Output a fixed depth value for the entire triangle.
+#ifdef TK64_MOBILE
+    if (gConstants.vsFixedDepth != 0) {
+        ndcPos.z = gConstants.vsFixedDepthValue * ndcPos.w;
+    }
+#else
     const OtherMode otherMode = { rp.omL, rp.omH };
     const bool copyMode = (otherMode.cycleType() == G_CYC_COPY);
     const bool zSourcePrim = (otherMode.zSource() == G_ZS_PRIM);
@@ -32,6 +41,7 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
         const uint instanceIndex = instanceRenderIndices[gConstants.renderIndex].instanceIndex;
         ndcPos.z = instanceRDPParams[instanceIndex].primDepth.x * ndcPos.w;
     }
+#endif
 
     oPosition = ndcPos;
     oUV = iUV;
@@ -41,8 +51,14 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
 
 #if defined(DYNAMIC_RENDER_PARAMS)
 RenderParams getRenderParams() {
+#ifdef TK64_MOBILE
+    // TK64: RasterVS takes everything from gConstants.
+    RenderParams rp = (RenderParams)0;
+    return rp;
+#else
     uint instanceIndex = instanceRenderIndices[gConstants.renderIndex].instanceIndex;
     return DynamicRenderParams[instanceIndex];
+#endif
 }
 #elif defined(SPEC_CONSTANT_RENDER_PARAMS)
 #   include "RenderParamsSpecConstants.hlsli"
@@ -57,7 +73,11 @@ void VSMain(
     , out float2 oUV : TEXCOORD
     , out float4 oSmoothColor : COLOR0
 #if defined(DYNAMIC_RENDER_PARAMS) || defined(VERTEX_FLAT_COLOR)
+#ifdef TK64_MOBILE
+    , nointerpolation out float4 oFlatColor : COLOR1
+#else
     , out float4 oFlatColor : COLOR1
+#endif
 #endif
 )
 {

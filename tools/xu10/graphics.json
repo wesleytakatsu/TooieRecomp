@@ -1,0 +1,16 @@
+{
+    "api_option": "Auto",
+    "ar_option": "Original",
+    "cutscene_aspect_ratio_mode": "Original",
+    "developer_mode": false,
+    "ds_option": 0,
+    "hpfb_option": "Off",
+    "hr_option": "Original",
+    "interpolation": false,
+    "msaa_option": "None",
+    "res_option": "Original",
+    "rr_manual_value": 30,
+    "rr_option": "Original",
+    "show_fps_counter": false,
+    "wm_option": "Windowed"
+}

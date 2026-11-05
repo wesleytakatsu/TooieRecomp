@@ -65,6 +65,16 @@ The release also has a `.deb` package (Debian/Ubuntu/Mint) and an `.AppImage`.
 - System dependencies: `SDL2`, `FreeType`, `GTK 3`.
 - Settings and save files are stored in: `~/.config/TooieRecompiled`
 
+### Handhelds (PortMaster, aarch64)
+
+1. Install `BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip` with PortMaster.
+2. Copy your ROM to `ports/tooie` and start **Banjo-Tooie** from the Ports list. The first start converts the ROM once.
+
+**Requirements & Notes:**
+- Needs OpenGL ES 3.1 and a firmware with Wayland or X11. Tested only on the MagicX XU10 with ROCKNIX; other devices are untested.
+- Original resolution and 4:3. The first time each scene appears, its shaders compile and the game can pause briefly.
+- Select + Start asks whether to quit. Settings and saves stay in `ports/tooie`.
+
 ---
 
 ## Tips & Notes

@@ -811,6 +811,13 @@ namespace RT64 {
         tileCopy.usedHeight = height;
         tileCopy.usedTimestamp = usedTimestamp;
 
+#       ifdef TK64_MOBILE
+        // TK64: without render to RAM this manager only hands out Ids and never creates the textures, so the size must be
+        // recorded here. Otherwise no entry ever matches above and each frame's tile copies create new textures that stay alive.
+        tileCopy.textureWidth = textureWidth;
+        tileCopy.textureHeight = textureHeight;
+
+#       endif
         return newId;
     }
 
@@ -862,6 +869,12 @@ namespace RT64 {
             const uint32_t DifferenceFractionNum = 1;
             const uint32_t DifferenceFractionDiv = 4;
             const uint32_t differentPixels = fb->copyRAMToNativeAndChanges(renderWorker, fbChange, fbRAM, 0, fb->height, fb->lastWriteFmt, false, shaderLibrary);
+#           ifdef TK64_MOBILE
+            if (differentPixels == 0) {
+                continue;
+            }
+
+#           endif
             const uint32_t differentBytes = differentPixels << fb->siz >> 1;
             fb->modifiedBytes += differentBytes;
 

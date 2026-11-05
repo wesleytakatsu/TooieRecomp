@@ -129,6 +129,11 @@ Static components (`RT64`, `N64ModernRuntime`, `ultramodern`, `fmt`, `toml11`, `
 - **[Asset Ownership & Licensing Manifest](asset-and-licensing-manifest.md)**: Copyright boundaries, legal ROM requirements, third-party component licenses, and package distribution policies.
 - **[Operational Handoff](../../HANDOFF.md)**: Current system status, open packaging items, and release readiness.
 
+## Handheld package
+
+The aarch64 PortMaster zip has its own script and contract: [handheld build and PortMaster package](handheld-portmaster.md). It holds no ROM and no
+game assets, like the desktop packages, and the script refuses files that look like them. Its libraries come from the firmware.
+
 ## TK64 and launcher audio dependencies
 
 Windows supports compatible DX12/Vulkan, DX11 FL 11_0 and OpenGL 4.3 backends through the vendored TK64 integration.

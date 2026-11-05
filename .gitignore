@@ -76,6 +76,7 @@ tools/oracle/angrylion-control/work/
 .n_aspMain.gen.toml
 build-linux/
 build-win/
+build-xu10/
 build-ci/
 
 # --- Standalone vendoring (vendor/README.md) ---------------------------------------------------------------------------

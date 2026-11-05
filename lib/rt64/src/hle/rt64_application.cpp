@@ -3,6 +3,9 @@
 //
 
 #include "rt64_application.h"
+#ifdef TK64_MOBILE
+#include "tk64/tk64_depth_ram.h"
+#endif
 #include "rhi/rt64_render_hooks.h"
 
 #ifdef TK64_GLES_BACKEND
@@ -340,6 +343,10 @@ namespace RT64 {
         tk64Profile = tk64::selectProfile(tk64OpenGLESDevice);
         fprintf(stdout, "TK64: %s GPU profile.\n", tk64::profileName(tk64Profile));
         tk64::applyProfile(tk64Profile, userConfig);
+#       ifdef TK64_MOBILE
+        tk64::applyProfile(tk64Profile, emulatorConfig);
+        tk64::depthram::enabled() = tk64OpenGLESDevice && tk64::usesDepthToRAM(tk64Profile, emulatorConfig);
+#       endif
 
         // Detect if the application should use HDR framebuffers or not.
         bool usesHDR;

@@ -44,6 +44,9 @@ namespace RT64 {
                 bool vertexTestZ : 1;
                 bool postBlendDitherNoise : 1;
                 bool postBlendDitherNoiseNegative : 1;
+#               ifdef TK64_MOBILE
+                float primDepth;
+#               endif
             } triangles;
 
             struct {

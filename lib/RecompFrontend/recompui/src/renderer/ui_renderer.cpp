@@ -9,6 +9,9 @@
 #include <concurrentqueue.h>
 
 #include "rt64_render_hooks.h"
+#ifdef TK64_MOBILE
+#include "tk64/tk64_profile.h"
+#endif
 #include "rt64_texture_cache.h"
 
 #include "RmlUi/Core/RenderInterfaceCompatibility.h"
@@ -161,9 +164,18 @@ public:
         interface_ = interface;
         device_ = device;
 
+#ifdef TK64_MOBILE
+        // Enable 4X MSAA if supported by the device. Not on a weak GPU: the interface target is the window's size and is cleared,
+        // drawn and resolved every frame, menu or no menu, which there took the GPU from 56% to 87% busy (TK64, XU10).
+#else
         // Enable 4X MSAA if supported by the device.
+#endif
         const plume::RenderSampleCounts desired_sample_count = plume::RenderSampleCount::COUNT_8;
+#ifdef TK64_MOBILE
+        if ((tk64::selectedProfile() != tk64::Profile::Weak) && (device_->getSampleCountsSupported(SwapChainFormat) & desired_sample_count)) {
+#else
         if (device_->getSampleCountsSupported(SwapChainFormat) & desired_sample_count) {
+#endif
             multisampling_.sampleCount = desired_sample_count;
         }
 

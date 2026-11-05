@@ -139,3 +139,6 @@ CMake defines isolated verification targets:
 SPIRV-Cross translates SPIR-V for the new backends; DX11 raster ubershaders are compiled to DXBC during the build.
 No sibling TK64 checkout, network fetch or prebuilt shader binary is required by a normal standalone build.
 Provenance and hashes are recorded in `vendor/`; [startup contract](startup-and-backends.md).
+
+The option `TK64_MOBILE` (default `OFF`) builds for aarch64 handhelds from `tools/xu10/build-xu10.ps1`. With it off, sources resolve to the desktop code and
+`lib/rt64` compiles the unchanged `plume_gles.cpp`; `tools/xu10/check_desktop_unchanged.py` proves it. See [handheld build](handheld-portmaster.md).

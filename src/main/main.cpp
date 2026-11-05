@@ -211,6 +211,10 @@ bool SetImageAsIcon(const char* filename, SDL_Window* window)
 
 SDL_Window* window;
 
+#ifdef TK64_MOBILE
+static int SDLCALL handheld_quit_combo_watch(void*, SDL_Event* event);
+
+#endif
 ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::gfx_data_t) {
     uint32_t flags = SDL_WINDOW_RESIZABLE;
     if (tooie_startup::is_worker()) flags |= SDL_WINDOW_HIDDEN;
@@ -220,12 +224,33 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 #if defined(__APPLE__)
     flags |= SDL_WINDOW_METAL;
 #elif defined(RT64_SDL_WINDOW_VULKAN)
+#ifdef TK64_MOBILE
+    // TK64's OpenGL ES backend makes its own EGL surface, and handhelds may have no Vulkan loader for SDL to find.
+    const char* graphics_api_env = std::getenv("TK64_GRAPHICS_API");
+    const bool tk64_gl_backend = graphics_api_env != nullptr && std::strncmp(graphics_api_env, "opengl", 6) == 0;
+    if (!tk64_gl_backend) {
+        flags |= SDL_WINDOW_VULKAN;
+    }
+#else
     flags |= SDL_WINDOW_VULKAN;
+#endif
 #endif
 
     int init_w = 1600, init_h = 900;
     tooie_window::sanitize_window_dimensions(init_w, init_h);
 
+#ifdef TK64_MOBILE
+    // Handhelds (TOOIE_HANDHELD=1): the whole screen, at its own size.
+    const char* handheld_env = std::getenv("TOOIE_HANDHELD");
+    SDL_DisplayMode display_mode{};
+    if (handheld_env != nullptr && handheld_env[0] != '\0' && handheld_env[0] != '0' && SDL_GetCurrentDisplayMode(0, &display_mode) == 0) {
+        init_w = display_mode.w;
+        init_h = display_mode.h;
+        flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+        SDL_AddEventWatch(handheld_quit_combo_watch, nullptr);
+    }
+
+#endif
     window = SDL_CreateWindow(banjo::program_name.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, init_w, init_h, flags);
 
     if (window == nullptr) {
@@ -260,8 +285,48 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 #endif
 }
 
+#ifdef TK64_MOBILE
+// Handhelds have no window to close, so Select + Start asks to quit. A hotkey outside the game can't do this: gptokeyb sends SIGTERM,
+// which opens this same prompt, and then SIGKILL a moment later because the game is still running.
+static std::atomic_bool handheld_quit_requested = false;
+
+static int SDLCALL handheld_quit_combo_watch(void*, SDL_Event* event) {
+    static bool select_held = false;
+    static bool start_held = false;
+    if ((event->type == SDL_CONTROLLERBUTTONDOWN) || (event->type == SDL_CONTROLLERBUTTONUP)) {
+        const bool pressed = (event->type == SDL_CONTROLLERBUTTONDOWN);
+        if (event->cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
+            select_held = pressed;
+        }
+        else if (event->cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+            start_held = pressed;
+        }
+        else {
+            return 1;
+        }
+
+        if (pressed && select_held && start_held) {
+            handheld_quit_requested = true;
+        }
+    }
+
+    return 1;
+}
+
+#endif
 void update_gfx(void*) {
     recompinput::handle_events();
+#ifdef TK64_MOBILE
+    if (handheld_quit_requested.exchange(false)) {
+        if (ultramodern::is_game_started()) {
+            recompui::open_quit_game_prompt();
+        }
+        else {
+            ultramodern::quit();
+        }
+    }
+
+#endif
     if (window != nullptr && tooie_startup::is_ready() && (SDL_GetWindowFlags(window) & SDL_WINDOW_HIDDEN)) SDL_ShowWindow(window);
     tooie_launcher_audio::update_volume(recompui::config::sound::get_main_volume()/100.0f, tooie_bgm::get_percent()/100.0f);
     // UI callbacks enqueue the request; SDL window operations stay on the event thread.
@@ -981,6 +1046,27 @@ int main(int argc, char** argv) {
         auto_start_done = true;
         recomp::check_all_stored_roms();
         std::u8string game_id = supported_games[0].game_id;
+#ifdef TK64_MOBILE
+        // Handhelds have no file dialog: the player's copy of the game next to the binary is converted once, here.
+        if (!recomp::is_rom_valid(game_id)) {
+            std::error_code rom_error;
+            for (const auto& entry : std::filesystem::directory_iterator(recompui::file::get_app_folder_path(), rom_error)) {
+                std::string extension = entry.path().extension().string();
+                for (char& c : extension) {
+                    c = ((c >= 'A') && (c <= 'Z')) ? char(c - 'A' + 'a') : c;
+                }
+
+                if ((extension == ".z64") || (extension == ".n64") || (extension == ".v64")) {
+                    const recomp::RomValidationError rom_result = recomp::select_rom(entry.path(), game_id);
+                    std::fprintf(stderr, "[tooie] handheld ROM %s: result %d\n", entry.path().filename().string().c_str(), int(rom_result));
+                    if (rom_result == recomp::RomValidationError::Good) {
+                        recomp::check_all_stored_roms();
+                        break;
+                    }
+                }
+            }
+        }
+#endif
         if (recomp::is_rom_valid(game_id)) {
             // Match launcher Start Game: hide UI so RT64 game frames are visible.
             std::fprintf(stderr, "[tooie] TOOIE_AUTO_START: starting game\n");
@@ -988,6 +1074,10 @@ int main(int argc, char** argv) {
             recompui::hide_all_contexts();
         } else {
             std::fprintf(stderr, "[tooie] TOOIE_AUTO_START: ROM not valid/stored; staying on launcher\n");
+#ifdef TK64_MOBILE
+            // No file dialog here to pick another one: the launcher script tells the player.
+            ultramodern::quit();
+#endif
         }
     });
 
