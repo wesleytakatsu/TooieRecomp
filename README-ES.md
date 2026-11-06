@@ -96,6 +96,17 @@ TooieRecomp admite varios idiomas de texto en el juego: **English** (predetermin
 - **Français, Deutsch, Español:** Selecciona el idioma en **Settings** → **General** → **Game Language** (en el lanzador o en el menú `Esc` durante la partida). El juego te pedirá tu ROM europea (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`, SHA-1 `93bf2fac1387320ad07251cb4b64fd36bac1d7a6`) una sola vez para extraer el paquete de idioma directamente. La ROM europea se utiliza ÚNICAMENTE para esta extracción; el juego siempre se ejecuta desde tu ROM USA.
 - **Aplicación del idioma:** La selección se aplica al iniciar el juego. Si se cambia durante la partida, reinicia el juego para que surta efecto.
 
+### Paquetes de texturas
+
+- **BT Reloaded** (de GhostlyDark, un proyecto aparte): descarga `bt-reloaded-v<versión>-rt64.rtz` desde sus
+  [releases de GitHub](https://github.com/GhostlyDark/BT-Reloaded/releases) o desde el
+  [sitio del paquete](https://evilgames.eu/texture-packs/bt-reloaded.htm).
+- Instálalo desde el menú `Mods` del juego, o copia el archivo a `%LOCALAPPDATA%\TooieRecompiled\mods`
+  (Linux: `~/.config/TooieRecompiled/mods`), y actívalo en `Mods`. El ZIP `gliden64-png` del paquete también funciona
+  sin extraerlo.
+- Los paquetes de texturas no se incluyen en las releases. BT Reloaded v0.1.1 reemplaza por ahora sobre todo los menús
+  y el HUD; solo se probó en Windows.
+
 ---
 
 ## Compilación desde el Código Fuente

@@ -128,6 +128,8 @@ While the modding and extension infrastructure compiles cleanly into `TooieRecom
   the mods directory, installation through the interface and enable/disable of its texture replacements. The original
   ZIP remains unchanged. Host test `tooie_texture_zip_mod_test` covers root selection, relative reads, the real mod-folder
   scanner, the default manifest and texture-only content detection (C1-C13). Linux and reordering remain `NOT_RUN`.
+  BT Reloaded is a separate project by GhostlyDark (https://github.com/GhostlyDark/BT-Reloaded/releases, published as
+  `.rtz` and GLideN64 ZIPs); the READMEs link to it and the releases do not include it.
 
 Code mods (`.nrm`) load through the same manager, but Tooie publishes no mod SDK yet (no `RECOMP_EXPORT` patches, no
 headers or mod-tool symbol file), and there is no data-file replacement or external-audio API. In-game text languages
