@@ -258,11 +258,7 @@ namespace tk64 {
 
         // GLSL ES only accepts the output index qualifier with EXT_blend_func_extended. Index 0 alone is the default,
         // so it is dropped; a second index (dual-source blending) requires the extension.
-#ifdef TK64_MOBILE
         bool fixOutputIndices(spirv_cross::CompilerGLSL &compiler, TranslatedShader &translated, const TranslationOptions &translationOptions) {
-#else
-        void fixOutputIndices(spirv_cross::CompilerGLSL &compiler, TranslatedShader &translated) {
-#endif
             bool dualSource = false;
             const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
             for (const spirv_cross::Resource &output : resources.stage_outputs) {
@@ -271,30 +267,19 @@ namespace tk64 {
                 }
             }
 
-#ifdef TK64_MOBILE
             if (dualSource && !translationOptions.dualSourceAsVariable) {
                 compiler.require_extension("GL_EXT_blend_func_extended");
                 translated.requiredExtensions.emplace_back("GL_EXT_blend_func_extended");
                 return false;
             }
-#else
-            if (dualSource) {
-                compiler.require_extension("GL_EXT_blend_func_extended");
-                translated.requiredExtensions.emplace_back("GL_EXT_blend_func_extended");
-                return;
-            }
-#endif
 
             for (const spirv_cross::Resource &output : resources.stage_outputs) {
-#ifdef TK64_MOBILE
                 if (dualSource && (compiler.get_decoration(output.id, spv::DecorationIndex) > 0)) {
                     compiler.set_decoration(output.id, spv::DecorationLocation, 1);
                 }
 
-#endif
                 compiler.unset_decoration(output.id, spv::DecorationIndex);
             }
-#ifdef TK64_MOBILE
 
             if (dualSource && translationOptions.dualSourceBlend) {
                 compiler.require_extension("GL_EXT_shader_framebuffer_fetch");
@@ -302,9 +287,7 @@ namespace tk64 {
             }
 
             return dualSource;
-#endif
         }
-#ifdef TK64_MOBILE
 
         // See TranslationOptions::dropLastTmemSlot.
         void dropLastTmemSlot(std::string &source) {
@@ -391,7 +374,6 @@ namespace tk64 {
             source.insert(source.rfind('}'), blend);
             source.insert(source.find('{', source.find("void main()")) + 1, "\n    highp vec4 tk64Target = " + color + ";");
         }
-#endif
 
         // DXC gives every RWTexture2D<T> a format from T alone (float4 becomes rgba32f), while the images bound to it at run
         // time have their own formats (RT64 decodes textures into RGBA8). GL requires the image unit format to match the
@@ -742,13 +724,7 @@ namespace tk64 {
 
                 const uint32_t dummySampler = compiler.build_dummy_sampler_for_combined_images();
                 compiler.build_combined_image_samplers();
-#ifdef TK64_MOBILE
                 const bool rewriteDualSource = options.es && fixOutputIndices(compiler, translated, translationOptions);
-#else
-                if (options.es) {
-                    fixOutputIndices(compiler, translated);
-                }
-#endif
 
                 // Record what each combined sampler is made of before the bindings are rewritten.
                 for (const spirv_cross::CombinedImageSampler &combined : compiler.get_combined_image_samplers()) {
@@ -772,7 +748,6 @@ namespace tk64 {
                 assignTextureUnits(compiler, mapper, translated);
                 namePushConstants(compiler);
                 translated.source = compiler.compile();
-#ifdef TK64_MOBILE
                 if (translationOptions.clampVertexDepth && (translated.stage == ShaderStage::Vertex)) {
                     translated.source.insert(translated.source.rfind('}'), "    gl_Position.z = clamp(gl_Position.z, -abs(gl_Position.w), abs(gl_Position.w));\n");
                 }
@@ -793,7 +768,6 @@ namespace tk64 {
                     }
                 }
 
-#endif
                 reflectPushConstants(compiler, translated);
             }
 

@@ -76,6 +76,12 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   31/31; XU10 (Panfrost) iniciou OpenGL ES sem variável e com `d3d12` salvo. Menu na tela: `PENDING_USER`; Linux `NOT_RUN`.
   Contrato: [[specs/Tooie/startup-and-backends]]. Conhecido, anterior a esta fase: `TOOIE_GRAPHICS_LOG` derruba os
   workers Windows (0xC0000409; um binário sem esta fase também cai), então `Diagnose-Graphics.ps1` não funciona hoje.
+- **Ganhos do portátil no desktop (fase 4):** um só `plume_gles.cpp` (o do portátil; varredura de índices e flushes de
+  Panfrost só em ES; MSAA segue desligado no GL desktop) e contagem de pixels alterados na CPU em todos os builds. Windows
+  (AMD), 4 pares contra `36e2f4a`: CPU do processo DX12 18/16% -> 13/11% de um núcleo, OpenGL 67/84% -> 58/46%; 58-60 FPS
+  no GL. XU10 (Panfrost) igual ao instalado. Perfil Weak não é escolhido no desktop (só ES), então MSAA da UI, res/AA e
+  shaders especializados do Weak não mudam o desktop (`CORRECTED`: a estimativa anterior dizia que o OpenGL desktop usava
+  Weak). Linux desktop com o backend unificado: `NOT_RUN`. Contrato: [[specs/Tooie/graphics-and-presentation]].
 
 ## Pendências conhecidas
 
@@ -293,4 +299,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: fase 4 da unificação na branch `feat/handheld`: trazer ao desktop, uma a uma e medidas, as melhorias do portátil que ajudam Windows/Linux.
+`NEXT_SINGLE_ACTION`: fase 5 da unificação na branch `feat/handheld`: asset de release PortMaster e job de CI do build cruzado.

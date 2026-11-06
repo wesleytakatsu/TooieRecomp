@@ -8,7 +8,7 @@ cd "$GAMEDIR" || exit 1
 performance >/dev/null 2>&1
 gpu_performance_level profile_peak >/dev/null 2>&1
 export WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/var/run/0-runtime-dir SDL_VIDEODRIVER=wayland SDL_AUDIODRIVER=pulseaudio
-export TK64_GRAPHICS_API=opengles TK64_PROFILE=weak TOOIE_HANDHELD=1 TOOIE_AUTO_START=1 TOOIE_DISABLE_LAUNCHER_MUSIC=1 TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0 TK64_GL_PROFILE=1
+export TK64_GRAPHICS_API=opengles TK64_PROFILE=weak TOOIE_HANDHELD=1 TOOIE_AUTO_START=1 TOOIE_DISABLE_LAUNCHER_MUSIC=1 TOOIE_DIAG_RSP_FORCE_ENDPOINT_CURRENT=0
 export MESA_SHADER_CACHE_DIR="$GAMEDIR/shadercache" MESA_SHADER_CACHE_MAX_SIZE=64M
 export SDL_GAMECONTROLLERCONFIG_FILE=/storage/.config/SDL-GameControllerDB/gamecontrollerdb.txt
 for kv in "$@"; do export "$kv"; done

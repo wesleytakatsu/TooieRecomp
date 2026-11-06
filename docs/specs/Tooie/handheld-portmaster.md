@@ -23,14 +23,15 @@ Z-buffer in RAM is in [camera controls](../../reverse-engineering/systems/camera
 | --- | --- |
 | The CMake option `TK64_MOBILE` is `OFF` by default | Only the preset `linux-arm64-handheld` turns it on |
 | With it off, every changed source resolves to the base commit's text | `python tools/handheld/check_desktop_unchanged.py` compares them byte by byte and fails otherwise. It proves a handheld-only change; a change meant for every target (the Graphics API menu) fails it on purpose, so pass `--base` from before that change only for handheld-only work |
-| With it off, the OpenGL backend is the unchanged `plume_gles.cpp` | With it on, `lib/rt64/CMakeLists.txt` compiles `plume_gles_mobile.cpp` instead |
+| Desktop OpenGL keeps its behavior where mobile drivers differ | The one `plume_gles.cpp` checks the GL profile (ES) or ARM's driver at run time, not `TK64_MOBILE` |
 | Desktop shaders are not changed | `-D TK64_MOBILE` reaches DXC only with the option on |
 | Build script changes do not touch a native build | They are behind `TK64_MOBILE` or `CMAKE_CROSSCOMPILING`; the check prints these two files as `reviewed` |
 
 New handheld code goes behind `#ifdef TK64_MOBILE` with no other condition on that line, because the check resolves only that form.
 
-`plume_gles_mobile.cpp` is a copy of the backend and has to be kept by hand. A fix for both goes in both files. Merging them
-needs the desktop OpenGL path validated first, on Windows and on Linux.
+The handheld OpenGL backend and the desktop one are the same file since phase 4: see
+[graphics](graphics-and-presentation.md) section 3.5 for what changed on desktop and the measurements. Linux desktop OpenGL
+has not run the merged backend yet (`NOT_RUN`).
 
 ## 3. What `TK64_MOBILE` changes
 
@@ -39,7 +40,6 @@ needs the desktop OpenGL path validated first, on Windows and on Linux.
 | RSP shader | Viewports and endpoint matrices come from texel buffers | Mobile drivers may offer 8 storage buffers to a compute shader |
 | Raster vertex shader | Takes rect mode and fixed depth from push constants | Mobile drivers may offer no storage buffer to the vertex stage |
 | Framebuffer changes | Boolean texture is `R32_UINT` | GLES 3.1 has no `R8UI` image storage |
-| RAM-to-native counting | The changed pixels are counted on the CPU when the previous contents are known | Asking the GPU waits for all its pending work |
 | Weak profile | Render to RAM off; resolution and antialiasing stay the player's; specialized shaders, not only the ubershader | Each of these is measured in TK64's spec |
 | Depth to RAM | The newest depth the GPU finished reaches RDRAM, a frame or more late, and only while that address is still the game's Z image. The GPU is never waited for | The game's camera reads the Z-buffer from RAM |
 | Interface | No MSAA target for the interface in the weak profile | It is cleared, drawn and resolved every frame |

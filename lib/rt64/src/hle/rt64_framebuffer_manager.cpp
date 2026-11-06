@@ -869,12 +869,11 @@ namespace RT64 {
             const uint32_t DifferenceFractionNum = 1;
             const uint32_t DifferenceFractionDiv = 4;
             const uint32_t differentPixels = fb->copyRAMToNativeAndChanges(renderWorker, fbChange, fbRAM, 0, fb->height, fb->lastWriteFmt, false, shaderLibrary);
-#           ifdef TK64_MOBILE
+            // TK64: NativeTarget skips the upload when RAM holds what it uploaded last, so there are no changes to write.
             if (differentPixels == 0) {
                 continue;
             }
 
-#           endif
             const uint32_t differentBytes = differentPixels << fb->siz >> 1;
             fb->modifiedBytes += differentBytes;
 

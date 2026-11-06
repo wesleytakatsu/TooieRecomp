@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE_SUFFIXES = {'.c', '.cc', '.cpp', '.cxx', '.h', '.hh', '.hpp', '.hlsl', '.hlsli', '.inl'}
 REVIEWED = {'CMakeLists.txt', 'lib/rt64/CMakeLists.txt'}
 # Sources only the handheld build compiles: lib/rt64/CMakeLists.txt selects them when TK64_MOBILE is on.
-MOBILE_ONLY = {'lib/rt64/src/contrib/plume/plume_gles_mobile.cpp', 'lib/rt64/src/tk64/tk64_depth_ram.h'}
+MOBILE_ONLY = {'lib/rt64/src/tk64/tk64_depth_ram.h'}
 
 IF_RE = re.compile(r'^\s*#\s*(if|ifdef|ifndef)\b(.*)$')
 ELSE_RE = re.compile(r'^\s*#\s*(else|elif)\b')

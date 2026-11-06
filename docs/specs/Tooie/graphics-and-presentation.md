@@ -263,6 +263,27 @@ Measured at the mine spot (D3D12, GTX 1650, 2026-10-30): check-set construction 
 runtime with a temporary verification build that ran the original code next to the new one: 0 mismatches for both
 stages (the verification code is not kept). Upstream RT64 had no fix as of `d9817c6` (2026-10-23).
 
+### 3.5 Handheld renderer gains on every target
+
+Two changes made for the handheld build now apply to every build (both in `vendor/patches-local/rt64-tk64-mobile.patch`):
+
+- **RAM-to-native change count on the CPU** (`NativeTarget::copyFromRAM`): when the previous contents uploaded from RAM
+  are known, the changed pixels are counted on the CPU instead of by a compute shader whose result the CPU waits for. An
+  unchanged framebuffer uploads nothing and `FramebufferManager` writes no changes for it. A GPU write to the native
+  target (`copyToNative`) or a history reset drops the known contents, so the GPU count runs again.
+- **One OpenGL backend** (`plume_gles.cpp`, the former handheld copy): cached bindings, uniforms, vertex arrays and
+  index buffers; upload buffers kept in CPU memory; one memory barrier per dispatch; no flush after each submission.
+  Index-range scanning, the flush before uploads and the flush before depth reads stay on OpenGL ES, where mobile drivers
+  need them. MSAA stays off on desktop OpenGL: with it, the interface's multisampled target did not reach the window
+  (Windows, AMD). The libmali shader cache, depth fetch and texel-buffer workarounds run only on ARM's driver.
+
+Measured on Windows (AMD GPU, 2026-11-05), one renderer worker, boot to attract demo, process CPU from 40 to 100 s, four
+alternating pairs against `36e2f4a`: D3D12 18.1/15.7% of a core to 12.9/10.9% (busiest thread 8.2/8.4% to 2.9/2.2%);
+OpenGL 66.8/83.9% to 57.5/45.5% (GL thread 61/71% to 31%). Runs of the same binary vary by up to 30 points, so only the
+direction of each pair is solid. Present rate stayed at 58-60 FPS with the FPS counter on. A version that kept the flush
+after each submission used as much CPU as the old backend. GPU-bound desktop machines were not measured
+(`UNKNOWN` whether the missing flush delays their frames).
+
 ---
 
 ## 4. Framerate Control & Presentation Decimation

@@ -140,7 +140,6 @@ namespace tk64 {
         // GL also puts row 0 of the framebuffer's memory at the top of the image.
         bool glClipSpaceFixup = true;
 
-#ifdef TK64_MOBILE
         // GL targets without a depth clamp: keeps depth inside the clip volume in the vertex shader, so a pipeline with depth
         // clipping off does not lose its geometry. Exact per vertex; a triangle crossing the planes interpolates between clamped values.
         bool clampVertexDepth = false;
@@ -149,7 +148,6 @@ namespace tk64 {
         // depth, so the last TMEM slot is dropped and reads the one before it. Only a draw's eighth tile with raw TMEM can tell.
         bool dropLastTmemSlot = false;
 
-#endif
         // GLSL ES: the format to declare for write-only storage images, by their SPIR-V (set, binding), instead of the one
         // DXC derived from the element type. Desktop GLSL declares write-only images without a format and ignores this.
         struct ImageFormat {
@@ -159,7 +157,6 @@ namespace tk64 {
         };
 
         std::vector<ImageFormat> imageFormats;
-#ifdef TK64_MOBILE
 
         // GLSL ES on a driver without EXT_blend_func_extended. A dual-source pixel shader keeps its first output and turns the
         // second one into a plain variable. With dualSourceBlend it also does in the shader what the fixed function blend with
@@ -173,7 +170,6 @@ namespace tk64 {
         bool depthFetch = false;
         uint32_t depthFetchSet = 0;
         uint32_t depthFetchBinding = 0;
-#endif
     };
 
     TranslatedShader translateSpirv(const uint32_t *words, size_t wordCount, ShaderLanguage language, const BindingMapper &mapper = BindingMapper(),

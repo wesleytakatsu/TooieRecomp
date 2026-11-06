@@ -20,9 +20,7 @@ namespace RT64 {
     NativeTarget::~NativeTarget() { }
     
     void NativeTarget::resetBufferHistory() {
-#       ifdef TK64_MOBILE
         lastUploadedBytesValid = false;
-#       endif
         if (readBufferHistoryCount > 1) {
             std::swap(readBufferHistory.front(), readBufferHistory.back());
             readBufferHistoryCount = 1;
@@ -74,7 +72,6 @@ namespace RT64 {
             clearDescSet->setBuffer(clearDescSet->gOutputCount, changeCountBuffer.get(), RenderBufferStructuredView(sizeof(uint32_t)));
         }
 
-#       ifdef TK64_MOBILE
         // TK64: with the previous contents known, the changed pixels can be counted here. Asking the GPU means waiting for all
         // its pending work, several times per frame in some games, which costs handhelds more than the rest of the frame.
         const uint32_t cpuBufferSize = getNativeSize(width, height, siz);
@@ -99,7 +96,6 @@ namespace RT64 {
         lastUploadedBytes.assign(data, data + cpuBufferSize);
         lastUploadedBytesValid = true;
 
-#       endif
         // Determine the correct type of texture to use.
         RenderTexture *colorOrDepthRes = nullptr;
         RenderTexture *booleanRes = emptyFbChange.booleanTexture.get();
@@ -229,11 +225,7 @@ namespace RT64 {
         worker->commandList->dispatch(dispatchX, dispatchY, 1);
         worker->commandList->barriers(RenderBarrierStage::ALL, afterBarriers, uint32_t(std::size(afterBarriers)));
 
-#       ifdef TK64_MOBILE
         if (hasCurrentResource && !cpuCountAvailable) {
-#       else
-        if (hasCurrentResource) {
-#       endif
             // Copy the modified count resource to the readback.
             RenderBufferBarrier beforeCopyBarriers[] = {
                 RenderBufferBarrier(changeCountBuffer.get(), RenderBufferAccess::READ),
@@ -246,12 +238,10 @@ namespace RT64 {
         
         // Read the modified count by executing and waiting.
         uint32_t modifiedCount = 0;
-#       ifdef TK64_MOBILE
         if (cpuCountAvailable) {
             modifiedCount = cpuModifiedCount;
         }
         else
-#       endif
         if (hasCurrentResource) {
             worker->commandList->end();
             worker->execute();
@@ -271,9 +261,7 @@ namespace RT64 {
     }
 
     void NativeTarget::copyToNative(RenderWorker *worker, RenderTarget *srcTarget, uint32_t rowWidth, uint32_t rowStart, uint32_t rowEnd, uint8_t siz, uint8_t fmt, uint32_t ditherPattern, uint32_t ditherRandomSeed, const ShaderLibrary *shaderLibrary) {
-#       ifdef TK64_MOBILE
         lastUploadedBytesValid = false;
-#       endif
         assert(worker != nullptr);
 
         srcTarget->resolveTarget(worker, shaderLibrary);
