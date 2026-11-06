@@ -1,0 +1,28 @@
+diff --git a/recompui/src/elements/ui_element.cpp b/recompui/src/elements/ui_element.cpp
+index 4517152..c902b8f 100644
+--- a/recompui/src/elements/ui_element.cpp
++++ b/recompui/src/elements/ui_element.cpp
+@@ -520,6 +520,10 @@ float Element::get_scroll_top() {
+     return base->GetScrollTop();
+ }
+ 
++void Element::set_scroll_top(float scroll_top) {
++    base->SetScrollTop(scroll_top);
++}
++
+ float Element::get_client_left() {
+     return base->GetClientLeft();
+ }
+diff --git a/recompui/src/elements/ui_element.h b/recompui/src/elements/ui_element.h
+index 34eec3f..6e46762 100644
+--- a/recompui/src/elements/ui_element.h
++++ b/recompui/src/elements/ui_element.h
+@@ -141,6 +141,8 @@ public:
+     float get_offset_top();
+     float get_scroll_left();
+     float get_scroll_top();
++    // Scrolls the element vertically; RmlUi clamps the offset to the scrollable range.
++    void set_scroll_top(float scroll_top);
+     float get_client_left();
+     float get_client_top();
+     float get_client_width();

@@ -520,6 +520,10 @@ float Element::get_scroll_top() {
     return base->GetScrollTop();
 }
 
+void Element::set_scroll_top(float scroll_top) {
+    base->SetScrollTop(scroll_top);
+}
+
 float Element::get_client_left() {
     return base->GetClientLeft();
 }

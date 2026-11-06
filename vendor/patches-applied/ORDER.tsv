@@ -51,3 +51,4 @@ rt64	lib/rt64	patches-local/rt64-widescreen-draw-bounds.patch	6e40e32b2a6db20f48
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-per-player-camera-input.patch	27853eb69e6632838298cebbc348238902bbe4a63101171fcaf29d261d5e48a9	1ba31b1 integrated frontend
 rt64	lib/rt64	patches-local/rt64-tk64-mobile.patch	81d31bc657f1d7afb319b551174e73b67fe61c55295a6eae515e8cc8e0219900	ea5e31f integrated tree
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-weak-no-interface-msaa.patch	72dfd12822d0265b9eda176103bf4e1ca73b298c01696173b3485d50b409e7ab	ea5e31f integrated tree
+RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-ui-scroll-top.patch	e5511a3650e677fd87cca57037a03a02376b2125043d4ccac96f510bcb935073	ea5e31f integrated frontend
