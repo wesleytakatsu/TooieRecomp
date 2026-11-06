@@ -10,7 +10,10 @@ libx11-6 libx11-dev libxrandr2 libxrandr-dev libxrender1 libxrender-dev libxext6
 libxcb1 libxcb1-dev libxau6 libxau-dev libxdmcp6 libxdmcp-dev libbsd0 libmd0
 libdbus-1-3 libdbus-1-dev libwayland-client0 libwayland-egl1 libwayland-dev
 libegl1 libegl-dev libgles2 libgles-dev libgl1 libgl-dev libglx-dev libglvnd0 libgbm1 libgbm-dev libdrm2 libdrm-dev
+libsystemd0 libcap2 libgcrypt20 libgpg-error0 liblz4-1 liblzma5 libzstd1
 """.split()
+# The last line is the runtime closure of libdbus-1 (libsystemd and what it loads). Linking does not need it;
+# running the cross-built binaries under qemu-aarch64 with this sysroot does.
 
 
 def fetch(url):
