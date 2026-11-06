@@ -82,6 +82,11 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   no GL. XU10 (Panfrost) igual ao instalado. Perfil Weak não é escolhido no desktop (só ES), então MSAA da UI, res/AA e
   shaders especializados do Weak não mudam o desktop (`CORRECTED`: a estimativa anterior dizia que o OpenGL desktop usava
   Weak). Linux desktop com o backend unificado: `NOT_RUN`. Contrato: [[specs/Tooie/graphics-and-presentation]].
+- **Release e CI (fase 5):** pacote PortMaster com nome de release `BanjoTooieRecompiled-v<ver>-Linux-arm64-PortMaster.zip`
+  (`TOOIE_RELEASE_VERSION` ou `--release-version`). CI pública `public-handheld-cross` (sysroot Debian 12, build cruzado de `rt64` +
+  testes puros, testes via `qemu-aarch64`) e job privado `private-game-build-handheld` (ROM, disparo manual, só checksums). Ambos
+  `NOT_RUN` no GitHub; a mesma lista de alvos compilou cruzada no Windows e os 9 testes passaram no XU10. `rom_cart_import_test` não
+  compila para aarch64 (falta `sse2neon.h` no include desse teste), fora da lista.
 
 ## Pendências conhecidas
 
@@ -299,4 +304,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: fase 5 da unificação na branch `feat/handheld`: asset de release PortMaster e job de CI do build cruzado.
+`NEXT_SINGLE_ACTION`: validação do usuário antes da PR única de `feat/handheld`: build Linux x64 com preset e OpenGL com o backend unificado, `build-handheld.sh` em host Linux, menu Graphics API na tela do Windows, jogo nas quatro APIs do Windows; depois abrir a PR (que dispara `public-handheld-cross` pela primeira vez).

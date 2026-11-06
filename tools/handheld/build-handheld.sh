@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 # Cross-compiles the handheld build (CMake preset linux-arm64-handheld, TK64_MOBILE) for aarch64 Linux from a Linux x64 host.
 # On Windows use build-handheld.ps1.
-#   HANDHELD_SYSROOT=<dir> tools/handheld/build-handheld.sh [--configure] [--device rk3326] [--file-to-c <path>] [--target TooieRecompiled] [-j N]
+#   HANDHELD_SYSROOT=<dir> tools/handheld/build-handheld.sh [--configure] [--device rk3326] [--file-to-c <path>] [--target TooieRecompiled]... [-j N]
+#   --target can be given several times; the default is TooieRecompiled.
 # Needs clang, lld and llvm-ar/ranlib/strip on PATH (or HANDHELD_LLVM=<their folder>), cmake 3.21+, ninja and python3.
 # Sysroot: python3 -I tools/handheld/fetch_sysroot.py <dir>. file_to_c: built for the host, by default from build-linux
 # (tools/build_linux.sh configure build).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-CONFIGURE=0; DEVICE=""; FILE_TO_C=""; TARGET="TooieRecompiled"; JOBS=()
+CONFIGURE=0; DEVICE=""; FILE_TO_C=""; TARGETS=(); JOBS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --configure) CONFIGURE=1 ;;
         --device) DEVICE="$2"; shift ;;
         --file-to-c) FILE_TO_C="$2"; shift ;;
-        --target) TARGET="$2"; shift ;;
+        --target) TARGETS+=("$2"); shift ;;
         -j) JOBS=(-j "$2"); shift ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
@@ -32,4 +33,5 @@ if [[ $CONFIGURE -eq 1 || ! -f "$BUILD/build.ninja" ]]; then
     [[ -z "$DEVICE" ]] || PRESET_ARGS+=("-DHANDHELD_DEVICE=$DEVICE")
     (cd "$ROOT" && cmake "${PRESET_ARGS[@]}")
 fi
-ninja -C "$BUILD" "${JOBS[@]}" -k 0 "$TARGET"
+[[ ${#TARGETS[@]} -gt 0 ]] || TARGETS=(TooieRecompiled)
+ninja -C "$BUILD" "${JOBS[@]}" -k 0 "${TARGETS[@]}"

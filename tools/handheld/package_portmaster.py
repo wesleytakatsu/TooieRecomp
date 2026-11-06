@@ -3,9 +3,11 @@
 
     python tools/handheld/package_portmaster.py [--build-dir build-handheld] [--release-version 0.1.4]
 
+--release-version, or TOOIE_RELEASE_VERSION, names a release; without it the name carries git describe.
+
 llvm-strip comes from HANDHELD_LLVM, then PATH, then Visual Studio's LLVM on Windows.
 
-Writes dist/BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip and its .sha256.
+Writes dist/BanjoTooieRecompiled-v<version>-Linux-arm64-PortMaster.zip (dev-<describe> without a version) and its .sha256.
 """
 import argparse
 import hashlib
@@ -88,7 +90,7 @@ def version_key(version):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--build-dir', default='build-handheld')
-    parser.add_argument('--release-version')
+    parser.add_argument('--release-version', default=os.environ.get('TOOIE_RELEASE_VERSION') or None)
     args = parser.parse_args()
 
     build = ROOT / args.build_dir
@@ -98,7 +100,7 @@ def main():
 
     describe = git('describe', '--tags', '--always', '--dirty')
     version = f'v{args.release_version}' if args.release_version else f'dev-{describe}'
-    name = f'BanjoTooieRecompiled-{version}-PortMaster-aarch64'
+    name = f'BanjoTooieRecompiled-{version}-Linux-arm64-PortMaster'
     stage_root = ROOT / 'dist' / f'{name}.stage'
     shutil.rmtree(stage_root, ignore_errors=True)
     stage = stage_root / 'tooie'

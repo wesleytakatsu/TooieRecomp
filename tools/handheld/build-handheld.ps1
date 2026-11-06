@@ -1,9 +1,9 @@
 # Cross-compiles the handheld build (CMake preset linux-arm64-handheld, TK64_MOBILE) for aarch64 Linux from Windows.
 # Run inside PowerShell 7; opens the Visual Studio developer environment itself. On a Linux host use build-handheld.sh.
-#   tools\handheld\build-handheld.ps1 [-Configure] [-Target TooieRecompiled] [-Jobs N] [-Sysroot <dir>] [-Device rk3326] [-FileToC <file_to_c.exe>]
+#   tools\handheld\build-handheld.ps1 [-Configure] [-Target TooieRecompiled[,other...]] [-Jobs N] [-Sysroot <dir>] [-Device rk3326] [-FileToC <file_to_c.exe>]
 # Sysroot: from tools/handheld/fetch_sysroot.py, or $env:HANDHELD_SYSROOT. FileToC: built for Windows, by default from build-win
 # (Build-Tooie.ps1 -Stage Build). Device: a file in tools/handheld/devices.
-param([switch]$Configure, [string]$Target = "TooieRecompiled", [int]$Jobs = 0, [string]$Sysroot = "", [string]$Device = "",
+param([switch]$Configure, [string[]]$Target = @("TooieRecompiled"), [int]$Jobs = 0, [string]$Sysroot = "", [string]$Device = "",
       [string]$FileToC = "")
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
@@ -28,5 +28,7 @@ if ($Configure -or -not (Test-Path (Join-Path $build "build.ninja"))) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 $jobArgs = @(); if ($Jobs -gt 0) { $jobArgs = @("-j", "$Jobs") }
-& ninja -C $build @jobArgs -k 0 $Target
+# pwsh -File passes -Target a,b as one string.
+$Target = @($Target | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+& ninja -C $build @jobArgs -k 0 @Target
 exit $LASTEXITCODE

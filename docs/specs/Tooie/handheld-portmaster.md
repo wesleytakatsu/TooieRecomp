@@ -68,7 +68,7 @@ Both scripts configure the CMake preset `linux-arm64-handheld` into `build-handh
 sysroot from `tools/handheld/fetch_sysroot.py` and the host's `file_to_c` from the desktop build. No WSL.
 `-Device`/`--device` picks a file in `tools/handheld/devices`; `rk3326` (the default) is the only one. It covers the XU10, the R36S and other RK3326
 handhelds; only the XU10 has run the build. The Linux-host route is `NOT_RUN`. Output:
-`dist/BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip` and its `.sha256`. `--release-version <ver>` names a release; otherwise the name
+`dist/BanjoTooieRecompiled-v<version>-Linux-arm64-PortMaster.zip` and its `.sha256`. `--release-version <ver>` names a release; otherwise the name
 carries `git describe`, and `BUILD-INFO.txt` lists the dirty files.
 
 ## 5. Package contract
@@ -104,6 +104,12 @@ See `docs/HANDOFF.md` for the results of the current build. Known limits of this
 
 - Only the MagicX XU10 with ROCKNIX has run it, with `libmali` and with Panfrost. Other devices and firmwares are `NOT_RUN`. On Panfrost, a fresh install with an empty cache has not been measured.
 - Linux x64 was not built or run for this change. It relies on the source check.
+- CI (`.github/workflows/build.yml`, job `public-handheld-cross`, GitHub-hosted Ubuntu): fetches the Debian 12 sysroot, builds the host
+  `file_to_c`, cross-builds `rt64` (with the OpenGL ES backend) and the pure host tests through `build-handheld.sh`, and runs those tests
+  under `qemu-aarch64`. The game itself needs the ROM, so it is built and packaged only by `private-build.yml`
+  (`private-game-build-handheld`, manual dispatch on the owner's runner, uploads checksums only). Both jobs: `NOT_RUN` on GitHub. The same
+  target list was cross-built on Windows and its 9 tests passed on the XU10 itself. `rom_cart_import_test` does not build for aarch64
+  (`sse2neon.h` is not on that test's include path) and is left out.
 - A cold program stalls the OpenGL thread on first use, so a first run has pauses. Compiling off that thread is `NOT_IMPLEMENTED`.
 - An out-of-memory close happened on the first run after a driver switch, on both drivers, with depth to RAM on one and off on the other. The cause is
   `UNKNOWN`, and later runs on the same boot did not repeat it.

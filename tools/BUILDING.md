@@ -253,7 +253,8 @@ HANDHELD_SYSROOT=<sysroot-dir> tools/handheld/build-handheld.sh [--device rk3326
 python3 tools/handheld/package_portmaster.py
 ```
 
-- **Outputs:** `build-handheld/TooieRecompiled` and `dist/BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip` with its `.sha256`.
+- **Targets:** `--target` (Linux, repeatable) or `-Target a,b` (Windows) builds other targets than `TooieRecompiled`.
+- **Outputs:** `build-handheld/TooieRecompiled` and `dist/BanjoTooieRecompiled-v<version>-Linux-arm64-PortMaster.zip` with its `.sha256`.
 - **Desktop unchanged:** `python tools/handheld/check_desktop_unchanged.py --base <commit>` proves that the desktop sources did not change.
 - The Linux-host route has not been run yet. Details: [handheld build](../docs/specs/Tooie/handheld-portmaster.md).
 

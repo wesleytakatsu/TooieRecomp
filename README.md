@@ -67,7 +67,7 @@ The release also has a `.deb` package (Debian/Ubuntu/Mint) and an `.AppImage`.
 
 ### Handhelds (PortMaster, aarch64)
 
-1. Install `BanjoTooieRecompiled-<version>-PortMaster-aarch64.zip` with PortMaster.
+1. Install `BanjoTooieRecompiled-v<version>-Linux-arm64-PortMaster.zip` with PortMaster.
 2. Copy your ROM to `ports/tooie` and start **Banjo-Tooie** from the Ports list. The first start converts the ROM once.
 
 **Requirements & Notes:**

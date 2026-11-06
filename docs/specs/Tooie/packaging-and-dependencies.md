@@ -21,6 +21,12 @@ TooieRecomp produces self-contained, redistributable application packages for Li
   - Standalone compressed zip archive (`.zip`) on Windows (`Build-Tooie.ps1 -Stage Package`):
     - Release: `Build-Tooie.ps1 -Stage Package -ReleaseVersion <ver>` → `dist\BanjoTooieRecompiled-v<ver>-Windows-x64.zip`.
     - Development: `dist\BanjoTooieRecompiled-dev-<git describe --always --dirty>-Windows-x64.zip`.
+  - PortMaster zip for aarch64 Linux handhelds (`tools/handheld/package_portmaster.py`, contract in
+    [handheld build](handheld-portmaster.md)):
+    - Release: `TOOIE_RELEASE_VERSION=<ver> python tools/handheld/package_portmaster.py` (or `--release-version <ver>`) →
+      `dist/BanjoTooieRecompiled-v<ver>-Linux-arm64-PortMaster.zip`.
+    - Development: `dist/BanjoTooieRecompiled-dev-<git describe --tags --always --dirty>-Linux-arm64-PortMaster.zip`.
+    - Its layout is PortMaster's (`Banjo-Tooie.sh` and a `tooie/` folder), not the single `BanjoTooieRecompiled` directory below.
   - Archive Structure & Metadata:
     - Each archive contains a single top-level `BanjoTooieRecompiled` directory.
     - Checksum sidecar: `<archive>.sha256`.
