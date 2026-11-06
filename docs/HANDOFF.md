@@ -28,17 +28,32 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
-| Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES (branch `feat/handheld`, PR única ainda não aberta); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
+| Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
 | Testes | Windows `Build-Tooie.ps1 -Stage Test`: 31 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `313e287` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+
+## Workspace e validação pós-merge (2026-11-06)
+
+- PRs #2 (portátil), #3 (link do pacote de texturas BT Reloaded) e #4 (correção do J2 no splitscreen) mescladas com
+  merge commit; `main` em `4a59160`. Branches mescladas removidas do GitHub; restam `main`, `feat/dev-mode` (dois
+  commits de música por ZIP, ainda fora da `main`) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
+- Um só clone local no Windows (`TooieRecomp`). Os clones `TooieRecomp-win`, `TooieRecomp-xu10` e `TooieRecomp-audio`
+  foram inventariados: nenhum tinha código fora da `main` além de `feat/dev-mode`; bundle git, diffs e arquivos ignorados
+  ficaram num arquivo local fora do repositório.
+- Windows em `4a59160`: Check, Verify (420 arquivos), Test 31/31 e Build passaram; worker DX12 abriu a janela do jogo
+  por 25 s com `TOOIE_AUTO_START`, sem mudar config/saves do usuário.
+- XU10 (ROCKNIX, Panfrost) em `4a59160`: build cruzado, pacote `dev-v0.1.5-7-g4a59160` (114 arquivos, manifesto
+  conferido no aparelho), backup `/storage/tooie-before-4a59160.tgz`. 60 s em OpenGL ES 3.1 (Mesa 26.2.4) com o jogo
+  iniciado, RSS 116-251 MB, sem erro no log; 1.609 arquivos do usuário iguais (14 saves/configs/ROM).
+- Splitscreen do J2 na `main`: confirmado pelo usuário no Windows; no XU10 não testado (precisa de dois controles).
 
 ## Release
 
 - Versão fonte `0.1.5`; [pré-release Windows x64, Linux x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.5)
   em 2026-11-06, a partir de `feat/handheld` (PR #2) antes do merge, a pedido do usuário. Tag anotada `v0.1.5` aponta
-  para `313e2871c71b8a496a7806dbb0c7bf80cffab663`; a PR deve entrar com merge commit para a tag ficar no histórico da
-  `main`. Notas em inglês e português brasileiro: [[releases/v0.1.5]]. Windows: Check, Verify (420 arquivos), 31/31
+  para `313e2871c71b8a496a7806dbb0c7bf80cffab663`, no histórico da `main` (PR #2 mesclada com merge commit, `05f04f8`).
+  A v0.1.4 e a v0.1.5 têm a regressão do J2 no splitscreen da história (ver Pendências); a correção está só na `main`. Notas em inglês e português brasileiro: [[releases/v0.1.5]]. Windows: Check, Verify (420 arquivos), 31/31
   testes, build Release e auditoria dos 111 arquivos aprovados; exe do pacote abriu em DX12 por 25 s sem mudar a config
   do usuário. PortMaster: build cruzado no Windows, manifesto conferido, instalado no XU10 (Panfrost) com backup
   `/storage/tooie-before-313e287.tgz`; 60 s em OpenGL ES sem erro, 1.609 arquivos do usuário e 15 saves/configs iguais.
@@ -65,7 +80,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   registram pacotes Windows e Linux com idiomas; validação completa de gameplay no Linux continua pendente.
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
 
-## Portáteis (2026-11-05, branch `feat/handheld`, base `ea5e31f`)
+## Portáteis (2026-11-05, base `ea5e31f`; na `main` pela PR #2)
 
 - **Desktop não muda nas fases 1-2 (`PROVEN`):** `tools/handheld/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado (a fase 3 muda o desktop de propósito). O `.exe` Windows
   deste código, comparado com o de `ea5e31f`, tem `.text` e `.rdata` idênticos; diferem 299 bytes, o carimbo PE e 37 identificadores de namespace anônimo derivados do caminho.
@@ -78,9 +93,9 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Cópias anteriores: `TooieRecompiled.diag-25b67462` e `Banjo-Tooie.sh.before-pkg` na mesma pasta. A pasta de teste `tooie-pkgtest` e sua cópia da ROM foram apagadas.
 - **Limites:** só XU10 com ROCKNIX; sem caminho KMSDRM no backend; `port.json` sem screenshot.
 - **Causa `UNKNOWN`:** falta de memória na primeira rodada depois de trocar de driver, e o crescimento do EmulationStation (96 para mais de 320 MB).
-- **Unificação (fase 1):** o trabalho do clone `TooieRecomp-xu10` está nesta branch; o clone deixa de ser fonte. Patches `vendor/patches-local/rt64-tk64-mobile.patch` e
+- **Unificação (fase 1):** o trabalho do clone `TooieRecomp-xu10` entrou na `main`; o clone deixou de existir (ver Workspace). Patches `vendor/patches-local/rt64-tk64-mobile.patch` e
   `recompfrontend-weak-no-interface-msaa.patch` em `ORDER.tsv`, `UPSTREAMS.tsv` e no manifesto (`VENDOR VERIFY OK`, 50 patches). Próximas fases (menu de API por plataforma, melhorias do
-  portátil no desktop, release e CI) entram na mesma PR, aberta só com tudo testado.
+  portátil no desktop, release e CI) entraram na mesma PR #2.
 - **Presets (fase 2):** `CMakePresets.json` com `windows-x64`, `linux-x64` e `linux-arm64-handheld`; `Build-Tooie.ps1`, `build_linux.sh` e
   `tools/handheld/build-handheld.{ps1,sh}` configuram por eles. Ferramentas em `tools/handheld/` (antes `tools/xu10/`), chip em `devices/rk3326.cmake`
   (XU10, R36S). `build_linux.sh` com preset: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API). Build cruzado a partir de host Linux: não confirmado.
@@ -98,8 +113,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Weak). Linux desktop: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API). Contrato: [[specs/Tooie/graphics-and-presentation]].
 - **Release e CI (fase 5):** pacote PortMaster com nome de release `BanjoTooieRecompiled-v<ver>-Linux-arm64-PortMaster.zip`
   (`TOOIE_RELEASE_VERSION` ou `--release-version`). CI pública `public-handheld-cross` (sysroot Debian 12, build cruzado de `rt64` +
-  testes puros, testes via `qemu-aarch64`) e job privado `private-game-build-handheld` (ROM, disparo manual, só checksums). Ambos
-  `NOT_RUN` no GitHub; a mesma lista de alvos compilou cruzada no Windows e os 9 testes passaram no XU10. `rom_cart_import_test` não
+  testes puros, testes via `qemu-aarch64`) e job privado `private-game-build-handheld` (ROM, disparo manual, só checksums).
+  `public-handheld-cross` passou nas PRs #2, #3 e #4; o job privado continua `NOT_RUN`. Os 9 testes também passaram no XU10. `rom_cart_import_test` não
   compila para aarch64 (falta `sse2neon.h` no include desse teste), fora da lista.
 
 ## Pendências conhecidas
@@ -117,7 +132,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   e serialização de saída têm escopos próprios. Formas, iluminação, IA, Glowbo, menus, Warp e distância usam a
   identidade apropriada. Entrada host publicada pela porta nativa, com rearme após neutralização; controles nativos
   continuam intactos. Reservas/suavização analógicas são limpas na recriação/retirada. Sem novos logs/métricas no jogo.
-  Windows: regressão cooperativa 9339 verificações e helpers de integração passaram no checkpoint da implementação
+  Windows: regressão cooperativa (9339 verificações na época; 9345 hoje) e helpers de integração passaram no checkpoint da implementação
   (`50bd9a2`); esses resultados não substituem o aceite dos eventos no jogo.
   Aceite parcial do usuário no Windows (2026-11-02): alguns eventos funcionaram, sem identificação individual.
   Limitação confirmada pelo usuário: na corrida de trenzinho com o pássaro, J2 continua acessível. Identidade
