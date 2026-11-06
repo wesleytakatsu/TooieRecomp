@@ -187,7 +187,8 @@ they do not prove visual fidelity or compatibility on another computer.
   after this integration are `PENDING_USER`. Intel/old GPU compatibility and Linux runtime are not established here.
 - Windows has supervised recovery. Linux retains its direct renderer initialization; OpenGL can be selected before
   initialization, and Auto uses OpenGL when the probe finds no Vulkan device. Process supervision/fallback on Linux is
-  `NOT_IMPLEMENTED`; the Linux menu and probe at runtime are `NOT_RUN`.
+  `NOT_IMPLEMENTED`. The user tested the Linux x64 build on 2026-11-06 and reported that it works (a general report;
+  the menu contents and the probe result on Linux were not reported separately).
 - Probe on real hardware: Windows (this machine) reported DX12, Vulkan, DX11 and OpenGL; XU10 on Panfrost started
   OpenGL ES with no launcher variable and with `d3d12` saved. The Windows menu on screen is `PENDING_USER`.
 

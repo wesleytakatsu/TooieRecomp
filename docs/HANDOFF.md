@@ -69,11 +69,11 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   portátil no desktop, release e CI) entram na mesma PR, aberta só com tudo testado.
 - **Presets (fase 2):** `CMakePresets.json` com `windows-x64`, `linux-x64` e `linux-arm64-handheld`; `Build-Tooie.ps1`, `build_linux.sh` e
   `tools/handheld/build-handheld.{ps1,sh}` configuram por eles. Ferramentas em `tools/handheld/` (antes `tools/xu10/`), chip em `devices/rk3326.cmake`
-  (XU10, R36S). Build cruzado a partir de host Linux e `build_linux.sh` com preset: `NOT_RUN`.
+  (XU10, R36S). `build_linux.sh` com preset: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API). Build cruzado a partir de host Linux: não confirmado.
 - **Menu de API (fase 3):** Settings -> Graphics -> Graphics API lista Auto e só as APIs compiladas para o alvo e aceitas pelo
   probe do aparelho (Windows DX12/Vulkan/DX11/OpenGL, Linux Vulkan/OpenGL, portátil OpenGL ES). Valor salvo de outra
   plataforma vira Auto; Linux Auto usa OpenGL sem dispositivo Vulkan. Launcher PortMaster não força mais a API. Windows
-  31/31; XU10 (Panfrost) iniciou OpenGL ES sem variável e com `d3d12` salvo. Menu na tela: `PENDING_USER`; Linux `NOT_RUN`.
+  31/31; XU10 (Panfrost) iniciou OpenGL ES sem variável e com `d3d12` salvo. Menu na tela do Windows: `PENDING_USER`; Linux: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API).
   Contrato: [[specs/Tooie/startup-and-backends]]. Conhecido, anterior a esta fase: `TOOIE_GRAPHICS_LOG` derruba os
   workers Windows (0xC0000409; um binário sem esta fase também cai), então `Diagnose-Graphics.ps1` não funciona hoje.
 - **Ganhos do portátil no desktop (fase 4):** um só `plume_gles.cpp` (o do portátil; varredura de índices e flushes de
@@ -81,7 +81,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   (AMD), 4 pares contra `36e2f4a`: CPU do processo DX12 18/16% -> 13/11% de um núcleo, OpenGL 67/84% -> 58/46%; 58-60 FPS
   no GL. XU10 (Panfrost) igual ao instalado. Perfil Weak não é escolhido no desktop (só ES), então MSAA da UI, res/AA e
   shaders especializados do Weak não mudam o desktop (`CORRECTED`: a estimativa anterior dizia que o OpenGL desktop usava
-  Weak). Linux desktop com o backend unificado: `NOT_RUN`. Contrato: [[specs/Tooie/graphics-and-presentation]].
+  Weak). Linux desktop: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API). Contrato: [[specs/Tooie/graphics-and-presentation]].
 - **Release e CI (fase 5):** pacote PortMaster com nome de release `BanjoTooieRecompiled-v<ver>-Linux-arm64-PortMaster.zip`
   (`TOOIE_RELEASE_VERSION` ou `--release-version`). CI pública `public-handheld-cross` (sysroot Debian 12, build cruzado de `rt64` +
   testes puros, testes via `qemu-aarch64`) e job privado `private-game-build-handheld` (ROM, disparo manual, só checksums). Ambos
@@ -304,4 +304,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: validação do usuário antes da PR única de `feat/handheld`: build Linux x64 com preset e OpenGL com o backend unificado, `build-handheld.sh` em host Linux, menu Graphics API na tela do Windows, jogo nas quatro APIs do Windows; depois abrir a PR (que dispara `public-handheld-cross` pela primeira vez).
+`NEXT_SINGLE_ACTION`: acompanhar a primeira execução de `public-handheld-cross` e da CI pública na PR única de `feat/handheld` para `main`; corrigir o que falhar antes do merge.

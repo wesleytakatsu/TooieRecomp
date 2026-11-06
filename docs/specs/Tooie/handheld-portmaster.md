@@ -30,8 +30,8 @@ Z-buffer in RAM is in [camera controls](../../reverse-engineering/systems/camera
 New handheld code goes behind `#ifdef TK64_MOBILE` with no other condition on that line, because the check resolves only that form.
 
 The handheld OpenGL backend and the desktop one are the same file since phase 4: see
-[graphics](graphics-and-presentation.md) section 3.5 for what changed on desktop and the measurements. Linux desktop OpenGL
-has not run the merged backend yet (`NOT_RUN`).
+[graphics](graphics-and-presentation.md) section 3.5 for what changed on desktop and the measurements. The user tested the
+Linux x64 build on 2026-11-06 and reported that it works (a general report, not per API).
 
 ## 3. What `TK64_MOBILE` changes
 
