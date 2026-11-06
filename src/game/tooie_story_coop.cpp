@@ -13,6 +13,7 @@ struct Pair {
     bool creating = false, committed = false, allocating = false;
     unsigned allocations = 0;
     std::array<uint32_t, 2> owners{};
+    std::array<int32_t, 2> cameras{}; // +0x184 of each owner when the pair was committed
 } pair;
 uint32_t serializing = 0;
 // Epoch is an input ownership token: a port not polled while absent must still
@@ -27,7 +28,16 @@ bool context(uint8_t* rdram) {
     return MEM_HU(0, guest(0x80132DC2)) == pair.map && MEM_BU(0, guest(0x8012762C)) != 0x1B;
 }
 bool published(uint8_t* rdram, int n) {
-    return pointer(pair.owners[n]) && table(rdram, n) == pair.owners[n];
+    const uint32_t current = table(rdram, n);
+    // The game can move a live player and rewrite its table slot without the native teardown that retires an owner
+    // (seen on Windows, map 0xAF; heap compaction is the likely cause). A committed owner follows its slot to the new
+    // address when the object there still carries the camera index it had at creation. Identity still comes from the
+    // creation-time allocation: a different player in the slot, or anything after a retire, is not adopted.
+    if (pair.committed && pointer(pair.owners[n]) && pointer(current) && current != pair.owners[n] &&
+        current != pair.owners[1 - n] && MEM_W(0x184, guest(current)) == pair.cameras[n]) {
+        pair.owners[n] = current;
+    }
+    return pointer(pair.owners[n]) && current == pair.owners[n];
 }
 bool constructed(uint8_t* rdram) {
     return pair.allocations == 2 && published(rdram, 0) && published(rdram, 1) &&
@@ -61,7 +71,10 @@ void end_normal_allocation(uint8_t* rdram, int slot) {
 bool finish_creation(uint8_t* rdram) {
     pair.committed = pair.creating && context(rdram) && constructed(rdram);
     pair.creating = false;
-    if (!pair.committed) pair.owners = {};
+    if (pair.committed) {
+        for (int n = 0; n < 2; ++n) pair.cameras[n] = MEM_W(0x184, guest(pair.owners[n]));
+    }
+    else pair.owners = {};
     return pair.committed;
 }
 bool created_pair(uint8_t* rdram) {

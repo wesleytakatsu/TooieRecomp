@@ -324,7 +324,10 @@ that change the game's state directly.
   `(0xA34,3)` getter. Clearing that field later does not create J2 mid-map. The saved option remains On; J2 returns
   at the next eligible native player creation. Native multiplayer subtype `0x1B` and non-one requests pass through.
   `tooie_story_coop` distinguishes preference, construction intent, normal-allocation provenance and a committed
-  pair. Descriptor/fallback actors are never adopted merely because slot 1 is non-null. Activity during construction
+  pair. Descriptor/fallback actors are never adopted merely because slot 1 is non-null. A committed owner follows its
+  slot of `0x80135490` when the game moves the live player without a teardown, if the object at the new address keeps
+  the camera index `+0x184` recorded at creation; a retired owner or a different player in the slot is not adopted.
+  Activity during construction
   and synchronous outgoing serialization has a restricted owner scope; gameplay stops when either owner retires.
   AI/Glowbo/travel/distance/Warp extensions require the effective pair. Private lighting and J2 form ownership
   remain tied to the created owners even when the option is turned Off mid-map. No actor is deleted to suspend co-op.
