@@ -55,7 +55,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 `TOOIE_WRAPPED_SYMBOLS` wrapping contract; independent subsystem tests do not require those guest stubs.
 
 ### 3.1 Test Execution Commands
-- **Linux (`tools/build_linux.sh test`)**: Configures 18 core verification tests (execution of this change `NOT_RUN`):
+- **Linux (`tools/build_linux.sh test`)**: Runs 19 core verification tests:
   - `tooie_story_coop_test` (production policy, native creation/allocator/descriptor/layout/teardown/activity, input epochs, form handoff and Mini-Sub dispatch; synthetic world/assets)
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
@@ -74,8 +74,9 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_glowbo_collection_test` (native actor dispatch/loop, deferred cleanup and shared inventory regression)
   - `tooie_dev_enemy_ai_test` (native perception/target/chase and Shovel update with scoped J1/J2 integration)
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
+  - `tooie_graphics_api_test` (platform-aware graphics API selection policy)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 30 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 18 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 31 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
