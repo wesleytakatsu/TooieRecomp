@@ -4,7 +4,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="${TOOIE_BUILD_DIR:-$HERE/build}"
+BUILD_DIR="${TOOIE_BUILD_DIR:-$HERE/build-linux}"
 BIN="$BUILD_DIR/TooieRecompiled"
 
 usage() {
@@ -58,7 +58,7 @@ done
 
 if [[ ! -x "$BIN" ]]; then
   echo "error: executable not found: $BIN" >&2
-  echo "Build first, e.g.: cmake --build \"$BUILD_DIR\" -j\"\$(nproc)\"" >&2
+  echo "Build first: tools/build_linux.sh (or set TOOIE_BUILD_DIR for a custom build)." >&2
   exit 1
 fi
 

@@ -102,7 +102,7 @@ To build TooieRecomp from source, place your verified `Banjo-Tooie (USA).z64` RO
 - **Windows:** Run `.\tools\windows\Build-Tooie.ps1 -Stage All` in PowerShell.
   Prerequisites: Visual Studio 2022+ (with clang-cl), Python 3.8+, and Git for Windows.
   See [tools/windows/README.md](tools/windows/README.md) for full instructions.
-- **Linux:** Run `tools/build_linux.sh` (tested on Ubuntu 24.04 / Linux Mint 22).
+- **Linux x64:** Run `./build-linux.sh` to select tar, Debian, AppImage or all formats (tested on Ubuntu 24.04 / Linux Mint 22). Use `./build-linux.sh all --check` to check prerequisites only.
   Prerequisites: Clang, CMake, Ninja, SDL2, FreeType, GTK 3, and Python 3.
   See [tools/BUILDING.md](tools/BUILDING.md) for full instructions.
 - **Handhelds (aarch64, PortMaster):** cross build from Windows (`tools/handheld/build-handheld.ps1`) or Linux

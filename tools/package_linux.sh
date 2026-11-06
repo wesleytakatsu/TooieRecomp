@@ -120,6 +120,12 @@ text_refs="$(grep -rIl "/home/" "$STAGE" 2>/dev/null | grep -v '^$' | wc -l || t
 
 "$ROOT/tools/package_manifest.sh" "$STAGE"
 ( cd "$STAGE" && find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
-tar --sort=name --owner=0 --group=0 --numeric-owner -C "$OUT/$NAME" -czf "$OUT/$NAME.tar.gz" BanjoTooieRecompiled
-( cd "$OUT" && sha256sum "$NAME.tar.gz" | tee "$NAME.tar.gz.sha256" )
-echo "package: $OUT/$NAME.tar.gz (contains ROM-derived recompiled code; no ROM inside)"
+if [[ "${TOOIE_PACKAGE_STAGE_ONLY:-0}" != 1 ]]; then
+    tar --sort=name --owner=0 --group=0 --numeric-owner -C "$OUT/$NAME" -czf "$OUT/$NAME.tar.gz" BanjoTooieRecompiled
+    ( cd "$OUT" && sha256sum "$NAME.tar.gz" | tee "$NAME.tar.gz.sha256" )
+    echo "package: $OUT/$NAME.tar.gz (contains ROM-derived recompiled code; no ROM inside)"
+fi
+# Machine-readable handoff for the installer packager; keep layout/naming owned here.
+if [[ -n "${TOOIE_PACKAGE_STAGE_FILE:-}" ]]; then
+    printf '%s\n' "$(cd "$STAGE" && pwd)" > "$TOOIE_PACKAGE_STAGE_FILE"
+fi

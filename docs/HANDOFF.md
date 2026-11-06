@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-05
+updated: 2026-11-06
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -31,7 +31,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES (branch `feat/handheld`, PR única ainda não aberta); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 30 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 18 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 30 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `50587df` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
@@ -55,7 +55,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 - **Desktop não muda nas fases 1-2 (`PROVEN`):** `tools/handheld/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado (a fase 3 muda o desktop de propósito). O `.exe` Windows
   deste código, comparado com o de `ea5e31f`, tem `.text` e `.rdata` idênticos; diferem 299 bytes, o carimbo PE e 37 identificadores de namespace anônimo derivados do caminho.
-  Windows `-Stage Test`: 30/30. Linux x64 não foi compilado nem executado: depende da prova de fontes (`NOT_RUN`).
+  Windows `-Stage Test`: 30/30. Linux x64: compilação, 19 testes host e início do guest passaram no checkpoint local abaixo; aceite visual completo continua pendente.
 - **Pacote no XU10 com `libmali`, pasta separada, instalação nova:** ROM original convertida e jogo aberto na mesma execução, Demo 1 igual ao PC em 420 linhas, 3 demos iguais até o fim
   da gravação, 24,0 FPS com cache quente; sem ROM e com ROM errada o launcher avisa. Sem OOM do kernel. Com o cache vazio, o vigia de teste (limite 150 MB) fechou uma rodada a 149 MB; a outra rodada de 300 s chegou a
   168 MB, ambas com o EmulationStation em cerca de 320 MB.
@@ -156,7 +156,6 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
 - `tools/build_linux.sh test` ainda não roda os 5 testes de idioma, o teste ZIP nem o de cheats (só o Windows os executa).
-- `.deb` e AppImage foram gerados à mão no Linux; não há script versionado para eles.
 - Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
 - Cortes laterais no widescreen: usuário aprovou a correção no Windows (2026-11-01), nos casos de coletáveis,
   inimigos e sombras em Jinjo Village, inclusive cortes perto/acima do meio. `PROVEN`: RSP enviava triângulos
@@ -277,6 +276,16 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Suíte Windows 30/30 e build aprovados; executável atualizado em `build-win/TooieRecompiled.exe`.
   Comandos, hashes, auditoria de 45 unidades C++ e limites da validação ficam na mensagem do commit.
   Jogo não iniciado/controlado; Linux `NOT_RUN`. Publicação posterior registrada na seção Release.
+
+## Empacotamento Linux x64
+
+- Entrada `./build-linux.sh`: seleção tar/deb/AppImage/todos, análise de dependências e build pelo preset `linux-x64`.
+  Scripts, licença do runtime AppImage e instruções de instalação/provisionamento versionados; launcher usa `build-linux`.
+- `PROVEN` em `50587df` (2026-11-06): geração de 420 arquivos conferida, 19/19 suítes Linux PASS, três formatos com
+  manifests/hashes verificados e binário iniciado no perfil local. Relato geral do usuário registrado na seção Portáteis.
+- Candidatos de `50587df` permanecem locais, sem publicação. Checkout avançou para `4164e74`; os pacotes ainda não
+  foram reconstruídos nesse commit. Instalação Debian real e matriz visual por API continuam pendentes.
+- Pré-check de todos os formatos passou em `4164e74`. Wrapper usa `LC_ALL=C` para a auditoria de dependências.
 
 ## Notas operacionais
 

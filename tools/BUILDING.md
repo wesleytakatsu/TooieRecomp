@@ -118,7 +118,7 @@ The pipeline executes the following stages sequentially:
 3. `extract`: Runs `tools/extract_rom.sh` to produce `build-linux/extract/decompressed.us.z64` (required by launcher).
 4. `recomp`: Compiles vendored `N64Recomp` and generates `RecompiledFuncs/` (420 files) directly from the decompressed ROM and committed `metadata/tooie.us.syms.toml`, then validates against `metadata/recomp-output.sha256`.
 5. `configure` + `build`: Compiles `TooieRecompiled` (1159 steps) with Clang and Ninja.
-6. `test`: Runs 8 host unit test suites.
+6. `test`: Runs 19 host test suites.
 7. `package`: Creates the Linux candidate package (`TOOIE_RELEASE_VERSION=<ver> tools/package_linux.sh` produces `dist/BanjoTooieRecompiled-v<ver>-Linux-x64.tar.gz`, or dev `BanjoTooieRecompiled-dev-*-Linux-x64.tar.gz`).
 
 4. Verify and smoke-test candidate package:
@@ -129,6 +129,53 @@ tools/smoke_package.sh dist/BanjoTooieRecompiled-*-Linux-x64/BanjoTooieRecompile
 # Verify archive checksums and file manifest:
 tools/verify_package.sh dist/BanjoTooieRecompiled-*-Linux-x64.tar.gz
 ```
+
+### Linux .deb and AppImage installers
+
+For desktop Linux x64 (CMake >= 3.21 for the current presets), run `./build-linux.sh` from the project root. It **first asks which format** to build: 1 = `.tar.gz`, 2 = `.deb`, 3 = `.AppImage`, 4/Enter = all. It reports missing dependencies, checks the ROM, vendored integrity, output permissions and disk space before code generation/compilation. Missing or invalid prerequisites stop the build; no system packages or AppImage tools are installed/downloaded automatically.
+
+```bash
+./build-linux.sh                  # interactive selection, checks, build, tests, packages
+./build-linux.sh all --check      # checks only; no compilation or packaging
+./build-linux.sh tar              # non-interactive format selection
+./build-linux.sh deb
+./build-linux.sh appimage
+./build-linux.sh all
+```
+
+The wrapper works from any directory by absolute path. It preserves `TOOIE_ROM`, `TOOIE_JOBS`, `TOOIE_BUILD_DIR`, `TOOIE_DIST_DIR` and `TOOIE_RELEASE_VERSION`. Default output: `dist/`. The normal build prerequisites and canonical ROM above are still required. At least 2 GiB must be free on each output filesystem; this check is a prerequisite floor, not a guarantee of enough disk/RAM for every clean build.
+
+Packaging tools:
+
+```bash
+# tar-only uses the normal distro command-line tools (binutils, coreutils, dpkg, tar/gzip).
+# Additional tools for .deb:
+sudo apt install dpkg-dev desktop-file-utils
+# Additional tools for AppImage:
+sudo apt install desktop-file-utils libglib2.0-bin libgtk-3-common wget
+```
+
+For AppImage, explicitly download the official tools below. Their SHA-256 pins are checked **before** building; a tar/deb build does not require them.
+
+```bash
+mkdir -p "$HOME/.cache/tooie-appimage-tools"
+wget -O "$HOME/.cache/tooie-appimage-tools/appimagetool-x86_64.AppImage" \
+  https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+wget --header='Accept: application/octet-stream' \
+  -O "$HOME/.cache/tooie-appimage-tools/runtime-x86_64" \
+  https://api.github.com/repos/AppImage/type2-runtime/releases/assets/657374641
+chmod +x "$HOME/.cache/tooie-appimage-tools/appimagetool-x86_64.AppImage"
+```
+
+Pins: appimagetool **1.9.1**, SHA-256 `ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0`; type2-runtime commit **fedfad51acc2860b2916a1eef32ba4a500ff31ef**, SHA-256 `617aa77314d57c8b8e4fae9c3f0b35af7b30d5529cb69e98f64f92510ed98a46`. Override paths with `TOOIE_APPIMAGETOOL` / `TOOIE_APPIMAGE_RUNTIME`, retaining the same verified bytes.
+
+To package an **already current** binary without compiling, use `python3 tools/package_linux_installers.py [tar|deb|appimage|all]`; `--check` checks packaging prerequisites only. The root script additionally checks the complete game build and private ROM. Installer generation reuses the tar packager's reported payload path, preserving upstream release/development names and the `BanjoTooieRecompiled/` tar root. It verifies the resulting archives and emits `.sha256` sidecars. Only the selected archive format is generated; `all` creates the shared payload once and emits all three formats.
+
+The `.deb` uses the tarball's release/development basename, e.g. `BanjoTooieRecompiled-v0.1.0-Linux-x64.deb`, matching the Windows release naming. Its internal package name is `tooie-recomp`, architecture `amd64`; its version follows `TOOIE_RELEASE_VERSION` when supplied (must also be Debian-valid), otherwise `0~git<date>.<commit>+local`. Install with `sudo apt install ./path/to/package.deb`, launch with `tooie-recomp` or the Games menu, remove with `sudo apt remove tooie-recomp`. Payload lives in `/usr/lib/tooie-recomp`; dependencies are computed by `dpkg-shlibdeps`, with explicit Vulkan loader and Bash requirements.
+
+The `.AppImage` uses the tarball's release/development basename. Make it executable and run it; if FUSE is unavailable, pass `--appimage-extract-and-run`. It includes application libraries (SDL2/GTK3), GTK schemas, copyright notices, `BUNDLED-DEPENDENCIES.tsv` and full file checksums. Host glibc and graphics drivers remain required: current Mint 22 / Ubuntu 24.04-class builds require glibc >= 2.38; older systems need a compatible older build environment. Cross-distribution gameplay is a separate validation.
+
+The original UI is retained. No ROM, extracted game assets, saves or user configuration are packaged. Select your own verified retail ROM in the launcher once; it is decompressed internally and imported into the per-user application directory. Runtime root-folder ROM auto-discovery is **not implemented**. Packaging requires no legacy IDO/gcc kit.
 
 ### 3.4 Maintainer-Only: Decompilation & Metadata Regeneration (Requires Legacy Compiler Kit)
 

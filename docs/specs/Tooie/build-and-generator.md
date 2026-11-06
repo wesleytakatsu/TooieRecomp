@@ -94,7 +94,7 @@ The build system coordinates the compilation of statically recompiled C/C++ gues
 - **Linux Pipeline (`tools/build_linux.sh`)**:
   - Stages: `preflight`, `verify`, `extract`, `recomp`, `configure`, `build`, `test`, `package`.
   - `decomp` stage is maintainer-only.
-  - Standard test suite runs 8 core unit tests.
+  - Standard Linux test suite configures 19 host test suites.
 - **Handheld Pipeline (`tools/handheld/build-handheld.ps1` on Windows, `build-handheld.sh` on Linux)**:
   - Cross build for aarch64 Linux with clang and lld, toolchain `tools/handheld/aarch64-linux.cmake`, chip flags from
     `tools/handheld/devices/<device>.cmake` (default `rk3326`).

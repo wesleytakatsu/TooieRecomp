@@ -34,11 +34,20 @@ TooieRecomp produces self-contained, redistributable application packages for Li
     - Project licence: `LICENSE.txt` (GPL-3.0, copy of the repository `LICENSE`).
     - End-user documentation: `README-PACKAGE.txt` (explains ROM requirements, SHA-1 verification, controls/saves, legal notices, and repository URL).
   - Standalone source archive (`tools/package_source.sh`).
-  - Linux `.deb` and AppImage files were published with `v0.1.0-p08`, but they were built by hand on Linux: there is no
-    versioned script for them yet. Flatpak is `NOT_IMPLEMENTED`.
-  - The `assets/` tree (UI resources and `assets/languages/pt-BR.tlpb`) is copied next to the executable by the CMake
+  - Debian `.deb` and AppImage (`python3 tools/package_linux_installers.py [tar|deb|appimage|all]`) reuse the Linux tar payload and its basename, e.g. `BanjoTooieRecompiled-v0.1.0-Linux-x64.deb` / `.AppImage`; each has a `.sha256` sidecar, matching the Windows release convention. Debian's internal package name remains `tooie-recomp`, architecture `amd64`.
+  - Flatpak remains `NOT_IMPLEMENTED`.
+
+The root `./build-linux.sh` asks for the format before checking dependencies. Optional format arguments bypass the prompt; `--check` checks only. It reuses `tools/preflight.sh generate` for toolchain, development libraries, vendor integrity and ROM checks, plus format-specific packaging checks (commands, pinned AppImage tools, schemas/licenses, output write permissions and at least 2 GiB free). Failure stops before compilation and lists missing/invalid prerequisites. Checks do not install or download dependencies. Passing preflight confirms prerequisites, not runtime gameplay or unlimited build resources. See [installer instructions](../../../tools/BUILDING.md#linux-deb-and-appimage-installers).
+
+`tools/package_linux.sh` owns Linux tar naming/layout; its optional `TOOIE_PACKAGE_STAGE_FILE` handoff reports the audited payload path to the installer packager. Internal `TOOIE_PACKAGE_STAGE_ONLY=1` stages without emitting a tar when only an installer was selected; the direct shell command still produces tar by default. Only the selected formats are generated; `all` stages once. `.deb` installs under `/usr/lib/tooie-recomp`, exposes `tooie-recomp` and a Games desktop entry/icon, and declares symbol-derived distro dependencies plus `libvulkan1`/`bash`. AppImage adds the application library closure, GTK schemas, distro copyright notices and `tools/appimage-runtime.LICENSE`; glibc/driver interfaces stay on the host. AppImage tool/runtime hashes are pinned, with explicit provisioning only.
+
+Each completed installer is extracted and its payload manifest verified; AppImage also has an outer full-file manifest and `BUNDLED-DEPENDENCIES.tsv` with exact library hashes/versions. Shared game-payload attribution remains governed by `tools/package_licenses.tsv`; installer metadata includes the project icon and launchers. No ROM or extracted game assets are bundled. Runtime auto-discovery of the retail ROM in the executable/project root is not implemented; the launcher imports a manually selected verified ROM into its user configuration directory.
+
+The `assets/` tree (UI resources and `assets/languages/pt-BR.tlpb`) is copied next to the executable by the CMake
     target `TooieUIAssets` and shipped in every package. Imported FR/DE/ES packs are written to the user's app folder,
     never to the package.
+
+Linux installer scripts are versioned with the tar packager and documented in `tools/BUILDING.md`.
 
 ```text
 +---------------------------------------------------------------------------------+
