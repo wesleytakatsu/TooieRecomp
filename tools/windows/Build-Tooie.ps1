@@ -457,6 +457,7 @@ $script:RequiredTests = @(
     'rt64_host_endpoint_current_test',
     'rt64_hidden_window_test',
     'tooie_startup_test',
+    'tooie_graphics_api_test',
     'p09_interp_burst_test',
     'p09_world_interpolation_guard_test',
     'p09_local_pair_snapshot_test',

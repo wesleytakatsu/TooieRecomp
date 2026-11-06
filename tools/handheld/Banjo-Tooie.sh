@@ -33,7 +33,6 @@ fi
 # Settings for a weak GPU the first time; the player's changes stay after that, also across updates of this port.
 [ -f graphics.json ] || cp graphics.default.json graphics.json
 
-export TK64_GRAPHICS_API=opengles
 export TK64_PROFILE=weak
 export TOOIE_HANDHELD=1
 export TOOIE_AUTO_START=1

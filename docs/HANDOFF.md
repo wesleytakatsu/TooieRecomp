@@ -53,7 +53,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Portáteis (2026-11-05, branch `feat/handheld`, base `ea5e31f`)
 
-- **Desktop não muda (`PROVEN`):** `tools/handheld/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado. O `.exe` Windows
+- **Desktop não muda nas fases 1-2 (`PROVEN`):** `tools/handheld/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado (a fase 3 muda o desktop de propósito). O `.exe` Windows
   deste código, comparado com o de `ea5e31f`, tem `.text` e `.rdata` idênticos; diferem 299 bytes, o carimbo PE e 37 identificadores de namespace anônimo derivados do caminho.
   Windows `-Stage Test`: 30/30. Linux x64 não foi compilado nem executado: depende da prova de fontes (`NOT_RUN`).
 - **Pacote no XU10 com `libmali`, pasta separada, instalação nova:** ROM original convertida e jogo aberto na mesma execução, Demo 1 igual ao PC em 420 linhas, 3 demos iguais até o fim
@@ -70,6 +70,12 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - **Presets (fase 2):** `CMakePresets.json` com `windows-x64`, `linux-x64` e `linux-arm64-handheld`; `Build-Tooie.ps1`, `build_linux.sh` e
   `tools/handheld/build-handheld.{ps1,sh}` configuram por eles. Ferramentas em `tools/handheld/` (antes `tools/xu10/`), chip em `devices/rk3326.cmake`
   (XU10, R36S). Build cruzado a partir de host Linux e `build_linux.sh` com preset: `NOT_RUN`.
+- **Menu de API (fase 3):** Settings -> Graphics -> Graphics API lista Auto e só as APIs compiladas para o alvo e aceitas pelo
+  probe do aparelho (Windows DX12/Vulkan/DX11/OpenGL, Linux Vulkan/OpenGL, portátil OpenGL ES). Valor salvo de outra
+  plataforma vira Auto; Linux Auto usa OpenGL sem dispositivo Vulkan. Launcher PortMaster não força mais a API. Windows
+  31/31; XU10 (Panfrost) iniciou OpenGL ES sem variável e com `d3d12` salvo. Menu na tela: `PENDING_USER`; Linux `NOT_RUN`.
+  Contrato: [[specs/Tooie/startup-and-backends]]. Conhecido, anterior a esta fase: `TOOIE_GRAPHICS_LOG` derruba os
+  workers Windows (0xC0000409; um binário sem esta fase também cai), então `Diagnose-Graphics.ps1` não funciona hoje.
 
 ## Pendências conhecidas
 
@@ -287,4 +293,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: fase 3 da unificação na branch `feat/handheld`: menu Graphics API lista só as APIs compiladas e disponíveis no aparelho.
+`NEXT_SINGLE_ACTION`: fase 4 da unificação na branch `feat/handheld`: trazer ao desktop, uma a uma e medidas, as melhorias do portátil que ajudam Windows/Linux.

@@ -184,6 +184,8 @@ endif()
 add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/launcher_animation.cpp
     ${CMAKE_SOURCE_DIR}/src/main/tooie_startup.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_probe.cpp
     ${CMAKE_SOURCE_DIR}/src/main/tooie_launcher_audio.cpp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
@@ -410,8 +412,18 @@ add_custom_command(
 add_custom_target(TooieLauncherLogo DEPENDS "${TOOIE_LAUNCHER_LOGO}")
 add_dependencies(TooieRecompiled TooieLauncherLogo)
 
+# The graphics probe asks the Vulkan loader for devices with plume's own Vulkan headers (no SDK, no import library).
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_probe.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${RT64_ROOT}/src/contrib/plume/contrib/Vulkan-Headers/include")
+
+# Graphics API menu policy for every target (Windows, Linux, handheld), runnable on any host.
+add_executable(tooie_graphics_api_test tests/tooie_graphics_api_test.cpp src/main/tooie_graphics_api.cpp)
+target_include_directories(tooie_graphics_api_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(tooie_graphics_api_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 if(WIN32)
     add_executable(tooie_startup_test tests/tooie_startup_test.cpp src/main/tooie_startup.cpp
+        src/main/tooie_graphics_api.cpp src/main/tooie_graphics_probe.cpp
         ${N64MR}/librecomp/src/config.cpp ${N64MR}/librecomp/src/config_option.cpp)
     target_include_directories(tooie_startup_test PRIVATE
         $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>

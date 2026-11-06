@@ -38,7 +38,7 @@ jobs:
           cmake -S . -B build-ci -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
       - name: Host unit tests
         run: |
-          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test rom_cart_import_test"
+          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test rom_cart_import_test tooie_graphics_api_test"
           cmake --build build-ci --target $T -j2
           for t in $T; do (cd build-ci && ./$t); done
           python3 tools/test_rom_check.py
@@ -57,7 +57,7 @@ jobs:
           mkdir -p RecompiledFuncs && echo 'int tooie_ci_placeholder;' > RecompiledFuncs/ci_placeholder.c
           cmake -S . -B build-ci -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
           # rom_cart_import_test prints SKIP and exits 0 when no ROM is present.
-          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test rom_cart_import_test"
+          T="tooie_menu_policy_test tooie_menu_config_test rt64_host_endpoint_current_test p09_interp_burst_test p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test rom_cart_import_test tooie_graphics_api_test"
           cmake --build build-ci --target $T -j2
           for t in $T; do (cd build-ci && ./$t.exe); done
           python tools/test_rom_check.py

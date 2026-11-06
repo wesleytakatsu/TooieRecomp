@@ -22,7 +22,7 @@ Z-buffer in RAM is in [camera controls](../../reverse-engineering/systems/camera
 | Rule | How it holds |
 | --- | --- |
 | The CMake option `TK64_MOBILE` is `OFF` by default | Only the preset `linux-arm64-handheld` turns it on |
-| With it off, every changed source resolves to the base commit's text | `python tools/handheld/check_desktop_unchanged.py` compares them byte by byte and fails otherwise |
+| With it off, every changed source resolves to the base commit's text | `python tools/handheld/check_desktop_unchanged.py` compares them byte by byte and fails otherwise. It proves a handheld-only change; a change meant for every target (the Graphics API menu) fails it on purpose, so pass `--base` from before that change only for handheld-only work |
 | With it off, the OpenGL backend is the unchanged `plume_gles.cpp` | With it on, `lib/rt64/CMakeLists.txt` compiles `plume_gles_mobile.cpp` instead |
 | Desktop shaders are not changed | `-D TK64_MOBILE` reaches DXC only with the option on |
 | Build script changes do not touch a native build | They are behind `TK64_MOBILE` or `CMAKE_CROSSCOMPILING`; the check prints these two files as `reviewed` |
@@ -45,7 +45,7 @@ needs the desktop OpenGL path validated first, on Windows and on Linux.
 | Interface | No MSAA target for the interface in the weak profile | It is cleared, drawn and resolved every frame |
 | Window | `TOOIE_HANDHELD=1`: fullscreen at the display's size, no `SDL_WINDOW_VULKAN` with `TK64_GRAPHICS_API=opengl*` | Handhelds may have no Vulkan loader |
 | Quit | `TOOIE_HANDHELD=1`: Select + Start opens the quit prompt, or quits outside the game | There is no window to close |
-| Backend selection | A `TK64_GRAPHICS_API` set by the launcher wins over the saved preference | Handhelds need OpenGL ES |
+| Backend selection | The menu lists Auto and OpenGL ES; startup sets `TK64_GRAPHICS_API=opengles`. A value from another platform in `graphics.json` becomes Auto. A `TK64_GRAPHICS_API` already set wins | Handhelds need OpenGL ES |
 | ROM | With `TOOIE_AUTO_START`, an invalid stored ROM makes the game try each `.z64`, `.n64` and `.v64` in its folder through `recomp::select_rom`, and quit if none is accepted | Handhelds have no file dialog |
 
 Switches, all optional: `TK64_DEPTH_TO_RAM=0|1`, `TK64_RENDER_TO_RAM=0|1`, `TK64_UBERSHADERS_ONLY=0|1`. The frame profiler used for the
