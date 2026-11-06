@@ -40,6 +40,7 @@ Comprehensive technical specifications governing the native static recompilation
 - **[Testing Framework & Measurement Oracle](Tooie/testing-and-oracle.md)** — Automated host unit test suites (Linux and Windows) and verification targets.
 - **[Angrylion Control Oracle](Tooie/angrylion-control-oracle.md)** — Software-rendered ground truth reference oracle for visual and behavioural comparison.
 - **[Packaging, Releases & Dependency Boundaries](Tooie/packaging-and-dependencies.md)** — Standalone Linux (`.tar.gz`) and Windows (`.zip`) release packaging, in-memory ROM decompression, and legal boundaries.
+- **[Handheld Build & PortMaster Package](Tooie/handheld-portmaster.md)** — aarch64 handheld build behind `TK64_MOBILE`, its isolation from desktop builds, the PortMaster zip and its validation limits.
 - **[Modding, Extensions & Asset Customization](Tooie/modding-and-extensions.md)** — Extended object data, slot maps, texture pack container formats (.rtz), and mod callback hooks.
 - **[Asset Ownership & Licensing Manifest](Tooie/asset-and-licensing-manifest.md)** — Copyright boundaries, legal ROM requirements, ROM-derived code classification, third-party component licenses, and package distribution policies.
 

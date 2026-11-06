@@ -49,3 +49,23 @@ jobs:
             dist/*/AUDIT.txt
             dist/*/BUILD-INFO.txt
             dist/*/DEPENDENCIES.txt
+
+  private-game-build-handheld:   # same self-hosted Linux runner; also needs clang, lld, llvm and access to deb.debian.org
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == 'wesleytakatsu/TooieRecomp' && vars.TOOIE_PRIVATE_RUNNER == 'true' }}
+    runs-on: [self-hosted, linux, x64, tooie-rom]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with: { persist-credentials: false }
+      - name: Linux x64 build for the generated code and the host file_to_c (TOOIE_ROM must be set in the runner environment)
+        run: tools/build_linux.sh preflight verify extract recomp configure build
+      - name: Cross build and PortMaster package
+        run: |
+          python3 -I tools/handheld/fetch_sysroot.py "$RUNNER_TEMP/handheld-sysroot" | tee sysroot.log
+          ! grep -E '^MISSING|^  unresolved' sysroot.log
+          HANDHELD_SYSROOT="$RUNNER_TEMP/handheld-sysroot" tools/handheld/build-handheld.sh --configure
+          python3 tools/handheld/package_portmaster.py
+      - name: Upload checksums only (the archive embeds ROM-derived code)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tooie-handheld-private-evidence
+          path: dist/*PortMaster*.sha256

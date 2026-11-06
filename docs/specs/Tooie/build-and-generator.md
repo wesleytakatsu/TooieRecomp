@@ -88,10 +88,18 @@ The build system coordinates the compilation of statically recompiled C/C++ gues
   - Normal compilation is kit-free. The legacy IDO/gcc compiler kit (`TOOIE_TOOLCHAIN_KIT`, 34 files verified via `tools/toolchain.sha256`) is strictly an optional prerequisite for decomp and metadata regeneration.
 
 ### 3.3 Build Pipelines & Execution Stages
+- **CMake presets (`CMakePresets.json`)**: one configure and build preset per target. `windows-x64` (clang-cl Release, `build-win`),
+  `linux-x64` (clang Release, `build-linux`) and `linux-arm64-handheld` (cross build with `TK64_MOBILE=ON`, `build-handheld`). The
+  scripts below configure through them; `-B` keeps a custom build directory. Presets need CMake 3.21 or newer.
 - **Linux Pipeline (`tools/build_linux.sh`)**:
   - Stages: `preflight`, `verify`, `extract`, `recomp`, `configure`, `build`, `test`, `package`.
   - `decomp` stage is maintainer-only.
-  - Standard test suite runs 8 core unit tests.
+  - Standard Linux test suite configures 19 host test suites.
+- **Handheld Pipeline (`tools/handheld/build-handheld.ps1` on Windows, `build-handheld.sh` on Linux)**:
+  - Cross build for aarch64 Linux with clang and lld, toolchain `tools/handheld/aarch64-linux.cmake`, chip flags from
+    `tools/handheld/devices/<device>.cmake` (default `rk3326`).
+  - Inputs: a sysroot (`tools/handheld/fetch_sysroot.py`) and the host's `file_to_c` from the desktop build.
+  - Package: `tools/handheld/package_portmaster.py`.
 - **Windows Pipeline (`tools/windows/Build-Tooie.ps1`)**:
   - Stages: `Check`, `Extract`, `Recomp`, `Verify`, `ImportGenerated`, `Configure`, `Build`, `Test`, `Package`, `All`.
   - Options: `-AllTests` runs all non-argument tests; `-Jobs` specifies concurrency.
@@ -139,3 +147,7 @@ CMake defines isolated verification targets:
 SPIRV-Cross translates SPIR-V for the new backends; DX11 raster ubershaders are compiled to DXBC during the build.
 No sibling TK64 checkout, network fetch or prebuilt shader binary is required by a normal standalone build.
 Provenance and hashes are recorded in `vendor/`; [startup contract](startup-and-backends.md).
+
+The option `TK64_MOBILE` (default `OFF`) builds for aarch64 handhelds through the preset `linux-arm64-handheld`. With it off, sources resolve to the desktop code and
+`lib/rt64` compiles the unchanged `plume_gles.cpp`; `tools/handheld/check_desktop_unchanged.py` proves it. Cross-compiling, `lib/rt64` runs the
+host's DXC (`dxc.exe` on Windows, `dxc-linux` on Linux). See [handheld build](handheld-portmaster.md).

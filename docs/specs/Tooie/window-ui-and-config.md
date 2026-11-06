@@ -232,6 +232,13 @@ that change the game's state directly.
     and the walk from the entrance). The load counts only after the game has taken the map change request (its
     pending-warp flag cleared), so a hitch while the old map fades out is not mistaken for it. A teleport that cannot
     start or finish within 30 s is dropped (`[tooie-warp] ... timed out` on stderr).
+  - **Navigation** (D-pad, left stick or arrow keys): the modal moves the focus itself and never lets it leave the
+    modal. Up and down move between Save current position, the saved positions and Close, keeping the button column
+    between positions; left and right pick Teleport, Rename or Delete (or the rename field, Save and Cancel) in that
+    row. The list scrolls to the focused row, and the right stick scrolls it freely. Opening the modal focuses the first
+    saved position; after an action the focus returns to the same row. Close and the menu's Back action (B by
+    default) close the modal and return the focus to the Warp button.
+    The right stick scroll uses `recompui::Element::set_scroll_top` (patch `recompfrontend-ui-scroll-top`).
 - **Storage**: `<config_path>/dev_warps.json`, `{"version": 1, "positions": [{"name", "map", "entrance", "x", "y",
   "z", "yaw"}]}`, written through a temporary file. Malformed files and entries without a map are ignored.
 - **Game side**: a hook on `yaw_update` (`0x8009C88C`, `src/game/tooie_dev_warp_hook.cpp`) publishes player 1's

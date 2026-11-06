@@ -68,6 +68,16 @@ La release también incluye un paquete `.deb` (Debian/Ubuntu/Mint) y un `.AppIma
 - Dependencias del sistema: `SDL2`, `FreeType`, `GTK 3`.
 - La configuración y las partidas guardadas se almacenan en: `~/.config/TooieRecompiled`
 
+### Portátiles (PortMaster, aarch64)
+
+1. Instala `BanjoTooieRecompiled-v<version>-Linux-arm64-PortMaster.zip` con PortMaster.
+2. Copia tu ROM a `ports/tooie` e inicia **Banjo-Tooie** desde la lista de Ports. El primer inicio convierte la ROM una sola vez.
+
+**Requisitos y rutas:**
+- Requiere OpenGL ES 3.1 y un firmware con Wayland o X11. Probado solo en la MagicX XU10 con ROCKNIX; otros dispositivos no se han probado.
+- Resolución original y 4:3. La primera vez que aparece cada escena, sus shaders se compilan y el juego puede pausarse un momento.
+- Select + Start pregunta si quieres salir. La configuración y las partidas guardadas quedan en `ports/tooie`.
+
 ---
 
 ## Consejos y Notas
@@ -98,6 +108,9 @@ Para compilar TooieRecomp desde el código fuente, coloca tu ROM verificada `Ban
 - **Linux:** Ejecuta `tools/build_linux.sh` (probado en Ubuntu 24.04 / Linux Mint 22).
   Requisitos previos: Clang, CMake, Ninja, SDL2, FreeType, GTK 3 y Python 3.
   Consulta [tools/BUILDING.md](tools/BUILDING.md) para ver las instrucciones completas.
+- **Portátiles (aarch64, PortMaster):** compilación cruzada desde Windows (`tools/handheld/build-handheld.ps1`) o Linux
+  (`tools/handheld/build-handheld.sh`), luego `tools/handheld/package_portmaster.py`.
+  Consulta [tools/BUILDING.md](tools/BUILDING.md) para el sysroot y los pasos.
 
 ---
 

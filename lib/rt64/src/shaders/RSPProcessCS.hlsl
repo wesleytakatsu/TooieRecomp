@@ -35,18 +35,36 @@ Buffer<uint> srcFogIndices : register(t9);
 Buffer<uint> srcLightIndices : register(t10);
 Buffer<uint> srcLightCounts : register(t11);
 Buffer<uint> srcLookAtIndices : register(t12);
+#ifdef TK64_MOBILE
+// TK64: texel buffers, not storage buffers. With storage buffers this shader needs 11 blocks and mobile drivers may
+// offer only 8 (Panfrost, docs/specs/storage-buffer-limits.md).
+Buffer<float4> rspViewportVector : register(t13);
+#else
 StructuredBuffer<RSPViewport> rspViewportVector : register(t13);
+#endif
 StructuredBuffer<RSPFog> rspFogVector : register(t14);
 StructuredBuffer<RSPLight> rspLightVector : register(t15);
 StructuredBuffer<RSPLookAt> rspLookAtVector : register(t16);
 StructuredBuffer<float4x4> viewProjTransforms : register(t17);
 StructuredBuffer<float4x4> worldTransforms : register(t18);
+#ifdef TK64_MOBILE
+Buffer<float4> endpointViewProj : register(t22);
+Buffer<float4> endpointWorld : register(t23);
+#else
 StructuredBuffer<float4x4> endpointViewProj : register(t22);
 StructuredBuffer<float4x4> endpointWorld : register(t23);
+#endif
 RWStructuredBuffer<float4> dstPos : register(u19);
 RWStructuredBuffer<float2> dstTc : register(u20);
 RWStructuredBuffer<float4> dstCol : register(u21);
 
+#ifdef TK64_MOBILE
+// float4x4 is stored by columns.
+float4x4 loadMatrix(Buffer<float4> matrices, uint index) {
+    return transpose(float4x4(matrices[index * 4u + 0u], matrices[index * 4u + 1u], matrices[index * 4u + 2u], matrices[index * 4u + 3u]));
+}
+
+#endif
 [numthreads(GROUP_SIZE, 1, 1)]
 void CSMain(uint vertexIndex : SV_DispatchThreadID) {
     if (vertexIndex >= gConstants.vertexCount) {
@@ -77,7 +95,11 @@ void CSMain(uint vertexIndex : SV_DispatchThreadID) {
     // without the removed sign test.
     if (gConstants.forceEndpointCurrent != 0u) {
         const float4 endpointPos = float4(pos, 1.0f);
+#ifdef TK64_MOBILE
+        tfPos = mul(mul(loadMatrix(endpointViewProj, viewProjIndex * 2u + 1u), loadMatrix(endpointWorld, transformIndex * 2u + 1u)), endpointPos);
+#else
         tfPos = mul(mul(endpointViewProj[viewProjIndex * 2u + 1u], endpointWorld[transformIndex * 2u + 1u]), endpointPos);
+#endif
         if (gConstants.markWCrossing != 0u) {
             tfPos.x += 0.70f * tfPos.w;
         }
@@ -143,9 +165,16 @@ void CSMain(uint vertexIndex : SV_DispatchThreadID) {
     }
 
     // Convert to N64 screen position.
+#ifdef TK64_MOBILE
+    const float3 viewportScale = rspViewportVector[viewProjIndex * 2u + 0u].xyz;
+    const float3 viewportTranslate = rspViewportVector[viewProjIndex * 2u + 1u].xyz;
+    const float3 ndcPos = tfPos.xyz / float3(tfPos.w, -tfPos.w, tfPos.w);
+    const float4 screenPos = float4(ndcPos * viewportScale + viewportTranslate, tfPos.w);
+#else
     const RSPViewport rspViewport = rspViewportVector[viewProjIndex];
     const float3 ndcPos = tfPos.xyz / float3(tfPos.w, -tfPos.w, tfPos.w);
     const float4 screenPos = float4(ndcPos * rspViewport.scale + rspViewport.translate, tfPos.w);
+#endif
     dstPos[vertexOffsetIndex] = screenPos;
     dstTc[vertexOffsetIndex] = tc;
     dstCol[vertexOffsetIndex] = vertexColor;

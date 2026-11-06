@@ -20,6 +20,7 @@ namespace RT64 {
     NativeTarget::~NativeTarget() { }
     
     void NativeTarget::resetBufferHistory() {
+        lastUploadedBytesValid = false;
         if (readBufferHistoryCount > 1) {
             std::swap(readBufferHistory.front(), readBufferHistory.back());
             readBufferHistoryCount = 1;
@@ -70,6 +71,30 @@ namespace RT64 {
             clearDescSet = std::make_unique<FramebufferClearChangesDescriptorSet>(worker->device);
             clearDescSet->setBuffer(clearDescSet->gOutputCount, changeCountBuffer.get(), RenderBufferStructuredView(sizeof(uint32_t)));
         }
+
+        // TK64: with the previous contents known, the changed pixels can be counted here. Asking the GPU means waiting for all
+        // its pending work, several times per frame in some games, which costs handhelds more than the rest of the frame.
+        const uint32_t cpuBufferSize = getNativeSize(width, height, siz);
+        const bool cpuCountAvailable = !invalidateTargets && (readBufferHistoryCount > 0) && lastUploadedBytesValid && (lastUploadedBytes.size() == cpuBufferSize);
+        uint32_t cpuModifiedCount = 0;
+        if (cpuCountAvailable) {
+            if (memcmp(lastUploadedBytes.data(), data, cpuBufferSize) == 0) {
+                return 0;
+            }
+
+            const uint32_t pixelBytes = (siz == G_IM_SIZ_32b) ? 4 : ((siz == G_IM_SIZ_16b) ? 2 : 1);
+            for (uint32_t i = 0; (i + pixelBytes) <= cpuBufferSize; i += pixelBytes) {
+                uint8_t difference = 0;
+                for (uint32_t b = 0; b < pixelBytes; b++) {
+                    difference |= lastUploadedBytes[i + b] ^ data[i + b];
+                }
+
+                cpuModifiedCount += (difference != 0) ? 1 : 0;
+            }
+        }
+
+        lastUploadedBytes.assign(data, data + cpuBufferSize);
+        lastUploadedBytesValid = true;
 
         // Determine the correct type of texture to use.
         RenderTexture *colorOrDepthRes = nullptr;
@@ -200,7 +225,7 @@ namespace RT64 {
         worker->commandList->dispatch(dispatchX, dispatchY, 1);
         worker->commandList->barriers(RenderBarrierStage::ALL, afterBarriers, uint32_t(std::size(afterBarriers)));
 
-        if (hasCurrentResource) {
+        if (hasCurrentResource && !cpuCountAvailable) {
             // Copy the modified count resource to the readback.
             RenderBufferBarrier beforeCopyBarriers[] = {
                 RenderBufferBarrier(changeCountBuffer.get(), RenderBufferAccess::READ),
@@ -213,6 +238,10 @@ namespace RT64 {
         
         // Read the modified count by executing and waiting.
         uint32_t modifiedCount = 0;
+        if (cpuCountAvailable) {
+            modifiedCount = cpuModifiedCount;
+        }
+        else
         if (hasCurrentResource) {
             worker->commandList->end();
             worker->execute();
@@ -232,6 +261,7 @@ namespace RT64 {
     }
 
     void NativeTarget::copyToNative(RenderWorker *worker, RenderTarget *srcTarget, uint32_t rowWidth, uint32_t rowStart, uint32_t rowEnd, uint8_t siz, uint8_t fmt, uint32_t ditherPattern, uint32_t ditherRandomSeed, const ShaderLibrary *shaderLibrary) {
+        lastUploadedBytesValid = false;
         assert(worker != nullptr);
 
         srcTarget->resolveTarget(worker, shaderLibrary);

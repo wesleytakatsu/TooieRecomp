@@ -1,4 +1,5 @@
 #include "tooie_startup.h"
+#include "tooie_graphics_api.h"
 #include "SDL.h"
 #include "banjo_config.h"
 #include "recompui/config.h"
@@ -28,6 +29,8 @@ std::string backend_label(const std::string &api) {
         return "DirectX 11";
     if (api == "opengl")
         return "OpenGL";
+    if (api == "opengles")
+        return "OpenGL ES";
     if (api == "vulkan")
         return "Vulkan";
     if (api == "metal")
@@ -82,8 +85,29 @@ void log_event(const std::string &event, json fields = json::object()) {
     std::ofstream f(std::filesystem::u8path(path), std::ios::app);
     f << fields.dump() << '\n';
 }
-bool valid(const std::string &s) {
-    return s == "auto" || s == "d3d12" || s == "vulkan" || s == "d3d11" || s == "opengl";
+namespace api = tooie_graphics_api;
+bool wine() {
+#ifdef _WIN32
+    // Match RT64's automatic Wine preference.
+    return RT64::UserConfiguration::resolveGraphicsAPI(RT64::UserConfiguration::GraphicsAPI::Automatic) ==
+           RT64::UserConfiguration::GraphicsAPI::Vulkan;
+#else
+    return false;
+#endif
+}
+// A backend this build has. A choice saved by another platform's build (d3d12 on Linux) is not valid here.
+bool compiled(const std::string &s) {
+    const auto list = api::compiled(api::current_target(), wine());
+    return std::find(list.begin(), list.end(), s) != list.end();
+}
+bool valid(const std::string &s) { return s == "auto" || compiled(s); }
+// The backend this process renders with when the host already named it (a Windows worker, or a launcher).
+std::string running_backend() {
+    const char *s = std::getenv("TK64_GRAPHICS_API");
+    return s != nullptr && compiled(s) ? s : "";
+}
+std::vector<std::string> menu() {
+    return api::menu(api::current_target(), wine(), api::probe_available, running_backend());
 }
 void set_environment(const char *name, const char *value) {
 #ifdef _WIN32
@@ -107,22 +131,7 @@ struct Handle {
 } // namespace
 
 std::vector<std::string> tooie_startup::candidates(const std::string &selected) {
-    std::vector<std::string> result;
-    if (valid(selected) && selected != "auto")
-        result.push_back(selected);
-#ifdef _WIN32
-    // Match RT64's automatic Wine preference.
-    const bool wine = RT64::UserConfiguration::resolveGraphicsAPI(RT64::UserConfiguration::GraphicsAPI::Automatic) ==
-                      RT64::UserConfiguration::GraphicsAPI::Vulkan;
-    std::vector<std::string> defaults = wine ? std::vector<std::string>{"vulkan", "d3d12", "d3d11", "opengl"}
-                                             : std::vector<std::string>{"d3d12", "vulkan", "d3d11", "opengl"};
-#else
-    std::vector<std::string> defaults = {"vulkan", "opengl"};
-#endif
-    for (const auto &s : defaults)
-        if (std::find(result.begin(), result.end(), s) == result.end())
-            result.push_back(s);
-    return result;
+    return api::candidates(api::current_target(), wine(), valid(selected) ? selected : "auto");
 }
 std::string tooie_startup::preference() {
     auto graphics = read_json(recompui::file::get_app_folder_path() / "graphics.json");
@@ -201,7 +210,10 @@ int tooie_startup::enter(int argc, char **argv) {
         return EXIT_FAILURE;
     {
         const auto selected = preference();
-        log_event("startup", {{"preference", selected}});
+        // Workers inherit what this process measured, so the menu needs no second probe.
+        const auto available = api::probe_list(wine());
+        set_environment("TOOIE_GRAPHICS_AVAILABLE", available.c_str());
+        log_event("startup", {{"preference", selected}, {"available", available}});
         std::string failures;
         for (const auto &candidate : candidates(selected)) {
             SECURITY_ATTRIBUTES security{sizeof(security), nullptr, TRUE};
@@ -275,8 +287,14 @@ int tooie_startup::enter(int argc, char **argv) {
 #else
     (void)argc;
     (void)argv;
-    const auto s = preference();
-    set_environment("TK64_GRAPHICS_API", s == "opengl" ? "opengl" : "");
+    // A launcher that names a backend this build has wins. Otherwise the menu choice, when this device offers it, or the
+    // target's Auto: OpenGL ES on handhelds, Vulkan on Linux unless only OpenGL is found.
+    if (running_backend().empty()) {
+        const auto chosen = api::effective(preference(), menu());
+        const auto value = api::environment_value(api::current_target(), chosen, api::probe_available);
+        set_environment("TK64_GRAPHICS_API", value.c_str());
+        log_event("startup", {{"preference", preference()}, {"effective", chosen}, {"api", value}});
+    }
     return -1;
 #endif
 }
@@ -290,8 +308,7 @@ void tooie_startup::launcher_ready() {
 #ifndef TOOIE_STARTUP_TEST
     recompui::config::get_graphics_config().update_option_description(
         graphics_backend_option,
-        "Using " + backend_label(api) +
-            ". Auto tries DX12, Vulkan, DX11, then OpenGL until one works. Changes apply on next launch.");
+        "Using " + backend_label(api) + ". " + api::auto_description(api::current_target(), wine()));
 #endif
     log_event("selected", {{"requested", preference()}, {"api", api}, {"device", device}, {"guest_started", false}});
     auto j = read_json(config_path());
@@ -314,21 +331,12 @@ void tooie_startup::note_game_start() {
 }
 void tooie_startup::add_graphics_option(recomp::config::Config &config) {
     using recomp::config::ConfigOptionEnumOption;
-    const std::vector<std::string> keys = {"auto", "d3d12", "vulkan", "d3d11", "opengl"};
+    // Only the backends this build has and this device can start; the values keep their meaning on every platform.
+    const auto listed = menu();
     std::vector<ConfigOptionEnumOption> options;
-#ifdef _WIN32
-    options = {{0u, "auto", "Auto"},
-               {1u, "d3d12", "DX12"},
-               {2u, "vulkan", "Vulkan"},
-               {3u, "d3d11", "DX11"},
-               {4u, "opengl", "OpenGL"}};
-#else
-    options = {{0u, "auto", "Auto"}, {2u, "vulkan", "Vulkan"}, {4u, "opengl", "OpenGL"}};
-#endif
-    const auto selected = preference();
-    auto found = std::find(keys.begin(), keys.end(), selected);
-    const auto initial = found == keys.end() ? 0u : static_cast<uint32_t>(std::distance(keys.begin(), found));
-    config.add_enum_option(graphics_backend_option, "Graphics API",
-                           "Auto tries DX12, Vulkan, DX11, then OpenGL until one works. Changes apply on next launch.",
+    for (const auto &key : listed)
+        options.emplace_back(api::enum_value(key), key, api::menu_label(key));
+    const auto initial = api::enum_value(api::effective(preference(), listed));
+    config.add_enum_option(graphics_backend_option, "Graphics API", api::auto_description(api::current_target(), wine()),
                            options, initial);
 }

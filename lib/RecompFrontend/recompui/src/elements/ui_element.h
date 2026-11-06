@@ -141,6 +141,8 @@ public:
     float get_offset_top();
     float get_scroll_left();
     float get_scroll_top();
+    // Scrolls the element vertically; RmlUi clamps the offset to the scrollable range.
+    void set_scroll_top(float scroll_top);
     float get_client_left();
     float get_client_top();
     float get_client_width();

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <vector>
@@ -487,7 +488,9 @@ static void test_semantic_bounds_and_publish() {
     closed.pairCount = 0;
     TEST_ASSERT(p09LocalPairSnapshotBoundsOk(closed), "fail-closed empty file stays readable");
 
-    const std::string path = "/tmp/p09-publish-ok.bin";
+    // The system temp directory: "/tmp" is not a directory on Windows runners.
+    const std::filesystem::path tmp = std::filesystem::temp_directory_path();
+    const std::string path = (tmp / "p09-publish-ok.bin").string();
     std::remove(path.c_str());
     std::remove((path + ".tmp").c_str());
     TEST_ASSERT(p09LocalPairSnapshotPublish(path.c_str(), base), "publish renames only after write");
@@ -496,7 +499,7 @@ static void test_semantic_bounds_and_publish() {
     TEST_ASSERT(in != nullptr && p09LocalPairSnapshotRead(in, published), "published file reads");
     if (in != nullptr) std::fclose(in);
     std::remove(path.c_str());
-    TEST_ASSERT(!p09LocalPairSnapshotPublish("/tmp/no-such-p09-dir/x.bin", base),
+    TEST_ASSERT(!p09LocalPairSnapshotPublish((tmp / "no-such-p09-dir" / "x.bin").string().c_str(), base),
         "failed publish does not claim a capture");
 }
 

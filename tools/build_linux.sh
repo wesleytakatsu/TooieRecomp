@@ -17,7 +17,7 @@ JOBS="${TOOIE_JOBS:-2}"
 VENV="$BUILD/venv"
 STAGES=("$@"); [[ ${#STAGES[@]} -gt 0 ]] || STAGES=(preflight verify extract recomp configure build test package)
 TESTS=(tooie_story_coop_test tooie_menu_policy_test tooie_menu_config_test tintro_projection_policy_test tooie_object_distance_test tooie_analog_camera_test recompinput_player_slots_test rt64_host_endpoint_current_test p09_interp_burst_test
-       p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test tooie_dev_warp_test tooie_dev_forms_test tooie_glowbo_collection_test tooie_dev_enemy_ai_test tooie_dev_travel_menu_test)
+       p09_world_interpolation_guard_test p09_local_pair_snapshot_test p09_exact_use_correlation_test rt64_present_decimator_test tooie_dev_warp_test tooie_dev_forms_test tooie_glowbo_collection_test tooie_dev_enemy_ai_test tooie_dev_travel_menu_test tooie_graphics_api_test)
 log() { echo "[build_linux] $(date -u +%H:%M:%SZ) $*"; }
 
 stage_preflight() { "$ROOT/tools/preflight.sh" generate; }   # kit-free; `tools/preflight.sh decomp` adds the maintainer checks
@@ -55,10 +55,8 @@ stage_recomp() { # N64Recomp (vendored, patched generator; built OUT of the sour
     python3 "$ROOT/tools/check_generated_fresh.py"
     "$ROOT/tools/verify_generated.sh"                                              # byte-identical to the accepted baseline (metadata/recomp-output.sha256)
 }
-stage_configure() { # -ffile-prefix-map keeps build-host paths out of __FILE__/asserts in the shipped binary
-    local pm="-ffile-prefix-map=$ROOT=/tooie"
-    cmake -S "$ROOT" -B "$BUILD" -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="$pm" -DCMAKE_CXX_FLAGS="$pm"
+stage_configure() { # CMakePresets.json linux-x64: -ffile-prefix-map keeps build-host paths out of __FILE__/asserts in the shipped binary
+    (cd "$ROOT" && cmake --preset linux-x64 -B "$BUILD")
 }
 stage_build()     { cmake --build "$BUILD" --target TooieRecompiled -j"$JOBS"; }
 stage_test() {

@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-x64",
+      "displayName": "Windows x64 (clang-cl, Release)",
+      "description": "Desktop build. Run from a Visual Studio developer shell; tools/windows/Build-Tooie.ps1 opens one.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-win",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /clang:-ffile-prefix-map=${sourceDir}=/tooie",
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc /clang:-ffile-prefix-map=${sourceDir}=/tooie"
+      }
+    },
+    {
+      "name": "linux-x64",
+      "displayName": "Linux x64 (clang, Release)",
+      "description": "Desktop build. tools/build_linux.sh runs it.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-linux",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_C_FLAGS": "-ffile-prefix-map=${sourceDir}=/tooie",
+        "CMAKE_CXX_FLAGS": "-ffile-prefix-map=${sourceDir}=/tooie"
+      }
+    },
+    {
+      "name": "linux-arm64-handheld",
+      "displayName": "Linux aarch64 handheld (TK64_MOBILE, PortMaster)",
+      "description": "Cross build from a Windows or Linux host. tools/handheld/build-handheld.ps1 or build-handheld.sh set HANDHELD_SYSROOT, HANDHELD_LLVM, HANDHELD_PKG_CONFIG and TK64_HOST_FILE_TO_C.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-handheld",
+      "toolchainFile": "${sourceDir}/tools/handheld/aarch64-linux.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TK64_MOBILE": "ON",
+        "HANDHELD_DEVICE": "rk3326",
+        "TK64_HOST_FILE_TO_C": "$env{TK64_HOST_FILE_TO_C}",
+        "PKG_CONFIG_EXECUTABLE": "$env{HANDHELD_PKG_CONFIG}",
+        "NFD_PORTAL": "ON",
+        "CMAKE_CXX_STANDARD_LIBRARIES": "-ldbus-1"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-x64", "configurePreset": "windows-x64", "targets": [ "TooieRecompiled" ] },
+    { "name": "linux-x64", "configurePreset": "linux-x64", "targets": [ "TooieRecompiled" ] },
+    { "name": "linux-arm64-handheld", "configurePreset": "linux-arm64-handheld", "targets": [ "TooieRecompiled" ] }
+  ]
+}

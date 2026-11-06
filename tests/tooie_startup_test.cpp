@@ -58,6 +58,8 @@ int main(int argc, char **argv) {
     std::filesystem::create_directories(dir);
     _putenv_s("TOOIE_STARTUP_TEST_DIR", dir.string().c_str());
     _putenv_s("TOOIE_GRAPHICS_LOG", (dir / "graphics.jsonl").string().c_str());
+    // Fixed probe result: the menu and fallback must not depend on this machine's GPU.
+    _putenv_s("TOOIE_GRAPHICS_AVAILABLE", "d3d12,vulkan,d3d11,opengl");
     auto fail = [&](const char *msg) {
         std::cerr << "FAIL: " << msg << "; evidence: " << dir << '\n';
         return 1;

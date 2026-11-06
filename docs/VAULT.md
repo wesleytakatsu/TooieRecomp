@@ -16,6 +16,7 @@ tags: [vault, index, tooierecomp]
 
 ## releases
 
+- [[releases/v0.1.5]] — Notas da pré-release Windows x64 e PortMaster em inglês e português brasileiro
 - [[releases/v0.1.4]] — Notas da pré-release Windows x64 em inglês e português brasileiro
 
 ## future
@@ -33,6 +34,7 @@ Histórico de implementação e medições permanece no Git.
 - [[specs/Tooie/index]] — Hub das specs do port nativo
 - [[specs/Tooie/build-and-generator]] — Build e gerador do recompilador
 - [[specs/Tooie/packaging-and-dependencies]] — Empacotamento, releases e dependências
+- [[specs/Tooie/handheld-portmaster]] — Build de portáteis (`TK64_MOBILE`) e pacote PortMaster
 - [[specs/Tooie/asset-and-licensing-manifest]] — Fronteiras de assets e licenças
 - [[specs/Tooie/runtime-and-overlays]] — Runtime, overlays dinâmicos e preempção
 - [[specs/Tooie/audio-system]] — Áudio e microcódigo RSP

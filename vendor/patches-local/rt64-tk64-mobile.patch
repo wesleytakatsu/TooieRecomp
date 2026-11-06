@@ -1,0 +1,2269 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 768c0e0..2e1e4b8 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,6 +12,12 @@ option(RT64_STATIC "Build RT64 as a static library" OFF)
+ 
+ 
+ option(RT64_SDL_WINDOW_VULKAN "Build RT64 to expect an SDL Window outside of Windows" OFF)
++# TK64: everything for handheld GPUs that bound the shaders or the OpenGL ES backend (docs/specs/mobile-driver-costs.md). Off, the
++# sources resolve to what desktop builds always compiled.
++option(TK64_MOBILE "Build RT64 for handheld GPUs (OpenGL ES only)" OFF)
++if (TK64_MOBILE)
++    add_compile_definitions(TK64_MOBILE)
++endif()
+ 
+ if (NOT ${RT64_STATIC})
+     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+@@ -35,7 +41,12 @@ function(preprocess INFILE OUTFILE OPTIONS)
+     endif()
+ endfunction()
+ 
+-if (WIN32)
++# TK64: cross-compiling from Windows, the shader tools run on the host (docs/specs/targets.md).
++if (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32)
++    set (DXC "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
++elseif (CMAKE_CROSSCOMPILING AND CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE)
++    set (DXC "LD_LIBRARY_PATH=${PROJECT_SOURCE_DIR}/src/contrib/dxc/lib/x64" "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc-linux")
++elseif (WIN32)
+     set (DXC "${PROJECT_SOURCE_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
+     add_compile_definitions(
+         NOMINMAX
+@@ -69,7 +80,15 @@ set(ZSTD_LEGACY_SUPPORT OFF)
+ set(ZSTD_BUILD_STATIC ON)
+ set(ZSTD_BUILD_SHARED OFF)
+ 
+-add_subdirectory(src/tools/file_to_c)
++if (CMAKE_CROSSCOMPILING)
++    if (NOT TK64_HOST_FILE_TO_C)
++        message(FATAL_ERROR "Cross-compiling needs TK64_HOST_FILE_TO_C, the path to a file_to_c built for the host")
++    endif()
++    add_executable(file_to_c IMPORTED GLOBAL)
++    set_target_properties(file_to_c PROPERTIES IMPORTED_LOCATION "${TK64_HOST_FILE_TO_C}")
++else()
++    add_subdirectory(src/tools/file_to_c)
++endif()
+ add_subdirectory(src/contrib/re-spirv)
+ add_subdirectory(src/contrib/nativefiledialog-extended)
+ add_subdirectory(src/contrib/zstd/build/cmake)
+@@ -104,6 +123,9 @@ set(ANDROID_ABI arm64-v8a)
+ 
+ # For DXC
+ set (DXC_COMMON_OPTS "-I${PROJECT_SOURCE_DIR}/src")
++if (TK64_MOBILE)
++    list(APPEND DXC_COMMON_OPTS "-D" "TK64_MOBILE")
++endif()
+ set (DXC_DXIL_OPTS "-Wno-ignored-attributes")
+ set (DXC_SPV_OPTS "-spirv" "-fspv-target-env=vulkan1.0" "-fvk-use-dx-layout")
+ set (DXC_LB_OPTS "${DXC_COMMON_OPTS}" "-D" "LIBRARY" "-T" "lib_6_3")
+@@ -492,8 +514,10 @@ if (NOT APPLE)
+ endif()
+ 
+ # Add tools.
+-add_subdirectory(src/tools/texture_hasher)
+-add_subdirectory(src/tools/texture_packer)
++if (NOT CMAKE_CROSSCOMPILING)
++    add_subdirectory(src/tools/texture_hasher)
++    add_subdirectory(src/tools/texture_packer)
++endif()
+ 
+ # Add any Apple-specific source files and libraries
+ if (APPLE)
+diff --git a/src/contrib/plume/plume_gles.cpp b/src/contrib/plume/plume_gles.cpp
+index 786eb1f..9d436b3 100644
+--- a/src/contrib/plume/plume_gles.cpp
++++ b/src/contrib/plume/plume_gles.cpp
+@@ -28,6 +28,7 @@
+ #include <condition_variable>
+ #include <cstring>
+ #include <deque>
++#include <filesystem>
+ #include <functional>
+ #include <map>
+ #include <mutex>
+@@ -288,6 +289,7 @@ extern "C" {
+ #endif
+ #endif
+ 
++#include "tk64_depth_ram.h"
+ #include "tk64_shader_translator.h"
+ 
+ // Windows headers define APIENTRY. Elsewhere the GL entry points use the platform calling convention.
+@@ -305,6 +307,12 @@ typedef void (APIENTRY *GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
+ 
+ #define GL_TEXTURE_1D 0x0DE0
+ #define GL_TEXTURE_2D_MULTISAMPLE 0x9100
++#ifndef GL_SAMPLES
++#define GL_SAMPLES 0x80A9
++#endif
++#ifndef GL_NUM_SAMPLE_COUNTS
++#define GL_NUM_SAMPLE_COUNTS 0x9380
++#endif
+ #define GL_TEXTURE_3D 0x806F
+ #define GL_TEXTURE_BUFFER 0x8C2A
+ #define GL_TEXTURE0 0x84C0
+@@ -378,6 +386,10 @@ typedef void (APIENTRY *GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
+ #define GL_DEBUG_SEVERITY_NOTIFICATION 0x826B
+ #define GL_DEBUG_TYPE_ERROR 0x824C
+ #define GL_ALL_BARRIER_BITS 0xFFFFFFFF
++#define GL_BUFFER_UPDATE_BARRIER_BIT 0x00000200
++#define GL_SYNC_GPU_COMMANDS_COMPLETE 0x9117
++#define GL_ALREADY_SIGNALED 0x911A
++#define GL_CONDITION_SATISFIED 0x911C
+ #define GL_READ_WRITE 0x88BA
+ #define GL_MAX_SAMPLES 0x8D57
+ #define GL_HALF_FLOAT 0x140B
+@@ -462,6 +474,7 @@ typedef void (APIENTRY *GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
+     F(void, glPixelStorei, (GLenum pname, GLint param)) \
+     F(void, glFlush, (void)) \
+     F(void, glFinish, (void)) \
++    F(void, glGetInternalformativ, (GLenum target, GLenum internalformat, GLenum pname, GLsizei bufSize, GLint *params)) \
+     F(void, glGenBuffers, (GLsizei n, GLuint *buffers)) \
+     F(void, glDeleteBuffers, (GLsizei n, const GLuint *buffers)) \
+     F(void, glBindBuffer, (GLenum target, GLuint buffer)) \
+@@ -515,6 +528,9 @@ typedef void (APIENTRY *GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
+     F(GLuint, glCreateProgram, (void)) \
+     F(void, glAttachShader, (GLuint program, GLuint shader)) \
+     F(void, glLinkProgram, (GLuint program)) \
++    F(void, glProgramBinary, (GLuint program, GLenum binaryFormat, const void *binary, GLsizei length)) \
++    F(void, glGetProgramBinary, (GLuint program, GLsizei bufSize, GLsizei *length, GLenum *binaryFormat, void *binary)) \
++    F(void, glProgramParameteri, (GLuint program, GLenum pname, GLint value)) \
+     F(void, glGetProgramiv, (GLuint program, GLenum pname, GLint *params)) \
+     F(void, glGetProgramInfoLog, (GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog)) \
+     F(void, glDeleteProgram, (GLuint program)) \
+@@ -544,8 +560,12 @@ typedef void (APIENTRY *GLDEBUGPROC)(GLenum source, GLenum type, GLuint id, GLen
+     F(void, glBindVertexBuffer, (GLuint bindingindex, GLuint buffer, GLintptr offset, GLsizei stride)) \
+     F(void, glDrawArraysInstanced, (GLenum mode, GLint first, GLsizei count, GLsizei instancecount)) \
+     F(void, glDrawElementsInstancedBaseVertex, (GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei instancecount, GLint basevertex)) \
++    F(void, glDrawRangeElements, (GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices)) \
+     F(void, glDispatchCompute, (GLuint num_groups_x, GLuint num_groups_y, GLuint num_groups_z)) \
+     F(void, glMemoryBarrier, (GLbitfield barriers)) \
++    F(GLsync, glFenceSync, (GLenum condition, GLbitfield flags)) \
++    F(GLenum, glClientWaitSync, (GLsync sync, GLbitfield flags, GLuint64 timeout)) \
++    F(void, glDeleteSync, (GLsync sync)) \
+     F(void, glDebugMessageCallback, (GLDEBUGPROC callback, const void *userParam)) \
+     F(void, glClipControl, (GLenum origin, GLenum depth)) \
+     F(void, glClipControlEXT, (GLenum origin, GLenum depth))
+@@ -822,6 +842,14 @@ namespace plume {
+         // Upload buffers are written through this copy and sent to GL on unmap; readback buffers receive GL's data here
+         // when a copy into them is replayed.
+         std::vector<uint8_t> shadow;
++        std::shared_ptr<std::vector<uint8_t>> replayShadow; // Set on staging buffers, read and written only on the GL thread.
++
++        // Uploads into this buffer, only touched on the GL thread. See GLCommandList::copyBufferRegion.
++        mutable uint64_t lastUploadFrame = UINT64_MAX;
++        mutable uint64_t uploadEnd = 0;
++
++        // What was uploaded to an index buffer, only touched on the GL thread. Empty when the GPU wrote to it. See drawIndexedInstanced.
++        mutable std::vector<uint8_t> indexCopy;
+ 
+         GLBuffer(GLDevice *device, const RenderBufferDesc &desc);
+         ~GLBuffer() override;
+@@ -921,6 +949,10 @@ namespace plume {
+         struct PushConstantUniform {
+             GLint location = -1;
+             tk64::PushConstantMember member;
++
++            // The last value sent. Uniforms belong to the program, so they stay valid between replays.
++            mutable uint8_t last[64] = {};
++            mutable bool lastValid = false;
+         };
+ 
+         GLDevice *device = nullptr;
+@@ -934,6 +966,7 @@ namespace plume {
+         std::vector<RenderInputSlot> inputSlots;
+         RenderGraphicsPipelineDesc graphicsDesc;
+         bool valid = false;
++        bool blendInShader = false; // See TranslationOptions::dualSourceBlend.
+ 
+         // GLSL ES declares a format for every storage image. When a compute shader's write-only images are bound with
+         // other formats than the ones it was translated with, it runs as a variant translated with the bound formats,
+@@ -960,6 +993,8 @@ namespace plume {
+         uint32_t height = 0;
+         uint32_t colorCount = 0;
+         bool hasDepth = false;
++        std::vector<GLuint> attachments; // Texture ids, depth last.
++        bool multisampled = false;
+ 
+         GLFramebuffer(GLDevice *device, const RenderFramebufferDesc &desc);
+         ~GLFramebuffer() override;
+@@ -1000,10 +1035,24 @@ namespace plume {
+         const GLFramebuffer *framebuffer = nullptr;
+         RenderRect scissor;
+         bool scissorSet = false;
++        bool uploadFlushed = false;
++        GLuint boundVertexArray = GLuint(-1);
++        GLuint boundIndexBuffer = 0;
++        struct BoundVertexBuffer { GLuint id = GLuint(-1); GLintptr offset = 0; GLsizei stride = 0; } boundVertexBuffers[8];
+     };
+ 
+     typedef std::function<void(GLReplayState &)> GLCommand;
+ 
++    // Set when a dispatch has written memory that no barrier has covered yet. Only touched on the GL thread, and it outlives a
++    // replay because a barrier may be recorded in a later command list than its dispatch.
++    static bool computeWritesPending = false;
++
++    // Set when a draw or a clear has written depth since setFramebuffer or a dispatch last ended the pass. Only touched on the GL thread.
++    static bool depthWritesPending = false;
++
++    // Swaps so far. Only touched on the GL thread.
++    static uint64_t glFrameCounter = 0;
++
+     struct GLCommandList : RenderCommandList {
+         GLDevice *device = nullptr;
+         std::shared_ptr<std::vector<GLCommand>> commands;
+@@ -1124,6 +1173,7 @@ namespace plume {
+         typedef EGLBoolean (*PFN_eglTerminate)(EGLDisplay display);
+         typedef EGLBoolean (*PFN_eglBindAPI)(EGLenum api);
+         typedef EGLBoolean (*PFN_eglChooseConfig)(EGLDisplay display, const EGLint *attribList, EGLConfig *configs, EGLint configSize, EGLint *numConfig);
++        typedef EGLBoolean (*PFN_eglGetConfigAttrib)(EGLDisplay display, EGLConfig config, EGLint attribute, EGLint *value);
+         typedef EGLSurface (*PFN_eglCreateWindowSurface)(EGLDisplay display, EGLConfig config, void *nativeWindow, const EGLint *attribList);
+         typedef EGLBoolean (*PFN_eglDestroySurface)(EGLDisplay display, EGLSurface surface);
+         typedef EGLContext (*PFN_eglCreateContext)(EGLDisplay display, EGLConfig config, EGLContext shareContext, const EGLint *attribList);
+@@ -1165,6 +1215,7 @@ namespace plume {
+         PFN_eglTerminate eglTerminate = nullptr;
+         PFN_eglBindAPI eglBindAPI = nullptr;
+         PFN_eglChooseConfig eglChooseConfig = nullptr;
++        PFN_eglGetConfigAttrib eglGetConfigAttrib = nullptr;
+         PFN_eglCreateWindowSurface eglCreateWindowSurface = nullptr;
+         PFN_eglDestroySurface eglDestroySurface = nullptr;
+         PFN_eglCreateContext eglCreateContext = nullptr;
+@@ -1210,6 +1261,11 @@ namespace plume {
+         std::vector<std::string> extensions;
+         bool debugOutput = false;
+         bool zeroToOneDepth = false;
++        bool depthClampSupported = false;
++        bool armDriver = false; // ARM's own driver, libmali, and not Panfrost.
++        bool depthFetchSupported = false; // See TranslationOptions::depthFetch.
++        GLint maxFragmentTextures = 0;
++        GLint maxDrawBuffers = 0;
+ 
+         GLDevice(RenderWindow window, RenderGLProfile profile);
+         ~GLDevice() override;
+@@ -1235,7 +1291,7 @@ namespace plume {
+         void setShaderBindingTableInfo(RenderShaderBindingTableInfo &tableInfo, const RenderShaderBindingGroups &groups, const RenderPipeline *pipeline, RenderDescriptorSet **descriptorSets, uint32_t descriptorSetCount) override { }
+         const RenderDeviceCapabilities &getCapabilities() const override { return capabilities; }
+         const RenderDeviceDescription &getDescription() const override { return description; }
+-        RenderSampleCounts getSampleCountsSupported(RenderFormat format) const override { return RenderSampleCount::COUNT_1; }
++        RenderSampleCounts getSampleCountsSupported(RenderFormat format) const override;
+         bool beginCapture() override { return false; }
+         bool endCapture() override { return false; }
+ 
+@@ -1487,6 +1543,7 @@ namespace plume {
+         eglTerminate = (PFN_eglTerminate)(loadSymbol("eglTerminate"));
+         eglBindAPI = (PFN_eglBindAPI)(loadSymbol("eglBindAPI"));
+         eglChooseConfig = (PFN_eglChooseConfig)(loadSymbol("eglChooseConfig"));
++        eglGetConfigAttrib = (PFN_eglGetConfigAttrib)(loadSymbol("eglGetConfigAttrib"));
+         eglCreateWindowSurface = (PFN_eglCreateWindowSurface)(loadSymbol("eglCreateWindowSurface"));
+         eglDestroySurface = (PFN_eglDestroySurface)(loadSymbol("eglDestroySurface"));
+         eglCreateContext = (PFN_eglCreateContext)(loadSymbol("eglCreateContext"));
+@@ -1691,13 +1748,25 @@ namespace plume {
+             EGL_RENDERABLE_TYPE, esProfile ? EGL_OPENGL_ES3_BIT : EGL_OPENGL_BIT,
+             EGL_NONE
+         };
++        EGLConfig configs[64] = {};
+         EGLint configCount = 0;
+         clearError();
+-        if ((eglChooseConfig(display, configAttributes, &config, 1, &configCount) == 0) || (configCount == 0) || (config == nullptr)) {
++        if ((eglChooseConfig(display, configAttributes, configs, 64, &configCount) == 0) || (configCount == 0) || (configs[0] == nullptr)) {
+             report("no matching EGL config");
+             return false;
+         }
+ 
++        // A size of 0 is only a minimum, and the list is sorted by color depth, so a config with alpha can come first (libmali).
++        // The compositor would then blend the window by what the image has in alpha, which for RT64 is coverage, not opacity.
++        config = configs[0];
++        for (EGLint i = 0; (i < configCount) && (eglGetConfigAttrib != nullptr); i++) {
++            EGLint alphaSize = 0;
++            if ((eglGetConfigAttrib(display, configs[i], EGL_ALPHA_SIZE, &alphaSize) != 0) && (alphaSize == 0)) {
++                config = configs[i];
++                break;
++            }
++        }
++
+         // ES is 3.2, then 3.1. Desktop is 4.3 core. Debug is requested first and retried without that attribute.
+         auto tryContext = [&](int major, int minor, bool withDebug) -> bool {
+             int32_t attributes[9];
+@@ -1793,6 +1862,7 @@ namespace plume {
+         eglTerminate = nullptr;
+         eglBindAPI = nullptr;
+         eglChooseConfig = nullptr;
++        eglGetConfigAttrib = nullptr;
+         eglCreateWindowSurface = nullptr;
+         eglDestroySurface = nullptr;
+         eglCreateContext = nullptr;
+@@ -1999,6 +2069,7 @@ namespace plume {
+         GLCALL(glGetIntegerv)(GL_MINOR_VERSION, &minorVersion);
+         const bool version45 = (majorVersion > 4) || ((majorVersion == 4) && (minorVersion >= 5));
+         auto hasExtension = [&](const char *name) { return std::find(extensions.begin(), extensions.end(), name) != extensions.end(); };
++        depthClampSupported = (profile == RenderGLProfile::DESKTOP) || hasExtension("GL_EXT_depth_clamp");
+         if ((profile == RenderGLProfile::DESKTOP) && (GLCALL(glClipControl) != nullptr) && (version45 || hasExtension("GL_ARB_clip_control"))) {
+             GLCALL(glClipControl)(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+             zeroToOneDepth = true;
+@@ -2016,6 +2087,10 @@ namespace plume {
+ 
+         const char *renderer = (const char *)(GLCALL(glGetString)(GL_RENDERER));
+         const char *vendor = (const char *)(GLCALL(glGetString)(GL_VENDOR));
++        armDriver = (vendor != nullptr) && (std::strcmp(vendor, "ARM") == 0);
++        depthFetchSupported = armDriver && hasExtension("GL_ARM_shader_framebuffer_fetch_depth_stencil");
++        GLCALL(glGetIntegerv)(0x8872, &maxFragmentTextures); // GL_MAX_TEXTURE_IMAGE_UNITS
++        GLCALL(glGetIntegerv)(0x8824, &maxDrawBuffers); // GL_MAX_DRAW_BUFFERS
+         const char *version = (const char *)(GLCALL(glGetString)(GL_VERSION));
+         description.name = std::string(renderer != nullptr ? renderer : "OpenGL") + " (" + (version != nullptr ? version : "") + ")";
+         description.type = RenderDeviceType::UNKNOWN;
+@@ -2125,6 +2200,13 @@ namespace plume {
+             shadow.resize(desc.size, 0);
+         }
+ 
++        // An upload buffer without usage flags can only be the source of a copy. It stays in CPU memory: a GL buffer in the
++        // middle costs a synchronous creation and a driver-side copy per upload, which dominate frame time on mobile drivers.
++        if ((desc.heapType == RenderHeapType::UPLOAD) && (desc.flags == RenderBufferFlag::NONE)) {
++            replayShadow = std::make_shared<std::vector<uint8_t>>(desc.size, uint8_t(0));
++            return;
++        }
++
+         device->thread.call([this]() {
+             GLCALL(glGenBuffers)(1, &id);
+             GLCALL(glBindBuffer)(GL_COPY_WRITE_BUFFER, id);
+@@ -2133,6 +2215,10 @@ namespace plume {
+     }
+ 
+     GLBuffer::~GLBuffer() {
++        if (replayShadow != nullptr) {
++            return;
++        }
++
+         const GLuint bufferId = id;
+         device->thread.post([bufferId]() { GLCALL(glDeleteBuffers)(1, &bufferId); });
+     }
+@@ -2160,6 +2246,15 @@ namespace plume {
+         }
+ 
+         std::shared_ptr<std::vector<uint8_t>> bytes = std::make_shared<std::vector<uint8_t>>(shadow.begin() + begin, shadow.begin() + end);
++        if (replayShadow != nullptr) {
++            std::shared_ptr<std::vector<uint8_t>> destination = replayShadow;
++            device->thread.post([destination, begin, bytes]() {
++                std::memcpy(destination->data() + begin, bytes->data(), bytes->size());
++            });
++
++            return;
++        }
++
+         const GLuint bufferId = id;
+         device->thread.post([bufferId, begin, bytes]() {
+             GLCALL(glBindBuffer)(GL_COPY_WRITE_BUFFER, bufferId);
+@@ -2427,6 +2522,106 @@ namespace plume {
+         return shader;
+     }
+ 
++    // libmali has no shader cache of its own, unlike Mesa, so every run compiled each program again on the GL thread, at up to
++    // seconds per program. Programs are kept in the port's shader cache folder, named by a hash of their sources and the driver.
++    static std::string programCachePath(const GLDevice *device, const std::string &sourceA, const std::string &sourceB) {
++        static const std::string directory = []() {
++            const char *custom = getenv("TK64_PROGRAM_CACHE_DIR");
++            const char *mesa = getenv("MESA_SHADER_CACHE_DIR");
++            std::string path = (custom != nullptr) ? custom : ((mesa != nullptr) ? mesa : "shadercache");
++            std::error_code error;
++            std::filesystem::create_directories(path, error);
++            return path;
++        }();
++
++        uint64_t hash = 14695981039346656037ULL;
++        const auto add = [&](const char *text, size_t size) {
++            for (size_t i = 0; i < size; i++) {
++                hash = (hash ^ uint8_t(text[i])) * 1099511628211ULL;
++            }
++        };
++
++        const char *version = (const char *)(GLCALL(glGetString)(GL_VERSION));
++        add(version, strlen(version));
++        add(sourceA.data(), sourceA.size());
++        add(sourceB.data(), sourceB.size());
++        char name[32];
++        snprintf(name, sizeof(name), "/tk64-%016llx.bin", (unsigned long long)hash);
++        return directory + name;
++    }
++
++    static GLuint loadCachedProgram(const GLDevice *device, const std::string &sourceA, const std::string &sourceB) {
++        if (!device->armDriver) {
++            return 0;
++        }
++
++        FILE *file = fopen(programCachePath(device, sourceA, sourceB).c_str(), "rb");
++        if (file == nullptr) {
++            return 0;
++        }
++
++        GLenum binaryFormat = 0;
++        std::vector<uint8_t> binary;
++        const bool headerRead = (fread(&binaryFormat, sizeof(binaryFormat), 1, file) == 1);
++        fseek(file, 0, SEEK_END);
++        const long fileSize = ftell(file);
++        if (headerRead && (fileSize > long(sizeof(binaryFormat)))) {
++            binary.resize(size_t(fileSize) - sizeof(binaryFormat));
++            fseek(file, long(sizeof(binaryFormat)), SEEK_SET);
++            if (fread(binary.data(), 1, binary.size(), file) != binary.size()) {
++                binary.clear();
++            }
++        }
++
++        fclose(file);
++        if (binary.empty()) {
++            return 0;
++        }
++
++        const GLuint program = GLCALL(glCreateProgram)();
++        GLCALL(glProgramBinary)(program, binaryFormat, binary.data(), GLsizei(binary.size()));
++        GLint status = 0;
++        GLCALL(glGetProgramiv)(program, GL_LINK_STATUS, &status);
++        if (status == 0) {
++            GLCALL(glDeleteProgram)(program);
++            return 0;
++        }
++
++        return program;
++    }
++
++    static void saveCachedProgram(const GLDevice *device, GLuint program, const std::string &sourceA, const std::string &sourceB) {
++        if (!device->armDriver) {
++            return;
++        }
++
++        GLint length = 0;
++        GLCALL(glGetProgramiv)(program, 0x8741, &length); // GL_PROGRAM_BINARY_LENGTH
++        if (length <= 0) {
++            return;
++        }
++
++        std::vector<uint8_t> binary(size_t(length), 0);
++        GLenum binaryFormat = 0;
++        GLsizei written = 0;
++        GLCALL(glGetProgramBinary)(program, length, &written, &binaryFormat, binary.data());
++        if (written <= 0) {
++            return;
++        }
++
++        const std::string path = programCachePath(device, sourceA, sourceB);
++        const std::string temporary = path + ".tmp";
++        FILE *file = fopen(temporary.c_str(), "wb");
++        if (file != nullptr) {
++            const bool ok = (fwrite(&binaryFormat, sizeof(binaryFormat), 1, file) == 1) && (fwrite(binary.data(), 1, size_t(written), file) == size_t(written));
++            fclose(file);
++            if (ok) {
++                std::error_code error;
++                std::filesystem::rename(temporary, path, error);
++            }
++        }
++    }
++
+     static bool linkProgram(GLuint program, const char *label) {
+         GLCALL(glLinkProgram)(program);
+         GLint status = 0;
+@@ -2493,6 +2688,7 @@ namespace plume {
+         const GLShader *pixelShader = static_cast<const GLShader *>(desc.pixelShader);
+         tk64::TranslationOptions vertexOptions;
+         vertexOptions.glClipSpaceFixup = !device->zeroToOneDepth;
++        vertexOptions.clampVertexDepth = !device->depthClampSupported && !desc.depthClipEnabled;
+         tk64::TranslatedShader vertex = tk64::translateSpirv(vertexShader->words.data(), vertexShader->words.size(), device->shaderLanguage(), mapper, vertexOptions);
+         uint32_t textureUnitBase = 0;
+         for (const tk64::CombinedSampler &combined : vertex.combinedSamplers) {
+@@ -2512,7 +2708,21 @@ namespace plume {
+ 
+         tk64::TranslatedShader pixel;
+         if (pixelShader != nullptr) {
+-            pixel = tk64::translateSpirv(pixelShader->words.data(), pixelShader->words.size(), device->shaderLanguage(), pixelMapper);
++            tk64::TranslationOptions pixelOptions;
++            pixelOptions.dropLastTmemSlot = (device->maxFragmentTextures < 17);
++            pixelOptions.depthFetch = device->depthFetchSupported;
++            pixelOptions.depthFetchSet = 3; // RT64's gBackgroundDepth.
++            pixelOptions.depthFetchBinding = 2;
++            const auto driverHas = [&](const char *name) { return std::find(device->extensions.begin(), device->extensions.end(), name) != device->extensions.end(); };
++            if ((device->shaderLanguage() == tk64::ShaderLanguage::GLSL_ES_310) && !driverHas("GL_EXT_blend_func_extended") && driverHas("GL_EXT_shader_framebuffer_fetch")) {
++                const RenderBlendDesc &blend = desc.renderTargetBlend[0];
++                blendInShader = blend.blendEnabled && (blend.srcBlend == RenderBlend::SRC1_ALPHA) && (blend.dstBlend == RenderBlend::INV_SRC1_ALPHA);
++                pixelOptions.dualSourceAsVariable = true;
++                pixelOptions.dualSourceBlend = blendInShader;
++                pixelOptions.dualSourceAddDstAlpha = (blend.dstBlendAlpha == RenderBlend::ONE);
++            }
++
++            pixel = tk64::translateSpirv(pixelShader->words.data(), pixelShader->words.size(), device->shaderLanguage(), pixelMapper, pixelOptions);
+         }
+ 
+         if (!vertex.ok || ((pixelShader != nullptr) && !pixel.ok)) {
+@@ -2530,26 +2740,36 @@ namespace plume {
+         appendResources(pixel, combinedSamplers, resources);
+ 
+         device->thread.call([&]() {
+-            GLuint vertexStage = compileStage(GL_VERTEX_SHADER, vertex.source, "vertex");
+-            GLuint pixelStage = (pixelShader != nullptr) ? compileStage(GL_FRAGMENT_SHADER, pixel.source, "pixel") : 0;
+-            if ((vertexStage == 0) || ((pixelShader != nullptr) && (pixelStage == 0))) {
+-                return;
+-            }
++            program = loadCachedProgram(device, vertex.source, pixel.source);
++            valid = (program != 0);
++            if (!valid) {
++                GLuint vertexStage = compileStage(GL_VERTEX_SHADER, vertex.source, "vertex");
++                GLuint pixelStage = (pixelShader != nullptr) ? compileStage(GL_FRAGMENT_SHADER, pixel.source, "pixel") : 0;
++                if ((vertexStage == 0) || ((pixelShader != nullptr) && (pixelStage == 0))) {
++                    return;
++                }
+ 
+-            program = GLCALL(glCreateProgram)();
+-            GLCALL(glAttachShader)(program, vertexStage);
+-            if (pixelStage != 0) {
+-                GLCALL(glAttachShader)(program, pixelStage);
+-            }
++                program = GLCALL(glCreateProgram)();
++                GLCALL(glAttachShader)(program, vertexStage);
++                if (pixelStage != 0) {
++                    GLCALL(glAttachShader)(program, pixelStage);
++                }
+ 
+-            valid = linkProgram(program, "graphics");
+-            GLCALL(glDeleteShader)(vertexStage);
+-            if (pixelStage != 0) {
+-                GLCALL(glDeleteShader)(pixelStage);
+-            }
++                if (device->armDriver) {
++                    GLCALL(glProgramParameteri)(program, 0x8257, GL_TRUE); // GL_PROGRAM_BINARY_RETRIEVABLE_HINT
++                }
+ 
+-            if (!valid) {
+-                return;
++                valid = linkProgram(program, "graphics");
++                GLCALL(glDeleteShader)(vertexStage);
++                if (pixelStage != 0) {
++                    GLCALL(glDeleteShader)(pixelStage);
++                }
++
++                if (!valid) {
++                    return;
++                }
++
++                saveCachedProgram(device, program, vertex.source, pixel.source);
+             }
+ 
+             collectPushConstants(program, vertex, pushConstants);
+@@ -2605,15 +2825,27 @@ namespace plume {
+         }
+ 
+         device->thread.call([&]() {
+-            GLuint computeStage = compileStage(GL_COMPUTE_SHADER, compute.source, "compute");
+-            if (computeStage == 0) {
+-                return;
++            program = loadCachedProgram(device, compute.source, std::string());
++            valid = (program != 0);
++            if (!valid) {
++                GLuint computeStage = compileStage(GL_COMPUTE_SHADER, compute.source, "compute");
++                if (computeStage == 0) {
++                    return;
++                }
++
++                program = GLCALL(glCreateProgram)();
++                GLCALL(glAttachShader)(program, computeStage);
++                if (device->armDriver) {
++                    GLCALL(glProgramParameteri)(program, 0x8257, GL_TRUE); // GL_PROGRAM_BINARY_RETRIEVABLE_HINT
++                }
++
++                valid = linkProgram(program, "compute");
++                GLCALL(glDeleteShader)(computeStage);
++                if (valid) {
++                    saveCachedProgram(device, program, compute.source, std::string());
++                }
+             }
+ 
+-            program = GLCALL(glCreateProgram)();
+-            GLCALL(glAttachShader)(program, computeStage);
+-            valid = linkProgram(program, "compute");
+-            GLCALL(glDeleteShader)(computeStage);
+             if (valid) {
+                 collectPushConstants(program, compute, pushConstants);
+             }
+@@ -2653,6 +2885,8 @@ namespace plume {
+                 const GLTexture *texture = static_cast<const GLTexture *>(desc.colorAttachments[i]);
+                 GLCALL(glFramebufferTexture2D)(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texture->target, texture->id, 0);
+                 drawBuffers.emplace_back(GL_COLOR_ATTACHMENT0 + i);
++                attachments.emplace_back(texture->id);
++                multisampled = multisampled || (texture->desc.multisampling.sampleCount > 1);
+                 width = texture->desc.width;
+                 height = texture->desc.height;
+             }
+@@ -2661,6 +2895,7 @@ namespace plume {
+                 const GLTexture *texture = static_cast<const GLTexture *>(desc.depthAttachment);
+                 const GLenum attachment = texture->format.stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
+                 GLCALL(glFramebufferTexture2D)(GL_FRAMEBUFFER, attachment, texture->target, texture->id, 0);
++                attachments.emplace_back(texture->id);
+                 width = texture->desc.width;
+                 height = texture->desc.height;
+             }
+@@ -2764,25 +2999,90 @@ namespace plume {
+             return nullptr;
+         }
+ 
+-        const GLuint computeStage = compileStage(GL_COMPUTE_SHADER, compute.source, "compute variant");
+-        if (computeStage == 0) {
+-            return nullptr;
+-        }
++        variant.program = loadCachedProgram(pipeline->device, compute.source, std::string());
++        if (variant.program == 0) {
++            const GLuint computeStage = compileStage(GL_COMPUTE_SHADER, compute.source, "compute variant");
++            if (computeStage == 0) {
++                return nullptr;
++            }
+ 
+-        variant.program = GLCALL(glCreateProgram)();
+-        GLCALL(glAttachShader)(variant.program, computeStage);
+-        const bool linked = linkProgram(variant.program, "compute variant");
+-        GLCALL(glDeleteShader)(computeStage);
+-        if (!linked) {
+-            GLCALL(glDeleteProgram)(variant.program);
+-            variant.program = 0;
+-            return nullptr;
++            variant.program = GLCALL(glCreateProgram)();
++            GLCALL(glAttachShader)(variant.program, computeStage);
++            if (pipeline->device->armDriver) {
++                GLCALL(glProgramParameteri)(variant.program, 0x8257, GL_TRUE); // GL_PROGRAM_BINARY_RETRIEVABLE_HINT
++            }
++
++            const bool linked = linkProgram(variant.program, "compute variant");
++            GLCALL(glDeleteShader)(computeStage);
++            if (!linked) {
++                GLCALL(glDeleteProgram)(variant.program);
++                variant.program = 0;
++                return nullptr;
++            }
++
++            saveCachedProgram(pipeline->device, variant.program, compute.source, std::string());
+         }
+ 
+         collectPushConstants(variant.program, compute, variant.pushConstants);
+         return &variant;
+     }
+ 
++    // What is bound to the indexed targets and texture units. A driver marks a stage's whole descriptor state dirty for every
++    // bind, even of the same object, and RT64 draws hundreds of times per frame with the same resources. Only the GL thread uses
++    // it, and it is reset at the start of a replay because objects may have been deleted between replays.
++    struct GLBindCache {
++        static constexpr GLuint Unknown = GLuint(-1);
++        struct Buffer { GLuint id = Unknown; GLintptr offset = 0; GLsizeiptr size = 0; };
++        struct Texture { GLenum target = 0; GLuint id = Unknown; };
++        struct Image { GLuint id = Unknown; GLenum format = 0; };
++        Buffer storageBuffers[64];
++        Buffer uniformBuffers[128];
++        Texture textures[192];
++        GLuint samplers[192];
++        Image images[64];
++        GLuint activeUnit = Unknown;
++
++        GLBindCache() {
++            reset();
++        }
++
++        void reset() {
++            for (Buffer &buffer : storageBuffers) { buffer = Buffer(); }
++            for (Buffer &buffer : uniformBuffers) { buffer = Buffer(); }
++            for (Texture &texture : textures) { texture = Texture(); }
++            for (GLuint &sampler : samplers) { sampler = Unknown; }
++            for (Image &image : images) { image = Image(); }
++            activeUnit = Unknown;
++        }
++
++        void setActiveUnit(GLuint unit) {
++            if (activeUnit != unit) {
++                GLCALL(glActiveTexture)(GL_TEXTURE0 + unit);
++                activeUnit = unit;
++            }
++        }
++    };
++
++    static GLBindCache bindCache;
++
++    // A texel buffer view over a few zeros. libmali does not run a dispatch that has a texel buffer unit with nothing bound, which
++    // any shader with an optional texel buffer does; this keeps what such a read gives elsewhere. Binds it to the active unit.
++    static GLuint emptyTexelBufferView() {
++        static GLuint view = 0;
++        if (view == 0) {
++            static const float zeros[4] = {};
++            GLuint buffer = 0;
++            GLCALL(glGenBuffers)(1, &buffer);
++            GLCALL(glBindBuffer)(GL_COPY_WRITE_BUFFER, buffer);
++            GLCALL(glBufferData)(GL_COPY_WRITE_BUFFER, sizeof(zeros), zeros, GL_DYNAMIC_DRAW);
++            GLCALL(glGenTextures)(1, &view);
++            GLCALL(glBindTexture)(GL_TEXTURE_BUFFER, view);
++            GLCALL(glTexBuffer)(GL_TEXTURE_BUFFER, GL_RGBA32F, buffer);
++        }
++
++        return view;
++    }
++
+     static void bindResources(const GLPipeline *pipeline, const GLPipelineLayout *layout, const GLDescriptorSet *const *sets) {
+         if (layout == nullptr) {
+             layout = pipeline->layout;
+@@ -2812,6 +3112,22 @@ namespace plume {
+                     const uint64_t offset = uint64_t(entry->firstElement) * entry->structureStride;
+                     const uint64_t available = (entry->buffer->desc.size > offset) ? (entry->buffer->desc.size - offset) : 0;
+                     const uint64_t size = (entry->bufferSize > 0) ? std::min(entry->bufferSize, available) : available;
++                    GLBindCache::Buffer *cached = nullptr;
++                    if (resource.resourceClass == tk64::ResourceClass::UniformBuffer) {
++                        cached = (target < 128) ? &bindCache.uniformBuffers[target] : nullptr;
++                    }
++                    else {
++                        cached = (target < 64) ? &bindCache.storageBuffers[target] : nullptr;
++                    }
++
++                    if ((cached != nullptr) && (cached->id == entry->buffer->id) && (cached->offset == GLintptr(offset)) && (cached->size == GLsizeiptr(size))) {
++                        break;
++                    }
++
++                    if (cached != nullptr) {
++                        *cached = { entry->buffer->id, GLintptr(offset), GLsizeiptr(size) };
++                    }
++
+                     if ((offset == 0) && (size == entry->buffer->desc.size)) {
+                         GLCALL(glBindBufferBase)(bufferTarget, target, entry->buffer->id);
+                     }
+@@ -2836,6 +3152,14 @@ namespace plume {
+                     const GLenum boundFormat = boundImageFormat(resource, *entry);
+                     const GLenum imageFormat = ((resource.writeOnly || (declaredFormat == 0)) && (boundFormat != 0)) ? boundFormat : declaredFormat;
+                     if (textureId != 0) {
++                        if ((target < 64) && (bindCache.images[target].id == textureId) && (bindCache.images[target].format == imageFormat)) {
++                            break;
++                        }
++
++                        if (target < 64) {
++                            bindCache.images[target] = { textureId, imageFormat };
++                        }
++
+                         GLCALL(glBindImageTexture)(target, textureId, 0, GL_FALSE, 0, GL_READ_WRITE, imageFormat);
+                     }
+ 
+@@ -2851,16 +3175,51 @@ namespace plume {
+             for (uint32_t a = 0; a < combined.arraySize; a++) {
+                 const GLuint unit = combined.textureUnit + a;
+                 const GLDescriptorSet::Entry *imageEntry = findEntry(combined.imageSet, combined.imageBinding, a, nullptr);
+-                GLCALL(glActiveTexture)(GL_TEXTURE0 + unit);
+                 if (imageEntry == nullptr) {
+                     continue;
+                 }
+ 
++                GLenum textureTarget = 0;
++                GLuint textureId = 0;
+                 if (combined.texelBuffer) {
+-                    GLCALL(glBindTexture)(GL_TEXTURE_BUFFER, (imageEntry->formattedView != nullptr) ? imageEntry->formattedView->texture : 0);
++                    textureTarget = GL_TEXTURE_BUFFER;
++                    textureId = (imageEntry->formattedView != nullptr) ? imageEntry->formattedView->texture : 0;
++                    if ((textureId == 0) && pipeline->device->armDriver) {
++                        bindCache.setActiveUnit(unit);
++                        textureId = emptyTexelBufferView();
++                        if (unit < 192) {
++                            bindCache.textures[unit] = { GLenum(0), GLuint(0) };
++                        }
++                    }
+                 }
+                 else if (imageEntry->texture != nullptr) {
+-                    GLCALL(glBindTexture)(imageEntry->texture->target, imageEntry->texture->id);
++                    textureTarget = imageEntry->texture->target;
++                    textureId = imageEntry->texture->id;
++                }
++
++                if (textureTarget != 0) {
++                    const bool known = (unit < 192);
++                    if (!known || (bindCache.textures[unit].target != textureTarget) || (bindCache.textures[unit].id != textureId)) {
++                        bindCache.setActiveUnit(unit);
++
++                        // After an unbind of the sampler for another texture on this unit, libmali only recovers the texel buffer
++                        // when its binding really changes. See the sampler note below.
++                        if ((textureTarget == GL_TEXTURE_BUFFER) && pipeline->device->armDriver) {
++                            GLCALL(glBindTexture)(textureTarget, 0);
++                        }
++
++                        GLCALL(glBindTexture)(textureTarget, textureId);
++                        if (known) {
++                            bindCache.textures[unit] = { textureTarget, textureId };
++                        }
++                    }
++                }
++
++                // libmali crashes in the next dispatch that reads a texel buffer on a unit that got glBindSampler(unit, 0). Texel
++                // buffers ignore sampler state, so whatever is on the unit can stay. Other textures need the unbind: with a
++                // leftover linear sampler, an integer texture is incomplete and texelFetch reads zero.
++                if (combined.texelBuffer && pipeline->device->armDriver) {
++                    continue;
+                 }
+ 
+                 GLuint samplerId = 0;
+@@ -2875,7 +3234,12 @@ namespace plume {
+                     }
+                 }
+ 
+-                GLCALL(glBindSampler)(unit, samplerId);
++                if ((unit >= 192) || (bindCache.samplers[unit] != samplerId)) {
++                    GLCALL(glBindSampler)(unit, samplerId);
++                    if (unit < 192) {
++                        bindCache.samplers[unit] = samplerId;
++                    }
++                }
+             }
+         }
+     }
+@@ -2885,6 +3249,16 @@ namespace plume {
+             const tk64::PushConstantMember &member = uniform.member;
+             const uint8_t *bytes = data + member.offset;
+             const GLsizei count = GLsizei(std::max(member.arraySize, 1U));
++            const size_t memberBytes = (((member.columns == 4) && (member.vectorSize == 4)) ? 64 : size_t(member.vectorSize) * 4) * size_t(count);
++            if (memberBytes <= sizeof(uniform.last)) {
++                if (uniform.lastValid && (std::memcmp(uniform.last, bytes, memberBytes) == 0)) {
++                    continue;
++                }
++
++                std::memcpy(uniform.last, bytes, memberBytes);
++                uniform.lastValid = true;
++            }
++
+             if ((member.columns == 4) && (member.vectorSize == 4)) {
+                 GLCALL(glUniformMatrix4fv)(uniform.location, count, member.rowMajor ? GL_TRUE : GL_FALSE, reinterpret_cast<const GLfloat *>(bytes));
+                 continue;
+@@ -2940,7 +3314,7 @@ namespace plume {
+         }
+ 
+         GLCALL(glDepthMask)(desc.depthWriteEnabled ? GL_TRUE : GL_FALSE);
+-        if (pipeline->device->profile == RenderGLProfile::DESKTOP) {
++        if (pipeline->device->depthClampSupported) {
+             if (desc.depthClipEnabled) {
+                 GLCALL(glDisable)(GL_DEPTH_CLAMP);
+             }
+@@ -2968,14 +3342,14 @@ namespace plume {
+             GLCALL(glDisable)(GL_POLYGON_OFFSET_FILL);
+         }
+ 
+-        for (uint32_t i = 0; i < RenderGraphicsPipelineDesc::MaxRenderTargets; i++) {
++        for (uint32_t i = 0; i < std::min(RenderGraphicsPipelineDesc::MaxRenderTargets, uint32_t(pipeline->device->maxDrawBuffers)); i++) {
+             const RenderBlendDesc &blend = desc.renderTargetBlend[i];
+             if (i >= desc.renderTargetCount) {
+                 GLCALL(glDisablei)(GL_BLEND, i);
+                 continue;
+             }
+ 
+-            if (blend.blendEnabled) {
++            if (blend.blendEnabled && !((i == 0) && pipeline->blendInShader)) {
+                 GLCALL(glEnablei)(GL_BLEND, i);
+                 GLCALL(glBlendFuncSeparatei)(i, toGL(blend.srcBlend), toGL(blend.dstBlend), toGL(blend.srcBlendAlpha), toGL(blend.dstBlendAlpha));
+                 GLCALL(glBlendEquationSeparatei)(i, toGL(blend.blendOp), toGL(blend.blendOpAlpha));
+@@ -3005,8 +3379,30 @@ namespace plume {
+     }
+ 
+     void GLCommandList::barriers(RenderBarrierStages stages, const RenderBufferBarrier *bufferBarriers, uint32_t bufferBarriersCount, const RenderTextureBarrier *textureBarriers, uint32_t textureBarriersCount) {
+-        // Compute and image writes need an explicit barrier in GL; everything else is ordered by the API.
+-        record([](GLReplayState &) { GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS); });
++        // Compute and image writes need an explicit barrier in GL; everything else is ordered by the API. Drivers may flush
++        // all their work on a memory barrier (Panfrost does), and RT64 asks for barriers on every layout change, so only the
++        // first barrier after a dispatch reaches the driver.
++        //
++        // Reading a depth target that was just written needs its pass ended. Panfrost keeps a batch per set of attachments, so the
++        // depth write and depth read framebuffers share one, the depth is still only in the tiler's work, and N64 decals, which
++        // compare against it in the shader, read old values and are discarded. libmali ends the pass when the framebuffer changes,
++        // and with depth fetch the shader doesn't read the texture.
++        bool depthRead = false;
++        for (uint32_t i = 0; i < textureBarriersCount; i++) {
++            depthRead = depthRead || (textureBarriers[i].layout == RenderTextureLayout::DEPTH_READ);
++        }
++
++        const bool flushDepth = depthRead && (device->profile == RenderGLProfile::ES) && !device->armDriver;
++        record([flushDepth](GLReplayState &) {
++            if (computeWritesPending) {
++                GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
++                computeWritesPending = false;
++            }
++
++            if (flushDepth) {
++                GLCALL(glFlush)();
++            }
++        });
+     }
+ 
+     void GLCommandList::dispatch(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ) {
+@@ -3015,6 +3411,13 @@ namespace plume {
+                 return;
+             }
+ 
++            // RT64's vertex Z test reads the depth target from a compute shader, and with depth fetch setFramebuffer may not have ended the pass.
++            if (depthWritesPending && state.pipeline->device->depthFetchSupported && (state.framebuffer != nullptr)) {
++                GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, 0);
++                GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, state.framebuffer->id);
++                depthWritesPending = false;
++            }
++
+             const GLPipeline::ProgramVariant *variant = selectComputeVariant(state.pipeline, state.computeLayout, state.computeSets);
+             if (variant != nullptr) {
+                 GLCALL(glUseProgram)(variant->program);
+@@ -3023,6 +3426,7 @@ namespace plume {
+             bindResources(state.pipeline, state.computeLayout, state.computeSets);
+             uploadPushConstants((variant != nullptr) ? variant->pushConstants : state.pipeline->pushConstants, state.computePushConstants);
+             GLCALL(glDispatchCompute)(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
++            computeWritesPending = true;
+             if (variant != nullptr) {
+                 GLCALL(glUseProgram)(state.pipeline->program);
+             }
+@@ -3034,13 +3438,28 @@ namespace plume {
+             return false;
+         }
+ 
++        depthWritesPending = depthWritesPending || (state.pipeline->graphicsDesc.depthEnabled && state.pipeline->graphicsDesc.depthWriteEnabled);
++
+         bindResources(state.pipeline, state.graphicsLayout, state.graphicsSets);
+         uploadPushConstants(state.pipeline->pushConstants, state.graphicsPushConstants);
+-        GLCALL(glBindVertexArray)(state.pipeline->vertexArray);
++        if (state.boundVertexArray != state.pipeline->vertexArray) {
++            GLCALL(glBindVertexArray)(state.pipeline->vertexArray);
++            state.boundVertexArray = state.pipeline->vertexArray;
++            state.boundIndexBuffer = 0;
++            for (GLReplayState::BoundVertexBuffer &bound : state.boundVertexBuffers) {
++                bound = GLReplayState::BoundVertexBuffer();
++            }
++        }
++
+         for (const RenderInputSlot &slot : state.pipeline->inputSlots) {
+             const RenderVertexBufferView &view = state.vertexBufferViews[slot.index & 7];
+             const GLBuffer *buffer = static_cast<const GLBuffer *>(view.buffer.ref);
+-            GLCALL(glBindVertexBuffer)(slot.index, (buffer != nullptr) ? buffer->id : 0, GLintptr(view.buffer.offset), GLsizei(slot.stride));
++            const GLuint bufferId = (buffer != nullptr) ? buffer->id : 0;
++            GLReplayState::BoundVertexBuffer &bound = state.boundVertexBuffers[slot.index & 7];
++            if ((bound.id != bufferId) || (bound.offset != GLintptr(view.buffer.offset)) || (bound.stride != GLsizei(slot.stride))) {
++                GLCALL(glBindVertexBuffer)(slot.index, bufferId, GLintptr(view.buffer.offset), GLsizei(slot.stride));
++                bound = { bufferId, GLintptr(view.buffer.offset), GLsizei(slot.stride) };
++            }
+         }
+ 
+         return true;
+@@ -3069,9 +3488,33 @@ namespace plume {
+ 
+             const bool shortIndices = (state.indexBufferView.format == RenderFormat::R16_UINT);
+             const uint64_t indexOffset = state.indexBufferView.buffer.offset + uint64_t(startIndexLocation) * (shortIndices ? 2 : 4);
+-            GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->id);
+-            GLCALL(glDrawElementsInstancedBaseVertex)(toGL(state.pipeline->graphicsDesc.primitiveTopology), GLsizei(indexCountPerInstance),
+-                shortIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, reinterpret_cast<const void *>(uintptr_t(indexOffset)), GLsizei(instanceCount), baseVertexLocation);
++            if (state.boundIndexBuffer != indexBuffer->id) {
++                GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->id);
++                state.boundIndexBuffer = indexBuffer->id;
++            }
++
++            const GLenum topology = toGL(state.pipeline->graphicsDesc.primitiveTopology);
++            const GLenum indexType = shortIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
++            const void *indices = reinterpret_cast<const void *>(uintptr_t(indexOffset));
++
++            // Drivers scan a draw's indices for their range when it isn't given, and with a buffer written every frame they can't keep
++            // the result: 6 us of the 27 us a draw took on libmali. The indices of an uploaded buffer are at hand, so the range is exact.
++            const uint64_t indexBytes = uint64_t(indexCountPerInstance) * (shortIndices ? 2 : 4);
++            if ((instanceCount == 1) && (baseVertexLocation == 0) && (indexCountPerInstance > 0) && ((indexOffset + indexBytes) <= indexBuffer->indexCopy.size())) {
++                GLuint lowest = UINT32_MAX;
++                GLuint highest = 0;
++                const uint8_t *source = indexBuffer->indexCopy.data() + indexOffset;
++                for (uint32_t i = 0; i < indexCountPerInstance; i++) {
++                    const GLuint index = shortIndices ? GLuint(reinterpret_cast<const uint16_t *>(source)[i]) : reinterpret_cast<const uint32_t *>(source)[i];
++                    lowest = std::min(lowest, index);
++                    highest = std::max(highest, index);
++                }
++
++                GLCALL(glDrawRangeElements)(topology, lowest, highest, GLsizei(indexCountPerInstance), indexType, indices);
++            }
++            else {
++                GLCALL(glDrawElementsInstancedBaseVertex)(topology, GLsizei(indexCountPerInstance), indexType, indices, GLsizei(instanceCount), baseVertexLocation);
++            }
+         });
+     }
+ 
+@@ -3208,9 +3651,17 @@ namespace plume {
+         // starts with ones covering the framebuffer, because the GL context carries them over from other lists.
+         const bool resetViewport = !recordViewportSet;
+         const bool resetScissor = !recordScissorSet;
+-        record([glFramebuffer, resetViewport, resetScissor](GLReplayState &state) {
++        const bool depthFetch = device->depthFetchSupported;
++        record([glFramebuffer, resetViewport, resetScissor, depthFetch](GLReplayState &state) {
++            // RT64 switches between a depth-write and a depth-read framebuffer of the same textures around decals. They are the same
++            // thing in GL, and binding the other one ends the pass on libmali: 350 us, against 20 us for a draw, and reloading both targets.
++            // Decals only need that pass ended when they read the depth from a texture.
++            const bool sameTargets = depthFetch && (state.framebuffer != nullptr) && (glFramebuffer != nullptr) && !glFramebuffer->multisampled && (state.framebuffer->attachments == glFramebuffer->attachments);
+             state.framebuffer = glFramebuffer;
+-            GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, (glFramebuffer != nullptr) ? glFramebuffer->id : 0);
++            if (!sameTargets) {
++                GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, (glFramebuffer != nullptr) ? glFramebuffer->id : 0);
++            }
++
+             if (glFramebuffer != nullptr) {
+                 if (resetViewport) {
+                     GLCALL(glViewport)(0, 0, GLsizei(glFramebuffer->width), GLsizei(glFramebuffer->height));
+@@ -3274,6 +3725,7 @@ namespace plume {
+         }
+ 
+         record([=](GLReplayState &state) {
++            depthWritesPending = true;
+             GLCALL(glDepthMask)(GL_TRUE);
+             clearWithRects(state, rects, [&]() {
+                 if (clearDepth && clearStencil) {
+@@ -3307,12 +3759,221 @@ namespace plume {
+         }
+     }
+ 
++    // See tk64_depth_ram.h. The same conversion as RT64's FbWriteDepthCS, on a unit and with state the backend then asks for again.
++    void glesReadDepth16(RenderTexture *texture, uint32_t address, uint32_t width, uint32_t height, float scaleX, float scaleY) {
++        struct Read {
++            GLuint buffer = 0;
++            size_t bufferSize = 0;
++            GLsync fence = nullptr;
++            uint32_t address = 0;
++            uint32_t width = 0;
++            uint32_t height = 0;
++        };
++
++        const GLTexture *glTexture = static_cast<const GLTexture *>(texture);
++        glTexture->device->thread.call([&]() {
++            static const uint32_t ReadCount = 3;
++            static Read reads[ReadCount];
++            static uint32_t oldestRead = 0;
++            static uint32_t pendingReads = 0;
++            static Read *mappedRead = nullptr;
++            static GLuint programs[2] = {};
++            static bool programFailed = false;
++
++            // Fences signal in order, so the last one found signaled is the newest depth.
++            Read *finished = nullptr;
++            while (pendingReads > 0) {
++                Read &read = reads[oldestRead];
++                const GLenum status = GLCALL(glClientWaitSync)(read.fence, 0, 0);
++                if ((status != GL_ALREADY_SIGNALED) && (status != GL_CONDITION_SATISFIED)) {
++                    break;
++                }
++
++                GLCALL(glDeleteSync)(read.fence);
++                read.fence = nullptr;
++                finished = &read;
++                oldestRead = (oldestRead + 1) % ReadCount;
++                pendingReads--;
++            }
++
++            if (finished != nullptr) {
++                // Never wait for a thread that is reading the last depth: this one is skipped, and a newer one follows.
++                tk64::depthram::Frame &frame = tk64::depthram::frame();
++                const std::unique_lock<std::mutex> lock(frame.mutex, std::try_to_lock);
++                if (lock.owns_lock()) {
++                    if (mappedRead != nullptr) {
++                        GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, mappedRead->buffer);
++                        GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
++                    }
++
++                    GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, finished->buffer);
++                    frame.mapped = static_cast<const uint8_t *>(GLCALL(glMapBufferRange)(GL_SHADER_STORAGE_BUFFER, 0, GLsizeiptr(finished->bufferSize), GL_MAP_READ_BIT));
++                    frame.address = finished->address;
++                    frame.width = finished->width;
++                    frame.height = finished->height;
++                    frame.rowBytes = size_t((finished->width + 1) / 2) * sizeof(uint32_t);
++                    frame.fresh = (frame.mapped != nullptr);
++                    mappedRead = (frame.mapped != nullptr) ? finished : nullptr;
++                }
++            }
++
++            // With nothing pending, a failed try_lock above can leave the mapped buffer next. Only a finished read remaps it, so go past it.
++            if ((pendingReads == 0) && (&reads[oldestRead] == mappedRead)) {
++                oldestRead = (oldestRead + 1) % ReadCount;
++            }
++
++            // The GPU is behind by the whole ring, or the next buffer is the mapped one: this frame's depth is skipped, the game keeps seeing the last one.
++            Read &read = reads[(oldestRead + pendingReads) % ReadCount];
++            if ((pendingReads == ReadCount) || (&read == mappedRead)) {
++                return;
++            }
++
++            if (programFailed) {
++                return;
++            }
++
++            const bool multisampled = (glTexture->target == GL_TEXTURE_2D_MULTISAMPLE);
++            GLuint &program = programs[multisampled ? 1 : 0];
++            if (program == 0) {
++                const std::string source = std::string(
++                    "#version 310 es\n"
++                    "precision highp float;\n"
++                    "precision highp int;\n"
++                    "layout(local_size_x = 16, local_size_y = 16) in;\n"
++                    "layout(binding = 40) uniform highp ") + (multisampled ? "sampler2DMS" : "sampler2D") + " gDepth;\n"
++                    "layout(std430, binding = 0) writeonly buffer Output { uint values[]; };\n"
++                    "layout(location = 0) uniform uvec2 size;\n"
++                    "layout(location = 1) uniform vec2 scale;\n"
++                    "uint depthAt(uvec2 c) {\n"
++                    "    ivec2 texel = min(ivec2((vec2(c) + 0.5) * scale), textureSize(gDepth" + (multisampled ? "" : ", 0") + ") - 1);\n"
++                    "    float z = clamp(texelFetch(gDepth, texel, 0).r, 0.0, 1.0);\n"
++                    "    uint zFixed = uint(round(z * 262143.0));\n"
++                    "    uint shifted = zFixed << 14;\n"
++                    "    uint exponent = uint(clamp(31 - findMSB(~shifted), 0, 7));\n"
++                    "    uint mantissa = zFixed >> (6u - min(6u, exponent));\n"
++                    "    return (exponent << 13) | ((mantissa << 2) & 0x1FFCu);\n"
++                    "}\n"
++                    "void main() {\n"
++                    "    uvec2 word = gl_GlobalInvocationID.xy;\n"
++                    "    uint rowWords = (size.x + 1u) / 2u;\n"
++                    "    if ((word.x >= rowWords) || (word.y >= size.y)) { return; }\n"
++                    "    uvec2 c = uvec2(word.x * 2u, word.y);\n"
++                    "    values[word.y * rowWords + word.x] = (depthAt(c) << 16) | depthAt(c + uvec2(1u, 0u));\n"
++                    "}\n";
++                const GLuint shader = compileStage(GL_COMPUTE_SHADER, source.c_str(), "depth to RAM");
++                if (shader == 0) {
++                    programFailed = true;
++                    return;
++                }
++
++                program = GLCALL(glCreateProgram)();
++                GLCALL(glAttachShader)(program, shader);
++                programFailed = !linkProgram(program, "depth to RAM");
++                GLCALL(glDeleteShader)(shader);
++                if (programFailed) {
++                    return;
++                }
++            }
++
++            const uint32_t rowWords = (width + 1) / 2;
++            const size_t bytes = size_t(rowWords) * size_t(height) * sizeof(uint32_t);
++            if (read.buffer == 0) {
++                GLCALL(glGenBuffers)(1, &read.buffer);
++            }
++
++            GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, read.buffer);
++            if (read.bufferSize != bytes) {
++                GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, GLsizeiptr(bytes), nullptr, GL_STREAM_READ);
++                read.bufferSize = bytes;
++            }
++
++            // The depth is still in the driver's pass.
++            GLint boundFramebuffer = 0;
++            GLCALL(glGetIntegerv)(0x8CA6, &boundFramebuffer); // GL_DRAW_FRAMEBUFFER_BINDING
++            GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, 0);
++            GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, GLuint(boundFramebuffer));
++            depthWritesPending = false;
++            if (!glTexture->device->armDriver) {
++                GLCALL(glFlush)();
++            }
++
++            const GLuint unit = 40;
++            bindCache.setActiveUnit(unit);
++            GLCALL(glBindTexture)(glTexture->target, glTexture->id);
++            bindCache.textures[unit] = { glTexture->target, glTexture->id };
++            GLCALL(glBindSampler)(unit, 0);
++            bindCache.samplers[unit] = 0;
++            if (!multisampled) {
++                GLCALL(glTexParameteri)(glTexture->target, 0x2801, 0x2600); // GL_TEXTURE_MIN_FILTER, GL_NEAREST
++            }
++
++            GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, read.buffer);
++            bindCache.storageBuffers[0] = GLBindCache::Buffer();
++            GLCALL(glUseProgram)(program);
++            const GLuint sizeValue[2] = { width, height };
++            const float scaleValue[2] = { scaleX, scaleY };
++            GLCALL(glUniform2uiv)(0, 1, sizeValue);
++            GLCALL(glUniform2fv)(1, 1, scaleValue);
++            GLCALL(glDispatchCompute)((rowWords + 15) / 16, (height + 15) / 16, 1);
++            GLCALL(glMemoryBarrier)(GL_BUFFER_UPDATE_BARRIER_BIT);
++
++            // A fence only signals once the driver has sent the work to the GPU.
++            read.fence = GLCALL(glFenceSync)(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
++            GLCALL(glFlush)();
++            read.address = address;
++            read.width = width;
++            read.height = height;
++            pendingReads++;
++        });
++    }
++
+     void GLCommandList::copyBufferRegion(RenderBufferReference dstBuffer, RenderBufferReference srcBuffer, uint64_t size) {
+         const GLBuffer *dst = static_cast<const GLBuffer *>(dstBuffer.ref);
+         const GLBuffer *src = static_cast<const GLBuffer *>(srcBuffer.ref);
+         const uint64_t dstOffset = dstBuffer.offset;
+         const uint64_t srcOffset = srcBuffer.offset;
+-        record([=](GLReplayState &) {
++        const std::shared_ptr<std::vector<uint8_t>> srcShadow = src->replayShadow;
++        // Mobile drivers scan indices and flush on uploads; desktop drivers do neither, so there both would only cost CPU.
++        const bool mobileDriver = (device->profile == RenderGLProfile::ES);
++        record([=](GLReplayState &state) {
++            if (mobileDriver && (dst->desc.flags & RenderBufferFlag::INDEX)) {
++                if (srcShadow != nullptr) {
++                    dst->indexCopy.resize(size_t(dst->desc.size));
++                    std::memcpy(dst->indexCopy.data() + dstOffset, srcShadow->data() + srcOffset, size_t(size));
++                }
++                else {
++                    dst->indexCopy.clear();
++                }
++            }
++
++            if (srcShadow != nullptr) {
++                // A buffer rewritten from its start every frame may still be in use by the GPU, since a fence here only means
++                // the commands were replayed, and writing into it would make the driver wait for the GPU: up to a whole frame on
++                // a weak one. New storage needs no wait. The rest of its contents is in the staging buffer, at the same offsets.
++                const bool recentUpload = (dst->lastUploadFrame != UINT64_MAX) && ((glFrameCounter - dst->lastUploadFrame) < 3);
++                const bool newStorage = recentUpload && (dstOffset == 0) && (srcOffset == 0) && (src->desc.size == dst->desc.size) && ((dst->desc.flags & RenderBufferFlag::UNORDERED_ACCESS) == 0);
++                dst->lastUploadFrame = glFrameCounter;
++                dst->uploadEnd = std::max(dst->uploadEnd, dstOffset + size);
++                if (newStorage) {
++                    GLCALL(glBindBuffer)(GL_COPY_WRITE_BUFFER, dst->id);
++                    GLCALL(glBufferData)(GL_COPY_WRITE_BUFFER, GLsizeiptr(dst->desc.size), nullptr, GL_DYNAMIC_DRAW);
++                    GLCALL(glBufferSubData)(GL_COPY_WRITE_BUFFER, 0, GLsizeiptr(dst->uploadEnd), srcShadow->data());
++                    return;
++                }
++
++                // With a batch still pending that uses the buffer, drivers copy the whole buffer to a new allocation for each
++                // upload (Panfrost does). Handing them the pending work first makes the upload a plain write.
++                if (mobileDriver && !state.uploadFlushed) {
++                    GLCALL(glFlush)();
++                    state.uploadFlushed = true;
++                }
++
++                GLCALL(glBindBuffer)(GL_COPY_WRITE_BUFFER, dst->id);
++                GLCALL(glBufferSubData)(GL_COPY_WRITE_BUFFER, GLintptr(dstOffset), GLsizeiptr(size), srcShadow->data() + srcOffset);
++                refreshReadback(dst);
++                return;
++            }
++
+             GLCALL(glBindBuffer)(GL_COPY_READ_BUFFER, src->id);
+             GLCALL(glBindBuffer)(GL_COPY_WRITE_BUFFER, dst->id);
+             GLCALL(glCopyBufferSubData)(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, GLintptr(srcOffset), GLintptr(dstOffset), GLsizeiptr(size));
+@@ -3341,12 +4002,13 @@ namespace plume {
+                 const uint32_t depth = hasBox ? uint32_t(box.back - box.front) : src.placedFootprint.depth;
+                 const uint32_t blockWidth = RenderFormatBlockWidth(src.placedFootprint.format);
+                 const uint64_t offset = src.placedFootprint.offset + (hasBox ? (uint64_t(box.top) * src.placedFootprint.rowWidth + box.left) * RenderFormatSize(src.placedFootprint.format) / blockWidth : 0);
+-                GLCALL(glBindBuffer)(GL_PIXEL_UNPACK_BUFFER, buffer->id);
++                GLCALL(glBindBuffer)(GL_PIXEL_UNPACK_BUFFER, (buffer->replayShadow != nullptr) ? 0 : buffer->id);
+                 GLCALL(glPixelStorei)(GL_UNPACK_ALIGNMENT, 1);
+                 GLCALL(glPixelStorei)(GL_UNPACK_ROW_LENGTH, GLint(src.placedFootprint.rowWidth));
+                 GLCALL(glPixelStorei)(GL_UNPACK_IMAGE_HEIGHT, GLint(src.placedFootprint.height));
++                bindCache.reset();
+                 GLCALL(glBindTexture)(texture->target, texture->id);
+-                const void *pixels = reinterpret_cast<const void *>(uintptr_t(offset));
++                const void *pixels = (buffer->replayShadow != nullptr) ? static_cast<const void *>(buffer->replayShadow->data() + offset) : reinterpret_cast<const void *>(uintptr_t(offset));
+                 const GLint level = GLint(dst.subresource.mipLevel);
+                 if (texture->target == GL_TEXTURE_1D) {
+                     GLCALL(glTexSubImage1D)(texture->target, level, GLint(dstX), GLsizei(width), texture->format.format, texture->format.type, pixels);
+@@ -3401,6 +4063,40 @@ namespace plume {
+         copyTextureRegion(RenderTextureCopyLocation::Subresource(dstTexture), RenderTextureCopyLocation::Subresource(srcTexture), 0, 0, 0, nullptr);
+     }
+ 
++    RenderSampleCounts GLDevice::getSampleCountsSupported(RenderFormat format) const {
++        RenderSampleCounts counts = RenderSampleCount::COUNT_1;
++
++        // Desktop GL keeps MSAA off, as before: with it, the interface's multisampled target never reached the window
++        // (Windows, AMD). Multisampling is only offered on OpenGL ES.
++        if (profile != RenderGLProfile::ES) {
++            return counts;
++        }
++
++        GLDevice *self = const_cast<GLDevice *>(this);
++        const GLenum internalFormat = toGL(format).internalFormat;
++        self->thread.call([&]() {
++            if (GLCALL(glGetInternalformativ) == nullptr) {
++                return;
++            }
++
++            GLint sampleCountCount = 0;
++            GLCALL(glGetInternalformativ)(GL_TEXTURE_2D_MULTISAMPLE, internalFormat, GL_NUM_SAMPLE_COUNTS, 1, &sampleCountCount);
++            if (sampleCountCount <= 0) {
++                return;
++            }
++
++            std::vector<GLint> samples(size_t(sampleCountCount), 0);
++            GLCALL(glGetInternalformativ)(GL_TEXTURE_2D_MULTISAMPLE, internalFormat, GL_SAMPLES, sampleCountCount, samples.data());
++            for (GLint sample : samples) {
++                if ((sample > 0) && (sample <= RenderSampleCount::COUNT_MAX) && ((sample & (sample - 1)) == 0)) {
++                    counts |= RenderSampleCounts(sample);
++                }
++            }
++        });
++
++        return counts;
++    }
++
+     void GLCommandList::resolveTexture(const RenderTexture *dstTexture, const RenderTexture *srcTexture) {
+         resolveTextureRegion(dstTexture, 0, 0, srcTexture, nullptr, RenderResolveMode::AVERAGE);
+     }
+@@ -3452,14 +4148,16 @@ namespace plume {
+ 
+         device->thread.post([lists, fence, fenceValue]() {
+             GLReplayState state;
++            bindCache.reset();
+             for (const auto &list : lists) {
+                 for (const GLCommand &command : *list) {
+                     command(state);
+                 }
+             }
+ 
++            // No glFlush: everything runs on one context, and a flush splits a tiled GPU's render passes. On a desktop GPU (AMD,
++            // Windows) the flush kept the GL thread spinning in the driver: the process used about 80% of a core against 35-55% without.
+             GLCALL(glBindFramebuffer)(GL_DRAW_FRAMEBUFFER, 0);
+-            GLCALL(glFlush)();
+             if (fence != nullptr) {
+                 std::unique_lock<std::mutex> lock(fence->mutex);
+                 fence->completed = std::max(fence->completed, fenceValue);
+@@ -3539,6 +4237,7 @@ namespace plume {
+             GLCALL(glEnable)(GL_SCISSOR_TEST);
+             GLCALL(glBindFramebuffer)(GL_READ_FRAMEBUFFER, 0);
+             device->platform.swapBuffers();
++            glFrameCounter++;
+         });
+ 
+         return true;
+diff --git a/src/hle/rt64_application.cpp b/src/hle/rt64_application.cpp
+index 96a11ce..5f2c061 100644
+--- a/src/hle/rt64_application.cpp
++++ b/src/hle/rt64_application.cpp
+@@ -3,6 +3,9 @@
+ //
+ 
+ #include "rt64_application.h"
++#ifdef TK64_MOBILE
++#include "tk64/tk64_depth_ram.h"
++#endif
+ #include "rhi/rt64_render_hooks.h"
+ 
+ #ifdef TK64_GLES_BACKEND
+@@ -340,6 +343,10 @@ namespace RT64 {
+         tk64Profile = tk64::selectProfile(tk64OpenGLESDevice);
+         fprintf(stdout, "TK64: %s GPU profile.\n", tk64::profileName(tk64Profile));
+         tk64::applyProfile(tk64Profile, userConfig);
++#       ifdef TK64_MOBILE
++        tk64::applyProfile(tk64Profile, emulatorConfig);
++        tk64::depthram::enabled() = tk64OpenGLESDevice && tk64::usesDepthToRAM(tk64Profile, emulatorConfig);
++#       endif
+ 
+         // Detect if the application should use HDR framebuffers or not.
+         bool usesHDR;
+diff --git a/src/hle/rt64_framebuffer_changes.cpp b/src/hle/rt64_framebuffer_changes.cpp
+index 1c847ed..8233ed8 100644
+--- a/src/hle/rt64_framebuffer_changes.cpp
++++ b/src/hle/rt64_framebuffer_changes.cpp
+@@ -76,7 +76,12 @@ namespace RT64 {
+         }
+ 
+         changes.pixelTexture = renderWorker->device->createTexture(RenderTextureDesc::Texture2D(alignedWidth, alignedHeight, 1, pixelFormat, RenderTextureFlag::STORAGE | RenderTextureFlag::UNORDERED_ACCESS));
++#       ifdef TK64_MOBILE
++        // Drivers without R8UI image storage (GLES 3.1).
++        changes.booleanTexture = renderWorker->device->createTexture(RenderTextureDesc::Texture2D(alignedWidth, alignedHeight, 1, RenderFormat::R32_UINT, RenderTextureFlag::STORAGE | RenderTextureFlag::UNORDERED_ACCESS));
++#       else
+         changes.booleanTexture = renderWorker->device->createTexture(RenderTextureDesc::Texture2D(alignedWidth, alignedHeight, 1, RenderFormat::R8_UINT, RenderTextureFlag::STORAGE | RenderTextureFlag::UNORDERED_ACCESS));
++#       endif
+         changes.drawDescSet = std::make_unique<FramebufferDrawChangesDescriptorSet>(renderWorker->device);
+         changes.drawDescSet->setTexture(changes.drawDescSet->gColor, changes.pixelTexture.get(), RenderTextureLayout::SHADER_READ);
+         changes.drawDescSet->setTexture(changes.drawDescSet->gDepth, changes.pixelTexture.get(), RenderTextureLayout::SHADER_READ);
+diff --git a/src/hle/rt64_framebuffer_manager.cpp b/src/hle/rt64_framebuffer_manager.cpp
+index d7caa12..f4bfb42 100644
+--- a/src/hle/rt64_framebuffer_manager.cpp
++++ b/src/hle/rt64_framebuffer_manager.cpp
+@@ -811,6 +811,13 @@ namespace RT64 {
+         tileCopy.usedHeight = height;
+         tileCopy.usedTimestamp = usedTimestamp;
+ 
++#       ifdef TK64_MOBILE
++        // TK64: without render to RAM this manager only hands out Ids and never creates the textures, so the size must be
++        // recorded here. Otherwise no entry ever matches above and each frame's tile copies create new textures that stay alive.
++        tileCopy.textureWidth = textureWidth;
++        tileCopy.textureHeight = textureHeight;
++
++#       endif
+         return newId;
+     }
+ 
+@@ -862,6 +869,11 @@ namespace RT64 {
+             const uint32_t DifferenceFractionNum = 1;
+             const uint32_t DifferenceFractionDiv = 4;
+             const uint32_t differentPixels = fb->copyRAMToNativeAndChanges(renderWorker, fbChange, fbRAM, 0, fb->height, fb->lastWriteFmt, false, shaderLibrary);
++            // TK64: NativeTarget skips the upload when RAM holds what it uploaded last, so there are no changes to write.
++            if (differentPixels == 0) {
++                continue;
++            }
++
+             const uint32_t differentBytes = differentPixels << fb->siz >> 1;
+             fb->modifiedBytes += differentBytes;
+ 
+diff --git a/src/hle/rt64_state.cpp b/src/hle/rt64_state.cpp
+index 78455b9..04d734c 100644
+--- a/src/hle/rt64_state.cpp
++++ b/src/hle/rt64_state.cpp
+@@ -6,6 +6,11 @@
+ 
+ #include <cassert>
+ #include <cinttypes>
++#ifdef TK64_MOBILE
++#include <cstring>
++
++#include "tk64/tk64_depth_ram.h"
++#endif
+ 
+ #include "im3d/im3d.h"
+ #include "im3d/im3d_math.h"
+@@ -1779,6 +1784,36 @@ namespace RT64 {
+         advanceWorkload(workload, false);
+         ext.workloadQueue->advanceToNextWorkload();
+ 
++#       ifdef TK64_MOBILE
++        // TK64: the newest depth the GPU finished, for games that read the Z-buffer from RAM (docs/specs/mobile-driver-costs.md).
++        if (tk64::depthram::enabled()) {
++            tk64::depthram::Frame &depthFrame = tk64::depthram::frame();
++            const std::scoped_lock<std::mutex> depthLock(depthFrame.mutex);
++            if (depthFrame.fresh) {
++                // This depth is a frame or more old. If the game has moved its Z-buffer since, the old address can hold anything by now.
++                const bool sameBuffer = (depthFrame.address == rdp->depthImage.address);
++                for (uint32_t y = 0; sameBuffer && (y < depthFrame.height); y++) {
++                    const uint32_t rowAddress = depthFrame.address + y * depthFrame.width * 2;
++                    const uint32_t rowSize = depthFrame.width * 2;
++                    const uint8_t *row = depthFrame.mapped + y * depthFrame.rowBytes;
++                    if (((rowAddress & 3) == 0) && ((depthFrame.width & 1) == 0) && (((rowAddress & RDRAMSize) + rowSize - 1) <= RDRAMSize)) {
++                        memcpy(&RDRAM[rowAddress & RDRAMSize], row, rowSize);
++                        continue;
++                    }
++
++                    for (uint32_t x = 0; x < depthFrame.width; x++) {
++                        uint32_t word;
++                        memcpy(&word, row + (x / 2) * sizeof(uint32_t), sizeof(word));
++                        const uint32_t offset = (rowAddress + x * 2) & RDRAMSize;
++                        *reinterpret_cast<uint16_t *>(&RDRAM[offset ^ 2]) = uint16_t((x & 1) ? word : (word >> 16));
++                    }
++                }
++
++                depthFrame.fresh = false;
++            }
++        }
++
++#       endif
+         // Make sure the profiler starts after the workload is advanced to ignore any waiting time.
+         dlCpuProfiler.reset();
+         dlCpuProfiler.start();
+diff --git a/src/hle/rt64_workload.cpp b/src/hle/rt64_workload.cpp
+index 377aee8..d573cb1 100644
+--- a/src/hle/rt64_workload.cpp
++++ b/src/hle/rt64_workload.cpp
+@@ -218,7 +218,11 @@ namespace RT64 {
+             { drawData.rdpParams.data(), drawRanges.rdpParams, sizeof(interop::RDPParams), RenderBufferFlag::STORAGE, { }, &drawBuffers.rdpParamsBuffer },
+             { drawData.renderParams.data(), drawRanges.renderParams, sizeof(interop::RenderParams), RenderBufferFlag::STORAGE, { }, &drawBuffers.renderParamsBuffer },
+             { drawData.rdpTiles.data(), drawRanges.rdpTiles, sizeof(interop::RDPTile), RenderBufferFlag::STORAGE, {}, &drawBuffers.rdpTilesBuffer },
++#       ifdef TK64_MOBILE
++            { drawData.rspViewports.data(), drawRanges.rspViewports, sizeof(interop::RSPViewport), RenderBufferFlag::FORMATTED | RenderBufferFlag::STORAGE, { RenderFormat::R32G32B32A32_FLOAT }, &drawBuffers.rspViewportsBuffer },
++#       else
+             { drawData.rspViewports.data(), drawRanges.rspViewports, sizeof(interop::RSPViewport), RenderBufferFlag::STORAGE, { }, &drawBuffers.rspViewportsBuffer },
++#       endif
+             { drawData.rspFog.data(), drawRanges.rspFog, sizeof(interop::RSPFog), RenderBufferFlag::STORAGE, { }, &drawBuffers.rspFogBuffer },
+             { drawData.rspLights.data(), drawRanges.rspLights, sizeof(interop::RSPLight), RenderBufferFlag::STORAGE, { }, &drawBuffers.rspLightsBuffer },
+             { drawData.rspLookAt.data(), drawRanges.rspLookAt, sizeof(interop::RSPLookAt), RenderBufferFlag::STORAGE, { }, &drawBuffers.rspLookAtBuffer },
+diff --git a/src/hle/rt64_workload_queue.cpp b/src/hle/rt64_workload_queue.cpp
+index c25d95f..8ea2e99 100644
+--- a/src/hle/rt64_workload_queue.cpp
++++ b/src/hle/rt64_workload_queue.cpp
+@@ -2,6 +2,9 @@
+ // RT64
+ //
+ 
++#ifdef TK64_MOBILE
++#include "tk64/tk64_depth_ram.h"
++#endif
+ #include "rt64_workload_queue.h"
+ 
+ #include "common/rt64_thread.h"
+@@ -706,6 +709,10 @@ namespace RT64 {
+             
+             // Record all framebuffer pairs.
+             uint32_t framebufferIndex = 0;
++#           ifdef TK64_MOBILE
++            Framebuffer *depthRamFb = nullptr;
++            RenderTarget *depthRamTarget = nullptr;
++#           endif
+             for (uint32_t f = 0; f < fbPairCount; f++) {
+                 const FramebufferPair &fbPair = workload.fbPairs[f];
+                 bool validTargets = getTargetsFromPair(f);
+@@ -790,6 +797,12 @@ namespace RT64 {
+                     }
+                     
+                     framebufferRenderer->recordFramebuffer(ext.workloadGraphicsWorker, framebufferIndex++);
++#                   ifdef TK64_MOBILE
++                    if ((depthFb != nullptr) && (depthTarget != nullptr)) {
++                        depthRamFb = depthFb;
++                        depthRamTarget = depthTarget;
++                    }
++#                   endif
+ 
+                     // Transition the render targets in case the present queue will show them so it doesn't have to perform transitions.
+                     if (colorTarget != nullptr && depthTarget != nullptr) {
+@@ -842,6 +855,13 @@ namespace RT64 {
+             framebufferRenderer->waitForUploaders();
+             ext.workloadGraphicsWorker->execute();
+             ext.workloadGraphicsWorker->wait();
++#           ifdef TK64_MOBILE
++            // TK64: a game can read the Z-buffer from RAM, and render to RAM is off in the weak profile (docs/specs/mobile-driver-costs.md).
++            if (tk64::depthram::enabled() && (depthRamTarget != nullptr)) {
++                const hlslpp::float2 depthScale = depthRamTarget->resolutionScale;
++                plume::glesReadDepth16(depthRamTarget->texture.get(), depthRamFb->addressStart, depthRamFb->width, depthRamFb->height, float(depthScale.x), float(depthScale.y));
++            }
++#           endif
+             workerMutex.unlock();
+ 
+             // Update the GPU profiler with the results from the timestamps of the frame.
+diff --git a/src/render/rt64_descriptor_sets.h b/src/render/rt64_descriptor_sets.h
+index b551004..ee26fa5 100644
+--- a/src/render/rt64_descriptor_sets.h
++++ b/src/render/rt64_descriptor_sets.h
+@@ -544,7 +544,11 @@ namespace RT64 {
+             srcLightIndices = builder.addFormattedBuffer(10);
+             srcLightCounts = builder.addFormattedBuffer(11);
+             srcLookAtIndices = builder.addFormattedBuffer(12);
++#           ifdef TK64_MOBILE
++            rspViewportVector = builder.addFormattedBuffer(13);
++#           else
+             rspViewportVector = builder.addStructuredBuffer(13);
++#           endif
+             rspFogVector = builder.addStructuredBuffer(14);
+             rspLightVector = builder.addStructuredBuffer(15);
+             rspLookAtVector = builder.addStructuredBuffer(16);
+@@ -553,8 +557,13 @@ namespace RT64 {
+             dstPos = builder.addReadWriteStructuredBuffer(19);
+             dstTc = builder.addReadWriteStructuredBuffer(20);
+             dstCol = builder.addReadWriteStructuredBuffer(21);
++#           ifdef TK64_MOBILE
++            endpointViewProj = builder.addFormattedBuffer(22);
++            endpointWorld = builder.addFormattedBuffer(23);
++#           else
+             endpointViewProj = builder.addStructuredBuffer(22);
+             endpointWorld = builder.addStructuredBuffer(23);
++#           endif
+             builder.end();
+ 
+             if (device != nullptr) {
+diff --git a/src/render/rt64_framebuffer_renderer.cpp b/src/render/rt64_framebuffer_renderer.cpp
+index ce724d1..be859d6 100644
+--- a/src/render/rt64_framebuffer_renderer.cpp
++++ b/src/render/rt64_framebuffer_renderer.cpp
+@@ -712,6 +712,11 @@ namespace RT64 {
+                 }
+                 
+                 rasterParams.renderIndex = i;
++#               ifdef TK64_MOBILE
++                rasterParams.vsRect = triangles.shaderDesc.flags.rect ? 1 : 0;
++                rasterParams.vsFixedDepth = ((otherMode.cycleType() != G_CYC_COPY) && (otherMode.zSource() == G_ZS_PRIM)) ? 1 : 0;
++                rasterParams.vsFixedDepthValue = triangles.primDepth;
++#               endif
+                 rasterParams.screenScale = triangles.screenScale;
+                 rasterParams.screenOffset = triangles.screenOffset;
+                 worker->commandList->setGraphicsPushConstants(0, &rasterParams);
+@@ -1760,6 +1765,9 @@ namespace RT64 {
+                         }
+                         
+                         triangles.faceCount = call.callDesc.triangleCount;
++#                       ifdef TK64_MOBILE
++                        triangles.primDepth = call.callDesc.rdpParams.primDepth.x;
++#                       endif
+                         triangles.tileIndex = call.callDesc.tileIndex;
+                         triangles.tileCount = call.callDesc.tileCount;
+                         triangles.textureSlotSet = nullptr;
+diff --git a/src/render/rt64_framebuffer_renderer_call.h b/src/render/rt64_framebuffer_renderer_call.h
+index ab562cd..3f84308 100644
+--- a/src/render/rt64_framebuffer_renderer_call.h
++++ b/src/render/rt64_framebuffer_renderer_call.h
+@@ -44,6 +44,9 @@ namespace RT64 {
+                 bool vertexTestZ : 1;
+                 bool postBlendDitherNoise : 1;
+                 bool postBlendDitherNoiseNegative : 1;
++#               ifdef TK64_MOBILE
++                float primDepth;
++#               endif
+             } triangles;
+ 
+             struct {
+diff --git a/src/render/rt64_native_target.cpp b/src/render/rt64_native_target.cpp
+index 6891b7b..8c0f435 100644
+--- a/src/render/rt64_native_target.cpp
++++ b/src/render/rt64_native_target.cpp
+@@ -20,6 +20,7 @@ namespace RT64 {
+     NativeTarget::~NativeTarget() { }
+     
+     void NativeTarget::resetBufferHistory() {
++        lastUploadedBytesValid = false;
+         if (readBufferHistoryCount > 1) {
+             std::swap(readBufferHistory.front(), readBufferHistory.back());
+             readBufferHistoryCount = 1;
+@@ -71,6 +72,30 @@ namespace RT64 {
+             clearDescSet->setBuffer(clearDescSet->gOutputCount, changeCountBuffer.get(), RenderBufferStructuredView(sizeof(uint32_t)));
+         }
+ 
++        // TK64: with the previous contents known, the changed pixels can be counted here. Asking the GPU means waiting for all
++        // its pending work, several times per frame in some games, which costs handhelds more than the rest of the frame.
++        const uint32_t cpuBufferSize = getNativeSize(width, height, siz);
++        const bool cpuCountAvailable = !invalidateTargets && (readBufferHistoryCount > 0) && lastUploadedBytesValid && (lastUploadedBytes.size() == cpuBufferSize);
++        uint32_t cpuModifiedCount = 0;
++        if (cpuCountAvailable) {
++            if (memcmp(lastUploadedBytes.data(), data, cpuBufferSize) == 0) {
++                return 0;
++            }
++
++            const uint32_t pixelBytes = (siz == G_IM_SIZ_32b) ? 4 : ((siz == G_IM_SIZ_16b) ? 2 : 1);
++            for (uint32_t i = 0; (i + pixelBytes) <= cpuBufferSize; i += pixelBytes) {
++                uint8_t difference = 0;
++                for (uint32_t b = 0; b < pixelBytes; b++) {
++                    difference |= lastUploadedBytes[i + b] ^ data[i + b];
++                }
++
++                cpuModifiedCount += (difference != 0) ? 1 : 0;
++            }
++        }
++
++        lastUploadedBytes.assign(data, data + cpuBufferSize);
++        lastUploadedBytesValid = true;
++
+         // Determine the correct type of texture to use.
+         RenderTexture *colorOrDepthRes = nullptr;
+         RenderTexture *booleanRes = emptyFbChange.booleanTexture.get();
+@@ -200,7 +225,7 @@ namespace RT64 {
+         worker->commandList->dispatch(dispatchX, dispatchY, 1);
+         worker->commandList->barriers(RenderBarrierStage::ALL, afterBarriers, uint32_t(std::size(afterBarriers)));
+ 
+-        if (hasCurrentResource) {
++        if (hasCurrentResource && !cpuCountAvailable) {
+             // Copy the modified count resource to the readback.
+             RenderBufferBarrier beforeCopyBarriers[] = {
+                 RenderBufferBarrier(changeCountBuffer.get(), RenderBufferAccess::READ),
+@@ -213,6 +238,10 @@ namespace RT64 {
+         
+         // Read the modified count by executing and waiting.
+         uint32_t modifiedCount = 0;
++        if (cpuCountAvailable) {
++            modifiedCount = cpuModifiedCount;
++        }
++        else
+         if (hasCurrentResource) {
+             worker->commandList->end();
+             worker->execute();
+@@ -232,6 +261,7 @@ namespace RT64 {
+     }
+ 
+     void NativeTarget::copyToNative(RenderWorker *worker, RenderTarget *srcTarget, uint32_t rowWidth, uint32_t rowStart, uint32_t rowEnd, uint8_t siz, uint8_t fmt, uint32_t ditherPattern, uint32_t ditherRandomSeed, const ShaderLibrary *shaderLibrary) {
++        lastUploadedBytesValid = false;
+         assert(worker != nullptr);
+ 
+         srcTarget->resolveTarget(worker, shaderLibrary);
+diff --git a/src/render/rt64_native_target.h b/src/render/rt64_native_target.h
+index eb944a4..6f72f65 100644
+--- a/src/render/rt64_native_target.h
++++ b/src/render/rt64_native_target.h
+@@ -42,6 +42,9 @@ namespace RT64 {
+         std::vector<ReadBuffer> readBufferHistory;
+         std::vector<WriteBuffer> writeBufferHistory;
+         uint32_t readBufferHistoryCount = 0;
++        // TK64: the last contents uploaded from RAM, while they are also what the current read buffer holds.
++        std::vector<uint8_t> lastUploadedBytes;
++        bool lastUploadedBytesValid = false;
+         uint32_t writeBufferHistoryCount = 0;
+         uint32_t writeBufferHistoryIndex = 0;
+ 
+diff --git a/src/render/rt64_projection_processor.cpp b/src/render/rt64_projection_processor.cpp
+index 710f1cd..af90a12 100644
+--- a/src/render/rt64_projection_processor.cpp
++++ b/src/render/rt64_projection_processor.cpp
+@@ -171,7 +171,11 @@ namespace RT64 {
+             std::pair<size_t, size_t> uploadRange = { 0, drawData.viewProjTransforms.size() };
+             uploads.emplace_back(BufferUploader::Upload{ drawData.modViewProjTransforms.data(), uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.viewProjTransformsBuffer });
+             std::pair<size_t, size_t> endpointRange = { 0, drawData.endpointViewProjTransforms.size() };
++#           ifdef TK64_MOBILE
++            uploads.emplace_back(BufferUploader::Upload{ drawData.endpointViewProjTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::FORMATTED | RenderBufferFlag::STORAGE, { RenderFormat::R32G32B32A32_FLOAT }, &drawBuffers.endpointViewProjTransformsBuffer });
++#           else
+             uploads.emplace_back(BufferUploader::Upload{ drawData.endpointViewProjTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.endpointViewProjTransformsBuffer });
++#           endif
+         }
+ 
+         bufferUploader->submit(p.worker, uploads);
+diff --git a/src/render/rt64_rsp_processor.cpp b/src/render/rt64_rsp_processor.cpp
+index f825334..5f8e398 100644
+--- a/src/render/rt64_rsp_processor.cpp
++++ b/src/render/rt64_rsp_processor.cpp
+@@ -59,14 +59,23 @@ namespace RT64 {
+         processSet->setBuffer(processSet->srcLightIndices, p.drawBuffers->lightIndicesBuffer.get(), p.drawBuffers->lightIndicesBuffer.getView(0));
+         processSet->setBuffer(processSet->srcLightCounts, p.drawBuffers->lightCountsBuffer.get(), p.drawBuffers->lightCountsBuffer.getView(0));
+         processSet->setBuffer(processSet->srcLookAtIndices, p.drawBuffers->lookAtIndicesBuffer.get(), p.drawBuffers->lookAtIndicesBuffer.getView(0));
++#       ifdef TK64_MOBILE
++        processSet->setBuffer(processSet->rspViewportVector, p.drawBuffers->rspViewportsBuffer.get(), p.drawBuffers->rspViewportsBuffer.getView(0));
++#       else
+         processSet->setBuffer(processSet->rspViewportVector, p.drawBuffers->rspViewportsBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPViewport)));
++#       endif
+         processSet->setBuffer(processSet->rspFogVector, p.drawBuffers->rspFogBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPFog)));
+         processSet->setBuffer(processSet->rspLightVector, p.drawBuffers->rspLightsBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPLight)));
+         processSet->setBuffer(processSet->rspLookAtVector, p.drawBuffers->rspLookAtBuffer.get(), RenderBufferStructuredView(sizeof(interop::RSPLookAt)));
+         processSet->setBuffer(processSet->viewProjTransforms, p.drawBuffers->viewProjTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
+         processSet->setBuffer(processSet->worldTransforms, p.drawBuffers->worldTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
++#       ifdef TK64_MOBILE
++        processSet->setBuffer(processSet->endpointViewProj, p.drawBuffers->endpointViewProjTransformsBuffer.get(), p.drawBuffers->endpointViewProjTransformsBuffer.getView(0));
++        processSet->setBuffer(processSet->endpointWorld, p.drawBuffers->endpointWorldTransformsBuffer.get(), p.drawBuffers->endpointWorldTransformsBuffer.getView(0));
++#       else
+         processSet->setBuffer(processSet->endpointViewProj, p.drawBuffers->endpointViewProjTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
+         processSet->setBuffer(processSet->endpointWorld, p.drawBuffers->endpointWorldTransformsBuffer.get(), RenderBufferStructuredView(sizeof(interop::float4x4)));
++#       endif
+         processSet->setBuffer(processSet->dstPos, p.outputBuffers->screenPosBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 4));
+         processSet->setBuffer(processSet->dstTc, p.outputBuffers->genTexCoordBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 2));
+         processSet->setBuffer(processSet->dstCol, p.outputBuffers->shadedColBuffer.buffer.get(), RenderBufferStructuredView(sizeof(float) * 4));
+diff --git a/src/render/rt64_transform_processor.cpp b/src/render/rt64_transform_processor.cpp
+index 6fa8675..d92e412 100644
+--- a/src/render/rt64_transform_processor.cpp
++++ b/src/render/rt64_transform_processor.cpp
+@@ -385,7 +385,11 @@ namespace RT64 {
+             uploads.emplace_back(BufferUploader::Upload{ prevWorldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.prevWorldTransformsBuffer });
+             uploads.emplace_back(BufferUploader::Upload{ invTWorldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.invTWorldTransformsBuffer });
+             std::pair<size_t, size_t> endpointRange = { 0, drawData.endpointWorldTransforms.size() };
++#           ifdef TK64_MOBILE
++            uploads.emplace_back(BufferUploader::Upload{ drawData.endpointWorldTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::FORMATTED | RenderBufferFlag::STORAGE, { RenderFormat::R32G32B32A32_FLOAT }, &drawBuffers.endpointWorldTransformsBuffer });
++#           else
+             uploads.emplace_back(BufferUploader::Upload{ drawData.endpointWorldTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.endpointWorldTransformsBuffer });
++#           endif
+         }
+ 
+         bufferUploader->submit(p.worker, uploads);
+diff --git a/src/shaders/RSPProcessCS.hlsl b/src/shaders/RSPProcessCS.hlsl
+index 72b04d2..c569849 100644
+--- a/src/shaders/RSPProcessCS.hlsl
++++ b/src/shaders/RSPProcessCS.hlsl
+@@ -35,18 +35,36 @@ Buffer<uint> srcFogIndices : register(t9);
+ Buffer<uint> srcLightIndices : register(t10);
+ Buffer<uint> srcLightCounts : register(t11);
+ Buffer<uint> srcLookAtIndices : register(t12);
++#ifdef TK64_MOBILE
++// TK64: texel buffers, not storage buffers. With storage buffers this shader needs 11 blocks and mobile drivers may
++// offer only 8 (Panfrost, docs/specs/storage-buffer-limits.md).
++Buffer<float4> rspViewportVector : register(t13);
++#else
+ StructuredBuffer<RSPViewport> rspViewportVector : register(t13);
++#endif
+ StructuredBuffer<RSPFog> rspFogVector : register(t14);
+ StructuredBuffer<RSPLight> rspLightVector : register(t15);
+ StructuredBuffer<RSPLookAt> rspLookAtVector : register(t16);
+ StructuredBuffer<float4x4> viewProjTransforms : register(t17);
+ StructuredBuffer<float4x4> worldTransforms : register(t18);
++#ifdef TK64_MOBILE
++Buffer<float4> endpointViewProj : register(t22);
++Buffer<float4> endpointWorld : register(t23);
++#else
+ StructuredBuffer<float4x4> endpointViewProj : register(t22);
+ StructuredBuffer<float4x4> endpointWorld : register(t23);
++#endif
+ RWStructuredBuffer<float4> dstPos : register(u19);
+ RWStructuredBuffer<float2> dstTc : register(u20);
+ RWStructuredBuffer<float4> dstCol : register(u21);
+ 
++#ifdef TK64_MOBILE
++// float4x4 is stored by columns.
++float4x4 loadMatrix(Buffer<float4> matrices, uint index) {
++    return transpose(float4x4(matrices[index * 4u + 0u], matrices[index * 4u + 1u], matrices[index * 4u + 2u], matrices[index * 4u + 3u]));
++}
++
++#endif
+ [numthreads(GROUP_SIZE, 1, 1)]
+ void CSMain(uint vertexIndex : SV_DispatchThreadID) {
+     if (vertexIndex >= gConstants.vertexCount) {
+@@ -77,7 +95,11 @@ void CSMain(uint vertexIndex : SV_DispatchThreadID) {
+     // without the removed sign test.
+     if (gConstants.forceEndpointCurrent != 0u) {
+         const float4 endpointPos = float4(pos, 1.0f);
++#ifdef TK64_MOBILE
++        tfPos = mul(mul(loadMatrix(endpointViewProj, viewProjIndex * 2u + 1u), loadMatrix(endpointWorld, transformIndex * 2u + 1u)), endpointPos);
++#else
+         tfPos = mul(mul(endpointViewProj[viewProjIndex * 2u + 1u], endpointWorld[transformIndex * 2u + 1u]), endpointPos);
++#endif
+         if (gConstants.markWCrossing != 0u) {
+             tfPos.x += 0.70f * tfPos.w;
+         }
+@@ -143,9 +165,16 @@ void CSMain(uint vertexIndex : SV_DispatchThreadID) {
+     }
+ 
+     // Convert to N64 screen position.
++#ifdef TK64_MOBILE
++    const float3 viewportScale = rspViewportVector[viewProjIndex * 2u + 0u].xyz;
++    const float3 viewportTranslate = rspViewportVector[viewProjIndex * 2u + 1u].xyz;
++    const float3 ndcPos = tfPos.xyz / float3(tfPos.w, -tfPos.w, tfPos.w);
++    const float4 screenPos = float4(ndcPos * viewportScale + viewportTranslate, tfPos.w);
++#else
+     const RSPViewport rspViewport = rspViewportVector[viewProjIndex];
+     const float3 ndcPos = tfPos.xyz / float3(tfPos.w, -tfPos.w, tfPos.w);
+     const float4 screenPos = float4(ndcPos * rspViewport.scale + rspViewport.translate, tfPos.w);
++#endif
+     dstPos[vertexOffsetIndex] = screenPos;
+     dstTc[vertexOffsetIndex] = tc;
+     dstCol[vertexOffsetIndex] = vertexColor;
+diff --git a/src/shaders/RasterVS.hlsl b/src/shaders/RasterVS.hlsl
+index 74b1fa0..47783f4 100644
+--- a/src/shaders/RasterVS.hlsl
++++ b/src/shaders/RasterVS.hlsl
+@@ -15,7 +15,11 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
+     float4 ndcPos = iPosition;
+     
+     // Skip any sort of transformation on the coordinates when rendering rects.
++#ifdef TK64_MOBILE
++    if (gConstants.vsRect == 0) {
++#else
+     if (!renderFlagRect(rp.flags)) {
++#endif
+         ndcPos.xy -= float2(FbParams.resolution / 2);
+         ndcPos.xy /= float2(FbParams.resolution.x / 2.0f, FbParams.resolution.y / -2.0f);
+         ndcPos.xyz *= ndcPos.w;
+@@ -25,6 +29,11 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
+     ndcPos.xy = (ndcPos.xy * gConstants.screenScale) + gConstants.screenOffset * ndcPos.w;
+     
+     // Output a fixed depth value for the entire triangle.
++#ifdef TK64_MOBILE
++    if (gConstants.vsFixedDepth != 0) {
++        ndcPos.z = gConstants.vsFixedDepthValue * ndcPos.w;
++    }
++#else
+     const OtherMode otherMode = { rp.omL, rp.omH };
+     const bool copyMode = (otherMode.cycleType() == G_CYC_COPY);
+     const bool zSourcePrim = (otherMode.zSource() == G_ZS_PRIM);
+@@ -32,6 +41,7 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
+         const uint instanceIndex = instanceRenderIndices[gConstants.renderIndex].instanceIndex;
+         ndcPos.z = instanceRDPParams[instanceIndex].primDepth.x * ndcPos.w;
+     }
++#endif
+ 
+     oPosition = ndcPos;
+     oUV = iUV;
+@@ -41,8 +51,14 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
+ 
+ #if defined(DYNAMIC_RENDER_PARAMS)
+ RenderParams getRenderParams() {
++#ifdef TK64_MOBILE
++    // TK64: RasterVS takes everything from gConstants.
++    RenderParams rp = (RenderParams)0;
++    return rp;
++#else
+     uint instanceIndex = instanceRenderIndices[gConstants.renderIndex].instanceIndex;
+     return DynamicRenderParams[instanceIndex];
++#endif
+ }
+ #elif defined(SPEC_CONSTANT_RENDER_PARAMS)
+ #   include "RenderParamsSpecConstants.hlsli"
+@@ -57,8 +73,12 @@ void VSMain(
+     , out float2 oUV : TEXCOORD
+     , out float4 oSmoothColor : COLOR0
+ #if defined(DYNAMIC_RENDER_PARAMS) || defined(VERTEX_FLAT_COLOR)
++#ifdef TK64_MOBILE
++    , nointerpolation out float4 oFlatColor : COLOR1
++#else
+     , out float4 oFlatColor : COLOR1
+ #endif
++#endif
+ )
+ {
+ #if !defined(DYNAMIC_RENDER_PARAMS) && !defined(VERTEX_FLAT_COLOR)
+diff --git a/src/shared/rt64_raster_params.h b/src/shared/rt64_raster_params.h
+index 0a5c332..0b9f1d6 100644
+--- a/src/shared/rt64_raster_params.h
++++ b/src/shared/rt64_raster_params.h
+@@ -11,7 +11,15 @@ namespace interop {
+ #endif
+     struct RasterParams {
+         uint renderIndex;
++#ifdef TK64_MOBILE
++        // TK64: what the vertex shader needs from the draw call, so it reads no storage buffer. Mobile drivers may offer
++        // none to the vertex stage (Panfrost, docs/specs/storage-buffer-limits.md).
++        uint vsRect;
++        uint vsFixedDepth;
++        float vsFixedDepthValue;
++#else
+         uint3 padding;
++#endif
+         float2 screenScale;
+         float2 screenOffset;
+     };
+diff --git a/src/tk64/tk64_depth_ram.h b/src/tk64/tk64_depth_ram.h
+new file mode 100644
+index 0000000..c31e6d4
+--- /dev/null
++++ b/src/tk64/tk64_depth_ram.h
+@@ -0,0 +1,46 @@
++//
++// TK64
++//
++// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
++//
++// Depth for games that read the Z-buffer from RAM, without rendering frames twice. See docs/specs/mobile-driver-costs.md.
++//
++
++#pragma once
++
++#include <cstdint>
++#include <cstddef>
++#include <mutex>
++
++namespace plume {
++    struct RenderTexture;
++
++    // Starts converting a depth target to the N64's 16-bit format, and publishes the newest earlier conversion the GPU finished
++    // in tk64::depthram::frame(). It never waits for the GPU, so the depth is a frame or more old. OpenGL ES backend only.
++    void glesReadDepth16(RenderTexture *texture, uint32_t address, uint32_t width, uint32_t height, float scaleX, float scaleY);
++}
++
++namespace tk64::depthram {
++    // The finished conversion stays mapped until the next one replaces it, and the mutex guards the mapping. Reading the buffer is
++    // slow, so the thread that needs the values does it, not the OpenGL thread. Each 32-bit word holds two values, the first in its
++    // high half, which is how RDRAM lays them out in this emulator.
++    struct Frame {
++        std::mutex mutex;
++        bool fresh = false;
++        uint32_t address = 0;
++        uint32_t width = 0;
++        uint32_t height = 0;
++        const uint8_t *mapped = nullptr;
++        size_t rowBytes = 0;
++    };
++
++    inline bool &enabled() {
++        static bool on = false;
++        return on;
++    }
++
++    inline Frame &frame() {
++        static Frame instance;
++        return instance;
++    }
++}
+diff --git a/src/tk64/tk64_profile.cpp b/src/tk64/tk64_profile.cpp
+index f0a32f6..18c308d 100644
+--- a/src/tk64/tk64_profile.cpp
++++ b/src/tk64/tk64_profile.cpp
+@@ -10,7 +10,13 @@
+ #include <cstring>
+ 
+ namespace tk64 {
++#ifdef TK64_MOBILE
++    static Profile lastSelectedProfile = Profile::Full;
++
++    static Profile readProfile(bool openGLESBackend) {
++#else
+     Profile selectProfile(bool openGLESBackend) {
++#endif
+         const Profile automatic = openGLESBackend ? Profile::Weak : Profile::Full;
+         const char *value = std::getenv("TK64_PROFILE");
+         if (value == nullptr) {
+@@ -29,6 +35,17 @@ namespace tk64 {
+         return automatic;
+     }
+ 
++#ifdef TK64_MOBILE
++    Profile selectProfile(bool openGLESBackend) {
++        lastSelectedProfile = readProfile(openGLESBackend);
++        return lastSelectedProfile;
++    }
++
++    Profile selectedProfile() {
++        return lastSelectedProfile;
++    }
++
++#endif
+     const char *profileName(Profile profile) {
+         switch (profile) {
+         case Profile::Weak:
+@@ -44,17 +61,50 @@ namespace tk64 {
+             return;
+         }
+ 
++#ifdef TK64_MOBILE
++        // A target of 30 or less shows a game at 20 or 30 FPS nothing new, and each extra frame renders the whole scene again.
++        // Frame matching only runs for a target, too. Higher targets are a request for interpolation and stay.
++        if ((config.refreshRate == RT64::UserConfiguration::RefreshRate::Manual) && (config.refreshRateTarget <= 30)) {
++            config.refreshRate = RT64::UserConfiguration::RefreshRate::Original;
++        }
++
++        // Resolution and antialiasing stay the player's choice: the host's menu writes them, and a port ships its defaults in
++        // its own settings. These fields have no menu option and cost bandwidth on a weak GPU.
++#else
+         // These are the fields that dominate fill rate, bandwidth and extra frames on a weak GPU.
+         config.resolution = RT64::UserConfiguration::Resolution::Original;
+         config.downsampleMultiplier = 1;
+         config.antialiasing = RT64::UserConfiguration::Antialiasing::None;
+         config.refreshRate = RT64::UserConfiguration::RefreshRate::Original;
++#endif
+         config.internalColorFormat = RT64::UserConfiguration::InternalColorFormat::Standard;
+         config.displayBuffering = RT64::UserConfiguration::DisplayBuffering::Double;
+         config.filtering = RT64::UserConfiguration::Filtering::Linear;
+         config.idleWorkActive = false;
+     }
+ 
++#ifdef TK64_MOBILE
++    void applyProfile(Profile profile, RT64::EmulatorConfiguration &config) {
++        if (profile == Profile::Weak) {
++            config.framebuffer.renderToRAM = false;
++        }
++
++        const char *value = std::getenv("TK64_RENDER_TO_RAM");
++        if (value != nullptr) {
++            config.framebuffer.renderToRAM = (std::strcmp(value, "1") == 0);
++        }
++    }
++
++    bool usesDepthToRAM(Profile profile, const RT64::EmulatorConfiguration &config) {
++        const char *value = std::getenv("TK64_DEPTH_TO_RAM");
++        if (value != nullptr) {
++            return (std::strcmp(value, "1") == 0);
++        }
++
++        return (profile == Profile::Weak) && !config.framebuffer.renderToRAM;
++    }
++
++#endif
+     bool usesUbershadersOnly(Profile profile) {
+         const char *value = std::getenv("TK64_UBERSHADERS_ONLY");
+         if (value != nullptr) {
+@@ -67,6 +117,12 @@ namespace tk64 {
+             }
+         }
+ 
++#ifdef TK64_MOBILE
++        // Measured on a Mali-G31: the ubershader alone gives half the frame rate of the specialised shaders, and the shader
++        // cache keeps their background compiles to the first run (docs/specs/weak-gpu-profile.md).
++        return false;
++#else
+         return profile == Profile::Weak;
++#endif
+     }
+ };
+diff --git a/src/tk64/tk64_profile.h b/src/tk64/tk64_profile.h
+index 4d21a19..fb5777d 100644
+--- a/src/tk64/tk64_profile.h
++++ b/src/tk64/tk64_profile.h
+@@ -8,6 +8,9 @@
+ 
+ #pragma once
+ 
++#ifdef TK64_MOBILE
++#include "common/rt64_emulator_configuration.h"
++#endif
+ #include "common/rt64_user_configuration.h"
+ 
+ namespace tk64 {
+@@ -19,12 +22,27 @@ namespace tk64 {
+     // TK64_PROFILE: "weak", "full", or "auto"/unset. Auto picks Weak when the OpenGL ES backend is in use.
+     Profile selectProfile(bool openGLESBackend);
+ 
++#ifdef TK64_MOBILE
++    // What selectProfile last returned, for a host's own rendering such as its menus. Full before the first selection.
++    Profile selectedProfile();
++
++#endif
+     // "full" or "weak".
+     const char *profileName(Profile profile);
+ 
+     // Overrides the settings of docs/specs/weak-gpu-profile.md for Weak; leaves the configuration alone for Full.
+     void applyProfile(Profile profile, RT64::UserConfiguration &config);
+ 
++#ifdef TK64_MOBILE
++    // Weak: framebuffers are not written back to RAM, which makes the CPU wait for the GPU. TK64_RENDER_TO_RAM=1 or =0 overrides it.
++    void applyProfile(Profile profile, RT64::EmulatorConfiguration &config);
++
++    // Weak with render to RAM off: the depth still reaches RAM, a frame or more late, for games that read it. TK64_DEPTH_TO_RAM=1 or =0 overrides it.
++    bool usesDepthToRAM(Profile profile, const RT64::EmulatorConfiguration &config);
++
++    // False unless TK64_UBERSHADERS_ONLY=1.
++#else
+     // Weak: true. Full: false. TK64_UBERSHADERS_ONLY=1 or =0, when set, overrides the profile's value.
++#endif
+     bool usesUbershadersOnly(Profile profile);
+ };
+diff --git a/src/tk64/tk64_shader_translator.cpp b/src/tk64/tk64_shader_translator.cpp
+index b382e7a..02371e4 100644
+--- a/src/tk64/tk64_shader_translator.cpp
++++ b/src/tk64/tk64_shader_translator.cpp
+@@ -258,7 +258,7 @@ namespace tk64 {
+ 
+         // GLSL ES only accepts the output index qualifier with EXT_blend_func_extended. Index 0 alone is the default,
+         // so it is dropped; a second index (dual-source blending) requires the extension.
+-        void fixOutputIndices(spirv_cross::CompilerGLSL &compiler, TranslatedShader &translated) {
++        bool fixOutputIndices(spirv_cross::CompilerGLSL &compiler, TranslatedShader &translated, const TranslationOptions &translationOptions) {
+             bool dualSource = false;
+             const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+             for (const spirv_cross::Resource &output : resources.stage_outputs) {
+@@ -267,15 +267,112 @@ namespace tk64 {
+                 }
+             }
+ 
+-            if (dualSource) {
++            if (dualSource && !translationOptions.dualSourceAsVariable) {
+                 compiler.require_extension("GL_EXT_blend_func_extended");
+                 translated.requiredExtensions.emplace_back("GL_EXT_blend_func_extended");
+-                return;
++                return false;
+             }
+ 
+             for (const spirv_cross::Resource &output : resources.stage_outputs) {
++                if (dualSource && (compiler.get_decoration(output.id, spv::DecorationIndex) > 0)) {
++                    compiler.set_decoration(output.id, spv::DecorationLocation, 1);
++                }
++
+                 compiler.unset_decoration(output.id, spv::DecorationIndex);
+             }
++
++            if (dualSource && translationOptions.dualSourceBlend) {
++                compiler.require_extension("GL_EXT_shader_framebuffer_fetch");
++                translated.requiredExtensions.emplace_back("GL_EXT_shader_framebuffer_fetch");
++            }
++
++            return dualSource;
++        }
++
++        // See TranslationOptions::dropLastTmemSlot.
++        void dropLastTmemSlot(std::string &source) {
++            const std::string type = "usampler2D ";
++            const size_t position = source.find(type);
++            if (position == std::string::npos) {
++                return;
++            }
++
++            const size_t nameStart = position + type.size();
++            const size_t nameEnd = source.find('[', nameStart);
++            const size_t declarationEnd = source.find(';', nameStart);
++            if ((nameEnd == std::string::npos) || (nameEnd > declarationEnd) || (source.compare(nameEnd, 3, "[8]") != 0)) {
++                return;
++            }
++
++            const std::string name = source.substr(nameStart, nameEnd - nameStart);
++            source[nameEnd + 1] = '7';
++            const std::string last = name + "[7]";
++            for (size_t at = source.find(last, declarationEnd); at != std::string::npos; at = source.find(last, at + last.size())) {
++                source[at + name.size() + 1] = '6';
++            }
++        }
++
++        // See TranslationOptions::depthFetch. A multisampled or array texture has another declaration and stays a texture read.
++        void rewriteDepthFetch(std::string &source, uint32_t textureUnit, TranslatedShader &translated) {
++            const std::string declaration = "layout(binding = " + std::to_string(textureUnit) + ") uniform highp sampler2D ";
++            const size_t position = source.find(declaration);
++            if (position == std::string::npos) {
++                return;
++            }
++
++            const size_t nameStart = position + declaration.size();
++            const size_t declarationEnd = source.find(';', nameStart);
++            const std::string call = "texelFetch(" + source.substr(nameStart, declarationEnd - nameStart) + ",";
++            bool rewritten = false;
++            for (size_t at = source.find(call, declarationEnd); at != std::string::npos; at = source.find(call, at)) {
++                size_t end = at + call.size();
++                for (int open = 1; (open > 0) && (end < source.size()); end++) {
++                    open += (source[end] == '(') ? 1 : ((source[end] == ')') ? -1 : 0);
++                }
++
++                source.replace(at, end - at, "vec4(gl_LastFragDepthARM)");
++                rewritten = true;
++            }
++
++            if (rewritten) {
++                const std::string extension = "GL_ARM_shader_framebuffer_fetch_depth_stencil";
++                source.insert(source.find('\n') + 1, "#extension " + extension + " : require\n");
++                translated.requiredExtensions.emplace_back(extension);
++            }
++        }
++
++        // See TranslationOptions::dualSourceAsVariable. fixOutputIndices left the outputs at locations 0 and 1.
++        void rewriteDualSourceOutputs(std::string &source, const TranslationOptions &translationOptions) {
++            const std::string colorDeclaration = "layout(location = 0) out ";
++            const std::string factorDeclaration = "layout(location = 1) out ";
++            const auto declaredName = [&](const std::string &declaration) {
++                const size_t position = source.find(declaration);
++                if (position == std::string::npos) {
++                    throw std::runtime_error("dual-source output not found: " + declaration);
++                }
++
++                const size_t end = source.find(';', position);
++                const size_t start = source.rfind(' ', end) + 1;
++                return source.substr(start, end - start);
++            };
++
++            const std::string color = declaredName(colorDeclaration);
++            const std::string factor = declaredName(factorDeclaration);
++            source.erase(source.find(factorDeclaration), factorDeclaration.size());
++            if (!translationOptions.dualSourceBlend) {
++                return;
++            }
++
++            source.replace(source.find(colorDeclaration), colorDeclaration.size(), "layout(location = 0) inout ");
++
++            // main is the last function SPIRV-Cross writes, and this kind of shader leaves it early only by discarding.
++            std::string blend = "    " + color + ".rgb = (" + color + ".rgb * " + factor + ".a) + (tk64Target.rgb * (1.0 - " + factor + ".a));\n";
++            if (translationOptions.dualSourceAddDstAlpha) {
++                blend += "    " + color + ".a += tk64Target.a;\n";
++            }
++
++            source.insert(source.rfind('}'), blend);
++            source.insert(source.find('{', source.find("void main()")) + 1, "\n    highp vec4 tk64Target = " + color + ";");
+         }
+ 
+         // DXC gives every RWTexture2D<T> a format from T alone (float4 becomes rgba32f), while the images bound to it at run
+@@ -627,9 +724,7 @@ namespace tk64 {
+ 
+                 const uint32_t dummySampler = compiler.build_dummy_sampler_for_combined_images();
+                 compiler.build_combined_image_samplers();
+-                if (options.es) {
+-                    fixOutputIndices(compiler, translated);
+-                }
++                const bool rewriteDualSource = options.es && fixOutputIndices(compiler, translated, translationOptions);
+ 
+                 // Record what each combined sampler is made of before the bindings are rewritten.
+                 for (const spirv_cross::CombinedImageSampler &combined : compiler.get_combined_image_samplers()) {
+@@ -653,6 +748,26 @@ namespace tk64 {
+                 assignTextureUnits(compiler, mapper, translated);
+                 namePushConstants(compiler);
+                 translated.source = compiler.compile();
++                if (translationOptions.clampVertexDepth && (translated.stage == ShaderStage::Vertex)) {
++                    translated.source.insert(translated.source.rfind('}'), "    gl_Position.z = clamp(gl_Position.z, -abs(gl_Position.w), abs(gl_Position.w));\n");
++                }
++
++                if (rewriteDualSource) {
++                    rewriteDualSourceOutputs(translated.source, translationOptions);
++                }
++
++                if (translationOptions.dropLastTmemSlot) {
++                    dropLastTmemSlot(translated.source);
++                }
++
++                if (translationOptions.depthFetch) {
++                    for (const CombinedSampler &combined : translated.combinedSamplers) {
++                        if ((combined.imageSet == translationOptions.depthFetchSet) && (combined.imageBinding == translationOptions.depthFetchBinding)) {
++                            rewriteDepthFetch(translated.source, combined.textureUnit, translated);
++                        }
++                    }
++                }
++
+                 reflectPushConstants(compiler, translated);
+             }
+ 
+diff --git a/src/tk64/tk64_shader_translator.h b/src/tk64/tk64_shader_translator.h
+index fc54340..744a695 100644
+--- a/src/tk64/tk64_shader_translator.h
++++ b/src/tk64/tk64_shader_translator.h
+@@ -140,6 +140,14 @@ namespace tk64 {
+         // GL also puts row 0 of the framebuffer's memory at the top of the image.
+         bool glClipSpaceFixup = true;
+ 
++        // GL targets without a depth clamp: keeps depth inside the clip volume in the vertex shader, so a pipeline with depth
++        // clipping off does not lose its geometry. Exact per vertex; a triangle crossing the planes interpolates between clamped values.
++        bool clampVertexDepth = false;
++
++        // GLSL on a driver with only the 16 fragment samplers GLES 3.1 guarantees: texture slots need 17 with the background
++        // depth, so the last TMEM slot is dropped and reads the one before it. Only a draw's eighth tile with raw TMEM can tell.
++        bool dropLastTmemSlot = false;
++
+         // GLSL ES: the format to declare for write-only storage images, by their SPIR-V (set, binding), instead of the one
+         // DXC derived from the element type. Desktop GLSL declares write-only images without a format and ignores this.
+         struct ImageFormat {
+@@ -149,6 +157,19 @@ namespace tk64 {
+         };
+ 
+         std::vector<ImageFormat> imageFormats;
++
++        // GLSL ES on a driver without EXT_blend_func_extended. A dual-source pixel shader keeps its first output and turns the
++        // second one into a plain variable. With dualSourceBlend it also does in the shader what the fixed function blend with
++        // SRC1_ALPHA and INV_SRC1_ALPHA would, which needs EXT_shader_framebuffer_fetch, and the host turns that blend off.
++        bool dualSourceAsVariable = false;
++        bool dualSourceBlend = false;
++        bool dualSourceAddDstAlpha = false;
++
++        // GLSL ES with ARM_shader_framebuffer_fetch_depth_stencil: the texture at this (set, binding) is the depth target the pixel
++        // shader draws to, and it only reads its own pixel. Reads gl_LastFragDepthARM instead, which needs no end of the driver's pass.
++        bool depthFetch = false;
++        uint32_t depthFetchSet = 0;
++        uint32_t depthFetchBinding = 0;
+     };
+ 
+     TranslatedShader translateSpirv(const uint32_t *words, size_t wordCount, ShaderLanguage language, const BindingMapper &mapper = BindingMapper(),

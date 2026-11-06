@@ -1,6 +1,8 @@
 #include "tooie_dev_mode_ui.h"
 
 #include <algorithm>
+#include <chrono>
+#include <cmath>
 #include <functional>
 #include <string>
 #include <vector>
@@ -15,6 +17,9 @@
 #include "elements/ui_text_input.h"
 #include "elements/ui_toggle.h"
 #include "util/file.h"
+#include "recompinput/input_state.h"
+#include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/Input.h>
 
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_forms.h"
@@ -25,6 +30,10 @@ namespace {
 using namespace recompui;
 using tooie_dev_warp::Entry;
 using tooie_dev_warp::Position;
+
+// Warp modal items that are not a saved position (rows use their index).
+constexpr int kSaveItem = -1;  // "Save current position"
+constexpr int kCloseItem = -2; // "Close"
 
 // UI state. Only touched on the UI thread (tab contents and button callbacks).
 struct State {
@@ -38,9 +47,183 @@ struct State {
     Element* view = nullptr; // the DevModeView of the open tab, or nullptr
     ContextId view_context = ContextId::null(); // the UI context that owns view
     bool dirty = false;      // the view must rebuild its contents on its next update
+    // Focus restored by the next build: a Warp modal item (row index, kSaveItem or kCloseItem) and its button, or the
+    // Warp button once the modal closes.
+    bool warp_focus_pending = false;
+    int warp_focus_item = 0;
+    int warp_focus_column = 0;
+    bool focus_warp_button = false;
+    Element* focus_target = nullptr; // set while building; focused once the new contents are laid out
+    Element* focus_line = nullptr;   // scrolled into view with focus_target
 };
 
 State g_state;
+
+// The next build focuses this Warp modal item.
+void focus_warp_item(int item, int column) {
+    g_state.warp_focus_pending = true;
+    g_state.warp_focus_item = item;
+    g_state.warp_focus_column = column;
+}
+
+void rebuild();
+
+// Closes the Warp modal and returns the focus to the Warp button.
+void close_warp_modal() {
+    g_state.warp_open = false;
+    g_state.renaming = -1;
+    g_state.status.clear();
+    g_state.focus_warp_button = true;
+    rebuild();
+}
+
+// The Warp modal moves the focus itself, so it never leaves the modal: up and down pick a saved position (or the
+// Save and Close buttons above and below the list), left and right pick a button in that row. The list scrolls with
+// the focus, and the right stick scrolls it too. The menu's Back action (B by default) closes the modal instead of
+// leaving it open and moving the focus to the tabs behind it.
+class WarpModal : public Element {
+public:
+    WarpModal(ResourceId rid, Element* parent) : Element(rid, parent, Events(EventType::Update, EventType::Navigate)) {
+        last_update = std::chrono::steady_clock::now();
+        queue_update();
+    }
+
+    // Items are added top to bottom; line is what gets scrolled into view.
+    void add_item(int id, Element* line, std::vector<Element*> buttons) {
+        items.push_back(Item{id, line, std::move(buttons)});
+    }
+
+    void set_list(Element* list) { scroll = list; }
+
+    // Sets the build's focus target to the item and button saved in g_state. A row that is gone (deleted) falls back
+    // to the row above it, and a missing item to the first one.
+    void restore_focus() const {
+        if (items.empty()) {
+            return;
+        }
+
+        size_t index = 0;
+        for (size_t i = 0; i < items.size(); i++) {
+            const int id = items[i].id;
+            if ((id == g_state.warp_focus_item) ||
+                ((g_state.warp_focus_item >= 0) && (id >= 0) && (id <= g_state.warp_focus_item))) {
+                index = i;
+            }
+        }
+
+        const Item& item = items[index];
+        const int column = std::clamp(g_state.warp_focus_column, 0, int(item.buttons.size()) - 1);
+        g_state.focus_target = item.buttons[size_t(column)];
+        g_state.focus_line = item.line;
+    }
+
+protected:
+    void process_event(const Event& e) override {
+        if (e.type != EventType::Update) {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const float seconds = std::min(std::chrono::duration<float>(now - last_update).count(), 0.1f);
+        last_update = now;
+        float x = 0.0f;
+        float y = 0.0f;
+        recompinput::get_right_analog(-1, &x, &y);
+        if ((scroll != nullptr) && (std::fabs(y) > 0.1f)) {
+            // Keep the fraction: the scroll offset is rounded to whole pixels.
+            constexpr float kStickScrollDp = 900.0f;
+            scroll_pending += y * kStickScrollDp * scroll->get_dp_to_pixel_ratio() * seconds;
+            const float step = std::trunc(scroll_pending);
+            if (step != 0.0f) {
+                scroll->set_scroll_top(scroll->get_scroll_top() + step);
+                scroll_pending -= step;
+            }
+        }
+        else {
+            scroll_pending = 0.0f;
+        }
+
+        queue_update();
+    }
+
+    std::string_view get_type_name() override { return "WarpModal"; }
+
+private:
+    struct Item {
+        int id;
+        Element* line;
+        std::vector<Element*> buttons;
+    };
+
+    std::vector<Item> items;
+    Element* scroll = nullptr;
+    float scroll_pending = 0.0f;
+    int row_column = 0; // button kept while moving between saved positions
+    std::chrono::steady_clock::time_point last_update;
+
+    void focus_item(size_t index, int column) {
+        const Item& item = items[index];
+        column = std::clamp(column, 0, int(item.buttons.size()) - 1);
+        item.buttons[size_t(column)]->focus();
+        item.line->scroll_into_view(true);
+        if (item.id >= 0) {
+            row_column = column;
+        }
+    }
+
+    bool handle_navigation_event(Rml::Event& event) override {
+        if ((event.GetId() != Rml::EventId::Keydown) || !event.IsPropagating()) {
+            return false;
+        }
+
+        const auto key = Rml::Input::KeyIdentifier(event.GetParameter<int>("key_identifier", Rml::Input::KI_UNKNOWN));
+        if (menu_action_mapping::menu_action_from_rml_key(key) == MenuAction::Back) {
+            event.StopPropagation();
+            close_warp_modal();
+            return true;
+        }
+
+        int dx = 0;
+        int dy = 0;
+        switch (key) {
+            case Rml::Input::KI_UP: dy = -1; break;
+            case Rml::Input::KI_DOWN: dy = 1; break;
+            case Rml::Input::KI_LEFT: dx = -1; break;
+            case Rml::Input::KI_RIGHT: dx = 1; break;
+            default: return false;
+        }
+
+        event.StopPropagation();
+        if (items.empty()) {
+            return true;
+        }
+
+        const Element* focused = get_current_context().get_focused_element();
+        for (size_t i = 0; i < items.size(); i++) {
+            for (size_t column = 0; column < items[i].buttons.size(); column++) {
+                if (items[i].buttons[column] != focused) {
+                    continue;
+                }
+
+                if (dx != 0) {
+                    focus_item(i, int(column) + dx);
+                }
+                else {
+                    const size_t next = size_t(std::clamp(int(i) + dy, 0, int(items.size()) - 1));
+                    if (next != i) {
+                        focus_item(next, (items[next].id >= 0) ? row_column : 0);
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        // Focus is outside the modal (it was just built, or the mouse was used): start at the first item.
+        focus_item(0, 0);
+        return true;
+    }
+};
 
 std::filesystem::path store_path() {
     return recompui::file::get_app_folder_path() / "dev_warps.json";
@@ -136,7 +319,7 @@ Button* row_button(ContextId context, Element* line, const std::string& text, Bu
     return button;
 }
 
-void build_entry_row(ContextId context, Element* list, int index) {
+void build_entry_row(ContextId context, WarpModal* modal, Element* list, int index) {
     Entry& entry = g_state.entries[size_t(index)];
     Element* line = row(context, list, 12.0f);
     line->set_padding(8.0f);
@@ -156,13 +339,16 @@ void build_entry_row(ContextId context, Element* list, int index) {
             }
 
             g_state.renaming = -1;
+            focus_warp_item(index, 1);
             rebuild();
         });
         Button* cancel = row_button(context, line, "Cancel", ButtonStyle::Tertiary);
-        cancel->add_pressed_callback([]() {
+        cancel->add_pressed_callback([index]() {
             g_state.renaming = -1;
+            focus_warp_item(index, 1);
             rebuild();
         });
+        modal->add_item(index, line, {input, save, cancel});
         return;
     }
 
@@ -181,6 +367,7 @@ void build_entry_row(ContextId context, Element* list, int index) {
 
         if (!tooie_dev_warp::current_position().has_value()) {
             g_state.status = "Teleporting needs Banjo in a level, unpaused and outside cutscenes.";
+            focus_warp_item(index, 0);
             rebuild();
             return;
         }
@@ -193,6 +380,7 @@ void build_entry_row(ContextId context, Element* list, int index) {
     Button* rename = row_button(context, line, "Rename", ButtonStyle::Secondary);
     rename->add_pressed_callback([index]() {
         g_state.renaming = index;
+        focus_warp_item(index, 0);
         rebuild();
     });
     Button* remove = row_button(context, line, "Delete", ButtonStyle::Danger);
@@ -210,16 +398,18 @@ void build_entry_row(ContextId context, Element* list, int index) {
                 }
 
                 g_state.renaming = -1;
+                focus_warp_item(index, 0);
                 rebuild();
             },
             []() {}, ButtonStyle::Danger, ButtonStyle::Tertiary);
     });
+    modal->add_item(index, line, {teleport, rename, remove});
 }
 
 void build_warp_modal(ContextId context, Element* root) {
     ensure_entries_loaded();
 
-    Element* overlay = context.create_element<Element>(root);
+    WarpModal* overlay = context.create_element<WarpModal>(root);
     overlay->set_position(recompui::Position::Absolute);
     overlay->set_top(0);
     overlay->set_right(0);
@@ -267,8 +457,12 @@ void build_warp_modal(ContextId context, Element* root) {
         g_state.entries.push_back(entry);
         g_state.status = "Saved \"" + entry.name + "\".";
         store_entries();
+        focus_warp_item(kSaveItem, 0);
         rebuild();
     });
+    if (current.has_value()) {
+        overlay->add_item(kSaveItem, save, {save});
+    }
 
     ScrollContainer* scroll = context.create_element<ScrollContainer>(panel, ScrollDirection::Vertical);
     scroll->set_width(100.0f, Unit::Percent);
@@ -279,13 +473,14 @@ void build_warp_modal(ContextId context, Element* root) {
     scroll->set_flex(0.0f, 0.0f, height, Unit::Dp);
     scroll->set_height(height, Unit::Dp);
     scroll->set_max_height(height, Unit::Dp);
+    overlay->set_list(scroll);
     Element* list = column(context, scroll, 8.0f);
     if (g_state.entries.empty()) {
         context.create_element<Label>(list, "No saved positions.", theme::Typography::LabelSM);
     }
 
     for (int i = 0; i < int(g_state.entries.size()); i++) {
-        build_entry_row(context, list, i);
+        build_entry_row(context, overlay, list, i);
     }
 
     if (!g_state.status.empty()) {
@@ -295,12 +490,13 @@ void build_warp_modal(ContextId context, Element* root) {
     Element* footer = row(context, panel, 12.0f);
     footer->set_justify_content(JustifyContent::FlexEnd);
     Button* close = context.create_element<Button>(footer, "Close", ButtonStyle::Tertiary, ButtonSize::Medium);
-    close->add_pressed_callback([]() {
-        g_state.warp_open = false;
-        g_state.renaming = -1;
-        g_state.status.clear();
-        rebuild();
-    });
+    close->add_pressed_callback([]() { close_warp_modal(); });
+    overlay->add_item(kCloseItem, close, {close});
+
+    if (g_state.warp_focus_pending) {
+        g_state.warp_focus_pending = false;
+        overlay->restore_focus();
+    }
 }
 
 // Shared layout keeps every shortcut's switch, copy and direction aligned.
@@ -443,6 +639,8 @@ void build_experimental(ContextId context, Element* root) {
 }
 
 void build_contents(ContextId context, Element* root) {
+    g_state.focus_target = nullptr;
+    g_state.focus_line = nullptr;
 
     context.create_element<Label>(root, "Dev Mode", theme::Typography::Header2);
     if (!g_state.unlocked) {
@@ -465,8 +663,14 @@ void build_contents(ContextId context, Element* root) {
     warp->add_pressed_callback([]() {
         g_state.warp_open = true;
         g_state.status.clear();
+        focus_warp_item(0, 0);
         rebuild();
     });
+    if (g_state.focus_warp_button && !g_state.warp_open) {
+        g_state.focus_warp_button = false;
+        g_state.focus_target = warp;
+        g_state.focus_line = warp;
+    }
 
     build_cheats(context, root);
     build_character_selection(context, root);
@@ -478,12 +682,38 @@ void build_contents(ContextId context, Element* root) {
 }
 
 class DevModeView : public Element {
+    int focus_delay = 0; // updates left before focus_target is laid out and can take focus
+
+    void build() {
+        build_contents(get_current_context(), this);
+        if (g_state.focus_target != nullptr) {
+            focus_delay = 2;
+            queue_update();
+        }
+    }
+
 protected:
     void process_event(const Event& e) override {
-        if ((e.type == EventType::Update) && g_state.dirty) {
+        if (e.type != EventType::Update) {
+            return;
+        }
+
+        if (g_state.dirty) {
             g_state.dirty = false;
             clear_children();
-            build_contents(get_current_context(), this);
+            build();
+        }
+        else if (g_state.focus_target != nullptr) {
+            if (focus_delay > 0) {
+                focus_delay--;
+                queue_update();
+            }
+            else {
+                g_state.focus_target->focus();
+                g_state.focus_line->scroll_into_view(false);
+                g_state.focus_target = nullptr;
+                g_state.focus_line = nullptr;
+            }
         }
     }
 
@@ -504,13 +734,15 @@ public:
         set_padding(24.0f);
         g_state.view = this;
         g_state.view_context = get_current_context();
-        build_contents(get_current_context(), this);
+        build();
     }
 
     ~DevModeView() override {
         if (g_state.view == this) {
             g_state.view = nullptr;
             g_state.view_context = ContextId::null();
+            g_state.focus_target = nullptr;
+            g_state.focus_line = nullptr;
         }
     }
 };

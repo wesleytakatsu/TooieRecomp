@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gameList>
+  <game>
+    <path>./Banjo-Tooie.sh</path>
+    <name>Banjo-Tooie</name>
+    <desc>Native recompilation of Banjo-Tooie (TooieRecomp) with the TK64 renderer. Requires your own copy of the game.</desc>
+    <releasedate>20001120T000000</releasedate>
+    <developer>Rare</developer>
+    <publisher>Nintendo</publisher>
+    <genre>Platform</genre>
+    <image>./tooie/icons/app.png</image>
+  </game>
+</gameList>

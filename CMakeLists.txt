@@ -5,6 +5,13 @@ project(TooieRecomp LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Handheld build (PortMaster, tools/handheld, preset linux-arm64-handheld): the OpenGL ES renderer path and the handheld game behavior. Off, the sources resolve to
+# the desktop code (tools/handheld/check_desktop_unchanged.py proves it).
+option(TK64_MOBILE "Build for handheld GPUs (OpenGL ES only)" OFF)
+if(TK64_MOBILE)
+  add_compile_definitions(TK64_MOBILE)
+endif()
+
 # Standalone: rt64, N64ModernRuntime (+N64Recomp), RecompFrontend, SlotMap and SDL2 (Windows) are vendored as regular
 # files under lib/ (provenance, pins and patch chain: vendor/UPSTREAMS.tsv; integrity: tools/vendor_verify.sh).
 # No sibling checkout, submodule or download is used. assets/ and recompcontrollerdb.txt live in this repository.
@@ -81,8 +88,11 @@ set(DXC_PS_OPTS ${DXC_COMMON_OPTS} "-E" "PSMain" "-T" "ps_6_0" "-D" "DYNAMIC_REN
 set(DXC_VS_OPTS ${DXC_COMMON_OPTS} "-E" "VSMain" "-T" "vs_6_0" "-D" "DYNAMIC_RENDER_PARAMS" "-fvk-invert-y")
 set(DXC_CS_OPTS ${DXC_COMMON_OPTS} "-E" "CSMain" "-T" "cs_6_0")
 set(DXC_GS_OPTS ${DXC_COMMON_OPTS} "-E" "GSMain" "-T" "gs_6_0")
-if(WIN32)
+if(WIN32 OR (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32))
   set(DXC "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc.exe")
+# Cross build from an x86_64 Linux host: DXC runs on the host, whatever the target processor.
+elseif(CMAKE_CROSSCOMPILING AND CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+  set(DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   set(DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
 else()
@@ -177,6 +187,8 @@ endif()
 add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/launcher_animation.cpp
     ${CMAKE_SOURCE_DIR}/src/main/tooie_startup.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_probe.cpp
     ${CMAKE_SOURCE_DIR}/src/main/tooie_launcher_audio.cpp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
@@ -403,8 +415,18 @@ add_custom_command(
 add_custom_target(TooieLauncherLogo DEPENDS "${TOOIE_LAUNCHER_LOGO}")
 add_dependencies(TooieRecompiled TooieLauncherLogo)
 
+# The graphics probe asks the Vulkan loader for devices with plume's own Vulkan headers (no SDK, no import library).
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_probe.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${RT64_ROOT}/src/contrib/plume/contrib/Vulkan-Headers/include")
+
+# Graphics API menu policy for every target (Windows, Linux, handheld), runnable on any host.
+add_executable(tooie_graphics_api_test tests/tooie_graphics_api_test.cpp src/main/tooie_graphics_api.cpp)
+target_include_directories(tooie_graphics_api_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(tooie_graphics_api_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 if(WIN32)
     add_executable(tooie_startup_test tests/tooie_startup_test.cpp src/main/tooie_startup.cpp
+        src/main/tooie_graphics_api.cpp src/main/tooie_graphics_probe.cpp
         ${N64MR}/librecomp/src/config.cpp ${N64MR}/librecomp/src/config_option.cpp)
     target_include_directories(tooie_startup_test PRIVATE
         $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>
@@ -424,8 +446,11 @@ endif()
 
 # DXC setup (duplicated from Banjo for RT64 shaders)
 set (DXC_COMMON_OPTS "-I${RT64_ROOT}/src")
-if(WIN32)
+if(WIN32 OR (CMAKE_CROSSCOMPILING AND CMAKE_HOST_WIN32))
     set (DXC "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc.exe")
+# Cross build from an x86_64 Linux host: DXC runs on the host, whatever the target processor.
+elseif(CMAKE_CROSSCOMPILING AND CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+    set (DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
     set (DXC "LD_LIBRARY_PATH=${RT64_ROOT}/src/contrib/dxc/lib/x64" "${RT64_ROOT}/src/contrib/dxc/bin/x64/dxc-linux")
 else()

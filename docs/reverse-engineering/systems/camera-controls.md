@@ -91,3 +91,17 @@ camera feel, camera-controller coverage or all transformation transitions. The u
 on Windows (2026-11-01), limited to the cases tested (`USER_OBSERVED`). Linux: `NOT_RUN`.
 
 Host policy and validation boundaries: [input contract](../../specs/Tooie/input-and-controllers.md#331-analog-camera).
+
+## Depth probes read the Z-buffer from RDRAM
+
+`func_8001A0C0(x, y)` (`PROVEN`, static MIPS) returns the `u16` at `*(0x8007BCC4) + y * 0x260 + x * 2`, 304 pixels of 16 bits per row. In Demo 1 that pointer is
+`0x80137840`, and with RT64's render to RAM active the buffer holds varied values with clears of `0xFFFC` and `0xFFFE`: the Z-buffer (`STRONG_INFERENCE`).
+`func_800E82EC` calls it (`jal` at `0x800E8640`) from the start of the logic frame, in a loop with `func_800E81E0`. The results reach the camera node's
+`+0x28` structure, read by `func_80113978`, whose `+0x18..+0x24` and `+0x3C` then decide whether `func_801137E4` runs and so where the camera goes.
+
+**The game's camera logic therefore depends on what the renderer wrote to RAM** (`PROVEN`): with RT64's render to RAM off, the buffer stays zero, and
+Demo 1's camera differs from frame 385 on and the player from frame 387, because stick direction follows the camera. Turning it off on the Windows build reproduced the
+XU10's run in all fields of `TOOIE_DIAG_DEMO1_PARITY`, 420 rows at nine digits. Writing real depth to it on the XU10 gave the Windows run back in the same 420 rows. Effect on regular play is
+`INFERENCE` from the same code path, not measured. The role of the four probes beyond this is `UNKNOWN`.
+
+On weak GPUs, where RT64's render to RAM is off, TK64 writes finished depth to this buffer a frame or more late. Demo 1 then matches Windows in all 420 rows, on `libmali` and on Panfrost, and three demos match to the end of their recordings at two decimals (`PROVEN` for those runs).

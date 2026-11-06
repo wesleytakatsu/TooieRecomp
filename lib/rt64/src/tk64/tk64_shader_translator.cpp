@@ -258,7 +258,7 @@ namespace tk64 {
 
         // GLSL ES only accepts the output index qualifier with EXT_blend_func_extended. Index 0 alone is the default,
         // so it is dropped; a second index (dual-source blending) requires the extension.
-        void fixOutputIndices(spirv_cross::CompilerGLSL &compiler, TranslatedShader &translated) {
+        bool fixOutputIndices(spirv_cross::CompilerGLSL &compiler, TranslatedShader &translated, const TranslationOptions &translationOptions) {
             bool dualSource = false;
             const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
             for (const spirv_cross::Resource &output : resources.stage_outputs) {
@@ -267,15 +267,112 @@ namespace tk64 {
                 }
             }
 
-            if (dualSource) {
+            if (dualSource && !translationOptions.dualSourceAsVariable) {
                 compiler.require_extension("GL_EXT_blend_func_extended");
                 translated.requiredExtensions.emplace_back("GL_EXT_blend_func_extended");
-                return;
+                return false;
             }
 
             for (const spirv_cross::Resource &output : resources.stage_outputs) {
+                if (dualSource && (compiler.get_decoration(output.id, spv::DecorationIndex) > 0)) {
+                    compiler.set_decoration(output.id, spv::DecorationLocation, 1);
+                }
+
                 compiler.unset_decoration(output.id, spv::DecorationIndex);
             }
+
+            if (dualSource && translationOptions.dualSourceBlend) {
+                compiler.require_extension("GL_EXT_shader_framebuffer_fetch");
+                translated.requiredExtensions.emplace_back("GL_EXT_shader_framebuffer_fetch");
+            }
+
+            return dualSource;
+        }
+
+        // See TranslationOptions::dropLastTmemSlot.
+        void dropLastTmemSlot(std::string &source) {
+            const std::string type = "usampler2D ";
+            const size_t position = source.find(type);
+            if (position == std::string::npos) {
+                return;
+            }
+
+            const size_t nameStart = position + type.size();
+            const size_t nameEnd = source.find('[', nameStart);
+            const size_t declarationEnd = source.find(';', nameStart);
+            if ((nameEnd == std::string::npos) || (nameEnd > declarationEnd) || (source.compare(nameEnd, 3, "[8]") != 0)) {
+                return;
+            }
+
+            const std::string name = source.substr(nameStart, nameEnd - nameStart);
+            source[nameEnd + 1] = '7';
+            const std::string last = name + "[7]";
+            for (size_t at = source.find(last, declarationEnd); at != std::string::npos; at = source.find(last, at + last.size())) {
+                source[at + name.size() + 1] = '6';
+            }
+        }
+
+        // See TranslationOptions::depthFetch. A multisampled or array texture has another declaration and stays a texture read.
+        void rewriteDepthFetch(std::string &source, uint32_t textureUnit, TranslatedShader &translated) {
+            const std::string declaration = "layout(binding = " + std::to_string(textureUnit) + ") uniform highp sampler2D ";
+            const size_t position = source.find(declaration);
+            if (position == std::string::npos) {
+                return;
+            }
+
+            const size_t nameStart = position + declaration.size();
+            const size_t declarationEnd = source.find(';', nameStart);
+            const std::string call = "texelFetch(" + source.substr(nameStart, declarationEnd - nameStart) + ",";
+            bool rewritten = false;
+            for (size_t at = source.find(call, declarationEnd); at != std::string::npos; at = source.find(call, at)) {
+                size_t end = at + call.size();
+                for (int open = 1; (open > 0) && (end < source.size()); end++) {
+                    open += (source[end] == '(') ? 1 : ((source[end] == ')') ? -1 : 0);
+                }
+
+                source.replace(at, end - at, "vec4(gl_LastFragDepthARM)");
+                rewritten = true;
+            }
+
+            if (rewritten) {
+                const std::string extension = "GL_ARM_shader_framebuffer_fetch_depth_stencil";
+                source.insert(source.find('\n') + 1, "#extension " + extension + " : require\n");
+                translated.requiredExtensions.emplace_back(extension);
+            }
+        }
+
+        // See TranslationOptions::dualSourceAsVariable. fixOutputIndices left the outputs at locations 0 and 1.
+        void rewriteDualSourceOutputs(std::string &source, const TranslationOptions &translationOptions) {
+            const std::string colorDeclaration = "layout(location = 0) out ";
+            const std::string factorDeclaration = "layout(location = 1) out ";
+            const auto declaredName = [&](const std::string &declaration) {
+                const size_t position = source.find(declaration);
+                if (position == std::string::npos) {
+                    throw std::runtime_error("dual-source output not found: " + declaration);
+                }
+
+                const size_t end = source.find(';', position);
+                const size_t start = source.rfind(' ', end) + 1;
+                return source.substr(start, end - start);
+            };
+
+            const std::string color = declaredName(colorDeclaration);
+            const std::string factor = declaredName(factorDeclaration);
+            source.erase(source.find(factorDeclaration), factorDeclaration.size());
+            if (!translationOptions.dualSourceBlend) {
+                return;
+            }
+
+            source.replace(source.find(colorDeclaration), colorDeclaration.size(), "layout(location = 0) inout ");
+
+            // main is the last function SPIRV-Cross writes, and this kind of shader leaves it early only by discarding.
+            std::string blend = "    " + color + ".rgb = (" + color + ".rgb * " + factor + ".a) + (tk64Target.rgb * (1.0 - " + factor + ".a));\n";
+            if (translationOptions.dualSourceAddDstAlpha) {
+                blend += "    " + color + ".a += tk64Target.a;\n";
+            }
+
+            source.insert(source.rfind('}'), blend);
+            source.insert(source.find('{', source.find("void main()")) + 1, "\n    highp vec4 tk64Target = " + color + ";");
         }
 
         // DXC gives every RWTexture2D<T> a format from T alone (float4 becomes rgba32f), while the images bound to it at run
@@ -627,9 +724,7 @@ namespace tk64 {
 
                 const uint32_t dummySampler = compiler.build_dummy_sampler_for_combined_images();
                 compiler.build_combined_image_samplers();
-                if (options.es) {
-                    fixOutputIndices(compiler, translated);
-                }
+                const bool rewriteDualSource = options.es && fixOutputIndices(compiler, translated, translationOptions);
 
                 // Record what each combined sampler is made of before the bindings are rewritten.
                 for (const spirv_cross::CombinedImageSampler &combined : compiler.get_combined_image_samplers()) {
@@ -653,6 +748,26 @@ namespace tk64 {
                 assignTextureUnits(compiler, mapper, translated);
                 namePushConstants(compiler);
                 translated.source = compiler.compile();
+                if (translationOptions.clampVertexDepth && (translated.stage == ShaderStage::Vertex)) {
+                    translated.source.insert(translated.source.rfind('}'), "    gl_Position.z = clamp(gl_Position.z, -abs(gl_Position.w), abs(gl_Position.w));\n");
+                }
+
+                if (rewriteDualSource) {
+                    rewriteDualSourceOutputs(translated.source, translationOptions);
+                }
+
+                if (translationOptions.dropLastTmemSlot) {
+                    dropLastTmemSlot(translated.source);
+                }
+
+                if (translationOptions.depthFetch) {
+                    for (const CombinedSampler &combined : translated.combinedSamplers) {
+                        if ((combined.imageSet == translationOptions.depthFetchSet) && (combined.imageBinding == translationOptions.depthFetchBinding)) {
+                            rewriteDepthFetch(translated.source, combined.textureUnit, translated);
+                        }
+                    }
+                }
+
                 reflectPushConstants(compiler, translated);
             }
 

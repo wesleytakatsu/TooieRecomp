@@ -385,7 +385,11 @@ namespace RT64 {
             uploads.emplace_back(BufferUploader::Upload{ prevWorldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.prevWorldTransformsBuffer });
             uploads.emplace_back(BufferUploader::Upload{ invTWorldMatrices, uploadRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.invTWorldTransformsBuffer });
             std::pair<size_t, size_t> endpointRange = { 0, drawData.endpointWorldTransforms.size() };
+#           ifdef TK64_MOBILE
+            uploads.emplace_back(BufferUploader::Upload{ drawData.endpointWorldTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::FORMATTED | RenderBufferFlag::STORAGE, { RenderFormat::R32G32B32A32_FLOAT }, &drawBuffers.endpointWorldTransformsBuffer });
+#           else
             uploads.emplace_back(BufferUploader::Upload{ drawData.endpointWorldTransforms.data(), endpointRange, sizeof(interop::float4x4), RenderBufferFlag::STORAGE, { }, &drawBuffers.endpointWorldTransformsBuffer });
+#           endif
         }
 
         bufferUploader->submit(p.worker, uploads);

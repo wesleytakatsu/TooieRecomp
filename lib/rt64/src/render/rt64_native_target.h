@@ -42,6 +42,9 @@ namespace RT64 {
         std::vector<ReadBuffer> readBufferHistory;
         std::vector<WriteBuffer> writeBufferHistory;
         uint32_t readBufferHistoryCount = 0;
+        // TK64: the last contents uploaded from RAM, while they are also what the current read buffer holds.
+        std::vector<uint8_t> lastUploadedBytes;
+        bool lastUploadedBytesValid = false;
         uint32_t writeBufferHistoryCount = 0;
         uint32_t writeBufferHistoryIndex = 0;
 

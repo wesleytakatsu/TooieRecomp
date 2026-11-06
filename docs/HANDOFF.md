@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-02
+updated: 2026-11-06
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -19,7 +19,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (48 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (51 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
@@ -28,13 +28,28 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
+| Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES (branch `feat/handheld`, PR única ainda não aberta); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
-| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 30 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 18 configurados; execução Linux desta mudança `NOT_RUN` | [[specs/Tooie/testing-and-oracle]] |
+| Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 31 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `b704f50` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
-- Versão fonte `0.1.4`; [pré-release Windows x64 publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4)
+- Versão fonte `0.1.5`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.5)
+  em 2026-11-06, a partir de `feat/handheld` (PR #2) antes do merge, a pedido do usuário. Tag anotada `v0.1.5` aponta
+  para `313e2871c71b8a496a7806dbb0c7bf80cffab663`; a PR deve entrar com merge commit para a tag ficar no histórico da
+  `main`. Notas em inglês e português brasileiro: [[releases/v0.1.5]]. Windows: Check, Verify (420 arquivos), 31/31
+  testes, build Release e auditoria dos 111 arquivos aprovados; exe do pacote abriu em DX12 por 25 s sem mudar a config
+  do usuário. PortMaster: build cruzado no Windows, manifesto conferido, instalado no XU10 (Panfrost) com backup
+  `/storage/tooie-before-313e287.tgz`; 60 s em OpenGL ES sem erro, 1.609 arquivos do usuário e 15 saves/configs iguais.
+  Os 4 arquivos baixados do GitHub são iguais aos locais. Sem pacote Linux nesta release.
+- `BanjoTooieRecompiled-v0.1.5-Windows-x64.zip`: 23084311 bytes, SHA-256
+  `255daa10cac853b2e7b5a2b6ff3ef25ef59e8cd02adea0fd795f063d58a8502f`; executável
+  `52c7ada19a3370790d9b5f31f11f2441b38fa914189ae4f896c16902ec222a9f`.
+- `BanjoTooieRecompiled-v0.1.5-Linux-arm64-PortMaster.zip`: 12144570 bytes, SHA-256
+  `2f5c5fdb552b31c2ffd03007e3127d3f384c14f49d5a65555a1b57a5b7e669d6`; binário aarch64
+  `ef593051e9100e91a5fdf6335c321dee3efb2a06ca4fa7dd2894d40f2f4150fe`. `BUILD-INFO.txt` dos dois pacotes: commit da tag, versão `0.1.5`, zero arquivos sujos.
+- Versão `0.1.4`; [pré-release Windows x64 publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4)
   em 2026-11-02, após o merge da PR #1. Tag `v0.1.4` aponta para `5621b25499675893174f38e68fe30a9cbfe88baa`.
   Notas em inglês e português brasileiro: [[releases/v0.1.4]]. Suíte local Windows 30/30, 420 arquivos gerados,
   integridade vendorizada, build Release e auditoria dos 111 arquivos do pacote aprovados. ZIP e `.sha256` publicados,
@@ -49,6 +64,43 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - `v0.1.0-p08` permanece como release anterior, sem substituição dos seus arquivos. As notas publicadas dessa release
   registram pacotes Windows e Linux com idiomas; validação completa de gameplay no Linux continua pendente.
 - Nomes de pacote: `BanjoTooieRecompiled-v<ver>-<OS>-x64`; cada arquivo tem `.sha256`.
+
+## Portáteis (2026-11-05, branch `feat/handheld`, base `ea5e31f`)
+
+- **Desktop não muda nas fases 1-2 (`PROVEN`):** `tools/handheld/check_desktop_unchanged.py` confirma 24 fontes idênticos à base com `TK64_MOBILE` desligado (a fase 3 muda o desktop de propósito). O `.exe` Windows
+  deste código, comparado com o de `ea5e31f`, tem `.text` e `.rdata` idênticos; diferem 299 bytes, o carimbo PE e 37 identificadores de namespace anônimo derivados do caminho.
+  Windows `-Stage Test`: 30/30. Linux x64: compilação, 19 testes host e início do guest passaram no checkpoint local abaixo; aceite visual completo continua pendente.
+- **Pacote no XU10 com `libmali`, pasta separada, instalação nova:** ROM original convertida e jogo aberto na mesma execução, Demo 1 igual ao PC em 420 linhas, 3 demos iguais até o fim
+  da gravação, 24,0 FPS com cache quente; sem ROM e com ROM errada o launcher avisa. Sem OOM do kernel. Com o cache vazio, o vigia de teste (limite 150 MB) fechou uma rodada a 149 MB; a outra rodada de 300 s chegou a
+  168 MB, ambas com o EmulationStation em cerca de 320 MB.
+- **Panfrost:** o usuário relatou em 2026-11-05 que testou e estava bom. A instalação nova com cache vazio no Panfrost não foi medida aqui (`NOT_RUN`); compilar os ubershaders a frio já travou o aparelho antes.
+- **Instalado no XU10 (Panfrost), 2026-11-05:** `/storage/roms/ports/tooie` e `/storage/roms/ports/Banjo-Tooie.sh` vêm do zip `0643d950…` (binário `b4761415`), com saves, configurações e cache mantidos.
+  Cópias anteriores: `TooieRecompiled.diag-25b67462` e `Banjo-Tooie.sh.before-pkg` na mesma pasta. A pasta de teste `tooie-pkgtest` e sua cópia da ROM foram apagadas.
+- **Limites:** só XU10 com ROCKNIX; sem caminho KMSDRM no backend; `port.json` sem screenshot.
+- **Causa `UNKNOWN`:** falta de memória na primeira rodada depois de trocar de driver, e o crescimento do EmulationStation (96 para mais de 320 MB).
+- **Unificação (fase 1):** o trabalho do clone `TooieRecomp-xu10` está nesta branch; o clone deixa de ser fonte. Patches `vendor/patches-local/rt64-tk64-mobile.patch` e
+  `recompfrontend-weak-no-interface-msaa.patch` em `ORDER.tsv`, `UPSTREAMS.tsv` e no manifesto (`VENDOR VERIFY OK`, 50 patches). Próximas fases (menu de API por plataforma, melhorias do
+  portátil no desktop, release e CI) entram na mesma PR, aberta só com tudo testado.
+- **Presets (fase 2):** `CMakePresets.json` com `windows-x64`, `linux-x64` e `linux-arm64-handheld`; `Build-Tooie.ps1`, `build_linux.sh` e
+  `tools/handheld/build-handheld.{ps1,sh}` configuram por eles. Ferramentas em `tools/handheld/` (antes `tools/xu10/`), chip em `devices/rk3326.cmake`
+  (XU10, R36S). `build_linux.sh` com preset: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API). Build cruzado a partir de host Linux: não confirmado.
+- **Menu de API (fase 3):** Settings -> Graphics -> Graphics API lista Auto e só as APIs compiladas para o alvo e aceitas pelo
+  probe do aparelho (Windows DX12/Vulkan/DX11/OpenGL, Linux Vulkan/OpenGL, portátil OpenGL ES). Valor salvo de outra
+  plataforma vira Auto; Linux Auto usa OpenGL sem dispositivo Vulkan. Launcher PortMaster não força mais a API. Windows
+  31/31; XU10 (Panfrost) iniciou OpenGL ES sem variável e com `d3d12` salvo. Menu na tela do Windows: `PENDING_USER`; Linux: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API).
+  Contrato: [[specs/Tooie/startup-and-backends]]. Conhecido, anterior a esta fase: `TOOIE_GRAPHICS_LOG` derruba os
+  workers Windows (0xC0000409; um binário sem esta fase também cai), então `Diagnose-Graphics.ps1` não funciona hoje.
+- **Ganhos do portátil no desktop (fase 4):** um só `plume_gles.cpp` (o do portátil; varredura de índices e flushes de
+  Panfrost só em ES; MSAA segue desligado no GL desktop) e contagem de pixels alterados na CPU em todos os builds. Windows
+  (AMD), 4 pares contra `36e2f4a`: CPU do processo DX12 18/16% -> 13/11% de um núcleo, OpenGL 67/84% -> 58/46%; 58-60 FPS
+  no GL. XU10 (Panfrost) igual ao instalado. Perfil Weak não é escolhido no desktop (só ES), então MSAA da UI, res/AA e
+  shaders especializados do Weak não mudam o desktop (`CORRECTED`: a estimativa anterior dizia que o OpenGL desktop usava
+  Weak). Linux desktop: o usuário testou no Linux x64 em 2026-11-06 e relatou que funciona (relato geral, sem detalhe por API). Contrato: [[specs/Tooie/graphics-and-presentation]].
+- **Release e CI (fase 5):** pacote PortMaster com nome de release `BanjoTooieRecompiled-v<ver>-Linux-arm64-PortMaster.zip`
+  (`TOOIE_RELEASE_VERSION` ou `--release-version`). CI pública `public-handheld-cross` (sysroot Debian 12, build cruzado de `rt64` +
+  testes puros, testes via `qemu-aarch64`) e job privado `private-game-build-handheld` (ROM, disparo manual, só checksums). Ambos
+  `NOT_RUN` no GitHub; a mesma lista de alvos compilou cruzada no Windows e os 9 testes passaram no XU10. `rom_cart_import_test` não
+  compila para aarch64 (falta `sse2neon.h` no include desse teste), fora da lista.
 
 ## Pendências conhecidas
 
@@ -118,7 +170,6 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
 - `tools/build_linux.sh test` ainda não roda os 5 testes de idioma, o teste ZIP nem o de cheats (só o Windows os executa).
-- `.deb` e AppImage foram gerados à mão no Linux; não há script versionado para eles.
 - Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
 - Cortes laterais no widescreen: usuário aprovou a correção no Windows (2026-11-01), nos casos de coletáveis,
   inimigos e sombras em Jinjo Village, inclusive cortes perto/acima do meio. `PROVEN`: RSP enviava triângulos
@@ -240,6 +291,21 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Comandos, hashes, auditoria de 45 unidades C++ e limites da validação ficam na mensagem do commit.
   Jogo não iniciado/controlado; Linux `NOT_RUN`. Publicação posterior registrada na seção Release.
 
+## Empacotamento Linux x64
+
+- Entrada `./build-linux.sh`: seleção tar/deb/AppImage/todos, análise de dependências e build pelo preset `linux-x64`.
+  Scripts, licença do runtime AppImage e instruções de instalação/provisionamento versionados; launcher usa `build-linux`.
+- `PROVEN` em `b704f50` (2026-11-06): `./build-linux.sh all` terminou com exit `0`, geração de 420 arquivos conferida,
+  19/19 suítes Linux PASS e tar/deb/AppImage com manifests/checksums aprovados. Candidatos com proveniência limpa
+  (`tooie_tree_dirty_files: 0`) em `dist/linux-candidate-b704f50-20261106/`, ainda sem publicação.
+- Execução isolada: launcher local, atalho do `.deb` extraído e AppImage com `--appimage-extract-and-run`; cada um
+  manteve o launcher 15 s e executou a ROM por 25 s com 2.236 assets pt-BR e quadro interpolado registrados no log.
+  Não substitui matriz visual completa por API. Binário comum aos pacotes:
+  `4fc19a53a3128897552cbe1fb72d64b170b643059db23ed8f2f1f5767042c845` (SHA-256).
+- `.deb` não instalado: apenas extração temporária e execução do pacote. Diretórios temporários, ROMs de teste,
+  HOME/configs/caches isolados removidos; estado do dpkg e hashes dos saves/configs reais permaneceram iguais.
+  Instalação Debian real, montagem FUSE padrão do AppImage e teste ARM/PortMaster não fazem parte deste checkpoint.
+
 ## Notas operacionais
 
 - Windows: `tools\windows\Build-Tooie.ps1 -Stage Test` **não** atualiza `build-win\TooieRecompiled.exe`; recompile
@@ -266,4 +332,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: aguardar feedback do usuário sobre a pré-release v0.1.4 publicada.
+`NEXT_SINGLE_ACTION`: o usuário aprova e mescla a PR #2 com merge commit (não squash/rebase), para a tag `v0.1.5` ficar no histórico da `main`.

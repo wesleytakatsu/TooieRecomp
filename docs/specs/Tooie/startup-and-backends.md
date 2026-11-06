@@ -3,7 +3,7 @@ title: "Launcher startup, graphics backends and independent music"
 description: "TK64 integration, Windows startup recovery, API selection, launcher audio and opt-in graphics logs."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-31
+updated: 2026-11-05
 tags: [launcher, graphics, tk64, audio, config]
 ---
 
@@ -23,6 +23,26 @@ No new prebuilt binary or game asset is vendored for this integration.
 | Vulkan | Compatible Vulkan device, driver and required RT64 extensions/features. |
 | DirectX 11 | Feature level 11_0 or newer; Windows. |
 | OpenGL | Desktop OpenGL 4.3 or newer. This does not provide an OpenGL 3.3 path. |
+| OpenGL ES | OpenGL ES 3.1 through EGL; handheld build (`TK64_MOBILE`) only. |
+
+## Backends per target
+
+`src/main/tooie_graphics_api.cpp` holds the policy for every target; `tooie_graphics_api_test` checks all of them on any host.
+
+| Target | Compiled backends, in Auto order | Auto |
+| --- | --- | --- |
+| Windows x64 | DX12, Vulkan, DX11, OpenGL (Vulkan first under Wine) | Supervisor tries each until one is ready |
+| Linux x64 | Vulkan, OpenGL | Vulkan; OpenGL when the probe finds no Vulkan device but finds OpenGL |
+| Handheld (`TK64_MOBILE`) | OpenGL ES | OpenGL ES |
+
+The handheld build offers only OpenGL ES because its renderer (mobile shaders, weak profile) is validated only there.
+`src/main/tooie_graphics_probe.cpp` checks what can start on the device without creating a renderer: a Vulkan 1.2
+instance with a 1.2 physical device; for D3D12, a hardware DXGI adapter that accepts feature level 11_0; for D3D11, a
+hardware device at 11_0; on Linux, the EGL and GL or GLES client libraries. On Windows, only `opengl32.dll` is checked,
+and the worker that starts OpenGL checks the 4.3 context. The Windows supervisor probes once and passes the list to its
+workers in `TOOIE_GRAPHICS_AVAILABLE`; setting that variable beforehand replaces the probe (tests use it).
+The probe narrows only the menu. The Windows supervisor still gives every compiled backend its worker, so a wrong probe
+result cannot leave the game without a renderer.
 
 TK64's new backends retain their documented limitations, including unavailable MSAA and pending hardware/long-session
 validation. Integrating a backend does not establish correctness on every GPU or driver.
@@ -57,8 +77,9 @@ test or proof of subsequent gameplay. Driver failures that occur later remain ru
 ## Configuration and launcher controls
 
 The Graphics tab's `graphics_backend` preference is stored in `graphics.json` (including portable mode), using keys
-`auto`, `d3d11`, `d3d12`, `opengl`, `vulkan`. **Auto** is the default and tries the complete compatibility chain:
-DX12 -> Vulkan -> DX11 -> OpenGL, stopping at a usable backend. Wine preference and known driver rules remain applicable.
+`auto`, `d3d12`, `vulkan`, `d3d11`, `opengl`, `opengles` (enum values 0 to 5 on every target). **Auto** is the default. On
+Windows it tries the complete compatibility chain DX12 -> Vulkan -> DX11 -> OpenGL, stopping at a usable backend; the
+other targets follow the table above. Wine preference and known driver rules remain applicable.
 This is a startup compatibility priority, not an FPS benchmark or a universal ranking of API performance.
 
 `startup.json` records startup metadata and remains a migration input for the previous selector:
@@ -72,16 +93,24 @@ This is a startup compatibility priority, not an FPS benchmark or a universal ra
 ```
 
 Startup reads `graphics.json`'s `graphics_backend` first, then legacy `startup.json` preference, then legacy `api_option`.
-Invalid values use automatic selection. Fallback records the effective API separately and does not overwrite an
+Invalid values use automatic selection, including a backend this build does not have (`d3d12` in a
+`graphics.json` copied to Linux or a handheld). A backend the menu does not list on this device is shown as Auto, and on
+Linux and handhelds startup uses Auto for it. Fallback records the effective API separately and does not overwrite an
 explicit preference. Last success is informational and never substitutes for initializing the current device.
 
 API selection is located only in **Settings -> Graphics -> Graphics API**, available before and during gameplay.
-Compact labels **Auto / DX12 / Vulkan / DX11 / OpenGL** fit the existing option row; internal configuration keys are unchanged.
+The menu lists Auto and the compiled backends the probe accepts, with compact labels
+**Auto / DX12 / Vulkan / DX11 / OpenGL / OpenGL ES**. The backend running now is always listed. Internal configuration
+keys are unchanged.
 It uses the existing Graphics **Apply/Cancel** behavior: pending changes do not affect startup until applied.
 Apply saves the preference for the next application launch, without replacing the running renderer or restarting a
 game session. The option description names the API currently in use after renderer initialization; diagnostic logs also
 identify the actual API/GPU. No selector, status panel or restart button is added to the launcher artwork/menu.
 The original hidden `api_option` setting remains a legacy migration input.
+
+On Linux and handhelds there is no supervisor: startup sets `TK64_GRAPHICS_API` from the effective choice before
+the renderer starts. A `TK64_GRAPHICS_API` already set to a backend this build has (a launcher or a test) wins. The
+PortMaster launcher no longer sets it.
 
 Normal game execution starts through the launcher's Start Game/game-mode action. A single-shot pre-start callback
 stops launcher music and records the actual backend before requesting `recomp::start_game`. The explicit
@@ -145,7 +174,11 @@ they do not prove visual fidelity or compatibility on another computer.
   normal failure, a driver-like process crash, readiness, retained preference, effective metadata, invalid config and
   absence of a game-start event. It also links real librecomp Config to test Graphics Apply/Cancel, persistence across
   reopening, automatic selection and unchanged window mode. A second process round verifies Auto reaches OpenGL after
-  failures in DX12, Vulkan and DX11. It does not initialize a real GPU or execute the game.
+  failures in DX12, Vulkan and DX11. It does not initialize a real GPU or execute the game. It fixes the probe result
+  with `TOOIE_GRAPHICS_AVAILABLE`.
+- `tooie_graphics_api_test` checks the per-target policy on any host: compiled lists and Auto order (Windows, Wine,
+  Linux, handheld), menu filtering, the running backend kept, foreign and unknown saved values becoming Auto, candidate
+  order without duplicates, the `TK64_GRAPHICS_API` value for Linux and handhelds, and the descriptions.
 - `tooie_launcher_audio_test <MP3>` runs the real decoder and SDL dummy audio queue, covering playback, bounded stop,
   restart, repeated short loops and invalid input. Observation is injected from `tests/launcher_audio_test_sink.h`
   into the test target only; production code has no counter or instrumentation branch. It is an argument-driven
@@ -153,7 +186,14 @@ they do not prove visual fidelity or compatibility on another computer.
 - Windows build and required host tests are automated. Full startup, backend visuals, loop listening and gameplay
   after this integration are `PENDING_USER`. Intel/old GPU compatibility and Linux runtime are not established here.
 - Windows has supervised recovery. Linux retains its direct renderer initialization; OpenGL can be selected before
-  initialization, but equivalent process supervision/fallback and UI/runtime validation are `NOT_IMPLEMENTED` / `NOT_RUN`.
+  initialization, and Auto uses OpenGL when the probe finds no Vulkan device. Process supervision/fallback on Linux is
+  `NOT_IMPLEMENTED`. The user tested the Linux x64 build on 2026-11-06 and reported that it works (a general report;
+  the menu contents and the probe result on Linux were not reported separately).
+- Probe on real hardware: Windows (this machine) reported DX12, Vulkan, DX11 and OpenGL; XU10 on Panfrost started
+  OpenGL ES with no launcher variable and with `d3d12` saved. The Windows menu on screen is `PENDING_USER`.
+
+The handheld build adds its own startup rules behind `TK64_MOBILE` (OpenGL ES only, ROM from the folder, Select + Start): [handheld build](handheld-portmaster.md).
+None of them exist in a desktop build.
 
 Related: [window/UI/config](window-ui-and-config.md), [graphics](graphics-and-presentation.md),
 [audio](audio-system.md), [tests](testing-and-oracle.md), [dependencies](packaging-and-dependencies.md).
