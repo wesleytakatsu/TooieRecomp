@@ -35,9 +35,20 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
-- Versão fonte `0.1.5`, em preparação para pré-release Windows x64 e PortMaster (aarch64) a partir de
-  `feat/handheld` (PR #2), antes do merge, a pedido do usuário. Notas em inglês e português brasileiro: [[releases/v0.1.5]].
-  Build, auditoria dos pacotes, teste no XU10 e publicação são as próximas etapas.
+- Versão fonte `0.1.5`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.5)
+  em 2026-11-06, a partir de `feat/handheld` (PR #2) antes do merge, a pedido do usuário. Tag anotada `v0.1.5` aponta
+  para `313e2871c71b8a496a7806dbb0c7bf80cffab663`; a PR deve entrar com merge commit para a tag ficar no histórico da
+  `main`. Notas em inglês e português brasileiro: [[releases/v0.1.5]]. Windows: Check, Verify (420 arquivos), 31/31
+  testes, build Release e auditoria dos 111 arquivos aprovados; exe do pacote abriu em DX12 por 25 s sem mudar a config
+  do usuário. PortMaster: build cruzado no Windows, manifesto conferido, instalado no XU10 (Panfrost) com backup
+  `/storage/tooie-before-313e287.tgz`; 60 s em OpenGL ES sem erro, 1.609 arquivos do usuário e 15 saves/configs iguais.
+  Os 4 arquivos baixados do GitHub são iguais aos locais. Sem pacote Linux nesta release.
+- `BanjoTooieRecompiled-v0.1.5-Windows-x64.zip`: 23084311 bytes, SHA-256
+  `255daa10cac853b2e7b5a2b6ff3ef25ef59e8cd02adea0fd795f063d58a8502f`; executável
+  `52c7ada19a3370790d9b5f31f11f2441b38fa914189ae4f896c16902ec222a9f`.
+- `BanjoTooieRecompiled-v0.1.5-Linux-arm64-PortMaster.zip`: 12144570 bytes, SHA-256
+  `2f5c5fdb552b31c2ffd03007e3127d3f384c14f49d5a65555a1b57a5b7e669d6`; binário aarch64
+  `ef593051e9100e91a5fdf6335c321dee3efb2a06ca4fa7dd2894d40f2f4150fe`. `BUILD-INFO.txt` dos dois pacotes: commit da tag, versão `0.1.5`, zero arquivos sujos.
 - Versão `0.1.4`; [pré-release Windows x64 publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4)
   em 2026-11-02, após o merge da PR #1. Tag `v0.1.4` aponta para `5621b25499675893174f38e68fe30a9cbfe88baa`.
   Notas em inglês e português brasileiro: [[releases/v0.1.4]]. Suíte local Windows 30/30, 420 arquivos gerados,
@@ -321,4 +332,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: concluir build, auditoria e publicação da pré-release v0.1.5 (Windows x64 e PortMaster) autorizada pelo usuário; depois o usuário aprova e mescla a PR #2 com merge commit, para a tag ficar no histórico da `main`.
+`NEXT_SINGLE_ACTION`: o usuário aprova e mescla a PR #2 com merge commit (não squash/rebase), para a tag `v0.1.5` ficar no histórico da `main`.
