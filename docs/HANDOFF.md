@@ -31,18 +31,18 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES (branch `feat/handheld`, PR única ainda não aberta); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 31 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `b704f50` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 31 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `313e287` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Release
 
-- Versão fonte `0.1.5`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.5)
+- Versão fonte `0.1.5`; [pré-release Windows x64, Linux x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.5)
   em 2026-11-06, a partir de `feat/handheld` (PR #2) antes do merge, a pedido do usuário. Tag anotada `v0.1.5` aponta
   para `313e2871c71b8a496a7806dbb0c7bf80cffab663`; a PR deve entrar com merge commit para a tag ficar no histórico da
   `main`. Notas em inglês e português brasileiro: [[releases/v0.1.5]]. Windows: Check, Verify (420 arquivos), 31/31
   testes, build Release e auditoria dos 111 arquivos aprovados; exe do pacote abriu em DX12 por 25 s sem mudar a config
   do usuário. PortMaster: build cruzado no Windows, manifesto conferido, instalado no XU10 (Panfrost) com backup
   `/storage/tooie-before-313e287.tgz`; 60 s em OpenGL ES sem erro, 1.609 arquivos do usuário e 15 saves/configs iguais.
-  Os 4 arquivos baixados do GitHub são iguais aos locais. Sem pacote Linux nesta release.
+  Os quatro arquivos Windows/PortMaster baixados do GitHub foram conferidos; Linux x64 adicionado depois, da mesma tag, com hashes remotos verificados.
 - `BanjoTooieRecompiled-v0.1.5-Windows-x64.zip`: 23084311 bytes, SHA-256
   `255daa10cac853b2e7b5a2b6ff3ef25ef59e8cd02adea0fd795f063d58a8502f`; executável
   `52c7ada19a3370790d9b5f31f11f2441b38fa914189ae4f896c16902ec222a9f`.
@@ -295,16 +295,17 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 - Entrada `./build-linux.sh`: seleção tar/deb/AppImage/todos, análise de dependências e build pelo preset `linux-x64`.
   Scripts, licença do runtime AppImage e instruções de instalação/provisionamento versionados; launcher usa `build-linux`.
-- `PROVEN` em `b704f50` (2026-11-06): `./build-linux.sh all` terminou com exit `0`, geração de 420 arquivos conferida,
-  19/19 suítes Linux PASS e tar/deb/AppImage com manifests/checksums aprovados. Candidatos com proveniência limpa
-  (`tooie_tree_dirty_files: 0`) em `dist/linux-candidate-b704f50-20261106/`, ainda sem publicação.
-- Execução isolada: launcher local, atalho do `.deb` extraído e AppImage com `--appimage-extract-and-run`; cada um
-  manteve o launcher 15 s e executou a ROM por 25 s com 2.236 assets pt-BR e quadro interpolado registrados no log.
-  Não substitui matriz visual completa por API. Binário comum aos pacotes:
-  `4fc19a53a3128897552cbe1fb72d64b170b643059db23ed8f2f1f5767042c845` (SHA-256).
-- `.deb` não instalado: apenas extração temporária e execução do pacote. Diretórios temporários, ROMs de teste,
-  HOME/configs/caches isolados removidos; estado do dpkg e hashes dos saves/configs reais permaneceram iguais.
-  Instalação Debian real, montagem FUSE padrão do AppImage e teste ARM/PortMaster não fazem parte deste checkpoint.
+- `PROVEN` em `313e2871c71b8a496a7806dbb0c7bf80cffab663` (tag `v0.1.5`, 2026-11-06): build Release com
+  `TOOIE_RELEASE_VERSION=0.1.5 ./build-linux.sh all`, exit `0`, geração de 420 arquivos conferida e 19/19 suítes PASS.
+  Tar/deb/AppImage têm `BUILD-INFO.txt` da tag, versão `0.1.5` e zero arquivos sujos; manifests, licença e checksums
+  aprovados. Binário comum: `8d02707238e5af6486e8431e5dfebeddc8125cf411dc9c8019c025e6149bda51` (SHA-256).
+- Três pacotes `BanjoTooieRecompiled-v0.1.5-Linux-x64.*` e três `.sha256` publicados na release `v0.1.5`.
+  Os seis hashes SHA-256 remotos coincidem com os locais; anexos Windows/PortMaster, título e estado de pré-release
+  preservados. Notas em inglês/português sincronizadas em [[releases/v0.1.5]]. Artefatos: `dist/release-v0.1.5-linux/`.
+- Execução isolada pelas entradas dos três pacotes: launcher 15 s e ROM 25 s em cada um, com 2.236 assets pt-BR e
+  quadro interpolado registrados. `.deb` apenas extraído; AppImage testado com `--appimage-extract-and-run`.
+  HOME/configs/caches/ROMs temporários removidos; estado do dpkg e dados reais do usuário permaneceram iguais.
+  Não substitui gameplay completo por API, instalação Debian real nem montagem FUSE padrão.
 
 ## Notas operacionais
 
