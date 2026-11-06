@@ -135,6 +135,10 @@ O pedido do usuário é suspender a adição experimental de J2 na história, n�
   enquanto o outro owner já pode ter sido retirado. Slot de câmera `+0x184` não serve como identidade de jogador.
 - Wrapper de `func_800F61E4` registra as alocações normais da tentativa. Duas publicações válidas nesses slots,
   confirmadas após criação, autorizam a dupla; registros nativos e fallback isolado não bastam.
+- `PROVEN` (log Windows, mapa `0xAF`, 2026-11-06): com a dupla viva, o slot 0 de `0x80135490` mudou de `801F5DA0`
+  para `801F55C0` sem teardown `80098E64`. Causa da mudança (compactação de heap): `STRONG_INFERENCE`. A dupla
+  confirmada segue o slot quando o objeto novo mantém o `+0x184` gravado na criação; o campo é só guarda dessa
+  mudança, não identidade, que continua vindo da alocação normal.
 - IA, Glowbo, menu de viagem, retenção por distância e Warp exigem participação efetiva; formas e iluminação
   preservam identidade dos owners já criados. O escopo de atividade provisória/serialização não habilita gameplay.
 - J1 mantém a política anterior de disponibilidade do seletor. Sua inicialização usa o banco nativo de transição;

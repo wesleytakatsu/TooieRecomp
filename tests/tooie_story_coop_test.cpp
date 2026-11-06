@@ -299,6 +299,22 @@ int main() {
     tooie_dev_cheats::set_unlocked(true); CHECK(!running(rdram));
     create(rdram,0x181); CHECK(!running(rdram)); // Enabling inside a challenge never spawns J2.
     create(rdram,0x142); CHECK(running(rdram));
+    // The game can move a live player and rewrite its table slot with no teardown (seen on Windows in map 0xAF:
+    // J1 801F5DA0 -> 801F55C0). The committed pair follows each slot; a slot holding another player is not adopted.
+    {
+        const uint32_t moved[2] = {0x80018000, 0x80019000};
+        for (int n = 0; n < 2; ++n) {
+            for (uint32_t off = 0; off < 0x700; off += 4) MEM_W(off, guest(moved[n])) = MEM_W(off, guest(owners[n]));
+            MEM_W(n * 4, guest(0x80135490)) = guest(moved[n]);
+            CHECK(running(rdram) && owned_slot(rdram, moved[n]) == n && owned_slot(rdram, owners[n]) == -1);
+        }
+        CHECK(owns_second(rdram, moved[1]) && extra_activity(rdram, 1));
+        MEM_W(0x184, guest(owners[7])) = 0; MEM_W(4, guest(0x80135490)) = guest(owners[7]);
+        CHECK(!running(rdram) && owned_slot(rdram, owners[7]) == -1);
+        MEM_W(4, guest(0x80135490)) = guest(moved[1]); CHECK(running(rdram));
+        for (int n = 0; n < 2; ++n) MEM_W(n * 4, guest(0x80135490)) = guest(owners[n]);
+        CHECK(running(rdram) && owned_slot(rdram, owners[0]) == 0 && owned_slot(rdram, owners[1]) == 1);
+    }
     // Cancellation/drain never consumes native MP/absent-owner input.
     auto& menus=tooie_dev_forms::menus(); menus.request_open(1); menus.publish(1,false,{},1,false);
     CHECK(!menus.input(1,true,true,0x8400,0,0,0)); CHECK(!menus.snapshot()[1].open);

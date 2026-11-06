@@ -108,7 +108,12 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   aliases Mayan conservadores e salas MP relacionadas. Subtipo nativo `0x1B` e pedidos diferentes de um jogador
   permanecem nativos. Witchyworld `0xD6` só recusa promoção no retorno Saucer com seletor nativo 6.
   Preferência salva continua ligada; J2 volta no próximo carregamento elegível, sem criação/destruição no meio da sala.
-  `tooie_story_coop` verifica proveniência de alocação e identidade; auxiliares não viram J2. Atividade de construção
+  `tooie_story_coop` verifica proveniência de alocação e identidade; auxiliares não viram J2. Regressão desde
+  `50bd9a2` (v0.1.4/v0.1.5) corrigida em 2026-11-06: o jogo trocou o ponteiro de J1 na tabela `0x80135490` sem
+  teardown (`PROVEN` por log no mapa `0xAF`, `801F5DA0` -> `801F55C0`; compactação de heap `STRONG_INFERENCE`), o par
+  caía e J2 perdia IA, itens, dano e atalhos. Par confirmado agora segue o slot quando o novo objeto mantém o `+0x184`
+  da criação; retirada real e outro jogador no slot continuam fora. Regressão falhou antes e passou depois (9345
+  verificações), suíte Windows 31/31; usuário confirmou J2 funcionando no Windows. Linux `NOT_RUN`. Atividade de construção
   e serialização de saída têm escopos próprios. Formas, iluminação, IA, Glowbo, menus, Warp e distância usam a
   identidade apropriada. Entrada host publicada pela porta nativa, com rearme após neutralização; controles nativos
   continuam intactos. Reservas/suavização analógicas são limpas na recriação/retirada. Sem novos logs/métricas no jogo.
@@ -333,4 +338,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: o usuário aprova e mescla a PR #2 com merge commit (não squash/rebase), para a tag `v0.1.5` ficar no histórico da `main`.
+`NEXT_SINGLE_ACTION`: mesclar a correção do J2 no splitscreen (par segue o slot movido) na `main` e publicar uma release Windows com ela.
