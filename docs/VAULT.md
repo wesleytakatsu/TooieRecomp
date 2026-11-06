@@ -16,6 +16,7 @@ tags: [vault, index, tooierecomp]
 
 ## releases
 
+- [[releases/v0.1.5]] — Notas da pré-release Windows x64 e PortMaster em inglês e português brasileiro
 - [[releases/v0.1.4]] — Notas da pré-release Windows x64 em inglês e português brasileiro
 
 ## future

@@ -35,7 +35,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
-- Versão fonte `0.1.4`; [pré-release Windows x64 publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4)
+- Versão fonte `0.1.5`, em preparação para pré-release Windows x64 e PortMaster (aarch64) a partir de
+  `feat/handheld` (PR #2), antes do merge, a pedido do usuário. Notas em inglês e português brasileiro: [[releases/v0.1.5]].
+  Build, auditoria dos pacotes, teste no XU10 e publicação são as próximas etapas.
+- Versão `0.1.4`; [pré-release Windows x64 publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.4)
   em 2026-11-02, após o merge da PR #1. Tag `v0.1.4` aponta para `5621b25499675893174f38e68fe30a9cbfe88baa`.
   Notas em inglês e português brasileiro: [[releases/v0.1.4]]. Suíte local Windows 30/30, 420 arquivos gerados,
   integridade vendorizada, build Release e auditoria dos 111 arquivos do pacote aprovados. ZIP e `.sha256` publicados,
@@ -318,4 +321,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: acompanhar a primeira execução de `public-handheld-cross` e da CI pública na PR única de `feat/handheld` para `main`; corrigir o que falhar antes do merge.
+`NEXT_SINGLE_ACTION`: concluir build, auditoria e publicação da pré-release v0.1.5 (Windows x64 e PortMaster) autorizada pelo usuário; depois o usuário aprova e mescla a PR #2 com merge commit, para a tag ficar no histórico da `main`.
