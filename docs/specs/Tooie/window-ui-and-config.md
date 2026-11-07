@@ -172,8 +172,10 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
    - UI assets (icons, character art, fonts) are vendored in `assets/` and synchronized to the build directory by CMake target `TooieUIAssets`.
 5. **Launcher Startup and Independent Music**:
    - Windows initializes TK64 through a supervised candidate chain before showing the animated launcher.
-   - Graphics API preference is in Settings -> Graphics, with native Apply/Cancel and next-launch application.
-   - `graphics.json` stores `graphics_backend`; `startup.json` stores last successful backend and legacy preference.
+   - Graphics API and, on Windows with two or more GPUs, GPU preferences are in Settings -> Graphics, with native
+     Apply/Cancel and next-launch application. Auto starts on the high-performance (dedicated) GPU.
+   - `graphics.json` stores `graphics_backend` and `graphics_device`; `startup.json` stores last successful backend,
+     failed API/GPU attempts and legacy preference.
    - Music uses a locally imported MP3 and a host SDL player; no hidden game/ROM-backed preview is started.
    - Full contract, private audio import and opt-in logs: [Launcher Startup and Backends](startup-and-backends.md).
 

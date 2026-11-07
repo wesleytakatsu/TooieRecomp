@@ -52,3 +52,4 @@ RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-per-player-camera
 rt64	lib/rt64	patches-local/rt64-tk64-mobile.patch	81d31bc657f1d7afb319b551174e73b67fe61c55295a6eae515e8cc8e0219900	ea5e31f integrated tree
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-weak-no-interface-msaa.patch	72dfd12822d0265b9eda176103bf4e1ca73b298c01696173b3485d50b409e7ab	ea5e31f integrated tree
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-ui-scroll-top.patch	e5511a3650e677fd87cca57037a03a02376b2125043d4ccac96f510bcb935073	ea5e31f integrated frontend
+rt64	lib/rt64	patches-local/rt64-host-gpu-selection.patch	4b69cdf9e4acaa2fd61789b2c19edf298e25842297c28446c0dd7ed892123a8c	f77e881 integrated tree

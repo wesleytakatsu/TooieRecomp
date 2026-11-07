@@ -66,6 +66,12 @@ int main(int argc, char **argv) {
         const char *target = std::getenv("TOOIE_STARTUP_TEST_TARGET");
         if (backend != (target ? target : "d3d11"))
             return 23;
+        // A GPU-specific failure: only the named GPU works for the target API.
+        if (const char *gpu = std::getenv("TOOIE_STARTUP_TEST_GPU"); gpu && *gpu) {
+            const char *device = std::getenv("TOOIE_GRAPHICS_DEVICE");
+            if (device == nullptr || std::string(device) != gpu)
+                return 25;
+        }
         // The real launcher calls this once per presented frame; readiness must wait for the hidden warm-up.
         int frames = 0;
         while (!tooie_startup::is_ready()) {
@@ -82,6 +88,8 @@ int main(int argc, char **argv) {
     _putenv_s("TOOIE_GRAPHICS_LOG", (dir / "graphics.jsonl").string().c_str());
     // Fixed probe result: the menu and fallback must not depend on this machine's GPU.
     _putenv_s("TOOIE_GRAPHICS_AVAILABLE", "d3d12,vulkan,d3d11,opengl");
+    // Fixed GPU list too: none until the GPU rounds, so the API rounds do not depend on this machine's adapters.
+    _putenv_s("TOOIE_GRAPHICS_DEVICES", "|");
     auto fail = [&](const char *msg) {
         std::cerr << "FAIL: " << msg << "; evidence: " << dir << '\n';
         return 1;
@@ -280,7 +288,8 @@ int main(int argc, char **argv) {
         std::wstring self(32768, L'\0');
         self.resize(GetModuleFileNameW(nullptr, self.data(), static_cast<DWORD>(self.size())));
         std::wstring command = L"\"" + self + L"\" --all-failed-round";
-        STARTUPINFOW startup{sizeof(startup)};
+        STARTUPINFOW startup{};
+        startup.cb = sizeof(startup);
         PROCESS_INFORMATION round{};
         if (!CreateProcessW(self.c_str(), command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &round))
             return fail("start all-failed round");
@@ -314,10 +323,80 @@ int main(int argc, char **argv) {
         ++count;
     if (count != 2)
         return fail("all-failed message detection notes");
+
+    // Two GPUs, high-performance first. Auto tries every API on the fast GPU before the slow one; OpenGL once, unnamed.
+    _putenv_s("TOOIE_GRAPHICS_DEVICES", "Fast GPU|Slow GPU");
+    _putenv_s("TOOIE_STARTUP_TEST_TARGET", "d3d11");
+    _putenv_s("TOOIE_STARTUP_TEST_GPU", "Slow GPU");
+    std::filesystem::remove(dir / "startup.json");
+    using Attempt = std::pair<std::string, std::string>;
+    const std::vector<Attempt> fresh_order = {{"d3d12", "Fast GPU"}, {"vulkan", "Fast GPU"}, {"d3d11", "Fast GPU"},
+                                              {"opengl", ""},        {"d3d12", "Slow GPU"}, {"vulkan", "Slow GPU"},
+                                              {"d3d11", "Slow GPU"}};
+    if (tooie_startup::attempts("auto") != fresh_order)
+        return fail("GPU attempt order");
+    const auto read_attempts = [&](std::string *selected_device) {
+        std::vector<Attempt> seen;
+        std::ifstream gpu_log(dir / "graphics.jsonl");
+        while (std::getline(gpu_log, line)) {
+            auto event = nlohmann::json::parse(line);
+            if (event["event"] == "attempt")
+                seen.emplace_back(event["api"], event["gpu"]);
+            if (event["event"] == "worker_start" && selected_device)
+                *selected_device = event["gpu"];
+        }
+        return seen;
+    };
+    {
+        std::ofstream reset_log(dir / "graphics.jsonl", std::ios::trunc);
+    }
+    std::string last_gpu;
+    if (tooie_startup::enter(argc, argv) != 0 || read_attempts(&last_gpu) != fresh_order || last_gpu != "Slow GPU")
+        return fail("Auto did not reach the second GPU");
+    {
+        std::ifstream f(dir / "startup.json");
+        f >> j;
+    }
+    if (j["failed_apis"] != nlohmann::json::array({"d3d12|Fast GPU", "vulkan|Fast GPU", "d3d11|Fast GPU", "opengl",
+                                                   "d3d12|Slow GPU", "vulkan|Slow GPU"}))
+        return fail("per-GPU failures not recorded");
+    // The dedicated GPU stays first; on the slow GPU the API that worked there now leads.
+    const auto next = tooie_startup::attempts("auto");
+    if (next.size() != 7 || next[0] != Attempt{"d3d12", "Fast GPU"} || next[4] != Attempt{"d3d11", "Slow GPU"})
+        return fail("per-GPU Auto order");
+
+    // An explicit GPU is tried first, and the GPU menu reads and lists it.
+    std::filesystem::remove(dir / "startup.json");
+    {
+        std::ofstream f(dir / "graphics.json");
+        f << R"({"graphics_backend":"auto","graphics_device":"Slow GPU"})";
+    }
+    {
+        std::ofstream reset_log(dir / "graphics.jsonl", std::ios::trunc);
+    }
+    const std::vector<Attempt> slow_first = {{"d3d12", "Slow GPU"}, {"vulkan", "Slow GPU"}, {"d3d11", "Slow GPU"}};
+    if (tooie_startup::enter(argc, argv) != 0 || read_attempts(nullptr) != slow_first)
+        return fail("explicit GPU not tried first");
+    {
+        recomp::config::Config gpu_config("Graphics", "graphics", true);
+        tooie_startup::add_graphics_option(gpu_config);
+        if (!gpu_config.load_config() ||
+            std::get<uint32_t>(gpu_config.get_option_value(tooie_startup::graphics_device_option)) != 2)
+            return fail("GPU menu value");
+    }
+    // A GPU that is no longer present is Auto.
+    {
+        std::ofstream f(dir / "graphics.json");
+        f << R"({"graphics_backend":"auto","graphics_device":"Removed GPU"})";
+    }
+    if (tooie_startup::attempts("auto").front() != Attempt{"d3d12", "Fast GPU"})
+        return fail("missing GPU not treated as Auto");
+    _putenv_s("TOOIE_STARTUP_TEST_GPU", "");
+    _putenv_s("TOOIE_GRAPHICS_DEVICES", "|");
     std::filesystem::remove_all(dir);
     std::cout << "PASS: real Win32 supervisor recovers from failure/crash, retains ready worker and preference; guest "
                  "never started; native Graphics Apply/cancel/reopen; Auto reaches OpenGL after three failures; Auto "
                  "tries failed APIs last; hidden warm-up before readiness; crash after readiness falls back; gameplay "
-                 "crash propagated; clear all-failed error PASS\n";
+                 "crash propagated; clear all-failed error; dedicated GPU first, per-GPU fallback and GPU menu PASS\n";
     return 0;
 }

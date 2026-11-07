@@ -19,7 +19,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (51 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (52 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
@@ -184,6 +184,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Teste real do supervisor com renderers simulados passou; suíte Windows 20/20 e build passaram. Decoder/SDL dummy
   também testados. Nenhum jogo iniciado pelo agente. Abertura, quatro APIs, loop auditivo e gameplay: `PENDING_USER`;
   hardware antigo real e Linux `NOT_RUN`. Contrato: [[specs/Tooie/startup-and-backends]].
+  Seletor de GPU (2026-11-07): opção GPU em Settings -> Graphics no Windows com 2+ GPUs; Auto tenta todas as APIs na
+  GPU de alto desempenho (dedicada) antes da integrada; falhas registradas por API+GPU; exe exporta os sinais NVIDIA/AMD
+  para OpenGL. Patch `rt64-host-gpu-selection`. No Windows real (GTX 1650 + AMD) o Auto renderizou na NVIDIA nas 4 APIs
+  e a escolha AMD renderizou na AMD (DX12/Vulkan/DX11), medido por contadores de GPU por processo. Linux sem seletor.
   Erro final (2026-11-06): quando nenhuma API funciona, a janela diz isso em PT-BR (Windows em português) ou inglês,
   lista DirectX 12/Vulkan/DirectX 11/OpenGL com o motivo de cada uma (não encontrada, não iniciou, fechou, não
   respondeu) e orienta instalar o driver de vídeo e reiniciar; conferida no exe real. Sem ROM, o launcher abre normal

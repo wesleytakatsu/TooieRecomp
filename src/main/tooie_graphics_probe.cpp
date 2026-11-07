@@ -1,5 +1,6 @@
 // Finds which graphics backends can start here without creating a renderer (include/tooie_graphics_api.h).
 #include "tooie_graphics_api.h"
+#include <algorithm>
 #include <cstdlib>
 #include <map>
 #include <mutex>
@@ -15,7 +16,7 @@
 #include <Windows.h>
 #include <d3d11.h>
 #include <d3d12.h>
-#include <dxgi1_2.h>
+#include <dxgi1_6.h>
 #else
 #include <dlfcn.h>
 #endif
@@ -176,6 +177,63 @@ bool probe_available(const std::string &key) {
     }
     cache[key] = result;
     return result;
+}
+
+std::vector<std::string> gpus() {
+    std::vector<std::string> result;
+    if (const char *measured = std::getenv("TOOIE_GRAPHICS_DEVICES"); measured != nullptr) {
+        std::stringstream list(measured);
+        for (std::string item; std::getline(list, item, '|');)
+            if (!item.empty())
+                result.push_back(item);
+        return result;
+    }
+#ifdef _WIN32
+    Library dxgi = open_library("dxgi.dll");
+    auto create_factory =
+        dxgi ? reinterpret_cast<HRESULT(WINAPI *)(REFIID, void **)>(symbol(dxgi, "CreateDXGIFactory1")) : nullptr;
+    IDXGIFactory1 *factory = nullptr;
+    if (create_factory && SUCCEEDED(create_factory(__uuidof(IDXGIFactory1), reinterpret_cast<void **>(&factory)))) {
+        // Windows 10 1803+ orders adapters the way Settings -> Graphics does; older systems keep enumeration order.
+        IDXGIFactory6 *factory6 = nullptr;
+        factory->QueryInterface(__uuidof(IDXGIFactory6), reinterpret_cast<void **>(&factory6));
+        IDXGIAdapter1 *adapter = nullptr;
+        for (UINT i = 0;; i++) {
+            const HRESULT found =
+                factory6 ? factory6->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                                                                __uuidof(IDXGIAdapter1), reinterpret_cast<void **>(&adapter))
+                         : factory->EnumAdapters1(i, &adapter);
+            if (found == DXGI_ERROR_NOT_FOUND || FAILED(found))
+                break;
+            DXGI_ADAPTER_DESC1 desc{};
+            if (SUCCEEDED(adapter->GetDesc1(&desc)) && !(desc.Flags & (DXGI_ADAPTER_FLAG_SOFTWARE | DXGI_ADAPTER_FLAG_REMOTE))) {
+                // Plume names a D3D device by this description, converted to UTF-8.
+                const int n = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr, 0, nullptr, nullptr);
+                std::string name(n > 0 ? static_cast<size_t>(n - 1) : 0, '\0');
+                if (n > 1)
+                    WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name.data(), n, nullptr, nullptr);
+                if (!name.empty() && name.find('|') == std::string::npos &&
+                    std::find(result.begin(), result.end(), name) == result.end())
+                    result.push_back(name);
+            }
+            adapter->Release();
+        }
+        if (factory6)
+            factory6->Release();
+        factory->Release();
+    }
+    if (dxgi)
+        close_library(dxgi);
+#endif
+    return result;
+}
+
+std::string gpu_list_value(const std::vector<std::string> &gpus) {
+    // A lone '|' stands for "measured, none found": an empty variable would be removed on Windows.
+    std::string value;
+    for (const auto &name : gpus)
+        value += (value.empty() ? "" : "|") + name;
+    return value.empty() ? "|" : value;
 }
 
 std::string probe_list(bool wine) {

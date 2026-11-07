@@ -10,6 +10,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <fstream>
 #include <json/json.hpp>
@@ -129,16 +130,70 @@ void set_environment(const char *name, const char *value) {
     setenv(name, value, 1);
 #endif
 }
-// Backends that failed to start or crashed before proving themselves, oldest first. Auto tries them last.
-std::vector<std::string> failed_apis() {
+// A failure is recorded per API and GPU: "d3d12|NVIDIA GeForce GTX 1650", or the API alone when no GPU was named.
+std::string attempt_key(const std::string &api, const std::string &gpu) { return gpu.empty() ? api : api + "|" + gpu; }
+// Attempts that failed to start or crashed before proving themselves, oldest first. Auto tries them last.
+std::vector<std::string> failed_attempts() {
     std::vector<std::string> result;
     const auto j = read_json(config_path());
     if (j.contains("failed_apis") && j["failed_apis"].is_array())
-        for (const auto &value : j["failed_apis"])
-            if (value.is_string() && compiled(value.get<std::string>()) &&
-                std::find(result.begin(), result.end(), value.get<std::string>()) == result.end())
-                result.push_back(value.get<std::string>());
+        for (const auto &value : j["failed_apis"]) {
+            if (!value.is_string())
+                continue;
+            const auto key = value.get<std::string>();
+            if (compiled(key.substr(0, key.find('|'))) && std::find(result.begin(), result.end(), key) == result.end())
+                result.push_back(key);
+        }
     return result;
+}
+// The API order for one GPU: an explicit API first; Auto keeps the policy order with the APIs that failed on this GPU
+// moved last, so a machine where one API crashes does not show and lose a window on every launch.
+std::vector<std::string> api_order(const std::string &selected, const std::string &gpu) {
+    const std::string chosen = valid(selected) ? selected : "auto";
+    auto order = api::candidates(api::current_target(), wine(), chosen);
+    if (chosen == "auto") {
+        const auto failed = failed_attempts();
+        std::stable_partition(order.begin(), order.end(), [&](const std::string &key) {
+            const auto attempt = attempt_key(key, key == "opengl" ? "" : gpu);
+            return std::find(failed.begin(), failed.end(), attempt) == failed.end();
+        });
+    }
+    return order;
+}
+// The GPU menu exists on Windows when there is a choice to make.
+bool gpu_menu_listed() { return api::current_target() == api::Target::Windows && api::gpus().size() >= 2; }
+// A compact menu label: the name without trademark marks, which only make the option wrap.
+std::string gpu_label(std::string name) {
+    for (const char *mark : {"(TM)", "(tm)", "(R)", "(r)"})
+        for (size_t at = name.find(mark); at != std::string::npos; at = name.find(mark))
+            name.erase(at, std::strlen(mark));
+    return name;
+}
+std::string gpu_description() {
+    const auto gpus = api::gpus();
+    const std::string fast = gpus.empty() ? "" : " Here that is the " + gpu_label(gpus.front()) + ".";
+    return "Auto starts on the high-performance GPU (the dedicated one in a laptop) and tries the others only if every "
+           "graphics API fails there." +
+           fast + " OpenGL always uses the GPU the video driver picks. Takes effect the next time the game starts.";
+}
+// The saved GPU when this machine still has it, otherwise "auto".
+std::string gpu_choice(const std::vector<std::string> &gpus) {
+    const auto graphics = read_json(recompui::file::get_app_folder_path() / "graphics.json");
+    if (!graphics.contains(tooie_startup::graphics_device_option) || !graphics[tooie_startup::graphics_device_option].is_string())
+        return "auto";
+    const auto value = graphics[tooie_startup::graphics_device_option].get<std::string>();
+    return std::find(gpus.begin(), gpus.end(), value) != gpus.end() ? value : "auto";
+}
+// The GPUs in the order they are tried: the chosen one first, then Windows' high-performance order (dedicated first).
+// One unnamed entry when DXGI found none, which lets each API pick as before.
+std::vector<std::string> gpu_order(const std::vector<std::string> &gpus) {
+    if (gpus.empty())
+        return {""};
+    auto order = gpus;
+    const auto chosen = gpu_choice(gpus);
+    if (chosen != "auto")
+        std::stable_partition(order.begin(), order.end(), [&](const std::string &name) { return name == chosen; });
+    return order;
 }
 #ifdef _WIN32
 HANDLE ready_event = nullptr;
@@ -159,6 +214,7 @@ std::string hex_code(DWORD code) {
 struct Failure {
     enum class Kind { Launch, Failed, Crashed, Timeout } kind;
     std::string api;
+    std::string gpu;
     DWORD code;
 };
 // The one dialog a player sees when no API works: every API tried, what happened, and what to do about it.
@@ -190,7 +246,8 @@ std::string graphics_error_text(const std::vector<Failure> &failures, const std:
             reason += portuguese ? "não respondeu em 3 minutos" : "did not respond within 3 minutes";
             break;
         }
-        text += "  \xE2\x80\xA2 " + backend_label(f.api) + ": " + reason + "\n";
+        const std::string where = f.gpu.empty() ? "" : (portuguese ? " na " : " on ") + f.gpu;
+        text += "  \xE2\x80\xA2 " + backend_label(f.api) + where + ": " + reason + "\n";
     }
     text += portuguese
                 ? "\nO driver de vídeo provavelmente não está instalado, está desatualizado ou parou de funcionar. "
@@ -212,13 +269,14 @@ std::wstring widen(const std::string &utf8) {
 }
 #endif
 // Called by the supervisor after a worker exits, so the worker never writes startup.json at the same time.
-void record_attempt(const std::string &api, bool failed) {
+void record_attempt(const std::string &api, const std::string &gpu, bool failed) {
     auto j = read_json(config_path());
     const auto before = j;
-    auto list = failed_apis();
-    list.erase(std::remove(list.begin(), list.end(), api), list.end());
+    auto list = failed_attempts();
+    const auto key = attempt_key(api, gpu);
+    list.erase(std::remove(list.begin(), list.end(), key), list.end());
     if (failed) {
-        list.push_back(api);
+        list.push_back(key);
         // The worker records the API it created on readiness; a crash afterwards means it did not work.
         if (j.contains("last_successful_api") && j["last_successful_api"] == api)
             j.erase("last_successful_api");
@@ -244,18 +302,19 @@ struct Handle {
 #endif
 } // namespace
 
-std::vector<std::string> tooie_startup::candidates(const std::string &selected) {
-    const std::string chosen = valid(selected) ? selected : "auto";
-    auto order = api::candidates(api::current_target(), wine(), chosen);
-    // An explicit choice is always tried first. Auto keeps its order but moves backends that failed here to the end,
-    // so a machine where one API crashes does not show and lose a window on every launch.
-    if (chosen == "auto") {
-        const auto failed = failed_apis();
-        std::stable_partition(order.begin(), order.end(), [&](const std::string &key) {
-            return std::find(failed.begin(), failed.end(), key) == failed.end();
-        });
-    }
-    return order;
+std::vector<std::string> tooie_startup::candidates(const std::string &selected) { return api_order(selected, ""); }
+std::vector<std::pair<std::string, std::string>> tooie_startup::attempts(const std::string &selected) {
+    // GPU-major: every API on the preferred GPU before any API on the next one. OpenGL cannot be pointed at a GPU (the
+    // driver picks it, preferring the dedicated one through the exported hints), so it is tried once, on the first pass.
+    std::vector<std::pair<std::string, std::string>> result;
+    const auto gpus = gpu_order(api::gpus());
+    for (size_t i = 0; i < gpus.size(); i++)
+        for (const auto &backend : api_order(selected, gpus[i]))
+            if (backend != "opengl")
+                result.emplace_back(backend, gpus[i]);
+            else if (i == 0)
+                result.emplace_back(backend, "");
+    return result;
 }
 std::string tooie_startup::preference() {
     auto graphics = read_json(recompui::file::get_app_folder_path() / "graphics.json");
@@ -322,7 +381,8 @@ int tooie_startup::enter(int argc, char **argv) {
                 _wfreopen_s(&redirected, path.c_str(), L"a", stderr);
                 _wfreopen_s(&redirected, path.c_str(), L"a", stdout);
             }
-            log_event("worker_start", {{"candidate", backend}});
+            const char *device = std::getenv("TOOIE_GRAPHICS_DEVICE");
+            log_event("worker_start", {{"candidate", backend}, {"gpu", device ? device : ""}});
             return -1;
         }
         if (arg == "--launcher-music-child" || arg == "--launcher-music-control")
@@ -343,9 +403,13 @@ int tooie_startup::enter(int argc, char **argv) {
         // Workers inherit what this process measured, so the menu needs no second probe.
         const auto available = api::probe_list(wine());
         set_environment("TOOIE_GRAPHICS_AVAILABLE", available.c_str());
-        log_event("startup", {{"preference", selected}, {"available", available}});
+        const auto gpus = api::gpus();
+        set_environment("TOOIE_GRAPHICS_DEVICES", api::gpu_list_value(gpus).c_str());
+        log_event("startup", {{"preference", selected}, {"available", available}, {"gpus", gpus}});
         std::vector<Failure> failures;
-        for (const auto &candidate : candidates(selected)) {
+        for (const auto &[candidate, gpu] : attempts(selected)) {
+            // The worker's renderer creates its device on this GPU (RT64 reads TOOIE_GRAPHICS_DEVICE).
+            set_environment("TOOIE_GRAPHICS_DEVICE", gpu.c_str());
             SECURITY_ATTRIBUTES security{sizeof(security), nullptr, TRUE};
             Handle event(CreateEventW(&security, TRUE, FALSE, nullptr));
             Handle stable(CreateEventW(&security, TRUE, FALSE, nullptr));
@@ -371,15 +435,15 @@ int tooie_startup::enter(int argc, char **argv) {
                 UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, inherited,
                                           sizeof(inherited), nullptr, nullptr) != 0;
             PROCESS_INFORMATION process{};
-            log_event("attempt", {{"api", candidate}});
+            log_event("attempt", {{"api", candidate}, {"gpu", gpu}});
             const BOOL created = attributes && CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr,
                                                               TRUE, EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED,
                                                               nullptr, nullptr, &startup.StartupInfo, &process);
             DeleteProcThreadAttributeList(startup.lpAttributeList);
             if (!created) {
                 const DWORD error = GetLastError();
-                log_event("launch_failed", {{"api", candidate}, {"win32_error", error}});
-                failures.push_back({Failure::Kind::Launch, candidate, error});
+                log_event("launch_failed", {{"api", candidate}, {"gpu", gpu}, {"win32_error", error}});
+                failures.push_back({Failure::Kind::Launch, candidate, gpu, error});
                 continue;
             }
             Handle child(process.hProcess), thread(process.hThread);
@@ -392,23 +456,23 @@ int tooie_startup::enter(int argc, char **argv) {
             // Includes cold shader compilation. A hung driver must not prevent recovery forever.
             const DWORD result = WaitForMultipleObjects(2, wait, FALSE, 180000);
             if (result == WAIT_OBJECT_0) {
-                log_event("launcher_ready", {{"candidate", candidate}});
+                log_event("launcher_ready", {{"candidate", candidate}, {"gpu", gpu}});
                 // A driver can accept the device and lose it on the first frames (DXGI_ERROR_DEVICE_REMOVED). Until the
                 // game has run for a while, a crash means this API does not work here: show the launcher on the next.
                 HANDLE running[] = {stable.value, child.value};
                 const bool proven = WaitForMultipleObjects(2, running, FALSE, INFINITE) == WAIT_OBJECT_0;
                 if (proven)
-                    log_event("stable", {{"api", candidate}});
+                    log_event("stable", {{"api", candidate}, {"gpu", gpu}});
                 WaitForSingleObject(child.value, INFINITE);
                 DWORD code = 1;
                 GetExitCodeProcess(child.value, &code);
                 if (!proven && crash_code(code)) {
-                    log_event("crashed_after_ready", {{"api", candidate}, {"code", code}});
-                    record_attempt(candidate, true);
-                    failures.push_back({Failure::Kind::Crashed, candidate, code});
+                    log_event("crashed_after_ready", {{"api", candidate}, {"gpu", gpu}, {"code", code}});
+                    record_attempt(candidate, gpu, true);
+                    failures.push_back({Failure::Kind::Crashed, candidate, gpu, code});
                     continue;
                 }
-                record_attempt(candidate, false);
+                record_attempt(candidate, gpu, false);
                 log_event("exit", {{"code", code}});
                 return static_cast<int>(code);
             }
@@ -418,12 +482,12 @@ int tooie_startup::enter(int argc, char **argv) {
             }
             DWORD code = 1;
             GetExitCodeProcess(child.value, &code);
-            log_event("attempt_failed", {{"api", candidate}, {"code", code}, {"timeout", result == WAIT_TIMEOUT}});
-            record_attempt(candidate, true);
+            log_event("attempt_failed", {{"api", candidate}, {"gpu", gpu}, {"code", code}, {"timeout", result == WAIT_TIMEOUT}});
+            record_attempt(candidate, gpu, true);
             failures.push_back({result == WAIT_TIMEOUT ? Failure::Kind::Timeout
                                 : crash_code(code)     ? Failure::Kind::Crashed
                                                        : Failure::Kind::Failed,
-                                candidate, code});
+                                candidate, gpu, code});
         }
         const bool portuguese = PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_PORTUGUESE;
         const std::string title = portuguese ? "Banjo-Tooie: erro gráfico" : "Banjo-Tooie: Graphics Error";
@@ -480,6 +544,9 @@ void tooie_startup::launcher_ready() {
     recompui::config::get_graphics_config().update_option_description(
         graphics_backend_option,
         "Using " + backend_label(api) + ". " + api::auto_description(api::current_target(), wine()));
+    if (gpu_menu_listed())
+        recompui::config::get_graphics_config().update_option_description(graphics_device_option,
+                                                                          "Using " + device + ". " + gpu_description());
 #endif
     log_event("selected", {{"requested", preference()}, {"api", api}, {"device", device}, {"guest_started", false}});
     auto j = read_json(config_path());
@@ -521,4 +588,27 @@ void tooie_startup::add_graphics_option(recomp::config::Config &config) {
     const auto initial = api::enum_value(api::effective(preference(), listed));
     config.add_enum_option(graphics_backend_option, "Graphics API", api::auto_description(api::current_target(), wine()),
                            options, initial);
+    // GPU choice: Auto, then each hardware GPU in Windows' high-performance order. The value is the GPU name, so a
+    // saved choice survives a GPU being added; a GPU that is gone is shown and used as Auto.
+    if (!gpu_menu_listed())
+        return;
+    const auto gpus = api::gpus();
+    std::vector<ConfigOptionEnumOption> devices;
+    devices.emplace_back(0u, "auto", "Auto");
+    for (size_t i = 0; i < gpus.size(); i++)
+        devices.emplace_back(static_cast<uint32_t>(i + 1), gpus[i], gpu_label(gpus[i]));
+    const auto chosen = gpu_choice(gpus);
+    const auto found = std::find(gpus.begin(), gpus.end(), chosen);
+    const uint32_t initial_gpu = found == gpus.end() ? 0u : static_cast<uint32_t>(found - gpus.begin() + 1);
+    config.add_enum_option(graphics_device_option, "GPU", gpu_description(), devices, initial_gpu);
 }
+
+#if defined(_WIN32) && !defined(TOOIE_STARTUP_TEST)
+// Hybrid laptops: ask the NVIDIA and AMD drivers to run this process on the high-performance GPU. This matters for
+// OpenGL and for an API whose GPU is not named; D3D12, Vulkan and D3D11 also receive the GPU by name from the supervisor.
+// They must be exported by the executable itself (RT64's copy in a static library is not linked in).
+extern "C" {
+__declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif

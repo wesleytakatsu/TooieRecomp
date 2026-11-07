@@ -90,10 +90,28 @@ propagated and no other launcher opens. Changing the API does not restart the cu
 graphics DLLs are delay-loaded so their absence does not prevent reaching the supervisor. Required packaged DXC
 libraries remain required.
 
-Every failed attempt (before readiness or during probation) is recorded in `startup.json` `failed_apis`; a later clean
-exit or a passed probation removes that API from the list. **Auto** keeps its order but tries the recorded APIs last,
-so a machine where one API fails shows one working launcher on the next launch instead of repeating the failure. An
-explicit choice is still tried first. RT64's own automatic selection (`TOOIE_GRAPHICS_AUTOMATIC`, with its driver
+Every failed attempt (before readiness or during probation) is recorded in `startup.json` `failed_apis` as
+`<api>|<GPU name>` (the API alone for OpenGL or when no GPU was named); a later clean exit or a passed probation
+removes that entry. On each GPU, **Auto** keeps its API order but tries the APIs that failed on that GPU last, so a
+machine where one API fails shows one working launcher on the next launch instead of repeating the failure. An
+explicit API is still tried first. Entries written before GPU selection (`"d3d12"`) no longer match a named GPU and are
+ignored.
+
+### GPU selection (Windows)
+
+The supervisor lists the hardware GPUs from DXGI in Windows' high-performance order
+(`IDXGIFactory6::EnumAdapterByGpuPreference`, the order of Settings -> System -> Display -> Graphics), so the dedicated
+GPU of a hybrid laptop comes first. It passes the list to workers in `TOOIE_GRAPHICS_DEVICES` (names joined by `|`, a
+lone `|` for none; tests set it to fix the result). Attempts are GPU-major: every API on the chosen GPU (Auto: the
+high-performance one) before any API on the next GPU. OpenGL cannot be pointed at a GPU, so it is tried once, on the
+first pass, unnamed. Each worker receives its GPU in `TOOIE_GRAPHICS_DEVICE`; the vendored RT64 patch
+`rt64-host-gpu-selection` passes it to every backend's `createDevice`, matching the backend's own device names exactly
+or ignoring case, spaces, `(TM)` and `(R)`, and keeps the backend's own choice when no name matches. Without a GPU name
+DXGI-based D3D11 would use the adapter Windows assigns, which on a hybrid laptop is usually the integrated GPU.
+
+The executable exports `NvOptimusEnablement` and `AmdPowerXpressRequestHighPerformance`, so the NVIDIA and AMD hybrid
+drivers prefer the high-performance GPU for OpenGL and for any device created without a name. RT64's own copy of the
+NVIDIA export lives in a static library and was never linked into the executable. RT64's own automatic selection (`TOOIE_GRAPHICS_AUTOMATIC`, with its driver
 workarounds) is used only by the worker for the policy's first backend, even when a failure moved that backend later.
 
 Probation establishes that the renderer survives the launcher and the first seconds of play, not an exhaustive GPU
@@ -115,7 +133,7 @@ This is a startup compatibility priority, not an FPS benchmark or a universal ra
   "version": 1,
   "preference": "auto",
   "last_successful_api": "vulkan",
-  "failed_apis": ["d3d12"]
+  "failed_apis": ["d3d12|NVIDIA GeForce GTX 1650"]
 }
 ```
 
@@ -127,6 +145,12 @@ Invalid values use automatic selection, including a backend this build does not 
 `graphics.json` copied to Linux or a handheld). A backend the menu does not list on this device is shown as Auto, and on
 Linux and handhelds startup uses Auto for it. Fallback records the effective API separately and does not overwrite an
 explicit preference. Last success is informational and never substitutes for initializing the current device.
+
+The **GPU** option (`graphics_device` in `graphics.json`) follows Graphics API in Settings -> Graphics on Windows when
+there are at least two GPUs. It lists Auto, then each GPU in high-performance order, labelled by name without trademark
+marks; the stored value is the GPU name, so a GPU that is no longer present is shown and used as Auto. Its description
+names the GPU in use and the high-performance GPU. Like the API, a change takes effect at the next launch. Linux and
+handhelds do not list it (`NOT_IMPLEMENTED`; Plume's Vulkan device choice already prefers a discrete GPU there).
 
 API selection is located only in **Settings -> Graphics -> Graphics API**, available before and during gameplay.
 The menu lists Auto and the compiled backends the probe accepts, with compact labels
@@ -213,7 +237,12 @@ they do not prove visual fidelity or compatibility on another computer.
   a fresh supervisor process (the probe result is cached per process) where every API fails and the probe finds only
   DX11 and OpenGL: it checks the exit code and that the logged dialog text names all four APIs with their codes, marks
   exactly the two missed APIs as not found, and gives the driver advice and requirements. The test build logs the
-  dialog instead of showing it. It does not initialize
+  dialog instead of showing it. GPU rounds fix two GPUs ("Fast GPU|Slow GPU") with only the slow one working: Auto
+  tries all APIs on the fast GPU, OpenGL once, then the slow GPU; per-GPU failures are recorded and reorder only that
+  GPU's APIs; a saved GPU is tried first and read back by the GPU menu; a saved GPU that is gone is Auto.
+- Real hardware, 2026-11-07 (GTX 1650 + AMD iGPU): measured with the per-process GPU Engine counters, Auto rendered on
+  the NVIDIA GPU with DX12, Vulkan, DX11 and OpenGL; choosing the AMD GPU rendered on it with DX12, Vulkan and DX11.
+  The GPU option was seen in Settings -> Graphics. Selecting it with Apply in the UI was not exercised by the agent. It does not initialize
   a real GPU or execute the game. It fixes the probe result with `TOOIE_GRAPHICS_AVAILABLE`.
 - Real hardware, 2026-11-06 (Windows 11, GTX 1650 + AMD iGPU, D3D12 device removed right after readiness on that
   machine): with the warm-up, the DX12 worker crashed while hidden (its window never became visible) and the Vulkan
