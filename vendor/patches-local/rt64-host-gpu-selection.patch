@@ -1,0 +1,99 @@
+diff --git a/src/hle/rt64_application.cpp b/src/hle/rt64_application.cpp
+index 5f2c061..7647bf5 100644
+--- a/src/hle/rt64_application.cpp
++++ b/src/hle/rt64_application.cpp
+@@ -17,6 +17,8 @@
+ #   include "plume_d3d11.h"
+ #endif
+ 
++#include <cstdlib>
++#include <cstring>
+ #include <cinttypes>
+ #include <filesystem>
+ 
+@@ -52,6 +54,49 @@ namespace RT64 {
+ #endif
+     }
+ 
++    // TooieRecomp: the host names the GPU in TOOIE_GRAPHICS_DEVICE (a DXGI adapter description). Each backend lists its
++    // own device names: an exact match wins, then a match that ignores case, spaces, "(TM)" and "(R)". Without a match
++    // the backend keeps its own choice.
++    static std::string tooieHostDeviceName(RenderInterface *renderInterface) {
++        const char *wanted = std::getenv("TOOIE_GRAPHICS_DEVICE");
++        if ((wanted == nullptr) || (wanted[0] == '\0') || (renderInterface == nullptr)) {
++            return std::string();
++        }
++
++        auto simplify = [](std::string name) {
++            for (const char *mark : { "(TM)", "(tm)", "(R)", "(r)" }) {
++                for (size_t at = name.find(mark); at != std::string::npos; at = name.find(mark)) {
++                    name.erase(at, std::strlen(mark));
++                }
++            }
++
++            std::string result;
++            for (char c : name) {
++                if (c != ' ') {
++                    result += char(((c >= 'A') && (c <= 'Z')) ? (c - 'A' + 'a') : c);
++                }
++            }
++
++            return result;
++        };
++
++        const std::vector<std::string> &names = renderInterface->getDeviceNames();
++        for (const std::string &name : names) {
++            if (name == wanted) {
++                return name;
++            }
++        }
++
++        for (const std::string &name : names) {
++            if (simplify(name) == simplify(wanted)) {
++                return name;
++            }
++        }
++
++        fprintf(stderr, "TooieRecomp: GPU \"%s\" is not offered by this graphics API; using its default device.\n", wanted);
++        return std::string();
++    }
++
+     // Application::Core
+ 
+     VI Application::Core::decodeVI() const {
+@@ -164,7 +209,7 @@ namespace RT64 {
+         if (tk64OpenGL || tk64OpenGLES) {
+             renderInterface = plume::CreateGLESInterface(appWindow->windowHandle, tk64OpenGLES ? plume::RenderGLProfile::ES : plume::RenderGLProfile::DESKTOP);
+             if (renderInterface != nullptr) {
+-                device = renderInterface->createDevice();
++                device = renderInterface->createDevice(tooieHostDeviceName(renderInterface.get()));
+             }
+ 
+             if (device != nullptr) {
+@@ -185,7 +230,7 @@ namespace RT64 {
+         if ((device == nullptr) && (tk64D3D11API != nullptr) && (std::strcmp(tk64D3D11API, "d3d11") == 0)) {
+             renderInterface = plume::CreateD3D11Interface();
+             if (renderInterface != nullptr) {
+-                device = renderInterface->createDevice();
++                device = renderInterface->createDevice(tooieHostDeviceName(renderInterface.get()));
+             }
+ 
+             if (device != nullptr) {
+@@ -243,7 +288,7 @@ namespace RT64 {
+ 
+             if (renderInterface != nullptr) {
+                 // Create the render device.
+-                device = renderInterface->createDevice();
++                device = renderInterface->createDevice(tooieHostDeviceName(renderInterface.get()));
+             }
+         }
+ 
+@@ -330,7 +375,7 @@ namespace RT64 {
+ 
+             chosenGraphicsAPI = UserConfiguration::GraphicsAPI::Vulkan;
+ 
+-            device = renderInterface->createDevice();
++            device = renderInterface->createDevice(tooieHostDeviceName(renderInterface.get()));
+             if (device == nullptr) {
+                 fprintf(stderr, "Unable to find compatible graphics device.\n");
+                 return SetupResult::GraphicsDeviceNotFound;

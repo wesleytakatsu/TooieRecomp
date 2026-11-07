@@ -50,4 +50,11 @@ bool probe_available(const std::string &key);
 // The probed backends of the current target as a comma list, for TOOIE_GRAPHICS_AVAILABLE.
 std::string probe_list(bool wine);
 
+// Hardware GPUs by name, in Windows' high-performance order (the dedicated GPU of a hybrid laptop first), from DXGI.
+// Empty on other targets and when DXGI finds none. A Windows worker reads the list its supervisor measured from
+// TOOIE_GRAPHICS_DEVICES (names joined by '|', empty for none) instead of asking DXGI again.
+std::vector<std::string> gpus();
+// The '|' list for TOOIE_GRAPHICS_DEVICES.
+std::string gpu_list_value(const std::vector<std::string> &gpus);
+
 } // namespace tooie_graphics_api
