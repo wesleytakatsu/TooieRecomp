@@ -96,6 +96,42 @@ Audio RSP Task Dispatch (n_aspMain)
   the synchronized transition. This is positive perceptual QA, not a measured native fade/phase comparison; no
   additional log from that run was analyzed. Campaign-wide acoustic parity remains **UNKNOWN**.
 
+### 2.5 Area channel presets and the jukebox
+
+- **PROVEN (RUNTIME_CPU, renderer)**: Rare's player drives **32 channels** per sequence. The channel records at
+  `seqp + 0x60` (stride `0x38`, gain `+9`) exist for all 32: requesting mask `0x41C00000` for sequence `0x39` sets
+  exactly channels 22, 23, 24 and 30 to gain `0xFF`, and `0x01FE0000` for `0x32` sets channels 17-24. Area masks use
+  bits up to 31, so a 16-channel model misses most area variants.
+- **PROVEN (STATIC data)**: the area channel presets live in core2 data at ROM `0x1EFD774` (VRAM `0x80123E84`,
+  decompressed USA image), 72 entries of 12 bytes `{u32 mask_a, u32 mask_b, u16 bpm_a, u16 bpm_b}` (`0x00` and `0x31`/`0x45` are all-channels entries;
+  the table ends at `0x47`, floats follow). Neighbouring presets belong to one sequence, for example `0x01..0x02`
+  Spiral Mountain (`0x32`), `0x03..0x0A` Mayahem Temple (`0x39`), `0x3B..0x44` Isle o' Hags (`0x58`).
+- **PROVEN (STATIC data)**: Jolly's jukebox (overlay `chmusicmenu`, ROM data `0x2081C70`) lists 48 sequence IDs, then
+  95 entries `{s16 sequence, u8 flag, u8 preset}` (`preset 0xFF` = whole sequence), in the same order as the jukebox
+  track names in text assets `0x1851..0x1859`, `0x1869`, `0x186A`, `0x186B` (worlds in `0x1850`). Example:
+  `(0x32, 0, 1)` SPIRAL MOUNTAIN, `(0x32, 0xFF, 1)` MOUNTAIN AQUATIC, `(0x32, 0, 2)` MOUNTAIN CAVES.
+- **PROVEN (STATIC_MIPS)**: `func_800FCFB0(track, sequence, preset, underwater)` applies a preset: with `underwater`
+  nonzero it uses `mask_b`/`bpm_b` (`+0x4`, `+0xA`), otherwise `mask_a`/`bpm_a` (`+0x0`, `+0x8`). A tempo of `0xFFFF`
+  is skipped; otherwise it calls `func_800FCED0(sequence, 60000000 / bpm, transition)` (tempo) and
+  `func_800FCDE0(sequence, mask, transition)` (mask), which reach the slot's `func_80017D74` and `func_800178C4`.
+- **PROVEN (STATIC_MIPS)**: `func_80017D74(slot, microseconds_per_beat, transition)` keeps the request at
+  `0x8007AEA0 + slot * 4` (ignoring a repeated value) and the per-frame step at `0x8007AEB8 + slot * 4`; a transition
+  of `0.0` posts the tempo at once through `func_80026330` (CSP meta event `FF 51`), otherwise it ramps at 30 steps
+  per second of transition. `func_800260B0(seqp)` returns the current tempo as `seqp+0x24` divided by the float at
+  `(*(seqp+0x18))+8`. The sequence's own tempo event at its start overrides a request made before it plays.
+- **PROVEN (RUNTIME_CPU, renderer)**: with the preset tempo applied, the native renders match the album's area tracks
+  (for example Mayahem Temple underwater at 105 BPM, Glitter Gulch Mine underwater at 100 BPM, Witchyworld Haunted
+  Zone at 170 BPM, all 0.9-0.99), and the album's loop lengths scale by the tempo ratio (Mayahem Temple 122 s at
+  120 BPM, underwater 139.43 s at 105 BPM). Loops of the 13 layered sequences are whole numbers of beats (160-378).
+- **STRONG_INFERENCE**: channel groups loop with periods of their own (Glitter Gulch Mine near the Space Zone repeats
+  every 228 beats while the main arrangement repeats every 256; Stomping Plains 304 against 296), consistent with
+  Rare's per-channel loop markers. Preset `0x46` (`0xB000`, 75 BPM) is Jinjo Village drained (sequence `0x59`).
+- **PROVEN (RUNTIME_CPU, renderer)**: the maintainer renderer (`TOOIE_TEST_AUDIO_RENDER`, see
+  [[../../specs/Tooie/modding-and-extensions]]) plays a sequence with `func_80016ED0(slot, id)`, its volume with
+  `func_80017404(slot, 0x7FFF)` and a mask with `func_800178C4(slot, mask, 0)` in the Game Select slot, and the
+  recorded native mix matches the album's Spiral Mountain, Banjo's House Blues and Game Select at chroma correlation
+  0.98-0.997.
+
 The external-audio integration wraps `80016ED0` in addition to the two existing volume/update hooks. It observes IDs,
 channel masks and restart events while retaining the original guest sequence execution. Polling a high-level track ID
 alone cannot distinguish repeated starts of the same jingle or multiple instrument variants of one sequence.

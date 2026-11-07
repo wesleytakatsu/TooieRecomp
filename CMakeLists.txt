@@ -211,6 +211,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_audio_mod.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_audio_render.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_audio_mod_loader.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp

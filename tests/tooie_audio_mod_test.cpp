@@ -63,6 +63,29 @@ int main(int argc, char** argv) {
         bad = j; bad["sequences"][0]["file"] = path;
         expect(!load(bad, error), "unsafe path rejected");
     }
+    {
+        // Layer weights: the closest non-negative mix of layer channel groups to the native gains.
+        auto gains = [](uint32_t full, uint32_t half = 0) {
+            NativeChannels n; n.valid = true;
+            for (unsigned c = 0; c < channel_count; ++c) n.gain[c] = (full >> c) & 1 ? 255 : (half >> c) & 1 ? 128 : 0;
+            return n;
+        };
+        auto near = [](const std::vector<float>& w, std::vector<float> want) {
+            if (w.size() != want.size()) return false;
+            for (size_t i = 0; i < w.size(); ++i) if (std::abs(w[i] - want[i]) > 0.01f) return false;
+            return true;
+        };
+        // Mayahem Temple style: the kickball lobby and the approach share channel 30 (0x40000000).
+        const std::vector<uint32_t> mt = {0x73FF, 0xC00, 0x41C00000, 0x401F0000, 0xBE200000};
+        expect(near(layer_weights(mt, gains(0x41C00000)), {0, 0, 1, 0, 0}), "overlapping area resolves to its own layer");
+        expect(near(layer_weights(mt, gains(0x401F0000)), {0, 0, 0, 1, 0}), "the other overlapping area resolves to its layer");
+        expect(near(layer_weights(mt, gains(0x73FF)), {1, 0, 0, 0, 0}), "disjoint area resolves to its layer");
+        expect(near(layer_weights(mt, gains(0x73FF, 0xC00)), {1, 0.5f, 0, 0, 0}), "disjoint crossfade keeps each group's mean");
+        auto mid = layer_weights(mt, gains(0x40000000, 0x01C00000 | 0x001F0000));
+        expect(mid.size() == 5 && mid[2] > 0.2f && mid[3] > 0.2f && mid[0] == 0 && mid[1] == 0, "crossfade between overlapping areas blends both");
+        expect(near(layer_weights({0x63FF, 0x1C00}, gains(0)), {0, 0}), "silent channels silence every layer");
+        expect(near(layer_weights({0x63FF, 0x1C00}, gains(0x63FF, 0x1C00)), {1, 0.5f}), "Spiral Mountain weights unchanged");
+    }
     reset(); update(0, 4, 32767, ~0u, true);
     std::vector<float> pcm(48000 * 2, 0.125f), original = pcm;
     mix(pcm.data(), pcm.size()/2, 1, 100);
@@ -122,6 +145,20 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < resumed.size(); ++i)
             phase_agrees &= std::abs(resumed[i] - reference[48000 * 2 * 2 + i]) < 0.00002f;
         expect(phase_agrees, "live re-enable preserves native timeline and PCM phase");
+        {
+            // An MP3 without a loop that ends while its sequence still plays hands the slot back to the original.
+            enable("fixture", 1, pack);
+            update(2, 4, 32767, ~0u, true);
+            expect(replaces(2u, 4, ~0u), "slot replaced while its MP3 plays");
+            std::vector<float> block(48000 * 2);
+            for (int s = 0; s < 30; ++s) { std::fill(block.begin(), block.end(), 0.0f); mix(block.data(), 48000, 1, 100); }
+            expect(!replaces(2u, 4, ~0u) && replaces(4, ~0u), "ended MP3 lets the original sequence continue in that slot");
+            update(2, 4, 32767, ~0u, true);
+            expect(replaces(2u, 4, ~0u), "a new start of the sequence is replaced again");
+            update(2, -1, 0, ~0u, true);
+            std::fill(block.begin(), block.end(), 0.0f); mix(block.data(), 16, 1, 100);
+            disable("fixture");
+        }
         bad = j; bad["sequences"][0]["loop_start_frame"] = 200; bad["sequences"][0]["loop_end_frame"] = 100;
         expect(!load(bad, error), "reversed loop rejected");
         bad = j; bad["sequences"].push_back(bad["sequences"][0]);
@@ -147,10 +184,14 @@ int main(int argc, char** argv) {
         family["sequences"].push_back(wet);
         auto layered = load(family, error);
         expect(bool(layered), "synchronized native layer family accepted");
-        bad = family; bad["sequences"][1]["native_channel_mask"] = 1u;
-        expect(!load(bad, error), "overlapping native channel groups rejected");
+        auto overlap = family; overlap["sequences"][1]["native_channel_mask"] = 0x1C01u;
+        expect(bool(load(overlap, error)), "overlapping native channel groups accepted (areas that add channels)");
+        bad = family; bad["sequences"][1]["native_channel_mask"] = 0x1FE0000u; bad["sequences"][1]["channel_value"] = 0x1FE0000u;
+        expect(bool(load(bad, error)), "native channel groups above channel 15 accepted");
         bad = family; bad["sequences"][1]["loop_end_frame"] = 23999u;
-        expect(!load(bad, error), "divergent layer loop clocks rejected");
+        expect(bool(load(bad, error)), "a layer may loop with a period of its own (per-channel loops)");
+        bad = family; bad["sequences"][1]["start_frame"] = 10u;
+        expect(!load(bad, error), "layers with different starts rejected");
         bad = family; bad["schema_version"] = 1;
         expect(!load(bad, error), "schema 1 cannot silently ignore native layers");
         auto render = [](size_t frames) {
@@ -206,6 +247,119 @@ int main(int argc, char** argv) {
         if (check_log) expect(log_text().find("timeline_frame=3840000 source_frame=19200") != std::string::npos &&
             log_text().find("layer_channels=0x1C00") != std::string::npos, "accepted-buffer logs expose shared clock and underwater contribution");
         disable("layers");
+        {
+            // Layers recorded at different area tempos follow the native beat position (Mayahem Temple: land 120 BPM,
+            // underwater 105 BPM). The loop bounds of the slower layer are the same beats, scaled by 120/105.
+            auto tempo = family;
+            auto& land = tempo["sequences"][0];
+            auto& water = tempo["sequences"][1];
+            land["bpm"] = 120; water["bpm"] = 105;
+            water["loop_start_frame"] = static_cast<uint64_t>(std::llround(4800 * 120.0 / 105.0));
+            water["loop_end_frame"] = static_cast<uint64_t>(std::llround(24000 * 120.0 / 105.0));
+            water["gain"] = 0.75f;
+            land["end_frame"] = 30000u;
+            water["end_frame"] = static_cast<uint64_t>(std::llround(30000 * 120.0 / 105.0));
+            auto tempo_pack = load(tempo, error);
+            expect(bool(tempo_pack), "tempo layers with beat-equal bounds accepted");
+            if (!tempo_pack) std::fprintf(stderr, "tempo: %s\n", error.c_str());
+            {
+                // The same channels recorded at another area tempo are a separate rule, chosen by the requested tempo.
+                auto two = tempo;
+                auto slow = two["sequences"][1];
+                slow["bpm"] = 90; slow["file"] = "audio/slow.mp3";
+                for (const char* k : {"loop_start_frame", "loop_end_frame", "end_frame"})
+                    slow[k] = static_cast<uint64_t>(std::llround(two["sequences"][0][k].get<uint64_t>() * 120.0 / 90.0));
+                two["sequences"].push_back(slow);
+                auto two_pack = load(two, error);
+                expect(bool(two_pack), "same channels at two area tempos accepted");
+                enable("two", 0, two_pack);
+                NativeChannels at; at.valid = true; at.bpm = at.target_bpm = 105;
+                update(3, 50, 32767, 0x1C00u, true, at);
+                expect(replaces(3u, 50, 0x1C00u), "rule for the requested tempo replaces");
+                at.bpm = at.target_bpm = 90; update(3, 50, 32767, 0x1C00u, false, at);
+                expect(replaces(3u, 50, 0x1C00u), "the other recorded tempo replaces too");
+                at.bpm = at.target_bpm = 142; update(3, 50, 32767, 0x1C00u, false, at);
+                expect(!replaces(3u, 50, 0x1C00u), "an area tempo with no recording keeps the original");
+                update(3, -1, 0, ~0u, true); render(16);
+                disable("two");
+            }
+            auto bad_tempo = tempo; bad_tempo["sequences"][1]["start_frame"] = 4800u;
+            expect(!load(bad_tempo, error), "tempo layers whose starts differ in beats rejected");
+            // References: the file decoded continuously, played as a plain rule with the same loop.
+            auto reference_at = [&](uint64_t loop_start, uint64_t loop_end, uint64_t offset) {
+                auto r = loop; r["sequences"][0]["id"] = 61;
+                r["sequences"][0]["loop_start_frame"] = loop_start; r["sequences"][0]["loop_end_frame"] = loop_end;
+                enable("tempo-reference", 0, load(r, error));
+                update(1, 61, 32767, ~0u, true);
+                std::vector<float> skip(48000 * 2);
+                for (uint64_t left = offset; left;) {
+                    size_t n = static_cast<size_t>(std::min<uint64_t>(left, 48000));
+                    std::fill(skip.begin(), skip.end(), 0.0f); mix(skip.data(), n, 1, 100); left -= n;
+                }
+                auto out = render(480);
+                update(1, -1, 0, ~0u, true); render(16);
+                disable("tempo-reference");
+                return out;
+            };
+            const uint64_t water_offset = static_cast<uint64_t>(std::llround(80.0 * 2.0 * 60.0 / 105.0 * 48000.0));
+            const auto land_ref = reference_at(4800, 24000, 80 * 48000);
+            const auto water_ref = reference_at(water["loop_start_frame"].get<uint64_t>(), water["loop_end_frame"].get<uint64_t>(), water_offset);
+            NativeChannels t; t.valid = true; t.bpm = 120;
+            for (unsigned c = 0; c < 16; ++c) t.gain[c] = (0x63FFu & (1u << c)) ? 255 : 0;
+            enable("tempo", 0, tempo_pack);
+            update(0, 50, 32767, 0x63FFu, true, t);
+            render(80 * 48000);
+            for (unsigned c = 0; c < 16; ++c) t.gain[c] = (0x1C00u & (1u << c)) ? 255 : 0;
+            t.bpm = 105;
+            update(0, 50, 32767, 0x1C00u, false, t);
+            auto actual = render(480);
+            float w_land = 1, w_water = 0;
+            bool agrees = true;
+            for (size_t frame = 0; frame < 480; ++frame) {
+                w_land += (0 - w_land) / 240; w_water += (1 - w_water) / 240;
+                for (unsigned c = 0; c < 2; ++c) {
+                    auto i = frame * 2 + c;
+                    agrees &= std::abs(actual[i] - (land_ref[i] * 0.75f * w_land + water_ref[i] * 0.75f * w_water)) < 0.00003f;
+                }
+            }
+            expect(agrees, "slower layer enters at the native beat position; the playing layer keeps its phase");
+            disable("tempo");
+            update(0, -1, 0, ~0u, true); render(16);
+        }
+        {
+            // On-demand pack: nothing replaces the original until the loader has checked and loaded the MP3.
+            set_memory_limits(64 * 1024 * 1024, 0);
+            nlohmann::json lazy_manifest = j;
+            auto reader = [lazy_manifest](const std::string& name, size_t limit) {
+                if (name == "audio.json") { auto t = lazy_manifest.dump(); return std::vector<char>(t.begin(), t.end()); }
+                if (input.size() > limit) throw std::runtime_error("oversized fixture");
+                return input;
+            };
+            Sizer sizer = [](const std::string&) { return std::optional<size_t>(input.size()); };
+            auto lazy = load_pack(reader, error, sizer);
+            expect(bool(lazy), "on-demand pack accepted");
+            reset();
+            enable("lazy", 0, lazy);
+            expect(wait_loader_idle(10000), "loader checks the MP3s in the background");
+            update(0, 4, 32767, ~0u, true);
+            expect(wait_loader_idle(10000) && replaces(4, ~0u), "playing sequence loads its MP3 on demand");
+            std::fill(pcm.begin(), pcm.end(), 0);
+            mix(pcm.data(), pcm.size() / 2, 1, 100);
+            expect(energy(pcm) > 0, "on-demand MP3 decoded and mixed");
+            disable("lazy");
+            Sizer missing = [](const std::string&) { return std::optional<size_t>(); };
+            expect(!load_pack(reader, error, missing), "on-demand pack with a missing MP3 rejected");
+            auto layered_lazy = family;
+            for (auto& s : layered_lazy["sequences"]) s.erase("end_frame");
+            nlohmann::json layered_manifest = layered_lazy;
+            auto layered_reader = [layered_manifest](const std::string& name, size_t limit) {
+                if (name == "audio.json") { auto t = layered_manifest.dump(); return std::vector<char>(t.begin(), t.end()); }
+                if (input.size() > limit) throw std::runtime_error("oversized fixture");
+                return input;
+            };
+            expect(!load_pack(layered_reader, error, sizer), "on-demand layers must state their end frame");
+            set_memory_limits(384 * 1024 * 1024, 96 * 1024 * 1024);
+        }
         if (argc >= 4) {
             const auto root = std::filesystem::u8path(argv[3]);
             auto actual_pack = load_pack([&](const std::string& name, size_t limit) {

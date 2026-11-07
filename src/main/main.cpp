@@ -64,6 +64,7 @@ extern char** environ;
 #include "tooie_bgm_volume.h"
 #include "tooie_audio_mod.h"
 #include "tooie_audio_mod_loader.h"
+#include "tooie_audio_render.h"
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
 #include "tooie_controller_ports.h"
@@ -97,7 +98,7 @@ extern char** environ;
 
 #include "stb/stb_image.h"
 
-const std::string version_string = "0.1.5";
+const std::string version_string = "0.1.6";
 
 namespace {
 
@@ -437,8 +438,15 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
 
     // Advance both sources by the same guest audio duration. The existing
     // latency decimator below must act on external and original audio together.
-    tooie_audio_mod::mix(samples_to_queue, num_bytes_to_queue / (output_channels * sizeof(float)),
-        cur_main_volume, tooie_bgm::get_percent());
+    // Maintainer renderer (TOOIE_TEST_AUDIO_RENDER): record the native mix (or the final mix with packs, when asked),
+    // send silence to the device.
+    const size_t mixed_frames = num_bytes_to_queue / (output_channels * sizeof(float));
+    const bool with_mods = tooie_audio_render::keeps_mods();
+    if (!with_mods && tooie_audio_render::capture(samples_to_queue, mixed_frames))
+        std::fill(samples_to_queue, samples_to_queue + num_bytes_to_queue / sizeof(float), 0.0f);
+    tooie_audio_mod::mix(samples_to_queue, mixed_frames, cur_main_volume, tooie_bgm::get_percent());
+    if (with_mods && tooie_audio_render::capture(samples_to_queue, mixed_frames))
+        std::fill(samples_to_queue, samples_to_queue + num_bytes_to_queue / sizeof(float), 0.0f);
 
     // Prevent audio latency from building up by skipping samples in incoming audio when too many samples are already queued.
     // Skip samples based on how many microseconds of samples are queued already.

@@ -41,7 +41,7 @@ TooieRecomp incorporates modding and extension APIs inherited from the static re
 | **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` and structurally identified `.zip` texture archives containing replacement RT64 textures. | `VALIDATED_WINDOWS` (§4) |
 | **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | ZIP enable/disable `VALIDATED_WINDOWS`; reordering `NOT_RUN` |
 | **REQ-MOD-05** | Deprecated Mod Rejection| Rejects incompatible legacy mods (`bk_recomp_mod_fov_slider`). | `IMPLEMENTED` |
-| **REQ-MOD-06** | Native Audio ZIP | `audio.json` maps CSP sequences to MP3 playback, with runtime toggles and queue-level proof logging. | `HOST_TESTED`; three mappings and toggles observed in user Windows test; synchronized layers host-tested with positive user-reported Windows gameplay; installer UI and Linux validation pending |
+| **REQ-MOD-06** | Native Audio ZIP | `audio.json` maps CSP sequences (32 channels, area masks and tempos) to MP3 playback, with runtime toggles and queue-level proof logging. | `HOST_TESTED` + `RUNTIME_TESTED` on Windows: the full HD map plays the expected MP3 for every area preset and sampled songs/jingles in game (renderer with packs); real area transitions, campaign, installer UI and Linux pending |
 
 ---
 
@@ -120,14 +120,14 @@ struct ExtensionContext {
 
 ## 4. Invariants & Verification Status
 
-### Audio pack format (prototype)
+### Audio pack format
 
 An audio ZIP contains `audio.json`, MP3 files and optionally `mod.json` at one content root. `mod.json` uses `game_id=bt`
 and the existing mod identity/version fields. It is installed through the existing Mods installer before game startup and can be enabled,
 disabled and reordered. The first matching pack in Mods order wins. Within a pack the first matching rule wins; put
 specific channel variants before a generic rule for the same sequence.
 
-`audio.json` has `schema_version: 1` or `2` and a nonempty `sequences` array. Each rule has:
+`audio.json` has `schema_version: 1` or `2` and a nonempty `sequences` array of at most 1024 rules. Each rule has:
 
 | Field | Contract |
 | --- | --- |
@@ -137,22 +137,53 @@ specific channel variants before a generic rule for the same sequence.
 | `start_frame`, `end_frame` | Optional decoded PCM interval, start inclusive/end exclusive; defaults to whole file. |
 | `loop_start_frame`, `loop_end_frame` | Optional loop within the playback interval; both must form a valid nonempty interval. Without a loop, play once. |
 | `channel_mask`, `channel_value` | Optional paired uint32 fields; either both must be present or neither. Matches `(native_channels & channel_mask) == channel_value`. Mask must be nonzero; value must fit it. |
-| `native_channel_mask` | Schema 2 only: nonempty uint16 channel group. Requires exact activation selector (`channel_mask: 4294967295`). All rules of that sequence form a synchronized family; at most four disjoint groups with identical start/end/loop bounds. Mixing generic and native-layer rules for one sequence is rejected. |
+| `native_channel_mask` | Schema 2 only: nonempty uint32 channel group (the game's sequences have 32 channels). Requires exact activation selector (`channel_mask: 4294967295`). All rules of that sequence form a synchronized family of at most sixteen layers with the same start; each layer may have its own loop (Rare's player loops every channel on its own). Groups may overlap (an area that adds channels to another). Mixing generic and native-layer rules for one sequence is rejected. |
+| `bpm` | Optional tempo the MP3 was recorded at (an area's tempo, 0 < bpm ≤ 1000). With it the rule replaces only while the game's requested tempo is within 0.5 BPM, and the layer follows the native beat position instead of elapsed samples. The same selector may appear once per tempo. |
 
-MP3s must be stereo at 48000 Hz. Missing files, unsupported formats, invalid bounds, duplicate selectors and excessive
-compressed-memory use reject the pack without muting original audio. A file failing to enable is reported via a message
-box; its saved enabled flag is not automatically rewritten. The pack can be corrected and re-enabled.
+MP3s must be stereo at 48000 Hz. Rules may share an MP3 when they share its playback contract. Missing files,
+unsupported formats, invalid bounds, duplicate selectors and excessive compressed-memory use reject the pack without
+muting original audio. A file failing to enable is reported via a message box; its saved enabled flag is not
+automatically rewritten. The pack can be corrected and re-enabled.
+
+Packs up to 96 MB of MP3s are read and checked when enabled and stay in memory. Larger packs (a full soundtrack is
+about 1 GB) load on demand: the manifest and file sizes are checked when enabled, every MP3 is decoded once in a
+background thread to check it and build its seek table, small files (jingles, up to 1 MB) stay in memory, and the
+MP3s of a sequence are loaded when the game starts it. Loaded MP3s beyond `TOOIE_AUDIO_MOD_CACHE_MB` (default 384)
+are released least recently used first, never while their sequence plays. Until a rule's MP3s are ready the original
+music plays; a rejected MP3 leaves its rules on the original music and is logged. Layers of an on-demand pack must
+state `end_frame`, so the shared clock is known before decoding.
 
 When any native-layer rule matches the requested channel mask, every layer of its family runs on the shared clock.
-Current native channel gains determine weights, including outgoing layers during transitions. For unknown activation
-masks the family does not replace native audio. Duplicate selectors and overlapping groups reject the pack.
+Timeline: a layer without `bpm` plays at the elapsed sample count since the sequence started. A layer with `bpm`
+plays at the native beat position (beats advance at the sequence's current tempo, read from the player) converted to
+its own tempo, so entering an area at another tempo starts the new layer at the same musical point. While the native
+tempo moves between areas a layer at another tempo drifts; past 25 ms it seeks back to the beat position. Layers at
+different tempos must start at the same beat; their loops are converted per file. An MP3 without a loop that ends
+while its sequence keeps playing hands that slot back to the original music (`ENDED` in the proof log).
+Layer weights are the non-negative least-squares combination of the layer channel groups closest to the current native
+channel gains (`255` = 1, otherwise `q / 256`): disjoint groups get their mean gain, an overlapping area resolves to its
+own layer in steady state, and the native crossfade blends the layers involved. Silent layers are not decoded; they
+seek back to the shared clock when the game brings them back. For unknown activation masks the family does not
+replace native audio. Duplicate selectors reject the pack.
 
-`tools/build_audio_pack.py <extracted-album> <output.zip>` builds the private version `0.2.0` four-track prototype using
-original MP3 bytes and verifies their source-manifest SHA-256 values. The builder records measured loops and the
-trimmed Blue Eggs endpoint as metadata. Spiral Mountain uses the observed surface (`0x63FF`) and underwater
-(`0x1C00`) groups. Their semantic association remains `STRONG_INFERENCE` pending annotated gameplay QA; it is not
-a general channel mapping for other songs. Source audio and the resulting ZIP are private inputs, never repository
-or game-release assets. Audio playback and proof logging details: [[audio-system]].
+`tools/build_audio_pack.py <album> <output.zip> [--mapping <map.json>]` builds a pack from a map: it verifies each
+album MP3 against the map's SHA-256 and copies the bytes unchanged (`ZIP_STORED`). Source audio and the resulting ZIP
+are private inputs, never repository or game-release assets. Audio playback and proof logging details:
+[[audio-system]].
+
+Maintainer renderer: `TOOIE_TEST_AUDIO_RENDER=<plan.tsv>` (output folder `TOOIE_TEST_AUDIO_RENDER_OUT`, default the
+plan's folder) waits until Game Select plays, then for each plan line `<name>	<sequence hex>	<mask hex or ->	<seconds>`
+plays that sequence in the Game Select slot at full volume with that channel mask, mutes the other slots, records the
+native mix as 48 kHz stereo float WAV and sends silence to the device; `render.log` records the channel mask and the
+32 channel gains each second. While it runs no audio pack replaces anything. Empty sequence IDs (for example `0x13`)
+crash the original player and must not be listed. A fifth column sets the area tempo (BPM), applied the way the game
+applies a preset (the renderer re-requests it until it holds over the sequence's own start tempo). With
+`TOOIE_TEST_AUDIO_RENDER_MOD=1` enabled packs keep replacing music and the recording is the final mix, to check a pack
+against the native recordings. It is off unless the variable is set.
+
+The Banjo-Tooie HD soundtrack map is `tools/audio/banjo-tooie-hd.json` (no audio: album file names and SHA-256,
+sequence IDs, channel masks, tempos and loop points); `tools/build_audio_pack.py <album> <out.zip>` builds the pack
+from the user's own album copy, and `tools/audio/analysis/` holds the scripts that produced the map.
 
 While the modding and extension infrastructure compiles cleanly into `TooieRecompiled`, runtime modding in Banjo-Tooie has not undergone dedicated verification. The system status is classified as `INHERITED_UNTESTED`, except:
 

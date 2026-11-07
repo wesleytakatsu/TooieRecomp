@@ -37,7 +37,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 - PRs #2 (portátil), #3 (link do pacote de texturas BT Reloaded) e #4 (correção do J2 no splitscreen) mescladas com
   merge commit; `main` em `4a59160`. Branches mescladas removidas do GitHub; restam `main`, `feat/dev-mode` (os dois
-  commits de música por ZIP, mesclados na `main` em 2026-11-07) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
+  commits de música por ZIP, integrados ao PR #9, ainda sem merge) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
 - Um só clone local no Windows (`TooieRecomp`). Os clones `TooieRecomp-win`, `TooieRecomp-xu10` e `TooieRecomp-audio`
   foram inventariados: nenhum tinha código fora da `main` além de `feat/dev-mode`; bundle git, diffs e arquivos ignorados
   ficaram num arquivo local fora do repositório.
@@ -203,25 +203,22 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   quatro APIs. Linux continua sem supervisor (`NOT_IMPLEMENTED`).
   Revisão removeu logger de frames/tempos TK64, print de hover, captura PCM do executável e varredura diagnóstica
   de pico/silêncio por buffer. Contador do teste de áudio fica apenas no harness; log opt-in da API foi preservado.
-- Protótipo de áudio `0.2.0`: Game Select (`0x67`), Blue Eggs (`0x04`) e Spiral Mountain (`0x32`). O teste anterior
-  do usuário confirmou os três MP3s então ativos; os canais `0x63FF <-> 0x1C00` permaneceram na sequência `0x32`,
-  slot 1. Associação superfície/água: `STRONG_INFERENCE` pelo relato/percurso.
-  Implementado schema 2: duas camadas com clock e loop compartilhados; ganhos vêm dos canais nativos CSP, com
-  dezipper de 5 ms. Desativar/reativar preserva fase; reversões preservam ambas as camadas. Máscaras não observadas
-  voltam ao áudio original. Volume events não reativam jingles encerrados por ID residual.
-  Host tests confirmam seek em 1:20, múltiplos loops, envelope parcial, reversão e reativação
-  (`tooie_audio_mod_test`, `tooie_bgm_hooks_test`, `tooie_bgm_volume_test` agora na suíte obrigatória). Usuário
-  relatou em 2026-10-31 que a versão 0.2.0 parece funcionar corretamente no jogo no Windows; validação
-  perceptiva positiva, sem medição acústica. Testes de host usam aceitação de fila simulada.
-  Na `main` desde 2026-11-07 (merge de `feat/dev-mode` sobre o TK64 launcher): a captura PCM e o contador de
-  pico/não zeros que a branch ainda tinha continuam fora (removidos em `b3b290b`); só a prova de fila do mod ficou.
-  Com `TOOIE_AUDIO_MOD_LOG=<arquivo>`, `PLAY` exige MP3 não nulo + `SDL_QueueAudio == 0`; cada camada registra
-  `timeline_frame`, `source_frame`, ganho e extremos dos canais. Isso prova contribuição na fila, não saída física.
-  Após revisão de custo, contagem por amostra/estatísticas do mod só executam com log aberto. Telemetria geral de
-  syscalls/áudio exige `TOOIE_DIAG`; divisor medido exige `TOOIE_DIAG_TIMING`.
-  Instalação/refresh só na tela inicial; alternância de pacote já instalado pode ser feita pelo menu ESC.
-  Sem validação completa de campanha, paridade acústica ou Linux. MP3s/ZIP continuam privados: o release publica só
-  o suporte; o link do pacote é colocado pelo usuário.
+- Mods de música (PR #9, `feat/audio-mod`, **sem merge até o usuário aprovar o mod completo**): suporte a `audio.json`
+  com 32 canais, até 16 camadas por sequência (máscaras sobrepostas, pesos por mínimos quadrados não negativos),
+  `bpm` por arquivo (a camada segue a posição em batidas do jogo e só substitui no andamento da área), loop próprio
+  por camada, carregamento sob demanda para pacotes grandes (`TOOIE_AUDIO_MOD_CACHE_MB`, padrão 384) e volta à música
+  original quando um MP3 sem loop acaba. Mapa completo do álbum HD em `tools/audio/banjo-tooie-hd.json` (193 faixas,
+  198 regras: 13 sequências com camadas por área, músicas inteiras e jingles), gerado por gravação nativa
+  (`TOOIE_TEST_AUDIO_RENDER`) e comparação com o álbum (`tools/audio/analysis/`); pacote montado com
+  `tools/build_audio_pack.py` a partir do álbum do usuário (995 MB, nunca versionado nem publicado).
+  Teste no jogo com o pacote (`TOOIE_TEST_AUDIO_RENDER_MOD=1`, Windows): todas as variantes de área e uma amostra de
+  músicas e jingles tocam o MP3 previsto, alinhado (correlação 0,99, atraso ~0); jingles conferidos pelo log `PLAY`
+  e por comparação curta. Ficam no original: áreas sem faixa no álbum (MT `0xE108`, GGM `0x80600000`, Atlantis
+  `0xE001`), GI debaixo d'água a 142/137 BPM (álbum só a 130) e Trash Can (álbum gravado a 125 BPM, jogo 116).
+  Loops: 94 de 124 com emenda ≥0,95; Near Space Zone (0,53) e Drained Palace (0,82) pedem audição. Não testado:
+  transições reais no jogo (entrar/sair da água, rampa de andamento), campanha completa, Linux e portátil.
+  `tooie_audio_mod_test`, `tooie_bgm_hooks_test`, `tooie_bgm_volume_test` na suíte obrigatória (34/34). MP3/ZIP
+  continuam privados: o release publica só o suporte; o link do pacote é colocado pelo usuário.
 
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
@@ -389,4 +386,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: publicar uma release Windows com a correção do J2 no splitscreen e o fallback de API após o launcher.
+`NEXT_SINGLE_ACTION`: o usuário ouvir no jogo o pacote HD completo (gerado com `tools/build_audio_pack.py`), em especial entrar e sair da água, Near Space Zone e Drained Palace, e aprovar o merge do PR #9; depois, release v0.1.6.

@@ -1,0 +1,2418 @@
+{
+ "album": "Banjo-Tooie HD",
+ "album_folder": "Banjo-Tooie HD",
+ "mod": {
+  "game_id": "bt",
+  "id": "tooie_hd_audio",
+  "display_name": "Banjo-Tooie HD Audio",
+  "version": "1.0.0",
+  "minimum_recomp_version": "0.1.6",
+  "authors": [
+   "Wesley Sieiro Takatsu de Araujo"
+  ],
+  "description": "Replaces the game's music with the HD soundtrack: every area variant, tempo and jingle mapped to the game's own sequences. Mod by Wesley Sieiro Takatsu de Araujo. Music composed by Grant Kirkhope (Rare); HD restoration by L. Spiro. The music is not by the mod author.",
+  "short_description": "HD soundtrack (music by Grant Kirkhope, HD restoration by L. Spiro)"
+ },
+ "tracks": [
+  {
+   "file": "01. Zoom In.mp3",
+   "sha256": "238129a3ce3b23b377ef6f0335a3c15cab53adbedba956a2d95027682a1cf655",
+   "rules": [
+    {
+     "id": 29
+    }
+   ]
+  },
+  {
+   "file": "02. Banjo's Theme.mp3",
+   "sha256": "f62336a14df4e118925f01eedaaaa53ed598c1a4a9200b3149db725030cff7c0",
+   "rules": [
+    {
+     "id": 125
+    }
+   ]
+  },
+  {
+   "file": "03. Game Select.mp3",
+   "sha256": "19aaaac05560f59d450eea2bb5b7bf78ef28f7d4d003e169db2d33fc34ab76b2",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 3929636,
+   "end_frame": 3929636,
+   "rules": [
+    {
+     "id": 103
+    }
+   ]
+  },
+  {
+   "file": "04. Hag Overture.mp3",
+   "sha256": "149b087ad3f71c83377430ba1c601067fb267b7241f41d3c3e05714a0584853c",
+   "loop_start_frame": 887040,
+   "loop_end_frame": 1305946,
+   "end_frame": 1305946,
+   "rules": [
+    {
+     "id": 123
+    }
+   ]
+  },
+  {
+   "file": "05. Banjo's House Blues.mp3",
+   "sha256": "ff6d96e7bb317df5369c5274d241aaeff0ef0be5978ce08b89c84ef2dd06e07d",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 3443462,
+   "end_frame": 3443462,
+   "rules": [
+    {
+     "id": 51
+    }
+   ]
+  },
+  {
+   "file": "06. Spiral Mountain.mp3",
+   "sha256": "33609b65d54173a7cd5f0786f1d7cc6c3aa2c3b81d2bf50529a5ba9eba540404",
+   "bpm": 80,
+   "loop_start_frame": 2205120,
+   "loop_end_frame": 7965120,
+   "end_frame": 7965120,
+   "rules": [
+    {
+     "id": 50,
+     "channel_mask": 4294967295,
+     "channel_value": 25599,
+     "native_channel_mask": 25599
+    }
+   ]
+  },
+  {
+   "file": "07. Collect Blue Eggs.mp3",
+   "sha256": "defb0f221d45005d83faa6af4a4fef5c630ac3cd951d0b4d0de80e17f7ba1362",
+   "rules": [
+    {
+     "id": 4
+    }
+   ]
+  },
+  {
+   "file": "08. Equip Blue Eggs.mp3",
+   "sha256": "6422f8a42c485ed0dbaba9e2306815f2a809d19b2e3ea49a951d28babe0d19ff",
+   "rules": [
+    {
+     "id": 113
+    }
+   ]
+  },
+  {
+   "file": "09. Spiral Mountain (Underwater).mp3",
+   "sha256": "7c9c8d47722df25ce213a1b9298263bb1654dd1b7f15f63525ee076b7d3c67fa",
+   "bpm": 80,
+   "loop_start_frame": 320640,
+   "loop_end_frame": 6080640,
+   "end_frame": 6080640,
+   "rules": [
+    {
+     "id": 50,
+     "channel_mask": 4294967295,
+     "channel_value": 7168,
+     "native_channel_mask": 7168
+    }
+   ]
+  },
+  {
+   "file": "10. Spiral Mountain (Behind the Waterfall).mp3",
+   "sha256": "69f07d2e7417b06a6aee0102561ea8fb6548ced42e2e82846fcac27c5423f193",
+   "bpm": 80,
+   "loop_start_frame": 330240,
+   "loop_end_frame": 6090240,
+   "end_frame": 6090240,
+   "rules": [
+    {
+     "id": 50,
+     "channel_mask": 4294967295,
+     "channel_value": 33423360,
+     "native_channel_mask": 33423360
+    }
+   ]
+  },
+  {
+   "file": "11. Vs Klungo.mp3",
+   "sha256": "98bfbbf5a0f9de752e5d80883aba949a43cd7d5e05464a62e3bd4dfdeb9ec6d8",
+   "loop_start_frame": 758400,
+   "loop_end_frame": 6075226,
+   "end_frame": 6075226,
+   "rules": [
+    {
+     "id": 85
+    }
+   ]
+  },
+  {
+   "file": "12. Collect Honeycomb.mp3",
+   "sha256": "70536bec4446275c00a87f20d213ae48834da021e1a89d5fc3e5fcd2ac5ba6fe",
+   "rules": [
+    {
+     "id": 8
+    }
+   ]
+  },
+  {
+   "file": "13. Jinjo Village.mp3",
+   "sha256": "f4fc728097bf09a16c5933b7e3274b07003eecb72e45176b635e9847632571f2",
+   "bpm": 105,
+   "loop_start_frame": 587520,
+   "loop_end_frame": 6841140,
+   "end_frame": 6841140,
+   "rules": [
+    {
+     "id": 89,
+     "channel_mask": 4294967295,
+     "channel_value": 16894,
+     "native_channel_mask": 16894
+    }
+   ]
+  },
+  {
+   "file": "14. Jingaling's Throne Room.mp3",
+   "sha256": "9dcc8f41feeb295f9d4effab24c440660653f2fdf5c6ae24361498d598cf4093",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 5303210,
+   "end_frame": 5303210,
+   "rules": [
+    {
+     "id": 92
+    }
+   ]
+  },
+  {
+   "file": "15. Jiggy Appears.mp3",
+   "sha256": "b147387e2df3dfba2418d2d53c1826fbb557e395679b0cda38e29bd37ec10801",
+   "rules": [
+    {
+     "id": 24
+    }
+   ]
+  },
+  {
+   "file": "16. Collect Jiggy.mp3",
+   "sha256": "27d4e19c9cd666f76cc5a7de43f3f060e20f385f65d3fc5c4d086ddaa0044160",
+   "rules": [
+    {
+     "id": 5
+    }
+   ]
+  },
+  {
+   "file": "17. Meanwhile....mp3",
+   "sha256": "d39b54ccfac0e671c0bce0155a5edce21ca8742c7df5a65084b62a882681e8bd",
+   "rules": [
+    {
+     "id": 135
+    }
+   ]
+  },
+  {
+   "file": "18. An Evil Plan.mp3",
+   "sha256": "023090d6ec64c6bdcf63eeeb52cf1b2422eb2e81a7dcdae20eff7bfd0a8e62d9",
+   "loop_start_frame": 336000,
+   "loop_end_frame": 774850,
+   "end_frame": 774850,
+   "rules": [
+    {
+     "id": 136
+    }
+   ]
+  },
+  {
+   "file": "19. B.O.B. Firing.mp3",
+   "sha256": "23a3e05528d8105935e1e2a010016373b3023b512b1f74c4400b3333d66298c6",
+   "rules": [
+    {
+     "id": 137
+    }
+   ]
+  },
+  {
+   "file": "20. B.O.B. Sucking.mp3",
+   "sha256": "76b0d06b9586d2496881d9f7a685634003d94ff49a2787863cb4d248c63f7a62",
+   "rules": [
+    {
+     "id": 138
+    }
+   ]
+  },
+  {
+   "file": "21. The Zombie King.mp3",
+   "sha256": "0af557ea9d6ba3cadcbf536415e43ed782f8c508d5a6a04c6f689b8715d28de3",
+   "rules": [
+    {
+     "id": 139
+    }
+   ]
+  },
+  {
+   "file": "22. An Evil Plan Revealed.mp3",
+   "sha256": "85c632e5d3335bacb7e751bcf2eb3585725ea67b19d0a928cfa013a7472b06b4",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 494529,
+   "end_frame": 494529,
+   "rules": [
+    {
+     "id": 140
+    }
+   ]
+  },
+  {
+   "file": "24. Jinjo Village (Drained Jingaling's Palace).mp3",
+   "sha256": "e2d3512ae7c01ba4721c7259852de0c51d83f0cafd07922980e6fe61fd43d4b1",
+   "bpm": 75,
+   "loop_start_frame": 2688000,
+   "loop_end_frame": 11443200,
+   "end_frame": 18994563,
+   "rules": [
+    {
+     "id": 89,
+     "channel_mask": 4294967295,
+     "channel_value": 45056,
+     "native_channel_mask": 45056
+    }
+   ]
+  },
+  {
+   "file": "25. In the Hall of the Zombie King.mp3",
+   "sha256": "a4919aafcf5c6eced04af089be99b48f12bd9aba5b59e5071174a0a1d1912314",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 5959211,
+   "end_frame": 5959211,
+   "rules": [
+    {
+     "id": 93
+    }
+   ]
+  },
+  {
+   "file": "26. Sad Jinjo House.mp3",
+   "sha256": "24731da39b8dd97d81a5ca02665aa53718749f99fe274b13c53cfd7db8bc90ab",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 3280779,
+   "end_frame": 3280779,
+   "rules": [
+    {
+     "id": 90
+    }
+   ]
+  },
+  {
+   "file": "27. Jinjo Village (Caves).mp3",
+   "sha256": "08530e0520a22518aa69c1ab785c2636c2e64600939bd082f3cfe28395b19568",
+   "bpm": 102,
+   "loop_start_frame": 162240,
+   "loop_end_frame": 6599884,
+   "end_frame": 6599884,
+   "rules": [
+    {
+     "id": 89,
+     "channel_mask": 4294967295,
+     "channel_value": 1537,
+     "native_channel_mask": 1537
+    }
+   ]
+  },
+  {
+   "file": "28. Bottles' House.mp3",
+   "sha256": "b357f032ea390f3396dd44ea605cd7e4e174c42e5a4880cd1ef47332d5a23b1f",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 2673498,
+   "end_frame": 2673498,
+   "rules": [
+    {
+     "id": 98
+    }
+   ]
+  },
+  {
+   "file": "29. Collect Red Feather.mp3",
+   "sha256": "4b70ffe4c6fcbd2440d3ea21dedccd0a8608c00d3010eba26c67af48f27c3365",
+   "rules": [
+    {
+     "id": 3
+    }
+   ]
+  },
+  {
+   "file": "30. Collect Gold Feather.mp3",
+   "sha256": "6a25188541056cf5d7d67c603eb6bed9f43c4e3843215b8df6ab18c9a808c7e3",
+   "rules": [
+    {
+     "id": 6
+    }
+   ]
+  },
+  {
+   "file": "31. Isle o' Hags.mp3",
+   "sha256": "a8542a98af8d6c907b324f19b4af98172c5e04585143152986e9e7d214a14965",
+   "bpm": 102,
+   "loop_start_frame": 292518,
+   "loop_end_frame": 7068928,
+   "end_frame": 7068928,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 127,
+     "native_channel_mask": 127
+    }
+   ]
+  },
+  {
+   "file": "32. Heggy's Egg Shed.mp3",
+   "sha256": "1ce083de0ba3e6491ac8452536bc302a84157dd8de0723b7b47a133a1a8142b5",
+   "loop_start_frame": 574881,
+   "loop_end_frame": 3000110,
+   "end_frame": 3000110,
+   "rules": [
+    {
+     "id": 127
+    }
+   ]
+  },
+  {
+   "file": "33. Jiggywiggy's Temple.mp3",
+   "sha256": "d8a78cc9195c3a2274c5e148d4528b609797309b38934afd63b0b023dfc043f8",
+   "loop_start_frame": 178560,
+   "loop_end_frame": 4305116,
+   "end_frame": 4305116,
+   "rules": [
+    {
+     "id": 94
+    }
+   ]
+  },
+  {
+   "file": "34. Jiggywiggy's Challenge (Start).mp3",
+   "sha256": "6b321da999622061bd60218ff3289b29c49062c88a1ac1dce7861b6cf9510d9e",
+   "rules": [
+    {
+     "id": 46
+    }
+   ]
+  },
+  {
+   "file": "35. Jiggywiggy's Challenge (Scatter).mp3",
+   "sha256": "d11c01f3807eeee28f6ec0b85c1748e5db75253de9391fed47563ee1a67faf71",
+   "rules": [
+    {
+     "id": 49
+    }
+   ]
+  },
+  {
+   "file": "36. Jiggywiggy's Challenge.mp3",
+   "sha256": "1cd242163b6891e12cdf3209d13ecd6453a615a6cd36d6feb35805acdbe682b0",
+   "loop_start_frame": 146880,
+   "loop_end_frame": 3868658,
+   "end_frame": 3868658,
+   "rules": [
+    {
+     "id": 131
+    }
+   ]
+  },
+  {
+   "file": "37. Jiggywiggy's Challenge (Pick Up Piece).mp3",
+   "sha256": "b373787ad57cdfcc373ea2ed2c88c8bc7be4bc9691e5dedb7307f53f385027ed",
+   "rules": [
+    {
+     "id": 47
+    }
+   ]
+  },
+  {
+   "file": "38. Jiggywiggy's Challenge (Put Down Piece).mp3",
+   "sha256": "3e26db95462f0f5a0597af1971cb26429fff2f65e2453d3c10cbebd51306fb8f",
+   "rules": [
+    {
+     "id": 48
+    }
+   ]
+  },
+  {
+   "file": "39. Failure....mp3",
+   "sha256": "213b8fd983f71712acb004db64370d6a954daf882c6d298b71a4f95eaf583370",
+   "rules": [
+    {
+     "id": 23
+    }
+   ]
+  },
+  {
+   "file": "40. Success!.mp3",
+   "sha256": "7dc7ee3f981a4a751a21400e035bb512eb047998de23885c604c9cab4ff90241",
+   "rules": [
+    {
+     "id": 22
+    }
+   ]
+  },
+  {
+   "file": "41. Isle o' Hags (Mayahem Temple).mp3",
+   "sha256": "9ab66917cff8ddedee0119d63a20ab87c8e15a2dd1097f436d42daee81b9ad37",
+   "bpm": 102,
+   "loop_start_frame": 269760,
+   "loop_end_frame": 7046170,
+   "end_frame": 7046170,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 7936,
+     "native_channel_mask": 7936
+    }
+   ]
+  },
+  {
+   "file": "42. Mayahem Temple.mp3",
+   "sha256": "f8aaac60ee7883f504233b4936e3f5a5cc78233f94ca433adaf249a1f8ef2543",
+   "bpm": 120,
+   "loop_start_frame": 415680,
+   "loop_end_frame": 6271680,
+   "end_frame": 6271680,
+   "rules": [
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 29695,
+     "native_channel_mask": 29695
+    },
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 29663,
+     "native_channel_mask": 29663
+    }
+   ]
+  },
+  {
+   "file": "43. Collect Note.mp3",
+   "sha256": "2c0d30f351aa035f2acdaed17bea67197ff8c47c6f6f6fbbbb857156dad80751",
+   "rules": [
+    {
+     "id": 1
+    }
+   ]
+  },
+  {
+   "file": "44. Collect Treble Clef.mp3",
+   "sha256": "07c2a7feb6101a390a0cf452b88e2b04150e5797e18514aba30b2f6fe0d88fbd",
+   "rules": [
+    {
+     "id": 20
+    }
+   ]
+  },
+  {
+   "file": "45. Sergeant Jamjar's Lesson.mp3",
+   "sha256": "fe43d68e19f986d1935e53e8f52dec9130352a646dc3b0572b0f9905c052137d",
+   "loop_start_frame": 48960,
+   "loop_end_frame": 1651389,
+   "end_frame": 1651389,
+   "rules": [
+    {
+     "id": 58
+    }
+   ]
+  },
+  {
+   "file": "46. Mumbo's Skull.mp3",
+   "sha256": "d28404043b9d0955cb7bd51bef61936879877dbd14b4d4e7e09b237b9a7a10fa",
+   "loop_start_frame": 62400,
+   "loop_end_frame": 3573204,
+   "end_frame": 3573204,
+   "rules": [
+    {
+     "id": 26
+    }
+   ]
+  },
+  {
+   "file": "47. Mumbo's Magic.mp3",
+   "sha256": "9c6712c5606f61c4e3d033c4fc4334ba3b9a3a563fc00a420537d704981b415e",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 713427,
+   "end_frame": 713427,
+   "rules": [
+    {
+     "id": 96
+    }
+   ]
+  },
+  {
+   "file": "48. Magic Jingle.mp3",
+   "sha256": "1228b2013277b843d3445f878afc74bd1dba0af025c5bb018545caabe6fc1fce",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 822679,
+   "end_frame": 822679,
+   "rules": [
+    {
+     "id": 28
+    }
+   ]
+  },
+  {
+   "file": "49. Humba Wumba's Wigwam.mp3",
+   "sha256": "95c9e2c64a6038e19e7f7ae4ca2756ef5338515cf9ca43efccfc0313a634ee26",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 2359679,
+   "end_frame": 2359679,
+   "rules": [
+    {
+     "id": 55
+    }
+   ]
+  },
+  {
+   "file": "50. Transformation.mp3",
+   "sha256": "8086bd72d1505bab69eddf25f5b6f3330fb6634061e8077dc4888294f64a2d06",
+   "rules": [
+    {
+     "id": 12
+    }
+   ]
+  },
+  {
+   "file": "51. Mayahem Temple (Outside Kickball Stadium).mp3",
+   "sha256": "a9a512a1ab80c8186b2a3560f5f0d16589f89d6efa624b760cd3195e18570ab7",
+   "bpm": 120,
+   "loop_start_frame": 336960,
+   "loop_end_frame": 6192960,
+   "end_frame": 6192960,
+   "rules": [
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 1075773440,
+     "native_channel_mask": 1075773440
+    },
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 1075642368,
+     "native_channel_mask": 1075642368
+    }
+   ]
+  },
+  {
+   "file": "52. Mayahem Temple (Kickball Stadium Lobby).mp3",
+   "sha256": "41f80d039b8a7f4a3ca7797c8720ea086582d8560f768f7c9c0e16d5612a2fa1",
+   "bpm": 120,
+   "loop_start_frame": 338880,
+   "loop_end_frame": 6194880,
+   "end_frame": 6194880,
+   "rules": [
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 1103101952,
+     "native_channel_mask": 1103101952
+    }
+   ]
+  },
+  {
+   "file": "53. Mayahem Kickball.mp3",
+   "sha256": "8b286dbcd3ac4b090f5b1b1d3912ed2bc282923c0ff3d05832ffdc67aeae5ca6",
+   "loop_start_frame": 654720,
+   "loop_end_frame": 2958712,
+   "end_frame": 2958712,
+   "rules": [
+    {
+     "id": 61
+    }
+   ]
+  },
+  {
+   "file": "54. Mayahem Kickball (Colosseum).mp3",
+   "sha256": "686da8c9eb9df7fb3eba13ba73535b136a91808d812b537e282beea1b850e64e",
+   "rules": [
+    {
+     "id": 132
+    }
+   ]
+  },
+  {
+   "file": "55. Mayahem Kickball Finish.mp3",
+   "sha256": "3da8e4cc0d3320f24cb202dddf7881eb95a1da1a019a905f2225e7b416a189a8",
+   "rules": [
+    {
+     "id": 67
+    }
+   ]
+  },
+  {
+   "file": "56. Mayahem Temple (Underwater).mp3",
+   "sha256": "b7335d03d0088f6fb0f26322176de7162880b5ccc6beb669c6153fb485b0efbb",
+   "bpm": 105,
+   "loop_start_frame": 382080,
+   "loop_end_frame": 7074645,
+   "end_frame": 7074645,
+   "rules": [
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 3072,
+     "native_channel_mask": 3072
+    }
+   ]
+  },
+  {
+   "file": "57. Wading Boots.mp3",
+   "sha256": "77b866811285d5cb2b742c1043059a864f6895b6909a5cd07e93e83c6cba8046",
+   "loop_start_frame": 120960,
+   "loop_end_frame": 1437527,
+   "end_frame": 1437527,
+   "rules": [
+    {
+     "id": 32
+    }
+   ]
+  },
+  {
+   "file": "58. Mayahem Temple (Targitzan's Temple).mp3",
+   "sha256": "61f88c62ccd2652bc176a92847f65b3a3e46b756966f1b81398b77c2dc01cdb0",
+   "bpm": 95,
+   "loop_start_frame": 410879,
+   "loop_end_frame": 7807920,
+   "end_frame": 7807920,
+   "rules": [
+    {
+     "id": 57,
+     "channel_mask": 4294967295,
+     "channel_value": 3189768192,
+     "native_channel_mask": 3189768192
+    }
+   ]
+  },
+  {
+   "file": "59. Vs Targitzan.mp3",
+   "sha256": "30549f5f3314b416dcc035814e03c9c65288157b5670ce6c3a161cd995835eea",
+   "loop_start_frame": 350400,
+   "loop_end_frame": 5928338,
+   "end_frame": 5928338,
+   "rules": [
+    {
+     "id": 56
+    }
+   ]
+  },
+  {
+   "file": "60. Collect all Jiggies.mp3",
+   "sha256": "64606373152651103a3e648193568f9cd5397238e7548d867f1d38fc6df84882",
+   "rules": [
+    {
+     "id": 27
+    }
+   ]
+  },
+  {
+   "file": "61. Collect Jinjo.mp3",
+   "sha256": "ddd35ed5c78a4689f64bfc0cc4247af74c100fdf2135100c6da9b8a47a8dc0ea",
+   "rules": [
+    {
+     "id": 2
+    }
+   ]
+  },
+  {
+   "file": "62. Collect all Jinjos.mp3",
+   "sha256": "45615cc13735c2a8b75057031b868c25ea729fd613dfe9d3ac0d1373fa907c5c",
+   "rules": [
+    {
+     "id": 17
+    }
+   ]
+  },
+  {
+   "file": "63. Happy Jinjo House.mp3",
+   "sha256": "afc77f6124ab12c1174ac6623801e4417f49a5cef58808c4277ba8ac5fe4d46f",
+   "loop_start_frame": 52800,
+   "loop_end_frame": 3923220,
+   "end_frame": 3923220,
+   "rules": [
+    {
+     "id": 91
+    }
+   ]
+  },
+  {
+   "file": "64. Cheato Page Appears.mp3",
+   "sha256": "0c40384783358fc7c67d28811c52b2e7651e6f1f7b8f9adf80347ba0d3753075",
+   "rules": [
+    {
+     "id": 119
+    }
+   ]
+  },
+  {
+   "file": "65. Collect Cheato Page.mp3",
+   "sha256": "6c382d0c0e3facd01e566400a6c93d042a8c639b6ce450a8a022876117117d55",
+   "rules": [
+    {
+     "id": 114
+    }
+   ]
+  },
+  {
+   "file": "66. Gruntilda's Lair.mp3",
+   "sha256": "ce507bff377f1c06da22d955b6e7204797a151105bd4f039c7e30f70634f092e",
+   "loop_start_frame": 273600,
+   "loop_end_frame": 2886355,
+   "end_frame": 2886355,
+   "rules": [
+    {
+     "id": 52
+    }
+   ]
+  },
+  {
+   "file": "67. Cheato's Theme.mp3",
+   "sha256": "dca606172c07f31372714b1edc4a39e7987f4762b75ab2f18fec57aa5bd03ec2",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 1591679,
+   "end_frame": 1591679,
+   "rules": [
+    {
+     "id": 68
+    }
+   ]
+  },
+  {
+   "file": "68. Activate Cheat.mp3",
+   "sha256": "f63b61ce5334f9405a538309d702ce19e47c92da4c4c0e1df069cf38f120517a",
+   "rules": [
+    {
+     "id": 150
+    }
+   ]
+  },
+  {
+   "file": "69. Deactivate Cheat.mp3",
+   "sha256": "c48533ff594732b353e3d331191f60ebc4e00abe1483ee13a5e404ff97fed2ba",
+   "rules": [
+    {
+     "id": 151
+    }
+   ]
+  },
+  {
+   "file": "70. Isle o' Hags (Glitter Gulch Mine).mp3",
+   "sha256": "217a237faf69de3b7ad859e01d61542e5f185c457761764ca2909f03f8d65504",
+   "bpm": 102,
+   "loop_start_frame": 271680,
+   "loop_end_frame": 7048090,
+   "end_frame": 7048090,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 57344,
+     "native_channel_mask": 57344
+    }
+   ]
+  },
+  {
+   "file": "71. Collect Fire Eggs.mp3",
+   "sha256": "a3e429a95132f4e71f64b0129693e23499ab81411dd09c65dd782677aee946de",
+   "rules": [
+    {
+     "id": 106
+    }
+   ]
+  },
+  {
+   "file": "72. Equip Fire Eggs.mp3",
+   "sha256": "3995360997d57fb778b6e2d05df4b3623a32cb9611fa767258bd55fe8e1d69f1",
+   "rules": [
+    {
+     "id": 110
+    }
+   ]
+  },
+  {
+   "file": "73. Glitter Gulch Mine.mp3",
+   "sha256": "a069addc5947825f81276a5a1337daae3fcb244b4bf77fb602da8b49e9123151",
+   "bpm": 130,
+   "loop_start_frame": 3853292,
+   "loop_end_frame": 9524573,
+   "end_frame": 9524573,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 1279,
+     "native_channel_mask": 1279
+    }
+   ]
+  },
+  {
+   "file": "74. Turbo Trainers.mp3",
+   "sha256": "8cbe0d9babcf556eb2f169ff50a390951c7be11065e454abc84c3e3bfbb09d2b",
+   "loop_start_frame": 109440,
+   "loop_end_frame": 1079516,
+   "end_frame": 1079516,
+   "rules": [
+    {
+     "id": 31
+    }
+   ]
+  },
+  {
+   "file": "75. Glitter Gulch Mine (Prospector's Hut).mp3",
+   "sha256": "aef45974b452a270221f082f71271398db47d3ec49bc0aefa1986507ea753afc",
+   "bpm": 117,
+   "loop_start_frame": 60480,
+   "loop_end_frame": 6362012,
+   "end_frame": 6362012,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 49296,
+     "native_channel_mask": 49296
+    }
+   ]
+  },
+  {
+   "file": "76. Glitter Gulch Mine (Crushing Shed).mp3",
+   "sha256": "836dea3c23d5ed11d6631e5b7246ba14322d25ab300fe519bcfa0ab70afb78d9",
+   "bpm": 100,
+   "loop_start_frame": 6207360,
+   "loop_end_frame": 13580160,
+   "end_frame": 13580160,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 133103616,
+     "native_channel_mask": 133103616
+    }
+   ]
+  },
+  {
+   "file": "77. Glitter Gulch Mine (Mine Interiors).mp3",
+   "sha256": "88f1bebcef424e254a8463fbf7ebdc237eea1ffa9d8c4e9d3101c50c7f9533d8",
+   "bpm": 100,
+   "loop_start_frame": 6207360,
+   "loop_end_frame": 13580160,
+   "end_frame": 13580160,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 134152192,
+     "native_channel_mask": 134152192
+    }
+   ]
+  },
+  {
+   "file": "78. Glitter Gulch Mine (Dark Caverns).mp3",
+   "sha256": "eef5720d8ab3d2fe106a164eee89ca840036e36842028e9c8da7bcc33c3b56c2",
+   "bpm": 90,
+   "loop_start_frame": 5975422,
+   "loop_end_frame": 14164941,
+   "end_frame": 14164941,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 2086731776,
+     "native_channel_mask": 2086731776
+    }
+   ]
+  },
+  {
+   "file": "79. Glitter Gulch Mine (Underwater).mp3",
+   "sha256": "18f16ba7394b1aab771186e263be85880d6014d48ee0f2a6a547d0ac0ccd110c",
+   "bpm": 100,
+   "loop_start_frame": 55679,
+   "loop_end_frame": 7428479,
+   "end_frame": 7428479,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 768,
+     "native_channel_mask": 768
+    }
+   ]
+  },
+  {
+   "file": "80. Racin' with Mary.mp3",
+   "sha256": "746180d2f7a294446c5f19d048366570af231403f73472b5b26c803d1de57d2e",
+   "loop_start_frame": 200640,
+   "loop_end_frame": 2965440,
+   "end_frame": 2965440,
+   "rules": [
+    {
+     "id": 66
+    }
+   ]
+  },
+  {
+   "file": "81. Glitter Gulch Mine (Near Space Zone).mp3",
+   "sha256": "69a6ee48d46f36fa13f3f0990155994a6d85f6da3f4785e909092cd9474308e8",
+   "bpm": 100,
+   "loop_start_frame": 8419262,
+   "loop_end_frame": 15792245,
+   "end_frame": 15792245,
+   "rules": [
+    {
+     "id": 62,
+     "channel_mask": 4294967295,
+     "channel_value": 1128448,
+     "native_channel_mask": 1128448
+    }
+   ]
+  },
+  {
+   "file": "82. Ordinance Storage.mp3",
+   "sha256": "c60955418cd18f490a9828a1d5c13e186b17c502c4705e8dc2604be23ab236ce",
+   "loop_start_frame": 137280,
+   "loop_end_frame": 3455040,
+   "end_frame": 3455040,
+   "rules": [
+    {
+     "id": 133
+    }
+   ]
+  },
+  {
+   "file": "83. Vs Old King Coal.mp3",
+   "sha256": "716ef85d3b688fb38568d4a5d44d2629433c0e9745bd58078f3a66f30c619f9e",
+   "loop_start_frame": 109440,
+   "loop_end_frame": 5485386,
+   "end_frame": 5485386,
+   "rules": [
+    {
+     "id": 72
+    }
+   ]
+  },
+  {
+   "file": "84. Wonderwing.mp3",
+   "sha256": "30ab820c833a41282a835b2b5e9d5209aff7c200cda9f8041371e1ef1439cc37",
+   "loop_start_frame": 120960,
+   "loop_end_frame": 1310100,
+   "end_frame": 1310100,
+   "rules": [
+    {
+     "id": 13
+    }
+   ]
+  },
+  {
+   "file": "85. Collect Empty Honeycomb.mp3",
+   "sha256": "e225067080c3e5450e7a3c9d60c0d941803e7539bb665dd6a48f40cb5d641703",
+   "rules": [
+    {
+     "id": 9
+    }
+   ]
+  },
+  {
+   "file": "86. Honey B's Hive.mp3",
+   "sha256": "6330459bbbd9f210f904cfa60b3c4dc85fe5e2d9c8fb91fa3613cbe6aa1c9488",
+   "loop_start_frame": 206400,
+   "loop_end_frame": 2333130,
+   "end_frame": 2333130,
+   "rules": [
+    {
+     "id": 95
+    }
+   ]
+  },
+  {
+   "file": "87. Complete Extra Honeycomb.mp3",
+   "sha256": "8d403548648f26f424e9857713120ec36dbb5f3a65dbfee925837e526e66a25d",
+   "rules": [
+    {
+     "id": 10
+    }
+   ]
+  },
+  {
+   "file": "88. Collect Mystery Honeycomb.mp3",
+   "sha256": "b845b6d979bd9c05868ecc2092410a9a6a885532a4e7d42f4375942d7862f216",
+   "rules": [
+    {
+     "id": 128
+    }
+   ]
+  },
+  {
+   "file": "89. Collect Skill Honeycomb.mp3",
+   "sha256": "0f4cdadf50e26b1a6b21d5f1c63d4ec27be7d6a14a7b0c03d4d1779b47dc734d",
+   "rules": [
+    {
+     "id": 129
+    }
+   ]
+  },
+  {
+   "file": "90. Pause Screen.mp3",
+   "sha256": "fe808ef1876ced6f7f8d8012661de4428ac2d0becfbba241faac15e8dcd34a0a",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 2820104,
+   "end_frame": 2820104,
+   "rules": [
+    {
+     "id": 36
+    }
+   ]
+  },
+  {
+   "file": "91. Isle o' Hags (Witchyworld).mp3",
+   "sha256": "da9ddaf544c4f2461dcdd3bb42c5eeb826ec20544a7396ec4e5dcdcb1818b9ee",
+   "bpm": 102,
+   "loop_start_frame": 274560,
+   "loop_end_frame": 7050970,
+   "end_frame": 7050970,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 458752,
+     "native_channel_mask": 458752
+    }
+   ]
+  },
+  {
+   "file": "92. Collect Grenade Eggs.mp3",
+   "sha256": "51e4e0a80b7384462f6bce4cc4e19f7b62398c408c35accdf019b8e7391dce03",
+   "rules": [
+    {
+     "id": 108
+    }
+   ]
+  },
+  {
+   "file": "93. Equip Grenade Eggs.mp3",
+   "sha256": "2d36138231c0e91552726e79c9c82e2447780d8e36f3dd5544dd25de7c08b537",
+   "rules": [
+    {
+     "id": 112
+    }
+   ]
+  },
+  {
+   "file": "94. Witchyworld.mp3",
+   "sha256": "f0929f5f13126ae866da6bad57e65c98f48a7bb5184fb3b0255f0f4121268e09",
+   "bpm": 180,
+   "loop_start_frame": 55679,
+   "loop_end_frame": 6103410,
+   "end_frame": 6103410,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 255,
+     "native_channel_mask": 255
+    },
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 24831,
+     "native_channel_mask": 24831
+    },
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 114,
+     "native_channel_mask": 114
+    }
+   ]
+  },
+  {
+   "file": "95. Witchyworld (Wild West Zone).mp3",
+   "sha256": "28f37dc7934ef51d87deab8ed9258c9d564577984a1c7fff704f4366f3075d53",
+   "bpm": 165,
+   "loop_start_frame": 2155055,
+   "loop_end_frame": 8752639,
+   "end_frame": 8752639,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 7936,
+     "native_channel_mask": 7936
+    }
+   ]
+  },
+  {
+   "file": "96. Witchyworld (Wild West Zone Pump Room).mp3",
+   "sha256": "03ac48013fe742889a062c4cf055d572c91f90bd8295bb449cf5e904ebdc5f7c",
+   "bpm": 165,
+   "loop_start_frame": 55679,
+   "loop_end_frame": 6653263,
+   "end_frame": 6653263,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 3584,
+     "native_channel_mask": 3584
+    }
+   ]
+  },
+  {
+   "file": "97. Witchyworld (Haunted Zone).mp3",
+   "sha256": "54720564249643b00861e447f94ef9966c74d5f1676022765d486f09237990c5",
+   "bpm": 170,
+   "loop_start_frame": 2083200,
+   "loop_end_frame": 8486741,
+   "end_frame": 8486741,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 33488896,
+     "native_channel_mask": 33488896
+    }
+   ]
+  },
+  {
+   "file": "98. Witchyworld (Haunted Zone Interior).mp3",
+   "sha256": "8488b7db097967a878d584ec9ae7b5de2d2021953b10ed4c865bc3f9c69201d4",
+   "bpm": 170,
+   "loop_start_frame": 55679,
+   "loop_end_frame": 6459220,
+   "end_frame": 6459220,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 20905984,
+     "native_channel_mask": 20905984
+    }
+   ]
+  },
+  {
+   "file": "99. Madame Grunty.mp3",
+   "sha256": "14fca77e8d662b11152e6e127b0cfbaafb4c826654c753f27c806f42bf603b00",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 2480513,
+   "end_frame": 2480513,
+   "rules": [
+    {
+     "id": 71
+    }
+   ]
+  },
+  {
+   "file": "100. Witchyworld (Space Zone).mp3",
+   "sha256": "2c0e4615c3b38d82ab29088bfb9005321107f48fb15b23ef3e9d1ad9124ec52c",
+   "bpm": 180,
+   "loop_start_frame": 1975467,
+   "loop_end_frame": 8023198,
+   "end_frame": 8023198,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 4261937152,
+     "native_channel_mask": 4261937152
+    }
+   ]
+  },
+  {
+   "file": "101. Witchyworld (Dodgem Dome Lobby).mp3",
+   "sha256": "ad53e6dcb5707a9b84177ebeacee084fd8e50534bcb3aa6054d3702fbba80331",
+   "bpm": 180,
+   "loop_start_frame": 55679,
+   "loop_end_frame": 6103410,
+   "end_frame": 6103410,
+   "rules": [
+    {
+     "id": 64,
+     "channel_mask": 4294967295,
+     "channel_value": 805929040,
+     "native_channel_mask": 805929040
+    }
+   ]
+  },
+  {
+   "file": "102. Fun 'N' Games.mp3",
+   "sha256": "05e7f6f3a50f08d9d2336994f3c33c845a331788392fa543efe4882c9f11c91c",
+   "loop_start_frame": 252480,
+   "loop_end_frame": 3098588,
+   "end_frame": 3098588,
+   "rules": [
+    {
+     "id": 73
+    }
+   ]
+  },
+  {
+   "file": "103. Incorrect....mp3",
+   "sha256": "06a2d5f9947ea85c652662bfda0be0c1f1f1966b921f4d14c6dc92712247a5b5",
+   "rules": [
+    {
+     "id": 15
+    }
+   ]
+  },
+  {
+   "file": "104. Correct!.mp3",
+   "sha256": "20ca3a45be6c501710a6e9a8ccddf49097bda378e8334e883891be4d07e9e6e9",
+   "rules": [
+    {
+     "id": 0
+    },
+    {
+     "id": 14
+    }
+   ]
+  },
+  {
+   "file": "105. Fun 'N' Games Success!.mp3",
+   "sha256": "a79be6937330f07f8c8d5528eb088d7c89d8eb46086b46e1d84942eef20b9835",
+   "rules": [
+    {
+     "id": 115
+    }
+   ]
+  },
+  {
+   "file": "106. Mini-Game Victory.mp3",
+   "sha256": "a0bd8aa61ade1f349fdbae9f74326a6c4a4501c7ee9a3b294a05561da7c49cc1",
+   "rules": [
+    {
+     "id": 16
+    }
+   ]
+  },
+  {
+   "file": "108. Vs Mr. Patch.mp3",
+   "sha256": "dbc905590d7cad93cf6a113364b60476dc1ec327449d29c79a3c2aafa0a2a9e5",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 5612146,
+   "end_frame": 5612146,
+   "rules": [
+    {
+     "id": 76
+    }
+   ]
+  },
+  {
+   "file": "109. Isle o' Hags (Underwater).mp3",
+   "sha256": "74511ad32f73f6b636f444b2fed811b7551b430e186621105b75e16bbe9e5aff",
+   "bpm": 102,
+   "loop_start_frame": 278400,
+   "loop_end_frame": 7054810,
+   "end_frame": 7054810,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 128,
+     "native_channel_mask": 128
+    }
+   ]
+  },
+  {
+   "file": "110. Isle o' Hags (Jolly Roger's Lagoon).mp3",
+   "sha256": "9e340b163e146e6328f68150aed091b54d1c0ddb22c914dcfbb3d0add206e02f",
+   "bpm": 102,
+   "loop_start_frame": 275520,
+   "loop_end_frame": 7051930,
+   "end_frame": 7051930,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 1835008,
+     "native_channel_mask": 1835008
+    }
+   ]
+  },
+  {
+   "file": "111. Collect Ice Eggs.mp3",
+   "sha256": "e0178d79dd390770f376a7a27b0d6da9d0a6f8492f3086b823d2b23fff9a922c",
+   "rules": [
+    {
+     "id": 107
+    }
+   ]
+  },
+  {
+   "file": "112. Equip Ice Eggs.mp3",
+   "sha256": "f534118feb41788bb1bbc43cb28f134a4d94b997322e89059f941d2641d8db9a",
+   "rules": [
+    {
+     "id": 111
+    }
+   ]
+  },
+  {
+   "file": "113. Jolly Roger's Lagoon.mp3",
+   "sha256": "cb1d2daa6a08858e919ddc66ef783326877ae93d16914ac0ba9e64985ea1dd64",
+   "bpm": 100,
+   "loop_start_frame": 1122240,
+   "loop_end_frame": 6997440,
+   "end_frame": 6997440,
+   "rules": [
+    {
+     "id": 69,
+     "channel_mask": 4294967295,
+     "channel_value": 4095,
+     "native_channel_mask": 4095
+    }
+   ]
+  },
+  {
+   "file": "114. Jolly's.mp3",
+   "sha256": "edbe382bfb10cd02b30d00d4468686b8b0282d078ec0a584e17d40faa9e90237",
+   "bpm": 92,
+   "loop_start_frame": 58560,
+   "loop_end_frame": 6444638,
+   "end_frame": 6444638,
+   "rules": [
+    {
+     "id": 69,
+     "channel_mask": 4294967295,
+     "channel_value": 4128768,
+     "native_channel_mask": 4128768
+    }
+   ]
+  },
+  {
+   "file": "115. Jolly Roger's Lagoon (Underwater).mp3",
+   "sha256": "d6859f5038c39a60cda1052a4c63effac60da98b1769fb93e23d0bfee0793696",
+   "bpm": 95,
+   "loop_start_frame": 62400,
+   "loop_end_frame": 6246812,
+   "end_frame": 6246812,
+   "rules": [
+    {
+     "id": 69,
+     "channel_mask": 4294967295,
+     "channel_value": 12288,
+     "native_channel_mask": 12288
+    }
+   ]
+  },
+  {
+   "file": "116. Lose Air.mp3",
+   "sha256": "0c318bce7080a6c637fa1c8bc7f180a3439c1bae8c74b3ea6c85e6ac1d1bb7f2",
+   "rules": [
+    {
+     "id": 116
+    }
+   ]
+  },
+  {
+   "file": "117. Atlantis.mp3",
+   "sha256": "77948cc0ddcda54a063b110bf8b06b2df2b9601094bdc3aaeeee0fde770f0872",
+   "bpm": 110,
+   "loop_start_frame": 102719,
+   "loop_end_frame": 7014661,
+   "end_frame": 7014661,
+   "rules": [
+    {
+     "id": 75,
+     "channel_mask": 4294967295,
+     "channel_value": 254,
+     "native_channel_mask": 254
+    }
+   ]
+  },
+  {
+   "file": "118. Atlantis (Seaweed Sanctum).mp3",
+   "sha256": "f8049e64f7b5146ad612ec70331a3a21042824e8ca55fe7431685c9c154f4303",
+   "bpm": 100,
+   "loop_start_frame": 192959,
+   "loop_end_frame": 7796159,
+   "end_frame": 7796159,
+   "rules": [
+    {
+     "id": 75,
+     "channel_mask": 4294967295,
+     "channel_value": 66584576,
+     "native_channel_mask": 66584576
+    }
+   ]
+  },
+  {
+   "file": "119. Shootin' with the Fishes.mp3",
+   "sha256": "f84d4aa7a827d8315645ff32b4dd9e366ae20461a62a08b04f4608bb96558cec",
+   "loop_start_frame": 178560,
+   "loop_end_frame": 3058560,
+   "end_frame": 3058560,
+   "rules": [
+    {
+     "id": 83
+    }
+   ]
+  },
+  {
+   "file": "120. Talon Torpedo Time Up.mp3",
+   "sha256": "926bd0a3be8d15dafbf98a49d4699447afc6aab84774aca3c4ae338f7eea3365",
+   "rules": [
+    {
+     "id": 25
+    }
+   ]
+  },
+  {
+   "file": "121. Flying Saucer (Sad).mp3",
+   "sha256": "c4a33559334d74e1cf53ae41f86a6458acd7cf43414c58da833871dff797f2e0",
+   "loop_start_frame": 3945600,
+   "loop_end_frame": 6710400,
+   "end_frame": 6710400,
+   "rules": [
+    {
+     "id": 79
+    }
+   ]
+  },
+  {
+   "file": "122. Flying Saucer (Happy).mp3",
+   "sha256": "8a33ed2839321bc02a20684b16245eb9cdc68cb84ecfea06f2d8c173ef61f146",
+   "loop_start_frame": 144960,
+   "loop_end_frame": 3216960,
+   "end_frame": 3216960,
+   "rules": [
+    {
+     "id": 80
+    }
+   ]
+  },
+  {
+   "file": "123. Atlantis (Davy Jones' Locker).mp3",
+   "sha256": "82babaeb6497c82ce3c8b5e6fcc00bc001c5fb238f0f7d4e4dcaeb52362595d4",
+   "bpm": 100,
+   "loop_start_frame": 2908800,
+   "loop_end_frame": 10512000,
+   "end_frame": 10512000,
+   "rules": [
+    {
+     "id": 75,
+     "channel_mask": 4294967295,
+     "channel_value": 7936,
+     "native_channel_mask": 7936
+    }
+   ]
+  },
+  {
+   "file": "124. Atlantis (Inside the Big Fish).mp3",
+   "sha256": "b23e3ec02255b29bd5abbbc687353b9edbd0b37bf8a8e8f8562652ced40a0675",
+   "bpm": 100,
+   "loop_start_frame": 8712000,
+   "loop_end_frame": 16315202,
+   "end_frame": 16315202,
+   "rules": [
+    {
+     "id": 75,
+     "channel_mask": 4294967295,
+     "channel_value": 4261478400,
+     "native_channel_mask": 4261478400
+    }
+   ]
+  },
+  {
+   "file": "125. Atlantis (Inside the Big Fish Underwater).mp3",
+   "sha256": "f844b5dfc4dc42a6c6f7c0df9c07befe80d7931436b5fae65a1696a8e2b6b9e0",
+   "bpm": 100,
+   "loop_start_frame": 8712000,
+   "loop_end_frame": 16315203,
+   "end_frame": 16315203,
+   "rules": [
+    {
+     "id": 75,
+     "channel_mask": 4294967295,
+     "channel_value": 458752,
+     "native_channel_mask": 458752
+    }
+   ]
+  },
+  {
+   "file": "126. Atlantis (Seaweed Sanctum Underwater).mp3",
+   "sha256": "468e97b7f60bfbaa35881616d5fb781057dc49719f6c06e0d912c0520062f87d",
+   "bpm": 100,
+   "loop_start_frame": 66240,
+   "loop_end_frame": 7669440,
+   "end_frame": 7669440,
+   "rules": [
+    {
+     "id": 75,
+     "channel_mask": 4294967295,
+     "channel_value": 393216,
+     "native_channel_mask": 393216
+    }
+   ]
+  },
+  {
+   "file": "127. Vs Lord Woo Fak Fak.mp3",
+   "sha256": "631d9cf3730c9ef09fadb781299584d75c4c0cc4a6b53204b063c23fec2d9a58",
+   "loop_start_frame": 115200,
+   "loop_end_frame": 5747144,
+   "end_frame": 5747144,
+   "rules": [
+    {
+     "id": 59
+    }
+   ]
+  },
+  {
+   "file": "128. Isle o' Hags (Terrydactyland).mp3",
+   "sha256": "e9a186db784b9aea766141d9faffd983b1ef7c77add9ab1dbfa4049316ad217a",
+   "bpm": 102,
+   "loop_start_frame": 269760,
+   "loop_end_frame": 7046227,
+   "end_frame": 7046227,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 50334208,
+     "native_channel_mask": 50334208
+    }
+   ]
+  },
+  {
+   "file": "129. Collect Clockwork Kazooie Eggs.mp3",
+   "sha256": "d0aa6c0e6cd1b369ab2017bc9294341541db80f12ce2043b664de177b358a90a",
+   "rules": [
+    {
+     "id": 105
+    }
+   ]
+  },
+  {
+   "file": "130. Equip Clockwork Kazooie Eggs.mp3",
+   "sha256": "6320ee6ba7a00294a27f301446adb982b7fc3d44a82693b75daaeb572534fb9c",
+   "rules": [
+    {
+     "id": 109
+    }
+   ]
+  },
+  {
+   "file": "131. Clockwork Kazooie Bomb.mp3",
+   "sha256": "1048c209e805d61271b324ae74c4a9943b7fcdb07fe1f0f0a2133e6621c837ac",
+   "loop_start_frame": 121920,
+   "loop_end_frame": 1393083,
+   "end_frame": 1393083,
+   "rules": [
+    {
+     "id": 100
+    }
+   ]
+  },
+  {
+   "file": "132. Terrydactyland.mp3",
+   "sha256": "5f318caf205025db8b6d954fe3622a5a68c97c02f6445e6f2f025fcf2192dc0f",
+   "bpm": 150,
+   "loop_start_frame": 2334720,
+   "loop_end_frame": 8017920,
+   "end_frame": 8017920,
+   "rules": [
+    {
+     "id": 82,
+     "channel_mask": 4294967295,
+     "channel_value": 49663,
+     "native_channel_mask": 49663
+    }
+   ]
+  },
+  {
+   "file": "133. Springy-Step Shoes.mp3",
+   "sha256": "92e502dcca6a693336312701a2d333bad9c9e42bf67ea47acf35559a7c39fbfd",
+   "loop_start_frame": 134400,
+   "loop_end_frame": 1499720,
+   "end_frame": 1499720,
+   "rules": [
+    {
+     "id": 101
+    }
+   ]
+  },
+  {
+   "file": "134. Terrydactyland (Caves).mp3",
+   "sha256": "1833af40ec887a4d8dd9a2d4850fe6fbbba51fafc70e8be444022d5291b98639",
+   "bpm": 143,
+   "loop_start_frame": 531840,
+   "loop_end_frame": 6493233,
+   "end_frame": 6493233,
+   "rules": [
+    {
+     "id": 82,
+     "channel_mask": 4294967295,
+     "channel_value": 8323072,
+     "native_channel_mask": 8323072
+    }
+   ]
+  },
+  {
+   "file": "135. Terrydactyland (Underwater).mp3",
+   "sha256": "f18a5ba93f6c7cc054b90b38977d5b5b429b37e507730fed8e8ea2109796a723",
+   "bpm": 143,
+   "loop_start_frame": 533760,
+   "loop_end_frame": 6495153,
+   "end_frame": 6495153,
+   "rules": [
+    {
+     "id": 82,
+     "channel_mask": 4294967295,
+     "channel_value": 1536,
+     "native_channel_mask": 1536
+    }
+   ]
+  },
+  {
+   "file": "136. Stomping Plains.mp3",
+   "sha256": "84109b2dd0ffb3233e241b0491879a388ff5b7d73d92e89ffc7459254d2e7bcb",
+   "bpm": 150,
+   "loop_start_frame": 1796117,
+   "loop_end_frame": 7632666,
+   "end_frame": 7632666,
+   "rules": [
+    {
+     "id": 82,
+     "channel_mask": 4294967295,
+     "channel_value": 53248,
+     "native_channel_mask": 53248
+    }
+   ]
+  },
+  {
+   "file": "137. Vs Terry.mp3",
+   "sha256": "2e8aae21f50af78b93104e5184dcc11b40524e048164cb1461d9da62bc4cc97f",
+   "loop_start_frame": 4931467,
+   "loop_end_frame": 5429622,
+   "end_frame": 5429622,
+   "rules": [
+    {
+     "id": 78
+    }
+   ]
+  },
+  {
+   "file": "138. Isle o' Hags (Grunty Industries).mp3",
+   "sha256": "aa0494c872117d2bae32e8957e8b1a1d5b72796ed9fc1a9b580543580168b682",
+   "bpm": 102,
+   "loop_start_frame": 275520,
+   "loop_end_frame": 7051929,
+   "end_frame": 7051929,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 813694976,
+     "native_channel_mask": 813694976
+    }
+   ]
+  },
+  {
+   "file": "139. Grunty Industries.mp3",
+   "sha256": "d28f9f28196becfcef4c59026c4e9c291bd4e33e0ff31d9de0675f52e5093448",
+   "bpm": 142,
+   "loop_start_frame": 697920,
+   "loop_end_frame": 6863478,
+   "end_frame": 6863478,
+   "rules": [
+    {
+     "id": 63,
+     "channel_mask": 4294967295,
+     "channel_value": 63,
+     "native_channel_mask": 63
+    }
+   ]
+  },
+  {
+   "file": "140. Grunty Industries (Inside the Factory).mp3",
+   "sha256": "3d253997286529c3abf186c36aafc938958a58602e869124e815fc5a72e49e4b",
+   "bpm": 137,
+   "loop_start_frame": 4093391,
+   "loop_end_frame": 10484045,
+   "end_frame": 10484045,
+   "rules": [
+    {
+     "id": 63,
+     "channel_mask": 4294967295,
+     "channel_value": 8144,
+     "native_channel_mask": 8144
+    }
+   ]
+  },
+  {
+   "file": "141. Claw-Clamber Boots.mp3",
+   "sha256": "6ac8156f304c8a7d6bec32197e8a9ebad485af6d1f46c81a945cac32a883cb26",
+   "loop_start_frame": 136320,
+   "loop_end_frame": 1501640,
+   "end_frame": 1501640,
+   "rules": [
+    {
+     "id": 102
+    }
+   ]
+  },
+  {
+   "file": "142. Clinker's Cavern.mp3",
+   "sha256": "06fbace8ecf87b2264e43da8ea2f989a03ff9686b031cedd0ad4c391d16eaed4",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 4414540,
+   "end_frame": 4414540,
+   "rules": [
+    {
+     "id": 134
+    }
+   ]
+  },
+  {
+   "file": "143. Grunty Industries (Underwater).mp3",
+   "sha256": "cdb675d7be62da1c40a8d73085fb5bc346aa31fcfab150e15617126042e33b09",
+   "bpm": 130,
+   "loop_start_frame": 758400,
+   "loop_end_frame": 7493163,
+   "end_frame": 7493163,
+   "rules": [
+    {
+     "id": 63,
+     "channel_mask": 4294967295,
+     "channel_value": 15728640,
+     "native_channel_mask": 15728640
+    }
+   ]
+  },
+  {
+   "file": "144. Grunty Industries (Basement & Warehouse Interiors).mp3",
+   "sha256": "04f39339bd24347e52c4789a2ccd1847dbdae3df7ff20e5cacd6c0141a6d3e38",
+   "bpm": 130,
+   "loop_start_frame": 757440,
+   "loop_end_frame": 7492203,
+   "end_frame": 7492203,
+   "rules": [
+    {
+     "id": 63,
+     "channel_mask": 4294967295,
+     "channel_value": 1040448,
+     "native_channel_mask": 1040448
+    }
+   ]
+  },
+  {
+   "file": "145. Vs Weldar.mp3",
+   "sha256": "85262e9e75267241c6e85f444191da5e1c80fef66e7a1a0117eeb27c3acf7109",
+   "loop_start_frame": 176640,
+   "loop_end_frame": 5552586,
+   "end_frame": 5552586,
+   "rules": [
+    {
+     "id": 99
+    }
+   ]
+  },
+  {
+   "file": "146. Isle o' Hags (Hailfire Peaks).mp3",
+   "sha256": "4fa99676b6174113150148b5f49fbb5caf57d7952f9b33faef1383533fa6d691",
+   "bpm": 102,
+   "loop_start_frame": 273600,
+   "loop_end_frame": 7050010,
+   "end_frame": 7050010,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 14680064,
+     "native_channel_mask": 14680064
+    }
+   ]
+  },
+  {
+   "file": "147. Hailfire Peaks (Lava Side).mp3",
+   "sha256": "556573ec1856b224f530287ce2ff9fd683bbaf91cae339ac4766ddb49790be41",
+   "bpm": 102,
+   "loop_start_frame": 5685994,
+   "loop_end_frame": 12236523,
+   "end_frame": 12236523,
+   "rules": [
+    {
+     "id": 65,
+     "channel_mask": 4294967295,
+     "channel_value": 4095,
+     "native_channel_mask": 4095
+    }
+   ]
+  },
+  {
+   "file": "148. Hailfire Peaks (Inside the Colosseum).mp3",
+   "sha256": "d0f54d9b69a30675f1a3577ea6fe101586fe08c95ad5a23e6103223727b9c127",
+   "bpm": 95,
+   "loop_start_frame": 3731265,
+   "loop_end_frame": 10764518,
+   "end_frame": 10764518,
+   "rules": [
+    {
+     "id": 65,
+     "channel_mask": 4294967295,
+     "channel_value": 196160,
+     "native_channel_mask": 196160
+    }
+   ]
+  },
+  {
+   "file": "149. Hailfire Peaks (Ice Side).mp3",
+   "sha256": "e6bed3f2843eb10a7eb64b26f34f497e9742e0510594e5ffeed12e8a993d131b",
+   "bpm": 102,
+   "loop_start_frame": 2492612,
+   "loop_end_frame": 9043141,
+   "end_frame": 9043141,
+   "rules": [
+    {
+     "id": 65,
+     "channel_mask": 4294967295,
+     "channel_value": 267976704,
+     "native_channel_mask": 267976704
+    }
+   ]
+  },
+  {
+   "file": "150. Hailfire Peaks (Underwater).mp3",
+   "sha256": "bdbfc09d0ec1407cc7b8686722ed4516192f81fee1f5aa8bc6e1218ccde988c2",
+   "bpm": 95,
+   "loop_start_frame": 415680,
+   "loop_end_frame": 7448933,
+   "end_frame": 7448933,
+   "rules": [
+    {
+     "id": 65,
+     "channel_mask": 4294967295,
+     "channel_value": 262144,
+     "native_channel_mask": 262144
+    }
+   ]
+  },
+  {
+   "file": "151. Boggy's Igloo.mp3",
+   "sha256": "c879ae2205d73df5b1c906ed14660acb2f172197bbeb760a7cdb557f2a14df9f",
+   "loop_start_frame": 156480,
+   "loop_end_frame": 4303680,
+   "end_frame": 4303680,
+   "rules": [
+    {
+     "id": 77
+    }
+   ]
+  },
+  {
+   "file": "152. Hailfire Peaks (Icicle Grotto).mp3",
+   "sha256": "b004dea9a767755c4530726b0064b5e3355e9fb5112732136fd024e196589fa7",
+   "bpm": 95,
+   "loop_start_frame": 411840,
+   "loop_end_frame": 7445093,
+   "end_frame": 7445093,
+   "rules": [
+    {
+     "id": 65,
+     "channel_mask": 4294967295,
+     "channel_value": 4254203904,
+     "native_channel_mask": 4254203904
+    }
+   ]
+  },
+  {
+   "file": "153. Vs Chilli Billi & Chilly Willy.mp3",
+   "sha256": "09c3e1739bc7996c3afc39828dd8f429d8925bfcf9ed6632c85b86a594f15e16",
+   "loop_start_frame": 1270080,
+   "loop_end_frame": 6953280,
+   "end_frame": 6953280,
+   "rules": [
+    {
+     "id": 86
+    }
+   ]
+  },
+  {
+   "file": "154. Isle o' Hags (Cloud Cuckooland).mp3",
+   "sha256": "e79496a6f3107c2185e435fe7d18e228a989f52b95adebfb7f80cb319715b63d",
+   "bpm": 102,
+   "loop_start_frame": 272640,
+   "loop_end_frame": 7049050,
+   "end_frame": 7049050,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 201588736,
+     "native_channel_mask": 201588736
+    }
+   ]
+  },
+  {
+   "file": "155. Cloud Cuckooland.mp3",
+   "sha256": "e995ca1bb639c4118d5a722288614685f08fda45e42883ba586fd5fd63624074",
+   "bpm": 125,
+   "loop_start_frame": 415680,
+   "loop_end_frame": 6129600,
+   "end_frame": 6129600,
+   "rules": [
+    {
+     "id": 87,
+     "channel_mask": 4294967295,
+     "channel_value": 2046,
+     "native_channel_mask": 2046
+    }
+   ]
+  },
+  {
+   "file": "156. Cloud Cuckooland (Central Cavern).mp3",
+   "sha256": "4411cc7462078d824fbbeb5e1b1bc3c3824668c595cec399113cac34aa8f6705",
+   "bpm": 116,
+   "loop_start_frame": 418559,
+   "loop_end_frame": 6575796,
+   "end_frame": 6575796,
+   "rules": [
+    {
+     "id": 87,
+     "channel_mask": 4294967295,
+     "channel_value": 57345,
+     "native_channel_mask": 57345
+    }
+   ]
+  },
+  {
+   "file": "157. Cloud Cuckooland (Underwater).mp3",
+   "sha256": "0820e059d92d182654afc7ee9ec1dd1f41b4da41003946b8d9872332ee5e2503",
+   "bpm": 116,
+   "loop_start_frame": 249600,
+   "loop_end_frame": 6406837,
+   "end_frame": 6406837,
+   "rules": [
+    {
+     "id": 87,
+     "channel_mask": 4294967295,
+     "channel_value": 6144,
+     "native_channel_mask": 6144
+    }
+   ]
+  },
+  {
+   "file": "158. Cloud Cuckooland (Inside the Pot o' Gold).mp3",
+   "sha256": "4843918e343654610abfc1a34769c3e1d75f1ae9bff15bc6215e3e432533fbd0",
+   "bpm": 116,
+   "loop_start_frame": 424320,
+   "loop_end_frame": 6581557,
+   "end_frame": 6581557,
+   "rules": [
+    {
+     "id": 87,
+     "channel_mask": 4294967295,
+     "channel_value": 4128768,
+     "native_channel_mask": 4128768
+    }
+   ]
+  },
+  {
+   "file": "160. Cloud Cuckooland (Inside the Cheese).mp3",
+   "sha256": "8a547006933d39ff674d3a37fb15e2216853c58e54d545b41ac33ccea6375093",
+   "bpm": 116,
+   "loop_start_frame": 418559,
+   "loop_end_frame": 6575796,
+   "end_frame": 6575796,
+   "rules": [
+    {
+     "id": 87,
+     "channel_mask": 4294967295,
+     "channel_value": 470286336,
+     "native_channel_mask": 470286336
+    }
+   ]
+  },
+  {
+   "file": "161. Cloud Racin' with Mary.mp3",
+   "sha256": "9d886bc3b1b8a833ca4bd64eb69bc9a6a79b46cd52c2812d167b2ecea12bdded",
+   "loop_start_frame": 178560,
+   "loop_end_frame": 3762524,
+   "end_frame": 3762524,
+   "rules": [
+    {
+     "id": 118
+    }
+   ]
+  },
+  {
+   "file": "162. Vs Mingy Jongo.mp3",
+   "sha256": "e3f523ba3e0aee04852c31b59c9a84705845d15b4a175f431296a87638945b24",
+   "loop_start_frame": 184320,
+   "loop_end_frame": 5876536,
+   "end_frame": 5876536,
+   "rules": [
+    {
+     "id": 97
+    }
+   ]
+  },
+  {
+   "file": "163. Isle o' Hags (Cauldron Keep).mp3",
+   "sha256": "c33f6060f0c75882232466fa5563f85dc0479aaf4c7e3a28ed22c8dcd5f34bb6",
+   "bpm": 102,
+   "loop_start_frame": 274560,
+   "loop_end_frame": 7050970,
+   "end_frame": 7050970,
+   "rules": [
+    {
+     "id": 88,
+     "channel_mask": 4294967295,
+     "channel_value": 3758096384,
+     "native_channel_mask": 3758096384
+    }
+   ]
+  },
+  {
+   "file": "164. Collect Mine Eggs.mp3",
+   "sha256": "3199596cb20d5d9623f5a2e295723692cd18c785493c8e59937979c18d61cd50",
+   "rules": [
+    {
+     "id": 120
+    }
+   ]
+  },
+  {
+   "file": "165. Equip Mine Eggs.mp3",
+   "sha256": "c2b6a27d5595c2f78f91f0783b6cf8ac155c038aa1d6b5abad60eb9bfb1dbfc5",
+   "rules": [
+    {
+     "id": 121
+    }
+   ]
+  },
+  {
+   "file": "166. Cauldron Keep.mp3",
+   "sha256": "84e7c5c6b9aaf3dea28642e2a457764a46fa7b32767043f847d98d747ad0d804",
+   "bpm": 115,
+   "loop_start_frame": 798762,
+   "loop_end_frame": 7209780,
+   "end_frame": 7209780,
+   "rules": [
+    {
+     "id": 117,
+     "channel_mask": 4294967295,
+     "channel_value": 33022,
+     "native_channel_mask": 33022
+    }
+   ]
+  },
+  {
+   "file": "167. Tower of Tragedy.mp3",
+   "sha256": "eda652f0046bbc6180525cc9bcb291298c643c4ea5f862db6706a71597e2cc89",
+   "loop_start_frame": 55679,
+   "loop_end_frame": 9655679,
+   "end_frame": 9655679,
+   "rules": [
+    {
+     "id": 126
+    }
+   ]
+  },
+  {
+   "file": "168. Lose Life.mp3",
+   "sha256": "bd2c3ef9611305483bab3798424fcea094f84edaf791b10d3cf4560910340ec7",
+   "rules": [
+    {
+     "id": 11
+    }
+   ]
+  },
+  {
+   "file": "169. Game Over.mp3",
+   "sha256": "7085002166061d742c9e474183803e65ff38e75c4017ee786b227c9828ff660e",
+   "rules": [
+    {
+     "id": 18
+    }
+   ]
+  },
+  {
+   "file": "170. Staff Roll.mp3",
+   "sha256": "65270c86b4f7f23570f003678d60ca7e6dfd17afcdbc4e57dd2d5e32d93fd04b",
+   "loop_start_frame": 318720,
+   "loop_end_frame": 11025508,
+   "end_frame": 11025508,
+   "rules": [
+    {
+     "id": 130
+    }
+   ]
+  },
+  {
+   "file": "171. Enter the Heroes.mp3",
+   "sha256": "ca839032890eace81acb1ea1a4d16bc0f6180764075f8220f29f9728720d3130",
+   "rules": [
+    {
+     "id": 142
+    }
+   ]
+  },
+  {
+   "file": "172. Reviving King Jingaling.mp3",
+   "sha256": "6ad5cd96372dccf8febe56b818228ecef42cc0dd8a410a317f604377c110f843",
+   "rules": [
+    {
+     "id": 144
+    }
+   ]
+  },
+  {
+   "file": "173. Setting B.O.B. to Blow.mp3",
+   "sha256": "efe326f954b61e532524ece537c1362ea73aa50d2bc290de547b57908fc260ab",
+   "rules": [
+    {
+     "id": 143
+    }
+   ]
+  },
+  {
+   "file": "174. King Jingaling Revived.mp3",
+   "sha256": "cb18c393930f517b6baebfc27ca3ad354874b8dd20bffe64d7906913454b3bc3",
+   "rules": [
+    {
+     "id": 145
+    }
+   ]
+  },
+  {
+   "file": "175. Now for Bottles.mp3",
+   "sha256": "f2a70e7942bc696b51949b987d18da8fe16d281070d63cfe220132534c6205a9",
+   "rules": [
+    {
+     "id": 147
+    }
+   ]
+  },
+  {
+   "file": "176. Bottles Revived.mp3",
+   "sha256": "fce4a1894f62fb12887d30727cc26e3406dbfb8d9195e758d5d0f65313953897",
+   "rules": [
+    {
+     "id": 148
+    }
+   ]
+  },
+  {
+   "file": "177. Bottles' Return.mp3",
+   "sha256": "8c9d9f697fddd5714d2426ce0a324fe524579712c43aadc2097358f7e9cedbf9",
+   "loop_start_frame": 3763200,
+   "loop_end_frame": 4182106,
+   "end_frame": 4182106,
+   "rules": [
+    {
+     "id": 149
+    }
+   ]
+  },
+  {
+   "file": "178. Party at Bottles'.mp3",
+   "sha256": "82c4fa4fd600333781493fbb54c3c42ce3810b2faaeeb27b5ba1b688e6e334ee",
+   "loop_start_frame": 53760,
+   "loop_end_frame": 3005760,
+   "end_frame": 3005760,
+   "rules": [
+    {
+     "id": 154
+    }
+   ]
+  },
+  {
+   "file": "179. Cauldron Keep (Gun Chamber).mp3",
+   "sha256": "f30557f376bd723eb39d160e15e6c58e68b5ad32ce6b6a7dc78643d707d9d2e3",
+   "bpm": 115,
+   "loop_start_frame": 798762,
+   "loop_end_frame": 7209780,
+   "end_frame": 7209780,
+   "rules": [
+    {
+     "id": 117,
+     "channel_mask": 4294967295,
+     "channel_value": 3840,
+     "native_channel_mask": 3840
+    }
+   ]
+  },
+  {
+   "file": "180. Dingpot Recharge.mp3",
+   "sha256": "ee87681edabff7a164f84a519d8bb71bd7f939b76a3408128e62ef55aac10091",
+   "rules": [
+    {
+     "id": 21
+    }
+   ]
+  },
+  {
+   "file": "181. Here Comes Trouble.mp3",
+   "sha256": "1a294f93779fbfe1049b8582f04d663a69eea1dc189f277ac3edbc45dd9b68cb",
+   "loop_start_frame": 800640,
+   "loop_end_frame": 3296640,
+   "end_frame": 3296640,
+   "rules": [
+    {
+     "id": 84
+    }
+   ]
+  },
+  {
+   "file": "182. Vs Hag 1.mp3",
+   "sha256": "454a857caef79a54c20dc061023c52a05970d92831b8682ebfd26d7b28d2af73",
+   "loop_start_frame": 56640,
+   "loop_end_frame": 9085709,
+   "end_frame": 9085709,
+   "rules": [
+    {
+     "id": 122
+    }
+   ]
+  },
+  {
+   "file": "183. Hag Hit 1.mp3",
+   "sha256": "940a3bf0b889850d9d8a97b243be536ca330e2c67bdf03f3b3a0445a31fa6761",
+   "rules": [
+    {
+     "id": 156
+    }
+   ]
+  },
+  {
+   "file": "184. Hag Hit 2.mp3",
+   "sha256": "1a43bab8e2af24801fdb972d17842116d20d26c2fa2c9c80bd877e11646779fe",
+   "rules": [
+    {
+     "id": 157
+    }
+   ]
+  },
+  {
+   "file": "185. Hag Hit 3.mp3",
+   "sha256": "e761ae15a7b4c137e22b22e22bb8cb8f868958c0aa4ae783ab7842b4b58d5cae",
+   "rules": [
+    {
+     "id": 158
+    }
+   ]
+  },
+  {
+   "file": "186. Hag Hit 4.mp3",
+   "sha256": "b24ab2926d33979f76ba60827b4d0ffac3300c61d5b50e04bfa17fe06bcb4365",
+   "rules": [
+    {
+     "id": 159
+    }
+   ]
+  },
+  {
+   "file": "187. Hag 1 Destroyed.mp3",
+   "sha256": "f0a1f4bbc2eddcb6625b4697985ad3bf908afed94f9e5eaabcb1dcb7ea7812e7",
+   "loop_start_frame": 3401280,
+   "loop_end_frame": 3820186,
+   "end_frame": 3820186,
+   "rules": [
+    {
+     "id": 124
+    }
+   ]
+  },
+  {
+   "file": "188. So Much for the Party....mp3",
+   "sha256": "663caf1260bc179cd15493c0ed93e75311439478e651a973e7dbdede672c408f",
+   "loop_start_frame": 1278720,
+   "loop_end_frame": 1893120,
+   "end_frame": 1893120,
+   "rules": [
+    {
+     "id": 152
+    }
+   ]
+  },
+  {
+   "file": "189. The End.mp3",
+   "sha256": "a199f55fefb3ff9d60e9d021c45e4c2eabc5a8fffeca7cbbb12091a9141187d9",
+   "loop_start_frame": 136320,
+   "loop_end_frame": 526825,
+   "end_frame": 526825,
+   "rules": [
+    {
+     "id": 153
+    }
+   ]
+  },
+  {
+   "file": "190. Beta Collect Extra Life (From Banjo-Kazooie).mp3",
+   "sha256": "efe0bb9a7126614f0779aae09329bb8531b64f0667b991288a78372cf8340618",
+   "rules": [
+    {
+     "id": 7
+    }
+   ]
+  },
+  {
+   "file": "191. Kazooie Bomb (Start).mp3",
+   "sha256": "6340c65036f9efc851dc9deaf4c9b19b5ac6d9aecd06e1ab2cdd3ac4dbd071a5",
+   "rules": [
+    {
+     "id": 104
+    }
+   ]
+  },
+  {
+   "file": "192. Turbo Trainers (Start).mp3",
+   "sha256": "0499e0f0f276bc09654a2198074089a311d07798cd91c59f17e1a449c356125a",
+   "rules": [
+    {
+     "id": 43
+    }
+   ]
+  },
+  {
+   "file": "193. Single Timer Tick.mp3",
+   "sha256": "61a4d9a31cde7d9fac3324163946cdff694c26acf623b3a9784f7efb7d21fbe1",
+   "rules": [
+    {
+     "id": 155
+    }
+   ]
+  },
+  {
+   "file": "194. Timer Ticking.mp3",
+   "sha256": "ccafff140df952f9b2318f59217c8194376f713c103fed8f6773750a3878a497",
+   "loop_start_frame": 263280,
+   "loop_end_frame": 1012080,
+   "end_frame": 1012080,
+   "rules": [
+    {
+     "id": 146
+    }
+   ]
+  },
+  {
+   "file": "201. Jolly Roger's Lagoon (Sans SFX).mp3",
+   "sha256": "477d3cbd8e72fca6dcb67174df4f4203e7d5328699058b412416cea2528477c0",
+   "bpm": 100,
+   "loop_start_frame": 64320,
+   "loop_end_frame": 5939520,
+   "end_frame": 5939520,
+   "rules": [
+    {
+     "id": 69,
+     "channel_mask": 4294967295,
+     "channel_value": 3327,
+     "native_channel_mask": 3327
+    }
+   ]
+  },
+  {
+   "file": "213. Zoom Out.mp3",
+   "sha256": "274fabb083b9830190acfa86ec3285058cd30c68d3b2579f0d7051e990e9fa43",
+   "rules": [
+    {
+     "id": 30
+    }
+   ]
+  }
+ ]
+}
