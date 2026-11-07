@@ -102,5 +102,38 @@ SDL2 Audio Output Sink (SDL_QueueAudio, src/main/main.cpp)
 
 ## 4. Verification & Residuals
 
+### External audio packs (prototype)
+
+ZIP mods containing `audio.json` can replace selected CSP sequences with 48 kHz stereo MP3s. The original sequence
+continues running; only its CSP volume events are muted while a validated replacement matches. Unmapped sequences,
+SoundPlayer effects and guest scheduling retain their original path. Disabling a pack restores the current authored
+volume, including when the user BGM percentage has not changed. This native integration requires no code-mod SDK.
+
+`tooie_audio_mod.cpp` loads and indexes compressed files at activation (32 MiB per file, 256 MiB per pack, at most 128
+rules and 20 minutes per file). Six audio-consumer slots, each with at most four synchronized layers, decode
+incrementally from memory using pinned `dr_mp3`;
+the guest producer only publishes slot state. Mixing occurs after conversion to 48 kHz and before the existing latency
+decimator, so original and replacement sources advance and decimate together. Master and BGM gain each apply once.
+Playback bounds and loops use decoded PCM frame indices; MP3 encoder delay/padding are handled by the decoder.
+
+A sequence restart, including retriggering the same ID, resets its shared 48 kHz clock. The clock advances for every
+active native sequence even without a mapped/enabled pack; enabling, disabling, reorder and instrumentation changes
+do not reset it. Each selected layer opens at that clock position (in beats for layers that state their tempo),
+folding through its own loop. Silent layers are not decoded; they seek back to the clock when they return.
+
+Native layers use the current Rare CSP channel gains (32 channels), sampled after the original BGM update
+(`255 -> 1`, otherwise `q / 256`); layer weights are the non-negative least-squares combination of the layer channel
+groups closest to those gains (see [[modding-and-extensions]]). Weights and authored master volume use a 5 ms
+dezipper; the native envelope determines the transition. This frame-sampled reconstruction is not sample-exact
+native synthesis. The final sum is clamped to [-1, 1].
+
+Format, area tempos, layers and the pack builder: [[modding-and-extensions]]. Music packs do not replace SoundPlayer
+voices or reproduce per-instrument edits inside a rendered stereo track, and campaign-wide acoustic parity is not
+established. The audio mod writes no logs; problems with a pack (a rejected MP3 or a failed enable) are reported on
+stderr and, for enable failures, in a message box.
+
+Host verification: `tooie_audio_mod_test <48000-Hz-stereo.mp3>`, `tooie_bgm_hooks_test`, `tooie_bgm_volume_test` and
+`tooie_texture_zip_mod_test`. A fixture-free invocation of the first test explicitly skips codec playback checks.
+
 - **Queue Formula Verification**: Host unit tests (`tests/tooie_audio_capture_test.cpp`, `tests/tooie_bgm_volume_test.cpp`, `tests/tooie_bgm_hooks_test.cpp`) validate audio capture, BGM attenuation, and volume hook stability.
 - **Residual Scope**: Extended soak testing across lengthy campaign gameplay sessions remains an open validation task. Full campaign audio parity across all sound effects, speech clips, and environmental audio is evaluated progressively against the reference oracle.

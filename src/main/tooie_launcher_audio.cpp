@@ -1,5 +1,4 @@
 #include "tooie_launcher_audio.h"
-#define DR_MP3_IMPLEMENTATION
 #include "../../../lib/dr_libs/dr_mp3.h"
 #include "SDL.h"
 #include "util/file.h"

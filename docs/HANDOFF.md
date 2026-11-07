@@ -19,10 +19,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (52 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (54 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
-| Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
+| Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável; protótipo nativo de ZIP `audio.json`; usuário testou por cópia na pasta mods e logs confirmam os três MP3s; camadas superfície/água sincronizadas host-testadas e com relato positivo do usuário no Windows; instalação pela UI exige tela inicial | [[specs/Tooie/audio-system]], [[specs/Tooie/modding-and-extensions]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
@@ -36,8 +36,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 ## Workspace e validação pós-merge (2026-11-06)
 
 - PRs #2 (portátil), #3 (link do pacote de texturas BT Reloaded) e #4 (correção do J2 no splitscreen) mescladas com
-  merge commit; `main` em `4a59160`. Branches mescladas removidas do GitHub; restam `main`, `feat/dev-mode` (dois
-  commits de música por ZIP, ainda fora da `main`) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
+  merge commit; `main` em `4a59160`. Branches mescladas removidas do GitHub; restam `main`, `feat/dev-mode` (os dois
+  commits de música por ZIP, integrados ao PR #9, ainda sem merge) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
 - Um só clone local no Windows (`TooieRecomp`). Os clones `TooieRecomp-win`, `TooieRecomp-xu10` e `TooieRecomp-audio`
   foram inventariados: nenhum tinha código fora da `main` além de `feat/dev-mode`; bundle git, diffs e arquivos ignorados
   ficaram num arquivo local fora do repositório.
@@ -203,6 +203,22 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   quatro APIs. Linux continua sem supervisor (`NOT_IMPLEMENTED`).
   Revisão removeu logger de frames/tempos TK64, print de hover, captura PCM do executável e varredura diagnóstica
   de pico/silêncio por buffer. Contador do teste de áudio fica apenas no harness; log opt-in da API foi preservado.
+- Mods de música (PR #9, `feat/audio-mod`, **sem merge até o usuário aprovar o mod completo**): suporte a `audio.json`
+  com 32 canais, até 16 camadas por sequência (máscaras sobrepostas, pesos por mínimos quadrados não negativos),
+  `bpm` por arquivo (a camada segue a posição em batidas do jogo e só substitui no andamento da área), loop próprio
+  por camada, carregamento sob demanda para pacotes grandes (`TOOIE_AUDIO_MOD_CACHE_MB`, padrão 384) e volta à música
+  original quando um MP3 sem loop acaba. Mapa completo do álbum HD em `tools/audio/banjo-tooie-hd.json` (193 faixas,
+  198 regras: 13 sequências com camadas por área, músicas inteiras e jingles), gerado por gravação nativa
+  (`TOOIE_TEST_AUDIO_RENDER`) e comparação com o álbum (`tools/audio/analysis/`); pacote montado com
+  `tools/build_audio_pack.py` a partir do álbum do usuário (995 MB, nunca versionado nem publicado).
+  Teste no jogo com o pacote (`TOOIE_TEST_AUDIO_RENDER_MOD=1`, Windows): todas as variantes de área e uma amostra de
+  músicas e jingles tocam o MP3 previsto, alinhado (correlação 0,99, atraso ~0); jingles conferidos por comparação curta.
+  Ficam no original: áreas sem faixa no álbum (MT `0xE108`, GGM `0x80600000`, Atlantis
+  `0xE001`), GI debaixo d'água a 142/137 BPM (álbum só a 130) e Trash Can (álbum gravado a 125 BPM, jogo 116).
+  Loops: 94 de 124 com emenda ≥0,95; Near Space Zone (0,53) e Drained Palace (0,82) pedem audição. Não testado:
+  transições reais no jogo (entrar/sair da água, rampa de andamento), campanha completa, Linux e portátil.
+  `tooie_audio_mod_test`, `tooie_bgm_hooks_test`, `tooie_bgm_volume_test` na suíte obrigatória (34/34). MP3/ZIP
+  continuam privados: o release publica só o suporte; o link do pacote é colocado pelo usuário.
 
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
@@ -370,4 +386,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: publicar uma release Windows com a correção do J2 no splitscreen e o fallback de API após o launcher.
+`NEXT_SINGLE_ACTION`: o usuário ouvir no jogo o pacote HD completo (gerado com `tools/build_audio_pack.py`), em especial entrar e sair da água, Near Space Zone e Drained Palace, e aprovar o merge do PR #9; depois, release v0.1.6.

@@ -175,6 +175,23 @@ int main() {
             require(handle->file_exists("mod.json") && read_text(*handle, "mod.json") == manifest("test-root"), "preserve rootless reads");
         });
 
+        run("A1 audio-only nested root", [&] {
+            write_zip(root / "audio.zip", {{"Pack/audio.json", "{}"}, {"Pack/mod.json", manifest("audio-test")}});
+            auto handle = open_zip(root / "audio.zip");
+            auto result = find_zip_content_root(*handle, std::vector<std::string>{"rt64.json", "audio.json"});
+            require(result.status == ZipContentRootStatus::Found && result.root == "Pack", "detect audio marker");
+        });
+        run("A2 markers share one root", [&] {
+            write_zip(root / "mixed.zip", {{"Pack/audio.json", "{}"}, {"Pack/rt64.json", "{}"}});
+            auto result = find_zip_content_root(*open_zip(root / "mixed.zip"), std::vector<std::string>{"rt64.json", "audio.json"});
+            require(result.status == ZipContentRootStatus::Found && result.root == "Pack", "deduplicate common root");
+        });
+        run("A3 unrelated content roots rejected", [&] {
+            write_zip(root / "mixed-bad.zip", {{"Music/audio.json", "{}"}, {"Textures/rt64.json", "{}"}});
+            auto result = find_zip_content_root(*open_zip(root / "mixed-bad.zip"), std::vector<std::string>{"rt64.json", "audio.json"});
+            require(result.status == ZipContentRootStatus::Ambiguous, "reject multiple mod roots");
+        });
+
         fs::path scan = root / "scan";
         fs::create_directory(scan);
         fs::copy_file(root / "nested.zip", scan / "nested.zip");
@@ -223,6 +240,24 @@ int main() {
             auto code_details = context.get_details_for_mod("test-code-control");
             require(texture_details && texture_details->runtime_toggleable, "ZIP must not detect code content");
             require(code_details && !code_details->runtime_toggleable, "control NRM must detect code content");
+        });
+        run("A4 real scanner with two allowed content types", [&] {
+            context.close_mods();
+            ModContext audio_context;
+            audio_context.register_game("bt");
+            audio_context.set_mods_config_path(root / "audio-mods.json");
+            audio_context.set_mod_config_directory(root / "audio-config");
+            auto texture = audio_context.register_content_type({"rt64.json", true, nullptr, nullptr, nullptr});
+            auto audio = audio_context.register_content_type({"audio.json", true, nullptr, nullptr, nullptr});
+            require(audio_context.register_container_type("zip", {texture, audio}, false, true), "register both types");
+            fs::path audio_scan = root / "audio-scan";
+            fs::create_directory(audio_scan);
+            fs::copy_file(root / "audio.zip", audio_scan / "audio.zip");
+            auto errors = audio_context.scan_mod_folder(audio_scan);
+            require(errors.empty() && audio_context.num_opened_mods() == 1, "scan audio ZIP");
+            auto details = audio_context.get_details_for_mod("audio-test");
+            require(details && details->runtime_toggleable, "audio ZIP runtime toggle");
+            require(audio_context.get_mod_content_root("audio-test") == "Pack", "same root used for audio metadata");
         });
     }
     catch (const std::exception& error) {

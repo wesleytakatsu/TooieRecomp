@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <algorithm>
 
 #include "json/json.hpp"
 
@@ -87,9 +88,12 @@ bool recomp::mods::ZipModFileHandle::file_exists(const std::string& filepath) co
 }
 
 recomp::mods::ZipContentRootResult recomp::mods::find_zip_content_root(const ZipModFileHandle& handle, const std::string& marker_filename) {
+    return find_zip_content_root(handle, std::vector<std::string>{marker_filename});
+}
+
+recomp::mods::ZipContentRootResult recomp::mods::find_zip_content_root(const ZipModFileHandle& handle, const std::vector<std::string>& marker_filenames) {
     ZipContentRootResult result;
     bool has_archive_root = false;
-    const std::string suffix = "/" + marker_filename;
     mz_uint count = mz_zip_reader_get_num_files(handle.archive.get());
     for (mz_uint i = 0; i < count; i++) {
         mz_zip_archive_file_stat stat;
@@ -102,11 +106,15 @@ recomp::mods::ZipContentRootResult recomp::mods::find_zip_content_root(const Zip
         }
 
         std::string filename = stat.m_filename;
-        if (filename == marker_filename) {
-            has_archive_root = true;
-        }
-        else if (filename.ends_with(suffix)) {
-            result.candidates.emplace_back(filename.substr(0, filename.size() - suffix.size()));
+        for (const auto& marker_filename : marker_filenames) {
+            const std::string suffix = "/" + marker_filename;
+            if (filename == marker_filename) {
+                has_archive_root = true;
+            }
+            else if (filename.ends_with(suffix)) {
+                std::string root = filename.substr(0, filename.size() - suffix.size());
+                if (std::find(result.candidates.begin(), result.candidates.end(), root) == result.candidates.end()) result.candidates.push_back(std::move(root));
+            }
         }
     }
 
@@ -1058,9 +1066,11 @@ recomp::mods::ModOpenError recomp::mods::ModContext::open_mod_from_path(const st
         return handle_error;
     }
 
-    if (is_file && search_nested_content_root && supported_content_types.size() == 1) {
+    if (is_file && search_nested_content_root && !supported_content_types.empty()) {
         ZipModFileHandle& zip_handle = static_cast<ZipModFileHandle&>(*manifest.file_handle);
-        ZipContentRootResult root = find_zip_content_root(zip_handle, content_types[supported_content_types.front().value].content_filename);
+        std::vector<std::string> markers;
+        for (auto type : supported_content_types) markers.push_back(content_types[type.value].content_filename);
+        ZipContentRootResult root = find_zip_content_root(zip_handle, markers);
         if (root.status == ZipContentRootStatus::NotFound) {
             skipped = true;
             return ModOpenError::Good;

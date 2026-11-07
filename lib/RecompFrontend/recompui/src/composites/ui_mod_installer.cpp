@@ -326,7 +326,7 @@ namespace recompui {
                 start_single_mod_installation(path, file_handle, progress_callback, result);
             }
             else if (path.extension() == ".zip") {
-                recomp::mods::ZipContentRootResult root = recomp::mods::find_zip_content_root(file_handle, TextureDatabaseFilename);
+                recomp::mods::ZipContentRootResult root = recomp::mods::find_zip_content_root(file_handle, std::vector<std::string>{TextureDatabaseFilename, "audio.json"});
                 if (root.status == recomp::mods::ZipContentRootStatus::Found) {
                     file_handle.content_root = std::move(root.root);
                     start_single_mod_installation(path, file_handle, progress_callback, result);

@@ -26,6 +26,8 @@ struct CspCall {
 
 std::vector<CspCall> g_csp;
 int g_updates = 0;
+bool g_clobber_arguments = false;
+int g_starts = 0;
 constexpr gpr kReturn = 0x5151u;
 constexpr gpr kRa = 0xABCD0000u;
 
@@ -55,6 +57,7 @@ extern "C" void func_80025ED0(uint8_t*, recomp_context* ctx) {
     g_csp.push_back(CspCall{ctx, static_cast<uint32_t>(ctx->r4), static_cast<int16_t>(ctx->r5)});
     ctx->r2 = 0x1111;
     ctx->r31 = 0x2222;
+    if (g_clobber_arguments) ctx->r5 = 0x4321;
 }
 
 extern "C" void func_800FB968(uint8_t*, recomp_context* ctx) {
@@ -62,6 +65,8 @@ extern "C" void func_800FB968(uint8_t*, recomp_context* ctx) {
     ctx->r2 = kReturn;
     ctx->r31 = kRa;
 }
+
+extern "C" void func_80016ED0(uint8_t*, recomp_context*) { ++g_starts; }
 
 int main() {
     constexpr uint32_t kBytes = 0x136000u;
@@ -153,6 +158,28 @@ int main() {
     expect(g_csp.size() == before_unknown + 1, "unknown_one");
     expect(g_csp.back().vol == 1234, "unknown_unchanged");
     expect(g_csp.back().seqp == 0x12345678u, "unknown_seqp");
+
+    tooie_bgm::set_percent(50);
+    g_clobber_arguments = true;
+    tooie_bgm::set_content_hooks(
+        [](uint8_t*, unsigned slot, int16_t authored, int16_t effective) -> int16_t {
+            expect(slot == 2 && authored == 20000 && effective == 10000, "filter sees authored and once-scaled gain");
+            return 0;
+        }, nullptr,
+        [](uint8_t*, unsigned slot, int sequence) {
+            expect(g_starts == 1 && slot == 2 && sequence == 4, "restart observed after original sequence call");
+        },
+        [](uint8_t*, unsigned slot, int16_t posted) {
+            expect(slot == 2 && posted == 0 && g_csp.back().vol == 0, "mute proof follows dispatch and captures pre-call gain");
+        });
+    ctx = call_ctx(); ctx.r4 = static_cast<int32_t>(seqp); ctx.r5 = 20000;
+    tooie_bgm_on_csp_set_vol(g_rdram, &ctx);
+    expect(g_csp.back().vol == 0, "replacement selectively mutes sequence");
+    expect(load_h(player) == 10000, "replacement leaves authored guest memory unchanged");
+    ctx = call_ctx(); ctx.r4 = 2; ctx.r5 = 4;
+    tooie_bgm_on_sequence_start(g_rdram, &ctx);
+    expect(ctx.r2 == kReturn && ctx.r31 == kRa, "observer preserves original context");
+    tooie_bgm::set_content_hooks(nullptr, nullptr, nullptr);
 
     delete[] g_rdram;
     if (g_failures != 0) {

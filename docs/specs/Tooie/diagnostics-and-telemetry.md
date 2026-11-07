@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Diagnostics and Runtime Telemetry"
 description: "Technical specification for the tooie_diag diagnostic framework, environment flags, telemetry collectors, and safety invariants."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-23
+updated: 2026-10-31
 tags: [specs, tooierecomp, diagnostics, telemetry, flags, safety]
 ---
 
@@ -38,7 +38,12 @@ Diagnostic Log Output (stderr or specified file destination)
 | **REQ-DIA-03** | Structured Logging | Diagnostic facilities use bounded output rates without hanging execution. | `IMPLEMENTED` |
 | **REQ-DIA-04** | Zero GPU Stalls | Probes evaluate on CPU; zero blocking GPU readback stalls in render loop. | `IMPLEMENTED` |
 
-*Note on baseline output*: Normal execution unconditionally emits initial overlay syscall dispatches (first 128) and RT64 state-change lines (`[tooie-interp]`). All heavy file loggers and continuous telemetry streams are strictly gated.
+*Note on baseline output*: Initial overlay syscall traces (first 128) require `TOOIE_DIAG`; RT64 state-change lines
+(`[tooie-interp]`) remain operational output. Syscall dispatch/return counters and diagnostic stacks, scheduler/audio
+task counts, audio peak/nonzero scans and their extra SDL queue-size query also require `TOOIE_DIAG`. Timing counters
+and the reported frame divisor require `TOOIE_DIAG_TIMING`. These gates do not suppress original guest execution.
+All heavy file loggers and continuous telemetry streams are opt-in; the audio mod has no logger. Error reporting
+remains available in normal runs.
 
 ---
 

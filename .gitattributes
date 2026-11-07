@@ -15,6 +15,8 @@
 /tools/*.sha256 text eol=lf
 /tools/requirements.lock text eol=lf
 /lib/** -text
+# Keep the pinned decoder byte-identical to upstream, including its blank-line spaces.
+/lib/dr_libs/dr_mp3.h whitespace=-blank-at-eol
 /decomp/** -text
 /assets/** -text
 /recompcontrollerdb.txt -text
