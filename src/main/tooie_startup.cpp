@@ -156,6 +156,61 @@ std::string hex_code(DWORD code) {
     std::snprintf(text, sizeof(text), "0x%08lX", static_cast<unsigned long>(code));
     return text;
 }
+struct Failure {
+    enum class Kind { Launch, Failed, Crashed, Timeout } kind;
+    std::string api;
+    DWORD code;
+};
+// The one dialog a player sees when no API works: every API tried, what happened, and what to do about it.
+std::string graphics_error_text(const std::vector<Failure> &failures, const std::string &available, bool portuguese) {
+    const auto detected = [&](const std::string &key) {
+        return ("," + available + ",").find("," + key + ",") != std::string::npos;
+    };
+    std::string text = portuguese
+                           ? "O Banjo-Tooie não pôde iniciar porque nenhuma API gráfica funcionou neste computador.\n\n"
+                             "APIs testadas:\n"
+                           : "Banjo-Tooie could not start because no graphics API worked on this computer.\n\n"
+                             "APIs tried:\n";
+    for (const auto &f : failures) {
+        std::string reason;
+        if (!detected(f.api))
+            reason = portuguese ? "não encontrada neste computador; " : "not found on this computer; ";
+        switch (f.kind) {
+        case Failure::Kind::Launch:
+            reason += (portuguese ? "o processo não pôde ser criado (erro " : "the process could not be created (error ") +
+                      std::to_string(f.code) + ")";
+            break;
+        case Failure::Kind::Failed:
+            reason += (portuguese ? "não iniciou (código " : "could not start (code ") + std::to_string(f.code) + ")";
+            break;
+        case Failure::Kind::Crashed:
+            reason += (portuguese ? "fechou inesperadamente (" : "closed unexpectedly (") + hex_code(f.code) + ")";
+            break;
+        case Failure::Kind::Timeout:
+            reason += portuguese ? "não respondeu em 3 minutos" : "did not respond within 3 minutes";
+            break;
+        }
+        text += "  \xE2\x80\xA2 " + backend_label(f.api) + ": " + reason + "\n";
+    }
+    text += portuguese
+                ? "\nO driver de vídeo provavelmente não está instalado, está desatualizado ou parou de funcionar. "
+                  "Instale o driver mais recente do fabricante da placa de vídeo (NVIDIA, AMD ou Intel), reinicie o "
+                  "computador e tente de novo.\n\n"
+                  "O jogo precisa de uma destas: DirectX 12, Vulkan 1.2, DirectX 11 (nível de recursos 11_0) ou "
+                  "OpenGL 4.3."
+                : "\nThe video driver is probably not installed, out of date or no longer working. Install the latest "
+                  "driver from your graphics card maker (NVIDIA, AMD or Intel), restart the computer and try again.\n\n"
+                  "The game needs one of: DirectX 12, Vulkan 1.2, DirectX 11 (feature level 11_0) or OpenGL 4.3.";
+    return text;
+}
+#ifndef TOOIE_STARTUP_TEST
+std::wstring widen(const std::string &utf8) {
+    const int n = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
+    std::wstring wide(static_cast<size_t>(n), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()), wide.data(), n);
+    return wide;
+}
+#endif
 // Called by the supervisor after a worker exits, so the worker never writes startup.json at the same time.
 void record_attempt(const std::string &api, bool failed) {
     auto j = read_json(config_path());
@@ -289,7 +344,7 @@ int tooie_startup::enter(int argc, char **argv) {
         const auto available = api::probe_list(wine());
         set_environment("TOOIE_GRAPHICS_AVAILABLE", available.c_str());
         log_event("startup", {{"preference", selected}, {"available", available}});
-        std::string failures;
+        std::vector<Failure> failures;
         for (const auto &candidate : candidates(selected)) {
             SECURITY_ATTRIBUTES security{sizeof(security), nullptr, TRUE};
             Handle event(CreateEventW(&security, TRUE, FALSE, nullptr));
@@ -322,7 +377,9 @@ int tooie_startup::enter(int argc, char **argv) {
                                                               nullptr, nullptr, &startup.StartupInfo, &process);
             DeleteProcThreadAttributeList(startup.lpAttributeList);
             if (!created) {
-                log_event("launch_failed", {{"api", candidate}, {"win32_error", GetLastError()}});
+                const DWORD error = GetLastError();
+                log_event("launch_failed", {{"api", candidate}, {"win32_error", error}});
+                failures.push_back({Failure::Kind::Launch, candidate, error});
                 continue;
             }
             Handle child(process.hProcess), thread(process.hThread);
@@ -348,7 +405,7 @@ int tooie_startup::enter(int argc, char **argv) {
                 if (!proven && crash_code(code)) {
                     log_event("crashed_after_ready", {{"api", candidate}, {"code", code}});
                     record_attempt(candidate, true);
-                    failures += candidate + ": crashed after starting (" + hex_code(code) + ")\n";
+                    failures.push_back({Failure::Kind::Crashed, candidate, code});
                     continue;
                 }
                 record_attempt(candidate, false);
@@ -363,16 +420,18 @@ int tooie_startup::enter(int argc, char **argv) {
             GetExitCodeProcess(child.value, &code);
             log_event("attempt_failed", {{"api", candidate}, {"code", code}, {"timeout", result == WAIT_TIMEOUT}});
             record_attempt(candidate, true);
-            failures += candidate + ": " +
-                        (result == WAIT_TIMEOUT ? "initialization timed out"
-                                                : "initialization failed (" + std::to_string(code) + ")") +
-                        "\n";
+            failures.push_back({result == WAIT_TIMEOUT ? Failure::Kind::Timeout
+                                : crash_code(code)     ? Failure::Kind::Crashed
+                                                       : Failure::Kind::Failed,
+                                candidate, code});
         }
-        MessageBoxA(nullptr,
-                    ("No compatible graphics backend could start.\n\n" + failures +
-                     "\nRequires Direct3D 11 FL 11_0, OpenGL 4.3, or a compatible DX12/Vulkan device and driver.")
-                        .c_str(),
-                    "Banjo-Tooie: Graphics Error", MB_OK | MB_ICONERROR);
+        const bool portuguese = PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_PORTUGUESE;
+        const std::string title = portuguese ? "Banjo-Tooie: erro gráfico" : "Banjo-Tooie: Graphics Error";
+        const std::string message = graphics_error_text(failures, available, portuguese);
+        log_event("all_failed", {{"title", title}, {"message", message}});
+#ifndef TOOIE_STARTUP_TEST
+        MessageBoxW(nullptr, widen(message).c_str(), widen(title).c_str(), MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+#endif
         return EXIT_FAILURE;
     }
 #else

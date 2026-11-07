@@ -184,6 +184,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Teste real do supervisor com renderers simulados passou; suíte Windows 20/20 e build passaram. Decoder/SDL dummy
   também testados. Nenhum jogo iniciado pelo agente. Abertura, quatro APIs, loop auditivo e gameplay: `PENDING_USER`;
   hardware antigo real e Linux `NOT_RUN`. Contrato: [[specs/Tooie/startup-and-backends]].
+  Erro final (2026-11-06): quando nenhuma API funciona, a janela diz isso em PT-BR (Windows em português) ou inglês,
+  lista DirectX 12/Vulkan/DirectX 11/OpenGL com o motivo de cada uma (não encontrada, não iniciou, fechou, não
+  respondeu) e orienta instalar o driver de vídeo e reiniciar; conferida no exe real. Sem ROM, o launcher abre normal
+  com Load ROM (modo portátil com pasta vazia).
   Aquecimento oculto (2026-11-06): o worker desenha o launcher escondido e mudo por 60 frames e 1 s antes de ficar
   pronto; no Windows real o DX12 caiu sem a janela aparecer e o Vulkan abriu. Log opt-in grava cada linha numa escrita
   só (supervisor e worker não se misturam mais).
