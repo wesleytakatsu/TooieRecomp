@@ -50,6 +50,16 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
+- Versão `0.1.6`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.6)
+  em 2026-11-07. Tag anotada `v0.1.6` em `0f7230a2ee9a33c622eb17cbca1d808deecc2d05` (`main`, após as PRs #9 e #10).
+  Notas em inglês e português brasileiro: [[releases/v0.1.6]]. Windows: 34/34 testes, build Release, auditoria dos 111
+  arquivos aprovada. PortMaster: build cruzado (114 arquivos, glibc 2.35), não executado num aparelho nesta versão.
+  Assets baixados do GitHub conferidos byte a byte com os locais. Linux x64 fica para o PC Linux do usuário.
+- `BanjoTooieRecompiled-v0.1.6-Windows-x64.zip`: 23182600 bytes, SHA-256
+  `48087dfff0aaa4b6a7e295df91796505c6472a6ac52472740a5199341aee7c39`.
+- `BanjoTooieRecompiled-v0.1.6-Linux-arm64-PortMaster.zip`: 12223339 bytes, SHA-256
+  `cc015b3cc5e8fce5940d26231727f7159ac40348129176fe3a24de72cec40ed2`. `BUILD-INFO.txt` dos dois pacotes: commit da tag,
+  versão `0.1.6`, zero arquivos sujos.
 - Versão fonte `0.1.5`; [pré-release Windows x64, Linux x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.5)
   em 2026-11-06, a partir de `feat/handheld` (PR #2) antes do merge, a pedido do usuário. Tag anotada `v0.1.5` aponta
   para `313e2871c71b8a496a7806dbb0c7bf80cffab663`, no histórico da `main` (PR #2 mesclada com merge commit, `05f04f8`).
@@ -203,7 +213,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   quatro APIs. Linux continua sem supervisor (`NOT_IMPLEMENTED`).
   Revisão removeu logger de frames/tempos TK64, print de hover, captura PCM do executável e varredura diagnóstica
   de pico/silêncio por buffer. Contador do teste de áudio fica apenas no harness; log opt-in da API foi preservado.
-- Mods de música (PR #9, `feat/audio-mod`, **sem merge até o usuário aprovar o mod completo**): suporte a `audio.json`
+- Mods de música (PR #9 mesclada em `dded8a6`; correção do build do portátil na PR #10): suporte a `audio.json`
   com 32 canais, até 16 camadas por sequência (máscaras sobrepostas, pesos por mínimos quadrados não negativos),
   `bpm` por arquivo (a camada segue a posição em batidas do jogo e só substitui no andamento da área), loop próprio
   por camada, carregamento sob demanda para pacotes grandes (`TOOIE_AUDIO_MOD_CACHE_MB`, padrão 384) e volta à música
@@ -386,4 +396,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: o usuário ouvir no jogo o pacote HD completo (gerado com `tools/build_audio_pack.py`), em especial entrar e sair da água, Near Space Zone e Drained Palace, e aprovar o merge do PR #9; depois, release v0.1.6.
+`NEXT_SINGLE_ACTION`: gerar e publicar os pacotes Linux x64 da v0.1.6 no PC Linux do usuário (`TOOIE_RELEASE_VERSION=0.1.6 ./build-linux.sh all` na tag `v0.1.6`).
