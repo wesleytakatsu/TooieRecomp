@@ -39,6 +39,9 @@ const recomp::Version &recomp::get_project_version() {
     return v;
 }
 int main(int argc, char **argv) {
+    // A fresh supervisor process: the probe result is cached per process, so this round needs its own.
+    if (argc > 1 && std::string(argv[1]) == "--all-failed-round")
+        return tooie_startup::enter(argc, argv) == EXIT_FAILURE ? 0 : 30;
     if (argc > 1) {
         if (tooie_startup::enter(argc, argv) != -1)
             return 21;
@@ -264,10 +267,57 @@ int main(int argc, char **argv) {
         return fail("gameplay crash restarted the launcher");
     if (tooie_startup::candidates("auto").front() != "d3d11")
         return fail("gameplay crash demoted a working API");
+
+    // No API works (no driver): one clear error listing every API, its failure and the driver advice. The test build
+    // logs the dialog text instead of blocking on it. The probe here finds only DX11 and OpenGL.
+    std::filesystem::remove(dir / "startup.json");
+    _putenv_s("TOOIE_STARTUP_TEST_TARGET", "none");
+    _putenv_s("TOOIE_GRAPHICS_AVAILABLE", "d3d11,opengl");
+    {
+        std::ofstream reset_log(dir / "graphics.jsonl", std::ios::trunc);
+    }
+    {
+        std::wstring self(32768, L'\0');
+        self.resize(GetModuleFileNameW(nullptr, self.data(), static_cast<DWORD>(self.size())));
+        std::wstring command = L"\"" + self + L"\" --all-failed-round";
+        STARTUPINFOW startup{sizeof(startup)};
+        PROCESS_INFORMATION round{};
+        if (!CreateProcessW(self.c_str(), command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &round))
+            return fail("start all-failed round");
+        WaitForSingleObject(round.hProcess, INFINITE);
+        DWORD code = 1;
+        GetExitCodeProcess(round.hProcess, &code);
+        CloseHandle(round.hThread);
+        CloseHandle(round.hProcess);
+        if (code != 0)
+            return fail("all-failed exit code");
+    }
+    _putenv_s("TOOIE_GRAPHICS_AVAILABLE", "d3d12,vulkan,d3d11,opengl");
+    std::string message;
+    {
+        std::ifstream failed_log(dir / "graphics.jsonl");
+        while (std::getline(failed_log, line)) {
+            auto event = nlohmann::json::parse(line);
+            if (event["event"] == "all_failed")
+                message = event["message"];
+        }
+    }
+    const auto has = [&](const char *text) { return message.find(text) != std::string::npos; };
+    const bool portuguese = PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_PORTUGUESE;
+    if (!has("DirectX 12: ") || !has("Vulkan: ") || !has("DirectX 11: ") || !has("OpenGL: ") || !has("(0xC0000005)") ||
+        !has(" 22)") || !has(" 23)") || !has("NVIDIA, AMD") || !has("driver") || !has("OpenGL 4.3"))
+        return fail("all-failed message content");
+    // Not found only for what the probe missed.
+    const char *missing = portuguese ? "não encontrada neste computador" : "not found on this computer";
+    size_t count = 0;
+    for (size_t at = message.find(missing); at != std::string::npos; at = message.find(missing, at + 1))
+        ++count;
+    if (count != 2)
+        return fail("all-failed message detection notes");
     std::filesystem::remove_all(dir);
     std::cout << "PASS: real Win32 supervisor recovers from failure/crash, retains ready worker and preference; guest "
                  "never started; native Graphics Apply/cancel/reopen; Auto reaches OpenGL after three failures; Auto "
                  "tries failed APIs last; hidden warm-up before readiness; crash after readiness falls back; gameplay "
-                 "crash propagated PASS\n";
+                 "crash propagated; clear all-failed error PASS\n";
     return 0;
 }

@@ -68,7 +68,15 @@ or initialize a GPU. Successful startup does not require a second complete shade
 Before readiness, process exit/crash or a 180-second timeout advances to the next candidate. Failed workers are
 terminated/reaped. A Windows job bounds worker lifetime to the supervisor; only the readiness and stability handles are
 inherited. Startup failures in a managed worker do not open the runtime's blocking renderer-error dialog. When all
-candidates fail, the supervisor displays one native Windows error with attempted APIs and exit codes/timeouts.
+candidates fail, the supervisor displays one native Windows error (`MessageBoxW`, Brazilian Portuguese when the Windows
+display language is Portuguese, English otherwise). It says no graphics API worked on this computer and lists every
+API tried (DirectX 12, Vulkan, DirectX 11, OpenGL) with its outcome: not found on this computer (the probe missed it),
+could not start (exit code), closed unexpectedly (crash code), did not respond within 3 minutes, or the process could
+not be created. It then says the video driver is probably missing, out of date or not working, asks to install the
+latest driver from the graphics card maker and restart, and lists the minimum requirements. The opt-in log records the
+same text as `all_failed`.
+
+Missing ROM is not a startup failure: the launcher opens normally and offers Load ROM.
 
 The warm-up does not prove the API either: a driver can create the device and lose it later
 (`DXGI_ERROR_DEVICE_REMOVED`, after which an upload map returns null and the worker crashes). A ready worker is on
@@ -201,13 +209,19 @@ they do not prove visual fidelity or compatibility on another computer.
   API, `failed_apis` and `last_successful_api` recorded) and a crash after the stability event (exit code propagated,
   no other attempt, the working API not demoted); the test build shortens probation to 300 ms. Each successful fake
   worker drives `launcher_frame` and must need at least 60 frames before readiness. Supervisor and worker append to
-  the same opt-in log with one append-only write per line, so concurrent events cannot interleave. It does not initialize
+  the same opt-in log with one append-only write per line, so concurrent events cannot interleave. A last round runs
+  a fresh supervisor process (the probe result is cached per process) where every API fails and the probe finds only
+  DX11 and OpenGL: it checks the exit code and that the logged dialog text names all four APIs with their codes, marks
+  exactly the two missed APIs as not found, and gives the driver advice and requirements. The test build logs the
+  dialog instead of showing it. It does not initialize
   a real GPU or execute the game. It fixes the probe result with `TOOIE_GRAPHICS_AVAILABLE`.
 - Real hardware, 2026-11-06 (Windows 11, GTX 1650 + AMD iGPU, D3D12 device removed right after readiness on that
   machine): with the warm-up, the DX12 worker crashed while hidden (its window never became visible) and the Vulkan
   launcher appeared about 6.6 s after launch; the next launch started Vulkan directly. Without the warm-up the DX12
   launcher was briefly visible before the fallback. Start Game and gameplay after the fallback were not exercised by
-  the agent.
+  the agent. In portable mode with an empty data folder (no ROM, no config) the same fallback reached the Vulkan
+  launcher showing Load ROM. With every worker failing (the `TOOIE_GRAPHICS_LOG` crash below), the Portuguese error
+  dialog appeared after about 5 s listing the four APIs.
 - `tooie_graphics_api_test` checks the per-target policy on any host: compiled lists and Auto order (Windows, Wine,
   Linux, handheld), menu filtering, the running backend kept, foreign and unknown saved values becoming Auto, candidate
   order without duplicates, the `TK64_GRAPHICS_API` value for Linux and handhelds, and the descriptions.
