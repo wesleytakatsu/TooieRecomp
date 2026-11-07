@@ -200,9 +200,9 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
         return;
     }
 
-    static unsigned s_dispatch_log_left = 128;
+    static unsigned s_dispatch_log_left = tooie_diag::enabled() ? 128 : 0;
 
-    // Verbose first N dispatches always; TOOIE_DIAG keeps counters forever.
+    // Initial dispatch traces are development diagnostics, opt-in via TOOIE_DIAG.
     if (s_dispatch_log_left > 0) {
         --s_dispatch_log_left;
         std::fprintf(stderr,

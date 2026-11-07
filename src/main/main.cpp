@@ -62,6 +62,8 @@ extern char** environ;
 #include "banjo_launcher.h"
 #include "tooie_diag.h"
 #include "tooie_bgm_volume.h"
+#include "tooie_audio_mod.h"
+#include "tooie_audio_mod_loader.h"
 #include "tooie_window.h"
 #include "tooie_menu_policy.h"
 #include "tooie_controller_ports.h"
@@ -433,6 +435,11 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
     uint32_t num_bytes_to_queue = audio_convert.len_cvt - output_channels * discarded_output_frames * sizeof(swap_buffer[0]);
     float* samples_to_queue = swap_buffer.data() + output_channels * discarded_output_frames / 2;
 
+    // Advance both sources by the same guest audio duration. The existing
+    // latency decimator below must act on external and original audio together.
+    tooie_audio_mod::mix(samples_to_queue, num_bytes_to_queue / (output_channels * sizeof(float)),
+        cur_main_volume, tooie_bgm::get_percent());
+
     // Prevent audio latency from building up by skipping samples in incoming audio when too many samples are already queued.
     // Skip samples based on how many microseconds of samples are queued already.
     uint32_t skip_factor = cur_queued_microseconds / 100000;
@@ -447,7 +454,8 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
 
     // Queue the swapped audio data.
     // Offset the data start by only half the discarded frame count as the other half of the discarded frames are at the end of the buffer.
-    SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
+    const int sdl_queue_result = SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
+    tooie_audio_mod::note_queue_result(sdl_queue_result, skip_factor == 0);
 }
 
 size_t get_frames_remaining() {
@@ -1200,10 +1208,20 @@ int main(int argc, char** argv) {
     };
     auto texture_pack_content_type_id = recomp::mods::register_mod_content_type(texture_pack_content_type);
 
+    recomp::mods::ModContentType audio_pack_content_type{
+        .content_filename = "audio.json",
+        .allow_runtime_toggle = true,
+        .on_enabled = tooie_audio_mod::on_enabled,
+        .on_disabled = tooie_audio_mod::on_disabled,
+        .on_reordered = tooie_audio_mod::on_reordered,
+    };
+    auto audio_pack_content_type_id = recomp::mods::register_mod_content_type(audio_pack_content_type);
+    tooie_audio_mod::install_hooks();
+
     // Register the .rtz texture pack file format with the previous content type as its only allowed content type.
     recomp::mods::register_mod_container_type("rtz", std::vector{ texture_pack_content_type_id }, false);
     // Register plain .zip texture packs with an optional directory around rt64.json.
-    recomp::mods::register_mod_container_type("zip", std::vector{ texture_pack_content_type_id }, false, true);
+    recomp::mods::register_mod_container_type("zip", std::vector{ texture_pack_content_type_id, audio_pack_content_type_id }, false, true);
 
     activate_tooie_guest_preemption();
 

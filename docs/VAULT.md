@@ -37,7 +37,7 @@ Histórico de implementação e medições permanece no Git.
 - [[specs/Tooie/handheld-portmaster]] — Build de portáteis (`TK64_MOBILE`) e pacote PortMaster
 - [[specs/Tooie/asset-and-licensing-manifest]] — Fronteiras de assets e licenças
 - [[specs/Tooie/runtime-and-overlays]] — Runtime, overlays dinâmicos e preempção
-- [[specs/Tooie/audio-system]] — Áudio e microcódigo RSP
+- [[specs/Tooie/audio-system]] — Áudio, microcódigo RSP e pacotes MP3
 - [[specs/Tooie/graphics-and-presentation]] — RT64, widescreen e interpolação
 - [[specs/Tooie/input-and-controllers]] — Entrada e controles
 - [[specs/Tooie/window-ui-and-config]] — Janela, UI e configuração
