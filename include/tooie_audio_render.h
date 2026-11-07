@@ -10,7 +10,7 @@
 // TOOIE_TEST_AUDIO_RENDER_OUT (default: the plan's folder). Other sequence slots are muted while it runs and the output
 // device receives silence. Off unless the variable is set; never part of normal play.
 //
-// Plan lines: <name>\t<sequence hex>\t<channel mask hex or ->\t<seconds>[\t<bpm>]; '#' starts a comment line.
+// Writes nothing else: no log. Plan lines: <name>\t<sequence hex>\t<channel mask hex or ->\t<seconds>[\t<bpm>]; '#' starts a comment line.
 // The bpm (an area preset's tempo) is applied at once with 80017D74, as the game does when it enters the area.
 namespace tooie_audio_render {
 bool enabled();

@@ -74,10 +74,6 @@ bool silent(unsigned slot, int sequence, uint32_t mask) {
     if (tooie_audio_render::enabled() && !tooie_audio_render::keeps_mods()) return tooie_audio_render::mutes(slot);
     return tooie_audio_render::mutes(slot) || replaces(slot, sequence, mask);
 }
-void on_posted_gain(uint8_t* rdram, unsigned slot, int16_t posted) {
-    int sequence = sequence_id(rdram, slot);
-    note_native_gain(slot, sequence, posted, replaces(slot, sequence, channels(rdram, slot)));
-}
 int16_t filter(uint8_t* rdram, unsigned slot, int16_t authored, int16_t effective) {
     int sequence = sequence_id(rdram, slot);
     uint32_t mask = channels(rdram, slot);
@@ -101,9 +97,7 @@ void on_frame(uint8_t* rdram, recomp_context* ctx) {
             recomp_context local = *ctx;
             local.r4 = guest(tooie_bgm::seqp_addr(slot));
             local.r5 = replacement ? 0 : tooie_bgm::apply_unscaled(authored, tooie_bgm::get_percent());
-            const int16_t posted = static_cast<int16_t>(local.r5);
             func_80025ED0(rdram, &local);
-            on_posted_gain(rdram, slot, posted);
         }
     }
     tooie_audio_render::on_frame(rdram, ctx);
@@ -116,7 +110,7 @@ void on_sequence(uint8_t* rdram, unsigned slot, int sequence) {
         MEM_H(0, guest(tooie_bgm::player_addr(slot))), channels(rdram, slot), sequence >= 0, native_channels(rdram, slot));
 }
 }
-void install_hooks() { initialize_diagnostics(); tooie_bgm::set_content_hooks(filter, on_frame, on_sequence, on_posted_gain); }
+void install_hooks() { tooie_bgm::set_content_hooks(filter, on_frame, on_sequence, nullptr); }
 
 // The pack's own view of its files, opened separately from the mod manager's handle so the background loader can
 // read MP3s later from another thread. Lives as long as the pack (the reader and sizer hold it).
@@ -173,7 +167,6 @@ struct PackFiles {
 };
 
 void on_enabled(recomp::mods::ModContext& context, const recomp::mods::ModHandle& mod) {
-    note("ENABLING id=\"" + mod.manifest.mod_id + "\"");
     std::string error;
     auto files = std::make_shared<PackFiles>();
     files->root = mod.manifest.mod_root_path;
@@ -186,12 +179,11 @@ void on_enabled(recomp::mods::ModContext& context, const recomp::mods::ModHandle
     if (!pack) {
         // The original audio remains active if validation fails.
         std::string message = "Unable to enable audio mod " + mod.manifest.display_name + ": " + error;
-        note("ENABLE_FAILED " + message);
+        std::fprintf(stderr, "[audio-mod] %s\n", message.c_str());
         recompui::message_box(message.c_str());
         return;
     }
     enable(mod.manifest.mod_id, context.get_mod_order_index(mod.manifest.mod_id), std::move(pack));
-    std::fprintf(stderr, "[audio-mod] enabled %s\n", mod.manifest.mod_id.c_str());
 }
 void on_disabled(recomp::mods::ModContext&, const recomp::mods::ModHandle& mod) { disable(mod.manifest.mod_id); }
 void on_reordered(recomp::mods::ModContext& context) { reorder([&](const std::string& id) { return context.get_mod_order_index(id); }); }

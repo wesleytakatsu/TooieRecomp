@@ -41,7 +41,7 @@ TooieRecomp incorporates modding and extension APIs inherited from the static re
 | **REQ-MOD-03** | Texture Pack Support | Loads `.rtz` and structurally identified `.zip` texture archives containing replacement RT64 textures. | `VALIDATED_WINDOWS` (§4) |
 | **REQ-MOD-04** | Runtime Mod Toggles | Allows enabling, disabling, and reordering texture packs at runtime. | ZIP enable/disable `VALIDATED_WINDOWS`; reordering `NOT_RUN` |
 | **REQ-MOD-05** | Deprecated Mod Rejection| Rejects incompatible legacy mods (`bk_recomp_mod_fov_slider`). | `IMPLEMENTED` |
-| **REQ-MOD-06** | Native Audio ZIP | `audio.json` maps CSP sequences (32 channels, area masks and tempos) to MP3 playback, with runtime toggles and queue-level proof logging. | `HOST_TESTED` + `RUNTIME_TESTED` on Windows: the full HD map plays the expected MP3 for every area preset and sampled songs/jingles in game (renderer with packs); real area transitions, campaign, installer UI and Linux pending |
+| **REQ-MOD-06** | Native Audio ZIP | `audio.json` maps CSP sequences (32 channels, area masks and tempos) to MP3 playback, with runtime toggles. | `HOST_TESTED` + `RUNTIME_TESTED` on Windows: the full HD map plays the expected MP3 for every area preset and sampled songs/jingles in game (renderer with packs); real area transitions, campaign, installer UI and Linux pending |
 
 ---
 
@@ -159,7 +159,7 @@ plays at the native beat position (beats advance at the sequence's current tempo
 its own tempo, so entering an area at another tempo starts the new layer at the same musical point. While the native
 tempo moves between areas a layer at another tempo drifts; past 25 ms it seeks back to the beat position. Layers at
 different tempos must start at the same beat; their loops are converted per file. An MP3 without a loop that ends
-while its sequence keeps playing hands that slot back to the original music (`ENDED` in the proof log).
+while its sequence keeps playing hands that slot back to the original music.
 Layer weights are the non-negative least-squares combination of the layer channel groups closest to the current native
 channel gains (`255` = 1, otherwise `q / 256`): disjoint groups get their mean gain, an overlapping area resolves to its
 own layer in steady state, and the native crossfade blends the layers involved. Silent layers are not decoded; they
@@ -168,14 +168,13 @@ replace native audio. Duplicate selectors reject the pack.
 
 `tools/build_audio_pack.py <album> <output.zip> [--mapping <map.json>]` builds a pack from a map: it verifies each
 album MP3 against the map's SHA-256 and copies the bytes unchanged (`ZIP_STORED`). Source audio and the resulting ZIP
-are private inputs, never repository or game-release assets. Audio playback and proof logging details:
+are private inputs, never repository or game-release assets. Audio playback details:
 [[audio-system]].
 
 Maintainer renderer: `TOOIE_TEST_AUDIO_RENDER=<plan.tsv>` (output folder `TOOIE_TEST_AUDIO_RENDER_OUT`, default the
 plan's folder) waits until Game Select plays, then for each plan line `<name>	<sequence hex>	<mask hex or ->	<seconds>`
 plays that sequence in the Game Select slot at full volume with that channel mask, mutes the other slots, records the
-native mix as 48 kHz stereo float WAV and sends silence to the device; `render.log` records the channel mask and the
-32 channel gains each second. While it runs no audio pack replaces anything. Empty sequence IDs (for example `0x13`)
+native mix as 48 kHz stereo float WAV and sends silence to the device. While it runs no audio pack replaces anything. Empty sequence IDs (for example `0x13`)
 crash the original player and must not be listed. A fifth column sets the area tempo (BPM), applied the way the game
 applies a preset (the renderer re-requests it until it holds over the sequence's own start tempo). With
 `TOOIE_TEST_AUDIO_RENDER_MOD=1` enabled packs keep replacing music and the recording is the final mix, to check a pack

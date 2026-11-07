@@ -212,8 +212,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   (`TOOIE_TEST_AUDIO_RENDER`) e comparação com o álbum (`tools/audio/analysis/`); pacote montado com
   `tools/build_audio_pack.py` a partir do álbum do usuário (995 MB, nunca versionado nem publicado).
   Teste no jogo com o pacote (`TOOIE_TEST_AUDIO_RENDER_MOD=1`, Windows): todas as variantes de área e uma amostra de
-  músicas e jingles tocam o MP3 previsto, alinhado (correlação 0,99, atraso ~0); jingles conferidos pelo log `PLAY`
-  e por comparação curta. Ficam no original: áreas sem faixa no álbum (MT `0xE108`, GGM `0x80600000`, Atlantis
+  músicas e jingles tocam o MP3 previsto, alinhado (correlação 0,99, atraso ~0); jingles conferidos por comparação curta.
+  Ficam no original: áreas sem faixa no álbum (MT `0xE108`, GGM `0x80600000`, Atlantis
   `0xE001`), GI debaixo d'água a 142/137 BPM (álbum só a 130) e Trash Can (álbum gravado a 125 BPM, jogo 116).
   Loops: 94 de 124 com emenda ≥0,95; Near Space Zone (0,53) e Drained Palace (0,82) pedem audição. Não testado:
   transições reais no jogo (entrar/sair da água, rampa de andamento), campanha completa, Linux e portátil.

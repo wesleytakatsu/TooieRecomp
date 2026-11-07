@@ -13,8 +13,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <deque>
-#include <filesystem>
-#include <limits>
 #include <map>
 #include <mutex>
 #include <stdexcept>
@@ -84,20 +82,8 @@ std::array<Slot, slot_count> states;
 std::array<std::atomic<uint64_t>, slot_count> current_serial{};
 std::array<std::atomic<uint64_t>, slot_count> finished_serial{};
 std::array<std::atomic<double>, slot_count> target_tempo{};
-std::mutex log_mutex;
-FILE* playback_log = nullptr;
-struct CloseLog { ~CloseLog() { if (playback_log) std::fclose(playback_log); } } close_log;
-bool trace_enabled() {
-    static const bool enabled = [] { const char* v = std::getenv("TOOIE_DIAG_AUDIO_MOD"); return v && std::string(v) == "1"; }();
-    return enabled;
-}
-void log_line(const std::string& line) {
-    std::fprintf(stderr, "[audio-mod] %s\n", line.c_str());
-    if (!playback_log) return;
-    std::lock_guard lock(log_mutex);
-    std::fprintf(playback_log, "%s\n", line.c_str());
-    std::fflush(playback_log);
-}
+// Problems with a pack (a rejected MP3) go to stderr; the original music keeps playing.
+void report(const std::string& line) { std::fprintf(stderr, "[audio-mod] %s\n", line.c_str()); }
 }
 
 struct Pack {
@@ -120,7 +106,6 @@ void publish() {
 struct Selection {
     std::array<const Rule*, max_layers> layers{};
     size_t count = 0;
-    const std::string* id = nullptr;
     const Rule* active = nullptr;  // The rule whose selector matched.
 };
 // An MP3 recorded at an area tempo replaces only that area: the same channels at another tempo keep the original.
@@ -132,7 +117,6 @@ Selection select(const Catalog& catalog, int sequence, uint32_t channels, double
         for (const auto& rule : entry.pack->rules) {
             if (rule.sequence != sequence || (channels & rule.mask) != rule.value || !tempo_fits(*rule.clip, target_bpm)) continue;
             Selection result;
-            result.id = &entry.id;
             result.active = &rule;
             bool ready = true;
             if (!rule.native_mask) { result.layers[result.count++] = &rule; ready = rule.clip->ready(); }
@@ -247,7 +231,7 @@ void process(const Job& job) {
     }
     catch (const std::exception& e) {
         clip.state.store(-1);
-        log_line(std::string("REJECTED ") + e.what() + " (the original music plays for this rule)");
+        report(std::string("rejected ") + e.what() + " (the original music plays for this rule)");
     }
 }
 void loader_thread() {
@@ -348,10 +332,6 @@ struct Voice {
         std::shared_ptr<const Clip> assigned;  // Kept while the layer is silent and its decoder is closed.
         uint32_t native_mask = 0;
         float weight = 0;
-        bool announced = false;
-        uint32_t logged_channels = ~0u;
-        uint64_t positive_samples = 0, reported_samples = 0;
-        float logged_weight = -1;
     };
     std::array<Layer, max_layers> layers;
     int sequence = -1;
@@ -363,24 +343,10 @@ struct Voice {
         return elapsed;
     }
     float gain = 0;
-    std::string mod_id;
 };
 std::array<Voice, slot_count> voices;
-struct PendingProof {
-    bool available = false;
-    uint32_t channels = 0;
-    size_t frames = 0, positive = 0;
-    uint64_t timeline = 0, source = 0;
-    float weight = 0;
-    unsigned native_min = 0, native_max = 0;
-    double native_bpm = 0, target_bpm = 0;
-};
-std::array<std::array<PendingProof, max_layers>, slot_count> pending_proofs;
-
-template<bool RecordProof>
-size_t mix_layer(Voice::Layer& layer, float* stereo, size_t frames, float wanted, float gain,
+void mix_layer(Voice::Layer& layer, float* stereo, size_t frames, float wanted, float gain,
     float weight, std::array<float, 1024 * 2>& pcm) {
-    size_t positive = 0;
     const float clip_gain = layer.stream.clip ? layer.stream.clip->gain : 0;
     for (size_t offset = 0; offset < frames;) {
         size_t n = std::min<size_t>(1024, frames - offset);
@@ -391,16 +357,11 @@ size_t mix_layer(Voice::Layer& layer, float* stereo, size_t frames, float wanted
             layer.weight += (weight - layer.weight) * (1.0f / 240.0f);
             if (weight == 0 && layer.weight < 0.000001f) layer.weight = 0;
             for (unsigned c = 0; c < 2; ++c) {
-                float contribution = pcm[i * 2 + c] * clip_gain * layer.weight * gain;
-                stereo[(offset + i) * 2 + c] += contribution;
-                if constexpr (RecordProof) {
-                    if (contribution != 0) ++positive;
-                }
+                stereo[(offset + i) * 2 + c] += pcm[i * 2 + c] * clip_gain * layer.weight * gain;
             }
         }
         offset += n;
     }
-    return positive;
 }
 float native_level(uint8_t q) { return q == 255 ? 1.0f : q / 256.0f; }  // 80029DCC: 255 bypasses multiplication.
 }
@@ -487,72 +448,6 @@ std::vector<float> layer_weights(const std::vector<uint32_t>& masks, const Nativ
     }
     for (size_t j = 0; j < n; ++j) w[j] = static_cast<float>(std::clamp(x[j], 0.0, 1.0));
     return w;
-}
-
-void initialize_diagnostics() {
-    const char* path = std::getenv("TOOIE_AUDIO_MOD_LOG");
-    if (!path || !*path) return;
-#ifdef _WIN32
-    playback_log = _wfopen(std::filesystem::u8path(path).c_str(), L"w");
-#else
-    playback_log = std::fopen(path, "w");
-#endif
-    if (!playback_log) { std::fprintf(stderr, "[audio-mod] unable to open playback log: %s\n", path); return; }
-    std::fprintf(playback_log, "AUDIO_MOD_LOG schema=2 rate=48000 channels=2\nPLAY means nonzero decoded MP3 samples mixed into a buffer accepted by SDL_QueueAudio. PACK_ENABLED alone is not playback proof.\n");
-    std::fflush(playback_log);
-}
-
-void note_queue_result(int result, bool undecimated) {
-    if (!playback_log) return;
-    std::lock_guard lock(log_mutex);
-    bool wrote = false;
-    for (unsigned slot = 0; slot < slot_count; ++slot) {
-        auto& voice = voices[slot];
-        for (size_t index = 0; index < max_layers; ++index) {
-            auto& pending = pending_proofs[slot][index];
-            if (!pending.available) continue;
-            auto& layer = voice.layers[index];
-            if (result != 0) {
-                std::fprintf(playback_log, "QUEUE_ERROR slot=%u sequence=%d result=%d\n", slot, voice.sequence, result);
-                wrote = true;
-            }
-            // Only full buffers have verified per-source contribution counts.
-            else if (undecimated && layer.stream.clip) {
-                layer.positive_samples += pending.positive;
-                const char* event = !layer.announced ? "PLAY" :
-                    pending.channels != layer.logged_channels ? "CHANNELS" :
-                    std::abs(pending.weight - layer.logged_weight) >= 0.05f ? "TRANSITION" :
-                    layer.positive_samples - layer.reported_samples >= 48000 * 2 * 5 ? "PLAYING" : nullptr;
-                if (event) {
-                    std::fprintf(playback_log, "%s mod=\"%s\" file=\"%s\" sequence=%d slot=%u native_channels=0x%08X layer_channels=0x%04X timeline_frame=%llu source_frame=%llu mixed_frames=%zu nonzero_samples=%zu total_nonzero_samples=%llu gain=%.6f layer_gain=%.6f native_min=%u native_max=%u native_bpm=%.2f target_bpm=%.2f clip_bpm=%.2f queue_result=0\n",
-                        event, voice.mod_id.c_str(), layer.stream.clip->file.c_str(), voice.sequence, slot,
-                        pending.channels, layer.native_mask,
-                        static_cast<unsigned long long>(pending.timeline), static_cast<unsigned long long>(pending.source),
-                        pending.frames, pending.positive, static_cast<unsigned long long>(layer.positive_samples),
-                        voice.gain, pending.weight, pending.native_min, pending.native_max, pending.native_bpm,
-                        pending.target_bpm, layer.stream.clip->bpm);
-                    layer.announced = true; layer.logged_channels = pending.channels;
-                    layer.logged_weight = pending.weight; layer.reported_samples = layer.positive_samples;
-                    wrote = true;
-                }
-            }
-            pending.available = false;
-        }
-    }
-    if (wrote) std::fflush(playback_log);
-}
-
-void note_native_gain(unsigned slot, int sequence, int16_t posted, bool replaced) {
-    if (!playback_log || slot >= slot_count) return;
-    static std::array<bool, slot_count> suppressed{};
-    static std::array<int, slot_count> ids{-1, -1, -1, -1, -1, -1};
-    std::lock_guard lock(log_mutex);
-    bool mute = replaced && posted == 0;
-    if ((mute && (!suppressed[slot] || ids[slot] != sequence)) || (!mute && suppressed[slot])) {
-        std::fprintf(playback_log, "%s sequence=%d slot=%u posted_guest_gain=%d\n", mute ? "MUTE_EVENT" : "RESTORE_EVENT", sequence, slot, posted);
-        std::fflush(playback_log);
-    }
-    suppressed[slot] = mute; ids[slot] = sequence;
 }
 
 std::shared_ptr<const Pack> load_pack(const Reader& reader, std::string& error, const Sizer& sizer) {
@@ -689,20 +584,10 @@ void enable(const std::string& id, size_t order, std::shared_ptr<const Pack> pac
         for (auto& clip : all) queue({pack, clip, false}, false);
         for (auto& p : loader().playing) request(p.load());
     }
-    if (playback_log) {
-        std::lock_guard log_lock(log_mutex);
-        std::fprintf(playback_log, "PACK_ENABLED id=\"%s\" (not playback proof)\n", id.c_str());
-        std::fflush(playback_log);
-    }
 }
 void disable(const std::string& id) {
     std::lock_guard lock(catalog_mutex);
     std::erase_if(entries, [&](const Entry& e) { return e.id == id; }); publish();
-    if (playback_log) {
-        std::lock_guard log_lock(log_mutex);
-        std::fprintf(playback_log, "PACK_DISABLED id=\"%s\"\n", id.c_str());
-        std::fflush(playback_log);
-    }
 }
 void reorder(const std::function<size_t(const std::string&)>& get_order) {
     std::lock_guard lock(catalog_mutex);
@@ -721,8 +606,6 @@ void update(unsigned slot, int sequence, int16_t authored, uint32_t channels, bo
     {
         std::lock_guard lock(state_mutex);
         auto& state = states[slot];
-        if (trace_enabled() && (state.sequence != sequence || state.channels != channels || restart))
-            std::fprintf(stderr, "[audio-mod] slot=%u sequence=%d channels=%08X volume=%d restart=%d\n", slot, sequence, channels, authored, restart);
         started = restart || state.sequence != sequence;
         if (started) ++state.serial;
         current_serial[slot] = state.serial;
@@ -739,7 +622,6 @@ void reset() {
     for (auto& state : states) { state.sequence = -1; ++state.serial; }
     for (auto& p : loader().playing) p = -1;
 }
-void note(const std::string& line) { log_line(line); }
 void set_memory_limits(size_t budget, size_t eager) { resident_budget = budget; eager_limit = eager; }
 bool wait_loader_idle(unsigned milliseconds) {
     auto& l = loader();
@@ -752,8 +634,6 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
     { std::lock_guard lock(state_mutex); snapshot = states; }
     std::array<float, 1024 * 2> pcm{};
     bool mixed = false;
-    const bool record_proof = playback_log != nullptr;
-    if (record_proof) pending_proofs = {};
     for (unsigned slot = 0; slot < slot_count; ++slot) {
         auto& voice = voices[slot]; const auto& state = snapshot[slot];
         auto selected = select(*catalog, state.sequence, state.channels, state.native.target_bpm);
@@ -763,10 +643,6 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
             for (auto& layer : voice.layers) { layer.stream.clear(); layer.assigned.reset(); layer.weight = 0; }
         }
         voice.sequence = state.sequence; voice.serial = state.serial;
-        if (record_proof) {
-            if (selected.id) voice.mod_id = *selected.id;
-            else voice.mod_id.clear();
-        }
         const float wanted = std::clamp(state.authored / 32767.0f, 0.0f, 1.0f) *
             std::clamp(bgm_percent, 0, 100) / 100.0f * std::clamp(main_volume, 0.0f, 1.0f) * 0.5f;
         // Layer weights from the native channel gains (or the matched layer when gains are unavailable).
@@ -791,24 +667,12 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
             const Rule* rule = index < selected.count ? selected.layers[index] : nullptr;
             auto clip = rule ? rule->clip : nullptr;
             const float weight = rule ? weights[index] : 0.0f;
-            unsigned low = 255, high = 0;
-            if (rule && rule->native_mask && record_proof && state.native.valid) {
-                for (unsigned channel = 0; channel < channel_count; ++channel) {
-                    if (!(rule->native_mask & (1u << channel))) continue;
-                    low = std::min<unsigned>(low, state.native.gain[channel]); high = std::max<unsigned>(high, state.native.gain[channel]);
-                }
-            }
-            if (low > high) low = high = 0;
             if (clip != layer.assigned || restart) {
                 // A new assignment starts at the current weight; a layer that only went silent keeps its ramp.
                 layer.stream.clear();
                 layer.assigned = clip;
                 layer.native_mask = rule ? rule->native_mask : 0;
                 layer.weight = weight;
-                if (record_proof) {
-                    layer.announced = false; layer.logged_weight = -1;
-                    layer.positive_samples = layer.reported_samples = 0;
-                }
                 if (clip && weight > 0) layer.stream.open(clip, voice.timeline(*clip));
             }
             if (!clip) continue;
@@ -822,13 +686,7 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
                 const uint64_t actual = layer.stream.position;
                 if ((actual > ideal ? actual - ideal : ideal - actual) > rate / 40 && !layer.stream.open(clip, voice.timeline(*clip))) continue;
             }
-            if (record_proof) {
-                const uint64_t source = layer.stream.position;
-                const size_t positive = mix_layer<true>(layer, stereo, frames, wanted, voice.gain, weight, pcm);
-                if (positive) pending_proofs[slot][index] = {true, state.channels, frames, positive,
-                    voice.elapsed, source, layer.weight, low, high, state.native.bpm, state.native.target_bpm};
-            }
-            else mix_layer<false>(layer, stereo, frames, wanted, voice.gain, weight, pcm);
+            mix_layer(layer, stereo, frames, wanted, voice.gain, weight, pcm);
             mixed = true;
         }
         // MP3s without a loop that have ended hand the slot back to the original sequence (marked with serial + 1,
@@ -839,10 +697,7 @@ void mix(float* stereo, size_t frames, float main_volume, int bgm_percent) {
                 const Clip& c = *selected.layers[index]->clip;
                 if (c.loop_end || c.start + voice.timeline(c) < c.end) finished = false;
             }
-            if (finished && finished_serial[slot].load() != state.serial + 1) {
-                finished_serial[slot] = state.serial + 1;
-                if (playback_log) log_line("ENDED sequence=" + std::to_string(state.sequence) + " slot=" + std::to_string(slot) + " (the original music continues)");
-            }
+            if (finished) finished_serial[slot] = state.serial + 1;
         }
         // Update the master ramp exactly once, independently of layer count.
         voice.gain = wanted + (voice.gain - wanted) * std::pow(1.0f - 1.0f / 240.0f, static_cast<float>(frames));

@@ -32,8 +32,7 @@ float energy(const std::vector<float>& data) {
 int main(int argc, char** argv) {
     using namespace tooie_audio_mod;
     std::string error;
-    initialize_diagnostics();
-    const bool check_log = argc >= 3 && std::string(argv[2]) != "-";
+    // Arguments: [48 kHz stereo MP3 fixture] [unused, kept for older scripts] [extracted real pack] [PCM capture].
     std::ofstream pcm_capture;
     if (argc >= 5) {
         pcm_capture.open(std::filesystem::u8path(argv[4]), std::ios::binary);
@@ -45,11 +44,6 @@ int main(int argc, char** argv) {
                 static_cast<std::streamsize>(samples.size() * sizeof(float)));
             expect(bool(pcm_capture), "PCM capture written");
         }
-    };
-    auto log_text = [&]() {
-        if (!check_log) return std::string{};
-        std::ifstream log(argv[2]);
-        return std::string(std::istreambuf_iterator<char>(log), {});
     };
     nlohmann::json j = {{"schema_version", 1}, {"sequences", nlohmann::json::array({{{"id", 4}, {"file", "audio/test.mp3"}}})}};
     expect(!load(j, error) && !error.empty(), "empty MP3 rejected");
@@ -106,24 +100,6 @@ int main(int argc, char** argv) {
         mix(pcm.data(), pcm.size()/2, 1, 100); float loud = energy(pcm);
         expect(loud > 0, "MP3 decoded and mixed");
         capture_pcm(pcm);
-        if (check_log) {
-            expect(log_text().find("PACK_ENABLED") != std::string::npos && log_text().find("PLAY mod=") == std::string::npos, "enabled alone is not playback proof");
-            note_queue_result(-1);
-            expect(log_text().find("QUEUE_ERROR") != std::string::npos && log_text().find("PLAY mod=") == std::string::npos, "failed queue cannot report PLAY");
-            update(0, 4, 32767, ~0u, true);
-            std::fill(pcm.begin(), pcm.end(), 0);
-            mix(pcm.data(), pcm.size()/2, 1, 100); note_queue_result(0, false);
-            expect(log_text().find("PLAY mod=") == std::string::npos, "decimated block cannot claim unverified contribution counts");
-            update(0, 4, 32767, ~0u, true);
-            std::fill(pcm.begin(), pcm.end(), 0);
-            mix(pcm.data(), pcm.size()/2, 1, 100);
-            note_queue_result(0); // Simulated acceptance; no audio device in this host test.
-            expect(log_text().find("PLAY mod=\"fixture\" file=\"audio/test.mp3\"") != std::string::npos && log_text().find("queue_result=0") != std::string::npos, "PLAY identifies decoded asset after queue success");
-            update(0, 4, 32767, 0xAABBCCDD);
-            std::fill(pcm.begin(), pcm.end(), 0);
-            mix(pcm.data(), pcm.size()/2, 1, 100); note_queue_result(0);
-            expect(log_text().find("CHANNELS") != std::string::npos && log_text().find("0xAABBCCDD") != std::string::npos, "native channel changes logged for manual mapping");
-        }
         std::fill(pcm.begin(), pcm.end(), 0); update(0, 4, 32767, ~0u, true);
         mix(pcm.data(), pcm.size()/2, 0.5f, 50);
         expect(std::abs(energy(pcm) / loud - 0.0625f) < 0.001f, "main and BGM gain each applied once");
@@ -219,7 +195,7 @@ int main(int argc, char** argv) {
         capture_pcm(first);
         for (size_t i = 0; i < first.size(); ++i)
             if (std::abs(first[i] - phase_reference[i] * 0.75f) > 0.00002f) { expect(false, "enable at 1:20 seeks exact decoded loop phase"); break; }
-        note_queue_result(0);
+
         float dry_weight = 1, wet_weight = 0;
         size_t reference_offset = first.size();
         // Partial native envelope, then rapid reversal, then complete immersion.
@@ -242,10 +218,8 @@ int main(int argc, char** argv) {
                 }
             }
             expect(agrees, "native envelope and reversal preserve both decoded phases and current gains");
-            reference_offset += actual.size(); note_queue_result(0);
+            reference_offset += actual.size();
         }
-        if (check_log) expect(log_text().find("timeline_frame=3840000 source_frame=19200") != std::string::npos &&
-            log_text().find("layer_channels=0x1C00") != std::string::npos, "accepted-buffer logs expose shared clock and underwater contribution");
         disable("layers");
         {
             // Layers recorded at different area tempos follow the native beat position (Mayahem Temple: land 120 BPM,
@@ -374,16 +348,13 @@ int main(int argc, char** argv) {
                 enable("real-pack-fixture", 0, actual_pack);
                 for (unsigned c = 0; c < 16; ++c) native.gain[c] = (0x63FFu & (1u << c)) ? 255 : 0;
                 update(0, 50, 32767, 0x63FF, true, native);
-                render(80 * 48000); note_queue_result(0);
+                render(80 * 48000);
                 for (unsigned c = 0; c < 16; ++c) native.gain[c] = 128;
                 update(0, 50, 32767, 0x1C00, false, native);
                 auto actual = render(4800);
                 expect(energy(actual) > 0, "real surface and underwater MP3s mix at shared 1:20 phase");
                 capture_pcm(actual);
-                note_queue_result(0);
-                if (check_log) expect(log_text().find("source_frame=3840000") != std::string::npos &&
-                    log_text().find("audio/09. Spiral Mountain (Underwater).mp3") != std::string::npos,
-                    "real pack underwater queue proof includes 1:20 source position");
+
                 disable("real-pack-fixture");
             }
         }

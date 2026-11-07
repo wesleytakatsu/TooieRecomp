@@ -5,7 +5,6 @@
 
 #include <atomic>
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -26,7 +25,6 @@ namespace {
 // 800178C4(slot, mask, transition) requests a channel mask, stored at 0x8007AED0 + slot * 4.
 constexpr uint32_t kSequenceOff = 0x26C;
 constexpr uint32_t kCspStateOff = 0x20C;
-constexpr uint32_t kChannelMasks = 0x8007AED0u;
 constexpr uint32_t kTempoRequests = 0x8007AEA0u;  // 80017D74: last requested microseconds per beat per slot.
 constexpr int kGameSelect = 0x67;
 constexpr int kReadyFrames = 90;     // Game Select playing this long before the first entry.
@@ -49,14 +47,12 @@ struct State {
     bool loaded = false, enabled = false;
     std::vector<Entry> plan;
     std::filesystem::path out;
-    FILE* log = nullptr;
     // Guest thread.
     enum class Phase { Wait, Gap, Play, Done } phase = Phase::Wait;
-    int frames = 0, ready = 0;
+    int ready = 0;
     unsigned slot = 0;
     size_t index = 0;
     int phase_frames = 0;
-    int last_logged_second = -1;
     // Shared with the audio thread.
     std::mutex mutex;
     std::ofstream wav;
@@ -99,12 +95,7 @@ void load() {
     s.out = out && out[0] ? std::filesystem::u8path(out) : std::filesystem::u8path(plan).parent_path();
     std::error_code ec;
     std::filesystem::create_directories(s.out, ec);
-    s.log = std::fopen((s.out / "render.log").string().c_str(), "a");  // A restarted worker must not erase a run.
-    s.enabled = !s.plan.empty() && s.log != nullptr;
-    if (s.log) {
-        std::fprintf(s.log, "AUDIO_RENDER plan=%s entries=%zu rate=48000 channels=2\n", plan, s.plan.size());
-        std::fflush(s.log);
-    }
+    s.enabled = !s.plan.empty();
 }
 
 void write_u32(std::ofstream& f, uint32_t v) { for (int i = 0; i < 4; ++i) f.put(static_cast<char>((v >> (8 * i)) & 0xFF)); }
@@ -193,25 +184,6 @@ std::string file_name(size_t index, const Entry& e) {
     return prefix + safe + ".wav";
 }
 
-void log_status(uint8_t* rdram, const Entry& e, int second) {
-    State& s = state();
-    const uint32_t channels = MEM_W(s.slot * 4, guest(kChannelMasks));
-    const uint32_t records = MEM_W(0x60, guest(tooie_bgm::seqp_addr(s.slot)));
-    std::string gains;
-    if (records >= 0x80000000u && records <= 0x807FFFFFu - 32 * 0x38) {
-        char buf[8];
-        for (unsigned c = 0; c < 32; ++c) {
-            std::snprintf(buf, sizeof(buf), "%s%02X", c ? " " : "", MEM_BU(c * 0x38 + 9, guest(records)));
-            gains += buf;
-        }
-    }
-    std::fprintf(s.log, "STATUS entry=\"%s\" t=%d slot=%u playing=%#x volume=%d bpm=%.2f state=%u mask=0x%08X gains=[%s] recorded=%llu\n",
-        e.name.c_str(), second, s.slot, sequence_in(rdram, s.slot), MEM_H(0, guest(tooie_bgm::player_addr(s.slot))),
-        current_bpm(rdram, s.slot),
-        MEM_W(kCspStateOff, guest(tooie_bgm::player_addr(s.slot))), channels, gains.c_str(),
-        static_cast<unsigned long long>(s.recorded.load()));
-    std::fflush(s.log);
-}
 }
 
 bool enabled() {
@@ -232,7 +204,6 @@ bool mutes(unsigned slot) {
 void on_frame(uint8_t* rdram, recomp_context* ctx) {
     if (!enabled()) return;
     State& s = state();
-    ++s.frames;
     switch (s.phase) {
     case State::Phase::Wait:
         for (unsigned slot = 0; slot < tooie_bgm::kSlotCount; ++slot) {
@@ -243,8 +214,6 @@ void on_frame(uint8_t* rdram, recomp_context* ctx) {
                     call_start(rdram, ctx, s.slot, -1);
                     s.phase = State::Phase::Gap;
                     s.phase_frames = 0;
-                    std::fprintf(s.log, "READY frame=%d slot=%u\n", s.frames, s.slot);
-                    std::fflush(s.log);
                 }
                 return;
             }
@@ -255,8 +224,6 @@ void on_frame(uint8_t* rdram, recomp_context* ctx) {
         if (++s.phase_frames < kGapFrames) return;
         if (s.index >= s.plan.size()) {
             s.phase = State::Phase::Done;
-            std::fprintf(s.log, "DONE entries=%zu\n", s.plan.size());
-            std::fflush(s.log);
             return;
         }
         {
@@ -266,13 +233,9 @@ void on_frame(uint8_t* rdram, recomp_context* ctx) {
             call_volume(rdram, ctx, s.slot, kVolume);
             if (e.has_mask) call_mask(rdram, ctx, s.slot, e.mask);
             if (e.bpm > 0) call_tempo(rdram, ctx, s.slot, e.bpm);
-            std::fprintf(s.log, "START index=%zu entry=\"%s\" sequence=%#x mask=%s%08X seconds=%.1f file=%s\n", s.index,
-                e.name.c_str(), e.sequence, e.has_mask ? "0x" : "none:", e.mask, e.seconds, file_name(s.index, e).c_str());
-            std::fflush(s.log);
         }
         s.phase = State::Phase::Play;
         s.phase_frames = 0;
-        s.last_logged_second = -1;
         return;
     case State::Phase::Play: {
         const Entry& e = s.plan[s.index];
@@ -291,16 +254,9 @@ void on_frame(uint8_t* rdram, recomp_context* ctx) {
             }
         }
         const double seconds = static_cast<double>(s.recorded.load()) / 48000.0;
-        if (static_cast<int>(seconds) != s.last_logged_second) {
-            s.last_logged_second = static_cast<int>(seconds);
-            log_status(rdram, e, s.last_logged_second);
-        }
         if (seconds < e.seconds) return;
         close_wav();
         call_start(rdram, ctx, s.slot, -1);
-        std::fprintf(s.log, "STOP index=%zu entry=\"%s\" frames=%llu\n", s.index, e.name.c_str(),
-            static_cast<unsigned long long>(s.recorded.load()));
-        std::fflush(s.log);
         ++s.index;
         s.phase = State::Phase::Gap;
         s.phase_frames = 0;

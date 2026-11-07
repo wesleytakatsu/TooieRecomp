@@ -43,12 +43,6 @@ void update(unsigned slot, int sequence, int16_t authored, uint32_t channels, bo
 void reset();
 // Audio consumer. Adds stereo float PCM at 48 kHz to the existing output buffer.
 void mix(float* stereo, size_t frames, float main_volume, int bgm_percent);
-// Optional playback proof, emitted only after SDL accepts a mixed buffer.
-void initialize_diagnostics();
-void note_queue_result(int result, bool undecimated = true);
-void note_native_gain(unsigned slot, int sequence, int16_t posted, bool replaced);
-// A line for stderr and the playback log (enable failures, rejected files).
-void note(const std::string& line);
 // Tests: memory limit for on-demand MP3s (bytes) and the in-memory limit for whole packs, and a wait for the loader.
 void set_memory_limits(size_t resident_budget, size_t eager_limit);
 bool wait_loader_idle(unsigned milliseconds);

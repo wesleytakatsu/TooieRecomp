@@ -462,8 +462,7 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
 
     // Queue the swapped audio data.
     // Offset the data start by only half the discarded frame count as the other half of the discarded frames are at the end of the buffer.
-    const int sdl_queue_result = SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
-    tooie_audio_mod::note_queue_result(sdl_queue_result, skip_factor == 0);
+    SDL_QueueAudio(audio_device, samples_to_queue, num_bytes_to_queue);
 }
 
 size_t get_frames_remaining() {

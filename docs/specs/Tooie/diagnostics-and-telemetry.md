@@ -42,8 +42,8 @@ Diagnostic Log Output (stderr or specified file destination)
 (`[tooie-interp]`) remain operational output. Syscall dispatch/return counters and diagnostic stacks, scheduler/audio
 task counts, audio peak/nonzero scans and their extra SDL queue-size query also require `TOOIE_DIAG`. Timing counters
 and the reported frame divisor require `TOOIE_DIAG_TIMING`. These gates do not suppress original guest execution.
-All heavy file loggers and continuous telemetry streams are opt-in. The optional MP3 proof logger is controlled by
-`TOOIE_AUDIO_MOD_LOG`; see [[audio-system]]. Error reporting remains available in normal runs.
+All heavy file loggers and continuous telemetry streams are opt-in; the audio mod has no logger. Error reporting
+remains available in normal runs.
 
 ---
 
