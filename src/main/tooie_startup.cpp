@@ -9,10 +9,12 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <json/json.hpp>
 #include <mutex>
+#include <thread>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -81,9 +83,20 @@ void log_event(const std::string &event, json fields = json::object()) {
             .count();
 #ifdef _WIN32
     fields["pid"] = GetCurrentProcessId();
-#endif
+    const std::string line = fields.dump() + '\n';
+    // The supervisor and its worker append to the same file; one append-only write keeps each line whole.
+    HANDLE file = CreateFileW(std::filesystem::u8path(path).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file != INVALID_HANDLE_VALUE) {
+        DWORD written = 0;
+        WriteFile(file, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+        CloseHandle(file);
+    }
+#else
+    const std::string line = fields.dump() + '\n';
     std::ofstream f(std::filesystem::u8path(path), std::ios::app);
-    f << fields.dump() << '\n';
+    f << line;
+#endif
 }
 namespace api = tooie_graphics_api;
 bool wine() {
@@ -116,8 +129,54 @@ void set_environment(const char *name, const char *value) {
     setenv(name, value, 1);
 #endif
 }
+// Backends that failed to start or crashed before proving themselves, oldest first. Auto tries them last.
+std::vector<std::string> failed_apis() {
+    std::vector<std::string> result;
+    const auto j = read_json(config_path());
+    if (j.contains("failed_apis") && j["failed_apis"].is_array())
+        for (const auto &value : j["failed_apis"])
+            if (value.is_string() && compiled(value.get<std::string>()) &&
+                std::find(result.begin(), result.end(), value.get<std::string>()) == result.end())
+                result.push_back(value.get<std::string>());
+    return result;
+}
 #ifdef _WIN32
 HANDLE ready_event = nullptr;
+HANDLE stable_event = nullptr;
+// How long the game must run after Start Game before a crash stops counting against the API. Nothing can be saved yet.
+#ifdef TOOIE_STARTUP_TEST
+constexpr DWORD stable_after_game_start_ms = 300;
+#else
+constexpr DWORD stable_after_game_start_ms = 15000;
+#endif
+// An unhandled exception, fast fail (0xC0000409) or abort(): the process did not choose to exit.
+bool crash_code(DWORD code) { return code >= 0x80000000u || code == 3; }
+std::string hex_code(DWORD code) {
+    char text[16];
+    std::snprintf(text, sizeof(text), "0x%08lX", static_cast<unsigned long>(code));
+    return text;
+}
+// Called by the supervisor after a worker exits, so the worker never writes startup.json at the same time.
+void record_attempt(const std::string &api, bool failed) {
+    auto j = read_json(config_path());
+    const auto before = j;
+    auto list = failed_apis();
+    list.erase(std::remove(list.begin(), list.end(), api), list.end());
+    if (failed) {
+        list.push_back(api);
+        // The worker records the API it created on readiness; a crash afterwards means it did not work.
+        if (j.contains("last_successful_api") && j["last_successful_api"] == api)
+            j.erase("last_successful_api");
+    }
+    if (list.empty())
+        j.erase("failed_apis");
+    else
+        j["failed_apis"] = list;
+    if (j != before) {
+        j["version"] = 1;
+        write_json(config_path(), j);
+    }
+}
 struct Handle {
     HANDLE value = nullptr;
     explicit Handle(HANDLE h = nullptr) : value(h) {}
@@ -131,7 +190,17 @@ struct Handle {
 } // namespace
 
 std::vector<std::string> tooie_startup::candidates(const std::string &selected) {
-    return api::candidates(api::current_target(), wine(), valid(selected) ? selected : "auto");
+    const std::string chosen = valid(selected) ? selected : "auto";
+    auto order = api::candidates(api::current_target(), wine(), chosen);
+    // An explicit choice is always tried first. Auto keeps its order but moves backends that failed here to the end,
+    // so a machine where one API crashes does not show and lose a window on every launch.
+    if (chosen == "auto") {
+        const auto failed = failed_apis();
+        std::stable_partition(order.begin(), order.end(), [&](const std::string &key) {
+            return std::find(failed.begin(), failed.end(), key) == failed.end();
+        });
+    }
+    return order;
 }
 std::string tooie_startup::preference() {
     auto graphics = read_json(recompui::file::get_app_folder_path() / "graphics.json");
@@ -176,12 +245,18 @@ int tooie_startup::enter(int argc, char **argv) {
                 return EXIT_FAILURE;
             set_environment("TK64_GRAPHICS_API", backend.c_str());
             set_environment("TOOIE_GRAPHICS_STRICT", "1");
+            // RT64's own Automatic choice (with its driver workarounds) only for the policy's first backend, even when
+            // a failure moved it later; another worker must create the API it was given.
             set_environment("TOOIE_GRAPHICS_AUTOMATIC",
-                            preference() == "auto" && backend == candidates("auto").front() ? "1" : "");
-            if (i + 1 >= argc)
+                            preference() == "auto" &&
+                                    backend == api::candidates(api::current_target(), wine(), "auto").front()
+                                ? "1"
+                                : "");
+            if (i + 2 >= argc)
                 return EXIT_FAILURE;
             try {
                 ready_event = reinterpret_cast<HANDLE>(std::stoull(argv[++i]));
+                stable_event = reinterpret_cast<HANDLE>(std::stoull(argv[++i]));
             } catch (...) {
                 return EXIT_FAILURE;
             }
@@ -218,11 +293,13 @@ int tooie_startup::enter(int argc, char **argv) {
         for (const auto &candidate : candidates(selected)) {
             SECURITY_ATTRIBUTES security{sizeof(security), nullptr, TRUE};
             Handle event(CreateEventW(&security, TRUE, FALSE, nullptr));
-            if (!event.value)
+            Handle stable(CreateEventW(&security, TRUE, FALSE, nullptr));
+            if (!event.value || !stable.value)
                 return EXIT_FAILURE;
             std::wstring command = L"\"" + executable + L"\" --graphics-worker=" +
                                    std::wstring(candidate.begin(), candidate.end()) + L" " +
-                                   std::to_wstring(reinterpret_cast<uintptr_t>(event.value));
+                                   std::to_wstring(reinterpret_cast<uintptr_t>(event.value)) + L" " +
+                                   std::to_wstring(reinterpret_cast<uintptr_t>(stable.value));
             for (int i = 1; i < argc; i++)
                 if (std::string(argv[i]) == "--show-console")
                     command += L" --show-console";
@@ -234,9 +311,9 @@ int tooie_startup::enter(int argc, char **argv) {
             startup.lpAttributeList = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attrs.data());
             if (!InitializeProcThreadAttributeList(startup.lpAttributeList, 1, 0, &bytes))
                 return EXIT_FAILURE;
-            HANDLE inherited = event.value;
+            HANDLE inherited[] = {event.value, stable.value};
             const bool attributes =
-                UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &inherited,
+                UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, inherited,
                                           sizeof(inherited), nullptr, nullptr) != 0;
             PROCESS_INFORMATION process{};
             log_event("attempt", {{"api", candidate}});
@@ -259,9 +336,22 @@ int tooie_startup::enter(int argc, char **argv) {
             const DWORD result = WaitForMultipleObjects(2, wait, FALSE, 180000);
             if (result == WAIT_OBJECT_0) {
                 log_event("launcher_ready", {{"candidate", candidate}});
+                // A driver can accept the device and lose it on the first frames (DXGI_ERROR_DEVICE_REMOVED). Until the
+                // game has run for a while, a crash means this API does not work here: show the launcher on the next.
+                HANDLE running[] = {stable.value, child.value};
+                const bool proven = WaitForMultipleObjects(2, running, FALSE, INFINITE) == WAIT_OBJECT_0;
+                if (proven)
+                    log_event("stable", {{"api", candidate}});
                 WaitForSingleObject(child.value, INFINITE);
                 DWORD code = 1;
                 GetExitCodeProcess(child.value, &code);
+                if (!proven && crash_code(code)) {
+                    log_event("crashed_after_ready", {{"api", candidate}, {"code", code}});
+                    record_attempt(candidate, true);
+                    failures += candidate + ": crashed after starting (" + hex_code(code) + ")\n";
+                    continue;
+                }
+                record_attempt(candidate, false);
                 log_event("exit", {{"code", code}});
                 return static_cast<int>(code);
             }
@@ -272,6 +362,7 @@ int tooie_startup::enter(int argc, char **argv) {
             DWORD code = 1;
             GetExitCodeProcess(child.value, &code);
             log_event("attempt_failed", {{"api", candidate}, {"code", code}, {"timeout", result == WAIT_TIMEOUT}});
+            record_attempt(candidate, true);
             failures += candidate + ": " +
                         (result == WAIT_TIMEOUT ? "initialization timed out"
                                                 : "initialization failed (" + std::to_string(code) + ")") +
@@ -297,6 +388,27 @@ int tooie_startup::enter(int argc, char **argv) {
     }
     return -1;
 #endif
+}
+void tooie_startup::launcher_frame() {
+    if (ready.load())
+        return;
+#ifdef _WIN32
+    if (worker) {
+        // Each call follows a submitted and presented frame. Device removal (DXGI_ERROR_DEVICE_REMOVED) surfaces a few
+        // frames after the GPU runs the first work, so both a frame count and a time bound must pass while hidden.
+        using clock = std::chrono::steady_clock;
+        constexpr int warmup_frames = 60;
+        constexpr auto warmup_time = std::chrono::milliseconds(1000);
+        static int frames = 0;
+        static clock::time_point first;
+        if (frames++ == 0)
+            first = clock::now();
+        if (frames < warmup_frames || clock::now() - first < warmup_time)
+            return;
+        log_event("warmup_done", {{"frames", frames}});
+    }
+#endif
+    launcher_ready();
 }
 void tooie_startup::launcher_ready() {
     static bool done = false;
@@ -328,6 +440,17 @@ void tooie_startup::launcher_ready() {
 void tooie_startup::note_game_start() {
     log_event("game_start", {{"api", recompui::renderer::get_graphics_backend_name()},
                              {"device", recompui::renderer::get_graphics_device_name()}});
+#ifdef _WIN32
+    if (stable_event) {
+        const HANDLE event = stable_event;
+        stable_event = nullptr;
+        std::thread([event]() {
+            Sleep(stable_after_game_start_ms);
+            SetEvent(event);
+            CloseHandle(event);
+        }).detach();
+    }
+#endif
 }
 void tooie_startup::add_graphics_option(recomp::config::Config &config) {
     using recomp::config::ConfigOptionEnumOption;

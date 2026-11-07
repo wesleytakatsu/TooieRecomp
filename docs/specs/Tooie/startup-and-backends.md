@@ -3,7 +3,7 @@ title: "Launcher startup, graphics backends and independent music"
 description: "TK64 integration, Windows startup recovery, API selection, launcher audio and opt-in graphics logs."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-05
+updated: 2026-11-06
 tags: [launcher, graphics, tk64, audio, config]
 ---
 
@@ -31,7 +31,7 @@ No new prebuilt binary or game asset is vendored for this integration.
 
 | Target | Compiled backends, in Auto order | Auto |
 | --- | --- | --- |
-| Windows x64 | DX12, Vulkan, DX11, OpenGL (Vulkan first under Wine) | Supervisor tries each until one is ready |
+| Windows x64 | DX12, Vulkan, DX11, OpenGL (Vulkan first under Wine) | Supervisor tries each until one passes probation; APIs that failed here go last |
 | Linux x64 | Vulkan, OpenGL | Vulkan; OpenGL when the probe finds no Vulkan device but finds OpenGL |
 | Handheld (`TK64_MOBILE`) | OpenGL ES | OpenGL ES |
 
@@ -57,22 +57,40 @@ entries. Automatic mode uses RT64's Vulkan-first preference under Wine and DX12-
 The first automatic attempt retains RT64's driver compatibility workarounds. A candidate can resolve to another API
 through such a workaround; the UI and diagnostic log report the API actually created.
 
-Each worker initializes the real renderer and frontend, including shader setup. Its window remains hidden until the
-launcher update runs after renderer initialization. The worker then reports readiness and becomes the visible
-launcher and subsequent game process. The supervisor remains waiting; it does not run a second game, poll per frame
+Each worker initializes the real renderer and frontend, including shader setup. Its window stays hidden, and launcher
+music stays silent, while the renderer draws the launcher for a warm-up of at least 60 frames and one second
+(`tooie_startup::launcher_frame`, called once per launcher frame). A driver that loses the device on its first
+submitted frames therefore fails while nothing is shown, and the next API is tried without a visible window opening
+and closing. After the warm-up the worker reports readiness and becomes the visible launcher and subsequent game
+process. Unsupervised builds (Linux, handhelds) report readiness on the first frame. The supervisor remains waiting; it does not run a second game, poll per frame
 or initialize a GPU. Successful startup does not require a second complete shader compilation.
 
 Before readiness, process exit/crash or a 180-second timeout advances to the next candidate. Failed workers are
-terminated/reaped. A Windows job bounds worker lifetime to the supervisor; only the readiness handle is inherited.
-Startup failures in a managed worker do not open the runtime's blocking renderer-error dialog. When all candidates
-fail, the supervisor displays one native Windows error with attempted APIs and exit codes/timeouts.
+terminated/reaped. A Windows job bounds worker lifetime to the supervisor; only the readiness and stability handles are
+inherited. Startup failures in a managed worker do not open the runtime's blocking renderer-error dialog. When all
+candidates fail, the supervisor displays one native Windows error with attempted APIs and exit codes/timeouts.
 
-Once ready, a crash or device loss is not treated as a request to boot another game. Exit codes are propagated;
-changing the API does not restart the current application or game. Modern graphics DLLs are
-delay-loaded so their absence does not prevent reaching the supervisor. Required packaged DXC libraries remain required.
+The warm-up does not prove the API either: a driver can create the device and lose it later
+(`DXGI_ERROR_DEVICE_REMOVED`, after which an upload map returns null and the worker crashes). A ready worker is on
+probation while the launcher is open and for 15 seconds after Start Game; the worker then signals the stability event.
+A crash during probation (an exit code of `0x80000000` or above, which covers access violations and fast fail, or
+`abort()`'s 3) advances to the next candidate, which opens a new launcher. Nothing can be saved during probation, so no
+progress is lost. A normal exit during probation (closing the window) ends the application with that code.
 
-The readiness handshake establishes successful renderer/frontend initialization, not an exhaustive GPU conformance
-test or proof of subsequent gameplay. Driver failures that occur later remain runtime failures.
+After probation, a crash or device loss is a gameplay failure, not a request to boot another game: its exit code is
+propagated and no other launcher opens. Changing the API does not restart the current application or game. Modern
+graphics DLLs are delay-loaded so their absence does not prevent reaching the supervisor. Required packaged DXC
+libraries remain required.
+
+Every failed attempt (before readiness or during probation) is recorded in `startup.json` `failed_apis`; a later clean
+exit or a passed probation removes that API from the list. **Auto** keeps its order but tries the recorded APIs last,
+so a machine where one API fails shows one working launcher on the next launch instead of repeating the failure. An
+explicit choice is still tried first. RT64's own automatic selection (`TOOIE_GRAPHICS_AUTOMATIC`, with its driver
+workarounds) is used only by the worker for the policy's first backend, even when a failure moved that backend later.
+
+Probation establishes that the renderer survives the launcher and the first seconds of play, not an exhaustive GPU
+conformance test. A driver failure later in a session remains a runtime failure; a renderer hang (no crash) is not
+detected.
 
 ## Configuration and launcher controls
 
@@ -88,9 +106,13 @@ This is a startup compatibility priority, not an FPS benchmark or a universal ra
 {
   "version": 1,
   "preference": "auto",
-  "last_successful_api": "d3d12"
+  "last_successful_api": "vulkan",
+  "failed_apis": ["d3d12"]
 }
 ```
+
+`failed_apis` is written only by the Windows supervisor after a worker exits; it is absent when nothing failed.
+A crash during probation also removes `last_successful_api` when it names the crashed API.
 
 Startup reads `graphics.json`'s `graphics_backend` first, then legacy `startup.json` preference, then legacy `api_option`.
 Invalid values use automatic selection, including a backend this build does not have (`d3d12` in a
@@ -174,8 +196,18 @@ they do not prove visual fidelity or compatibility on another computer.
   normal failure, a driver-like process crash, readiness, retained preference, effective metadata, invalid config and
   absence of a game-start event. It also links real librecomp Config to test Graphics Apply/Cancel, persistence across
   reopening, automatic selection and unchanged window mode. A second process round verifies Auto reaches OpenGL after
-  failures in DX12, Vulkan and DX11. It does not initialize a real GPU or execute the game. It fixes the probe result
-  with `TOOIE_GRAPHICS_AVAILABLE`.
+  failures in DX12, Vulkan and DX11, then that the next Auto order starts with OpenGL and keeps the failed APIs behind it
+  while an explicit choice stays first. Further rounds cover a worker that crashes after readiness (fallback to the next
+  API, `failed_apis` and `last_successful_api` recorded) and a crash after the stability event (exit code propagated,
+  no other attempt, the working API not demoted); the test build shortens probation to 300 ms. Each successful fake
+  worker drives `launcher_frame` and must need at least 60 frames before readiness. Supervisor and worker append to
+  the same opt-in log with one append-only write per line, so concurrent events cannot interleave. It does not initialize
+  a real GPU or execute the game. It fixes the probe result with `TOOIE_GRAPHICS_AVAILABLE`.
+- Real hardware, 2026-11-06 (Windows 11, GTX 1650 + AMD iGPU, D3D12 device removed right after readiness on that
+  machine): with the warm-up, the DX12 worker crashed while hidden (its window never became visible) and the Vulkan
+  launcher appeared about 6.6 s after launch; the next launch started Vulkan directly. Without the warm-up the DX12
+  launcher was briefly visible before the fallback. Start Game and gameplay after the fallback were not exercised by
+  the agent.
 - `tooie_graphics_api_test` checks the per-target policy on any host: compiled lists and Auto order (Windows, Wine,
   Linux, handheld), menu filtering, the running backend kept, foreign and unknown saved values becoming Auto, candidate
   order without duplicates, the `TK64_GRAPHICS_API` value for Linux and handhelds, and the descriptions.
