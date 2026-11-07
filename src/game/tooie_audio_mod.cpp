@@ -462,7 +462,9 @@ std::shared_ptr<const Pack> load_pack(const Reader& reader, std::string& error, 
         auto pack = std::make_shared<Pack>();
         // Files shared by several rules (a layer used by more than one area) are one clip.
         std::map<std::string, std::shared_ptr<Clip>> clips;
-        std::vector<std::pair<std::shared_ptr<Clip>, nlohmann::json>> contracts;
+        // A plain struct: std::pair<..., nlohmann::json> does not compile with clang and libstdc++ 12 (handheld).
+        struct Contract { std::shared_ptr<Clip> clip; nlohmann::json terms; };
+        std::vector<Contract> contracts;
         size_t total = 0;
         for (const auto& item : j.at("sequences")) {
             const auto& id = item.at("id");
@@ -496,10 +498,10 @@ std::shared_ptr<const Pack> load_pack(const Reader& reader, std::string& error, 
                         (clip->end_given && clip->loop_end > clip->end))) ||
                     (!clip->loop_end && clip->loop_start)) throw std::runtime_error("Invalid audio bounds or gain: " + path);
                 total += clip->size;
-                contracts.emplace_back(clip, contract);
+                contracts.push_back({clip, contract});
             }
             // Each file has one playback contract; variants can share the same contract.
-            else for (const auto& [known, terms] : contracts) if (known == clip && terms != contract)
+            else for (const auto& known : contracts) if (known.clip == clip && known.terms != contract)
                 throw std::runtime_error("One MP3 cannot have two playback contracts: " + path);
             Rule rule{sequence, 0, 0, clip};
             if (item.contains("channel_mask") != item.contains("channel_value")) throw std::runtime_error("Channel selector requires both mask and value");
