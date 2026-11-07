@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-06
+updated: 2026-11-07
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -31,7 +31,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 31 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `313e287` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 34 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -50,11 +50,11 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
-- Versão `0.1.6`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.6)
+- Versão `0.1.6`; [pré-release Windows x64, Linux x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.6)
   em 2026-11-07. Tag anotada `v0.1.6` em `0f7230a2ee9a33c622eb17cbca1d808deecc2d05` (`main`, após as PRs #9 e #10).
   Notas em inglês e português brasileiro: [[releases/v0.1.6]]. Windows: 34/34 testes, build Release, auditoria dos 111
   arquivos aprovada. PortMaster: build cruzado (114 arquivos, glibc 2.35), não executado num aparelho nesta versão.
-  Assets baixados do GitHub conferidos byte a byte com os locais. Linux x64 fica para o PC Linux do usuário.
+  Assets Windows/PortMaster baixados do GitHub conferidos byte a byte com os locais. Linux x64 adicionado da mesma tag, com os seis hashes remotos verificados e aprovação do usuário após teste.
 - `BanjoTooieRecompiled-v0.1.6-Windows-x64.zip`: 23182600 bytes, SHA-256
   `48087dfff0aaa4b6a7e295df91796505c6472a6ac52472740a5199341aee7c39`.
 - `BanjoTooieRecompiled-v0.1.6-Linux-arm64-PortMaster.zip`: 12223339 bytes, SHA-256
@@ -357,18 +357,17 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 ## Empacotamento Linux x64
 
 - Entrada `./build-linux.sh`: seleção tar/deb/AppImage/todos, análise de dependências e build pelo preset `linux-x64`.
-  Scripts, licença do runtime AppImage e instruções de instalação/provisionamento versionados; launcher usa `build-linux`.
-- `PROVEN` em `313e2871c71b8a496a7806dbb0c7bf80cffab663` (tag `v0.1.5`, 2026-11-06): build Release com
-  `TOOIE_RELEASE_VERSION=0.1.5 ./build-linux.sh all`, exit `0`, geração de 420 arquivos conferida e 19/19 suítes PASS.
-  Tar/deb/AppImage têm `BUILD-INFO.txt` da tag, versão `0.1.5` e zero arquivos sujos; manifests, licença e checksums
-  aprovados. Binário comum: `8d02707238e5af6486e8431e5dfebeddc8125cf411dc9c8019c025e6149bda51` (SHA-256).
-- Três pacotes `BanjoTooieRecompiled-v0.1.5-Linux-x64.*` e três `.sha256` publicados na release `v0.1.5`.
-  Os seis hashes SHA-256 remotos coincidem com os locais; anexos Windows/PortMaster, título e estado de pré-release
-  preservados. Notas em inglês/português sincronizadas em [[releases/v0.1.5]]. Artefatos: `dist/release-v0.1.5-linux/`.
-- Execução isolada pelas entradas dos três pacotes: launcher 15 s e ROM 25 s em cada um, com 2.236 assets pt-BR e
-  quadro interpolado registrados. `.deb` apenas extraído; AppImage testado com `--appimage-extract-and-run`.
-  HOME/configs/caches/ROMs temporários removidos; estado do dpkg e dados reais do usuário permaneceram iguais.
-  Não substitui gameplay completo por API, instalação Debian real nem montagem FUSE padrão.
+  Scripts e licença do runtime AppImage versionados; launcher usa `build-linux`.
+- `PROVEN` em `0f7230a2ee9a33c622eb17cbca1d808deecc2d05` (tag `v0.1.6`, 2026-11-07):
+  `TOOIE_RELEASE_VERSION=0.1.6 ./build-linux.sh all`, exit `0`, 420 arquivos gerados conferidos e 22/22 suítes PASS.
+  Teste de mod de áudio executou manifesto/passthrough; reprodução de MP3 real ficou `SKIPPED` sem a faixa de teste.
+- Tar/deb/AppImage contêm o binário `6f6ac470f506d31daf31eeb3487dc6901a9f465a51fc2b571a04ac7e321d2859`
+  (SHA-256), commit da tag, versão `0.1.6` e zero arquivos sujos. Licença, manifests e checksums conferidos.
+  Artefatos: `dist/release-v0.1.6-linux/`; três pacotes e três `.sha256` publicados na release, com hashes remotos iguais.
+  Os anexos Windows/PortMaster, título e estado de pré-release foram preservados; notas em [[releases/v0.1.6]].
+- `.deb` extraído e AppImage com `--appimage-extract-and-run`: launcher aberto por 15 s em perfil isolado.
+  Temporários removidos, sem instalação Debian. Depois o jogo iniciou no perfil real com backup prévio; o usuário
+  confirmou que funcionou e autorizou a publicação. Não implica validação exaustiva de APIs, gameplay ou pacote HD.
 
 ## Notas operacionais
 
@@ -396,4 +395,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: gerar e publicar os pacotes Linux x64 da v0.1.6 no PC Linux do usuário (`TOOIE_RELEASE_VERSION=0.1.6 ./build-linux.sh all` na tag `v0.1.6`).
+`NEXT_SINGLE_ACTION`: verificar o feedback do usuário sobre os pacotes Linux x64 da v0.1.6 publicada.
