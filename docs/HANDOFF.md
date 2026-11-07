@@ -19,10 +19,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (52 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (54 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
-| Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável | [[specs/Tooie/audio-system]] |
+| Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável; protótipo nativo de ZIP `audio.json`; usuário testou por cópia na pasta mods e logs confirmam os três MP3s; camadas superfície/água sincronizadas host-testadas e com relato positivo do usuário no Windows; instalação pela UI exige tela inicial | [[specs/Tooie/audio-system]], [[specs/Tooie/modding-and-extensions]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
@@ -36,8 +36,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 ## Workspace e validação pós-merge (2026-11-06)
 
 - PRs #2 (portátil), #3 (link do pacote de texturas BT Reloaded) e #4 (correção do J2 no splitscreen) mescladas com
-  merge commit; `main` em `4a59160`. Branches mescladas removidas do GitHub; restam `main`, `feat/dev-mode` (dois
-  commits de música por ZIP, ainda fora da `main`) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
+  merge commit; `main` em `4a59160`. Branches mescladas removidas do GitHub; restam `main`, `feat/dev-mode` (os dois
+  commits de música por ZIP, mesclados na `main` em 2026-11-07) e a antiga `cursor/cloud-agent-1787466750256-ha9al`.
 - Um só clone local no Windows (`TooieRecomp`). Os clones `TooieRecomp-win`, `TooieRecomp-xu10` e `TooieRecomp-audio`
   foram inventariados: nenhum tinha código fora da `main` além de `feat/dev-mode`; bundle git, diffs e arquivos ignorados
   ficaram num arquivo local fora do repositório.
@@ -203,6 +203,25 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   quatro APIs. Linux continua sem supervisor (`NOT_IMPLEMENTED`).
   Revisão removeu logger de frames/tempos TK64, print de hover, captura PCM do executável e varredura diagnóstica
   de pico/silêncio por buffer. Contador do teste de áudio fica apenas no harness; log opt-in da API foi preservado.
+- Protótipo de áudio `0.2.0`: Game Select (`0x67`), Blue Eggs (`0x04`) e Spiral Mountain (`0x32`). O teste anterior
+  do usuário confirmou os três MP3s então ativos; os canais `0x63FF <-> 0x1C00` permaneceram na sequência `0x32`,
+  slot 1. Associação superfície/água: `STRONG_INFERENCE` pelo relato/percurso.
+  Implementado schema 2: duas camadas com clock e loop compartilhados; ganhos vêm dos canais nativos CSP, com
+  dezipper de 5 ms. Desativar/reativar preserva fase; reversões preservam ambas as camadas. Máscaras não observadas
+  voltam ao áudio original. Volume events não reativam jingles encerrados por ID residual.
+  Host tests confirmam seek em 1:20, múltiplos loops, envelope parcial, reversão e reativação
+  (`tooie_audio_mod_test`, `tooie_bgm_hooks_test`, `tooie_bgm_volume_test` agora na suíte obrigatória). Usuário
+  relatou em 2026-10-31 que a versão 0.2.0 parece funcionar corretamente no jogo no Windows; validação
+  perceptiva positiva, sem medição acústica. Testes de host usam aceitação de fila simulada.
+  Na `main` desde 2026-11-07 (merge de `feat/dev-mode` sobre o TK64 launcher): a captura PCM e o contador de
+  pico/não zeros que a branch ainda tinha continuam fora (removidos em `b3b290b`); só a prova de fila do mod ficou.
+  Com `TOOIE_AUDIO_MOD_LOG=<arquivo>`, `PLAY` exige MP3 não nulo + `SDL_QueueAudio == 0`; cada camada registra
+  `timeline_frame`, `source_frame`, ganho e extremos dos canais. Isso prova contribuição na fila, não saída física.
+  Após revisão de custo, contagem por amostra/estatísticas do mod só executam com log aberto. Telemetria geral de
+  syscalls/áudio exige `TOOIE_DIAG`; divisor medido exige `TOOIE_DIAG_TIMING`.
+  Instalação/refresh só na tela inicial; alternância de pacote já instalado pode ser feita pelo menu ESC.
+  Sem validação completa de campanha, paridade acústica ou Linux. MP3s/ZIP continuam privados: o release publica só
+  o suporte; o link do pacote é colocado pelo usuário.
 
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.

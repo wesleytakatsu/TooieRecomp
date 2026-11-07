@@ -190,6 +190,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_api.cpp
     ${CMAKE_SOURCE_DIR}/src/main/tooie_graphics_probe.cpp
     ${CMAKE_SOURCE_DIR}/src/main/tooie_launcher_audio.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_dr_mp3.cpp
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_patches.cpp
@@ -209,6 +210,8 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/boot_hw_stubs.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_volume.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_audio_mod.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_audio_mod_loader.cpp
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
@@ -434,7 +437,7 @@ if(WIN32)
     target_compile_definitions(tooie_startup_test PRIVATE TOOIE_STARTUP_TEST NOMINMAX)
     target_link_libraries(tooie_startup_test PRIVATE rt64 SDL2::SDL2 user32)
     set_target_properties(tooie_startup_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
-    add_executable(tooie_launcher_audio_test tests/tooie_launcher_audio_test.cpp src/main/tooie_launcher_audio.cpp)
+    add_executable(tooie_launcher_audio_test tests/tooie_launcher_audio_test.cpp src/main/tooie_launcher_audio.cpp src/main/tooie_dr_mp3.cpp)
     target_include_directories(tooie_launcher_audio_test PRIVATE
         $<TARGET_PROPERTY:TooieRecompiled,INCLUDE_DIRECTORIES>
         $<TARGET_PROPERTY:recompui,INTERFACE_INCLUDE_DIRECTORIES> ${SDL2_INCLUDE_DIRS})
@@ -1186,6 +1189,14 @@ target_include_directories(tooie_bgm_volume_test PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 set_target_properties(tooie_bgm_volume_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_audio_mod_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_audio_mod_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_audio_mod.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/tooie_dr_mp3.cpp
+)
+target_include_directories(tooie_audio_mod_test PRIVATE ${CMAKE_SOURCE_DIR}/include ${N64MR}/thirdparty)
+set_target_properties(tooie_audio_mod_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable(tooie_bgm_hooks_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_bgm_hooks_test.cpp
