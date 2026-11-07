@@ -4,6 +4,10 @@
 
 Port nativo não oficial de Banjo-Tooie (N64) para PC (Windows x64 e Linux x64) feito com recompilação estática (N64Recomp).
 
+**Mod de música em HD:** [baixe o mod da trilha sonora em HD](https://drive.google.com/file/d/1GRaaK0vPQz0tbBfj6oja9Q0x98VPki4d/view?usp=drive_link) (v0.1.6 ou mais nova). Instale o ZIP pelo
+menu `Mods` no jogo, ou copie-o sem extrair para `%LOCALAPPDATA%\TooieRecompiled\mods` (Linux:
+`~/.config/TooieRecompiled/mods`), e ative em `Mods`.
+
 ---
 
 ## Importante: ROM Necessária
