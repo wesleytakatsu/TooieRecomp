@@ -184,6 +184,15 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Teste real do supervisor com renderers simulados passou; suíte Windows 20/20 e build passaram. Decoder/SDL dummy
   também testados. Nenhum jogo iniciado pelo agente. Abertura, quatro APIs, loop auditivo e gameplay: `PENDING_USER`;
   hardware antigo real e Linux `NOT_RUN`. Contrato: [[specs/Tooie/startup-and-backends]].
+  Aquecimento oculto (2026-11-06): o worker desenha o launcher escondido e mudo por 60 frames e 1 s antes de ficar
+  pronto; no Windows real o DX12 caiu sem a janela aparecer e o Vulkan abriu. Log opt-in grava cada linha numa escrita
+  só (supervisor e worker não se misturam mais).
+  Fallback após o launcher (2026-11-06): worker pronto fica em prova enquanto o launcher está aberto e por 15 s após
+  Iniciar jogo; crash nesse período abre o launcher na próxima API, e o Auto passa a tentar por último as APIs que
+  falharam (`startup.json` `failed_apis`). Crash depois da prova é propagado. Teste do supervisor com 2 rodadas novas
+  passou; no Windows real (DX12 da GTX 1650 perde o device logo após o launcher), DX12 caiu e o Vulkan abriu, e a
+  abertura seguinte foi direto ao Vulkan. Com `TOOIE_GRAPHICS_LOG`, que derruba os workers, o supervisor percorre as
+  quatro APIs. Linux continua sem supervisor (`NOT_IMPLEMENTED`).
   Revisão removeu logger de frames/tempos TK64, print de hover, captura PCM do executável e varredura diagnóstica
   de pico/silêncio por buffer. Contador do teste de áudio fica apenas no harness; log opt-in da API foi preservado.
 
@@ -353,4 +362,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: mesclar a correção do J2 no splitscreen (par segue o slot movido) na `main` e publicar uma release Windows com ela.
+`NEXT_SINGLE_ACTION`: publicar uma release Windows com a correção do J2 no splitscreen e o fallback de API após o launcher.

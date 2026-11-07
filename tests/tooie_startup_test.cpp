@@ -43,6 +43,19 @@ int main(int argc, char **argv) {
         if (tooie_startup::enter(argc, argv) != -1)
             return 21;
         const std::string backend = std::getenv("TK64_GRAPHICS_API");
+        // Device lost on the first frames: readiness reported, then an access violation before Start Game.
+        if (const char *late = std::getenv("TOOIE_STARTUP_TEST_LATE_CRASH"); late && backend == late) {
+            tooie_startup::launcher_ready();
+            Sleep(100);
+            TerminateProcess(GetCurrentProcess(), 0xC0000005);
+        }
+        // A crash long after Start Game: a gameplay failure, not a reason to show another launcher.
+        if (const char *played = std::getenv("TOOIE_STARTUP_TEST_PLAYED_CRASH"); played && backend == played) {
+            tooie_startup::launcher_ready();
+            tooie_startup::note_game_start();
+            Sleep(1500);
+            TerminateProcess(GetCurrentProcess(), 0xC0000005);
+        }
         if (backend == "d3d12")
             return 22;
         if (backend == "vulkan")
@@ -50,8 +63,14 @@ int main(int argc, char **argv) {
         const char *target = std::getenv("TOOIE_STARTUP_TEST_TARGET");
         if (backend != (target ? target : "d3d11"))
             return 23;
-        tooie_startup::launcher_ready();
-        return 0;
+        // The real launcher calls this once per presented frame; readiness must wait for the hidden warm-up.
+        int frames = 0;
+        while (!tooie_startup::is_ready()) {
+            tooie_startup::launcher_frame();
+            ++frames;
+            Sleep(20);
+        }
+        return frames >= 60 ? 0 : 24;
     }
     const auto dir =
         std::filesystem::temp_directory_path() / ("tooie-startup-test-" + std::to_string(GetCurrentProcessId()));
@@ -160,6 +179,7 @@ int main(int argc, char **argv) {
     {
         std::ofstream reset_log(dir / "graphics.jsonl", std::ios::trunc);
     }
+    const auto auto_order = tooie_startup::candidates("auto");
     if (tooie_startup::enter(argc, argv) != 0)
         return fail("automatic did not recover through OpenGL");
     std::vector<std::string> auto_attempts;
@@ -177,10 +197,77 @@ int main(int argc, char **argv) {
             }
         }
     }
-    if (auto_attempts != tooie_startup::candidates("auto") || auto_attempts.size() != 4 || auto_selected != 1)
+    if (auto_attempts != auto_order || auto_attempts.size() != 4 || auto_selected != 1)
         return fail("automatic skipped a compatibility backend");
+    // The next Auto launch starts with what worked; the failed APIs keep their order behind it.
+    if (tooie_startup::candidates("auto") != std::vector<std::string>{"opengl", "d3d12", "vulkan", "d3d11"})
+        return fail("Auto did not move failed APIs last");
+    if (tooie_startup::candidates("d3d12").front() != "d3d12")
+        return fail("explicit choice lost priority to failure history");
+
+    // A worker that crashes after showing the launcher, before the game ran, falls back to the next API.
+    std::filesystem::remove(dir / "startup.json");
+    _putenv_s("TOOIE_STARTUP_TEST_TARGET", "d3d11");
+    _putenv_s("TOOIE_STARTUP_TEST_LATE_CRASH", "d3d12");
+    {
+        std::ofstream reset_log(dir / "graphics.jsonl", std::ios::trunc);
+    }
+    if (tooie_startup::enter(argc, argv) != 0)
+        return fail("crash after readiness did not fall back");
+    _putenv_s("TOOIE_STARTUP_TEST_LATE_CRASH", "");
+    std::vector<std::string> late_attempts;
+    int late_crashes = 0;
+    std::string last_selected;
+    {
+        std::ifstream late_log(dir / "graphics.jsonl");
+        while (std::getline(late_log, line)) {
+            auto event = nlohmann::json::parse(line);
+            if (event["event"] == "attempt")
+                late_attempts.push_back(event["api"]);
+            if (event["event"] == "crashed_after_ready" && event["api"] == "d3d12")
+                ++late_crashes;
+            if (event["event"] == "selected")
+                last_selected = event["api"];
+        }
+    }
+    if (late_attempts != std::vector<std::string>{"d3d12", "vulkan", "d3d11"} || late_crashes != 1 ||
+        last_selected != "d3d11")
+        return fail("fallback after readiness");
+    {
+        std::ifstream f(dir / "startup.json");
+        f >> j;
+    }
+    if (j["last_successful_api"] != "d3d11" || j["failed_apis"] != nlohmann::json::array({"d3d12", "vulkan"}))
+        return fail("crash after readiness not recorded");
+
+    // Once the game has run past the probation, a crash is propagated and no other launcher is shown.
+    _putenv_s("TOOIE_STARTUP_TEST_PLAYED_CRASH", "d3d11");
+    {
+        std::ofstream reset_log(dir / "graphics.jsonl", std::ios::trunc);
+    }
+    if (static_cast<DWORD>(tooie_startup::enter(argc, argv)) != 0xC0000005)
+        return fail("gameplay crash not propagated");
+    _putenv_s("TOOIE_STARTUP_TEST_PLAYED_CRASH", "");
+    std::vector<std::string> played_attempts;
+    bool stable = false;
+    {
+        std::ifstream played_log(dir / "graphics.jsonl");
+        while (std::getline(played_log, line)) {
+            auto event = nlohmann::json::parse(line);
+            if (event["event"] == "attempt")
+                played_attempts.push_back(event["api"]);
+            if (event["event"] == "stable" && event["api"] == "d3d11")
+                stable = true;
+        }
+    }
+    if (played_attempts != std::vector<std::string>{"d3d11"} || !stable)
+        return fail("gameplay crash restarted the launcher");
+    if (tooie_startup::candidates("auto").front() != "d3d11")
+        return fail("gameplay crash demoted a working API");
     std::filesystem::remove_all(dir);
     std::cout << "PASS: real Win32 supervisor recovers from failure/crash, retains ready worker and preference; guest "
-                 "never started; native Graphics Apply/cancel/reopen; Auto reaches OpenGL after three failures PASS\n";
+                 "never started; native Graphics Apply/cancel/reopen; Auto reaches OpenGL after three failures; Auto "
+                 "tries failed APIs last; hidden warm-up before readiness; crash after readiness falls back; gameplay "
+                 "crash propagated PASS\n";
     return 0;
 }

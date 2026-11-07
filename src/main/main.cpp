@@ -1022,7 +1022,11 @@ int main(int argc, char** argv) {
     recompui::register_launcher_update_callback([](recompui::LauncherMenu* menu) {
         banjo::launcher_animation_update(menu);
 
-        tooie_startup::launcher_ready();
+        // A supervised worker stays hidden and silent until its renderer has drawn the launcher for a while.
+        tooie_startup::launcher_frame();
+        if (!tooie_startup::is_ready()) {
+            return;
+        }
         tooie_launcher_audio::start();
         // Deferred + frame delay so RT64/UI finish first init before game thread starts.
         static int auto_start_frames = 0;
