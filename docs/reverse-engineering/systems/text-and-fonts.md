@@ -4,7 +4,7 @@ description: "Reverse-engineering model of Banjo-Tooie asset table offsets, mult
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-27
+updated: 2026-11-08
 tags: [reverse-engineering, text, fonts, dialog, assets]
 ---
 
@@ -97,7 +97,7 @@ Font descriptors are configured at RAM address `0x8011B560` (8 bytes per descrip
 | Font Index | Target Asset | Primary Usage | Regional Differences |
 | :--- | :--- | :--- | :--- |
 | **Font 0** | Asset `0x0C21` | Dialog boxes, file selection menu | 88 frames (IA8 sprite); byte-identical between USA and European ROMs (`PROVEN`). |
-| **Font 1** | Asset `0x0C22` | Titles, pause menu, banners | Differs: USA contains 51 frames (IA8 sprite, height 23); European contains 74 frames (IA8 sprite, height 31, with 8 transparent rows on top, adding accented capital letters in frames 51–73) (`PROVEN`). |
+| **Font 1** | Asset `0x0C22` | Titles, pause menu, banners | USA: 51 frames, IA8 (`0x100`), height 23. EUR: 74 frames, IA4 (`0x80`), height 31, including accented capitals and comma. The prior IA8 classification of EUR is `CORRECTED/SUPERSEDED`; format and per-frame pixel lengths were verified from the canonical ROM. |
 | **Font 2** | Asset `0x0C20` | Secondary UI indicators | Identical between USA and European ROMs (`PROVEN`). |
 | **Font 3** | Asset `0x0C23` | Counters, numerical digits | Identical between USA and European ROMs (`PROVEN`). |
 
@@ -122,6 +122,21 @@ To preserve clean-room licensing without distributing proprietary font artwork, 
    - The comma is synthesized by repositioning the USA apostrophe glyph downward.
 
 ---
+
+### 5.3 USA text rendering and European font compatibility (`PROVEN`)
+
+The canonical EUR `0x0C22` sprite contains 74 valid frames and 26,288 bytes of IA4 pixels.
+Its additional frames 51–73 are Ä Á À É È Í Ì Ñ Ö Ó Ò Ü Ú Ù ¿ ¡ ª ° Ï Ê Û Ô and comma.
+All 2,263 EUR text assets contain four sections (9,052 sections total), EN/FR/DE/ES; no fifth language section
+was found in this bank. A complete hidden Italian translation is not supported by these primary data.
+
+USA text renderers `func_800B62CC` and `func_800B81CC` dispatch texture formats without a `0x80` branch.
+The first recognizes `0x800/0x200/0x100/0x40/0x20/0x4`; the second recognizes
+`0x800/0x200/0x100/0x40/0x20`. Importing the EUR IA4 sprite without adaptation therefore skips its texture-load
+path. This is distinct from a missing asset or a bad character-to-frame map.
+
+TooieRecomp generates European-profile IA8 from the USA font for built-in FR/DE/ES bundles. Legacy imported
+IA4 fonts are expanded to IA8 (I3/A1 to I4/A4) in memory with rebuilt offsets. Generated C is not edited.
 
 ## 6. Character to Glyph Mapping: `func_800D35D0` (`PROVEN`)
 

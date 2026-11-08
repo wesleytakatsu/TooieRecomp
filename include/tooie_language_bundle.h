@@ -5,6 +5,9 @@
 #include "tooie_text_assets.h"
 
 namespace tooie_language_bundle {
+    inline bool supported_language(const std::string& tag) {
+        return tag == "pt-BR" || tag == "fr" || tag == "de" || tag == "es";
+    }
     struct Patch {
         uint32_t offset;
         std::vector<uint8_t> data;
@@ -57,7 +60,7 @@ namespace tooie_language_bundle {
             return fail();
         }
         bundle.language.assign(bytes.begin(), end);
-        if (bundle.language != "pt-BR" || !number(value) || value != 73 || !take(value, bytes)) {
+        if (!supported_language(bundle.language) || !number(value) || value != 73 || !take(value, bytes)) {
             return fail();
         }
         bundle.charset.assign(bytes.begin(), bytes.end());
@@ -103,6 +106,10 @@ namespace tooie_language_bundle {
     inline bool build_unchecked(const Bundle& bundle, std::span<const uint8_t> usa,
                                 tooie_language_pack::LanguagePack& out, std::string& error) {
         using namespace tooie_text_assets;
+        if (!supported_language(bundle.language)) {
+            error = "unsupported bundle language";
+            return false;
+        }
         tooie_language_pack::LanguagePack pack;
         pack.language = bundle.language;
         pack.base_size = static_cast<uint32_t>(usa.size());
@@ -124,15 +131,19 @@ namespace tooie_language_bundle {
             }
             std::copy(patch.data.begin(), patch.data.end(), raw.begin() + patch.offset);
         }
-        if (!encode_payload(raw, encoded, error)) {
-            return false;
+        if (!bundle.patches.empty()) {
+            if (!encode_payload(raw, encoded, error)) {
+                return false;
+            }
+            pack.entries.push_back({kFont0, std::move(encoded)});
         }
-        pack.entries.push_back({kFont0, std::move(encoded)});
         if (!asset_payload(usa, kUsaLayout, kFont1, payload, error) || !decode_payload(payload, raw, error)) {
             return false;
         }
         tooie_font_sprite::Sprite font, generated;
-        if (!tooie_font_sprite::parse(raw, font, error) || !tooie_font_sprite::generate_font1(font, generated, error) ||
+        const auto profile = bundle.language == "pt-BR" ? tooie_font_sprite::Font1Profile::PortugueseBrazil :
+                                                         tooie_font_sprite::Font1Profile::European;
+        if (!tooie_font_sprite::parse(raw, font, error) || !tooie_font_sprite::generate_font1(font, generated, error, profile) ||
             !tooie_font_sprite::serialize(generated, raw, error) || !encode_payload(raw, encoded, error)) {
             return false;
         }

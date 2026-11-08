@@ -148,7 +148,8 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
   `Off` preserves default single-player mode (merging all host controllers and keyboard into player 1).
   `language` ("Game Language", `English`/`PortugueseBrazil`/`French`/`German`/`Spanish`, default `English`): labels are
   stored pre-uppercased because the menu's uppercase transform does not handle accented letters. A change callback
-  (`tooie_language_import_ui::on_language_change`) runs the European-ROM import for FR/DE/ES; the pack itself is applied at
+  (`tooie_language_import_ui::on_language_change`) validates the installed language files and restores the previous
+  setting on failure. pt-BR/FR/DE/ES load from `assets/languages/*.tlpb`, without a European-ROM dialog; data is applied at
   ROM load, so a change made while the game runs takes effect after a restart. See [language packs](language-packs.md).
 - **sound.json**: `main_volume` (frontend master volume) and `bgm_volume` (synthesizer sequence volume, 0–100).
 - **mods.json**: Mod management infrastructure (`enabled_mods`, `mod_order`).

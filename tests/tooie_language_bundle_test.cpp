@@ -1,4 +1,5 @@
 #include "tooie_language_bundle.h"
+#include "tooie_language_font.h"
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -36,6 +37,14 @@ int main(int argc, char** argv) {
         }
         for (const auto& entry : pack.entries) {
             if (entry.asset_id == 0xC22) {
+                std::vector<uint8_t> raw;
+                tooie_font_sprite::Sprite font;
+                if (!tooie_text_assets::decode_payload(entry.payload, raw, error) ||
+                    tooie_asset_table::read_u16_be(raw.data() + 2) != tooie_font_sprite::kIa8Format ||
+                    !tooie_font_sprite::parse(raw, font, error) || font.frames.size() != 74) {
+                    std::cerr << "generated font must contain 74 IA8 frames\n";
+                    return 1;
+                }
                 continue;
             }
             auto found = std::find_if(reference.entries.begin(), reference.entries.end(),
@@ -47,7 +56,7 @@ int main(int argc, char** argv) {
                 return 1;
             }
         }
-        std::cout << "pt-BR: " << pack.entries.size() - 1 << " text/font 0 entries equal\n";
+        std::cout << pack.language << ": " << pack.entries.size() - 1 << " text/font 0 entries equal; 74 IA8 glyphs\n";
         return 0;
     }
     std::vector<uint8_t> bytes{'T', 'L', 'P', 'B'};
@@ -74,6 +83,16 @@ int main(int argc, char** argv) {
     Bundle bundle;
     assert(parse(bytes, bundle, error));
     assert(bundle.patches.size() == 1 && bundle.texts.size() == 2);
+    for (const std::string tag : {"fr", "de", "es"}) {
+        auto european_bytes = bytes;
+        std::fill(european_bytes.begin() + 8, european_bytes.begin() + 24, 0);
+        std::copy(tag.begin(), tag.end(), european_bytes.begin() + 8);
+        assert(parse(european_bytes, bundle, error) && bundle.language == tag);
+    }
+    auto unsupported = bytes;
+    unsupported[8] = 'i'; unsupported[9] = 't';
+    std::fill(unsupported.begin() + 10, unsupported.begin() + 24, 0);
+    assert(!parse(unsupported, bundle, error));
     auto bad = bytes;
     bad.push_back(0);
     assert(!parse(bad, bundle, error));
@@ -126,6 +145,28 @@ int main(int argc, char** argv) {
     assert((raw == std::vector<uint8_t>{1, 9, 10, 4}));
     assert(tooie_text_assets::decode_payload(pack.entries[3].payload, raw, error));
     assert((raw == std::vector<uint8_t>{1, 3, 0, 1, 128, 1, 'y'}));
+    for (const std::string tag : {"fr", "de", "es"}) {
+        auto european = bundle;
+        european.language = tag;
+        european.patches.clear();
+        assert(build_unchecked(european, usa, pack, error));
+        assert(pack.language == tag && pack.entries.size() == 3 && pack.entries[0].asset_id == 0xC22);
+        assert(tooie_language_font::normalize(pack, error));
+    }
+    // A legacy IA4 font is converted, while an already normalized pack remains byte-identical.
+    std::vector<uint8_t> ia4(24, 0);
+    tooie_font_sprite::put16(ia4, 0, 1); tooie_font_sprite::put16(ia4, 2, 0x80);
+    tooie_font_sprite::put32(ia4, 8, 24);
+    ia4[12] = 8; ia4[13] = 1; ia4[14] = 8; ia4[15] = 1;
+    ia4.insert(ia4.end(), {0x01, 0x23, 0x45, 0x67});
+    assert(tooie_text_assets::encode_payload(ia4, pack.entries[0].payload, error));
+    assert(tooie_language_font::normalize(pack, error));
+    assert(tooie_text_assets::decode_payload(pack.entries[0].payload, raw, error));
+    assert(tooie_asset_table::read_u16_be(raw.data() + 2) == 0x100);
+    const auto normalized = pack.entries[0].payload;
+    assert(tooie_language_font::normalize(pack, error) && normalized == pack.entries[0].payload);
+    pack.entries[0].payload = {1, 2, 3};
+    assert(!tooie_language_font::normalize(pack, error));
     ++bundle.font_crc;
     assert(!build_unchecked(bundle, usa, pack, error));
 }

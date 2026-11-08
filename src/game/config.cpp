@@ -56,7 +56,7 @@ static void add_general_options(recomp::config::Config &config) {
     config.add_enum_option(
         banjo::configkeys::general::language,
         "Game Language",
-        "Language of the in-game text. Português (Brasil) is built in. Français, Deutsch and Español are extracted once from your own European ROM when you select them; the game always runs from the USA ROM. Applies when the game starts; if the game is already running, restart it.",
+        "Language of the in-game text. Português (Brasil), Français, Deutsch and Español are included with the game; only the USA ROM is required. Applies when the game starts; if the game is already running, restart it.",
         language_options,
         banjo::Language::English
     );

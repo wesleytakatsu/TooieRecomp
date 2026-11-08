@@ -29,4 +29,5 @@ README-PACKAGE.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by
 BUILD-INFO.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by the packager
 DEPENDENCIES.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by the packager
 AUDIT.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by the packager
-assets/languages/*.tlpb	translation	Brazilian Portuguese translation data (text and font patch runs)	text only; game text and fonts come from the player's ROM
+assets/languages/pt-BR.tlpb	translation	Brazilian Portuguese translation data (text and font patch runs)	text only; font artwork comes from the player's USA ROM and procedural accents
+assets/languages/*.tlpb	translation	PROPRIETARY Nintendo/Rare localized text; no project licence grant	FR/DE/ES bundles extracted from the user's verified European ROM; no ROM image or font artwork included

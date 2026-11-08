@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-06
+updated: 2026-11-08
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -27,11 +27,42 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
-| Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
+| Idiomas do jogo | EN; pt-BR/FR/DE/ES em `assets/languages/*.tlpb`, exigindo apenas ROM USA; perfil europeu IA8 corrige letras amarelas. Build Windows e 34/34 testes; usuário confirmou letras visíveis. FR observado; aceite específico DE/ES pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
 | Testes | Windows `Build-Tooie.ps1 -Stage Test`: 31 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `313e287` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+
+## Idiomas em arquivos (2026-11-08)
+
+- Bundles locais FR/DE/ES gerados da EUR verificada, com 2.233/2.230/2.234 entradas de texto; reconstrução Python e
+  paridade C++ contra os packs de referência passaram. `pt-BR.tlpb` preservado byte a byte. Fonte 1 gerada em IA8,
+  74 glifos, com perfis europeu e pt-BR separados. Packs legados IA4 são normalizados em memória.
+- Revisão estática na branch `codex/bundled-game-languages`, criada de `main` em `fdfbce1`: removidos helper
+  `usa_image_path` sem chamadores e mapa pt-BR não consumido no gerador. As quatro unidades C++ de integração
+  passaram compilação de sintaxe com diagnósticos de código não usado/inalcançável habilitados, sem avisos do projeto;
+  Python verificado por AST. Build Windows atualizado, exit 0; nenhuma nova execução de testes ou do jogo.
+  Arquivos preexistentes de análise/atmosfera preservados. Revisão concluída neste checkpoint; sem push.
+- Seleção pelo General não oferece mais importação EUR. Bundle tem prioridade sobre cache antigo; ausência/corrupção
+  mostra instrução de reparar os arquivos e restaura a opção anterior. Só a ROM USA é necessária na instalação local.
+- Windows: `Build-Tooie.ps1 -Stage Test -Jobs 8` passou 34/34; `-Stage Build -Jobs 8` passou após a mudança final da UI.
+  `tools/test_build_language_packs.py`: 7/7; paridade real de cada bundle e previews dos dois perfis passaram.
+  `LC_ALL=C bash tools/vendor_verify.sh --reverse-check` via Git Bash: exit 0, 8.339 arquivos e 54 patches, `VENDOR VERIFY OK`.
+  `git diff --check`: exit 0; 64 wikilinks dos documentos relacionados resolvidos. `markdown_vault_audit` indisponível
+  neste host (servidor local configurado para caminho Linux); `graft build` atualizado com exit 0.
+  Executável atualizado: `build-win/TooieRecompiled.exe`, SHA-256
+  `783129bbc2a796703bf92ec187611593c0e1115c41deaf7e7ed1c2fcd0587686`.
+- Sessão Windows isolada por `portable.txt`, sem ROM EUR nem pasta de packs importados: título de cenário francês
+  em amarelo e pausa em francês observados. Primeiro ensaio falhou por recursos de UI ausentes no cwd isolado;
+  repetir com `assets/`, `ui_assets/` e `recompcontrollerdb.txt` resolveu. Launcher normal abriu em D3D12.
+  Usuário confirmou que as letras amarelas apareceram e parece tudo correto. Isso não prova todas as telas/idiomas.
+- Controle da interface interrompido pelo Escape físico. Pedido posterior: testes no jogo ficam com o usuário;
+  não iniciar/controlar novas sessões para testar sem novo pedido. Configs/saves reais conferidos por hashes, sem diferenças.
+  Sessão de teste deixada aberta ao usuário; dados isolados em `build-win/language-qa-lcy_4o5w/`.
+- FR/DE/ES são textos oficiais proprietários extraídos localmente; não são tradução comunitária como pt-BR.
+  Proveniência identificada no manifesto de empacotamento; nenhuma ROM/arte de fonte foi embutida.
+  Checkpoint FR/DE/ES versionado nesta branch; sem push, PR ou publicação. Italiano externo, texturas localizadas e os fallbacks de texto permanecem fora desta entrega.
+  Linux/PortMaster e aceite individual DE/ES: `NOT_RUN`.
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -396,4 +427,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: gerar e publicar os pacotes Linux x64 da v0.1.6 no PC Linux do usuário (`TOOIE_RELEASE_VERSION=0.1.6 ./build-linux.sh all` na tag `v0.1.6`).
+`NEXT_SINGLE_ACTION`: analisar o patch italiano de Rulesless e integrar os recursos compatíveis em bundle próprio; testes no jogo ficam com o usuário.

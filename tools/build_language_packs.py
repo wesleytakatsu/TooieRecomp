@@ -481,7 +481,8 @@ def app_dir() -> Path:
     return Path(folder) if folder is not None else Path.home() / ".config" / "TooieRecompiled"
 
 
-def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_path: Path) -> dict:
+def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_path: Path,
+          bundle_dir: Path | None = None) -> dict:
     core = inflate(pal[PAL_CORE2_DATA:])
     end = core.find(b"\0", CHARSET_OFFSET)
     charset = core[CHARSET_OFFSET:end] if end >= 0 else b""
@@ -489,8 +490,8 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
     if len(charset) != 73 or not charset.startswith(CHARSET_PREFIX) or len(accents) != 30:
         raise ValueError("invalid European font map")
     tags = ["fr", "de", "es"] + (["pt-BR"] if patched is not None else [])
-    entries: dict[str, dict[int, bytes]] = {tag: {} for tag in tags}
-    bundle_entries: dict[int, tuple[int, bytes]] = {}
+    entries: dict[str, dict[int, bytes]] = {tag: {} for tag in FONT_ASSETS}
+    bundle_entries: dict[str, dict[int, tuple[int, bytes]]] = {tag: {} for tag in tags}
     expected_text: dict[int, bytes] = {}
     report = {tag: {"rule1": 0, "rule2": 0, "rule3": 0, "records_translated": 0, "english_kept": []} for tag in tags}
     for index in TEXT_IDS:
@@ -523,11 +524,11 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
                 else:
                     if tag == "pt-BR":
                         expected_text[index] = result
-                        kind = 0 if rule == 1 else 1
-                        data = result[3:] if kind == 0 else text_overlay(us, parse_section(result[3:])[0])
-                        bundle_entries[index] = (kind, data)
                     else:
                         entries[tag][index] = encode_payload(result)
+                    kind = 0 if rule == 1 else 1
+                    data = result[3:] if kind == 0 else text_overlay(us, parse_section(result[3:])[0])
+                    bundle_entries[tag][index] = (kind, data)
                     report[tag][f"rule{rule}"] += 1
                     report[tag]["records_translated"] += count
         except (ValueError, zlib.error, struct.error) as exc:
@@ -540,11 +541,23 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
         atomic_write(output, data)
         report[tag]["output"] = str(output)
         report[tag]["size"] = len(data)
+        if bundle_dir is not None:
+            font_base = asset(usa, USA_TABLE, USA_BASE, 0xC21)
+            bundle_data = bundle_bytes(tag, charset, accents, font_base, [], bundle_entries[tag])
+            bundle = read_bundle(bundle_data)
+            rebuilt = rebuild_text_assets(bundle, usa)
+            for index, payload in entries[tag].items():
+                if index not in FONT_ASSETS[tag] and rebuilt.get(index) != inflate(payload):
+                    raise ValueError(f"{tag} bundle verification failed for text asset {index:#x}")
+            bundle_output = bundle_dir / f"{tag}.tlpb"
+            atomic_write(bundle_output, bundle_data)
+            report[tag].update({"bundle": str(bundle_output), "bundle_size": len(bundle_data), "verification": "PASS"})
     if patched is not None:
         font_base = asset(usa, USA_TABLE, USA_BASE, 0xC21)
         font_target = asset(patched, PAL_TABLE, PAL_BASE, 0xC21)
         patches = font_patches(font_base, font_target)
-        data = bundle_bytes("pt-BR", charset, accents, font_base, patches, bundle_entries)
+        ptbr_entries = bundle_entries["pt-BR"]
+        data = bundle_bytes("pt-BR", charset, accents, font_base, patches, ptbr_entries)
         atomic_write(bundle_path, data)
         bundle = read_bundle(bundle_path.read_bytes())
         rebuilt = rebuild_text_assets(bundle, usa)
@@ -557,8 +570,8 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
         if apply_font_patches(font_base, bundle["font_size"], bundle["font_crc"], bundle["patches"]) != font_target:
             raise ValueError("bundle verification failed for font 0")
         report["pt-BR"].update({"output": str(bundle_path), "size": len(data),
-                                "kind0": sum(kind == 0 for kind, _ in bundle_entries.values()),
-                                "kind1": sum(kind == 1 for kind, _ in bundle_entries.values()),
+                                "kind0": sum(kind == 0 for kind, _ in ptbr_entries.values()),
+                                "kind1": sum(kind == 1 for kind, _ in ptbr_entries.values()),
                                 "font_runs": len(patches), "font_bytes": sum(len(run) for _, run in patches),
                                 "verification": "PASS"})
     return report
@@ -571,6 +584,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--ptbr-bundle", type=Path, default=Path(__file__).resolve().parent.parent / "assets/languages/pt-BR.tlpb")
     parser.add_argument("--usa-image", type=Path)
     parser.add_argument("--out-dir", type=Path)
+    parser.add_argument("--bundle-dir", type=Path, help="Also build verified fr/de/es .tlpb bundles in this directory")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
     try:
@@ -582,10 +596,12 @@ def main(argv: list[str]) -> int:
         pal = checked_image(args.pal_rom, PAL_SIZE, PAL_SHA1)
         usa = checked_image(args.usa_image, USA_SIZE, USA_SHA1)
         patched = apply_bps(pal, args.ptbr_bps.read_bytes()) if args.ptbr_bps else None
-        report = build(pal, usa, patched, args.out_dir, args.ptbr_bundle)
+        report = build(pal, usa, patched, args.out_dir, args.ptbr_bundle, args.bundle_dir)
         for tag, item in report.items():
             print(f"{tag}: rule 1: {item['rule1']}; rule 2: {item['rule2']} assets ({item['records_translated']} records); rule 3: {item['rule3']}; English kept: {len(item['english_kept'])} " + ", ".join(item["english_kept"]))
             print(f"  {item['output']} ({item['size']} bytes)")
+            if "bundle" in item:
+                print(f"  {item['bundle']} ({item['bundle_size']} bytes); verification: {item['verification']}")
             if tag == "pt-BR":
                 print(f"  kind 0: {item['kind0']}; kind 1: {item['kind1']}; font 0: {item['font_runs']} runs, {item['font_bytes']} bytes; verification: {item['verification']}")
         if args.report:
