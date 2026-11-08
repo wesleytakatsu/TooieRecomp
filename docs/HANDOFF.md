@@ -27,7 +27,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
-| Idiomas do jogo | EN; pt-BR/FR/DE/ES em `assets/languages/*.tlpb`, exigindo apenas ROM USA; perfil europeu IA8 corrige letras amarelas. Build Windows e 34/34 testes; usuário confirmou letras visíveis. FR observado; aceite específico DE/ES pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
+| Idiomas do jogo | EN; pt-BR/FR/DE/ES e italiano em rascunho em `assets/languages/*.tlpb`, exigindo apenas ROM USA; fonte IA8 corrige letras amarelas. Italiano: Rulesless v0.9 compatível + catálogo suplementar, 2.436 assets reconstruídos; revisão editorial e teste no jogo pendentes. Usuário confirmou letras dos idiomas anteriores | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
@@ -61,8 +61,40 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Sessão de teste deixada aberta ao usuário; dados isolados em `build-win/language-qa-lcy_4o5w/`.
 - FR/DE/ES são textos oficiais proprietários extraídos localmente; não são tradução comunitária como pt-BR.
   Proveniência identificada no manifesto de empacotamento; nenhuma ROM/arte de fonte foi embutida.
-  Checkpoint FR/DE/ES versionado nesta branch; sem push, PR ou publicação. Italiano externo, texturas localizadas e os fallbacks de texto permanecem fora desta entrega.
+  Checkpoint FR/DE/ES `52d4dfb` versionado nesta branch; sem push, PR ou publicação. Italiano tem checkpoint separado abaixo.
   Linux/PortMaster e aceite individual DE/ES: `NOT_RUN`.
+
+## Italiano em rascunho (2026-11-08)
+
+- `ITALIANO (BOZZA)` seleciona `assets/languages/it.tlpb` sem ROM EUR. Patch externo Rulesless v0.9 usa ROM USA;
+  banco EUR não contém quinta seção italiana. Fonte 1 IA8 europeia com mapa À corrigido para o código nativo `0x5F`.
+- Extração estrita: 478 assets de texto compatíveis na origem, depois filtrados por preservação de botões/variáveis e
+  avisos legais; 210 deltas gráficos. 47 assets da origem rejeitados: 44 de texto, cobertos pelo catálogo suplementar,
+  e 3 gráficos, mantidos da USA. Nenhuma ROM, código patchado ou arte de fonte completa versionada.
+- `translations/it.json`: 4.948 chaves únicas para 6.828 registros restantes; 5.801 registros recebem tradução,
+  1.027 preservam números, nomes, créditos, códigos ou fala fictícia. Rascunho assistido por Google Translate,
+  glossário e 106 correções individuais; isso não equivale a revisão editorial completa. Textos válidos de Rulesless
+  preservados; avisos legais originais restaurados. Fonte e atribuição em `assets/languages/NOTICE-Italian.txt`.
+- Bundle final: 2.225 assets de texto + 210 deltas gráficos + fonte 1 gerada = 2.436 entradas. SHA-256
+  `05a4427f454c2f394b19a61865c0635610a419e087c3a638dd255e0dd4872224`.
+  TLPB v2 acrescenta deltas gráficos com tamanho/CRC32 de origem e destino; v1 permanece compatível.
+- Em HEAD-base `52d4dfb` com alterações locais: `Build-Tooie.ps1 -Stage Build -Jobs 8`, exit 0;
+  `python -X utf8 tools/test_build_language_packs.py`, 9/9;
+  cinco executáveis host de idioma, exit 0; `tooie_language_bundle_test.exe assets/languages/it.tlpb
+  <USA image> build-win/italian-source/it-reference.tlp`, exit 0: paridade de 2.436 assets, 74 glifos IA8 e
+  reextração idêntica da imagem reconstruída (58.555.312 bytes). Nenhum teste novo dentro do jogo.
+  Executável `build-win/TooieRecompiled.exe`, SHA-256
+  `d3cf1885d000ffbef266d227f9a6f2d082bff5031812c6fddf78a306f41fb4f7`.
+- Manifesto: 8.341 arquivos conferidos e 54 patches em `vendor_verify.sh --reverse-check`, exit 0.
+  26 arquivos preexistentes de planos/atmosfera preservados por hash. Linux/PortMaster e jogo italiano: `NOT_RUN`;
+  testes no jogo continuam reservados ao usuário. Revisão editorial permanece pendente.
+  `git diff --check` sem erros, 63 wikilinks relacionados resolvidos e `graft build` com exit 0.
+  `markdown_vault_audit` indisponível neste host. Checkpoint separado na branch `codex/bundled-game-languages`;
+  sem push, PR ou publicação.
+- Pedido de verificar `https://www.gbarl.it/index.php?showtopic=106418`: acesso HTTPS/HTTP/simplificado falhou;
+  nenhuma captura correspondente no índice Wayback consultado. Página atual de Rulesless continua parcial e aponta
+  ao mesmo arquivo Drive. Conteúdo do tópico não confirmado. Usuário pediu continuar com a parcial existente
+  e a tradução suplementar, sem aguardar acesso ao GBArl.
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -427,4 +459,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: analisar o patch italiano de Rulesless e integrar os recursos compatíveis em bundle próprio; testes no jogo ficam com o usuário.
+`NEXT_SINGLE_ACTION`: usuário validar italiano em General > Game Language > ITALIANO (BOZZA), reiniciando o jogo; revisão editorial integral do complemento permanece pendente.

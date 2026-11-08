@@ -134,7 +134,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `tooie_text_font_map_test` | `tests/tooie_text_font_map_test.cpp` | Tests USA and European glyph mapping (`func_800D35D0`). |
 | `tooie_language_import_test` | `tests/tooie_language_import_test.cpp` | Tests FR/DE/ES pack extraction from European + USA images. |
 | `tooie_font_sprite_test` | `tests/tooie_font_sprite_test.cpp` | Tests font sprite parse/serialize and generated pt-BR font 1. |
-| `tooie_language_bundle_test` | `tests/tooie_language_bundle_test.cpp` | Tests TLPB bundle parse and pt-BR pack build. |
+| `tooie_language_bundle_test` | `tests/tooie_language_bundle_test.cpp` | Tests TLPB v1/v2 parsing, text/font generation, graphic deltas, CRC guards and asset relocation. Optional private fixtures compare real bundles with reference packs. |
 
 ### 3.3 Auxiliary and Python Test Scripts
 - `tests/attract_demo2_transition_jal_test.py`: Validates disassembly JAL targets in attract transitions.

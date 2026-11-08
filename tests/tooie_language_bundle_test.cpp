@@ -56,7 +56,23 @@ int main(int argc, char** argv) {
                 return 1;
             }
         }
-        std::cout << pack.language << ": " << pack.entries.size() - 1 << " text/font 0 entries equal; 74 IA8 glyphs\n";
+        std::vector<uint8_t> rewritten;
+        if (!tooie_language_pack::rewrite(usa, pack, rewritten, error)) {
+            std::cerr << "rewrite failed: " << error << '\n';
+            return 1;
+        }
+        for (const auto& entry : pack.entries) {
+            std::span<const uint8_t> payload;
+            std::vector<uint8_t> a, b;
+            if (!tooie_text_assets::asset_payload(rewritten, tooie_asset_table::kUsaLayout, entry.asset_id, payload, error) ||
+                !tooie_text_assets::decode_payload(payload, a, error) ||
+                !tooie_text_assets::decode_payload(entry.payload, b, error) || a != b) {
+                std::cerr << "rewritten asset mismatch " << entry.asset_id << '\n';
+                return 1;
+            }
+        }
+        std::cout << pack.language << ": " << pack.entries.size() << " assets equal; rewritten image " << rewritten.size()
+                  << " bytes; 74 IA8 glyphs\n";
         return 0;
     }
     std::vector<uint8_t> bytes{'T', 'L', 'P', 'B'};
@@ -90,7 +106,7 @@ int main(int argc, char** argv) {
         assert(parse(european_bytes, bundle, error) && bundle.language == tag);
     }
     auto unsupported = bytes;
-    unsupported[8] = 'i'; unsupported[9] = 't';
+    unsupported[8] = 'x'; unsupported[9] = 'x';
     std::fill(unsupported.begin() + 10, unsupported.begin() + 24, 0);
     assert(!parse(unsupported, bundle, error));
     auto bad = bytes;
@@ -124,6 +140,7 @@ int main(int argc, char** argv) {
     };
     std::vector<uint8_t> font0{1, 2, 3, 4};
     bundle.font_crc = tooie_text_assets::image_crc32(font0);
+    entry(0x5DD, {1, 2, 3, 4});
     entry(0xC21, font0);
     entry(0xC22, font);
     entry(0xCDB, {1, 3, 0, 1, 128, 1, 'a'});
@@ -169,4 +186,33 @@ int main(int argc, char** argv) {
     assert(!tooie_language_font::normalize(pack, error));
     ++bundle.font_crc;
     assert(!build_unchecked(bundle, usa, pack, error));
+
+    // Version 2 adds graphic deltas alongside the generated IA8 font and text overlays.
+    std::vector<uint8_t> italian{'T','L','P','B'};
+    number(italian, 2); italian.insert(italian.end(), {'i','t'}); italian.resize(24, 0);
+    number(italian, 73); italian.insert(italian.end(), bytes.begin() + 28, bytes.begin() + 131);
+    number(italian, 4); number(italian, tooie_text_assets::image_crc32(font0)); number(italian, 0);
+    number(italian, 1);
+    const size_t asset_id_offset = italian.size();
+    number(italian, 0x5DD); number(italian, 4); number(italian, tooie_text_assets::image_crc32(font0));
+    const std::vector<uint8_t> graphic{1,9,3,4};
+    number(italian, 4); number(italian, tooie_text_assets::image_crc32(graphic)); number(italian, 1);
+    number(italian, 1); number(italian, 1); italian.push_back(9);
+    number(italian, 1); number(italian, 0xCDA); italian.push_back(0); number(italian, 4);
+    italian.insert(italian.end(), {1,128,1,'i'});
+    Bundle it;
+    assert(parse(italian, it, error) && it.language == "it" && it.charset.size() == 73 && it.assets.size() == 1);
+    assert(build_unchecked(it, usa, pack, error));
+    assert(pack.entries.size() == 3 && pack.entries[0].asset_id == 0x5DD && pack.entries[1].asset_id == 0xC22 && pack.entries[2].asset_id == 0xCDA);
+    assert(pack.font1_charset.size() == 73);
+    assert(tooie_text_assets::decode_payload(pack.entries[0].payload, raw, error) && raw == graphic);
+    ++it.assets[0].target_crc;
+    assert(!build_unchecked(it, usa, pack, error));
+    assert(parse(italian, it, error)); ++it.assets[0].base_crc;
+    assert(!build_unchecked(it, usa, pack, error));
+    auto invalid_graphic = italian;
+    invalid_graphic[asset_id_offset] = 0x22; invalid_graphic[asset_id_offset + 1] = 0x0C;
+    assert(!parse(invalid_graphic, it, error));
+    italian.pop_back();
+    assert(!parse(italian, it, error));
 }

@@ -52,11 +52,12 @@ static void add_general_options(recomp::config::Config &config) {
         {banjo::Language::French, "French", "FRANÇAIS"},
         {banjo::Language::German, "German", "DEUTSCH"},
         {banjo::Language::Spanish, "Spanish", "ESPAÑOL"},
+        {banjo::Language::Italian, "Italian", "ITALIANO (BOZZA)"},
     };
     config.add_enum_option(
         banjo::configkeys::general::language,
         "Game Language",
-        "Language of the in-game text. Português (Brasil), Français, Deutsch and Español are included with the game; only the USA ROM is required. Applies when the game starts; if the game is already running, restart it.",
+        "Language of the in-game text. Português (Brasil), Français, Deutsch, Español and Italiano are included; only the USA ROM is required. Italiano combines Rulesless v0.9 with a supplemental translation draft awaiting editorial review. Applies when the game starts; if already running, restart it.",
         language_options,
         banjo::Language::English
     );
@@ -175,6 +176,8 @@ const char* banjo::language_tag(banjo::Language language) {
             return "de";
         case Language::Spanish:
             return "es";
+        case Language::Italian:
+            return "it";
         default:
             return "";
     }

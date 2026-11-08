@@ -11,6 +11,7 @@ import zlib
 from unittest.mock import patch
 
 import build_language_packs as packs
+import build_italian_bundle as italian
 
 
 def varint(value: int) -> bytes:
@@ -137,6 +138,32 @@ class LanguagePackTests(unittest.TestCase):
             packs.apply_font_patches(base, len(base) + 1, zlib.crc32(base), patches)
         with self.assertRaises(ValueError):
             packs.apply_font_patches(base, len(base), zlib.crc32(base) ^ 1, patches)
+
+    def test_graphic_delta_validation(self) -> None:
+        encoded = packs.bundle_bytes("it", italian.ITALIAN_CHARSET, italian.ITALIAN_ACCENTS,
+                                     b"font", [], {}, {7: (b"base", b"bAse!")})
+        bundle = packs.read_bundle(encoded)
+        with patch.object(packs, "asset", return_value=b"base"):
+            self.assertEqual(packs.rebuild_graphic_assets(bundle, b"synthetic"), {7: b"bAse!"})
+            bundle["assets"][7]["target_crc"] ^= 1
+            with self.assertRaisesRegex(ValueError, "target CRC"):
+                packs.rebuild_graphic_assets(bundle, b"synthetic")
+        with patch.object(packs, "asset", return_value=b"wrong base"):
+            with self.assertRaisesRegex(ValueError, "base size or CRC"):
+                packs.rebuild_graphic_assets(bundle, b"synthetic")
+        for invalid in (encoded[:-1], encoded + b"extra"):
+            with self.assertRaises(ValueError):
+                packs.read_bundle(invalid)
+        with self.assertRaisesRegex(ValueError, "graphic asset ID"):
+            packs.bundle_bytes("it", b"abc", bytes(30), b"font", [], {}, {0xC22: (b"a", b"b")})
+
+    def test_italian_native_encoding(self) -> None:
+        self.assertEqual(italian.encode_text("À È É Ì Ò Ù {86} ~"), b"\x5F \x63 \x62 \x6C \x6F \x71 \x86 ~\0")
+        self.assertEqual(italian.tokens(b"press \x86 twice: ~ ~\0"), italian.tokens(italian.encode_text("~ ~ PREMI {86}")))
+        self.assertNotEqual(italian.tokens(b"\x86 ~ ~"), italian.tokens(italian.encode_text("~ PREMI {86}")))
+        for invalid in ("È" * 255, "lowercase", "{01}", "EMOJI 😀"):
+            with self.assertRaises(ValueError):
+                italian.encode_text(invalid)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 ---
 title: "TooieRecomp Spec — In-Game Language Bundles and Packs"
-description: "Built-in pt-BR/FR/DE/ES text bundles, procedural IA8 fonts, legacy pack compatibility and USA-ROM rewriting."
+description: "Built-in pt-BR/FR/DE/ES/IT bundles, procedural IA8 fonts, graphic deltas and USA-ROM rewriting."
 status: current
 area: "specs/Tooie"
 updated: 2026-11-08
@@ -11,11 +11,11 @@ tags: [specs, tooierecomp, localization, language, tlp, tlpb, text, font]
 
 ## 1. Selection and installation
 
-General > Game Language offers English, Português (Brasil), Français, Deutsch and Español.
+General > Game Language offers English, Português (Brasil), Français, Deutsch, Español and Italiano (bozza).
 The selected value persists as `language` in `general.json`; it applies when the game starts.
 Changing it during gameplay requires restarting the game. English uses the original USA assets.
 
-The other four languages load files next to the executable:
+The other five languages load files next to the executable:
 
 | Language | Config value | Bundle |
 | --- | --- | --- |
@@ -23,6 +23,7 @@ The other four languages load files next to the executable:
 | French | `French` | `assets/languages/fr.tlpb` |
 | German | `German` | `assets/languages/de.tlpb` |
 | Spanish | `Spanish` | `assets/languages/es.tlpb` |
+| Italian draft | `Italian` | `assets/languages/it.tlpb` |
 
 The player needs only the verified USA ROM. No European-ROM selection or extraction dialog is offered by Game Language.
 CMake's `TooieUIAssets` synchronizes the entire assets directory, including these bundles, on app builds.
@@ -30,14 +31,17 @@ CMake's `TooieUIAssets` synchronizes the entire assets directory, including thes
 The pt-BR file is the existing translation bundle, unchanged. FR/DE/ES files contain official localized text extracted
 from the user's verified European ROM. They are proprietary localization data, not covered by the host-code licence;
 they contain no ROM image or font artwork. See [[asset-and-licensing-manifest]] for provenance and the distribution boundary.
-Italian is not implemented: the verified European text bank contains four sections per asset (EN/FR/DE/ES).
+Italian comes from the external Rulesless v0.9 USA patch plus `translations/it.json`, a machine-assisted supplemental
+draft with project terminology and manual corrections. Editorial and in-game review remain pending. The verified
+European text bank contains only EN/FR/DE/ES; Italian is not a hidden fifth section. Attribution is recorded in
+`assets/languages/NOTICE-Italian.txt`.
 
 ## 2. Loading and compatibility
 
 At ROM load, `src/game/language_pack.cpp`:
 1. Resets the glyph mapping to USA behavior.
 2. Selects the configured bundle and validates its language tag.
-3. Builds replacement text assets and an IA8 font in memory from the bundle plus the USA ROM.
+3. Builds replacement text/graphic assets and an IA8 font in memory from the bundle plus the USA ROM.
 4. Relocates the affected asset tail and updates its cart-table offsets in memory.
 5. Installs the rewritten ROM buffer and European character mapping.
 
@@ -55,7 +59,7 @@ suppresses boot-error UI. This diagnostic is not a player installation requireme
 ## 3. Fonts
 
 Font 0 (`0x0C21`) is shared between USA and unmodified EUR. The pt-BR bundle applies its existing 37 patch runs
-(209 bytes) after size/CRC32 verification. FR/DE/ES bundles have zero font-0 patches.
+(209 bytes) after size/CRC32 verification. FR/DE/ES/IT bundles have zero font-0 patches.
 
 Font 1 (`0x0C22`) is synthesized from the player's 51-frame USA IA8 font. Eight transparent rows are prepended;
 23 frames are added using procedural accent masks, rotated punctuation and a repositioned apostrophe for the comma.
@@ -64,9 +68,10 @@ All resulting fonts contain 74 frames in IA8 (`0x100`), which the USA text rende
 | Profile | Additional frames 51–73 |
 | --- | --- |
 | pt-BR | Ã Á À É È Í Ì Ç Õ Ó Ò Ü Ú Ù ¿ ¡ ª ° Ê Ï Ô Â comma |
-| European (FR/DE/ES) | Ä Á À É È Í Ì Ñ Ö Ó Ò Ü Ú Ù ¿ ¡ ª ° Ï Ê Û Ô comma |
+| European (FR/DE/ES/IT) | Ä Á À É È Í Ì Ñ Ö Ó Ò Ü Ú Ù ¿ ¡ ª ° Ï Ê Û Ô comma |
 
-The three European languages share the procedural profile, not copies of proprietary font artwork.
+These four languages share the procedural profile, not copies of proprietary font artwork. Italian maps native
+font-0 code `0x5F` (À) to generated frame 53 (À), rather than the European table's frame 52 (Á).
 The legacy IA4 decoder expands I3/A1 to I4/A4, preserves glyph dimensions/order and rebuilds pixel offsets on serialization.
 Changing the sprite flag alone is insufficient.
 
@@ -103,6 +108,16 @@ Kind 1 contains keep/replace flags and replacement text for the USA section's te
 unchanged records are read from the player's ROM. The bundle language tag selects the procedural font profile.
 The existing pt-BR v1 bundle stays compatible. Unsupported tags, unordered IDs and trailing/truncated data are rejected.
 
+### TLPB v2
+
+Same header and font section as v1, with version 2. Before the text-entry count, v2 inserts a u32 graphic-entry count.
+Each entry has six u32 fields: asset ID, USA decoded size, USA CRC32, target decoded size, target CRC32, patch-run count.
+Each run has u32 offset, u32 length and replacement bytes. IDs must increase; runs must be ordered, disjoint and in bounds.
+Text IDs and font IDs `0xC20..0xC23` are forbidden here. Decoded sizes are bounded by `65535 * 16`.
+The builder validates the USA asset, resizes it to the declared target size, applies runs and verifies the target CRC32.
+The resulting pack is sorted before relocation. The Italian bundle stores localized graphic differences this way,
+without embedding a ROM or complete original graphics.
+
 ## 5. Developer extraction and coverage
 
 The developer supplies the verified EUR ROM (33554432 bytes, SHA-1
@@ -132,16 +147,43 @@ Conversion preserves USA group/control structure:
 | pt-BR | 2230 | 3 | 1 | 2234 | 2236 |
 
 FR `0x15CB` has placeholder data. DE `0x0FB5/0x14F7/0x14F8/0x1809` have divergent controls.
-USA-only `0x1A89` and unmatched credit records remain English. This implementation does not invent translations or
-change event controls to force those assets through. Localized textures/audio are outside this text-bundle scope.
+USA-only `0x1A89` and unmatched credit records remain English in the FR/DE/ES conversion. That conversion does not
+invent translations or change event controls to force those assets through. Its scope excludes localized textures/audio;
+Italian graphic deltas and supplemental text are described below.
 
 The title-screen pt-BR legal line remains fixed by `PTBR_TEXT_FIXES` in the generator to fit the USA layout.
+
+### Italian extraction and completion
+
+```sh
+python tools/build_italian_bundle.py --usa-rom "<USA retail ROM>" --usa-image "<USA image>" \
+  --bps "<Rulesless v0.9 BPS>" --translations translations/it.json \
+  --reference "<private it-reference.tlp>" --report "<private report.json>"
+```
+
+The source patch is pinned to SHA-256 `1789ade8728408b9c382c5964c436411b874513409e2ed2a29b7079fc4f728f5`.
+Only complete deflate streams inside the original asset slots are accepted. Valid streams with inaccurate size headers
+are re-encoded; truncated streams and incompatible layouts are rejected. Graphic raw sizes must match the USA asset.
+The tool never imports patched code or tables. Unusable graphics retain USA data; text in rejected assets is translated
+from the USA records by the supplemental catalog instead.
+
+The catalog uses SHA-256 of the original record text (before its first NUL), independent of translated byte offsets.
+It covers every nonempty record still identical to USA after compatible source imports. Entries explicitly translate
+or preserve names, credits, numeric content, functional codes and intentionally fictional speech. Original title-screen
+legal notices remain intact.
+Native record types, parameters and control records are unchanged. Button glyphs and `~` substitutions are checked
+as multisets; supplemental title newlines/`#` markers must match the original. All encoded records must fit the native
+255-byte limit. Missing or unused catalog entries fail generation.
+No translation service is used by the builder or game; generation with the checked-in catalog is offline.
+Omitting `--translations` produces the compatible partial source and a private catalog of the remainder in the report.
 
 ## 6. Validation
 
 Windows host regressions cover:
 - TLPK parsing, asset relocation and glyph mapping.
-- TLPB parsing for all four supported tags, unsupported/truncated input and text overlays.
+- TLPB parsing for all five supported tags, unsupported/truncated input and text overlays.
+- V2 graphic-delta bounds, source/target CRC32 checks, asset ordering and rewritten-image extraction parity.
+- Italian native accents, button/substitution preservation and record-size rejection.
 - European/pt-BR frame identities, punctuation and all 16 IA4 intensity/alpha combinations.
 - Legacy font normalization, idempotence and malformed payload rejection.
 - Real FR/DE/ES bundle text parity against developer reference packs and 74 generated IA8 glyphs.

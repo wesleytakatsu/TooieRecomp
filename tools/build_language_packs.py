@@ -383,19 +383,35 @@ def apply_text_entry(raw_usa: bytes, kind: int, data: bytes) -> bytes:
 
 
 def bundle_bytes(tag: str, charset: bytes, accents: bytes, base: bytes,
-                 patches: list[tuple[int, bytes]], entries: dict[int, tuple[int, bytes]]) -> bytes:
+                 patches: list[tuple[int, bytes]], entries: dict[int, tuple[int, bytes]],
+                 assets: dict[int, tuple[bytes, bytes]] | None = None) -> bytes:
     if not tag or len(tag) > 15 or not all(c.isascii() and (c.isalnum() or c == "-") for c in tag):
         raise ValueError("invalid language tag")
     if not 1 <= len(charset) <= 255 or len(accents) != 30:
         raise ValueError("invalid font map")
     apply_font_patches(base, len(base), zlib.crc32(base), patches)
-    out = bytearray(struct.pack("<4sI16sI", b"TLPB", 1, tag.encode("ascii"), len(charset)))
+    version = 2 if assets is not None else 1
+    out = bytearray(struct.pack("<4sI16sI", b"TLPB", version, tag.encode("ascii"), len(charset)))
     out.extend(charset)
     out.extend(accents)
     out.extend(struct.pack("<III", len(base), zlib.crc32(base), len(patches)))
     for offset, data in patches:
         out.extend(struct.pack("<II", offset, len(data)))
         out.extend(data)
+    if assets is not None:
+        out.extend(struct.pack("<I", len(assets)))
+        for index, (original, translated) in sorted(assets.items()):
+            if not 0 <= index < ASSET_COUNT or index in TEXT_IDS or 0xC20 <= index <= 0xC23:
+                raise ValueError("invalid graphic asset ID")
+            if not 0 < len(original) <= 65535 * 16 or not 0 < len(translated) <= 65535 * 16:
+                raise ValueError("invalid graphic asset size")
+            resized = original[:len(translated)].ljust(len(translated), b"\0")
+            runs = font_patches(resized, translated)
+            out.extend(struct.pack("<6I", index, len(original), zlib.crc32(original), len(translated),
+                                   zlib.crc32(translated), len(runs)))
+            for offset, data in runs:
+                out.extend(struct.pack("<II", offset, len(data)))
+                out.extend(data)
     out.extend(struct.pack("<I", len(entries)))
     for index, (kind, data) in sorted(entries.items()):
         if not 0 <= index < ASSET_COUNT or kind not in (0, 1):
@@ -418,7 +434,7 @@ def read_bundle(data: bytes) -> dict:
         return struct.unpack("<I", take(4))[0]
     magic, version, raw_tag, charset_length = struct.unpack("<4sI16sI", take(28))
     tag_bytes = raw_tag.split(b"\0", 1)[0]
-    if magic != b"TLPB" or version != 1 or not tag_bytes or raw_tag != tag_bytes.ljust(16, b"\0"):
+    if magic != b"TLPB" or version not in (1, 2) or not tag_bytes or raw_tag != tag_bytes.ljust(16, b"\0"):
         raise ValueError("invalid bundle header")
     try:
         tag = tag_bytes.decode("ascii")
@@ -437,6 +453,26 @@ def read_bundle(data: bytes) -> dict:
             raise ValueError("invalid font 0 patch")
         patches.append((offset, take(length)))
         end = offset + length
+    assets = {}
+    if version == 2:
+        previous = -1
+        for _ in range(number()):
+            index, base_size, base_crc, target_size, target_crc, runs = (number() for _ in range(6))
+            if index <= previous or not 0 <= index < ASSET_COUNT or index in TEXT_IDS or 0xC20 <= index <= 0xC23:
+                raise ValueError("invalid graphic asset ID")
+            if not 0 < base_size <= 65535 * 16 or not 0 < target_size <= 65535 * 16:
+                raise ValueError("invalid graphic asset size")
+            asset_runs = []
+            end = 0
+            for _ in range(runs):
+                offset, length = number(), number()
+                if length == 0 or offset < end or offset + length > target_size:
+                    raise ValueError("invalid graphic asset patch")
+                asset_runs.append((offset, take(length)))
+                end = offset + length
+            assets[index] = {"base_size": base_size, "base_crc": base_crc, "target_size": target_size,
+                             "target_crc": target_crc, "patches": asset_runs}
+            previous = index
     entries = {}
     previous = -1
     for _ in range(number()):
@@ -450,7 +486,22 @@ def read_bundle(data: bytes) -> dict:
     if pos != len(data):
         raise ValueError("trailing bundle data")
     return {"tag": tag, "charset": charset, "accents": accents, "font_size": size,
-            "font_crc": crc, "patches": patches, "entries": entries}
+            "font_crc": crc, "patches": patches, "entries": entries, "assets": assets}
+
+
+def rebuild_graphic_assets(bundle: dict, usa: bytes) -> dict[int, bytes]:
+    rebuilt = {}
+    for index, entry in bundle.get("assets", {}).items():
+        raw = asset(usa, USA_TABLE, USA_BASE, index)
+        if len(raw) != entry["base_size"] or zlib.crc32(raw) != entry["base_crc"]:
+            raise ValueError("graphic asset base size or CRC mismatch")
+        target = bytearray(raw[:entry["target_size"]].ljust(entry["target_size"], b"\0"))
+        for offset, data in entry["patches"]:
+            target[offset:offset + len(data)] = data
+        if zlib.crc32(target) != entry["target_crc"]:
+            raise ValueError("graphic asset target CRC mismatch")
+        rebuilt[index] = bytes(target)
+    return rebuilt
 
 
 def rebuild_text_assets(bundle: dict, usa: bytes) -> dict[int, bytes]:

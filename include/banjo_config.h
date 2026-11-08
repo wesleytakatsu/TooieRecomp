@@ -44,6 +44,7 @@ namespace banjo {
         French,
         German,
         Spanish,
+        Italian,
         OptionCount
     };
 

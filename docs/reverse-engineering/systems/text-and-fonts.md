@@ -138,6 +138,12 @@ path. This is distinct from a missing asset or a bad character-to-frame map.
 TooieRecomp generates European-profile IA8 from the USA font for built-in FR/DE/ES bundles. Legacy imported
 IA4 fonts are expanded to IA8 (I3/A1 to I4/A4) in memory with rebuilt offsets. Generated C is not edited.
 
+The external Rulesless v0.9 Italian patch targets USA retail, not EUR (`PROVEN` from BPS source CRC32 and asset layout).
+Its compatible text and graphic deltas are imported by the host bundle builder; they do not prove a native Italian bank.
+Supplemental Italian uses USA font-0 accent codes: `0x5F` À, `0x62` É, `0x63` È, `0x6C` Ì, `0x6F` Ò, `0x71` Ù
+(`PROVEN` from the decoded font atlas). Its font-1 map directs `0x5F` to the European-profile À frame, and is an explicit
+project adaptation rather than a claim about the original European table.
+
 ## 6. Character to Glyph Mapping: `func_800D35D0` (`PROVEN`)
 
 The function `func_800D35D0(font, c)` translates character codes to glyph indices for rendering.
@@ -170,4 +176,4 @@ The European 73-character font-1 charset and 30-byte accent mapping table reside
 
 TooieRecomp provides a host implementation of `func_800D35D0` in `src/game/text_font_map.cpp`:
 - By default, it preserves faithful USA mapping behavior for standard English gameplay.
-- When an active language pack (imported `.tlp` or built-in pt-BR bundle) provides a font-1 charset and accent map, the routine dynamically switches to the European mapping logic.
+- When an active language pack or bundle provides a font-1 charset and accent map, the routine dynamically switches to the European mapping logic.
