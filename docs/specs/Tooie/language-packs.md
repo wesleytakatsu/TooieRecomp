@@ -197,6 +197,16 @@ it on first discovery; later user toggles remain authoritative. With the HD mod 
 The full PNG and RTZ stay private, outside git, with their hashes, source prompt and provenance. Normal builds require
 no external HD pack or artwork generator. They synchronize the updated language bundle as before.
 
+The user's private complete continuation, `BT-Reloaded-Italian-HD.zip`, combines the unchanged BT Reloaded 0.1.1
+texture mappings/artwork with these 28 explicit Italian mappings. It retains the base Rice auto-path configuration
+and shift filters; Italian paths live outside those filters and explicitly use `shift=none`. Its separate mod id is
+`bt_reloaded_italian_hd`, with `enabled_by_default=false`. Enable this complete edition instead of `BT-Reloaded` and
+`tooie_italian_title_hd`; audio mods remain independent. The editable source tree, original credits, change manifest,
+artwork provenance and offline repackaging script stay outside git in the user's private resource folder.
+Its versioned metadata is `tools/textures/bt-reloaded-italian-hd.mod.json`; copy it to `BANJO TOOIE/mod.json` in the
+editable tree before repackaging. It credits Wesley Sieiro Takatsu de Araujo for the continuation and GhostlyDark for
+the first version, then describes the HD textures and Italian title screen. No artwork is embedded in this metadata.
+
 The catalog uses SHA-256 of the original record text (before its first NUL), independent of translated byte offsets.
 It covers every nonempty record still identical to USA after compatible source imports. Entries explicitly translate
 or preserve names, credits, numeric content, functional codes and intentionally fictional speech. Original title-screen

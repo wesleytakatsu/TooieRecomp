@@ -96,11 +96,30 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   58.561.296 bytes. Fixture do RTZ real: scanner nativo e metadados de ativação padrão PASS. Regressões ZIP C1-C13/A1-A4 PASS.
 - Hasher oficial reproduziu 28/28 hashes do título USA no BT Reloaded; 28 hashes italianos distintos e ausentes do
   banco de referência. Todos os PNGs decodificados como RGBA; dois builds RTZ byte a byte iguais. Build de aplicação
-  sincronizou o bundle. Aparência final no jogo e Linux/PortMaster: `NOT_RUN`; teste no jogo reservado ao usuário.
+  sincronizou o bundle. Usuário aprovou a aparência do título HD no Windows em 2026-11-08 (`USER_REPORTED`);
+  isso não valida todas as telas/traduções. Linux/PortMaster: `NOT_RUN`; testes no jogo reservados ao usuário.
 - `git diff --check` sem erros; 60 wikilinks relacionados resolvidos; `graft build` exit 0.
   `markdown_vault_audit` indisponível neste host.
 - Manifesto: 8.341 arquivos conferidos, exit 0; dependências inalteradas. Arquivos preexistentes de planos/atmosfera
   preservados. Sem push, PR ou publicação. Revisão linguística do complemento continua pendente.
+- A pedido do usuário, cópia privada completa e editável da base GhostlyDark BT Reloaded 0.1.1 em
+  `F:/Recursos do Tooie/BT-Reloaded-Italian-HD/`: ZIP, `source/`, arte/proveniência, créditos originais e
+  `build_pack.py` para futuras melhorias. Original preservado por SHA-256. Arte Rare/Dolby e todos os demais arquivos
+  da base preservados byte a byte; somente `mod.json` e `rt64.json` originais foram adaptados na cópia.
+  2.175 mapeamentos originais + 28 italianos = 2.203, todos resolvidos; nenhuma colisão nova.
+  ZIP de 56.515.811 bytes, SHA-256 `038621f03b25ce193c01dbdb7bcaff3ed0dd412976937ce167c16876d862e4a9`.
+  Descrição/autores: Wesley Sieiro Takatsu de Araujo primeiro, GhostlyDark como criador da primeira versão,
+  detalhes do pacote HD e da tela inicial italiana. Cópia editável e ZIP instalado sincronizados; texturas inalteradas.
+  Metadados versionados em `tools/textures/bt-reloaded-italian-hd.mod.json`; copiar para `BANJO TOOIE/mod.json`
+  na pasta editável antes de reconstruir o ZIP. Arte e arquivo completo continuam privados.
+  Instalado como `BT Reloaded + Italian HD`, id `bt_reloaded_italian_hd`, desativado por padrão; configs e mods
+  anteriores preservados. Para usar, ativar essa edição e desativar BT Reloaded e Italian Title HD separados.
+  Verificação offline de CRC, paridade da pasta editável, preservação dos arquivos e 28 PNGs passou; teste no jogo
+  do ZIP combinado: `PENDING_USER`. Nenhuma nova execução do jogo, publicação ou inclusão do pacote no git.
+  `python -X utf8 build-win/italian-hd/validate_continuation.py` e `scan_continuation.py`, exit 0, em `b3c9016`:
+  scanner nativo abriu o ZIP real, validou id, versão, raiz interna, metadados de alternância e default desativado.
+  O harness isolado reutiliza fontes/objetos do teste host existente; código e dependências do jogo não mudaram.
+  Relatório e log acompanham a pasta privada; `git diff --check` passou, auditor de vault indisponível neste host.
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -465,4 +484,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: usuário reabrir o jogo em italiano e conferir o título HD, com Rare e Dolby originais.
+`NEXT_SINGLE_ACTION`: usuário ativar BT Reloaded + Italian HD, desativar os dois pacotes de textura anteriores e conferir o título italiano.

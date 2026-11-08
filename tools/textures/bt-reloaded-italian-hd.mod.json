@@ -1,0 +1,14 @@
+{
+  "authors": [
+    "Wesley Sieiro Takatsu de Araujo",
+    "GhostlyDark (primeira versão)"
+  ],
+  "description": "Mod continuado por Wesley Sieiro Takatsu de Araujo.\n\nPrimeira versão criada por GhostlyDark (BT Reloaded 0.1.1).\n\nPacote de texturas em alta definição para Banjo-Tooie: Recompiled. Inclui tela inicial em italiano HD (2048×1024), exibida ao selecionar o idioma italiano. Mantém os logos originais Rareware e Dolby.",
+  "display_name": "BT Reloaded + Italian HD",
+  "game_id": "bt",
+  "id": "bt_reloaded_italian_hd",
+  "minimum_recomp_version": "0.1.6",
+  "short_description": "Texturas HD com tela inicial em italiano HD.",
+  "version": "0.1.2-local",
+  "enabled_by_default": false
+}
