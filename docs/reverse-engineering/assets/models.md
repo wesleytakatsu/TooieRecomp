@@ -47,8 +47,12 @@ Rulesless v0.9 modifies embedded textures in all three models. Decoding its `0x6
 names visible on the user's replacement plaque; its `0x8A8` changes only part of the title's tiles, adding Italian
 branding. These are data replacements, not a font rendering defect. Original embedded bytes must be restored together
 to retain USA texture identity; re-encoding a modified model into a different compressed stream does not restore
-those pixels. The Italian bundle therefore omits all three model overrides, preserving their original USA payloads
-through asset-tail relocation. Host extraction parity establishes byte identity; final HD appearance requires game testing.
+those pixels. Rareware and Dolby retain original USA payloads through asset-tail relocation. The Italian HD title
+instead uses the complete localized `0x8A8` model with distinct RT64 identities for all 28 textures: the project toggles
+one red-channel low bit in an alpha-zero texel of each tile. Alpha and every nonzero-alpha texel remain unchanged.
+The complete HD atlas is split by actual display-list vertex loads, not texture index order. Host extraction parity
+establishes Rareware/Dolby byte identity; offline hashing matches all 28 USA hashes to the reference HD pack and
+establishes disjoint Italian hashes. Final HD appearance requires game testing.
 
 ## Selection (`STATIC_MIPS` / overlay bytes)
 

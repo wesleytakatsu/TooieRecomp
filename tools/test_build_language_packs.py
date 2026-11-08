@@ -165,6 +165,32 @@ class LanguagePackTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 italian.encode_text(invalid)
 
+    def test_italian_hd_identity_preserves_visible_texels(self) -> None:
+        count, setup = 28, 0x50
+        base = setup + 8 + count * 8
+        model = bytearray(base + count * 4096)
+        model[:4] = b"\0\0\0\x0B"
+        struct.pack_into(">H", model, 8, setup)
+        struct.pack_into(">H", model, setup + 4, count)
+        for index in range(count):
+            struct.pack_into(">IHBB", model, setup + 8 + index * 8, index * 4096, 8, 32, 32)
+            start = base + index * 4096
+            model[start:start + 4096] = bytes([40, 80, 120, 255]) * 1024
+            model[start:start + 8] = bytes([10, 20, 30, 0]) * 2
+        result, markers = italian.italian_title_hd_identity(bytes(model))
+        changed = [index for index, (a, b) in enumerate(zip(model, result)) if a != b]
+        self.assertEqual(changed, markers)
+        self.assertEqual(len(changed), 28)
+        for offset in changed:
+            self.assertEqual((model[offset + 3], result[offset + 3]), (0, 0))
+            self.assertEqual(model[offset] ^ result[offset], 1)
+        opaque = bytearray(model)
+        opaque[base:base + 8] = bytes([40, 80, 120, 255]) * 2
+        with self.assertRaisesRegex(ValueError, "no transparent"):
+            italian.italian_title_hd_identity(bytes(opaque))
+        with self.assertRaises(ValueError):
+            italian.italian_title_hd_identity(bytes(model[:-1]))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,7 +27,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
-| Idiomas do jogo | EN; pt-BR/FR/DE/ES e italiano em rascunho em `assets/languages/*.tlpb`, exigindo apenas ROM USA; fonte IA8 corrige letras amarelas. Italiano: Rulesless v0.9 compatível + catálogo suplementar, 2.433 assets reconstruídos; revisão editorial e teste no jogo pendentes. Usuário confirmou letras dos idiomas anteriores | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
+| Idiomas do jogo | EN; pt-BR/FR/DE/ES e italiano em rascunho em `assets/languages/*.tlpb`, exigindo apenas ROM USA; fonte IA8 corrige letras amarelas. Italiano: Rulesless v0.9 compatível + catálogo suplementar, 2.434 assets reconstruídos; título italiano HD local; revisão editorial e teste no jogo pendentes. Usuário confirmou letras dos idiomas anteriores | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
@@ -64,44 +64,43 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Checkpoint FR/DE/ES `52d4dfb` versionado nesta branch; sem push, PR ou publicação. Italiano tem checkpoint separado abaixo.
   Linux/PortMaster e aceite individual DE/ES: `NOT_RUN`.
 
-## Italiano em rascunho (2026-11-08)
+## Italiano em rascunho e título HD (2026-11-08)
 
-- `ITALIANO (BOZZA)` seleciona `assets/languages/it.tlpb` sem ROM EUR. Patch externo Rulesless v0.9 usa ROM USA;
-  banco EUR não contém quinta seção italiana. Fonte 1 IA8 europeia com mapa À corrigido para o código nativo `0x5F`.
-- Extração estrita: 478 assets de texto compatíveis na origem, depois filtrados por preservação de botões/variáveis e
-  avisos legais; 207 deltas gráficos. Rareware, título e Dolby preservam os modelos USA completos. 47 assets da origem rejeitados: 44 de texto, cobertos pelo catálogo suplementar,
-  e 3 gráficos, mantidos da USA. Nenhuma ROM, código patchado ou arte de fonte completa versionada.
-- `translations/it.json`: 4.948 chaves únicas para 6.828 registros restantes; 5.801 registros recebem tradução,
-  1.027 preservam números, nomes, créditos, códigos ou fala fictícia. Rascunho assistido por Google Translate,
-  glossário e 106 correções individuais; isso não equivale a revisão editorial completa. Textos válidos de Rulesless
-  preservados; avisos legais originais restaurados. Fonte e atribuição em `assets/languages/NOTICE-Italian.txt`.
-- Bundle final: 2.225 assets de texto + 207 deltas gráficos + fonte 1 gerada = 2.433 entradas. SHA-256
-  `c23146a8f59072c8ee53c18e82871f6dd7fc4fe1abaf19673123824de77c2625`.
-  TLPB v2 acrescenta deltas gráficos com tamanho/CRC32 de origem e destino; v1 permanece compatível.
-- Em HEAD-base `305bf66` com correção local de branding: `Build-Tooie.ps1 -Stage Build -Jobs 8`, exit 0;
-  `python -X utf8 tools/test_build_language_packs.py`, 9/9.
-  `tooie_language_bundle_test.exe <bundle> <USA image> <reference pack>`: nova regressão falha no bundle antigo
-  com `Italian pack must preserve USA branding asset 1586` (exit 1 esperado); bundle corrigido passa (exit 0):
-  2.433 assets iguais à referência, 74 glifos IA8 e três modelos de branding byte a byte iguais à USA após relocação
-  (imagem com 58.559.216 bytes). Os 2.225 assets de texto, metadados de fonte e 207 outros deltas gráficos são
-  idênticos ao checkpoint anterior. Nenhum teste novo dentro do jogo.
-  Executável `build-win/TooieRecompiled.exe`, SHA-256
-  `d3cf1885d000ffbef266d227f9a6f2d082bff5031812c6fddf78a306f41fb4f7`.
-- Imagens do usuário mostraram placa de agradecimentos no lugar da Rare e título com blocos HD misturados aos
-  modificados em baixa resolução. Decodificação dos modelos `0x632`/`0x8A8` confirmou essas imagens no patch;
-  `0x8AC` também substituía Dolby por arte da tradução. Gerador exclui os três modelos completos para preservar
-  branding, pixels/paletas e identidade das texturas USA. Créditos da tradução continuam no NOTICE.
-- Manifesto: 8.341 arquivos conferidos por `vendor_verify.sh`, exit 0; os 54 patches já passaram
-  reverse-check no checkpoint anterior, sem mudança de dependências nesta correção.
-  26 arquivos preexistentes de planos/atmosfera preservados por hash. Linux/PortMaster e jogo italiano: `NOT_RUN`;
-  testes no jogo continuam reservados ao usuário. Revisão editorial permanece pendente.
-  `git diff --check` sem erros, 60 wikilinks relacionados resolvidos e `graft build` com exit 0.
-  `markdown_vault_audit` indisponível neste host. Checkpoint separado na branch `codex/bundled-game-languages`;
-  sem push, PR ou publicação.
-- Pedido de verificar `https://www.gbarl.it/index.php?showtopic=106418`: acesso HTTPS/HTTP/simplificado falhou;
-  nenhuma captura correspondente no índice Wayback consultado. Página atual de Rulesless continua parcial e aponta
-  ao mesmo arquivo Drive. Conteúdo do tópico não confirmado. Usuário pediu continuar com a parcial existente
-  e a tradução suplementar, sem aguardar acesso ao GBArl.
+- `ITALIANO (BOZZA)` carrega `assets/languages/it.tlpb` usando apenas ROM USA. Patch Rulesless v0.9 é externo;
+  banco EUR não contém quinta seção italiana. Fonte 1 IA8 europeia com mapa À corrigido no código nativo `0x5F`.
+- Bundle: 2.225 assets de texto + 208 deltas gráficos + fonte 1 = 2.434 entradas, 922.268 bytes; SHA-256
+  `777ff9e681db1bd4e9f3ef3ee9198d2a887eb965aba04ad5ee7723ab5717df10`.
+  Extração aceita 478 assets de texto na origem e rejeita 47 assets incompatíveis: 44 de texto são cobertos pelo
+  catálogo suplementar e 3 gráficos mantêm USA. Rareware `0x632` e Dolby `0x8AC` ficam byte a byte iguais à USA.
+- `translations/it.json`: 4.948 chaves únicas para 6.828 registros restantes; 5.801 traduzidos e 1.027 preservados
+  (números, nomes, créditos, códigos ou fala fictícia). Rascunho assistido por Google Translate, glossário e 106 correções;
+  revisão editorial integral pendente. Catálogo, demais idiomas e os outros 207 deltas gráficos não mudaram nesta etapa.
+- Usuário pediu título italiano HD, mantendo Rare/Dolby originais. `0x8A8` agora usa arte italiana do patch e
+  identidades próprias nas 28 texturas: um bit RGB baixo em texel alfa-zero por bloco, sem mudar alfa ou texels visíveis.
+  Isso evita que o complemento italiano apareça nos outros idiomas. Teste Python confirma essa preservação.
+- Arte produzida com `image_gen` integrado a partir do título HD local e do layout italiano. Normalização técnica
+  para 2048×1024 e 28 PNGs de 256×256 conforme display list/UV; ordem de textura não equivale à ordem espacial.
+  Prévia não perde pixels significativos nos limites do modelo. Rare/Dolby e as placas alternativas não foram incluídos.
+- `Tooie-Italian-Title-HD.rtz` (1.477.157 bytes), SHA-256
+  `2a7ebea8c41538fd6eb1dc9f20a89e47c8b6a66750a7999e7ae42cdd71129696`, instalado em
+  `%LOCALAPPDATA%/TooieRecompiled/mods/`. ID `tooie_italian_title_hd`, nome `Italian Title HD`,
+  `enabled_by_default=true`: scanner existente ativa na primeira descoberta, respeitando escolhas posteriores.
+  Mod/configs existentes mantidos por hash; nenhuma sessão do jogo foi iniciada ou controlada.
+- PNG fonte, prévia, RTZ, hashes e prompt/proveniência ficam privados em `F:/Recursos do Tooie/Italiano-HD/`;
+  cópia de trabalho em `build-win/italian-hd/`. Arte completa/RTZ não versionados nem publicados. Gerador offline
+  `tools/build_italian_title_hd.py` usa Pillow e `texture_hasher` vendorizado, sem mudar dependências.
+- Em HEAD-base `1f81940` com alterações locais: `Build-Tooie.ps1 -Stage Build -Jobs 8` e builds dos alvos
+  `texture_hasher`, `tooie_language_bundle_test` e `tooie_texture_zip_mod_test`, exit 0.
+  `python -X utf8 tools/test_build_language_packs.py`: 10/10.
+  Fixture C++ do bundle: 2.434 entradas iguais à referência, 74 glifos IA8, Rare/Dolby originais, relocação com
+  58.561.296 bytes. Fixture do RTZ real: scanner nativo e metadados de ativação padrão PASS. Regressões ZIP C1-C13/A1-A4 PASS.
+- Hasher oficial reproduziu 28/28 hashes do título USA no BT Reloaded; 28 hashes italianos distintos e ausentes do
+  banco de referência. Todos os PNGs decodificados como RGBA; dois builds RTZ byte a byte iguais. Build de aplicação
+  sincronizou o bundle. Aparência final no jogo e Linux/PortMaster: `NOT_RUN`; teste no jogo reservado ao usuário.
+- `git diff --check` sem erros; 60 wikilinks relacionados resolvidos; `graft build` exit 0.
+  `markdown_vault_audit` indisponível neste host.
+- Manifesto: 8.341 arquivos conferidos, exit 0; dependências inalteradas. Arquivos preexistentes de planos/atmosfera
+  preservados. Sem push, PR ou publicação. Revisão linguística do complemento continua pendente.
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -466,4 +465,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: usuário reabrir o jogo em italiano e conferir logo Rare e título com o pacote HD ativo; revisão linguística do complemento continua pendente.
+`NEXT_SINGLE_ACTION`: usuário reabrir o jogo em italiano e conferir o título HD, com Rare e Dolby originais.

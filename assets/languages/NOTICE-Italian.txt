@@ -12,8 +12,10 @@ does not replace the original author's terms or grant additional rights.
 TooieRecomp imports compatible translated records and graphic differences.
 Incomplete compressed streams and incompatible layouts are not imported.
 Original Nintendo/Rare legal notices are preserved.
-The original Rareware, Banjo-Tooie title and Dolby branding models are
-preserved for compatibility with USA-based HD texture replacements.
+The original Rareware and Dolby branding models are preserved.
+The Italian title uses its own texture identities for the optional private
+Italian Title HD pack. Its HD artwork was adapted with the built-in
+image_gen tool; complete HD artwork and packs are not versioned here.
 
 Remaining text: supplemental Italian draft in translations/it.json,
 prepared with Google Translate, a project glossary and manual corrections.

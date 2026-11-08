@@ -19,12 +19,39 @@ import build_language_packs as packs
 PATCH_SHA256 = "1789ade8728408b9c382c5964c436411b874513409e2ed2a29b7079fc4f728f5"
 USA_ROM_SHA1 = "af1a89e12b638b8d82cc4c085c8e01d4cba03fb3"
 SOURCE_URL = "https://letraduzionidirulesless.wordpress.com/banjo-tooie/"
-# Keep original branding and its embedded texture hashes for USA-based HD packs.
-USA_BRANDING_ASSETS = {0x632: "Rareware logo", 0x8A8: "Banjo-Tooie title", 0x8AC: "Dolby logo"}
+# Keep Rareware/Dolby and their USA texture hashes; the Italian title is handled separately.
+USA_BRANDING_ASSETS = {0x632: "Rareware logo", 0x8AC: "Dolby logo"}
 ACCENT_CODES = dict(zip("ÄÖÜßÀÂÇÉÈÊËÎÏÔÛÜÙÌÍÓÒÚÙÑÁ¡¿ª°©", range(0x5B, 0x79)))
 ITALIAN_CHARSET = packs.CHARSET_PREFIX + "'ÄÁÀÉÈÍÌÑÖÓÒÜÚÙ¿¡ª°ÏÊÛÔ".encode("latin-1")
 ITALIAN_ACCENTS = bytes([0, 8, 11, 0, 2, 0, 0, 3, 4, 18, 0, 0, 0, 22, 21,
                         11, 13, 6, 5, 9, 10, 12, 13, 7, 1, 15, 14, 16, 17, 0])
+
+
+def italian_title_hd_identity(model: bytes) -> tuple[bytes, list[int]]:
+    """Give every Italian title tile its own hash without changing alpha or visible texels."""
+    if len(model) < 0x58 or model[:4] != b"\0\0\0\x0B":
+        raise ValueError("invalid Italian title model")
+    setup = struct.unpack_from(">H", model, 8)[0]
+    if setup + 8 > len(model):
+        raise ValueError("truncated title texture header")
+    count = struct.unpack_from(">H", model, setup + 4)[0]
+    base = setup + 8 + count * 8
+    if count != 28 or base > len(model):
+        raise ValueError("expected 28 title textures")
+    target = bytearray(model)
+    markers = []
+    for index in range(count):
+        offset, fmt, width, height = struct.unpack_from(">IHBB", model, setup + 8 + index * 8)
+        start, end = base + offset, base + offset + width * height * 4
+        if (fmt, width, height) != (8, 32, 32) or end > len(model):
+            raise ValueError("unexpected title texture format or bounds")
+        transparent = [pos for pos in range(start, end, 4) if model[pos + 3] == 0]
+        if not transparent:
+            raise ValueError("title tile has no transparent identity texel")
+        marker = transparent[index % len(transparent)]
+        target[marker] ^= 1
+        markers.append(marker)
+    return bytes(target), markers
 
 
 def tokens(data: bytes) -> Counter:
@@ -172,6 +199,9 @@ def build(source: bytes, usa: bytes, patch: bytes, translations: dict | None = N
             else:
                 if 0xC20 <= index <= 0xC23 or len(original) != len(translated):
                     raise ValueError("unsupported font or graphic layout change")
+                if index == 0x8A8:
+                    translated, markers = italian_title_hd_identity(translated)
+                    report["italian_hd_title"] = {"id": index, "transparent_rgb_markers": markers}
                 graphics[index] = (original, translated)
                 expected[index] = translated
                 report["graphic_assets"].append(index)
@@ -179,6 +209,8 @@ def build(source: bytes, usa: bytes, patch: bytes, translations: dict | None = N
             report["rejected"].append({"id": index, "reason": str(exception)})
     if not texts:
         raise ValueError("Italian patch contains no compatible translated text")
+    if 0x8A8 not in graphics:
+        raise ValueError("compatible Italian HD title model unavailable")
     report["source_text_count"] = len(texts)
     completed, pending = supplement(usa, texts, translations)
     texts = {index: (1, packs.text_overlay(packs.parse_section(packs.asset(usa, packs.USA_TABLE, packs.USA_BASE, index)[3:])[0],

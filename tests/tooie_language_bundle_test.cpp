@@ -72,8 +72,8 @@ int main(int argc, char** argv) {
             }
         }
         if (pack.language == "it") {
-            // Original branding keeps every embedded texture compatible with USA-based HD replacements.
-            for (uint32_t id : {0x632u, 0x8A8u, 0x8ACu}) {
+            // Rareware and Dolby stay original; the Italian title has locale-specific HD identities.
+            for (uint32_t id : {0x632u, 0x8ACu}) {
                 if (std::any_of(pack.entries.begin(), pack.entries.end(),
                                 [id](const auto& entry) { return entry.asset_id == id; })) {
                     std::cerr << "Italian pack must preserve USA branding asset " << id << '\n';
@@ -87,7 +87,12 @@ int main(int argc, char** argv) {
                     return 1;
                 }
             }
-            std::cout << "3 startup branding assets byte-identical to USA\n";
+            if (std::none_of(pack.entries.begin(), pack.entries.end(),
+                             [](const auto& entry) { return entry.asset_id == 0x8A8u; })) {
+                std::cerr << "Italian title model missing\n";
+                return 1;
+            }
+            std::cout << "2 startup branding assets byte-identical to USA; Italian title present\n";
         }
         std::cout << pack.language << ": " << pack.entries.size() << " assets equal; rewritten image " << rewritten.size()
                   << " bytes; 74 IA8 glyphs\n";

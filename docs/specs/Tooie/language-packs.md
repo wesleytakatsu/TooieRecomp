@@ -117,10 +117,11 @@ Text IDs and font IDs `0xC20..0xC23` are forbidden here. Decoded sizes are bound
 The builder validates the USA asset, resizes it to the declared target size, applies runs and verifies the target CRC32.
 The resulting pack is sorted before relocation. The Italian bundle stores localized graphic differences this way,
 without embedding a ROM or complete original graphics.
-Italian preserves the complete USA branding models `0x632` (Rareware), `0x8A8` (Banjo-Tooie title) and `0x8AC` (Dolby).
-Their embedded textures retain original pixels, palettes and hashes used by USA-based HD packs. Importing only some
-modified title tiles can mix localized low-resolution tiles with unchanged HD replacements. Source translation credits
-remain in `NOTICE-Italian.txt`; they do not replace the game's logos.
+Italian preserves the complete USA models `0x632` (Rareware) and `0x8AC` (Dolby). Title model `0x8A8` uses the Italian
+art from Rulesless and a distinct identity for every tile: one least-significant red bit is toggled in an alpha-zero
+texel per tile. Alpha and all texels with nonzero alpha stay unchanged. This gives all 28 Italian title textures their
+own RT64 hashes, including those whose visible art is shared with USA. Source translation credits remain in
+`NOTICE-Italian.txt`; they do not replace Rareware or Dolby.
 
 ## 5. Developer extraction and coverage
 
@@ -170,7 +171,31 @@ Only complete deflate streams inside the original asset slots are accepted. Vali
 are re-encoded; truncated streams and incompatible layouts are rejected. Graphic raw sizes must match the USA asset.
 The tool never imports patched code or tables. Unusable graphics retain USA data; text in rejected assets is translated
 from the USA records by the supplemental catalog instead.
-The three branding exclusions are listed separately as `usa_branding_preserved` in the private report.
+Rareware/Dolby exclusions are listed separately as `usa_branding_preserved`; `italian_hd_title` records title identity texels.
+
+### Italian HD title artwork
+
+The optional private `Tooie-Italian-Title-HD.rtz` contains 28 PNG tiles at 256×256, forming a 2048×1024 Italian title.
+The complete artwork is prepared as one transparent image, then split using the model's actual display-list vertex
+loads. Texture index order is not spatial order, and two corner tiles use triangles rather than quads.
+All 28 Italian hashes must be distinct and absent from the supplied reference HD database; the tool first reproduces
+all 28 USA title hashes against that database using the vendored RT64 v5 CPU hasher. This prevents the Italian artwork
+from replacing the title in other configured languages, even when the mod remains enabled.
+
+```sh
+cmake --build build-win --target texture_hasher
+python tools/build_italian_title_hd.py --usa-image "<USA image>" --artwork "<private title-source.png>" \
+  --texture-hasher build-win/rt64/src/tools/texture_hasher/texture_hasher.exe \
+  --reference-pack "<existing RT64 HD pack>" --output "<private Italian Title HD.rtz>" \
+  --report "<private report.json>" --preview "<private title-preview.png>"
+```
+
+The normal bundle builder must run first. The HD builder uses Pillow for technical resizing, UV-aligned slicing and
+PNG encoding; it does not generate artwork or contact a translation/image service. The source artwork was adapted
+with the built-in `image_gen` tool. The resulting pack has `enabled_by_default=true`, so the existing mod scanner enables
+it on first discovery; later user toggles remain authoritative. With the HD mod disabled, the native Italian title remains.
+The full PNG and RTZ stay private, outside git, with their hashes, source prompt and provenance. Normal builds require
+no external HD pack or artwork generator. They synchronize the updated language bundle as before.
 
 The catalog uses SHA-256 of the original record text (before its first NUL), independent of translated byte offsets.
 It covers every nonempty record still identical to USA after compatible source imports. Entries explicitly translate
