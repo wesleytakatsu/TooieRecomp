@@ -19,6 +19,8 @@ import build_language_packs as packs
 PATCH_SHA256 = "1789ade8728408b9c382c5964c436411b874513409e2ed2a29b7079fc4f728f5"
 USA_ROM_SHA1 = "af1a89e12b638b8d82cc4c085c8e01d4cba03fb3"
 SOURCE_URL = "https://letraduzionidirulesless.wordpress.com/banjo-tooie/"
+# Keep original branding and its embedded texture hashes for USA-based HD packs.
+USA_BRANDING_ASSETS = {0x632: "Rareware logo", 0x8A8: "Banjo-Tooie title", 0x8AC: "Dolby logo"}
 ACCENT_CODES = dict(zip("ÄÖÜßÀÂÇÉÈÊËÎÏÔÛÜÙÌÍÓÒÚÙÑÁ¡¿ª°©", range(0x5B, 0x79)))
 ITALIAN_CHARSET = packs.CHARSET_PREFIX + "'ÄÁÀÉÈÍÌÑÖÓÒÜÚÙ¿¡ª°ÏÊÛÔ".encode("latin-1")
 ITALIAN_ACCENTS = bytes([0, 8, 11, 0, 2, 0, 0, 3, 4, 18, 0, 0, 0, 22, 21,
@@ -130,11 +132,15 @@ def build(source: bytes, usa: bytes, patch: bytes, translations: dict | None = N
     graphics = {}
     expected = {}
     report = {"source": SOURCE_URL, "version": "0.9", "patch_sha256": PATCH_SHA256,
-              "text_assets": [], "graphic_assets": [], "rejected": [], "size_headers_repaired": []}
+              "text_assets": [], "graphic_assets": [], "rejected": [], "size_headers_repaired": [],
+              "usa_branding_preserved": []}
     for index in range(packs.ASSET_COUNT):
         first, last = struct.unpack_from(">II", source, packs.USA_TABLE + index * 4)
         start, end = packs.USA_BASE + (first >> 8) * 4, packs.USA_BASE + (last >> 8) * 4
         if source[start:end] == target[start:end]:
+            continue
+        if index in USA_BRANDING_ASSETS:
+            report["usa_branding_preserved"].append({"id": index, "role": USA_BRANDING_ASSETS[index]})
             continue
         try:
             original = packs.asset(usa, packs.USA_TABLE, packs.USA_BASE, index)

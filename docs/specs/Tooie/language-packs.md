@@ -117,6 +117,10 @@ Text IDs and font IDs `0xC20..0xC23` are forbidden here. Decoded sizes are bound
 The builder validates the USA asset, resizes it to the declared target size, applies runs and verifies the target CRC32.
 The resulting pack is sorted before relocation. The Italian bundle stores localized graphic differences this way,
 without embedding a ROM or complete original graphics.
+Italian preserves the complete USA branding models `0x632` (Rareware), `0x8A8` (Banjo-Tooie title) and `0x8AC` (Dolby).
+Their embedded textures retain original pixels, palettes and hashes used by USA-based HD packs. Importing only some
+modified title tiles can mix localized low-resolution tiles with unchanged HD replacements. Source translation credits
+remain in `NOTICE-Italian.txt`; they do not replace the game's logos.
 
 ## 5. Developer extraction and coverage
 
@@ -166,6 +170,7 @@ Only complete deflate streams inside the original asset slots are accepted. Vali
 are re-encoded; truncated streams and incompatible layouts are rejected. Graphic raw sizes must match the USA asset.
 The tool never imports patched code or tables. Unusable graphics retain USA data; text in rejected assets is translated
 from the USA records by the supplemental catalog instead.
+The three branding exclusions are listed separately as `usa_branding_preserved` in the private report.
 
 The catalog uses SHA-256 of the original record text (before its first NUL), independent of translated byte offsets.
 It covers every nonempty record still identical to USA after compatible source imports. Entries explicitly translate
