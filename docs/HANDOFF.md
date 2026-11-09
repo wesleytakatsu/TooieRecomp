@@ -181,14 +181,16 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Versão `0.1.7`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.7)
   em 2026-11-09, com o japonês incluído (texto, fontes e logo do título). Uma v0.1.8 publicada por engano no mesmo dia
   foi removida e unida à v0.1.7 a pedido do usuário. Notas em inglês e português: [[releases/v0.1.7]].
-  Tag `v0.1.7` movida para `c723146822771d30420ac5fc9481a33391db98d9` (`main`, após a PR #18). Windows: 35/35 testes,
+  Tag `v0.1.7` movida para `a0f44ea28e9f6d9c22cf780d0d3b3041b22c9b3d` (`main`, após a PR #20, que corrigiu a versão
+  exibida no jogo de 0.1.6 para 0.1.7 e faz os empacotadores recusarem release com versão diferente de `version_string`).
+  Windows: 35/35 testes,
   auditoria dos 118 arquivos; PortMaster: build cruzado (121 arquivos, glibc 2.35), não executado num aparelho.
   Sem pacotes Linux x64.
-- `BanjoTooieRecompiled-v0.1.7-Windows-x64.zip`: 24193053 bytes, SHA-256
-  `9e2beb348fab8f5bbc8b02ac2fd36269f25a2381609366f770baa266cac72d8d`.
-- `BanjoTooieRecompiled-v0.1.7-Linux-arm64-PortMaster.zip`: 13222994 bytes, SHA-256
-  `10d16a5f01cd119f7a3e4f29764a16872814c46c490cb98598177f9f400e92c5`. `BUILD-INFO.txt` dos dois pacotes: commit da tag,
-  versão `0.1.7`, zero arquivos sujos.
+- `BanjoTooieRecompiled-v0.1.7-Windows-x64.zip`: 24193051 bytes, SHA-256
+  `31bf117af64b0057a127a6edf379dd81fdb46b00e0e8355bd6375362eba907b4`.
+- `BanjoTooieRecompiled-v0.1.7-Linux-arm64-PortMaster.zip`: 13223014 bytes, SHA-256
+  `36a3ff3dcd37f8765e60bbe16b27f58668d1e1da6cc31256accfdbfaaa8b131a`. `BUILD-INFO.txt` dos dois pacotes: commit da tag,
+  versão `0.1.7`, um arquivo sujo (`.gitignore` local do usuário, sem relação com o build).
 - Versão `0.1.6`; [pré-release Windows x64, Linux x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.6)
   em 2026-11-07. Tag anotada `v0.1.6` em `0f7230a2ee9a33c622eb17cbca1d808deecc2d05` (`main`, após as PRs #9 e #10).
   Notas em inglês e português brasileiro: [[releases/v0.1.6]]. Windows: 34/34 testes, build Release, auditoria dos 111
