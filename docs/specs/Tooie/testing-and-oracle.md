@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Testing Framework and Measurement Oracle"
 description: "Technical specification for the host unit test harness, regression test suite, and the ANGRYLION_CONTROL software-rendered ground truth oracle."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-02
+updated: 2026-11-09
 tags: [specs, tooierecomp, tests, oracle, angrylion, regression]
 ---
 
@@ -76,11 +76,11 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
   - `tooie_graphics_api_test` (platform-aware graphics API selection policy)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 31 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
-    `tooie_dev_cheats_test` and the 5 language tests
+  - Default runs 35 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+    `tooie_dev_cheats_test`, `tooie_expanded_memory_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
-    `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test or the cheats
-    test yet.
+    `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test, the cheats
+    test or the expanded memory test yet.
   - Flag `-AllTests` runs all non-argument tests. Argument-driven tests report `SKIP` when invoked without input data.
 
 ### 3.2 Catalogue of Automated Test Targets
@@ -101,7 +101,8 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `rt64_hidden_window_test` | `tests/rt64_hidden_window_test.cpp` | Windows-only: exercises real RT64 fullscreen/windowed transitions on hidden and visible Win32 windows in a private test desktop. Checks visibility, mode and restored bounds without a ROM, game runtime or input injection. |
 | `window_display_test` | `tests/window_display_test.cpp` | Tests display index clamping, dimension sanitizing, and aspect ratio math. |
 | `tintro_projection_policy_test` | `tests/tintro_projection_policy_test.cpp` | Executes production projection policy/window calculation with simulated host services: story/intro context, dynamic dimensions (4:3 through ultrawide), Original/Expand, invalid sizes and scene transitions. |
-| `tooie_object_distance_test` | `tests/tooie_object_distance_test.cpp` | Production scopes and real Config with native model cutoff/reset/alpha, actor scheduling/radius and retention comparisons, spatial collector plus radial cell rejection, and sprite preparation/cutoff/fade. Covers Original/2x/4x/Unlimited, physical distance/zoom, model/sprite gradients, small-model threshold continuity, stable scripted alpha across omitted draws/map/view changes, player/global UI exclusions, native AABB/empty-cell rejection, unscoped helper isolation, flags/zero-radius/init/nested-event semantics, living J2, mode guards and config Apply/Cancel/persistence/defaults. Model probes stop at segment conversion before geometry; synthetic RDRAM/model/grid inputs, camera/frustum, player/resource/descriptor services and sqrt. No rendered map or universal class/performance acceptance. |
+| `tooie_object_distance_test` | `tests/tooie_object_distance_test.cpp` | Production scopes and real Config with native model cutoff/reset/alpha, actor scheduling/radius and retention comparisons, spatial collector plus radial cell rejection, and sprite preparation/cutoff/fade. Extended distance coverage includes Expanded Memory gating (requires active expanded memory in process for 2x/4x/Unlimited, auto-enables option in config with effective Original until restart), runtime low-memory guard fallback (falls back to native when total free < 768 KiB or largest free block < 256 KiB), and switch `TOOIE_TEST_DISTANCE_HEAP_GUARD`. Covers Original/2x/4x/Unlimited, physical distance/zoom, model/sprite gradients, small-model threshold continuity, stable scripted alpha across omitted draws/map/view changes, player/global UI exclusions, native AABB/empty-cell rejection, unscoped helper isolation, flags/zero-radius/init/nested-event semantics, entering/during/leaving story co-op forcing Original on all paths with saved enum and graphics.json unchanged (611 assertions), mode guards and config Apply/Cancel/persistence/defaults. Model probes stop at segment conversion before geometry; synthetic RDRAM/model/grid inputs, camera/frustum, player/resource/descriptor services and sqrt. No rendered map or universal class/performance acceptance. |
+| `tooie_expanded_memory_test` | `tests/tooie_expanded_memory_test.cpp` | Expanded memory latching and persistence, distance gating, low-memory guard, guest RAM range helper (`tooie_memory::contains`/`contains_alias`/`aligned`), and real recompiled `heap_setup`/alloc/free execution on the expanded region (`0x8080C000..0x81000000`); executed across 4 isolated processes. |
 | `p09_exact_use_correlation_test` | `tests/p09_exact_use_correlation_test.cpp` | Tests seam-edge diagnostic keys, plan building, and memberships. |
 | `p09_ordered_match_test` | `tests/p09_ordered_match_test.cpp` | Tests draw-call hash-ordered transform pairing. |
 | `p09_world_interpolation_guard_test`| `tests/p09_world_interpolation_guard_test.cpp` | Tests P09 world transform interpolation guards. |

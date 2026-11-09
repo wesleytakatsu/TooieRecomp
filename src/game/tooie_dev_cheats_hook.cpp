@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_dev_cheats_hook.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_story_coop.h"
@@ -10,7 +11,7 @@ extern "C" void func_80092778(uint8_t*, recomp_context*);
 
 namespace {
 gpr guest(uint32_t address) { return static_cast<int32_t>(address); }
-bool pointer(uint32_t address) { return address >= 0x80000000u && address < 0x807FFE00u && !(address & 3); }
+bool pointer(uint32_t address) { return tooie_memory::aligned(address, 0x201); }
 std::array<bool, tooie_dev_cheats::kPlayerCount> blaster_reload_pending{};
 
 recomp_context call_context(const recomp_context* ctx, uint32_t self) {

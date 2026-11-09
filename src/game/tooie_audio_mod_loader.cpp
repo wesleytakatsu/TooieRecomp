@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_audio_mod_loader.h"
 #include "tooie_audio_mod.h"
 #include "tooie_audio_render.h"
@@ -36,14 +37,14 @@ NativeChannels native_channels(uint8_t* rdram, unsigned slot) {
     // bits up to 31; runtime STATUS logs show the gains of channels 16-31 following them).
     // 8002418C writes it immediately; 80023EB8 advances the native envelope.
     uint32_t address = MEM_W(0x60, guest(tooie_bgm::seqp_addr(slot)));
-    if (address < 0x80000000u || address > 0x807FFFFFu - channel_count * 0x38) return result;
+    if (!tooie_memory::contains(address, channel_count * 0x38 + 1)) return result;
     for (unsigned channel = 0; channel < result.gain.size(); ++channel)
         result.gain[channel] = MEM_BU(channel * 0x38 + 9, guest(address));
     result.valid = true;
     // Current tempo as 800260B0 reads it: seqp+0x24 over the float at (seqp+0x18)+8 is microseconds per beat.
     const uint32_t seqp = tooie_bgm::seqp_addr(slot);
     const uint32_t seq = MEM_W(0x18, guest(seqp));
-    if (seq >= 0x80000000u && seq < 0x80800000u) {
+    if (tooie_memory::contains(seq, 12)) {
         const uint32_t bits = MEM_W(0x8, guest(seq));
         float divisor;
         std::memcpy(&divisor, &bits, sizeof(divisor));

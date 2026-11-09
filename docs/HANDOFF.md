@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-07
+updated: 2026-11-09
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -31,7 +31,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 34 obrigatórios (inclui câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+| Memória expandida | General > Expanded Memory (experimental), padrão Off, vale após reiniciar; heap do jogo em `0x8080C000..0x81000000` (~7.95 MiB). Distância 2x/4x/Ilimitada exige a opção ativa; guarda de memória livre 768/256 KiB; co-op de história força distância Original. Witchyworld com Ilimitado e co-op validados pelo usuário no Windows (2026-11-09); Linux/PortMaster `NOT_RUN` | [[specs/Tooie/runtime-and-overlays#3.4 Guest heap layout and expansion]], [[specs/Tooie/window-ui-and-config]], [[specs/Tooie/graphics-and-presentation#3.1.1 Object distance]], [[reverse-engineering/systems/guest-heap]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 35 obrigatórios (inclui memória expandida, câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -129,6 +130,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Pendências conhecidas
 
+- Memória expandida: com `Unlimited` no heap nativo (~2.78 MiB), Witchyworld esgotava o heap (crash, carga lenta,
+  jiggy da transição e modelo de inimigo ausentes). Co-op de história com distância estendida fechava o jogo; causa
+  `UNKNOWN`, contornada forçando Original. Linux/PortMaster com heap expandido `NOT_RUN`.
+  RE: [[reverse-engineering/systems/guest-heap]].
 - Minigames e cooperativo: implementada suspensão por sala para as 15 famílias/23 etapas, segmentos Saucer,
   aliases Mayan conservadores e salas MP relacionadas. Subtipo nativo `0x1B` e pedidos diferentes de um jogador
   permanecem nativos. Witchyworld `0xD6` só recusa promoção no retorno Saucer com seletor nativo 6.
@@ -254,8 +259,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Política coordena limite do modelo, atualização/retenção do ator, seleção de células e corte radial anterior
   à fila, além do limite próprio de sprites. Distância física, FOV/projeção, AABB/setores/flags e callbacks
   permanecem nativos. Fades de 700 unidades (modelos) e 500 (sprites); sem cache/fade temporal por omissão de desenho.
-  Jogador/UI global/modos excluídos mantêm limites nativos. No split, atualização/retenção ampliada considera
-  o jogador vivo mais próximo, sem mudar foco. Cobertura/performance universal e Linux permanecem `UNKNOWN` / `NOT_RUN`.
+  Jogador/UI global/modos excluídos mantêm limites nativos. 2x/4x/Ilimitado exigem Memória expandida ativa; no co-op
+  de história a distância efetiva é Original. Cobertura/performance universal e Linux permanecem `UNKNOWN` / `NOT_RUN`.
   Logger, captura CSV, observadores de ator/conversão, script temporário e suas chamadas foram removidos;
   regressão isolada permanece fora do executável. Limpeza validada: Windows 25/25 testes, regressão 382
   verificações, três helpers de integração e build passaram; executável atualizado sem diagnósticos da opção.
@@ -395,4 +400,4 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: verificar o feedback do usuário sobre os pacotes Linux x64 da v0.1.6 publicada.
+`NEXT_SINGLE_ACTION`: validar Memória expandida + distância Ilimitada no Linux x64 e no XU10.

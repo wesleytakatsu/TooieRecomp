@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Graphics, Presentation and High-Framerate Interpola
 description: "Technical specification for RT64 integration, widescreen culling hooks, projection policies, host endpoint-CURRENT fallback, transform interpolation guards, and presentation controls."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-01
+updated: 2026-11-09
 tags: [specs, tooierecomp, graphics, rt64, widescreen, interpolation, tfpos, fps, resolution, aspect-ratio]
 ---
 
@@ -64,7 +64,7 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 | **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. | `IMPLEMENTED` |
 | **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode. | `IMPLEMENTED` |
 | **REQ-GFX-11** | Intro Cinematic Walls | 16:9 projection compensation implemented; edge geometry and ultrawide remain open. | `PARTIAL` |
-| **REQ-GFX-12** | Object Distance | Persisted Original/2x/4x/Unlimited policy coordinating cell selection, models, sprites and actor gates; Windows user-validated cases, broader map/performance coverage unverified. | `EXPERIMENTAL` |
+| **REQ-GFX-12** | Object Distance | Persisted Original/2x/4x/Unlimited policy coordinating cell selection, models, sprites and actor gates; requires Expanded Memory active in process for 2x/4x/Unlimited with runtime low-memory guard; forces Original during story co-op; Windows user-validated cases, broader map/performance coverage unverified. | `EXPERIMENTAL` |
 
 ---
 
@@ -101,7 +101,24 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 
 - Graphics registers `object_distance` with values `Original`, `Double`, `Quadruple`, `Unlimited`, displayed as
   Original/2x/4x/Unlimited. Default/missing/invalid values select Original. Load and Apply atomically publish the
-  applied enum; temporary edits and Cancel do not change the running policy. No restart is required.
+  applied enum; temporary edits and Cancel do not change the running policy. When Expanded Memory is active in the
+  running process, changes take effect immediately without restarting.
+- **Expanded Memory requirement and auto-enable**: Extended settings (`Double`, `Quadruple`, `Unlimited`) strictly
+  require Expanded Memory to be active in the process (`tooie_memory::boot.active()`). Selecting 2x, 4x,
+  or Unlimited while Expanded Memory is not active turns Expanded Memory On in config (saved), keeps the selected
+  distance choice saved, displays "Restart the game to apply (using Original)" on the distance option description,
+  and runs with effective Original distance until restart. At boot with expanded memory off, the effective distance
+  is Original. Original never depends on expanded memory.
+- **Low-memory guard**: Always active whenever the effective distance is not Original (`distance != Original`).
+  Extended retention (`tooie_distance_squared` at `func_80100230`) and extended scheduling (`tooie_distance_radius`
+  at `func_8010038C`) fall back to native values for that call unless the guest heap has at least 768 KiB total free
+  memory AND a contiguous free block of at least 256 KiB (heuristic reserve for scene loads and heap fragmentation).
+  Total free memory is read on every call; the largest free block is sampled once per frame by walking the game's
+  native free list without invoking guest code.
+- **Switches and diagnostics**: `TOOIE_TEST_EXPANDED_HEAP=0` forces the native heap; `TOOIE_TEST_DISTANCE_HEAP_GUARD=0`
+  disables the low-memory guard; `TOOIE_DIAG_HEAP=1` (default off) logs heap base/size at boot and guard transition events.
+- **Known risks**: Attract demos and game timing may differ under an expanded heap layout; guard thresholds are
+  heuristics, not an absolute guarantee against every allocation spike.
 - Enhancement applies only in mode `3`, excluding native multiplayer submode `0x1B`. Other modes, including
   recorded attract demos, retain native distances. Original passes through the existing integration.
 - A call-local scope around `func_800DE498` preserves physical distance. At its `func_800E42C0` query, the final
@@ -130,9 +147,14 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 - `func_80100230` retains its native resource-eviction decisions, including zero-radius special semantics;
   only its matching `func_800EEB40` result is divided by the squared multiplier, or set to zero for Unlimited.
   The gate stack and actor-position pointer must match; unrelated distance/attack/interaction queries pass through.
-- Extended actor scheduling/retention uses the closer live player's point in experimental story split-screen.
-  Guest scratch storage is scoped and stack restored; no global player-focus mutation is used. The existing enemy
-  target integration remains in the scheduling chain.
+- **Story split-screen co-op rule**: In story-mode split-screen co-op (experimental, Dev Mode > Experimental "Two
+  players (split screen)", `tooie_story_coop::running`), the effective Object Distance is strictly Original across every
+  extended path (cell collection/selection, view scale/model cutoff, sprites, actor scheduling radius, retention),
+  evaluated live per call in `active()`. Entering co-op switches immediately to Original; leaving co-op restores the
+  saved choice (still requiring active Expanded Memory and passing the runtime low-memory guard). Saved configuration
+  never changes and no restart is required; the option description displays "Story split-screen co-op always uses
+  Original." (Adopted after a user report of the game closing by itself with an extended Object Distance; root cause
+  `UNKNOWN`.)
 - Camera planes, coordinate-safety rejection, sector visibility, map geometry, fog, save/collection state and
   class-specific conditions are preserved. Unlimited removes the **covered radial limits**, not every possible
   reason for hiding an entity. Additional actor updates can advance world state earlier; this is an enhancement,

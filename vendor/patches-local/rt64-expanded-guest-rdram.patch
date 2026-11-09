@@ -1,0 +1,61 @@
+diff --git a/src/hle/rt64_state.cpp b/src/hle/rt64_state.cpp
+index 04d734c..7b395d7 100644
+--- a/src/hle/rt64_state.cpp
++++ b/src/hle/rt64_state.cpp
+@@ -1,3 +1,4 @@
++#include "rt64_host_rdram.h"
+ //
+ // RT64
+ //
+@@ -1796,15 +1797,16 @@ namespace RT64 {
+                     const uint32_t rowAddress = depthFrame.address + y * depthFrame.width * 2;
+                     const uint32_t rowSize = depthFrame.width * 2;
+                     const uint8_t *row = depthFrame.mapped + y * depthFrame.rowBytes;
+-                    if (((rowAddress & 3) == 0) && ((depthFrame.width & 1) == 0) && (((rowAddress & RDRAMSize) + rowSize - 1) <= RDRAMSize)) {
+-                        memcpy(&RDRAM[rowAddress & RDRAMSize], row, rowSize);
++                    const uint32_t rdramMask = hostRdramMask();
++                    if (((rowAddress & 3) == 0) && ((depthFrame.width & 1) == 0) && (((rowAddress & rdramMask) + rowSize - 1) <= rdramMask)) {
++                        memcpy(&RDRAM[rowAddress & rdramMask], row, rowSize);
+                         continue;
+                     }
+ 
+                     for (uint32_t x = 0; x < depthFrame.width; x++) {
+                         uint32_t word;
+                         memcpy(&word, row + (x / 2) * sizeof(uint32_t), sizeof(word));
+-                        const uint32_t offset = (rowAddress + x * 2) & RDRAMSize;
++                        const uint32_t offset = (rowAddress + x * 2) & rdramMask;
+                         *reinterpret_cast<uint16_t *>(&RDRAM[offset ^ 2]) = uint16_t((x & 1) ? word : (word >> 16));
+                     }
+                 }
+@@ -2837,4 +2839,4 @@ namespace RT64 {
+             break;
+         }
+     }
+-};
+\ No newline at end of file
++};
+diff --git a/src/hle/rt64_host_rdram.h b/src/hle/rt64_host_rdram.h
+new file mode 100644
+--- /dev/null
++++ b/src/hle/rt64_host_rdram.h
+@@ -0,0 +1,20 @@
++#pragma once
++
++#include <atomic>
++#include <cstdint>
++
++namespace RT64 {
++inline std::atomic<uint32_t>& hostRdramMaskSlot() {
++    static std::atomic<uint32_t> mask{0x7FFFFFu};
++    return mask;
++}
++
++// Host sets this once before guest execution; emulator/plugin defaults stay native.
++inline void setHostRdramExpanded(bool expanded) {
++    hostRdramMaskSlot().store(expanded ? 0xFFFFFFu : 0x7FFFFFu, std::memory_order_release);
++}
++
++inline uint32_t hostRdramMask() {
++    return hostRdramMaskSlot().load(std::memory_order_acquire);
++}
++}

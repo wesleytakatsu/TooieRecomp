@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include <cstdint>
 #include <cstring>
 
@@ -25,6 +26,16 @@ extern "C" void __real_func_800E0B8C(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800E0E94(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800AE8A8(uint8_t* rdram, recomp_context* ctx);
 extern "C" void __real_func_800AE820(uint8_t* rdram, recomp_context* ctx);
+extern "C" void __real_func_80800000_gztrace(uint8_t*, recomp_context*);
+
+extern "C" void __wrap_func_80800000_gztrace(uint8_t* rdram, recomp_context* ctx) {
+    if (!tooie_memory::boot.active()) {
+        __real_func_80800000_gztrace(rdram, ctx);
+        return;
+    }
+    const uint32_t address = uint32_t(ctx->r4);
+    ctx->r2 = tooie_memory::aligned(address) || address == 0x80800000u;
+}
 
 // __real_<f> is provided by the linker (--wrap on ELF, lld-link /wrap on Windows); list: TOOIE_WRAPPED_SYMBOLS in CMakeLists.txt.
 
@@ -35,7 +46,7 @@ uint32_t guest_word(uint8_t* rdram, uint32_t guest_ptr, uint32_t offset) {
         return 0;
     }
     const uint32_t physical = (guest_ptr + offset) & 0x1FFFFFFFu;
-    if (physical > 0x007FFFFCu) {
+    if (!tooie_memory::contains(0x80000000u | physical, sizeof(uint32_t))) {
         return 0;
     }
     uint32_t value = 0;

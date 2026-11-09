@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tintro_projection_policy.h"
 
 #include <cmath>
@@ -16,8 +17,7 @@ constexpr int kIntroMap = 395;
 constexpr float kViAspect = 4.0f / 3.0f;
 
 static bool guest_ok(uint32_t address, size_t size) {
-    const uint32_t offset = address & 0x007FFFFFu;
-    return static_cast<uint64_t>(offset) + size <= 0x00800000u;
+    return tooie_memory::contains_alias(address, size);
 }
 
 static int16_t read_s16(const uint8_t* rdram, uint32_t address) {
@@ -26,7 +26,7 @@ static int16_t read_s16(const uint8_t* rdram, uint32_t address) {
     }
 
     int16_t value = 0;
-    const uint32_t offset = (address ^ 2u) & 0x007FFFFFu;
+    const uint32_t offset = (address ^ 2u) & 0x1FFFFFFFu;
     std::memcpy(&value, rdram + offset, sizeof(value));
     return value;
 }

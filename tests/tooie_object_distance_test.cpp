@@ -2,6 +2,7 @@
 // Production scopes + native model cutoff/reset and actor update/residency gates.
 // Synthetic RDRAM, camera/frustum, resource services and player positions; no GPU/map.
 #include "tooie_object_distance.h"
+#include "tooie_expanded_memory.h"
 #include "librecomp/config.hpp"
 #include "librecomp/files.hpp"
 #include "librecomp/game.hpp"
@@ -12,14 +13,16 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <iterator>
 #include <vector>
 
 #define CHECK(x) do { ++checks; if (!(x)) { std::fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #x); std::exit(1); } } while (0)
 static int checks = 0, spheres = 0, events = 0;
-static bool split = false, alive = true;
+void tooie_memory::request_for_distance() {}
+void tooie_memory::refresh_restart_notice() {}
+static bool split = false;
 static bool event_probe = false;
 static int event_range_result = -1;
-static float second_x = 0;
 static bool submit_probe = false, player_probe = false;
 static bool world_probe = true;
 static bool aabb_visible = true, cell_enabled = true;
@@ -60,9 +63,6 @@ void func_800EE7F8(uint8_t*, recomp_context*);
 void func_800D3104(uint8_t*, recomp_context*);
 void func_800D2F44(uint8_t*, recomp_context*);
 void func_800E1C00(uint8_t*, recomp_context*);
-void func_800F5A00(uint8_t* rdram, recomp_context* c) { put(rdram, uint32_t(c->r5), second_x); put(rdram, uint32_t(c->r5) + 4, 0); put(rdram, uint32_t(c->r5) + 8, 0); }
-void func_800F6438(uint8_t*, recomp_context* c) { c->r2 = alive; }
-void func_800F6478(uint8_t*, recomp_context* c) { c->r2 = alive; }
 void osVirtualToPhysical_recomp(uint8_t* rdram, recomp_context* c) {
     c->r2 = uint32_t(c->r4) & 0x1FFFFFFF;
     if (submit_probe) {
@@ -168,9 +168,8 @@ static void config_test() {
     set_mode(999); CHECK(mode() == Mode::Original);
     std::filesystem::remove(config_dir / "graphics.json"); std::filesystem::remove(config_dir);
 }
-static int draw(uint8_t* r, unsigned mode, float d, float limit = 10000) {
+static int draw_current(uint8_t* r, float d, float limit = 10000) {
     auto* rdram = r;
-    tooie_object_distance::set_mode(mode);
     put(r, point, d); put(r, point + 4, 0); put(r, point + 8, 0);
     put(r, 0x80125D50, 10000); put(r, 0x80125D60, 10000);
     for (unsigned p : {0x80125D54, 0x80125D58, 0x80125D5C}) put(r, p, 32767);
@@ -196,6 +195,10 @@ static int draw(uint8_t* r, unsigned mode, float d, float limit = 10000) {
     CHECK(MEM_W(0, guest(0x8012C82C)) == int32_t(bits(10000))); // Native reset preserved.
     return submit_probe ? captured_alpha : spheres;
 }
+static int draw(uint8_t* r, unsigned mode, float d, float limit = 10000) {
+    tooie_object_distance::set_mode(mode);
+    return draw_current(r, d, limit);
+}
 static int gate(uint8_t* r, bool residency, float x, uint32_t flags = 0x1388C000) {
     auto* rdram = r;
     put(r, actor + 4, x); put(r, actor + 8, 0); put(r, actor + 12, 0);
@@ -208,8 +211,7 @@ static int gate(uint8_t* r, bool residency, float x, uint32_t flags = 0x1388C000
     CHECK(uint32_t(MEM_W(0x7C, guest(actor))) == (residency ? flags : flags | 0x8000u));
     return int(c.r2);
 }
-static int collect(uint8_t* rdram, unsigned mode) {
-    tooie_object_distance::set_mode(mode);
+static int collect_current(uint8_t* rdram) {
     MEM_W(0, guest(0x8012D500)) = 0x80050000; put(rdram, 0x80050164, zoom);
     MEM_W(0, guest(grid)) = cells;
     MEM_W(0x1C, guest(grid)) = 25; MEM_W(0x20, guest(grid)) = 1;
@@ -220,8 +222,12 @@ static int collect(uint8_t* rdram, unsigned mode) {
     CHECK(c.r29 == guest(stack) && c.r31 == guest(0x80400100));
     return queued_target;
 }
-static int sprite(uint8_t* rdram, unsigned mode, float depth, int limit = 10000) {
-    tooie_object_distance::set_mode(mode); sprite_depth = depth;
+static int collect(uint8_t* rdram, unsigned mode) {
+    tooie_object_distance::set_mode(mode);
+    return collect_current(rdram);
+}
+static int sprite_current(uint8_t* rdram, float depth, int limit = 10000) {
+    sprite_depth = depth;
     MEM_W(0, guest(0x8012D500)) = 0x80050000; put(rdram, 0x80050164, zoom);
     MEM_W(0, guest(0x8012D494)) = limit; MEM_B(0, guest(0x8012D491)) = 0;
     MEM_B(0, guest(0x8012D492)) = 1; MEM_W(0, guest(0x8012D4F0)) = 1;
@@ -236,9 +242,69 @@ static int sprite(uint8_t* rdram, unsigned mode, float depth, int limit = 10000)
     CHECK(MEM_W(0, guest(0x8012D494)) == limit && MEM_BU(0, guest(0x8012D491)) == 0 && MEM_BU(0, guest(0x8012D492)) == 1);
     return c.r2 ? MEM_H(0, guest(0x8012D48C)) : -1;
 }
+static int sprite(uint8_t* rdram, unsigned mode, float depth, int limit = 10000) {
+    tooie_object_distance::set_mode(mode);
+    return sprite_current(rdram, depth, limit);
+}
+
+static void coop_test(uint8_t* rdram) {
+    using namespace tooie_object_distance;
+    std::filesystem::create_directory(config_dir);
+    recomp::config::Config config("Graphics", "graphics", true);
+    add_config(config);
+    CHECK(config.load_config());
+    auto saved_json = []() {
+        std::ifstream file(config_dir / "graphics.json", std::ios::binary);
+        CHECK(file.is_open());
+        return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    };
+    MEM_W(0, guest(0x80135490)) = 0x80040000;
+    MEM_W(4, guest(0x80135490)) = 0x80041000;
+    commit_fixture_story_pair(rdram);
+
+    for (uint32_t value = 1; value <= 3; ++value) {
+        config.set_option_value(option, value);
+        CHECK(config.save_config());
+        const auto saved = saved_json();
+        // No set_mode calls during entry/exit: the saved choice must resume live.
+        for (bool coop : {false, true, false}) {
+            split = coop;
+            CHECK(tooie_story_coop::running(rdram) == coop);
+            CHECK(mode() == Mode(value));
+            CHECK(draw_current(rdram, 6000) == (coop ? 0 : 1));
+            CHECK(mode() == Mode(value));
+            // Zoom 2 puts the target inside every extended mode, outside Original.
+            // Native collection and radial cell selection must both allow it.
+            zoom = 2;
+            CHECK(collect_current(rdram) == (coop ? 0 : 1));
+            zoom = 1;
+            CHECK(mode() == Mode(value));
+            CHECK(sprite_current(rdram, 15000) == (coop ? -1 : 255));
+            CHECK(mode() == Mode(value));
+            CHECK(gate(rdram, false, 6000) == (coop ? 0 : 1));
+            CHECK(mode() == Mode(value));
+            CHECK(gate(rdram, true, 6000) == (coop ? 1 : 0));
+            CHECK(mode() == Mode(value));
+            CHECK(saved_json() == saved);
+        }
+    }
+    std::filesystem::remove(config_dir / "graphics.json");
+    std::filesystem::remove(config_dir);
+}
+
 int main() {
     config_test();
     std::vector<uint8_t> memory(0x800000); auto* rdram = memory.data(); auto* r = rdram;
+    MEM_H(0, guest(0x80127632)) = 3;
+    CHECK(draw(r, 3, 6000) == 0); // Saved Unlimited is effectively Original before expanded boot.
+    CHECK(gate(r, false, 30000) == 0);
+    CHECK(gate(r, true, 30000) == 1);
+    tooie_memory::boot.latch(true, true);
+    MEM_W(0, guest(0x8007E990)) = 0x80200000;
+    MEM_W(0, guest(0x8007BF00)) = 0x200000;
+    MEM_W(0, guest(0x80200014)) = 0x80200020;
+    MEM_W(0, guest(0x80200024)) = 0x803FFFE0;
+    MEM_W(0, guest(0x80200034)) = 0x803FFFE0;
     MEM_H(0, guest(0x80127632)) = 3; MEM_H(0, guest(0x80132DC2)) = 322;
     CHECK(draw(r, 0, 6000) == 0); CHECK(draw(r, 1, 6000) == 1);
     CHECK(draw(r, 1, 18000) == 0); CHECK(draw(r, 2, 18000) == 1);
@@ -267,12 +333,7 @@ int main() {
     auto c = context(); c.r4 = guest(point); func_800EEF94(r, &c); CHECK(c.f0.fl == 6000);
     c = context(); c.r4 = guest(point); c.r5 = guest(actor + 4); tooie_distance_squared(r, &c); CHECK(c.f0.fl == 36000000);
     c = context(); c.r4 = guest(point); c.r5 = bits(5000); c.r6 = guest(actor + 4); tooie_distance_radius(r, &c); CHECK(c.r2 == 0);
-    // J2 affects generic extended scheduling/retention, without modifying global focus.
-    split = true; MEM_W(0, guest(0x80135490)) = 0x80040000; MEM_W(4, guest(0x80135490)) = 0x80041000;
-    commit_fixture_story_pair(r);
-    second_x = 29500; tooie_object_distance::set_mode(1);
-    CHECK(gate(r, false, 30000) == 1); CHECK(gate(r, true, 30000) == 0);
-    alive = false; CHECK(gate(r, false, 30000) == 0); CHECK(gate(r, true, 30000) == 1); split = false;
+    coop_test(r);
     for (int excluded : {0, 1, 2, 4, 5}) {
         MEM_H(0, guest(0x80127632)) = excluded;
         CHECK(draw(r, 3, 6000) == 0); CHECK(gate(r, false, 30000) == 0); CHECK(gate(r, true, 30000) == 1);
@@ -345,5 +406,13 @@ int main() {
     }
     MEM_H(0, guest(0x80127632)) = 3; MEM_B(0, guest(0x8012762C)) = 0x1B;
     CHECK(collect(r, 3) == 0); CHECK(sprite(r, 3, 15000) == -1); MEM_B(0, guest(0x8012762C)) = 0;
+    tooie_object_distance::set_mode(3);
+    MEM_W(0, guest(0x8003F750)) = 0x200000 - tooie_memory::guard_free_reserve + 1;
+    CHECK(gate(r, false, 30000) == 0); CHECK(gate(r, true, 30000) == 1);
+    MEM_W(0, guest(0x8003F750)) = 0;
+    CHECK(gate(r, false, 30000) == 1); CHECK(gate(r, true, 30000) == 0);
+    MEM_W(0, guest(0x80200024)) = 0x80201000;
+    MEM_W(0, guest(0x800459C8)) += 1;
+    CHECK(gate(r, false, 30000) == 0); CHECK(gate(r, true, 30000) == 1);
     std::printf("PASS: %d assertions (native cutoff/range/residency + production config).\n", checks);
 }
