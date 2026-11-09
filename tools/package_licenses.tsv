@@ -29,5 +29,7 @@ README-PACKAGE.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by
 BUILD-INFO.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by the packager
 DEPENDENCIES.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by the packager
 AUDIT.txt	package-meta	GPL-3.0 (TooieRecomp project licence)	written by the packager
+assets/languages/it.tlpb	translation	Italian draft: Rulesless v0.9 translation (free for personal use, attribution requested) plus a project supplemental draft	see assets/languages/NOTICE-Italian.txt; no ROM image included
+assets/languages/NOTICE-*.txt	language-notice	as written (provenance notice)	attribution and provenance for the language bundles
 assets/languages/pt-BR.tlpb	translation	Brazilian Portuguese translation data (text and font patch runs)	text only; font artwork comes from the player's USA ROM and procedural accents
 assets/languages/*.tlpb	translation	PROPRIETARY Nintendo/Rare localized text; no project licence grant	FR/DE/ES bundles extracted from the user's verified European ROM; no ROM image or font artwork included
