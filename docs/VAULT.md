@@ -2,7 +2,7 @@
 title: "Índice da documentação"
 description: "Índice geral da documentação do TooieRecomp."
 status: current
-updated: 2026-11-02
+updated: 2026-11-09
 tags: [vault, index, tooierecomp]
 ---
 
@@ -79,6 +79,7 @@ Histórico de implementação e medições permanece no Git.
 - [[reverse-engineering/systems/overlays]] — Sistemas de overlay
 - [[reverse-engineering/systems/audio-sequence-volume]] — Volume de sequências e BGM
 - [[reverse-engineering/systems/text-and-fonts]] — Texto e fontes (assets de texto, mapeamento de glifos)
+- [[reverse-engineering/systems/guest-heap]] — Heap do guest, estrutura da free-list, validação de ponteiros e memória expandida
 - [[reverse-engineering/modding/README]] — Mapa de modding
 - [[reverse-engineering/modding/known-extension-points]] — Pontos de extensão
 

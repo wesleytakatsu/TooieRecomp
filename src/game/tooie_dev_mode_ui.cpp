@@ -24,6 +24,7 @@
 #include "tooie_dev_cheats.h"
 #include "tooie_dev_forms.h"
 #include "tooie_dev_warp.h"
+#include "tooie_expanded_memory.h"
 
 namespace {
 
@@ -636,6 +637,15 @@ void build_experimental(ContextId context, Element* root) {
     });
     option_description(context, line, "Two players (split screen)",
         "Applies on the next map load. Paused in minigame rooms; resumes on the next eligible map. Assign controllers in General > Multiplayer.");
+    const bool expanded = tooie_memory::boot.active();
+    auto* memory_hint = context.create_element<Label>(card, expanded
+        ? "Expanded Memory is active. Split screen uses more memory."
+        : "Recommended before co-op: enable General > Expanded Memory and restart. Split screen uses more memory.",
+        theme::Typography::LabelSM);
+    memory_hint->set_color(expanded ? theme::color::TextDim : theme::color::Warning);
+    auto* distance_hint = context.create_element<Label>(card,
+        "Object Distance uses Original during story co-op.", theme::Typography::LabelSM);
+    distance_hint->set_color(theme::color::TextDim);
 }
 
 void build_contents(ContextId context, Element* root) {

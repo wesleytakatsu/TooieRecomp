@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_story_coop.h"
 #include "tooie_dev_cheats.h"
 #include "recomp.h"
@@ -7,7 +8,7 @@
 namespace tooie_story_coop {
 namespace {
 gpr guest(uint32_t p) { return int32_t(p); }
-bool pointer(uint32_t p) { return p >= 0x80000000 && p < 0x807FFE00 && !(p & 3); }
+bool pointer(uint32_t p) { return tooie_memory::aligned(p, 0x201); }
 struct Pair {
     uint16_t map = 0;
     bool creating = false, committed = false, allocating = false;

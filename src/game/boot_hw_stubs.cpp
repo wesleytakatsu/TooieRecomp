@@ -1,3 +1,5 @@
+#include "tooie_guest_memory.h"
+#include "tooie_expanded_memory.h"
 // Strong overrides for boot-segment libultra that touch unmapped N64 MMIO
 // (SI/PI at 0xA48xxxxx / 0xA46xxxxx). RecompiledFuncs symbols are weak under
 // clang RECOMP_FUNC; these replace them at link time.
@@ -1692,7 +1694,7 @@ extern "C" void tooie_demo_path_tick(uint8_t* rdram, uint64_t tick) {
     const uint32_t ba_stick_addr = static_cast<uint32_t>(MEM_W(0x128, ps));
 
     auto is_guest = [](uint32_t a) {
-        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+        return tooie_memory::aligned(a);
     };
 
     float px = 0, py = 0, pz = 0;
@@ -1842,7 +1844,7 @@ extern "C" void tooie_shot_tick(uint8_t* rdram, uint64_t tick) {
         return f;
     };
     auto is_guest = [](uint32_t a) {
-        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+        return tooie_memory::aligned(a);
     };
 
     const int mode_v = int(MEM_H(0x2, kseg0_gpr(0x80127630u)));
@@ -2017,7 +2019,7 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
     const int sub_v = int(MEM_BU(0x1, kseg0_gpr(0x80135470u)));
     int32_t egg_slot = -1;
     const uint32_t ps_addr = static_cast<uint32_t>(MEM_W(0, kseg0_gpr(0x80135490u)));
-    if ((ps_addr >= 0x80000000u) && ((ps_addr + 0x80000000u) < 0x00800000u) && ((ps_addr & 3u) == 0u)) {
+    if (tooie_memory::aligned(ps_addr)) {
         egg_slot = static_cast<int32_t>(MEM_W(0x64, kseg0_gpr(ps_addr)));
     }
     const uint32_t egg_tbl = 0x80117E20u;
@@ -2044,7 +2046,7 @@ extern "C" void tooie_shot_note_overlay(uint8_t* rdram, void* ctx_void,
                  mode_v, map_v, stage_v, sub_v, egg_slot, egg_enum, egg_name);
     // projectile actor overlays: a0 is typically the actor.
     if ((ovl >= 534u && ovl <= 540u) || ovl == 552u) {
-        if ((a0 >= 0x80000000u) && ((a0 + 0x80000000u) < 0x00800000u) && ((a0 & 3u) == 0u)) {
+        if (tooie_memory::aligned(a0)) {
             const gpr act = kseg0_gpr(a0);
             const float ax = bits_f32(MEM_W(0x04, act));
             const float ay = bits_f32(MEM_W(0x08, act));
@@ -2100,7 +2102,7 @@ static float tooie_bits_f32(int32_t bits) {
 }
 
 static bool tooie_is_guest(uint32_t a) {
-    return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+    return tooie_memory::aligned(a);
 }
 
 static uint32_t tooie_ud4_seq() {
@@ -3959,7 +3961,7 @@ extern "C" void tooie_demo_sync_tick(uint8_t* rdram, uint64_t tick) {
         return f;
     };
     auto is_guest = [](uint32_t a) {
-        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+        return tooie_memory::aligned(a);
     };
 
     const gpr plist = kseg0_gpr(0x80135490u);
@@ -4216,7 +4218,7 @@ extern "C" void tooie_demo7_drift_tick(uint8_t* rdram) {
         return f;
     };
     auto is_guest = [](uint32_t a) {
-        return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+        return tooie_memory::aligned(a);
     };
     const gpr gl = kseg0_gpr(0x8012D5B0u);
     const uint32_t gl_base = static_cast<uint32_t>(MEM_W(0, gl));
@@ -4422,8 +4424,7 @@ static uint32_t tooie_d1x_extra_count();
 }  // namespace banjo
 
 static inline bool tooie_ws_guest_safe(uint32_t a, size_t size = 1) {
-    const uint32_t p = a & 0x1FFFFFFFu;
-    return (p + size <= 0x00800000u) && (a >= 0x80000000u && a < 0xC0000000u);
+    return tooie_memory::contains_alias(a, size);
 }
 
 static inline float tooie_ws_read_f32(const uint8_t* rdram, uint32_t a) {
@@ -5091,7 +5092,7 @@ static float tooie_d7_f32(uint32_t u) {
 }
 
 static bool tooie_d7_is_guest(uint32_t a) {
-    return (a >= 0x80000000u) && ((a + 0x80000000u) < 0x00800000u) && ((a & 3u) == 0u);
+    return tooie_memory::aligned(a);
 }
 
 static tooie_d7_snap tooie_d7_take(uint8_t* rdram, uint32_t ps_addr) {
@@ -5975,6 +5976,8 @@ static void tooie_d1p_wrap_sweep(uint8_t* rdram, recomp_context* ctx) {
 }
 
 void register_boot_lookup_stubs() {
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8001E7E0u), tooie_heap_end);
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x8001E830u), tooie_heap_size);
     // Prefer real ultramodern/libultra recomp hooks at Tooie VRAMs.
     for (const UltraLookupHook& hook : kUltraLookupHooks) {
         recomp::overlays::add_loaded_function(hook.vram, hook.func);

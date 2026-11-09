@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_dev_collectibles_hook.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_story_coop.h"
@@ -11,7 +12,7 @@ extern "C" void func_800FFAB0(uint8_t*, recomp_context*); // native deferred act
 namespace {
 gpr guest(uint32_t address) { return static_cast<int32_t>(address); }
 bool readable(uint32_t address, uint32_t size) {
-    return address >= 0x80000000u && address <= 0x80800000u - size && (address & 3u) == 0;
+    return tooie_memory::aligned(address, size);
 }
 bool enabled(uint8_t* rdram) {
     if (!tooie_story_coop::running(rdram)) return false;

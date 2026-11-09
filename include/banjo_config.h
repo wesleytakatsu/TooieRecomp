@@ -15,6 +15,7 @@ namespace banjo {
         namespace general {
             inline const std::string language = "language";
             inline const std::string multiplayer_mode = "multiplayer_mode";
+            inline const std::string expanded_memory = "expanded_memory";
             inline const std::string note_saving_mode = "note_saving_mode";
             inline const std::string camera_invert_mode = "camera_invert_mode";
             inline const std::string analog_cam_mode = "analog_cam_mode";

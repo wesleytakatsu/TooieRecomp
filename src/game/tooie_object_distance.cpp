@@ -1,7 +1,6 @@
+#include "tooie_expanded_memory.h"
 #include "tooie_object_distance.h"
-#include "tooie_dev_cheats.h"
 #include "tooie_story_coop.h"
-#include <array>
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -12,9 +11,6 @@ extern "C" {
 void func_800E42C0(uint8_t*, recomp_context*);
 void func_800EFFB4(uint8_t*, recomp_context*);
 void func_800EEB40(uint8_t*, recomp_context*);
-void func_800F5A00(uint8_t*, recomp_context*);
-void func_800F6438(uint8_t*, recomp_context*);
-void func_800F6478(uint8_t*, recomp_context*);
 void func_800D3104(uint8_t*, recomp_context*);
 void func_800D2F44(uint8_t*, recomp_context*);
 void func_800E1C00(uint8_t*, recomp_context*);
@@ -25,30 +21,16 @@ using Mode = tooie_object_distance::Mode;
 std::atomic<Mode> selected{Mode::Original};
 gpr guest(uint32_t p) { return static_cast<int32_t>(p); }
 bool readable(uint32_t p, uint32_t n) {
-    return (p & 3u) == 0 && p >= 0x80000000u && p <= 0x80800000u - n;
+    return tooie_memory::aligned(p, n);
 }
 Mode active(uint8_t* rdram) {
-    const auto value = selected.load(std::memory_order_relaxed);
-    // Attract replays and native multiplayer retain their original scheduling.
-    return rdram && MEM_H(0, guest(0x80127632)) == 3 &&
-        MEM_BU(0, guest(0x8012762C)) != 0x1B ? value : Mode::Original;
+    // Extended modes need the expanded heap. Story co-op, attract replays and native
+    // multiplayer keep native distances without changing the saved preference.
+    if (!rdram || !tooie_memory::boot.active() || tooie_story_coop::running(rdram)) return Mode::Original;
+    const bool story = MEM_H(0, guest(0x80127632)) == 3 && MEM_BU(0, guest(0x8012762C)) != 0x1B;
+    return story ? selected.load(std::memory_order_relaxed) : Mode::Original;
 }
 float multiplier(Mode m) { return m == Mode::Double ? 2.0f : m == Mode::Quadruple ? 4.0f : 1.0f; }
-using Point = std::array<float, 3>;
-bool point(uint8_t* rdram, uint32_t p, Point& out) {
-    if (!readable(p, 12)) return false;
-    for (unsigned i = 0; i < 3; ++i) {
-        const auto bits = MEM_W(i * 4, guest(p));
-        std::memcpy(&out[i], &bits, 4);
-        if (!std::isfinite(out[i])) return false;
-    }
-    return true;
-}
-double distance(const Point& a, const Point& b) {
-    double d = 0;
-    for (unsigned i = 0; i < 3; ++i) { const double v = double(a[i]) - b[i]; d += v * v; }
-    return d;
-}
 struct Model {
     Mode setting;
     gpr native_stack;
@@ -98,49 +80,16 @@ float model_limit(uint8_t* rdram, const Model& frame, float view_scale) {
     return limit;
 }
 
-// The native actor loop supplies the focused player's point. For the extended
-// policy, retain/update relative to the nearer live split-screen player without
-// changing focus. This does not widen attack, hearing or interaction queries.
-bool nearer_second(uint8_t* rdram, const recomp_context& input, Point& second) {
-    if (!tooie_story_coop::running(rdram)) return false;
-    const auto first = uint32_t(MEM_W(0, guest(0x80135490)));
-    const auto other = uint32_t(MEM_W(4, guest(0x80135490)));
-    if (first == other || !readable(first, 4) || !readable(other, 4)) return false;
-    Point origin{}, current{};
-    if (!point(rdram, uint32_t(input.r4) + 4, origin) ||
-        !point(rdram, uint32_t(input.r5), current)) return false;
-    auto c = input; c.r29 = ADD32(input.r29, -0x100); c.r4 = 1;
-    func_800F6438(rdram, &c);
-    if (!c.r2) return false;
-    c = input; c.r29 = ADD32(input.r29, -0x100); c.r4 = 1;
-    func_800F6478(rdram, &c);
-    if (!c.r2) return false;
-    c = input; c.r29 = ADD32(input.r29, -0x100); c.r4 = 1; c.r5 = ADD32(input.r29, -0x20);
-    func_800F5A00(rdram, &c);
-    return point(rdram, uint32_t(ADD32(input.r29, -0x20)), second) &&
-        distance(origin, second) < distance(origin, current);
-}
 void actor_gate(uint8_t* rdram, recomp_context* ctx, recomp_func_t* next, Actor*& slot) {
     const auto setting = active(rdram);
-    if (setting == Mode::Original ||
-        !rdram || !readable(uint32_t(ctx->r4), 0x80)) { next(rdram, ctx); return; }
+    if (setting == Mode::Original || !tooie_memory::distance_heap_available(rdram) ||
+        !readable(uint32_t(ctx->r4), 0x80)) { next(rdram, ctx); return; }
     Actor frame{setting, uint32_t(ctx->r4), 0};
-    const auto stack = ctx->r29;
-    Point second{};
-    const bool nearest = setting != Mode::Original && readable(uint32_t(stack) - 0x200, 0x200) &&
-        nearer_second(rdram, *ctx, second);
-    if (nearest) {
-        const auto scratch = ADD32(stack, -0x20);
-        for (unsigned i = 0; i < 3; ++i) std::memcpy(&MEM_W(i * 4, scratch), &second[i], 4);
-        ctx->r29 = ADD32(stack, -0x80);
-        ctx->r5 = scratch;
-    }
     // Match the native gate's stack and position, excluding initialization/event
     // callbacks and other distance queries nested under this call.
     frame.math_stack = ADD32(ctx->r29, -0x18);
     Scope scope(slot, frame);
     next(rdram, ctx);
-    if (nearest) ctx->r29 = stack;
 }
 }
 
@@ -174,6 +123,7 @@ extern "C" void tooie_distance_view_scale(uint8_t* rdram, recomp_context* ctx) {
     if (applies) model->consumed = true;
     func_800E42C0(rdram, ctx);
     const float scale = ctx->f0.fl;
+    if (active(rdram) == Mode::Original) return;
     // Only these exact invocations use the getter for spatial distance. Do not
     // modify the viewport/FOV or queries nested in frustum/animation callbacks.
     if (selection && ctx->r29 == selection->native_stack && std::isfinite(scale) && scale > 0) {
@@ -200,7 +150,10 @@ extern "C" void tooie_distance_collect(uint8_t* rdram, recomp_context* ctx) {
     func_800D3104(rdram, ctx);
 }
 extern "C" void tooie_distance_cell(uint8_t* rdram, recomp_context* ctx) {
-    if (!selection || ctx->r29 != selection->native_stack) { func_800D2F44(rdram, ctx); return; }
+    if (active(rdram) == Mode::Original || !selection || ctx->r29 != selection->native_stack) {
+        func_800D2F44(rdram, ctx);
+        return;
+    }
     Selection frame{selection->setting, ADD32(ctx->r29, -0x58)};
     Scope scope(selection, frame);
     func_800D2F44(rdram, ctx); // Native AABB/frustum and cell flags still run.
@@ -239,7 +192,7 @@ extern "C" void tooie_distance_radius(uint8_t* rdram, recomp_context* ctx) {
     const bool applies = updating && !updating->consumed && ctx->r29 == updating->math_stack &&
         uint32_t(ctx->r4) == updating->address + 4 &&
         std::isfinite(radius) && radius > 0;
-    if (applies) {
+    if (applies && active(rdram) != Mode::Original && tooie_memory::distance_heap_available(rdram)) {
         updating->consumed = true;
         const float extended = updating->setting == Mode::Unlimited ? 100000000.0f : radius * multiplier(updating->setting);
         uint32_t extended_bits; std::memcpy(&extended_bits, &extended, 4);
@@ -253,7 +206,8 @@ extern "C" void tooie_distance_squared(uint8_t* rdram, recomp_context* ctx) {
     if (applies) retaining->consumed = true;
     func_800EEB40(rdram, ctx);
     const float original = ctx->f0.fl;
-    if (!applies || !std::isfinite(original) || original < 0) return;
+    if (!applies || active(rdram) == Mode::Original ||
+        !tooie_memory::distance_heap_available(rdram) || !std::isfinite(original) || original < 0) return;
     const float factor = multiplier(retaining->setting);
     ctx->f0.fl = retaining->setting == Mode::Unlimited ? 0.0f : original / (factor * factor);
 }

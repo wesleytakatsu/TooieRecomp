@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Windowing, User Interface and Configuration"
 description: "Technical specification for SDL2 window lifecycle, graphics driver failure fallback, and RecompUI configuration integration in TooieRecomp."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-02
+updated: 2026-11-09
 tags: [specs, tooierecomp, window, ui, config, vulkan, fallback, menu-policy, forced-refresh, resolution, dev-mode, warp]
 ---
 
@@ -49,6 +49,7 @@ RT64 Viewport & Swapchain Presentation
 | **REQ-CFG-01** | Menu Policy Enforcement | Interpolation OFF enforces Manual 30; ON unlocks user framerate controls. | `IMPLEMENTED` |
 | **REQ-CFG-02** | Resolution Scaling | Exposes `Original3x` and `Original4x` in UI and config serialization. | `IMPLEMENTED` |
 | **REQ-CFG-03** | Object Distance | Graphics enum Original/2x/4x/Unlimited; applied on Load/Apply, persisted in `graphics.json`, default Original. Experimental behavior and limits: [[graphics-and-presentation#3.1.1 Object distance]]. | `EXPERIMENTAL` |
+| **REQ-CFG-04** | Expanded Memory | General option Off/On (default Off), key `expanded_memory` in `general.json`. Latched once per process at config finish; live changes notify "Restart the game to apply". Kill switch: `TOOIE_TEST_EXPANDED_HEAP=0`. | `EXPERIMENTAL` |
 | **REQ-DEV-01** | Dev Mode tab | ESC menu tab locked behind an accepted warning; Warp saves, renames, deletes and teleports to player positions; Cheats are triggered by the Debug Button plus a D-pad direction. | `IMPLEMENTED` |
 
 ---
@@ -146,6 +147,12 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
   ("Multiplayer (up to 4 players)", `Off`/`On`, default `Off`). Evaluated once at startup in `src/main/main.cpp`:
   `On` activates `recompinput::players::set_single_player_mode(false)` and `set_player_count_range(1, 4)`;
   `Off` preserves default single-player mode (merging all host controllers and keyboard into player 1).
+  `expanded_memory` ("Expanded Memory (experimental)", `Off`/`On`, default `Off`): key `expanded_memory`
+  (`include/banjo_config.h`, `src/game/tooie_expanded_memory_config.cpp`, `src/game/config.cpp`). Relocates the guest heap
+  to expanded RDRAM (`0x8080C000..0x81000000`, ~7.95 MiB, ~2.9x native). Latched once per process at the end of config
+  initialisation (`tooie_memory::finish_config`, before the game boots). Changing it while running saves the configuration
+  only; when the saved value differs from the latched one, the option description shows "Restart the game to apply"
+  (matching the Graphics API mechanism). Kill switch: `TOOIE_TEST_EXPANDED_HEAP=0` forces the native heap regardless of config.
   `language` ("Game Language", `English`/`PortugueseBrazil`/`French`/`German`/`Spanish`, default `English`): labels are
   stored pre-uppercased because the menu's uppercase transform does not handle accented letters. A change callback
   (`tooie_language_import_ui::on_language_change`) runs the European-ROM import for FR/DE/ES; the pack itself is applied at
@@ -180,6 +187,12 @@ Configuration files are stored under `<config_path>/` (on Windows: `%LOCALAPPDAT
    - Full contract, private audio import and opt-in logs: [Launcher Startup and Backends](startup-and-backends.md).
 
 ### 4.3 Menu Option Availability
+- `expanded_memory`: Available in General as "Expanded Memory (experimental)", toggle `Off`/`On`, default `Off`.
+  Latched once per process during config initialization (`tooie_memory::finish_config`). Live changes update saved
+  configuration; when the saved choice differs from the active process latch, the option description shows
+  "Restart the game to apply". Kill switch: `TOOIE_TEST_EXPANDED_HEAP=0` forces native heap regardless of config.
+  Required for extended Object Distance levels (`Double`, `Quadruple`, `Unlimited`); see
+  [[specs/Tooie/graphics-and-presentation#3.1.1 Object distance]] and [[specs/Tooie/runtime-and-overlays#3.4 Guest heap layout and expansion]].
 - `note_saving_mode`: Hidden from UI (`hidden = true`).
 - `analog_cam_mode`, `analog_camera_sensitivity`, `third_person_camera_invert_mode`: Available in General.
   Analog Camera defaults Off; sensitivity 1–10 defaults 3. Inversion keeps its existing X default and saved values.
@@ -314,7 +327,11 @@ that change the game's state directly.
     The user approved the revised selector on Windows. Host harness/build validation and that approval do not prove
     all special characters' gameplay in arbitrary maps; exhaustive manual testing remains pending.
 - **Experimental: Two players (split screen)**: default off, persisted as the boolean `two_players`. Requires the
-  session warning to be accepted, Multiplayer enabled in General and two players assigned in Controls. Player creation
+  session warning to be accepted, Multiplayer enabled in General and two players assigned in Controls. Co-op is never
+  blocked by memory configuration. The option displays dynamic guidance: when Expanded Memory is not active in this
+  process, a warning-colour hint "Recommended before co-op: enable General > Expanded Memory and restart. Split screen
+  uses more memory."; when active, a dim note "Expanded Memory is active. Split screen uses more memory." In addition,
+  a dim note indicates "Object Distance uses Original during story co-op." Player creation
   applies the option on the next eligible map load; game select and the excluded cutscene maps remain unchanged.
   **Known limitation:** the user reports J2 remains accessible during the train/cart race with the bird.
   The current checkpoint deliberately retains this behavior. Individual native event identity/map were not

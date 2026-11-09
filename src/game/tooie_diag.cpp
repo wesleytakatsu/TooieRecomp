@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_diag.h"
 #include "tooie_diag_path.h"
 #include "recomp.h"
@@ -856,7 +857,7 @@ uint32_t backpack_guest_word(uint8_t* rdram, uint32_t guest_ptr, uint32_t offset
         return 0;
     }
     const uint32_t physical = (guest_ptr + offset) & 0x1FFFFFFFu;
-    if (physical > 0x007FFFFCu) {
+    if (!tooie_memory::contains(0x80000000u | physical, sizeof(uint32_t))) {
         return 0;
     }
     uint32_t value = 0;
