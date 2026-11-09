@@ -105,13 +105,8 @@ La release también incluye un paquete `.deb` (Debian/Ubuntu/Mint) y un `.AppIma
 
 TooieRecomp admite varios idiomas de texto en el juego: **English** (predeterminado), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (borrador) y **日本語** (japonés).
 
-- **Português (Brasil), Français, Deutsch, Español e Italiano:** Están incluidos en la versión; solo se necesita la ROM USA.
+- **Português (Brasil), Français, Deutsch, Español, Italiano, 日本語:** Están incluidos en la versión; solo se necesita la ROM USA.
 - **Italiano (borrador):** Combina la traducción al italiano Rulesless v0.9 con una traducción suplementaria a la espera de revisión editorial. Crédito: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
-- **日本語 (Japonés):** NO está incluido en la versión. Se genera en tu ordenador a partir del volcado de tu propio cartucho japonés, "Banjo to Kazooie no Daibouken 2 (Japan)" (SHA-1 en big-endian tras la normalización `5a5172383037d171f121790959962703be1f373c`; se aceptan órdenes de bytes .z64/.n64/.v64). Pasos: ejecuta el juego una vez con tu ROM USA (esto creará `bt.n64.us.1.0.z64` en la carpeta de configuración), obtén el código fuente y, con Python 3.8+, ejecuta desde la raíz del repositorio:
-  ```
-  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
-  ```
-  Esto escribirá `languages/ja.tlpb` en la carpeta de configuración (`%LOCALAPPDATA%\TooieRecompiled` en Windows, `~/.config/TooieRecompiled` en Linux). El juego se sigue ejecutando desde la ROM USA.
 - **El idioma japonés todavía requiere muchas comprobaciones y pruebas**: los saltos de línea y el ancho de los menús no se han comprobado en pantalla y es de esperar que contenga errores. Los informes son bienvenidos.
 - **Aplicación del idioma:** Se elige en `Settings` → `General` → `Game Language`. La selección se aplica al iniciar el juego. Si se cambia durante la partida, reinicia el juego para que surta efecto.
 

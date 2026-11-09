@@ -27,7 +27,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
-| Idiomas do jogo | EN; pt-BR/FR/DE/ES e italiano em rascunho em `assets/languages/*.tlpb`; japonês privado em user `languages/ja.tlpb`. Só ROM USA no runtime. Japonês: fontes IA8 próprias, 2.264 assets e título compatível com HD existente; validação visual pendente. Italiano: 2.434 assets, título HD aprovado pelo usuário; revisão editorial pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
+| Idiomas do jogo | EN; pt-BR/FR/DE/ES, italiano em rascunho e japonês em `assets/languages/*.tlpb`; só ROM USA. Japonês distribuído por decisão do usuário (2026-11-09) só com texto, fontes originais e logo do título (`0x8A8`); demais gráficos regionais ficam USA. Bundle 480.746 bytes, SHA-256 `551451b5…6cad`, 2.255 assets; layout na tela pendente. Italiano: 2.434 assets, título HD aprovado pelo usuário; revisão editorial pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
@@ -67,8 +67,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Japonês local (2026-11-08)
 
-- Opção `Japanese` em General > Game Language, tag `ja`, bundle privado em
-  `%LOCALAPPDATA%/TooieRecompiled/languages/ja.tlpb`; sem arquivo japonês na árvore vendorizada `assets/`.
+- Opção `Japanese` em General > Game Language, tag `ja`, bundle incluído em
+  `assets/languages/ja.tlpb` (versionado; pasta do usuário mantida como fallback).
   A ROM Japan fornecida é lida sem alterações; byte order de 16 bits normalizado e SHA-1
   `5a5172383037d171f121790959962703be1f373c` conferido. Runtime continua usando apenas a ROM USA.
 - Gerador `tools/build_japanese_bundle.py`: 2.252 assets de texto, dois sprites IA8 compostos (260/229 frames),
@@ -81,9 +81,9 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Os 31 hashes nativos do título Japan já resolvem no BT Reloaded para a arte japonesa HD e o símbolo de marca
   compartilhado. Cópia completa italiana também contém essa arte. Nenhum redesenho, alteração de hashes ou ZIP HD.
   Rareware/Dolby são idênticos à USA. Geometria incompatível, animações e código regional não foram importados.
-- Fonte/codificação, extração e limite privado documentados em [[reverse-engineering/systems/text-and-fonts]],
-  [[specs/Tooie/language-packs]] e [[specs/Tooie/asset-and-licensing-manifest]]. `NOTICE-Japanese.txt` versionável;
-  bundle com arte original fica fora do git, com cópia privada em `F:/Recursos do Tooie/Japones/`.
+- Fonte/codificação, extração e distribuição documentadas em [[reverse-engineering/systems/text-and-fonts]],
+  [[specs/Tooie/language-packs]] e [[specs/Tooie/asset-and-licensing-manifest]]. `NOTICE-Japanese.txt` e
+  `assets/languages/ja.tlpb` versionados no git e distribuídos nos pacotes por decisão do usuário (2026-11-09).
 - Build Windows e paridade C++ do bundle real passaram; 17 testes Python, mapa de fontes e parser de packs passaram.
   HEAD-base `e4396fd`; `Build-Tooie.ps1 -Stage Build -Jobs 8` e build dos três alvos host via CMake, exit 0.
   `tools/test_build_language_packs.py`, `tooie_language_bundle_test`, `tooie_text_font_map_test` e
@@ -563,7 +563,7 @@ Revisão do japonês (2026-11-09): gerador perdia 717 linhas em 407 assets (só 
 desalinhava créditos `0x1B68..0x1B90`, convertia 0x0A em `<` (`0x186D`) e rotulava o glifo 78 como `ヮ` (é `ヲ`).
 Corrigido no gerador (fragmentos unidos por espaço, sem espaço dentro de 「」, após `・` e em katakana partida nas
 perguntas; 0x0A onde o tipo aceita; créditos USA, `ダブルン`, `タワー DE クイズ`); 32 testes Python, paridade C++
-2.264 assets e auditoria sem linhas perdidas (2ª revisão Sonnet sem erro). Bundle 527.402 bytes, SHA-256 `e2e7ae97…0ca6`; backup do
+2.264 assets e auditoria sem linhas perdidas (2ª revisão Sonnet sem erro). Bundle 527.402 bytes, SHA-256 `e2e7ae97…0ca6` (depois reduzido; ver distribuição); backup do
 anterior em `E:/projetos/tooie-userdata-backup-20261109-ja-fix/`. Comparação por pixel dos glifos contra a ROM Japan
 (SHA-1 normalizado conferido): 1.829 assets idênticos com espaçamento, 402 idênticos salvo junções, 20 adaptações
 intencionais (créditos USA, `1007`, `143E`, `154A`, `186C`, `18AC`, `18E1`, `18E2`), `1A89` autoral; latinos/pontuação

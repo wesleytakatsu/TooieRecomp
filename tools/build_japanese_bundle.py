@@ -413,24 +413,6 @@ def select_section(index: int, usa: list, japan: list, codes: dict[int, int],
     return result, adjusted
 
 
-def texture_only_model(usa: bytes, japan: bytes) -> bytes | None:
-    if usa[:4] != b"\0\0\0\x0B" or japan[:4] != usa[:4]:
-        return None
-    a, b = struct.unpack_from(">H", usa, 8)[0], struct.unpack_from(">H", japan, 8)[0]
-    if not a or not b:
-        return None
-    count = struct.unpack_from(">H", usa, a + 4)[0]
-    if count != struct.unpack_from(">H", japan, b + 4)[0]:
-        return None
-    size = 8 + count * 8
-    end_a, end_b = struct.unpack_from(">I", usa, 12)[0], struct.unpack_from(">I", japan, 12)[0]
-    if (usa[a:a + size] != japan[b:b + size] or end_a - a != end_b - b or
-            not a + size <= end_a <= len(usa) or not b + size <= end_b <= len(japan)):
-        return None
-    target = usa[:a + size] + japan[b + size:end_b] + usa[end_a:]
-    return target if target != usa else None
-
-
 def build(japan: bytes, usa: bytes) -> tuple[bytes, bytes, dict]:
     japan = japanese_rom(japan)
     if len(usa) != packs.USA_SIZE or hashlib.sha1(usa).hexdigest() != packs.USA_SHA1:
@@ -500,12 +482,12 @@ def build(japan: bytes, usa: bytes) -> tuple[bytes, bytes, dict]:
         translated = packs.asset(japan, JAPAN_TABLE, JAPAN_BASE, index)
         if original == translated:
             continue
-        target = translated if index == TITLE_ID else texture_only_model(original, translated)
-        if target is None:
+        if index != TITLE_ID:
+            # Only the fonts and the title logo are distributed; other regional graphics keep USA art.
             report["regional_data_not_imported"].append(index)
             continue
-        graphics[index] = (original, target)
-        expected[index] = target
+        graphics[index] = (original, translated)
+        expected[index] = translated
         report["graphic_assets"].append(index)
     for index, raw in fonts.items():
         graphics[index] = (packs.asset(usa, packs.USA_TABLE, packs.USA_BASE, index), raw)
