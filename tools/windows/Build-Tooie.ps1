@@ -303,6 +303,11 @@ function Invoke-Package {
     $buildLabel = "dev build $ver"
     $name = "BanjoTooieRecompiled-dev-$ver-Windows-x64"
     if ($ReleaseVersion) {
+        $source = Get-Content -Raw -LiteralPath (Join-Path $Root 'src\main\main.cpp')
+        $found = [regex]::Match($source, '(?m)^const std::string version_string = "([^"]+)";')
+        if (-not $found.Success -or $found.Groups[1].Value -ne $ReleaseVersion) {
+            throw "release version $ReleaseVersion does not match version_string in src\main\main.cpp ($($found.Groups[1].Value))"
+        }
         $releaseLabel = $ReleaseVersion
         $buildLabel = "v$ReleaseVersion"
         $name = "BanjoTooieRecompiled-v$ReleaseVersion-Windows-x64"

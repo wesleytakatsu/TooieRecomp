@@ -27,6 +27,8 @@ TooieRecomp produces self-contained, redistributable application packages for Li
       `dist/BanjoTooieRecompiled-v<ver>-Linux-arm64-PortMaster.zip`.
     - Development: `dist/BanjoTooieRecompiled-dev-<git describe --tags --always --dirty>-Linux-arm64-PortMaster.zip`.
     - Its layout is PortMaster's (`Banjo-Tooie.sh` and a `tooie/` folder), not the single `BanjoTooieRecompiled` directory below.
+  - A release version must equal `version_string` in `src/main/main.cpp` (the version the game shows); all three
+    packagers refuse to build a release archive otherwise.
   - Archive Structure & Metadata:
     - Each archive contains a single top-level `BanjoTooieRecompiled` directory.
     - Checksum sidecar: `<archive>.sha256`.

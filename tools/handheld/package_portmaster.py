@@ -98,6 +98,13 @@ def main():
     if 'TK64_MOBILE:BOOL=ON' not in cache:
         sys.exit(f'{build} is not a TK64_MOBILE build')
 
+    if args.release_version:
+        source = (ROOT / 'src' / 'main' / 'main.cpp').read_text(encoding='utf-8')
+        found = re.search(r'^const std::string version_string = "([^"]+)";', source, re.M)
+        if not found or found.group(1) != args.release_version:
+            sys.exit(f'release version {args.release_version} does not match version_string in src/main/main.cpp '
+                     f'({found.group(1) if found else "missing"})')
+
     describe = git('describe', '--tags', '--always', '--dirty')
     version = f'v{args.release_version}' if args.release_version else f'dev-{describe}'
     name = f'BanjoTooieRecompiled-{version}-Linux-arm64-PortMaster'
