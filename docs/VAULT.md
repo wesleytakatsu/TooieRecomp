@@ -22,11 +22,13 @@ tags: [vault, index, tooierecomp]
 
 ## future
 
-- [[future/implementation-ideas]] — Cogitações futuras: dois processos não implementado e extensão da corrida adiada
+- [[future/implementation-ideas]] — Cogitações futuras, incluindo o plano de varredura automatizada de mapas
+- [[future/visual-atmosphere/README]] — Guia dos planos visuais e de atmosfera: texturas, luz, água, clima e efeitos por cenário, sem ray tracing
+- [[future/visual-atmosphere/implementation-roadmap]] — Roteiro revisado: protótipos independentes, dependências e decisões de continuar, simplificar ou adiar
 
 Planos de implementação antigos foram retirados. Contratos atuais ficam nas specs; detalhes dos controladores em
 [[reverse-engineering/systems/minigame-controllers]]; validação manual pendente em [[specs/Tooie/testing-and-oracle]].
-Propostas não implementadas ficam somente na nota de cogitações, sem autorização automática de execução.
+Propostas não implementadas ficam na nota de cogitações e no guia de atmosfera, sem autorização automática de execução.
 Histórico de implementação e medições permanece no Git.
 
 ## specs

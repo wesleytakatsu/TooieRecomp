@@ -27,6 +27,8 @@ namespace tooie_font_sprite {
     constexpr size_t kSpriteHeaderSize = 12;
     constexpr size_t kSpriteRecordSize = 8;
     constexpr uint16_t kIa8Format = 0x100;
+    constexpr uint16_t kIa4Format = 0x80;
+    enum class Font1Profile { PortugueseBrazil, European };
 
     inline void put16(std::vector<uint8_t>& out, size_t at, uint16_t value) {
         out[at] = uint8_t(value >> 8);
@@ -46,9 +48,10 @@ namespace tooie_font_sprite {
         size_t count = tooie_asset_table::read_u16_be(data.data());
         // Header is followed by fixed-size frame records and aligned pixel data.
         size_t base = tooie_asset_table::read_u32_be(data.data() + 8);
-        if (tooie_asset_table::read_u16_be(data.data() + 2) != kIa8Format ||
+        const auto format = tooie_asset_table::read_u16_be(data.data() + 2);
+        if ((format != kIa8Format && format != kIa4Format) ||
             base != (kSpriteHeaderSize + count * kSpriteRecordSize + 7) / 8 * 8 || base > data.size()) {
-            error = "invalid IA8 sprite header";
+            error = "invalid IA sprite header";
             return false;
         }
         Sprite sprite;
@@ -56,13 +59,27 @@ namespace tooie_font_sprite {
             const uint8_t* record = data.data() + kSpriteHeaderSize + i * kSpriteRecordSize;
             Frame frame{record[0], record[1], record[2], {}};
             size_t offset = tooie_asset_table::read_u32_be(record + 4);
-            size_t size = size_t(frame.padded_width) * frame.height;
+            size_t pixels = size_t(frame.padded_width) * frame.height;
+            size_t size = format == kIa4Format ? pixels / 2 : pixels;
             if (frame.padded_width == 0 || frame.padded_width % 8 || frame.width > frame.padded_width ||
                 record[3] != frame.height || offset > data.size() - base || size > data.size() - base - offset) {
                 error = "invalid sprite frame";
                 return false;
             }
-            frame.pixels.assign(data.begin() + base + offset, data.begin() + base + offset + size);
+            if (format == kIa4Format) {
+                // Normalize IA4 (I3/A1) to IA8 (I4/A4), which the USA text renderers support.
+                frame.pixels.reserve(pixels);
+                for (uint8_t byte : data.subspan(base + offset, size)) {
+                    for (int shift : {4, 0}) {
+                        const uint8_t value = (byte >> shift) & 15;
+                        const uint8_t intensity = value >> 1;
+                        frame.pixels.push_back(uint8_t(((intensity << 1 | intensity >> 2) << 4) |
+                                                       ((value & 1) ? 15 : 0)));
+                    }
+                }
+            } else {
+                frame.pixels.assign(data.begin() + base + offset, data.begin() + base + offset + size);
+            }
             sprite.frames.push_back(std::move(frame));
         }
         out = std::move(sprite);
@@ -151,7 +168,8 @@ namespace tooie_font_sprite {
         }
     }
 
-    inline bool generate_font1(const Sprite& source, Sprite& out, std::string& error) {
+    inline bool generate_font1(const Sprite& source, Sprite& out, std::string& error,
+                               Font1Profile profile = Font1Profile::PortugueseBrazil) {
         if (source.format != kIa8Format || source.frames.size() != kFont1FrameCount) {
             error = "font 1 must contain 51 IA8 frames";
             return false;
@@ -211,15 +229,17 @@ namespace tooie_font_sprite {
             paint(frame, mask, under, fill, outline);
             result.frames.push_back(std::move(frame));
         };
-        add('A', tilde);
+        const bool european = profile == Font1Profile::European;
+        add('A', european ? std::span<const char* const>(diaeresis) : std::span<const char* const>(tilde));
         add('A', acute);
         add('A', grave);
         add('E', acute);
         add('E', grave);
         add('I', acute);
         add('I', grave);
-        add('C', cedilla, true);
-        add('O', tilde);
+        if (european) add('N', tilde);
+        else add('C', cedilla, true);
+        add('O', european ? std::span<const char* const>(diaeresis) : std::span<const char* const>(tilde));
         add('O', acute);
         add('O', grave);
         add('U', diaeresis);
@@ -237,10 +257,16 @@ namespace tooie_font_sprite {
             paint(frame, mask, false, fill, outline);
             result.frames.push_back(std::move(frame));
         }
-        add('E', circumflex);
-        add('I', diaeresis);
+        if (european) {
+            add('I', diaeresis);
+            add('E', circumflex);
+            add('U', circumflex);
+        } else {
+            add('E', circumflex);
+            add('I', diaeresis);
+        }
         add('O', circumflex);
-        add('A', circumflex);
+        if (!european) add('A', circumflex);
         Frame comma = result.frames[index_of('\'')];
         int bottom = -1;
         for (int y = 0; y < int(kPaddedHeight); ++y) {

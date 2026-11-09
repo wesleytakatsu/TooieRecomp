@@ -41,10 +41,11 @@ The root `./build-linux.sh` asks for the format before checking dependencies. Op
 
 `tools/package_linux.sh` owns Linux tar naming/layout; its optional `TOOIE_PACKAGE_STAGE_FILE` handoff reports the audited payload path to the installer packager. Internal `TOOIE_PACKAGE_STAGE_ONLY=1` stages without emitting a tar when only an installer was selected; the direct shell command still produces tar by default. Only the selected formats are generated; `all` stages once. `.deb` installs under `/usr/lib/tooie-recomp`, exposes `tooie-recomp` and a Games desktop entry/icon, and declares symbol-derived distro dependencies plus `libvulkan1`/`bash`. AppImage adds the application library closure, GTK schemas, distro copyright notices and `tools/appimage-runtime.LICENSE`; glibc/driver interfaces stay on the host. AppImage tool/runtime hashes are pinned, with explicit provisioning only.
 
-Each completed installer is extracted and its payload manifest verified; AppImage also has an outer full-file manifest and `BUNDLED-DEPENDENCIES.tsv` with exact library hashes/versions. Shared game-payload attribution remains governed by `tools/package_licenses.tsv`; installer metadata includes the project icon and launchers. No ROM or extracted game assets are bundled. Runtime auto-discovery of the retail ROM in the executable/project root is not implemented; the launcher imports a manually selected verified ROM into its user configuration directory.
+Each completed installer is extracted and its payload manifest verified; AppImage also has an outer full-file manifest and `BUNDLED-DEPENDENCIES.tsv` with exact library hashes/versions. Shared game-payload attribution remains governed by `tools/package_licenses.tsv`; installer metadata includes the project icon and launchers. ROM images remain excluded; locally generated FR/DE/ES text bundles have the explicit provenance below. Runtime auto-discovery of the retail ROM in the executable/project root is not implemented; the launcher imports a manually selected verified ROM into its user configuration directory.
 
-The `assets/` tree (UI resources and `assets/languages/pt-BR.tlpb`) is copied next to the executable by the CMake
-    target `TooieUIAssets` and shipped in every package. Imported FR/DE/ES packs are written to the user's app folder,
+The `assets/` tree (UI resources and `assets/languages/{pt-BR,fr,de,es}.tlpb`) is copied next to the executable by the CMake
+    target `TooieUIAssets`. FR/DE/ES bundles contain proprietary localized text extracted from the user's EUR ROM;
+    their inclusion does not grant redistribution rights. Legacy imported packs remain in the user's app folder,
     never to the package.
 
 Linux installer scripts are versioned with the tar packager and documented in `tools/BUILDING.md`.
@@ -83,10 +84,10 @@ Linux installer scripts are versioned with the tar packager and documented in `t
 
 ## 3. Clean-Room Asset Separation & Legal ROM Contract
 
-1. **Zero Copyrighted Game Assets**:
-   - The compiled executable and repository do not contain copyrighted textures, audio samples, dialog text, model geometry, or level maps.
+1. **Game Content Boundary**:
+   - The executable does not embed textures, audio samples, dialog text, model geometry or level maps. The local FR/DE/ES bundles contain proprietary localized dialog/menu text extracted at the user's request; their attribution is distinct from project code and pt-BR translation data.
    - Machine-translated C code (`RecompiledFuncs/`) and translated microcode (`rsp/n_aspMain.cpp`) embed ROM-derived logic; they are compiled directly into the released executable and excluded from source tracking (`RecompiledFuncs/` is never published as source).
-   - User-interface resources (`assets/` and `ui_assets/`) contain restored menu assets, character vector art, animations, icons, typography fonts, and UI wordmarks; zero ROM game data is bundled.
+   - User-interface resources (`assets/` excluding language bundles, and `ui_assets/`) contain restored menu assets, character vector art, animations, icons, typography fonts and UI wordmarks. Base game font artwork still comes from the player's USA ROM.
 2. **User-Provided ROM**:
    - End users provide their own legally acquired cartridge dump or decompressed image:
      - Retail Cartridge: Big-Endian `.z64`, NTSC-U Rev. 0, internal header `NB7E`, size 33,554,432 bytes (32 MiB), MD5 `40e98faa24ac3ebe1d25cb5e5ddf49e4`, SHA-1 `af1a89e12b638b8d82cc4c085c8e01d4cba03fb3`, XXH3 `0x00F70DE5F2D70EA2`.
@@ -125,7 +126,7 @@ Static components (`RT64`, `N64ModernRuntime`, `ultramodern`, `fmt`, `toml11`, `
    - Every file bundled in the distribution archive must have an explicit attribution rule mapped in `tools/package_licenses.tsv`.
    - Package integrity is verified via `tools/verify_package.py`.
    - Rows marked UNKNOWN or UNVERIFIED in `THIRD-PARTY-MANIFEST.tsv` remain open owner items to clear.
-   - Distribution packages contain no game assets and no ROM; binaries are released publicly (first public-ready release: `v0.1.0-p08`).
+   - Historical public releases exclude original game assets and ROMs. Local builds with generated FR/DE/ES bundles include proprietary localized text; those files have no project licence grant and were not publicly released by this change.
 3. **Execution Scripts**:
    - Package launchers `run-tooie.sh` and `run-tooie.ps1` manage execution environment variables:
      - `TOOIE_BUILD_DIR`: Path to build directory.

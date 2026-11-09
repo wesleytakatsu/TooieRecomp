@@ -33,6 +33,27 @@ If live Banjo is `0x61F`, snout does **not** use `func_800DCF48` /
 `func_800E2AA4` / `func_800E2180`. Live capture `0x62B` uses compact
 type-2 `func_800DCF48`, not E2AA4.
 
+## Startup branding (`PROVEN`, `STATIC_ROM`)
+
+The canonical USA asset table and decoded embedded textures identify:
+
+| Asset | Role | Decoded model bytes | Embedded textures |
+| --- | --- | ---: | --- |
+| `0x632` | Rareware logo | 25,504 | 7 CI4 textures, each 64×64 |
+| `0x8A8` | Banjo-Tooie title | 118,664 | 28 RGBA32 textures, each 32×32 |
+| `0x8AC` | Dolby logo | 88,740 | 21 RGBA32 textures, each 32×32 |
+
+Rulesless v0.9 modifies embedded textures in all three models. Decoding its `0x632` textures shows the contributor
+names visible on the user's replacement plaque; its `0x8A8` changes only part of the title's tiles, adding Italian
+branding. These are data replacements, not a font rendering defect. Original embedded bytes must be restored together
+to retain USA texture identity; re-encoding a modified model into a different compressed stream does not restore
+those pixels. Rareware and Dolby retain original USA payloads through asset-tail relocation. The Italian HD title
+instead uses the complete localized `0x8A8` model with distinct RT64 identities for all 28 textures: the project toggles
+one red-channel low bit in an alpha-zero texel of each tile. Alpha and every nonzero-alpha texel remain unchanged.
+The complete HD atlas is split by actual display-list vertex loads, not texture index order. Host extraction parity
+establishes Rareware/Dolby byte identity; offline hashing matches all 28 USA hashes to the reference HD pack and
+establishes disjoint Italian hashes. Final HD appearance requires game testing.
+
 ## Selection (`STATIC_MIPS` / overlay bytes)
 
 | Resource | Selector | Condition | Appearance | State | Expected BK land walk |

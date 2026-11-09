@@ -23,3 +23,6 @@ id,type,owner,role,status,evidence,notes
 0x60E,MODEL,Clockwork,clockwork transform candidate,STRONG_INFERENCE,ovl118 +0xC194,
 0x609,MODEL,T-rex,T-rex small candidate,STRONG_INFERENCE,ovl118 +0xC198,
 0x60D,MODEL,T-rex,T-rex large candidate,STRONG_INFERENCE,ovl118 +0xC19C,
+0x632,MODEL,Startup branding,Rareware logo,PROVEN,STATIC_ROM decoded embedded CI4 textures,7 textures 64x64; keep USA data for HD packs
+0x8A8,MODEL,Startup branding,Banjo-Tooie title,PROVEN,STATIC_ROM decoded embedded RGBA32 textures,28 textures 32x32; keep USA data for HD packs
+0x8AC,MODEL,Startup branding,Dolby logo,PROVEN,STATIC_ROM decoded embedded RGBA32 textures,21 textures 32x32; keep USA data for HD packs

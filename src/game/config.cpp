@@ -53,11 +53,13 @@ static void add_general_options(recomp::config::Config &config) {
         {banjo::Language::French, "French", "FRANÇAIS"},
         {banjo::Language::German, "German", "DEUTSCH"},
         {banjo::Language::Spanish, "Spanish", "ESPAÑOL"},
+        {banjo::Language::Italian, "Italian", "ITALIANO (BOZZA)"},
+        {banjo::Language::Japanese, "Japanese", "JAPANESE"},
     };
     config.add_enum_option(
         banjo::configkeys::general::language,
         "Game Language",
-        "Language of the in-game text. Português (Brasil) is built in. Français, Deutsch and Español are extracted once from your own European ROM when you select them; the game always runs from the USA ROM. Applies when the game starts; if the game is already running, restart it.",
+        "Language of the in-game text. Português (Brasil), Français, Deutsch, Español, Italiano and Japanese use local language files; only the USA ROM is required to play. Italiano includes a supplemental draft awaiting editorial review. Applies when the game starts; if already running, restart it.",
         language_options,
         banjo::Language::English
     );
@@ -179,6 +181,10 @@ const char* banjo::language_tag(banjo::Language language) {
             return "de";
         case Language::Spanish:
             return "es";
+        case Language::Italian:
+            return "it";
+        case Language::Japanese:
+            return "ja";
         default:
             return "";
     }

@@ -7,6 +7,35 @@
 namespace tooie_text_font_map {
     using CharsetTable = std::array<int8_t, 256>;
     using AccentMap = std::array<uint8_t, 30>;
+    using JapaneseMaps = std::array<std::array<int16_t, 256>, 2>;
+    constexpr size_t kJapaneseMapBytes = 2 * 256 * 2;
+
+    inline bool decode_japanese_maps(std::span<const uint8_t> bytes, JapaneseMaps& out) {
+        if (bytes.size() != kJapaneseMapBytes) return false;
+        JapaneseMaps maps{};
+        for (size_t font = 0; font < maps.size(); ++font) {
+            for (size_t c = 0; c < 256; ++c) {
+                size_t at = (font * 256 + c) * 2;
+                uint16_t value = uint16_t(bytes[at]) | uint16_t(bytes[at + 1]) << 8;
+                if (value != 0xFFFF && value > 32767) return false;
+                maps[font][c] = value == 0xFFFF ? -1 : static_cast<int16_t>(value);
+            }
+            for (uint8_t c : {0u, 0x20u, 0xFDu, 0xFEu, 0xFFu}) {
+                if (maps[font][c] != -1) return false;
+            }
+        }
+        out = maps;
+        return true;
+    }
+
+    inline int32_t map_japanese(int32_t font, int32_t character, const JapaneseMaps& maps) {
+        if (font == 0 || font == 1) {
+            return character >= 0 && character < 256 ? maps[font][character] : -1;
+        }
+        if (font == 2) return character > 0 && character < 0xFD ? character : -1;
+        if (font == 3) return character >= 0x30 && character < 0x3B ? character - 0x30 : 0x0B;
+        return -1;
+    }
 
     inline CharsetTable build_table(std::span<const uint8_t> charset) {
         CharsetTable table;
@@ -76,5 +105,6 @@ namespace tooie_text_font_map {
     }
 
     void set_european_font_map(std::span<const uint8_t> charset, const AccentMap& accents);
+    bool set_japanese_font_map(std::span<const uint8_t> maps);
     void reset();
 }

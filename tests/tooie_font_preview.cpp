@@ -6,10 +6,12 @@
 #include <iterator>
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        std::cerr << "usage: tooie_font_preview <USA image> <output.ppm>\n";
+    if (argc != 3 && argc != 4) {
+        std::cerr << "usage: tooie_font_preview <USA image> <output.ppm> [pt-BR|european]\n";
         return 1;
     }
+    const std::string profile = argc == 4 ? argv[3] : "pt-BR";
+    if (profile != "pt-BR" && profile != "european") return 1;
     std::ifstream input(argv[1], std::ios::binary);
     if (!input) {
         std::cerr << "cannot open USA image\n";
@@ -24,7 +26,8 @@ int main(int argc, char** argv) {
         !tooie_text_assets::asset_payload(image, tooie_asset_table::kUsaLayout, 0xC22, payload, error) ||
         !tooie_text_assets::decode_payload(payload, raw, error) ||
         !tooie_font_sprite::parse(raw, source, error) ||
-        !tooie_font_sprite::generate_font1(source, generated, error)) {
+        !tooie_font_sprite::generate_font1(source, generated, error, profile == "european" ?
+            tooie_font_sprite::Font1Profile::European : tooie_font_sprite::Font1Profile::PortugueseBrazil)) {
         std::cerr << "font generation failed: " << error << '\n';
         return 1;
     }

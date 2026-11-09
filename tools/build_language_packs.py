@@ -285,7 +285,7 @@ def apply_bps(source: bytes, patch: bytes) -> bytes:
 def pack_bytes(tag: str, charset: bytes, accents: bytes, entries: dict[int, bytes]) -> bytes:
     if not tag or len(tag) > 15 or not all(c.isascii() and (c.isalnum() or c == "-") for c in tag):
         raise ValueError("invalid language tag")
-    if not 1 <= len(entries) <= ASSET_COUNT or len(charset) > 255:
+    if not 1 <= len(entries) <= ASSET_COUNT or not (len(charset) == 1024 if tag == "ja" else len(charset) <= 255):
         raise ValueError("invalid pack entry count or charset")
     if len(accents) != (30 if charset else 0):
         raise ValueError("invalid accent map length")
@@ -383,19 +383,37 @@ def apply_text_entry(raw_usa: bytes, kind: int, data: bytes) -> bytes:
 
 
 def bundle_bytes(tag: str, charset: bytes, accents: bytes, base: bytes,
-                 patches: list[tuple[int, bytes]], entries: dict[int, tuple[int, bytes]]) -> bytes:
+                 patches: list[tuple[int, bytes]], entries: dict[int, tuple[int, bytes]],
+                 assets: dict[int, tuple[bytes, bytes]] | None = None) -> bytes:
     if not tag or len(tag) > 15 or not all(c.isascii() and (c.isalnum() or c == "-") for c in tag):
         raise ValueError("invalid language tag")
-    if not 1 <= len(charset) <= 255 or len(accents) != 30:
+    if not (len(charset) == 1024 if tag == "ja" else 1 <= len(charset) <= 255) or len(accents) != 30:
         raise ValueError("invalid font map")
     apply_font_patches(base, len(base), zlib.crc32(base), patches)
-    out = bytearray(struct.pack("<4sI16sI", b"TLPB", 1, tag.encode("ascii"), len(charset)))
+    if tag == "ja" and (patches or assets is None):
+        raise ValueError("Japanese bundles require complete font asset deltas")
+    version = 3 if tag == "ja" else (2 if assets is not None else 1)
+    out = bytearray(struct.pack("<4sI16sI", b"TLPB", version, tag.encode("ascii"), len(charset)))
     out.extend(charset)
     out.extend(accents)
     out.extend(struct.pack("<III", len(base), zlib.crc32(base), len(patches)))
     for offset, data in patches:
         out.extend(struct.pack("<II", offset, len(data)))
         out.extend(data)
+    if assets is not None:
+        out.extend(struct.pack("<I", len(assets)))
+        for index, (original, translated) in sorted(assets.items()):
+            if not 0 <= index < ASSET_COUNT or index in TEXT_IDS or (0xC20 <= index <= 0xC23 and not (tag == "ja" and index in (0xC21, 0xC22))):
+                raise ValueError("invalid graphic asset ID")
+            if not 0 < len(original) <= 65535 * 16 or not 0 < len(translated) <= 65535 * 16:
+                raise ValueError("invalid graphic asset size")
+            resized = original[:len(translated)].ljust(len(translated), b"\0")
+            runs = font_patches(resized, translated)
+            out.extend(struct.pack("<6I", index, len(original), zlib.crc32(original), len(translated),
+                                   zlib.crc32(translated), len(runs)))
+            for offset, data in runs:
+                out.extend(struct.pack("<II", offset, len(data)))
+                out.extend(data)
     out.extend(struct.pack("<I", len(entries)))
     for index, (kind, data) in sorted(entries.items()):
         if not 0 <= index < ASSET_COUNT or kind not in (0, 1):
@@ -418,13 +436,15 @@ def read_bundle(data: bytes) -> dict:
         return struct.unpack("<I", take(4))[0]
     magic, version, raw_tag, charset_length = struct.unpack("<4sI16sI", take(28))
     tag_bytes = raw_tag.split(b"\0", 1)[0]
-    if magic != b"TLPB" or version != 1 or not tag_bytes or raw_tag != tag_bytes.ljust(16, b"\0"):
+    if magic != b"TLPB" or version not in (1, 2, 3) or not tag_bytes or raw_tag != tag_bytes.ljust(16, b"\0"):
         raise ValueError("invalid bundle header")
     try:
         tag = tag_bytes.decode("ascii")
     except UnicodeDecodeError as exc:
         raise ValueError("invalid language tag") from exc
-    if not all(c.isalnum() or c == "-" for c in tag) or not 1 <= charset_length <= 255:
+    if (not all(c.isalnum() or c == "-" for c in tag) or
+            (tag == "ja") != (version == 3) or
+            not (charset_length == 1024 if tag == "ja" else 1 <= charset_length <= 255)):
         raise ValueError("invalid bundle tag or charset")
     charset = take(charset_length)
     accents = take(30)
@@ -437,6 +457,26 @@ def read_bundle(data: bytes) -> dict:
             raise ValueError("invalid font 0 patch")
         patches.append((offset, take(length)))
         end = offset + length
+    assets = {}
+    if version >= 2:
+        previous = -1
+        for _ in range(number()):
+            index, base_size, base_crc, target_size, target_crc, runs = (number() for _ in range(6))
+            if index <= previous or not 0 <= index < ASSET_COUNT or index in TEXT_IDS or (0xC20 <= index <= 0xC23 and not (tag == "ja" and index in (0xC21, 0xC22))):
+                raise ValueError("invalid graphic asset ID")
+            if not 0 < base_size <= 65535 * 16 or not 0 < target_size <= 65535 * 16:
+                raise ValueError("invalid graphic asset size")
+            asset_runs = []
+            end = 0
+            for _ in range(runs):
+                offset, length = number(), number()
+                if length == 0 or offset < end or offset + length > target_size:
+                    raise ValueError("invalid graphic asset patch")
+                asset_runs.append((offset, take(length)))
+                end = offset + length
+            assets[index] = {"base_size": base_size, "base_crc": base_crc, "target_size": target_size,
+                             "target_crc": target_crc, "patches": asset_runs}
+            previous = index
     entries = {}
     previous = -1
     for _ in range(number()):
@@ -450,7 +490,22 @@ def read_bundle(data: bytes) -> dict:
     if pos != len(data):
         raise ValueError("trailing bundle data")
     return {"tag": tag, "charset": charset, "accents": accents, "font_size": size,
-            "font_crc": crc, "patches": patches, "entries": entries}
+            "font_crc": crc, "patches": patches, "entries": entries, "assets": assets}
+
+
+def rebuild_graphic_assets(bundle: dict, usa: bytes) -> dict[int, bytes]:
+    rebuilt = {}
+    for index, entry in bundle.get("assets", {}).items():
+        raw = asset(usa, USA_TABLE, USA_BASE, index)
+        if len(raw) != entry["base_size"] or zlib.crc32(raw) != entry["base_crc"]:
+            raise ValueError("graphic asset base size or CRC mismatch")
+        target = bytearray(raw[:entry["target_size"]].ljust(entry["target_size"], b"\0"))
+        for offset, data in entry["patches"]:
+            target[offset:offset + len(data)] = data
+        if zlib.crc32(target) != entry["target_crc"]:
+            raise ValueError("graphic asset target CRC mismatch")
+        rebuilt[index] = bytes(target)
+    return rebuilt
 
 
 def rebuild_text_assets(bundle: dict, usa: bytes) -> dict[int, bytes]:
@@ -481,7 +536,8 @@ def app_dir() -> Path:
     return Path(folder) if folder is not None else Path.home() / ".config" / "TooieRecompiled"
 
 
-def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_path: Path) -> dict:
+def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_path: Path,
+          bundle_dir: Path | None = None) -> dict:
     core = inflate(pal[PAL_CORE2_DATA:])
     end = core.find(b"\0", CHARSET_OFFSET)
     charset = core[CHARSET_OFFSET:end] if end >= 0 else b""
@@ -489,8 +545,8 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
     if len(charset) != 73 or not charset.startswith(CHARSET_PREFIX) or len(accents) != 30:
         raise ValueError("invalid European font map")
     tags = ["fr", "de", "es"] + (["pt-BR"] if patched is not None else [])
-    entries: dict[str, dict[int, bytes]] = {tag: {} for tag in tags}
-    bundle_entries: dict[int, tuple[int, bytes]] = {}
+    entries: dict[str, dict[int, bytes]] = {tag: {} for tag in FONT_ASSETS}
+    bundle_entries: dict[str, dict[int, tuple[int, bytes]]] = {tag: {} for tag in tags}
     expected_text: dict[int, bytes] = {}
     report = {tag: {"rule1": 0, "rule2": 0, "rule3": 0, "records_translated": 0, "english_kept": []} for tag in tags}
     for index in TEXT_IDS:
@@ -523,11 +579,11 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
                 else:
                     if tag == "pt-BR":
                         expected_text[index] = result
-                        kind = 0 if rule == 1 else 1
-                        data = result[3:] if kind == 0 else text_overlay(us, parse_section(result[3:])[0])
-                        bundle_entries[index] = (kind, data)
                     else:
                         entries[tag][index] = encode_payload(result)
+                    kind = 0 if rule == 1 else 1
+                    data = result[3:] if kind == 0 else text_overlay(us, parse_section(result[3:])[0])
+                    bundle_entries[tag][index] = (kind, data)
                     report[tag][f"rule{rule}"] += 1
                     report[tag]["records_translated"] += count
         except (ValueError, zlib.error, struct.error) as exc:
@@ -540,11 +596,23 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
         atomic_write(output, data)
         report[tag]["output"] = str(output)
         report[tag]["size"] = len(data)
+        if bundle_dir is not None:
+            font_base = asset(usa, USA_TABLE, USA_BASE, 0xC21)
+            bundle_data = bundle_bytes(tag, charset, accents, font_base, [], bundle_entries[tag])
+            bundle = read_bundle(bundle_data)
+            rebuilt = rebuild_text_assets(bundle, usa)
+            for index, payload in entries[tag].items():
+                if index not in FONT_ASSETS[tag] and rebuilt.get(index) != inflate(payload):
+                    raise ValueError(f"{tag} bundle verification failed for text asset {index:#x}")
+            bundle_output = bundle_dir / f"{tag}.tlpb"
+            atomic_write(bundle_output, bundle_data)
+            report[tag].update({"bundle": str(bundle_output), "bundle_size": len(bundle_data), "verification": "PASS"})
     if patched is not None:
         font_base = asset(usa, USA_TABLE, USA_BASE, 0xC21)
         font_target = asset(patched, PAL_TABLE, PAL_BASE, 0xC21)
         patches = font_patches(font_base, font_target)
-        data = bundle_bytes("pt-BR", charset, accents, font_base, patches, bundle_entries)
+        ptbr_entries = bundle_entries["pt-BR"]
+        data = bundle_bytes("pt-BR", charset, accents, font_base, patches, ptbr_entries)
         atomic_write(bundle_path, data)
         bundle = read_bundle(bundle_path.read_bytes())
         rebuilt = rebuild_text_assets(bundle, usa)
@@ -557,8 +625,8 @@ def build(pal: bytes, usa: bytes, patched: bytes | None, out_dir: Path, bundle_p
         if apply_font_patches(font_base, bundle["font_size"], bundle["font_crc"], bundle["patches"]) != font_target:
             raise ValueError("bundle verification failed for font 0")
         report["pt-BR"].update({"output": str(bundle_path), "size": len(data),
-                                "kind0": sum(kind == 0 for kind, _ in bundle_entries.values()),
-                                "kind1": sum(kind == 1 for kind, _ in bundle_entries.values()),
+                                "kind0": sum(kind == 0 for kind, _ in ptbr_entries.values()),
+                                "kind1": sum(kind == 1 for kind, _ in ptbr_entries.values()),
                                 "font_runs": len(patches), "font_bytes": sum(len(run) for _, run in patches),
                                 "verification": "PASS"})
     return report
@@ -571,6 +639,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--ptbr-bundle", type=Path, default=Path(__file__).resolve().parent.parent / "assets/languages/pt-BR.tlpb")
     parser.add_argument("--usa-image", type=Path)
     parser.add_argument("--out-dir", type=Path)
+    parser.add_argument("--bundle-dir", type=Path, help="Also build verified fr/de/es .tlpb bundles in this directory")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
     try:
@@ -582,10 +651,12 @@ def main(argv: list[str]) -> int:
         pal = checked_image(args.pal_rom, PAL_SIZE, PAL_SHA1)
         usa = checked_image(args.usa_image, USA_SIZE, USA_SHA1)
         patched = apply_bps(pal, args.ptbr_bps.read_bytes()) if args.ptbr_bps else None
-        report = build(pal, usa, patched, args.out_dir, args.ptbr_bundle)
+        report = build(pal, usa, patched, args.out_dir, args.ptbr_bundle, args.bundle_dir)
         for tag, item in report.items():
             print(f"{tag}: rule 1: {item['rule1']}; rule 2: {item['rule2']} assets ({item['records_translated']} records); rule 3: {item['rule3']}; English kept: {len(item['english_kept'])} " + ", ".join(item["english_kept"]))
             print(f"  {item['output']} ({item['size']} bytes)")
+            if "bundle" in item:
+                print(f"  {item['bundle']} ({item['bundle_size']} bytes); verification: {item['verification']}")
             if tag == "pt-BR":
                 print(f"  kind 0: {item['kind0']}; kind 1: {item['kind1']}; font 0: {item['font_runs']} runs, {item['font_bytes']} bytes; verification: {item['verification']}")
         if args.report:

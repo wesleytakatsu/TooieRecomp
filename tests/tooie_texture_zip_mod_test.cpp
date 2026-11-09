@@ -91,7 +91,32 @@ namespace {
     }
 }
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 2) {
+        try {
+            TemporaryDirectory temporary;
+            const fs::path root = temporary.path;
+            fs::create_directory(root / "scan");
+            fs::copy_file(fs::path(argv[1]), root / "scan" / "italian-title.rtz");
+            ModContext context;
+            context.register_game("bt");
+            context.set_mods_config_path(root / "mods.json");
+            context.set_mod_config_directory(root / "config");
+            auto texture = context.register_content_type({"rt64.json", true, nullptr, nullptr, nullptr});
+            require(context.register_container_type("rtz", {texture}, false), "register texture container");
+            auto errors = context.scan_mod_folder(root / "scan");
+            require(errors.empty() && context.num_opened_mods() == 1, "open real Italian HD pack");
+            auto details = context.get_details_for_mod("tooie_italian_title_hd");
+            require(details && details->runtime_toggleable && details->enabled_by_default, "Italian HD manifest and default activation");
+            require(context.get_mod_content_root("tooie_italian_title_hd").empty(), "Italian HD content root");
+            std::printf("Italian Title HD: native mod scanner and default-enabled metadata PASS\n");
+            return 0;
+        }
+        catch (const std::exception& error) {
+            std::printf("FAIL Italian HD pack: %s\n", error.what());
+            return 1;
+        }
+    }
     int failures = 0;
     auto run = [&](const char* name, const std::function<void()>& test) {
         try {

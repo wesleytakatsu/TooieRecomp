@@ -2,6 +2,7 @@
 #include "tooie_language_pack.h"
 #include "tooie_language_paths.h"
 #include "tooie_language_bundle.h"
+#include "tooie_language_font.h"
 #include "tooie_text_font_map.h"
 #include "banjo_config.h"
 #include "librecomp/game.hpp"
@@ -19,14 +20,14 @@ void tooie_apply_language_pack() {
     const char* override_path = std::getenv("TOOIE_TEST_LANGUAGE_PACK");
     bool is_override = override_path != nullptr && override_path[0] != '\0';
     banjo::Language language = banjo::Language::English;
+    bool is_bundle = false;
     std::filesystem::path path;
     auto fail = [&](const std::string& reason) {
         std::fprintf(stderr, "[tooie-lang] %s: %s\n", reason.c_str(), path.string().c_str());
         if (!is_override) {
             std::string message = "Language pack missing or invalid: " + path.string() + " (" + reason + "). The game starts in English.";
-            if (language != banjo::Language::PortugueseBrazil) {
-                message += " Select the language again in Settings > General > Game Language to import it.";
-            }
+            message += language == banjo::Language::Japanese ? " Restore the Japanese language file (ja.tlpb)." :
+                       " Restore the assets/languages files supplied with the game.";
             ultramodern::error_handling::message_box(message.c_str());
         }
     };
@@ -39,9 +40,9 @@ void tooie_apply_language_pack() {
             if (language == banjo::Language::English) {
                 return;
             }
-            if (language == banjo::Language::PortugueseBrazil) {
-                path = tooie_language_paths::language_bundle_path();
-            } else {
+            path = tooie_language_paths::language_bundle_path(banjo::language_tag(language));
+            is_bundle = std::filesystem::exists(path);
+            if (!is_bundle && language != banjo::Language::PortugueseBrazil) {
                 path = tooie_language_paths::language_pack_path(banjo::language_tag(language));
             }
         }
@@ -55,7 +56,8 @@ void tooie_apply_language_pack() {
         tooie_language_pack::LanguagePack pack;
         std::string error;
         std::vector<uint8_t> rewritten;
-        if (!is_override && language == banjo::Language::PortugueseBrazil) {
+        is_bundle = is_bundle || (bytes.size() >= 4 && std::equal(bytes.begin(), bytes.begin() + 4, "TLPB"));
+        if (is_bundle) {
             tooie_language_bundle::Bundle bundle;
             if (!tooie_language_bundle::parse(bytes, bundle, error) ||
                 !tooie_language_bundle::build(bundle, image, pack, error)) {
@@ -70,20 +72,25 @@ void tooie_apply_language_pack() {
             fail("language tag mismatch");
             return;
         }
-        if (!tooie_language_pack::rewrite(image, pack, rewritten, error)) {
+        if (!tooie_language_font::normalize(pack, error) || !tooie_language_pack::rewrite(image, pack, rewritten, error)) {
             fail(error);
             return;
         }
 
+        if (pack.language == "ja" && !tooie_text_font_map::set_japanese_font_map(pack.font1_charset)) {
+            fail("invalid Japanese font maps");
+            return;
+        }
         const auto old_size = image.size();
         const auto new_size = rewritten.size();
         recomp::set_rom_contents(std::move(rewritten));
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
-        if (!pack.font1_charset.empty()) {
+        if (pack.language != "ja" && !pack.font1_charset.empty()) {
             tooie_text_font_map::set_european_font_map(pack.font1_charset, pack.font1_accent_map);
         }
-        std::fprintf(stderr, "[tooie-lang] applied %zu assets (%s) image %zu -> %zu bytes in %lld ms\n",
-            pack.entries.size(), pack.language.c_str(), old_size, new_size, static_cast<long long>(elapsed));
+        std::fprintf(stderr, "[tooie-lang] applied %zu assets (%s) from %s image %zu -> %zu bytes in %lld ms\n",
+            pack.entries.size(), pack.language.c_str(), is_bundle ? "bundle" : "pack", old_size, new_size,
+            static_cast<long long>(elapsed));
     } catch (const std::exception& exception) {
         fail(std::string("unable to load pack: ") + exception.what());
     }

@@ -11,7 +11,7 @@ tags: [tooie-recomp, handoff, status]
 
 Estado corrente para um agente ou chat novo. Investigações antigas, planos concluídos (multijogador, idiomas) e
 evidências ficam no histórico do git (`git log -- <caminho>`). Planos antigos foram consolidados: propostas não
-implementadas em [[future/implementation-ideas]], contratos atuais nas specs, conhecimento nativo no RE e
+implementadas em [[future/implementation-ideas]] e no guia [[future/visual-atmosphere/README]], contratos atuais nas specs, conhecimento nativo no RE e
 validação pendente na spec de testes. Não há plano de execução ativo na raiz. Contratos estáveis:
 [[specs/index]]. Conhecimento do jogo: [[reverse-engineering/README]].
 
@@ -27,12 +27,139 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
-| Idiomas do jogo | EN, pt-BR (embutido, `assets/languages/pt-BR.tlpb`), FR/DE/ES (importados no jogo da ROM europeia do jogador); validado no Windows | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
+| Idiomas do jogo | EN; pt-BR/FR/DE/ES e italiano em rascunho em `assets/languages/*.tlpb`; japonês privado em user `languages/ja.tlpb`. Só ROM USA no runtime. Japonês: fontes IA8 próprias, 2.264 assets e título compatível com HD existente; validação visual pendente. Italiano: 2.434 assets, título HD aprovado pelo usuário; revisão editorial pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
 | Memória expandida | General > Expanded Memory (experimental), padrão Off, vale após reiniciar; heap do jogo em `0x8080C000..0x81000000` (~7.95 MiB). Distância 2x/4x/Ilimitada exige a opção ativa; guarda de memória livre 768/256 KiB; co-op de história força distância Original. Witchyworld com Ilimitado e co-op validados pelo usuário no Windows (2026-11-09); Linux/PortMaster `NOT_RUN` | [[specs/Tooie/runtime-and-overlays#3.4 Guest heap layout and expansion]], [[specs/Tooie/window-ui-and-config]], [[specs/Tooie/graphics-and-presentation#3.1.1 Object distance]], [[reverse-engineering/systems/guest-heap]] |
 | Testes | Windows `Build-Tooie.ps1 -Stage Test`: 35 obrigatórios (inclui memória expandida, câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+
+## Idiomas em arquivos (2026-11-08)
+
+- Bundles locais FR/DE/ES gerados da EUR verificada, com 2.233/2.230/2.234 entradas de texto; reconstrução Python e
+  paridade C++ contra os packs de referência passaram. `pt-BR.tlpb` preservado byte a byte. Fonte 1 gerada em IA8,
+  74 glifos, com perfis europeu e pt-BR separados. Packs legados IA4 são normalizados em memória.
+- Revisão estática na branch `codex/bundled-game-languages`, criada de `main` em `fdfbce1`: removidos helper
+  `usa_image_path` sem chamadores e mapa pt-BR não consumido no gerador. As quatro unidades C++ de integração
+  passaram compilação de sintaxe com diagnósticos de código não usado/inalcançável habilitados, sem avisos do projeto;
+  Python verificado por AST. Build Windows atualizado, exit 0; nenhuma nova execução de testes ou do jogo.
+  Arquivos preexistentes de análise/atmosfera preservados. Revisão concluída neste checkpoint; sem push.
+- Seleção pelo General não oferece mais importação EUR. Bundle tem prioridade sobre cache antigo; ausência/corrupção
+  mostra instrução de reparar os arquivos e restaura a opção anterior. Só a ROM USA é necessária na instalação local.
+- Windows: `Build-Tooie.ps1 -Stage Test -Jobs 8` passou 34/34; `-Stage Build -Jobs 8` passou após a mudança final da UI.
+  `tools/test_build_language_packs.py`: 7/7; paridade real de cada bundle e previews dos dois perfis passaram.
+  `LC_ALL=C bash tools/vendor_verify.sh --reverse-check` via Git Bash: exit 0, 8.339 arquivos e 54 patches, `VENDOR VERIFY OK`.
+  `git diff --check`: exit 0; 64 wikilinks dos documentos relacionados resolvidos. `markdown_vault_audit` indisponível
+  neste host (servidor local configurado para caminho Linux); `graft build` atualizado com exit 0.
+  Executável atualizado: `build-win/TooieRecompiled.exe`, SHA-256
+  `783129bbc2a796703bf92ec187611593c0e1115c41deaf7e7ed1c2fcd0587686`.
+- Sessão Windows isolada por `portable.txt`, sem ROM EUR nem pasta de packs importados: título de cenário francês
+  em amarelo e pausa em francês observados. Primeiro ensaio falhou por recursos de UI ausentes no cwd isolado;
+  repetir com `assets/`, `ui_assets/` e `recompcontrollerdb.txt` resolveu. Launcher normal abriu em D3D12.
+  Usuário confirmou que as letras amarelas apareceram e parece tudo correto. Isso não prova todas as telas/idiomas.
+- Controle da interface interrompido pelo Escape físico. Pedido posterior: testes no jogo ficam com o usuário;
+  não iniciar/controlar novas sessões para testar sem novo pedido. Configs/saves reais conferidos por hashes, sem diferenças.
+  Sessão de teste deixada aberta ao usuário; dados isolados em `build-win/language-qa-lcy_4o5w/`.
+- FR/DE/ES são textos oficiais proprietários extraídos localmente; não são tradução comunitária como pt-BR.
+  Proveniência identificada no manifesto de empacotamento; nenhuma ROM/arte de fonte foi embutida.
+  Checkpoint FR/DE/ES `52d4dfb` versionado nesta branch; sem push, PR ou publicação. Italiano tem checkpoint separado abaixo.
+  Linux/PortMaster e aceite individual DE/ES: `NOT_RUN`.
+
+## Japonês local (2026-11-08)
+
+- Opção `Japanese` em General > Game Language, tag `ja`, bundle privado em
+  `%LOCALAPPDATA%/TooieRecompiled/languages/ja.tlpb`; sem arquivo japonês na árvore vendorizada `assets/`.
+  A ROM Japan fornecida é lida sem alterações; byte order de 16 bits normalizado e SHA-1
+  `5a5172383037d171f121790959962703be1f373c` conferido. Runtime continua usando apenas a ROM USA.
+- Gerador `tools/build_japanese_bundle.py`: 2.252 assets de texto, dois sprites IA8 compostos (260/229 frames),
+  nove regiões de textura compatíveis em modelos USA e o título Japan `0x8A8` intacto: 2.264 entradas.
+  Mapas explícitos de 16 bits e TLPB v3 restrito a `ja`; demais idiomas preservam v1/v2 e suas fontes.
+- Fluxos de controles/eventos USA preservados em todos os grupos. 29 assets adaptam controles regionais;
+  227 substituições preservadas. Três mensagens ajustam valores dinâmicos da USA; tela inicial mantém índices
+  legais USA e recebe rótulo de demo japonês, sem os textos de depuração do banco Japan. Menu exclusivo USA `0x1A89`
+  traduzido para japonês, preservando IDs e marcadores; não há fallback inglês nessa tela.
+- Os 31 hashes nativos do título Japan já resolvem no BT Reloaded para a arte japonesa HD e o símbolo de marca
+  compartilhado. Cópia completa italiana também contém essa arte. Nenhum redesenho, alteração de hashes ou ZIP HD.
+  Rareware/Dolby são idênticos à USA. Geometria incompatível, animações e código regional não foram importados.
+- Fonte/codificação, extração e limite privado documentados em [[reverse-engineering/systems/text-and-fonts]],
+  [[specs/Tooie/language-packs]] e [[specs/Tooie/asset-and-licensing-manifest]]. `NOTICE-Japanese.txt` versionável;
+  bundle com arte original fica fora do git, com cópia privada em `F:/Recursos do Tooie/Japones/`.
+- Build Windows e paridade C++ do bundle real passaram; 17 testes Python, mapa de fontes e parser de packs passaram.
+  HEAD-base `e4396fd`; `Build-Tooie.ps1 -Stage Build -Jobs 8` e build dos três alvos host via CMake, exit 0.
+  `tools/test_build_language_packs.py`, `tooie_language_bundle_test`, `tooie_text_font_map_test` e
+  `tooie_language_pack_test`, exit 0; fixtures reais JA e IT reconstruíram 2.264/2.434 assets iguais às referências.
+  Após correção dos símbolos, JA reescreveu 58.572.328 bytes; bundle de 517.684 bytes, SHA-256
+  `f195075b4a13f5a448d5c60c833c0e1cee67e39ce593df3d0949d0c892cc09a0`.
+  Usuário relatou kana substituído por Start/C e botões A/B substituídos por kana. Confirmada colisão com
+  classificador nativo `0x7F..0x87`: gerador agora reserva esses bytes, converte botões Japan `0x95..0x9D`
+  e separador `0xAC`. Bundle local regenerado; regressões de todos os glifos/botões e paridade C++ passaram.
+  Correção restrita ao gerador/dados; executável e mod HD preservados. Reteste visual: `PENDING_USER`.
+  Usuário forneceu 12 capturas: A/B visíveis e sem a colisão anterior; nomes/diálogos comparados com a ROM Japan.
+  Revelado deslocamento nos símbolos por omissão do apóstrofo nativo no frame 55: `ー` virava ponto,
+  dois-pontos e interrogação viravam símbolos incorretos. Mapa corrigido (55 apóstrofo, 59 `ー`, 66 `。`),
+  inclusive no texto autoral. Pixels de `ー`/`。`/marcas de vozeamento conferidos contra a fonte nativa;
+  bundle instalado e cópia privada atualizados. Capturas anteriores não validam visualmente essa última correção.
+  `vendor_verify.sh`: 8.342 arquivos, exit 0; `graft build` exit 0; 65 wikilinks relacionados resolvidos.
+  Auditor de vault indisponível neste host. Arquivos gerados de recompilação não foram editados.
+  Teste visual no jogo e Linux/PortMaster: `PENDING_USER` / `NOT_RUN`. Nenhum jogo foi iniciado/controlado.
+  Planos anteriores preservados; implementação ainda sem commit/push.
+
+## Italiano em rascunho e título HD (2026-11-08)
+
+- `ITALIANO (BOZZA)` carrega `assets/languages/it.tlpb` usando apenas ROM USA. Patch Rulesless v0.9 é externo;
+  banco EUR não contém quinta seção italiana. Fonte 1 IA8 europeia com mapa À corrigido no código nativo `0x5F`.
+- Bundle: 2.225 assets de texto + 208 deltas gráficos + fonte 1 = 2.434 entradas, 922.268 bytes; SHA-256
+  `777ff9e681db1bd4e9f3ef3ee9198d2a887eb965aba04ad5ee7723ab5717df10`.
+  Extração aceita 478 assets de texto na origem e rejeita 47 assets incompatíveis: 44 de texto são cobertos pelo
+  catálogo suplementar e 3 gráficos mantêm USA. Rareware `0x632` e Dolby `0x8AC` ficam byte a byte iguais à USA.
+- `translations/it.json`: 4.948 chaves únicas para 6.828 registros restantes; 5.801 traduzidos e 1.027 preservados
+  (números, nomes, créditos, códigos ou fala fictícia). Rascunho assistido por Google Translate, glossário e 106 correções;
+  revisão editorial integral pendente. Catálogo, demais idiomas e os outros 207 deltas gráficos não mudaram nesta etapa.
+- Usuário pediu título italiano HD, mantendo Rare/Dolby originais. `0x8A8` agora usa arte italiana do patch e
+  identidades próprias nas 28 texturas: um bit RGB baixo em texel alfa-zero por bloco, sem mudar alfa ou texels visíveis.
+  Isso evita que o complemento italiano apareça nos outros idiomas. Teste Python confirma essa preservação.
+- Arte produzida com `image_gen` integrado a partir do título HD local e do layout italiano. Normalização técnica
+  para 2048×1024 e 28 PNGs de 256×256 conforme display list/UV; ordem de textura não equivale à ordem espacial.
+  Prévia não perde pixels significativos nos limites do modelo. Rare/Dolby e as placas alternativas não foram incluídos.
+- `Tooie-Italian-Title-HD.rtz` (1.477.157 bytes), SHA-256
+  `2a7ebea8c41538fd6eb1dc9f20a89e47c8b6a66750a7999e7ae42cdd71129696`, instalado em
+  `%LOCALAPPDATA%/TooieRecompiled/mods/`. ID `tooie_italian_title_hd`, nome `Italian Title HD`,
+  `enabled_by_default=true`: scanner existente ativa na primeira descoberta, respeitando escolhas posteriores.
+  Mod/configs existentes mantidos por hash; nenhuma sessão do jogo foi iniciada ou controlada.
+- PNG fonte, prévia, RTZ, hashes e prompt/proveniência ficam privados em `F:/Recursos do Tooie/Italiano-HD/`;
+  cópia de trabalho em `build-win/italian-hd/`. Arte completa/RTZ não versionados nem publicados. Gerador offline
+  `tools/build_italian_title_hd.py` usa Pillow e `texture_hasher` vendorizado, sem mudar dependências.
+- Em HEAD-base `1f81940` com alterações locais: `Build-Tooie.ps1 -Stage Build -Jobs 8` e builds dos alvos
+  `texture_hasher`, `tooie_language_bundle_test` e `tooie_texture_zip_mod_test`, exit 0.
+  `python -X utf8 tools/test_build_language_packs.py`: 10/10.
+  Fixture C++ do bundle: 2.434 entradas iguais à referência, 74 glifos IA8, Rare/Dolby originais, relocação com
+  58.561.296 bytes. Fixture do RTZ real: scanner nativo e metadados de ativação padrão PASS. Regressões ZIP C1-C13/A1-A4 PASS.
+- Hasher oficial reproduziu 28/28 hashes do título USA no BT Reloaded; 28 hashes italianos distintos e ausentes do
+  banco de referência. Todos os PNGs decodificados como RGBA; dois builds RTZ byte a byte iguais. Build de aplicação
+  sincronizou o bundle. Usuário aprovou a aparência do título HD no Windows em 2026-11-08 (`USER_REPORTED`);
+  isso não valida todas as telas/traduções. Linux/PortMaster: `NOT_RUN`; testes no jogo reservados ao usuário.
+- `git diff --check` sem erros; 60 wikilinks relacionados resolvidos; `graft build` exit 0.
+  `markdown_vault_audit` indisponível neste host.
+- Manifesto: 8.341 arquivos conferidos, exit 0; dependências inalteradas. Arquivos preexistentes de planos/atmosfera
+  preservados. Sem push, PR ou publicação. Revisão linguística do complemento continua pendente.
+- A pedido do usuário, cópia privada completa e editável da base GhostlyDark BT Reloaded 0.1.1 em
+  `F:/Recursos do Tooie/BT-Reloaded-Italian-HD/`: ZIP, `source/`, arte/proveniência, créditos originais e
+  `build_pack.py` para futuras melhorias. Original preservado por SHA-256. Arte Rare/Dolby e todos os demais arquivos
+  da base preservados byte a byte; somente `mod.json` e `rt64.json` originais foram adaptados na cópia.
+  2.175 mapeamentos originais + 28 italianos = 2.203, todos resolvidos; nenhuma colisão nova.
+  ZIP de 56.515.811 bytes, SHA-256 `038621f03b25ce193c01dbdb7bcaff3ed0dd412976937ce167c16876d862e4a9`.
+  Descrição/autores: Wesley Sieiro Takatsu de Araujo primeiro, GhostlyDark como criador da primeira versão,
+  detalhes do pacote HD e da tela inicial italiana. Cópia editável e ZIP instalado sincronizados; texturas inalteradas.
+  Metadados versionados em `tools/textures/bt-reloaded-italian-hd.mod.json`; copiar para `BANJO TOOIE/mod.json`
+  na pasta editável antes de reconstruir o ZIP. Arte e arquivo completo continuam privados.
+  Instalado como `BT Reloaded + Italian HD`, id `bt_reloaded_italian_hd`, desativado por padrão; configs e mods
+  anteriores preservados. Para usar, ativar essa edição e desativar BT Reloaded e Italian Title HD separados.
+  Verificação offline de CRC, paridade da pasta editável, preservação dos arquivos e 28 PNGs passou; teste no jogo
+  do ZIP combinado: `PENDING_USER`. Nenhuma nova execução do jogo, publicação ou inclusão do pacote no git.
+  `python -X utf8 build-win/italian-hd/validate_continuation.py` e `scan_continuation.py`, exit 0, em `b3c9016`:
+  scanner nativo abriu o ZIP real, validou id, versão, raiz interna, metadados de alternância e default desativado.
+  O harness isolado reutiliza fontes/objetos do teste host existente; código e dependências do jogo não mudaram.
+  Relatório e log acompanham a pasta privada; `git diff --check` passou, auditor de vault indisponível neste host.
 
 ## Workspace e validação pós-merge (2026-11-06)
 
@@ -374,6 +501,29 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Temporários removidos, sem instalação Debian. Depois o jogo iniciou no perfil real com backup prévio; o usuário
   confirmou que funcionou e autorizou a publicação. Não implica validação exaustiva de APIs, gameplay ou pacote HD.
 
+## Análise de mods de personagens
+
+- Estudo em `codex/character-mods-analysis`, baseado em `fdfbce1`, registrado em [[future/implementation-ideas]].
+  Escopo autorizado: análise/documentação. Nenhum loader, personagem, provedor ou contrato público foi implementado.
+- Ordem de estudo: Mario; cinco Kongs; Rambi/Enguarde e outros do DK64; formas do BK; Yoshi, Luigi, Link e outros.
+  Jogo/versão de Yoshi, Luigi e Link ainda não definidos. Instalação de vários pacotes e seleção por jogador são propostas.
+- O seletor existente cobre formas nativas. APIs de personagem externo, colisão para provedores e fidelidade entre jogos
+  permanecem pendentes de estudo; isso não altera as prioridades operacionais de release abaixo.
+- Requisitos definidos pelo usuário: catálogo aditivo preserva personagens BT; externos acessíveis pelo fluxo ESC/Debug
+  com seleção habilitada; movimentos/habilidades fiéis à origem. Kongs conservam armas DK64, mas disparam ovos com
+  estoque, seleção e efeitos BT. O desenho e os critérios previstos estão na seção de personagens das cogitações.
+
+## Planejamento visual e atmosfera
+
+- Guia em [[future/visual-atmosphere/README]], com um documento por melhoria, arquitetura, perfis por cenário e matriz de aceite.
+  Escopo atual: documentação; novas texturas e efeitos não implementados. Ray tracing explicitamente excluído.
+- Inclui restauração com IA de chão/paredes, luz, água, chuva, dia/noite cosmético, vento na vegetação,
+  terra/poeira do teto da mina, folhas e outros efeitos locais. Compatibilidade precisa de aceite por sala e plataforma.
+- Revisão: [[future/visual-atmosphere/implementation-roadmap]] separa texturas, atmosfera e integração raster;
+  qualidade/orçamento e critérios de simplificar/adiar explícitos. Reações de contato e feixes de luz são propostas posteriores.
+- Próxima ação do plano: catalogar 3–5 texturas de chão/paredes de Mayahem Temple, com originais, hashes e usos conferidos;
+  provar substituição sem IA antes de ampliar e crescer para 20–30. Prioridade de release abaixo preservada.
+
 ## Notas operacionais
 
 - Windows: `tools\windows\Build-Tooie.ps1 -Stage Test` **não** atualiza `build-win\TooieRecompiled.exe`; recompile
@@ -400,4 +550,15 @@ do teste `p09_local_pair_snapshot_test`; esse teste passou na suíte local, onde
 é `STRONG_INFERENCE`; não houve alteração desse teste ou do mecanismo de publicação de snapshots nesta release.
 A corrida de trenzinho com o pássaro permanece adiada; não retomar a implementação sem pedido do usuário.
 
-`NEXT_SINGLE_ACTION`: validar Memória expandida + distância Ilimitada no Linux x64 e no XU10.
+Revisão do japonês (2026-11-09): gerador perdia 717 linhas em 407 assets (só o último registro tipado de cada tipo),
+desalinhava créditos `0x1B68..0x1B90`, convertia 0x0A em `<` (`0x186D`) e rotulava o glifo 78 como `ヮ` (é `ヲ`).
+Corrigido no gerador (fragmentos unidos por espaço, sem espaço dentro de 「」, após `・` e em katakana partida nas
+perguntas; 0x0A onde o tipo aceita; créditos USA, `ダブルン`, `タワー DE クイズ`); 32 testes Python, paridade C++
+2.264 assets e auditoria sem linhas perdidas (2ª revisão Sonnet sem erro). Bundle 527.402 bytes, SHA-256 `e2e7ae97…0ca6`; backup do
+anterior em `E:/projetos/tooie-userdata-backup-20261109-ja-fix/`. Comparação por pixel dos glifos contra a ROM Japan
+(SHA-1 normalizado conferido): 1.829 assets idênticos com espaçamento, 402 idênticos salvo junções, 20 adaptações
+intencionais (créditos USA, `1007`, `143E`, `154A`, `186C`, `18AC`, `18E1`, `18E2`), `1A89` autoral; latinos/pontuação
+usam a fonte USA por projeto. Quebras/corte na tela: `PENDING_USER`.
+RE: [[reverse-engineering/systems/text-and-fonts#Repeated typed records (2026-11-09)]].
+
+`NEXT_SINGLE_ACTION`: usuário testar em Japanese o quiz da Grunty, menus de warp/cheats, nomes de minigames, desafios Jiggywiggy e créditos.

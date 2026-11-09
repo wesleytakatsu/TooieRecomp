@@ -1,6 +1,6 @@
 # Banjo-Tooie Recompiled
 
-[English](README.md) · [Português (Portugal)](README-PT.md) · [Português (Brasil)](README-BR.md) · **Español**
+[English](README.md) · [Português (Portugal)](README-PT.md) · [Português (Brasil)](README-BR.md) · **Español** · [Italiano](README-IT.md) · [日本語](README-JA.md)
 
 Adaptación nativa no oficial de Banjo-Tooie (N64) para PC (Windows x64 y Linux x64) creada mediante recompilación estática (N64Recomp).
 
@@ -28,12 +28,21 @@ Los gráficos, el audio y los datos del juego se leen y descomprimen directament
 - **Pantalla panorámica 16:9:** Soporte panorámico nativo con relación de aspecto corregida.
 - **Interpolación de fotogramas:** Jugabilidad fluida a 60 / 120 FPS mediante interpolación de transformaciones
   (`Graphics` → `Interpolation`).
+- **Distancia de objetos (experimental):** `Graphics` → `Object Distance` dibuja y mantiene objetos a mayor distancia
+  (2x, 4x, Unlimited). Estas opciones requieren `General` → `Expanded Memory (experimental)`, que proporciona al juego
+  un área de memoria mayor; elegir una distancia superior la activa automáticamente, y surte efecto tras reiniciar
+  el juego. La pantalla dividida en el modo historia siempre utiliza la distancia original.
 - **Multijugador local (hasta 4 jugadores):** Se activa en `General` → `Multiplayer (up to 4 players)` (se aplica
   tras reiniciar el juego).
   - Entrada individual de mando y/o teclado para cada jugador.
   - Intercambio dinámico de mandos entre jugadores.
   - Mapeo de botones individual por jugador con opción `Reset to defaults`.
   - Herramientas de identificación de mandos en la página `Controls`: un indicador visual de entrada y el botón `Rumble 1 s` para probar la vibración.
+
+  **Advertencia:** La pantalla dividida en el modo historia (Dev Mode → Experimental → `Two players (split screen)`) es
+  experimental y puede provocar fallos graves en el juego (cuelgues, bloqueos de progresión, errores en la partida). Aún
+  queda mucho por ajustar y ya existen numerosos fallos conocidos; se va mejorando poco a poco. Guarda tu partida antes
+  de utilizarla; se recomienda activar `General` → `Expanded Memory (experimental)`.
 - **Soporte para mandos modernos y teclado:** Compatibilidad con mandos mediante SDL2 y control configurable por teclado.
 - **Lanzador nativo:** Interfaz gráfica integrada con selector de ROM.
 - **Paquetes de texturas:** paquetes de texturas de RT64 (`.rtz`) desde el menú `Mods`.
@@ -94,11 +103,17 @@ La release también incluye un paquete `.deb` (Debian/Ubuntu/Mint) y un `.AppIma
 
 ### Idiomas del juego
 
-TooieRecomp admite varios idiomas de texto en el juego: **English** (predeterminado), **Português (Brasil)**, **Français**, **Deutsch** y **Español**.
+TooieRecomp admite varios idiomas de texto en el juego: **English** (predeterminado), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (borrador) y **日本語** (japonés).
 
-- **Português (Brasil):** Viene integrado en el juego. No requiere archivos adicionales ni ROM europea.
-- **Français, Deutsch, Español:** Selecciona el idioma en **Settings** → **General** → **Game Language** (en el lanzador o en el menú `Esc` durante la partida). El juego te pedirá tu ROM europea (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`, SHA-1 `93bf2fac1387320ad07251cb4b64fd36bac1d7a6`) una sola vez para extraer el paquete de idioma directamente. La ROM europea se utiliza ÚNICAMENTE para esta extracción; el juego siempre se ejecuta desde tu ROM USA.
-- **Aplicación del idioma:** La selección se aplica al iniciar el juego. Si se cambia durante la partida, reinicia el juego para que surta efecto.
+- **Português (Brasil), Français, Deutsch, Español e Italiano:** Están incluidos en la versión; solo se necesita la ROM USA.
+- **Italiano (borrador):** Combina la traducción al italiano Rulesless v0.9 con una traducción suplementaria a la espera de revisión editorial. Crédito: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
+- **日本語 (Japonés):** NO está incluido en la versión. Se genera en tu ordenador a partir del volcado de tu propio cartucho japonés, "Banjo to Kazooie no Daibouken 2 (Japan)" (SHA-1 en big-endian tras la normalización `5a5172383037d171f121790959962703be1f373c`; se aceptan órdenes de bytes .z64/.n64/.v64). Pasos: ejecuta el juego una vez con tu ROM USA (esto creará `bt.n64.us.1.0.z64` en la carpeta de configuración), obtén el código fuente y, con Python 3.8+, ejecuta desde la raíz del repositorio:
+  ```
+  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
+  ```
+  Esto escribirá `languages/ja.tlpb` en la carpeta de configuración (`%LOCALAPPDATA%\TooieRecompiled` en Windows, `~/.config/TooieRecompiled` en Linux). El juego se sigue ejecutando desde la ROM USA.
+- **El idioma japonés todavía requiere muchas comprobaciones y pruebas**: los saltos de línea y el ancho de los menús no se han comprobado en pantalla y es de esperar que contenga errores. Los informes son bienvenidos.
+- **Aplicación del idioma:** Se elige en `Settings` → `General` → `Game Language`. La selección se aplica al iniciar el juego. Si se cambia durante la partida, reinicia el juego para que surta efecto.
 
 ### Paquetes de texturas
 
@@ -120,7 +135,7 @@ Para compilar TooieRecomp desde el código fuente, coloca tu ROM verificada `Ban
 - **Windows:** Ejecuta `.\tools\windows\Build-Tooie.ps1 -Stage All` en PowerShell.
   Requisitos previos: Visual Studio 2022+ (con clang-cl), Python 3.8+ y Git for Windows.
   Consulta [tools/windows/README.md](tools/windows/README.md) para ver las instrucciones detalladas.
-- **Linux:** Ejecuta `tools/build_linux.sh` (probado en Ubuntu 24.04 / Linux Mint 22).
+- **Linux:** Execute `tools/build_linux.sh` (probado en Ubuntu 24.04 / Linux Mint 22).
   Requisitos previos: Clang, CMake, Ninja, SDL2, FreeType, GTK 3 y Python 3.
   Consulta [tools/BUILDING.md](tools/BUILDING.md) para ver las instrucciones completas.
 - **Portátiles (aarch64, PortMaster):** compilación cruzada desde Windows (`tools/handheld/build-handheld.ps1`) o Linux

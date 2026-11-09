@@ -1,4 +1,5 @@
 #include "tooie_language_bundle.h"
+#include "tooie_language_font.h"
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -35,7 +36,15 @@ int main(int argc, char** argv) {
             return 1;
         }
         for (const auto& entry : pack.entries) {
-            if (entry.asset_id == 0xC22) {
+            if (entry.asset_id == 0xC22 && pack.language != "ja") {
+                std::vector<uint8_t> raw;
+                tooie_font_sprite::Sprite font;
+                if (!tooie_text_assets::decode_payload(entry.payload, raw, error) ||
+                    tooie_asset_table::read_u16_be(raw.data() + 2) != tooie_font_sprite::kIa8Format ||
+                    !tooie_font_sprite::parse(raw, font, error) || font.frames.size() != 74) {
+                    std::cerr << "generated font must contain 74 IA8 frames\n";
+                    return 1;
+                }
                 continue;
             }
             auto found = std::find_if(reference.entries.begin(), reference.entries.end(),
@@ -47,7 +56,46 @@ int main(int argc, char** argv) {
                 return 1;
             }
         }
-        std::cout << "pt-BR: " << pack.entries.size() - 1 << " text/font 0 entries equal\n";
+        std::vector<uint8_t> rewritten;
+        if (!tooie_language_pack::rewrite(usa, pack, rewritten, error)) {
+            std::cerr << "rewrite failed: " << error << '\n';
+            return 1;
+        }
+        for (const auto& entry : pack.entries) {
+            std::span<const uint8_t> payload;
+            std::vector<uint8_t> a, b;
+            if (!tooie_text_assets::asset_payload(rewritten, tooie_asset_table::kUsaLayout, entry.asset_id, payload, error) ||
+                !tooie_text_assets::decode_payload(payload, a, error) ||
+                !tooie_text_assets::decode_payload(entry.payload, b, error) || a != b) {
+                std::cerr << "rewritten asset mismatch " << entry.asset_id << '\n';
+                return 1;
+            }
+        }
+        if (pack.language == "it") {
+            // Rareware and Dolby stay original; the Italian title has locale-specific HD identities.
+            for (uint32_t id : {0x632u, 0x8ACu}) {
+                if (std::any_of(pack.entries.begin(), pack.entries.end(),
+                                [id](const auto& entry) { return entry.asset_id == id; })) {
+                    std::cerr << "Italian pack must preserve USA branding asset " << id << '\n';
+                    return 1;
+                }
+                std::span<const uint8_t> original, actual;
+                if (!tooie_text_assets::asset_payload(usa, tooie_asset_table::kUsaLayout, id, original, error) ||
+                    !tooie_text_assets::asset_payload(rewritten, tooie_asset_table::kUsaLayout, id, actual, error) ||
+                    original.size() != actual.size() || !std::equal(original.begin(), original.end(), actual.begin())) {
+                    std::cerr << "rewritten branding differs from USA for asset " << id << '\n';
+                    return 1;
+                }
+            }
+            if (std::none_of(pack.entries.begin(), pack.entries.end(),
+                             [](const auto& entry) { return entry.asset_id == 0x8A8u; })) {
+                std::cerr << "Italian title model missing\n";
+                return 1;
+            }
+            std::cout << "2 startup branding assets byte-identical to USA; Italian title present\n";
+        }
+        std::cout << pack.language << ": " << pack.entries.size() << " assets equal; rewritten image " << rewritten.size()
+                  << " bytes; " << (pack.language == "ja" ? "Japanese IA8 fonts" : "74 IA8 glyphs") << '\n';
         return 0;
     }
     std::vector<uint8_t> bytes{'T', 'L', 'P', 'B'};
@@ -74,6 +122,31 @@ int main(int argc, char** argv) {
     Bundle bundle;
     assert(parse(bytes, bundle, error));
     assert(bundle.patches.size() == 1 && bundle.texts.size() == 2);
+    for (const std::string tag : {"fr", "de", "es"}) {
+        auto european_bytes = bytes;
+        std::fill(european_bytes.begin() + 8, european_bytes.begin() + 24, 0);
+        std::copy(tag.begin(), tag.end(), european_bytes.begin() + 8);
+        assert(parse(european_bytes, bundle, error) && bundle.language == tag);
+    }
+    auto unsupported = bytes;
+    std::vector<uint8_t> japanese{'T', 'L', 'P', 'B'};
+    number(japanese, 3);
+    japanese.insert(japanese.end(), {'j', 'a'});
+    japanese.resize(24, 0);
+    number(japanese, 1024);
+    japanese.resize(japanese.size() + 1024, 0xFF);
+    japanese.resize(japanese.size() + 30, 0);
+    for (int n = 0; n < 5; ++n) number(japanese, 0); // base size/CRC, font runs, asset count, text count
+    assert(parse(japanese, bundle, error) && bundle.language == "ja");
+    auto invalid_japanese = japanese;
+    invalid_japanese[4] = 2;
+    assert(!parse(invalid_japanese, bundle, error));
+    invalid_japanese = japanese;
+    invalid_japanese[28] = invalid_japanese[29] = 0; // NUL cannot map to a glyph.
+    assert(!parse(invalid_japanese, bundle, error));
+    unsupported[8] = 'x'; unsupported[9] = 'x';
+    std::fill(unsupported.begin() + 10, unsupported.begin() + 24, 0);
+    assert(!parse(unsupported, bundle, error));
     auto bad = bytes;
     bad.push_back(0);
     assert(!parse(bad, bundle, error));
@@ -105,6 +178,7 @@ int main(int argc, char** argv) {
     };
     std::vector<uint8_t> font0{1, 2, 3, 4};
     bundle.font_crc = tooie_text_assets::image_crc32(font0);
+    entry(0x5DD, {1, 2, 3, 4});
     entry(0xC21, font0);
     entry(0xC22, font);
     entry(0xCDB, {1, 3, 0, 1, 128, 1, 'a'});
@@ -126,6 +200,57 @@ int main(int argc, char** argv) {
     assert((raw == std::vector<uint8_t>{1, 9, 10, 4}));
     assert(tooie_text_assets::decode_payload(pack.entries[3].payload, raw, error));
     assert((raw == std::vector<uint8_t>{1, 3, 0, 1, 128, 1, 'y'}));
+    for (const std::string tag : {"fr", "de", "es"}) {
+        auto european = bundle;
+        european.language = tag;
+        european.patches.clear();
+        assert(build_unchecked(european, usa, pack, error));
+        assert(pack.language == tag && pack.entries.size() == 3 && pack.entries[0].asset_id == 0xC22);
+        assert(tooie_language_font::normalize(pack, error));
+    }
+    // A legacy IA4 font is converted, while an already normalized pack remains byte-identical.
+    std::vector<uint8_t> ia4(24, 0);
+    tooie_font_sprite::put16(ia4, 0, 1); tooie_font_sprite::put16(ia4, 2, 0x80);
+    tooie_font_sprite::put32(ia4, 8, 24);
+    ia4[12] = 8; ia4[13] = 1; ia4[14] = 8; ia4[15] = 1;
+    ia4.insert(ia4.end(), {0x01, 0x23, 0x45, 0x67});
+    assert(tooie_text_assets::encode_payload(ia4, pack.entries[0].payload, error));
+    assert(tooie_language_font::normalize(pack, error));
+    assert(tooie_text_assets::decode_payload(pack.entries[0].payload, raw, error));
+    assert(tooie_asset_table::read_u16_be(raw.data() + 2) == 0x100);
+    const auto normalized = pack.entries[0].payload;
+    assert(tooie_language_font::normalize(pack, error) && normalized == pack.entries[0].payload);
+    pack.entries[0].payload = {1, 2, 3};
+    assert(!tooie_language_font::normalize(pack, error));
     ++bundle.font_crc;
     assert(!build_unchecked(bundle, usa, pack, error));
+
+    // Version 2 adds graphic deltas alongside the generated IA8 font and text overlays.
+    std::vector<uint8_t> italian{'T','L','P','B'};
+    number(italian, 2); italian.insert(italian.end(), {'i','t'}); italian.resize(24, 0);
+    number(italian, 73); italian.insert(italian.end(), bytes.begin() + 28, bytes.begin() + 131);
+    number(italian, 4); number(italian, tooie_text_assets::image_crc32(font0)); number(italian, 0);
+    number(italian, 1);
+    const size_t asset_id_offset = italian.size();
+    number(italian, 0x5DD); number(italian, 4); number(italian, tooie_text_assets::image_crc32(font0));
+    const std::vector<uint8_t> graphic{1,9,3,4};
+    number(italian, 4); number(italian, tooie_text_assets::image_crc32(graphic)); number(italian, 1);
+    number(italian, 1); number(italian, 1); italian.push_back(9);
+    number(italian, 1); number(italian, 0xCDA); italian.push_back(0); number(italian, 4);
+    italian.insert(italian.end(), {1,128,1,'i'});
+    Bundle it;
+    assert(parse(italian, it, error) && it.language == "it" && it.charset.size() == 73 && it.assets.size() == 1);
+    assert(build_unchecked(it, usa, pack, error));
+    assert(pack.entries.size() == 3 && pack.entries[0].asset_id == 0x5DD && pack.entries[1].asset_id == 0xC22 && pack.entries[2].asset_id == 0xCDA);
+    assert(pack.font1_charset.size() == 73);
+    assert(tooie_text_assets::decode_payload(pack.entries[0].payload, raw, error) && raw == graphic);
+    ++it.assets[0].target_crc;
+    assert(!build_unchecked(it, usa, pack, error));
+    assert(parse(italian, it, error)); ++it.assets[0].base_crc;
+    assert(!build_unchecked(it, usa, pack, error));
+    auto invalid_graphic = italian;
+    invalid_graphic[asset_id_offset] = 0x22; invalid_graphic[asset_id_offset + 1] = 0x0C;
+    assert(!parse(invalid_graphic, it, error));
+    italian.pop_back();
+    assert(!parse(italian, it, error));
 }

@@ -2,7 +2,7 @@
 title: "Documentação"
 status: current
 area: "root"
-updated: 2026-11-02
+updated: 2026-11-07
 ---
 
 # Documentação
@@ -16,6 +16,7 @@ para Linux e Windows.
 - [Engenharia reversa](reverse-engineering/README.md) — modelo atual do jogo
 - [Índice do vault](VAULT.md)
 - [Cogitações futuras](future/implementation-ideas.md) — propostas não implementadas, separadas dos contratos atuais
+- [Melhorias visuais e atmosfera](future/visual-atmosphere/README.md) — planos por melhoria e cenário, sem ray tracing
 - [Release v0.1.6](releases/v0.1.6.md) — changelog em inglês e português brasileiro (Windows e PortMaster)
 - [Release v0.1.5](releases/v0.1.5.md) — changelog em inglês e português brasileiro (Windows e PortMaster)
 - [Release v0.1.4](releases/v0.1.4.md) — changelog em inglês e português brasileiro
