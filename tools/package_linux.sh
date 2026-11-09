@@ -11,6 +11,13 @@ if [[ -n "$RELEASE_VERSION" ]] && { [[ ! "$RELEASE_VERSION" =~ ^[A-Za-z0-9.-]+$ 
     echo "package: invalid TOOIE_RELEASE_VERSION (use letters, digits, dots and dashes; no leading v)" >&2
     exit 1
 fi
+if [[ -n "$RELEASE_VERSION" ]]; then
+    SOURCE_VERSION="$(sed -n 's/^const std::string version_string = "\([^"]*\)";.*/\1/p' "$ROOT/src/main/main.cpp")"
+    [[ "$SOURCE_VERSION" == "$RELEASE_VERSION" ]] || {
+        echo "package: release version $RELEASE_VERSION does not match version_string in src/main/main.cpp ($SOURCE_VERSION)" >&2
+        exit 1
+    }
+fi
 [[ -x "$BUILD/TooieRecompiled" ]] || { echo "package: missing $BUILD/TooieRecompiled"; exit 1; }
 # ldconfig lives in /sbin (a /usr/sbin symlink on Debian/Ubuntu), which a reduced PATH may omit. Resolve it explicitly, never silently.
 LDCONFIG="$(command -v ldconfig || command -v /sbin/ldconfig || command -v /usr/sbin/ldconfig || true)"

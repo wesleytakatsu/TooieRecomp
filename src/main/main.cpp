@@ -98,7 +98,7 @@ extern char** environ;
 
 #include "stb/stb_image.h"
 
-const std::string version_string = "0.1.6";
+const std::string version_string = "0.1.7";
 
 namespace {
 
