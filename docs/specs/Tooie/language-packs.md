@@ -1,6 +1,6 @@
 ---
 title: "TooieRecomp Spec — In-Game Language Bundles and Packs"
-description: "Built-in pt-BR/FR/DE/ES/IT bundles, procedural IA8 fonts, graphic deltas and USA-ROM rewriting."
+description: "pt-BR/FR/DE/ES/IT bundles and a private Japanese bundle, IA8 fonts, graphic deltas and USA-ROM rewriting."
 status: current
 area: "specs/Tooie"
 updated: 2026-11-08
@@ -11,11 +11,12 @@ tags: [specs, tooierecomp, localization, language, tlp, tlpb, text, font]
 
 ## 1. Selection and installation
 
-General > Game Language offers English, Português (Brasil), Français, Deutsch, Español and Italiano (bozza).
+General > Game Language offers English, Português (Brasil), Français, Deutsch, Español, Italiano (bozza) and Japanese.
 The selected value persists as `language` in `general.json`; it applies when the game starts.
 Changing it during gameplay requires restarting the game. English uses the original USA assets.
 
-The other five languages load files next to the executable:
+The other six languages load file bundles. Latin-language bundles live next to the executable; Japanese defaults
+to the private user language folder:
 
 | Language | Config value | Bundle |
 | --- | --- | --- |
@@ -24,6 +25,7 @@ The other five languages load files next to the executable:
 | German | `German` | `assets/languages/de.tlpb` |
 | Spanish | `Spanish` | `assets/languages/es.tlpb` |
 | Italian draft | `Italian` | `assets/languages/it.tlpb` |
+| Japanese | `Japanese` | User `languages/ja.tlpb` (private local output) |
 
 The player needs only the verified USA ROM. No European-ROM selection or extraction dialog is offered by Game Language.
 CMake's `TooieUIAssets` synchronizes the entire assets directory, including these bundles, on app builds.
@@ -35,6 +37,10 @@ Italian comes from the external Rulesless v0.9 USA patch plus `translations/it.j
 draft with project terminology and manual corrections. Editorial and in-game review remain pending. The verified
 European text bank contains only EN/FR/DE/ES; Italian is not a hidden fifth section. Attribution is recorded in
 `assets/languages/NOTICE-Italian.txt`.
+Japanese text and glyph artwork come from the user's verified Japan ROM. Its bundle is generated locally into the
+user app folder (`%LOCALAPPDATA%/TooieRecompiled/languages/ja.tlpb` on Windows). The generator/notice are versioned;
+no Japan ROM is needed at runtime. If a Japanese bundle is supplied in program `assets/languages`, it takes priority;
+otherwise both General availability checks and boot load the private user bundle.
 
 ## 2. Loading and compatibility
 
@@ -43,7 +49,7 @@ At ROM load, `src/game/language_pack.cpp`:
 2. Selects the configured bundle and validates its language tag.
 3. Builds replacement text/graphic assets and an IA8 font in memory from the bundle plus the USA ROM.
 4. Relocates the affected asset tail and updates its cart-table offsets in memory.
-5. Installs the rewritten ROM buffer and European character mapping.
+5. Installs the rewritten ROM buffer and the selected European or Japanese character mapping.
 
 A present bundle takes precedence over an older imported `languages/<tag>.tlp` in the user's app folder.
 If a FR/DE/ES bundle is absent, the loader can still use that legacy pack. It converts any IA4 font-1 payload to IA8
@@ -172,6 +178,54 @@ are re-encoded; truncated streams and incompatible layouts are rejected. Graphic
 The tool never imports patched code or tables. Unusable graphics retain USA data; text in rejected assets is translated
 from the USA records by the supplemental catalog instead.
 Rareware/Dolby exclusions are listed separately as `usa_branding_preserved`; `italian_hd_title` records title identity texels.
+
+### Japanese extraction and USA-runtime adaptation
+
+```sh
+python tools/build_japanese_bundle.py --japan-rom "<Japan ROM, any supported N64 byte order>" \
+  --usa-image "<verified decompressed USA image>" \
+  --reference "<private ja-reference.tlp>" --report "<private report.json>"
+```
+
+The default output is the private user `languages/ja.tlpb`; `--output` can select another location for extraction or
+portable installations. Keep it outside the repository's vendored `assets/` tree and public packages.
+The normalized 33554432-byte input must have SHA-1 `5a5172383037d171f121790959962703be1f373c`.
+The source is read-only. Generation does not execute or import Japanese code, animations or gameplay tables.
+The Japan title model is imported intact; nine other compatible model texture regions are copied into USA models,
+preserving their geometry and display lists. Rareware and Dolby remain the USA assets.
+
+TLPB v3 is restricted to `ja`. Its font-map field contains 1024 bytes: two 256-entry little-endian signed-16-bit
+character-to-frame tables for fonts 0 and 1, with `-1` for unmapped characters. NUL, space and `FD/FE/FF` cannot be
+glyphs. V3 permits complete `0xC21/0xC22` font deltas and skips Latin font-1 synthesis. Both fonts must exist, parse
+as supported sprites, and contain every mapped frame; IA4 input is normalized to IA8 before use. Other languages
+retain v1/v2 parsing and their original font behavior. Developer TLPK references permit the same map field for `ja`.
+
+Japanese ROM text uses a custom one-byte glyph encoding, not UTF-8 or Shift-JIS. The generator removes the `AD 6A`
+font selector, converts Japanese substitution marker `AE` to USA `~`, and assigns kana/punctuation to available
+character codes. Kana must never occupy USA inline-button bytes `0x7F..0x87`; allocation uses nonzero low glyph
+bytes when needed, keeping `0x0A` for authored newlines. Japan button bytes `0x95..0x9D` become USA `0x7F..0x87`
+(`0x9D` A → `0x87`, `0x9C` B → `0x86`); Japan separator `0xAC` becomes space. Unrecognized codes in the
+remaining regional control gap are rejected. Latin letters/digits, formatting markers and USA font-0 copyright
+code `x` are preserved.
+The native punctuation inventory includes apostrophe at frame 55, the long-vowel mark `ー` at 59 and Japanese
+full stop `。` at 66. The long-vowel mark keeps its native artwork in both composite fonts; it must not become
+Latin punctuation. Authored Japanese UI strings use the same glyph identities as extracted records.
+Composite IA8 fonts retain the USA Latin glyphs and append original Japanese glyphs. Font 1 uses the Japanese title
+glyph where available, otherwise an outlined glyph derived from the dialog font. This avoids the USA renderer's
+unsupported IA4 path while preserving the Japanese script. Glyph indices use 16 bits rather than signed bytes.
+
+All 2251 shared text assets preserve the USA group count, event/control stream and aggregate substitution count.
+Japanese dialogue row counts can differ; the native serialized counts are rebuilt. Regional control differences in
+29 assets are adapted to the USA stream. Three messages (`0x1007/0x143E/0x154A`) have small project-authored Japanese
+adjustments for USA dynamic values. `0x186C` keeps the USA legal notices and indices, with a Japanese demo label,
+instead of importing Japan's unused debug strings. USA-only multiplayer quiz menu `0x1A89` has a project-authored
+Japanese translation with its original field IDs and newline/format markers. In total, all 2252 USA text assets
+have Japanese entries; the source bank contributes 2251 shared assets.
+
+The existing BT Reloaded pack already resolves all 31 native Japan title hashes to Japanese artwork (including its
+shared trademark tile). No redraw or hash mutation is required. The complete private Italian HD continuation retains
+these mappings from its original base and needs no additional title addon for Japanese. The Italian title remains
+independent. Complete artwork and Japanese font/game data remain private; see [[asset-and-licensing-manifest]].
 
 ### Italian HD title artwork
 

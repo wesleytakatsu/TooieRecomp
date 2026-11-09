@@ -74,7 +74,7 @@ namespace tooie_language_pack {
         }
 
         uint32_t charset_length = read_u32_le(data.data() + 32);
-        if (charset_length > 255) {
+        if ((pack.language == "ja" && charset_length != 1024) || (pack.language != "ja" && charset_length > 255)) {
             return fail("invalid charset length");
         }
         size_t position = 36;
@@ -130,7 +130,8 @@ namespace tooie_language_pack {
         if (pack.entries.empty() || pack.entries.size() > kAssetCount) {
             return fail("invalid entry count");
         }
-        if (pack.font1_charset.size() > 255) {
+        if ((pack.language == "ja" && pack.font1_charset.size() != 1024) ||
+            (pack.language != "ja" && pack.font1_charset.size() > 255)) {
             return fail("invalid charset length");
         }
         std::vector<uint8_t> bytes{'T', 'L', 'P', 'K'};

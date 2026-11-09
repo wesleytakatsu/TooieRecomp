@@ -3,6 +3,8 @@
 
 namespace {
     bool european_enabled = false;
+    bool japanese_enabled = false;
+    tooie_text_font_map::JapaneseMaps japanese_maps{};
     tooie_text_font_map::CharsetTable charset_table{};
     tooie_text_font_map::AccentMap accent_map{};
 }
@@ -11,10 +13,19 @@ void tooie_text_font_map::set_european_font_map(std::span<const uint8_t> charset
     charset_table = build_table(charset);
     accent_map = accents;
     european_enabled = true;
+    japanese_enabled = false;
+}
+
+bool tooie_text_font_map::set_japanese_font_map(std::span<const uint8_t> maps) {
+    if (!decode_japanese_maps(maps, japanese_maps)) return false;
+    japanese_enabled = true;
+    european_enabled = false;
+    return true;
 }
 
 void tooie_text_font_map::reset() {
     european_enabled = false;
+    japanese_enabled = false;
     charset_table.fill(-1);
     accent_map.fill(0);
 }
@@ -23,7 +34,9 @@ extern "C" void func_800D35D0(uint8_t* rdram, recomp_context* ctx) {
     int32_t font = static_cast<int32_t>(ctx->r4);
     int32_t character = static_cast<int32_t>(ctx->r5);
     int32_t result;
-    if (european_enabled) {
+    if (japanese_enabled) {
+        result = tooie_text_font_map::map_japanese(font, character, japanese_maps);
+    } else if (european_enabled) {
         result = tooie_text_font_map::map_european(font, character, charset_table, accent_map);
     } else {
         // The USA function leaves the folded character in a1; keep that side effect.

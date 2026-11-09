@@ -51,6 +51,9 @@ void tooie_language_import_ui::on_language_change(recomp::config::ConfigValueVar
     restoring_language = false;
     std::fprintf(stderr, "[tooie-lang] selected language files missing or invalid\n");
     recompui::open_info_prompt("Language files unavailable",
+        static_cast<banjo::Language>(*selected) == banjo::Language::Japanese ?
+        "Restore the Japanese language file (ja.tlpb) in the game's language folder, then select Japanese again. "
+        "Only the USA ROM is required. The previous language has been restored." :
         "Restore the assets/languages files supplied with the game, then select the language again. "
         "Only the USA ROM is required. The previous language has been restored.",
         "OK", {}, recompui::ButtonStyle::Danger);

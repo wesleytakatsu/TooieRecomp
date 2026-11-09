@@ -177,3 +177,69 @@ The European 73-character font-1 charset and 30-byte accent mapping table reside
 TooieRecomp provides a host implementation of `func_800D35D0` in `src/game/text_font_map.cpp`:
 - By default, it preserves faithful USA mapping behavior for standard English gameplay.
 - When an active language pack or bundle provides a font-1 charset and accent map, the routine dynamically switches to the European mapping logic.
+
+## 8. Japanese release (`PROVEN` unless qualified)
+
+- Japan normalized SHA-1: `5a5172383037d171f121790959962703be1f373c`, 33554432 bytes. The supplied `.n64` file is
+  16-bit byte-swapped (`37 80 40 12`), despite its extension. Table/base are `0x5148/0x12AE4`, 13926 assets.
+- Native font 0 (`0xC21`) is byte-identical to USA: 88 IA8 frames. Japan adds font 2 (`0xC20`): 230 I4 (`0x20`)
+  frames, nominal 16×16; this slot is empty in the verified USA image. Japan font 1 (`0xC22`) has 178 IA4 (`0x80`)
+  frames at height 24. The scripts use hiragana/katakana, Latin symbols and a proprietary one-byte mapping.
+- Native font-2 punctuation frames 55..66 are apostrophe, `*`, `+`, comma, `ー`, period, slash, colon, equals,
+  question mark, at sign and `。`, respectively (`PROVEN` by the decoded atlas and corresponding source records).
+  Omitting frame 55 in the host punctuation list shifted later symbols: `ゲーム` appeared as `ゲ.ム`,
+  `キックボール` lost its long-vowel mark, and a question could end in an A-shaped symbol (`CORRECTED`).
+  The authored UI encoder also uses frame 59 for `ー` and 66 for `。`.
+- Boot instructions identify compressed core1 at `0x1DD2DE0` and core2 at `0x1DEB330`. Sequential raw-deflate
+  decoding locates core2 data at `0x1E2DBA2`. Its 256-byte font-1 lookup is at decompressed offset `0x3934`;
+  entries are unsigned bytes, reaching frame 177. It maps native numeric codes `0x10..0x19` to frames `7..16`.
+- The native Japan glyph mapper does not fold font-1 lowercase as USA does. Font 2 excludes `AD`, maps codes
+  `>= AF` to `c - 0x1A`, and otherwise returns `c`. Font 0 retains the USA mapping.
+- Text records commonly begin `AD 6A`, selecting the Japanese font path. Numeric/text substitutions use `AE`,
+  while dialog glyph `0x0D` is a literal wave dash. Treating the latter as USA `~` corrupts substitution counts.
+  Shared scripts show 227 USA substitutions; three release-dependent messages require explicit adaptation.
+- All 2251 shared text assets have matching group counts, but only 490 have matching per-group record counts.
+  2222 have identical non-text control streams; the other 29 mostly differ in wait records. This is a regional
+  script-layout difference, not evidence that the Japanese executable is binary-compatible with USA.
+- Japan `0x186C` retains legacy English Dolby lines and adds unused `TEXT 26.OCT`/`TEST*` records. Its copyright
+  row is indexed differently. Blindly importing those rows into USA displays debug strings. The host preserves
+  USA legal-row identities and the font-0 `x` copyright glyph.
+- USA-only `0x1A89` is a nonempty four-field multiplayer quiz menu (`ONE GETS TONNED!`, choice text and title),
+  not an empty placeholder. Japan has no corresponding payload. The host supplies a Japanese translation while
+  preserving its field IDs, newlines and `/N#` marker sequence.
+- Title model `0x8A8` has 31 RGBA32 32×32 textures and a 2000×1000-unit canvas translated vertically by 13 units.
+  Several tiles are submitted as two separate three-vertex loads. All 31 RT64 v5 hashes resolve in the user's
+  BT Reloaded database to Japanese title artwork/shared trademark artwork. Rareware `0x632` and Dolby `0x8AC`
+  are byte-identical to USA. These facts do not imply parity of other regional code or assets.
+
+The host adapts the Japanese text into composite IA8 fonts and explicit per-font maps. This is a project encoding,
+not a claim that the original Japanese ROM uses the host byte codes. Regional animations and incompatible model
+geometry are not imported. Source hashes, selected asset IDs and original differences are recorded by the offline builder.
+
+### Inline buttons and Japanese separators
+
+- `PROVEN`: USA `func_80800E24_gczoombox` classifies bytes `0x7F <= c < 0x88` as inline buttons before normal
+  glyph lookup. A custom font map cannot make those bytes safe for kana. Initial host allocation reused them;
+  the user's file-select screenshot exposed Start/C icons replacing kana (`CORRECTED`).
+- `PROVEN` from corresponding file-select/copy/delete/option fields: Japan `0x9D` is A and `0x9C` is B;
+  the nine button codes `0x95..0x9D` correspond to USA `0x7F..0x87`. They require conversion independently of
+  the glyph table. Treating `0x9D/0x9C` as glyph indices instead displays kana in place of A/B.
+- `STRONG_INFERENCE`: Japan `0xAC` is a word separator, based on its recurring placement between complete words
+  and before button prompts in corresponding regional records. The host renders it as a space, rather than the
+  unrelated font-2 frame 172 (`す`). This is an adaptation, not proof of all native Japanese wrapping semantics.
+- The corrected project namespace reserves all nine inline-button bytes plus NUL, newline, substitution and
+  formatting commands. All 230 glyphs have distinct codes except the two native blank frames; extra nonzero
+  low bytes supply the remaining capacity. This does not change the game's native button-rendering path.
+
+### Repeated typed records (2026-11-09)
+
+- `PROVEN` static code: Japan has a routine that collects every typed text record (`>= 0x80`) of a type into a
+  list, while the USA lookup returns the first match (`RecompiledFuncs/funcs_204.c:2223`). Japan therefore splits
+  one menu prompt, quiz question or notice into several same-type records where USA uses one.
+- `PROVEN` static code: the USA zoombox path wraps at spaces and does not interpret 0x0A
+  (`RecompiledFuncs/funcs_372.c:5438`); 0x186D has an explicit line splitter (`funcs_295.c:1035`).
+- Japan byte 0x0A inside `AD 6A` text is a line break, not glyph 10 (`<`).
+- Native glyph 78 is `ヲ`; 13 `〜`, 67 `゛`, 68 `゜`, 9 `″` (checked against the font-2 frames).
+- Japan inserts localization staff credits, shifting the credits IDs (`0x1B68..0x1B90`) against USA.
+- Host adaptation: same-type fragments are joined in order with a space (0x0A where the record type already
+  supports it); credits keep USA text. Line breaks/clipping on screen: `PENDING_USER`.

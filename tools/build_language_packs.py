@@ -285,7 +285,7 @@ def apply_bps(source: bytes, patch: bytes) -> bytes:
 def pack_bytes(tag: str, charset: bytes, accents: bytes, entries: dict[int, bytes]) -> bytes:
     if not tag or len(tag) > 15 or not all(c.isascii() and (c.isalnum() or c == "-") for c in tag):
         raise ValueError("invalid language tag")
-    if not 1 <= len(entries) <= ASSET_COUNT or len(charset) > 255:
+    if not 1 <= len(entries) <= ASSET_COUNT or not (len(charset) == 1024 if tag == "ja" else len(charset) <= 255):
         raise ValueError("invalid pack entry count or charset")
     if len(accents) != (30 if charset else 0):
         raise ValueError("invalid accent map length")
@@ -387,10 +387,12 @@ def bundle_bytes(tag: str, charset: bytes, accents: bytes, base: bytes,
                  assets: dict[int, tuple[bytes, bytes]] | None = None) -> bytes:
     if not tag or len(tag) > 15 or not all(c.isascii() and (c.isalnum() or c == "-") for c in tag):
         raise ValueError("invalid language tag")
-    if not 1 <= len(charset) <= 255 or len(accents) != 30:
+    if not (len(charset) == 1024 if tag == "ja" else 1 <= len(charset) <= 255) or len(accents) != 30:
         raise ValueError("invalid font map")
     apply_font_patches(base, len(base), zlib.crc32(base), patches)
-    version = 2 if assets is not None else 1
+    if tag == "ja" and (patches or assets is None):
+        raise ValueError("Japanese bundles require complete font asset deltas")
+    version = 3 if tag == "ja" else (2 if assets is not None else 1)
     out = bytearray(struct.pack("<4sI16sI", b"TLPB", version, tag.encode("ascii"), len(charset)))
     out.extend(charset)
     out.extend(accents)
@@ -401,7 +403,7 @@ def bundle_bytes(tag: str, charset: bytes, accents: bytes, base: bytes,
     if assets is not None:
         out.extend(struct.pack("<I", len(assets)))
         for index, (original, translated) in sorted(assets.items()):
-            if not 0 <= index < ASSET_COUNT or index in TEXT_IDS or 0xC20 <= index <= 0xC23:
+            if not 0 <= index < ASSET_COUNT or index in TEXT_IDS or (0xC20 <= index <= 0xC23 and not (tag == "ja" and index in (0xC21, 0xC22))):
                 raise ValueError("invalid graphic asset ID")
             if not 0 < len(original) <= 65535 * 16 or not 0 < len(translated) <= 65535 * 16:
                 raise ValueError("invalid graphic asset size")
@@ -434,13 +436,15 @@ def read_bundle(data: bytes) -> dict:
         return struct.unpack("<I", take(4))[0]
     magic, version, raw_tag, charset_length = struct.unpack("<4sI16sI", take(28))
     tag_bytes = raw_tag.split(b"\0", 1)[0]
-    if magic != b"TLPB" or version not in (1, 2) or not tag_bytes or raw_tag != tag_bytes.ljust(16, b"\0"):
+    if magic != b"TLPB" or version not in (1, 2, 3) or not tag_bytes or raw_tag != tag_bytes.ljust(16, b"\0"):
         raise ValueError("invalid bundle header")
     try:
         tag = tag_bytes.decode("ascii")
     except UnicodeDecodeError as exc:
         raise ValueError("invalid language tag") from exc
-    if not all(c.isalnum() or c == "-" for c in tag) or not 1 <= charset_length <= 255:
+    if (not all(c.isalnum() or c == "-" for c in tag) or
+            (tag == "ja") != (version == 3) or
+            not (charset_length == 1024 if tag == "ja" else 1 <= charset_length <= 255)):
         raise ValueError("invalid bundle tag or charset")
     charset = take(charset_length)
     accents = take(30)
@@ -454,11 +458,11 @@ def read_bundle(data: bytes) -> dict:
         patches.append((offset, take(length)))
         end = offset + length
     assets = {}
-    if version == 2:
+    if version >= 2:
         previous = -1
         for _ in range(number()):
             index, base_size, base_crc, target_size, target_crc, runs = (number() for _ in range(6))
-            if index <= previous or not 0 <= index < ASSET_COUNT or index in TEXT_IDS or 0xC20 <= index <= 0xC23:
+            if index <= previous or not 0 <= index < ASSET_COUNT or index in TEXT_IDS or (0xC20 <= index <= 0xC23 and not (tag == "ja" and index in (0xC21, 0xC22))):
                 raise ValueError("invalid graphic asset ID")
             if not 0 < base_size <= 65535 * 16 or not 0 < target_size <= 65535 * 16:
                 raise ValueError("invalid graphic asset size")

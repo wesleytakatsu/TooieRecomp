@@ -82,6 +82,29 @@ int main() {
     CHECK(map_european(1, 0xFD, table, accents) == -1);
     CHECK(map_usa(2, 0xFD, usa_table) == -1);
     CHECK(map_european(2, 0xFD, table, accents) == 0xE3);
+    // Extended glyph indices must survive without Latin case folding or signed-byte truncation.
+    std::array<uint8_t, kJapaneseMapBytes> encoded;
+    encoded.fill(0xFF);
+    encoded[0x61 * 2] = 0x01;
+    encoded[0x61 * 2 + 1] = 0x01;
+    encoded[512 + 0x61 * 2] = 180;
+    encoded[512 + 0x61 * 2 + 1] = 0;
+    JapaneseMaps japanese;
+    CHECK(decode_japanese_maps(encoded, japanese));
+    CHECK(map_japanese(0, 0x61, japanese) == 257);
+    CHECK(map_japanese(1, 0x61, japanese) == 180);
+    CHECK(map_japanese(0, -1, japanese) == -1);
+    CHECK(map_japanese(1, 256, japanese) == -1);
+    CHECK(map_japanese(0, 0, japanese) == -1);
+    CHECK(map_japanese(1, 0xFD, japanese) == -1);
+    CHECK(map_japanese(3, '8', japanese) == 8);
+    CHECK(!decode_japanese_maps(std::span(encoded).first(512), japanese));
+    encoded[0] = 0;
+    encoded[1] = 0;
+    CHECK(!decode_japanese_maps(encoded, japanese));
+    encoded[0] = encoded[1] = 0xFF;
+    encoded[0x61 * 2 + 1] = 0x80;
+    CHECK(!decode_japanese_maps(encoded, japanese));
     std::puts("tooie_text_font_map_test PASS");
     return 0;
 }

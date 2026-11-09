@@ -1,0 +1,14 @@
+Japanese language data
+
+Source: the user's private Banjo to Kazooie no Daibouken 2 (Japan) ROM.
+Normalized big-endian SHA-1: 5a5172383037d171f121790959962703be1f373c.
+Original Japanese text, glyph artwork and game graphics: Nintendo/Rare.
+
+tools/build_japanese_bundle.py produces user languages/ja.tlpb locally for the verified USA executable.
+It converts the native character codes, normalizes the fonts to IA8, preserves USA event controls,
+and adapts three variable-dependent messages, the demo label and a USA-only quiz menu to the USA game.
+The original Japanese title model is preserved, including its existing BT Reloaded HD mappings.
+No Japanese executable code or ROM image is included in the bundle.
+
+ja.tlpb is private generated game data, excluded from git and public distribution.
+This notice and the host-side conversion code do not grant rights to the original game assets.

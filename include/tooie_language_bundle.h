@@ -3,10 +3,12 @@
 #include "tooie_font_sprite.h"
 #include "tooie_language_pack.h"
 #include "tooie_text_assets.h"
+#include "tooie_text_font_map.h"
+#include "tooie_language_font.h"
 
 namespace tooie_language_bundle {
     inline bool supported_language(const std::string& tag) {
-        return tag == "pt-BR" || tag == "fr" || tag == "de" || tag == "es" || tag == "it";
+        return tag == "pt-BR" || tag == "fr" || tag == "de" || tag == "es" || tag == "it" || tag == "ja";
     }
     struct Patch {
         uint32_t offset;
@@ -22,10 +24,10 @@ namespace tooie_language_bundle {
         uint32_t base_size = 0, base_crc = 0, target_size = 0, target_crc = 0;
         std::vector<Patch> patches;
     };
-    inline bool graphic_asset_id(uint32_t id) {
+    inline bool graphic_asset_id(uint32_t id, bool japanese = false) {
         return id < tooie_asset_table::kAssetCount &&
             (id < tooie_asset_table::kTextFirst || id > tooie_asset_table::kTextLast) &&
-            (id < 0xC20 || id > 0xC23);
+            ((id < 0xC20 || id > 0xC23) || (japanese && (id == 0xC21 || id == 0xC22)));
     }
     struct Bundle {
         std::string language;
@@ -60,7 +62,7 @@ namespace tooie_language_bundle {
         };
         std::span<const uint8_t> bytes;
         uint32_t value, version;
-        if (!take(4, bytes) || !std::equal(bytes.begin(), bytes.end(), "TLPB") || !number(version) || (version != 1 && version != 2) ||
+        if (!take(4, bytes) || !std::equal(bytes.begin(), bytes.end(), "TLPB") || !number(version) || (version < 1 || version > 3) ||
             !take(16, bytes)) {
             return fail();
         }
@@ -71,10 +73,14 @@ namespace tooie_language_bundle {
             return fail();
         }
         bundle.language.assign(bytes.begin(), end);
-        if (!supported_language(bundle.language) || !number(value) || value != 73u || !take(value, bytes)) {
+        const bool japanese = bundle.language == "ja";
+        if (!supported_language(bundle.language) || japanese != (version == 3) || !number(value) ||
+            value != (japanese ? tooie_text_font_map::kJapaneseMapBytes : 73u) || !take(value, bytes)) {
             return fail();
         }
         bundle.charset.assign(bytes.begin(), bytes.end());
+        tooie_text_font_map::JapaneseMaps maps;
+        if (japanese && !tooie_text_font_map::decode_japanese_maps(bundle.charset, maps)) return fail();
         if (!take(30, bytes)) {
             return fail();
         }
@@ -93,12 +99,12 @@ namespace tooie_language_bundle {
             bundle.patches.push_back({offset, {bytes.begin(), bytes.end()}});
             previous_end = size_t(offset) + size;
         }
-        if (version == 2) {
+        if (version >= 2) {
             if (!number(count) || count > tooie_asset_table::kAssetCount) return fail();
             for (uint32_t i = 0; i < count; ++i) {
                 AssetPatch asset;
                 uint32_t runs;
-                if (!number(asset.id) || !graphic_asset_id(asset.id) ||
+                if (!number(asset.id) || !graphic_asset_id(asset.id, japanese) ||
                     (!bundle.assets.empty() && asset.id <= bundle.assets.back().id) ||
                     !number(asset.base_size) || !number(asset.base_crc) || !number(asset.target_size) ||
                     !number(asset.target_crc) || !number(runs) || runs > data.size() / 8 ||
@@ -143,6 +149,10 @@ namespace tooie_language_bundle {
             error = "unsupported bundle language";
             return false;
         }
+        if (bundle.language == "ja" && !bundle.patches.empty()) {
+            error = "Japanese fonts must use complete font asset deltas";
+            return false;
+        }
         tooie_language_pack::LanguagePack pack;
         pack.language = bundle.language;
         pack.base_size = static_cast<uint32_t>(usa.size());
@@ -170,15 +180,18 @@ namespace tooie_language_bundle {
             }
             pack.entries.push_back({kFont0, std::move(encoded)});
         }
-        if (!asset_payload(usa, kUsaLayout, kFont1, payload, error) || !decode_payload(payload, raw, error)) return false;
-        tooie_font_sprite::Sprite font, generated;
-        const auto profile = bundle.language == "pt-BR" ? tooie_font_sprite::Font1Profile::PortugueseBrazil :
-                                                         tooie_font_sprite::Font1Profile::European;
-        if (!tooie_font_sprite::parse(raw, font, error) || !tooie_font_sprite::generate_font1(font, generated, error, profile) ||
-            !tooie_font_sprite::serialize(generated, raw, error) || !encode_payload(raw, encoded, error)) {
-            return false;
+        const bool japanese = bundle.language == "ja";
+        if (!japanese) {
+            if (!asset_payload(usa, kUsaLayout, kFont1, payload, error) || !decode_payload(payload, raw, error)) return false;
+            tooie_font_sprite::Sprite font, generated;
+            const auto profile = bundle.language == "pt-BR" ? tooie_font_sprite::Font1Profile::PortugueseBrazil :
+                                                             tooie_font_sprite::Font1Profile::European;
+            if (!tooie_font_sprite::parse(raw, font, error) || !tooie_font_sprite::generate_font1(font, generated, error, profile) ||
+                !tooie_font_sprite::serialize(generated, raw, error) || !encode_payload(raw, encoded, error)) {
+                return false;
+            }
+            pack.entries.push_back({kFont1, std::move(encoded)});
         }
-        pack.entries.push_back({kFont1, std::move(encoded)});
         for (const auto& text : bundle.texts) {
             if (text.kind == 0) {
                 Section check;
@@ -243,7 +256,7 @@ namespace tooie_language_bundle {
             pack.entries.push_back({text.id, std::move(encoded)});
         }
         for (const auto& asset : bundle.assets) {
-            if (!graphic_asset_id(asset.id) || asset.target_size == 0 || asset.target_size > 65535u * 16u ||
+            if (!graphic_asset_id(asset.id, japanese) || asset.target_size == 0 || asset.target_size > 65535u * 16u ||
                 !asset_payload(usa, kUsaLayout, asset.id, payload, error) || !decode_payload(payload, raw, error)) {
                 error = "invalid graphic asset patch";
                 return false;
@@ -269,6 +282,7 @@ namespace tooie_language_bundle {
         if (!bundle.assets.empty()) {
             std::sort(pack.entries.begin(), pack.entries.end(), [](const auto& a, const auto& b) { return a.asset_id < b.asset_id; });
         }
+        if (japanese && !tooie_language_font::normalize(pack, error)) return false;
         out = std::move(pack);
         return true;
     }

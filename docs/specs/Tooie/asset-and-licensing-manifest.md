@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Asset Ownership and Licensing Manifest"
 description: "Technical specification of copyright boundaries, ROM-derived code classification, third-party component licenses, and distribution restrictions."
 status: current
 area: "specs/Tooie"
-updated: 2026-10-28
+updated: 2026-11-08
 tags: [specs, tooierecomp, assets, licensing, copyright, rom-derived, manifest]
 ---
 
@@ -60,6 +60,7 @@ Detailed upstream URLs, pins, and license metadata are cataloged in `vendor/UPST
 | **FR/DE/ES Language Bundles** | `assets/languages/{fr,de,es}.tlpb`, extracted from the user's verified EUR ROM | Proprietary Nintendo/Rare localized text; no project licence grant | Generated locally at the user's request, synchronized beside the executable and hashed in `vendor/MANIFEST.sha256`. No ROM image or font artwork. No public release/redistribution clearance is implied. |
 | **Italian Language Bundle** | `assets/languages/it.tlpb`, Rulesless v0.9 BPS plus `translations/it.json` | External fan translation, translated graphic deltas and a project supplemental draft | Attribution/terms summary in `assets/languages/NOTICE-Italian.txt`. USA ROM required; no ROM or complete original artwork. The source author's terms and Nintendo/Rare rights remain applicable. No public release is authorized by local integration. |
 | **Italian Title HD (private)** | Locally generated `Tooie-Italian-Title-HD.rtz` and `title-source.png` | Generated adaptation of the user's original/HD title artwork and Rulesless Italian layout | Created with the built-in `image_gen` tool. Complete artwork and RTZ are kept outside git; developer builder is `tools/build_italian_title_hd.py`. Original game/HD artwork rights remain applicable. |
+| **Japanese Language Bundle (private)** | Locally generated user `languages/ja.tlpb`; input Japan ROM SHA-1 `5a5172383037d171f121790959962703be1f373c` | Proprietary Nintendo/Rare Japanese text, glyph artwork and graphics, adapted to USA runtime | Private generated bundle, outside the vendored assets tree, git and public distribution. Only the builder and `NOTICE-Japanese.txt` are versioned. The existing private HD pack already contains its Japanese title artwork. |
 | **RT64** | `lib/rt64` (vendored) | MIT License | Embedded static graphics rendering library. |
 | **N64ModernRuntime / ultramodern** | `lib/N64ModernRuntime` (vendored) | GNU GPLv3 / MIT | Embedded static guest hardware abstraction runtime. |
 | **RecompFrontend** | `lib/RecompFrontend` (vendored) | Unverified upstream license | In-game configuration UI and overlay presentation. |
@@ -87,6 +88,7 @@ The locally generated FR/DE/ES text bundles are an explicit exception: they cont
 | `assets/languages/pt-BR.tlpb` | Brazilian Portuguese translation bundle | Translation data distributed with the project | Bundled in `assets/languages/` (synchronized via CMake `TooieUIAssets`). Contains only translated text and patch data; zero Rare game text or font art. |
 | `assets/languages/{fr,de,es}.tlpb` | Official localized text from the user's verified EUR ROM | Proprietary Nintendo/Rare; not licensed by the project | Local bundles synchronized via `TooieUIAssets`; no ROM image or font artwork. |
 | `assets/languages/it.tlpb` and `NOTICE-Italian.txt` | Compatible Rulesless v0.9 translations/graphic deltas and supplemental Italian draft | External translation terms and original game rights; see bundled notice | Local bundle synchronized via `TooieUIAssets`; source catalog in `translations/it.json`, offline builder in `tools/build_italian_bundle.py`. |
+| User `languages/ja.tlpb` (private local output) and program `NOTICE-Japanese.txt` | Japanese text, composite IA8 fonts and selected graphic deltas from the user's verified Japan ROM | Proprietary Nintendo/Rare; not licensed by the project | Generated into the user app folder by `tools/build_japanese_bundle.py`; optional program `assets/languages/ja.tlpb` takes precedence. The generated bundle stays outside git and public packages. |
 | `Suplexmentary Comic NC.ttf` | Jayvee D. Enaguas / SMWCNC | License unverified / unknown | Bundled in `assets/` for launcher UI. |
 | `InterVariable.ttf` | Rasmus Andersson (The Inter Project Authors) | SIL Open Font License 1.1 | Bundled for configuration UI and typography. |
 | `NotoEmoji-Regular.ttf` | Google LLC (Noto Emoji Project) | SIL Open Font License 1.1 | Bundled for UI icon glyph rendering. |

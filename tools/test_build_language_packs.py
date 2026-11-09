@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import build_language_packs as packs
 import build_italian_bundle as italian
+import build_japanese_bundle as japanese
 
 
 def varint(value: int) -> bytes:
@@ -190,6 +191,255 @@ class LanguagePackTests(unittest.TestCase):
             italian.italian_title_hd_identity(bytes(opaque))
         with self.assertRaises(ValueError):
             italian.italian_title_hd_identity(bytes(model[:-1]))
+
+
+class JapaneseBundleTests(unittest.TestCase):
+    def test_native_punctuation_and_long_vowel_are_not_shifted(self) -> None:
+        codes = japanese.character_codes()
+        # Native frame 55 is apostrophe; the following symbols shift by one.
+        for glyph, character in {55: "'", 56: "*", 57: "+", 58: ",", 60: ".", 61: "/",
+                                 62: ":", 63: "=", 64: "?", 65: "@"}.items():
+            self.assertEqual(codes[glyph], ord(character))
+        self.assertNotEqual(codes[59], ord("."))
+        self.assertNotEqual(codes[59], codes[58])
+        self.assertEqual(japanese.encode_ui("ー。", codes), bytes([codes[59], codes[66], 0]))
+        self.assertEqual(japanese.convert_text(b"\xADj\x3B\x42\0", codes),
+                         japanese.encode_ui("ー。", codes))
+
+    def test_kana_never_uses_inline_button_codes(self) -> None:
+        codes = japanese.character_codes()
+        self.assertEqual(len(codes), 230)
+        self.assertEqual(len(set(codes.values())), 229)  # Two native space frames.
+        self.assertFalse(set(codes.values()) & japanese.USA_BUTTON_CODES)
+        self.assertFalse(set(codes.values()) & {0, 10, 0x78, 0x7E, 0xFD, 0xFE, 0xFF})
+        for glyph in range(1, 230):
+            native = glyph + 26 if glyph >= 149 else glyph
+            expected = 10 if glyph == 10 else codes[glyph]
+            self.assertEqual(japanese.convert_text(b"\xADj" + bytes([native, 0]), codes),
+                             bytes([expected, 0]))
+
+    def test_native_newline_survives_japanese_font_mode(self) -> None:
+        codes = japanese.character_codes()
+        self.assertEqual(japanese.convert_text(b"\xADj\x3B\n\x42\0", codes),
+                         japanese.encode_ui("ー\n。", codes))
+        self.assertEqual(japanese.convert_text(b"ASCII\n\xADj\x3B\n\0", codes),
+                         b"ASCII\n" + japanese.encode_ui("ー\n", codes))
+
+    def test_authored_native_kana_and_standalone_marks(self) -> None:
+        codes = japanese.character_codes()
+        self.assertEqual(japanese.KANA[78 - 69], "ヲ")
+        self.assertEqual(japanese.encode_ui("ヲ〜゛゜″", codes),
+                         bytes([codes[78], codes[13], codes[67], codes[68], codes[9], 0]))
+        self.assertNotIn(b"~", japanese.encode_ui("〜", codes))
+        with self.assertRaisesRegex(ValueError, "unsupported authored"):
+            japanese.encode_ui("ヮ", codes)
+        with self.assertRaisesRegex(ValueError, "native record limit"):
+            japanese.encode_ui("ア" * 255, codes)
+
+    def test_typed_question_and_answers_keep_every_fragment(self) -> None:
+        codes = japanese.character_codes()
+        usa = [[(128, None, b"QUESTION\0"), (129, None, b"ANSWER ONE\0"),
+                (130, None, b"ANSWER TWO\0")]]
+        # Deliberately interleave types: order within each field must survive.
+        japan = [[(128, None, b"\xADj\x1A\0"), (130, None, b"SECOND\0"),
+                  (128, None, b"\xADj\x1B\0"), (129, None, b"FIRST\0"),
+                  (128, None, b"\xADj\x1C\0")]]
+        merges = []
+        result, _ = japanese.select_section(0x1910, usa, japan, codes, merges)
+        self.assertEqual(result, [[(128, None, b"A B C\0"), (129, None, b"FIRST\0"),
+                                   (130, None, b"SECOND\0")]])
+        self.assertEqual(merges[0]["source_records"], 3)
+        self.assertEqual(merges[0]["separator"], " ")
+
+    def test_typed_newlines_and_repeated_usa_slots(self) -> None:
+        codes = japanese.character_codes()
+        usa = [[(128, None, b"TITLE\nSUBTITLE\0"), (129, None, b"ONE\0"),
+                (129, None, b"TWO\0")]]
+        japan = [[(129, None, b"FIRST\0"), (128, None, b"TOP\0"),
+                  (128, None, b"BOTTOM\0"), (129, None, b"SECOND\0")]]
+        result, _ = japanese.select_section(0x186D, usa, japan, codes)
+        self.assertEqual(result, [[(128, None, b"TOP\nBOTTOM\0"),
+                                   (129, None, b"FIRST\0"), (129, None, b"SECOND\0")]])
+        with self.assertRaisesRegex(ValueError, "USA 2, Japan 1"):
+            japanese.select_section(0x186D, usa, [japan[0][:-1]], codes)
+
+    def test_typed_space_boundaries_use_native_glyph_identity(self) -> None:
+        codes = japanese.character_codes()
+        # Deliberately relocate glyph codes: decisions must follow glyph identity.
+        codes = {glyph: 255 - code for glyph, code in codes.items()}
+        cases = [
+            (["フンバ・", "うんば"], "フンバ・うんば", [""]),
+            (["ティラノ", "ザウルス"], "ティラノザウルス", [""]),
+            (["スタ", "ー", "ッ", "ヴ"], "スターッヴ", ["", "", ""]),
+            (["つぎは「マヤヤン", "しんでん", "」だ", "よ"], "つぎは「マヤヤンしんでん」だ よ", ["", "", " "]),
+            (["「ひとつ」「ふたつ", "みっつ」", "おわり"], "「ひとつ」「ふたつみっつ」 おわり", ["", " "]),
+            (["かいて", "あった"], "かいて あった", [" "]),
+            (["アと", "イ"], "アと イ", [" "]),
+        ]
+        for fragments, expected, boundaries in cases:
+            with self.subTest(fragments=fragments):
+                rows = [japanese.encode_ui(fragment, codes) for fragment in fragments]
+                text, actual = japanese.join_typed_rows(rows, codes, b" ")
+                self.assertEqual(text, japanese.encode_ui(expected, codes))
+                self.assertEqual(actual, boundaries)
+
+    def test_menu_labels_keep_space_between_katakana_terms(self) -> None:
+        codes = japanese.character_codes()
+        rows = [japanese.encode_ui(part, codes) for part in ("トリトリマッチ", "プレイできません")]
+        self.assertEqual(japanese.join_typed_rows(rows, codes, b" ", prose=False),
+                         (japanese.encode_ui("トリトリマッチ プレイできません", codes), [" "]))
+        quoted = [japanese.encode_ui(part, codes) for part in ("「マヤヤン", "しんでん」")]
+        self.assertEqual(japanese.join_typed_rows(quoted, codes, b" ", prose=False)[1], [""])
+
+    def test_typed_punctuation_and_closed_quotes_keep_wrap_spaces(self) -> None:
+        codes = japanese.character_codes()
+        for ending in ["は", "、", "。", "!", "?", "」", "…"]:
+            with self.subTest(ending=ending):
+                left = "「こと」" if ending == "」" else "こと" + ending
+                rows = [japanese.encode_ui(part, codes) for part in (left, "つぎ")]
+                self.assertEqual(japanese.join_typed_rows(rows, codes, b" "),
+                                 (japanese.encode_ui(left + " つぎ", codes), [" "]))
+
+    def test_native_typed_fragments_apply_join_rules_and_report_boundaries(self) -> None:
+        codes = japanese.character_codes()
+        glyphs = {code: glyph for glyph, code in codes.items()}
+        fragments = ["「フンバ・ ", " ウン", "バ", "の", "こと」", "かいて", "あった"]
+        rows = []
+        for fragment in fragments:
+            native = []
+            for code in japanese.encode_ui(fragment, codes)[:-1]:
+                glyph = glyphs[code]
+                native.append(glyph + 26 if glyph >= 149 else glyph)
+            rows.append((128, None, b"\xADj" + bytes(native) + b"\0"))
+        merges = []
+        result, _ = japanese.select_section(0x1938, [[(128, None, b"USA\0")]], [rows], codes, merges)
+        self.assertEqual(result[0][0][2], japanese.encode_ui("「フンバ・ウンバのこと」 かいて あった", codes))
+        self.assertEqual(merges[0]["separators"], ["", "", "", "", " ", " "])
+
+    def test_typed_trimming_preserves_internal_separators_and_newlines(self) -> None:
+        codes = japanese.character_codes()
+        for fragments, expected in [(["A  B   ", "   C  D  ", " E "], "A  B C  D E"),
+                                    (["ティラノ  ", "  ザウルス "], "ティラノザウルス"),
+                                    (["「マヤヤン ", " しん でん」 "], "「マヤヤンしん でん」")]:
+            with self.subTest(fragments=fragments):
+                rows = [japanese.encode_ui(fragment, codes) for fragment in fragments]
+                self.assertEqual(japanese.join_typed_rows(rows, codes, b" ")[0],
+                                 japanese.encode_ui(expected, codes))
+        rows = [japanese.encode_ui(part, codes) for part in ("ティラノ  ", " ザウルス ")]
+        self.assertEqual(japanese.join_typed_rows(rows, codes, b"\n"),
+                         (japanese.encode_ui("ティラノ  \n ザウルス ", codes), ["\n"]))
+        # One-to-one fields must remain byte-for-byte unchanged.
+        japan = [[(128, None, b"\xADj\x1A\xAC\xAC\x1B\xAC\0")]]
+        result, _ = japanese.select_section(0x1910, [[(128, None, b"USA\0")]], japan, codes)
+        self.assertEqual(result[0][0][2], b"A  B \0")
+
+    def test_missing_typed_fields_are_reported_including_repeated_slots(self) -> None:
+        usa = [[(128, None, b"ONE\0"), (129, None, b"TWO\0"), (129, None, b"THREE\0")]]
+        kept = []
+        result, _ = japanese.select_section(0x1910, usa, [[(128, None, b"JP\0")]],
+                                             japanese.character_codes(), kept_usa_fields=kept)
+        self.assertEqual(result[0][1:], usa[0][1:])
+        self.assertEqual([(r["asset"], r["group"], r["type"], r["source_type"]) for r in kept],
+                         [(0x1910, 0, 129, 129), (0x1910, 0, 129, 129)])
+
+    def test_remapped_source_type_cannot_be_consumed_twice(self) -> None:
+        for kinds in ([0xA3, 0xAB], [0xAB, 0xA3], [0xA3, 0xA3]):
+            with self.subTest(kinds=kinds):
+                usa = [[(kind, None, b"USA\0") for kind in kinds]]
+                japan = [[(0xAB, None, b"JP\0") for _ in range(kinds.count(0xA3))]]
+                with self.assertRaisesRegex(AssertionError, "remapped source type 0xab consumed twice"):
+                    japanese.select_section(0x18E1, usa, japan, japanese.character_codes())
+
+    def test_typed_merge_reports_asset_type_and_overflow_size(self) -> None:
+        codes = japanese.character_codes()
+        usa = [[(128, None, b"QUESTION\0")]]
+        japan = [[(128, None, b"A" * 126 + b"\0"), (128, None, b"B" * 127 + b"\0")]]
+        result, _ = japanese.select_section(0x1910, usa, japan, codes)
+        self.assertEqual(len(result[0][0][2]), 255)
+        japan[0][1] = (128, None, b"B" * 128 + b"\0")
+        with self.assertRaisesRegex(ValueError, "0x1910 group 0 type 0x80: merged text is 256 bytes"):
+            japanese.select_section(0x1910, usa, japan, codes)
+
+    def test_settings_prompts_and_widescreen_states_map_by_meaning(self) -> None:
+        codes = japanese.character_codes()
+        kinds = [0x83, 0x84, 0x85, 0x86, 0x87, 0x8F, 0x90, 0x9A, 0x99]
+        usa = [[(kind, None, b"USA\0") for kind in kinds]]
+        japan = [[(0x83, None, b" \0"), (0x84, None, b"WIDE PROMPT\0"),
+                  (0x85, None, b"SOUND PROMPT\0"), (0x86, None, b" \0"),
+                  (0x87, None, b"TV WIDE\0"), (0x88, None, b"TV NORMAL\0"),
+                  (0x8F, None, b"ON\0"), (0x90, None, b"OFF\0"), (0x99, None, b" \0")]]
+        kept = []
+        result, _ = japanese.select_section(0x18E2, usa, japan, codes, kept_usa_fields=kept)
+        self.assertEqual([r[2] for r in result[0][:8]],
+                         [b"WIDE PROMPT\0", b"SOUND PROMPT\0", b" \0", b"TV WIDE\0",
+                          b"TV NORMAL\0", b"OFF\0", b"ON\0", b"USA\0"])
+        self.assertEqual(result[0][8][2], b" \0")
+        self.assertEqual([r["type"] for r in kept], [0x9A])
+
+    def test_controller_warning_and_regional_extras_are_preserved(self) -> None:
+        codes = japanese.character_codes()
+        usa = [[(0xA3, None, b"ONE CONTROLLER\0")]]
+        japan = [[(0xA3, None, b"TWO REQUIRED\0"), (0xAB, None, b"ONE CONTROLLER\0"),
+                  (0xAC, None, b"CONTROLLER ERROR\0")]]
+        result, _ = japanese.select_section(0x18E1, usa, japan, codes)
+        self.assertEqual(result[0][0][2], b"ONE CONTROLLER\0")
+        self.assertCountEqual([r[2] for r in result[0]], [r[2] for r in japan[0]])
+
+    def test_staff_credits_and_cast_roll_always_keep_usa_text(self) -> None:
+        codes = japanese.character_codes()
+        usa = [[(128, None, b"USA CREDITS\0")]]
+        japan = [[(128, None, b"REGIONALLY SHIFTED\0")]]
+        for index in japanese.CREDITS_IDS:
+            self.assertEqual(japanese.select_section(index, usa, japan, codes), (usa, False))
+
+    def test_japanese_buttons_and_separator_use_usa_codes(self) -> None:
+        codes = japanese.character_codes()
+        self.assertEqual(japanese.convert_text(b"\xADj\x9D\xAC\x9C\0", codes), b"\x87 \x86\0")
+        self.assertEqual(japanese.convert_text(b"\xADj" + bytes(range(0x95, 0x9E)) + b"\0", codes),
+                         bytes(range(0x7F, 0x88)) + b"\0")
+        for code in range(0x9E, 0xAC):
+            with self.assertRaisesRegex(ValueError, "inline control"):
+                japanese.convert_text(b"\xADj" + bytes([code, 0]), codes)
+
+    def test_native_control_and_glyph_codes_are_distinct(self) -> None:
+        codes = {13: 0x90, 126: 0x91, 227: 0x92, 228: 0x93}
+        # Wave dash and kana must not become USA substitution/format commands.
+        self.assertEqual(japanese.convert_text(b"\xADj\x0D\x7E\xAE\xFD\xFE\0", codes),
+                         b"\x90\x91~\x92\x93\0")
+        self.assertEqual(japanese.convert_text(b"ASCII\0", codes), b"ASCII\0")
+        with self.assertRaisesRegex(ValueError, "font command"):
+            japanese.convert_text(b"\xADj\xADk\0", codes)
+
+    def test_regional_waits_preserve_usa_event_parameters(self) -> None:
+        a, b = (128, None, b"a\0"), (128, None, b"b\0")
+        wait, event = (11, None, b"\0"), (9, None, b"\x66\0")
+        source = [a, wait, event, b, (5, None, b"\0")]
+        region = [a, wait, wait, event, b, (5, None, b"\0")]
+        aligned = japanese.align_controls(source, region)
+        self.assertEqual([r for r in aligned if not packs.is_text(r)],
+                         [r for r in source if not packs.is_text(r)])
+        self.assertEqual([r for r in aligned if packs.is_text(r)], [a, b])
+
+    def test_legal_indices_do_not_import_japanese_debug_rows(self) -> None:
+        source = [[(128, None, b"DOLBY\0"), (131, None, b"SHOW DEMO  \0"),
+                   (132, None, b"x 2000 NINTENDO/RARE\0")]]
+        region = [[(128, None, b"TEXT 26.OCT\0"), (131, None, b"TEST2\0")]]
+        selected, _ = japanese.select_section(0x186C, source, region, {i: 0x80 for i in range(230)})
+        self.assertEqual(selected[0][0], source[0][0])
+        self.assertEqual(selected[0][2], source[0][2])
+        self.assertEqual(selected[0][1][2], b"\x80" * 5 + b"\0")
+
+    def test_extended_font_profile_requires_version_three(self) -> None:
+        base = b"base"
+        data = packs.bundle_bytes("ja", b"\xFF" * 1024, bytes(30), base, [], {},
+                                  {0xC21: (base, b"new font")})
+        self.assertEqual(struct.unpack_from("<I", data, 4)[0], 3)
+        self.assertEqual(packs.read_bundle(data)["tag"], "ja")
+        wrong_version = data[:4] + struct.pack("<I", 2) + data[8:]
+        with self.assertRaises(ValueError):
+            packs.read_bundle(wrong_version)
+        with self.assertRaises(ValueError):
+            packs.bundle_bytes("it", b"A" * 73, bytes(30), base, [], {}, {0xC21: (base, b"bad")})
 
 
 if __name__ == "__main__":

@@ -10,7 +10,11 @@ namespace tooie_language_paths {
         return recompui::file::get_app_folder_path() / "languages" / (std::string(tag) + ".tlp");
     }
     std::filesystem::path language_bundle_path(const char* tag) {
-        return recompui::file::get_program_path() / "assets" / "languages" / (std::string(tag) + ".tlpb");
+        auto path = recompui::file::get_program_path() / "assets" / "languages" / (std::string(tag) + ".tlpb");
+        if (std::string(tag) == "ja" && !std::filesystem::exists(path)) {
+            return recompui::file::get_app_folder_path() / "languages" / "ja.tlpb";
+        }
+        return path;
     }
     bool read_binary_file(const std::filesystem::path& path, std::vector<uint8_t>& bytes) {
         std::ifstream file(path, std::ios::binary);

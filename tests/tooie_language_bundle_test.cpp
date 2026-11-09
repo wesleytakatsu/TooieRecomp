@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
             return 1;
         }
         for (const auto& entry : pack.entries) {
-            if (entry.asset_id == 0xC22) {
+            if (entry.asset_id == 0xC22 && pack.language != "ja") {
                 std::vector<uint8_t> raw;
                 tooie_font_sprite::Sprite font;
                 if (!tooie_text_assets::decode_payload(entry.payload, raw, error) ||
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
             std::cout << "2 startup branding assets byte-identical to USA; Italian title present\n";
         }
         std::cout << pack.language << ": " << pack.entries.size() << " assets equal; rewritten image " << rewritten.size()
-                  << " bytes; 74 IA8 glyphs\n";
+                  << " bytes; " << (pack.language == "ja" ? "Japanese IA8 fonts" : "74 IA8 glyphs") << '\n';
         return 0;
     }
     std::vector<uint8_t> bytes{'T', 'L', 'P', 'B'};
@@ -129,6 +129,21 @@ int main(int argc, char** argv) {
         assert(parse(european_bytes, bundle, error) && bundle.language == tag);
     }
     auto unsupported = bytes;
+    std::vector<uint8_t> japanese{'T', 'L', 'P', 'B'};
+    number(japanese, 3);
+    japanese.insert(japanese.end(), {'j', 'a'});
+    japanese.resize(24, 0);
+    number(japanese, 1024);
+    japanese.resize(japanese.size() + 1024, 0xFF);
+    japanese.resize(japanese.size() + 30, 0);
+    for (int n = 0; n < 5; ++n) number(japanese, 0); // base size/CRC, font runs, asset count, text count
+    assert(parse(japanese, bundle, error) && bundle.language == "ja");
+    auto invalid_japanese = japanese;
+    invalid_japanese[4] = 2;
+    assert(!parse(invalid_japanese, bundle, error));
+    invalid_japanese = japanese;
+    invalid_japanese[28] = invalid_japanese[29] = 0; // NUL cannot map to a glyph.
+    assert(!parse(invalid_japanese, bundle, error));
     unsupported[8] = 'x'; unsupported[9] = 'x';
     std::fill(unsupported.begin() + 10, unsupported.begin() + 24, 0);
     assert(!parse(unsupported, bundle, error));

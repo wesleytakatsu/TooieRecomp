@@ -26,7 +26,8 @@ void tooie_apply_language_pack() {
         std::fprintf(stderr, "[tooie-lang] %s: %s\n", reason.c_str(), path.string().c_str());
         if (!is_override) {
             std::string message = "Language pack missing or invalid: " + path.string() + " (" + reason + "). The game starts in English.";
-            message += " Restore the assets/languages files supplied with the game.";
+            message += language == banjo::Language::Japanese ? " Restore the Japanese language file (ja.tlpb)." :
+                       " Restore the assets/languages files supplied with the game.";
             ultramodern::error_handling::message_box(message.c_str());
         }
     };
@@ -76,11 +77,15 @@ void tooie_apply_language_pack() {
             return;
         }
 
+        if (pack.language == "ja" && !tooie_text_font_map::set_japanese_font_map(pack.font1_charset)) {
+            fail("invalid Japanese font maps");
+            return;
+        }
         const auto old_size = image.size();
         const auto new_size = rewritten.size();
         recomp::set_rom_contents(std::move(rewritten));
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
-        if (!pack.font1_charset.empty()) {
+        if (pack.language != "ja" && !pack.font1_charset.empty()) {
             tooie_text_font_map::set_european_font_map(pack.font1_charset, pack.font1_accent_map);
         }
         std::fprintf(stderr, "[tooie-lang] applied %zu assets (%s) from %s image %zu -> %zu bytes in %lld ms\n",
