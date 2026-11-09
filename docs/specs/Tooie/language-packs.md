@@ -1,9 +1,9 @@
 ---
 title: "TooieRecomp Spec — In-Game Language Bundles and Packs"
-description: "pt-BR/FR/DE/ES/IT bundles and a private Japanese bundle, IA8 fonts, graphic deltas and USA-ROM rewriting."
+description: "pt-BR/FR/DE/ES/IT/JA bundles, IA8 fonts, graphic deltas and USA-ROM rewriting."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-08
+updated: 2026-11-09
 tags: [specs, tooierecomp, localization, language, tlp, tlpb, text, font]
 ---
 
@@ -15,8 +15,7 @@ General > Game Language offers English, Português (Brasil), Français, Deutsch,
 The selected value persists as `language` in `general.json`; it applies when the game starts.
 Changing it during gameplay requires restarting the game. English uses the original USA assets.
 
-The other six languages load file bundles. Latin-language bundles live next to the executable; Japanese defaults
-to the private user language folder:
+The other six languages load file bundles shipped in `assets/languages/` next to the executable:
 
 | Language | Config value | Bundle |
 | --- | --- | --- |
@@ -25,9 +24,9 @@ to the private user language folder:
 | German | `German` | `assets/languages/de.tlpb` |
 | Spanish | `Spanish` | `assets/languages/es.tlpb` |
 | Italian draft | `Italian` | `assets/languages/it.tlpb` |
-| Japanese | `Japanese` | User `languages/ja.tlpb` (private local output) |
+| Japanese | `Japanese` | `assets/languages/ja.tlpb` |
 
-The player needs only the verified USA ROM. No European-ROM selection or extraction dialog is offered by Game Language.
+The player needs only the verified USA ROM. No European-ROM or Japan-ROM selection or extraction dialog is offered by Game Language.
 CMake's `TooieUIAssets` synchronizes the entire assets directory, including these bundles, on app builds.
 
 The pt-BR file is the existing translation bundle, unchanged. FR/DE/ES files contain official localized text extracted
@@ -37,10 +36,13 @@ Italian comes from the external Rulesless v0.9 USA patch plus `translations/it.j
 draft with project terminology and manual corrections. Editorial and in-game review remain pending. The verified
 European text bank contains only EN/FR/DE/ES; Italian is not a hidden fifth section. Attribution is recorded in
 `assets/languages/NOTICE-Italian.txt`.
-Japanese text and glyph artwork come from the user's verified Japan ROM. Its bundle is generated locally into the
-user app folder (`%LOCALAPPDATA%/TooieRecompiled/languages/ja.tlpb` on Windows). The generator/notice are versioned;
-no Japan ROM is needed at runtime. If a Japanese bundle is supplied in program `assets/languages`, it takes priority;
-otherwise both General availability checks and boot load the private user bundle.
+Japanese text, glyph artwork and title graphics come from the verified Japan ROM. The Japanese bundle `assets/languages/ja.tlpb`
+is versioned in the repository and shipped in the release packages, so players need only the USA ROM for all languages.
+Unlike FR/DE/ES (text plus procedurally generated glyphs), `ja.tlpb` contains proprietary Nintendo/Rare Japanese text,
+the original Japanese font glyph artwork (normalized to IA8) and the original Japanese title logo model (no other Japanese graphics). The user explicitly
+accepted distributing this artwork (option chosen over a text-only bundle with an open font). Attribution and provenance
+are recorded in `assets/languages/NOTICE-Japanese.txt`. The program `assets/languages/ja.tlpb` takes priority; the user app
+folder `languages/ja.tlpb` remains supported as a fallback (used if someone generates their own bundle and removes the shipped one).
 
 ## 2. Loading and compatibility
 
@@ -187,12 +189,15 @@ python tools/build_japanese_bundle.py --japan-rom "<Japan ROM, any supported N64
   --reference "<private ja-reference.tlp>" --report "<private report.json>"
 ```
 
-The default output is the private user `languages/ja.tlpb`; `--output` can select another location for extraction or
-portable installations. Keep it outside the repository's vendored `assets/` tree and public packages.
+The generator `tools/build_japanese_bundle.py` is maintained in the repository for maintainers and regeneration (players do
+not need it). It regenerates `assets/languages/ja.tlpb` byte-identically (480,746 bytes, SHA-256
+`551451b5ae8b92ed61d02df4220d69c77432fc3e2d8b8e2e4a2a9cb8699e6cad`) from the verified Japan ROM. `--output` can select
+another location (such as the user app folder `languages/ja.tlpb` for local testing or fallback).
 The normalized 33554432-byte input must have SHA-1 `5a5172383037d171f121790959962703be1f373c`.
 The source is read-only. Generation does not execute or import Japanese code, animations or gameplay tables.
-The Japan title model is imported intact; nine other compatible model texture regions are copied into USA models,
-preserving their geometry and display lists. Rareware and Dolby remain the USA assets.
+Only the Japanese fonts and the title logo model (`0x8A8`, imported intact) are shipped as graphics, per user decision
+(2026-11-09). Other regional graphics (for example in-world textures with Japanese writing) are not imported and keep the
+USA artwork. Rareware and Dolby remain the USA assets.
 
 TLPB v3 is restricted to `ja`. Its font-map field contains 1024 bytes: two 256-entry little-endian signed-16-bit
 character-to-frame tables for fonts 0 and 1, with `-1` for unmapped characters. NUL, space and `FD/FE/FF` cannot be
@@ -225,7 +230,7 @@ have Japanese entries; the source bank contributes 2251 shared assets.
 The existing BT Reloaded pack already resolves all 31 native Japan title hashes to Japanese artwork (including its
 shared trademark tile). No redraw or hash mutation is required. The complete private Italian HD continuation retains
 these mappings from its original base and needs no additional title addon for Japanese. The Italian title remains
-independent. Complete artwork and Japanese font/game data remain private; see [[asset-and-licensing-manifest]].
+independent. Complete Japanese bundle provenance and licensing details are specified in [[asset-and-licensing-manifest]].
 
 ### Italian HD title artwork
 

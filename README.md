@@ -102,13 +102,8 @@ The release also has a `.deb` package (Debian/Ubuntu/Mint) and an `.AppImage`.
 
 TooieRecomp supports in-game text languages: **English** (default), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (draft), and **日本語** (Japanese).
 
-- **Português (Brasil), Français, Deutsch, Español, Italiano:** Included in the release; only the USA ROM is needed.
+- **Português (Brasil), Français, Deutsch, Español, Italiano, 日本語:** Included in the release; only the USA ROM is needed.
 - **Italiano (draft):** Combines the Rulesless v0.9 Italian translation with a supplemental translation awaiting editorial review. Credit: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
-- **日本語 (Japanese):** NOT included in the release. It is generated on your computer from your own Japanese cartridge dump, "Banjo to Kazooie no Daibouken 2 (Japan)" (big-endian SHA-1 after normalization `5a5172383037d171f121790959962703be1f373c`; .z64/.n64/.v64 byte orders are accepted). Steps: run the game once with your USA ROM (this creates `bt.n64.us.1.0.z64` in the settings folder), get the source code, and with Python 3.8+ run from the repository root:
-  ```
-  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
-  ```
-  This writes `languages/ja.tlpb` into the settings folder (`%LOCALAPPDATA%\TooieRecompiled` on Windows, `~/.config/TooieRecompiled` on Linux). The game still runs from the USA ROM.
 - **The Japanese language still needs many checks and tests**: line breaks and menu widths have not been verified on screen, and errors are expected. Reports are welcome.
 - **Applying language:** Chosen in `Settings` → `General` → `Game Language` (accessible from the launcher or the in-game `Esc` menu). The selected language is applied when the game starts. If changed during gameplay, restart the game for it to take effect.
 

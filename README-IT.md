@@ -104,13 +104,8 @@ La release include anche un pacchetto `.deb` (Debian/Ubuntu/Mint) e un `.AppImag
 
 TooieRecomp supporta diverse lingue per i testi di gioco: **English** (predefinito), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (bozza) e **日本語** (giapponese).
 
-- **Português (Brasil), Français, Deutsch, Español e Italiano:** Sono inclusi nella release; è necessaria unicamente la ROM USA.
+- **Português (Brasil), Français, Deutsch, Español, Italiano, 日本語:** Sono inclusi nella release; è necessaria unicamente la ROM USA.
 - **Italiano (bozza):** Combina la traduzione italiana Rulesless v0.9 con una traduzione supplementare in attesa di revisione editoriale. Credito: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
-- **日本語 (Giapponese):** NON è incluso nella release. Viene generato sul proprio computer a partire dal dump della propria cartuccia giapponese, "Banjo to Kazooie no Daibouken 2 (Japan)" (SHA-1 in big-endian dopo la normalizzazione `5a5172383037d171f121790959962703be1f373c`; sono accettati i formati di byte .z64/.n64/.v64). Passaggi: esegui il gioco una volta con la tua ROM USA (questo crea `bt.n64.us.1.0.z64` nella cartella delle impostazioni), ottieni il codice sorgente e, con Python 3.8+, esegui dalla radice del repository:
-  ```
-  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
-  ```
-  Questo scrive `languages/ja.tlpb` nella cartella delle impostazioni (`%LOCALAPPDATA%\TooieRecompiled` su Windows, `~/.config/TooieRecompiled` su Linux). Il gioco continua a essere eseguito dalla ROM USA.
 - **La lingua giapponese necessita ancora di molte verifiche e test**: le interruzioni di riga e le larghezze dei menu non sono state verificate a schermo e sono attesi errori. Le segnalazioni sono benvenute.
 - **Applicazione della lingua:** Si sceglie in `Settings` → `General` → `Game Language` (accessibile dal launcher o dal menu `Esc` in gioco). La lingua selezionata viene applicata all'avvio del gioco. Se modificata durante la partita, riavviare il gioco affinché abbia effetto.
 

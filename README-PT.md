@@ -105,13 +105,8 @@ A release inclui também um pacote `.deb` (Debian/Ubuntu/Mint) e um `.AppImage`.
 
 O TooieRecomp suporta múltiplos idiomas de texto no jogo: **English** (predefinido), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (versão preliminar) e **日本語** (Japonês).
 
-- **Português (Brasil), Français, Deutsch, Español e Italiano:** Estão incluídos no pacote de lançamento; apenas a ROM USA é necessária.
+- **Português (Brasil), Français, Deutsch, Español, Italiano, 日本語:** Estão incluídos no pacote de lançamento; apenas a ROM USA é necessária.
 - **Italiano (versão preliminar):** Combina a tradução italiana Rulesless v0.9 com uma tradução suplementar a aguardar revisão editorial. Créditos: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
-- **日本語 (Japonês):** NÃO está incluído no pacote de lançamento. É gerado no seu computador a partir da extração do seu próprio cartucho japonês, "Banjo to Kazooie no Daibouken 2 (Japan)" (SHA-1 em big-endian após normalização `5a5172383037d171f121790959962703be1f373c`; são aceites as ordens de bytes .z64/.n64/.v64). Passos: execute o jogo uma vez com a sua ROM USA (isto cria `bt.n64.us.1.0.z64` na pasta de definições), obtenha o código-fonte e, com Python 3.8+, execute a partir da raiz do repositório:
-  ```
-  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
-  ```
-  Isto grava `languages/ja.tlpb` na pasta de definições (`%LOCALAPPDATA%\TooieRecompiled` em Windows, `~/.config/TooieRecompiled` em Linux). O jogo continua a ser executado a partir da ROM USA.
 - **O idioma japonês ainda necessita de muitas verificações e testes**: as quebras de linha e as larguras dos menus não foram verificadas no ecrã, pelo que são esperados erros. Relatórios de problemas são bem-vindos.
 - **Aplicação do idioma:** Escolhido em `Settings` → `General` → `Game Language`. A seleção entra em vigor ao iniciar o jogo. Se for alterada durante a partida, reinicie o jogo para ter efeito.
 
