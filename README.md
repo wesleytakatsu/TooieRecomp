@@ -1,6 +1,6 @@
 # Banjo-Tooie Recompiled
 
-**English** · [Português (Portugal)](README-PT.md) · [Português (Brasil)](README-BR.md) · [Español](README-ES.md)
+**English** · [Português (Portugal)](README-PT.md) · [Português (Brasil)](README-BR.md) · [Español](README-ES.md) · [Italiano](README-IT.md) · [日本語](README-JA.md)
 
 Unofficial native PC port of Banjo-Tooie (N64) made with static recompilation (N64Recomp) for Windows x64 and Linux x64.
 
@@ -26,12 +26,21 @@ Graphics, audio, and game data are read and decompressed directly from the ROM a
 
 - **Widescreen 16:9:** Native widescreen support with corrected aspect ratio.
 - **Frame Interpolation:** Smooth 60 / 120 FPS gameplay via transform interpolation (`Graphics` → `Interpolation`).
+- **Object distance (experimental):** `Graphics` → `Object Distance` draws and keeps objects farther away (2x, 4x,
+  Unlimited). These settings need `General` → `Expanded Memory (experimental)`, which gives the game a larger memory
+  area; choosing a higher distance turns it on, and it takes effect after restarting the game. Story split screen
+  always uses the original distance.
 - **Local Multiplayer (Up to 4 Players):** Enabled under `General` → `Multiplayer (up to 4 players)` (takes effect
   after restarting the game).
   - Per-player controller and/or keyboard input.
   - Swap controllers dynamically between players.
   - Per-player button mapping with a `Reset to defaults` option.
   - Controller identification tools in `Controls`: an input indicator and a `Rumble 1 s` test button.
+
+  **Warning:** Story-mode split screen (Dev Mode → Experimental → `Two players (split screen)`) is experimental and can
+  break the game (crashes, soft-locks, broken progress). There is still a lot to adjust and there are already many known
+  bugs; it is being improved little by little. Save your game before using it; enabling `General` →
+  `Expanded Memory (experimental)` is recommended.
 - **Modern Controller & Keyboard Support:** Gamepad support powered by SDL2 alongside customizable keyboard controls.
 - **Native Launcher:** Built-in graphical launcher with ROM selection.
 - **Texture Packs:** RT64 texture packs (`.rtz`) via the in-game `Mods` menu.
@@ -91,11 +100,17 @@ The release also has a `.deb` package (Debian/Ubuntu/Mint) and an `.AppImage`.
 
 ### Game languages
 
-TooieRecomp supports in-game text languages: **English** (default), **Português (Brasil)**, **Français**, **Deutsch**, and **Español**.
+TooieRecomp supports in-game text languages: **English** (default), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (draft), and **日本語** (Japanese).
 
-- **Português (Brasil):** Built into the game. No additional files or European ROM required.
-- **Français, Deutsch, Español:** Select the language in **Settings** → **General** → **Game Language** (accessible from the launcher or the in-game `Esc` menu). The game will ask you for your European ROM (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`, SHA-1 `93bf2fac1387320ad07251cb4b64fd36bac1d7a6`) once to extract the language pack. The European ROM is used ONLY to extract that language; the game always runs from your USA ROM.
-- **Applying language:** The selected language is applied when the game starts. If changed during gameplay, restart the game for it to take effect.
+- **Português (Brasil), Français, Deutsch, Español, Italiano:** Included in the release; only the USA ROM is needed.
+- **Italiano (draft):** Combines the Rulesless v0.9 Italian translation with a supplemental translation awaiting editorial review. Credit: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
+- **日本語 (Japanese):** NOT included in the release. It is generated on your computer from your own Japanese cartridge dump, "Banjo to Kazooie no Daibouken 2 (Japan)" (big-endian SHA-1 after normalization `5a5172383037d171f121790959962703be1f373c`; .z64/.n64/.v64 byte orders are accepted). Steps: run the game once with your USA ROM (this creates `bt.n64.us.1.0.z64` in the settings folder), get the source code, and with Python 3.8+ run from the repository root:
+  ```
+  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
+  ```
+  This writes `languages/ja.tlpb` into the settings folder (`%LOCALAPPDATA%\TooieRecompiled` on Windows, `~/.config/TooieRecompiled` on Linux). The game still runs from the USA ROM.
+- **The Japanese language still needs many checks and tests**: line breaks and menu widths have not been verified on screen, and errors are expected. Reports are welcome.
+- **Applying language:** Chosen in `Settings` → `General` → `Game Language` (accessible from the launcher or the in-game `Esc` menu). The selected language is applied when the game starts. If changed during gameplay, restart the game for it to take effect.
 
 ### Texture packs
 

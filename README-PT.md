@@ -1,6 +1,6 @@
 # Banjo-Tooie Recompiled
 
-[English](README.md) · **Português (Portugal)** · [Português (Brasil)](README-BR.md) · [Español](README-ES.md)
+[English](README.md) · **Português (Portugal)** · [Português (Brasil)](README-BR.md) · [Español](README-ES.md) · [Italiano](README-IT.md) · [日本語](README-JA.md)
 
 Adaptação nativa não oficial de Banjo-Tooie (N64) para PC (Windows x64 e Linux x64) feita através de recompilação estática (N64Recomp).
 
@@ -28,12 +28,21 @@ Os gráficos, o áudio e os dados do jogo são lidos e descompactados diretament
 - **Ecrã panorâmico 16:9:** Suporte nativo para formato panorâmico com proporção de imagem corrigida.
 - **Interpolação de fotogramas:** Jogabilidade fluida a 60 / 120 FPS através de interpolação de transformações
   (`Graphics` → `Interpolation`).
+- **Distância dos objetos (experimental):** `Graphics` → `Object Distance` desenha e mantém objetos mais distantes
+  (2x, 4x, Unlimited). Estas definições necessitam de `General` → `Expanded Memory (experimental)`, que concede ao jogo
+  uma área de memória maior; escolher uma distância superior ativa-a automaticamente, e entra em vigor após reiniciar
+  o jogo. O ecrã dividido no modo história utiliza sempre a distância original.
 - **Multijogador local (até 4 jogadores):** Ativado em `General` → `Multiplayer (up to 4 players)` (entra em vigor
   após reiniciar o jogo).
   - Entrada individual por comando e/ou teclado para cada jogador.
   - Troca dinâmica de comandos entre jogadores.
   - Mapeamento de botões individual por jogador com opção `Reset to defaults`.
   - Ferramentas de identificação de comandos na página `Controls`: um indicador de entrada e o botão `Rumble 1 s` para testar a vibração.
+
+  **Aviso:** O ecrã dividido no modo história (Dev Mode → Experimental → `Two players (split screen)`) é experimental e
+  pode quebrar o jogo (bloqueios, encerramentos forçados, avanço na história corrompido). Há ainda muito a ajustar e
+  existem já muitos erros conhecidos; a funcionalidade está a ser melhorada aos poucos. Guarde o seu jogo antes de a
+  utilizar; recomenda-se ativar `General` → `Expanded Memory (experimental)`.
 - **Suporte para comandos modernos e teclado:** Compatibilidade com comandos através de SDL2 e controlos por teclado.
 - **Iniciador nativo:** Interface gráfica integrada com seleção de ROM.
 - **Pacotes de texturas:** pacotes de texturas do RT64 (`.rtz`) através do menu `Mods` no jogo.
@@ -94,11 +103,17 @@ A release inclui também um pacote `.deb` (Debian/Ubuntu/Mint) e um `.AppImage`.
 
 ### Idiomas do jogo
 
-O TooieRecomp suporta múltiplos idiomas de texto no jogo: **English** (predefinido), **Português (Brasil)**, **Français**, **Deutsch** e **Español**.
+O TooieRecomp suporta múltiplos idiomas de texto no jogo: **English** (predefinido), **Português (Brasil)**, **Français**, **Deutsch**, **Español**, **Italiano** (versão preliminar) e **日本語** (Japonês).
 
-- **Português (Brasil):** Já vem integrado no jogo. Não necessita de ficheiros adicionais nem de ROM europeia.
-- **Français, Deutsch, Español:** Selecione o idioma em **Settings** → **General** → **Game Language** (no iniciador ou no menu `Esc` dentro do jogo). O jogo solicitará a sua ROM europeia (`Banjo-Tooie (Europe) (En,Fr,De,Es).z64`, SHA-1 `93bf2fac1387320ad07251cb4b64fd36bac1d7a6`) apenas uma vez para extrair o pacote de idioma diretamente. A ROM europeia é utilizada APENAS para esta extração pontual; o jogo é sempre executado a partir da sua ROM USA.
-- **Aplicação do idioma:** A seleção entra em vigor ao iniciar o jogo. Se for alterada durante a partida, reinicie o jogo para ter efeito.
+- **Português (Brasil), Français, Deutsch, Español e Italiano:** Estão incluídos no pacote de lançamento; apenas a ROM USA é necessária.
+- **Italiano (versão preliminar):** Combina a tradução italiana Rulesless v0.9 com uma tradução suplementar a aguardar revisão editorial. Créditos: Rulesless (https://letraduzionidirulesless.wordpress.com/banjo-tooie/).
+- **日本語 (Japonês):** NÃO está incluído no pacote de lançamento. É gerado no seu computador a partir da extração do seu próprio cartucho japonês, "Banjo to Kazooie no Daibouken 2 (Japan)" (SHA-1 em big-endian após normalização `5a5172383037d171f121790959962703be1f373c`; são aceites as ordens de bytes .z64/.n64/.v64). Passos: execute o jogo uma vez com a sua ROM USA (isto cria `bt.n64.us.1.0.z64` na pasta de definições), obtenha o código-fonte e, com Python 3.8+, execute a partir da raiz do repositório:
+  ```
+  python tools/build_japanese_bundle.py --japan-rom "<Japan ROM>" --usa-image "<settings folder>/bt.n64.us.1.0.z64" --reference ja-reference.tlp --report ja-report.json
+  ```
+  Isto grava `languages/ja.tlpb` na pasta de definições (`%LOCALAPPDATA%\TooieRecompiled` em Windows, `~/.config/TooieRecompiled` em Linux). O jogo continua a ser executado a partir da ROM USA.
+- **O idioma japonês ainda necessita de muitas verificações e testes**: as quebras de linha e as larguras dos menus não foram verificadas no ecrã, pelo que são esperados erros. Relatórios de problemas são bem-vindos.
+- **Aplicação do idioma:** Escolhido em `Settings` → `General` → `Game Language`. A seleção entra em vigor ao iniciar o jogo. Se for alterada durante a partida, reinicie o jogo para ter efeito.
 
 ### Pacotes de texturas
 
