@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_dev_enemy_ai.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_story_coop.h"
@@ -51,7 +52,7 @@ constexpr Family families[] = {
 };
 gpr guest(uint32_t p) { return static_cast<int32_t>(p); }
 bool readable(uint32_t p, uint32_t size) {
-    return (p & 3u) == 0 && p >= 0x80000000u && p <= 0x80800000u - size;
+    return tooie_memory::aligned(p, size);
 }
 recomp_context local_call(const recomp_context& input) {
     auto c = input;

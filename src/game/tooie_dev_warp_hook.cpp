@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 // Game-thread side of the Dev Mode warp and cheats. A hook on yaw_update (0x8009C88C), which the game runs once per frame
 // for each player in most forms, reads player 1's map, entrance, position and facing, publishes them and carries out the
 // teleport the UI queued; a hook on the per-player update (0x800991B0) carries out the cheats the Debug Button queued.
@@ -64,7 +65,7 @@ gpr kseg0(uint32_t addr) {
 }
 
 bool is_rdram_pointer(uint32_t addr) {
-    return (addr >= 0x80000000u) && (addr < 0x80800000u) && ((addr & 3u) == 0);
+    return tooie_memory::aligned(addr, 4);
 }
 
 float read_float(uint8_t* rdram, uint32_t addr) {
@@ -196,7 +197,8 @@ FILE* player_lighting_log() {
 }
 
 uint32_t lighting_word(uint8_t* rdram, uint32_t pointer, uint32_t offset) {
-    return is_rdram_pointer(pointer) && offset <= 0x807FFFFCu - pointer ?
+    return is_rdram_pointer(pointer) && uint64_t(pointer) + offset <= UINT32_MAX &&
+        tooie_memory::contains(pointer + offset, 4) ?
         static_cast<uint32_t>(MEM_W(offset, kseg0(pointer))) : 0;
 }
 
@@ -210,7 +212,7 @@ uint32_t lighting_instance(uint8_t* rdram, uint32_t index) {
         return 0;
     }
     const uint32_t entry = pool + 4 + index * static_cast<uint32_t>(stride);
-    return is_rdram_pointer(entry) && entry <= 0x807FFFF4u ? entry : 0;
+    return is_rdram_pointer(entry) && tooie_memory::contains(entry, 12) ? entry : 0;
 }
 
 bool private_player_vertices_enabled() {

@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_audio_render.h"
 
 #include "recomp.h"
@@ -156,7 +157,7 @@ void call_tempo(uint8_t* rdram, recomp_context* ctx, unsigned slot, double bpm) 
 double current_bpm(uint8_t* rdram, unsigned slot) {
     const uint32_t seqp = tooie_bgm::seqp_addr(slot);
     const uint32_t seq = MEM_W(0x18, guest(seqp));
-    if (seq < 0x80000000u || seq >= 0x80800000u) return 0;
+    if (!tooie_memory::contains(seq, 12)) return 0;
     const uint32_t bits = MEM_W(0x8, guest(seq));
     float divisor;
     std::memcpy(&divisor, &bits, sizeof(divisor));

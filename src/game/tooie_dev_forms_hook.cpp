@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_dev_forms_hook.h"
 #include "tooie_story_coop.h"
 #include "tooie_analog_camera_hook.h"
@@ -31,7 +32,7 @@ void bs_setState(uint8_t*, recomp_context*);
 
 namespace {
 gpr guest(uint32_t a) { return static_cast<int32_t>(a); }
-bool pointer(uint32_t a) { return a >= 0x80000000 && a < 0x807FFE00 && !(a & 3); }
+bool pointer(uint32_t a) { return tooie_memory::aligned(a, 0x201); }
 bool enabled_map = false;
 bool feature_enabled() {
     static const bool enabled = [] {

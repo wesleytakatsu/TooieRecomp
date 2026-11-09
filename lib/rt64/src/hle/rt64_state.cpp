@@ -1,3 +1,4 @@
+#include "rt64_host_rdram.h"
 //
 // RT64
 //
@@ -1796,15 +1797,16 @@ namespace RT64 {
                     const uint32_t rowAddress = depthFrame.address + y * depthFrame.width * 2;
                     const uint32_t rowSize = depthFrame.width * 2;
                     const uint8_t *row = depthFrame.mapped + y * depthFrame.rowBytes;
-                    if (((rowAddress & 3) == 0) && ((depthFrame.width & 1) == 0) && (((rowAddress & RDRAMSize) + rowSize - 1) <= RDRAMSize)) {
-                        memcpy(&RDRAM[rowAddress & RDRAMSize], row, rowSize);
+                    const uint32_t rdramMask = hostRdramMask();
+                    if (((rowAddress & 3) == 0) && ((depthFrame.width & 1) == 0) && (((rowAddress & rdramMask) + rowSize - 1) <= rdramMask)) {
+                        memcpy(&RDRAM[rowAddress & rdramMask], row, rowSize);
                         continue;
                     }
 
                     for (uint32_t x = 0; x < depthFrame.width; x++) {
                         uint32_t word;
                         memcpy(&word, row + (x / 2) * sizeof(uint32_t), sizeof(word));
-                        const uint32_t offset = (rowAddress + x * 2) & RDRAMSize;
+                        const uint32_t offset = (rowAddress + x * 2) & rdramMask;
                         *reinterpret_cast<uint16_t *>(&RDRAM[offset ^ 2]) = uint16_t((x & 1) ? word : (word >> 16));
                     }
                 }

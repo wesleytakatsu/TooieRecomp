@@ -3,7 +3,7 @@ title: "TooieRecomp Spec — Runtime, Dynamic Overlays and Guest Preemption"
 description: "Technical specification for N64ModernRuntime integration, the 884 dynamic overlay management system, syscall table dispatch, and Hybrid F' guest preemption."
 status: current
 area: "specs/Tooie"
-updated: 2026-11-02
+updated: 2026-11-09
 tags: [specs, tooierecomp, runtime, overlays, syscalls, preemption, scheduling]
 ---
 
@@ -55,6 +55,7 @@ TooieRecomp virtualizes Nintendo 64 hardware execution via `N64ModernRuntime`. *
 | **REQ-RUN-04** | Audio Preemption | Audio thread (`Thread 4`) preempts main loop via generator loop backedges. | `IMPLEMENTED` |
 | **REQ-RUN-05** | Boot Hardware Stubs | Seeds IPL3 boot residue at `0x802FB1F4` and `0x802FE1C0` for boot verification. | `IMPLEMENTED` |
 | **REQ-RUN-06** | MMIO Trap Handling | Traps unmapped SI/PI MMIO writes (`0xA48xxxxx` / `0xA46xxxxx`) cleanly. | `IMPLEMENTED` |
+| **REQ-RUN-07** | Guest Heap Expansion | Relocates heap to 0x8080C000..0x81000000 (~7.95 MiB), wraps func_80800000_gztrace, provides central range helpers, extends RT64 depth mask to 16 MiB, and preserves 8 MiB osMemSize. | `IMPLEMENTED` |
 
 ---
 
@@ -117,6 +118,28 @@ State transitions are managed through `park_canonical_mapping()`, `activate_cano
   - A local runtime patch (`vendor/patches-local/n64modernruntime-overlay-section-dedupe.patch`) modifies `librecomp/src/overlays.cpp` so that `load_overlay` skips duplicate `loaded_sections` entries for identical `(ram, section_index)`, eliminating multi-second stalls during map changes.
 - Return Address Overrides:
   - Strong symbol definitions in `boot_hw_stubs.cpp` (`func_800137D4`, `func_800137F4`, `func_80013A5C`, `func_80013A7C`) interpose over weak compiler-generated stubs, correctly reproducing `$ra` preservation across `jr a1`/`jr a3` transitions.
+
+### 3.4 Guest heap layout and expansion
+
+- **Native vs. Expanded Region**:
+  - Native heap: `0x80137800..0x80400000` (~2.78 MiB, `0x2C8800` = 2,918,400 bytes). `func_8001E7E8` sets `D_8007E998 = func_8001E7E0()` (heap end, constant `0x80400000`) and `D_8007E990 = D_8007E994 = end - func_8001E830()` (heap base = end − size, constant size `0x2C8800`).
+  - Expanded heap: When active, hooks on `0x8001E7E0` (heap end) and `0x8001E830` (heap size) (registered via `add_loaded_function` in `boot_hw_stubs.cpp`; `src/game/tooie_expanded_memory.cpp`) place the heap at `0x8080C000..0x81000000` (`0x7F4000` bytes, ~7.95 MiB, ~2.9x native). This is the first 4 KiB page above the static overlay high-water mark (`0x8080B5E0`) and below 16 MiB physical RDRAM. The native region is no longer used by the heap.
+  - `osMemSize`: Still reports 8 MiB (`0x00800000`) to preserve game software assumptions.
+  - Off = native getters execute, preserving byte-for-byte native behaviour.
+- **Latch Refusal Rule**:
+  - Latched once per process during config initialisation (`tooie_memory::finish_config`, before boot).
+  - The runtime maps 512 MiB KSEG0; `0x80800000..0x80801000` holds PI handles; `patch_rdram_start` is `0x80801000`; mods load from `0x81000000`. Overlays link at shared static VRAM `0x80800000` and the largest static overlay ends at `0x8080B5E0` (computed at startup in `src/main/register_overlays.cpp`).
+  - Latch refuses expansion (falls back to native heap) if static overlays or patch RDRAM reach or exceed `0x8080C000`.
+- **`gztrace` Linker Wrapper**:
+  - Overlay `gztrace` function `func_80800000_gztrace` (`funcs_278.c:2367`) originally validates pointers as 4-byte aligned within `0x80000000..0x80800000` inclusive, rejecting anything above 8 MiB.
+  - Wrapped via linker (`backpack_lookup_diag.cpp`, CMake wrapped-symbol list): when Off, calls original validator; when On, accepts native RAM plus the active expanded range (`0x8080C000..0x81000000`, 4-aligned, plus `0x80800000`).
+- **Central Guest-RAM Helper**:
+  - `include/tooie_guest_memory.h` provides `tooie_memory::contains`, `contains_alias`, and `aligned`, replacing scattered 8 MiB checks across host code (boot_hw_stubs, syscall_handler, object distance, analog camera, story co-op, audio mod loader/render, Dev Mode hooks, diagnostics, tintro projection policy).
+- **RT64 Depth Readback Mask**:
+  - RDP/RT64 and RSP DMA use 24-bit physical addresses (16 MiB). RT64's depth readback copy mask (`RDRAMSize`, used by TK64/handheld fence-based depth readback) is widened to 16 MiB only when expanded memory is active (`lib/rt64/src/hle/rt64_host_rdram.h`, `rt64_state.cpp`, patch `vendor/patches-local/rt64-expanded-guest-rdram.patch`). Refresh of `vendor/MANIFEST.sha256` via `tools/vendor_manifest.sh` on Linux is `PENDING`.
+- **Switches & Diagnostics**:
+  - `TOOIE_TEST_EXPANDED_HEAP=0` forces native heap regardless of configuration.
+  - `TOOIE_DIAG_HEAP=1` (default off) logs heap base/size at boot and guard transitions.
 
 ---
 

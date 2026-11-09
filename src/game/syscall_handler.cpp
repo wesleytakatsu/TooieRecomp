@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -553,8 +554,7 @@ extern "C" void recomp_syscall_handler(uint8_t* rdram, recomp_context* ctx, int3
             return f;
         };
         auto guest_ok = [](uint32_t addr) {
-            return ((addr & 0x1FFFFFFFu) < 0x00800000u) && ((addr & 3u) == 0u) &&
-                   (addr >= 0x80000000u);
+            return tooie_memory::aligned(addr);
         };
 
         const uint32_t warp = uint32_t(MEM_BU(0x12, mode));

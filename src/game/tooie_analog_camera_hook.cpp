@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_analog_camera.h"
 #include "tooie_story_coop.h"
 #include "tooie_analog_camera_hook.h"
@@ -17,7 +18,7 @@ void func_800D8FF8(uint8_t*, recomp_context*);
 
 namespace {
 gpr guest(uint32_t address) { return int32_t(address); }
-bool pointer(uint32_t p) { return p >= 0x80000000u && p < 0x807FFC00u && !(p & 3); }
+bool pointer(uint32_t p) { return tooie_memory::aligned(p, 0x401); }
 struct Frame { uint32_t node = 0; float yaw = 0, pitch = 0; };
 thread_local Frame frame;
 struct PlayerMotion { uint32_t node = 0, mode = 0; int controller = -1; tooie_analog_camera::Motion motion; };

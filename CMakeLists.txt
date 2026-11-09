@@ -216,7 +216,9 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/transform_hooks.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tintro_projection_policy.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
@@ -360,6 +362,7 @@ add_dependencies(TooieRecompiled TooieUIAssets)
 # TOOIE_DIAG_BACKPACK_FLAP=1 / TOOIE_DIAG_SECONDARY_SWAY=1.
 # Generated functions remain untouched.
 set(TOOIE_WRAPPED_SYMBOLS
+    func_80800000_gztrace
     func_800D674C
     func_800DE448
     func_800DE498
@@ -619,6 +622,7 @@ foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
     target_sources(${_t} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_bgm_hooks.cpp
@@ -788,6 +792,7 @@ set_target_properties(tooie_glowbo_collection_test PROPERTIES EXCLUDE_FROM_ALL T
 add_executable(tooie_object_distance_test
     ${CMAKE_SOURCE_DIR}/tests/tooie_object_distance_test.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
     ${N64MR}/librecomp/src/config.cpp
     ${N64MR}/librecomp/src/config_option.cpp
@@ -806,6 +811,22 @@ target_include_directories(tooie_object_distance_test PRIVATE
 target_compile_definitions(tooie_object_distance_test PRIVATE NOMINMAX)
 target_link_libraries(tooie_object_distance_test PRIVATE RecompiledFuncs)
 set_target_properties(tooie_object_distance_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+add_executable(tooie_expanded_memory_test
+    tests/tooie_expanded_memory_test.cpp
+    src/game/tooie_expanded_memory.cpp
+    src/game/tooie_expanded_memory_config.cpp
+    src/game/tooie_object_distance_config.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_expanded_memory_test PRIVATE
+    $<TARGET_PROPERTY:tooie_object_distance_test,INCLUDE_DIRECTORIES>
+    ${CMAKE_SOURCE_DIR}/lib/rt64/src
+    ${CMAKE_SOURCE_DIR}/RecompiledFuncs)
+target_compile_definitions(tooie_expanded_memory_test PRIVATE NOMINMAX)
+target_link_libraries(tooie_expanded_memory_test PRIVATE RecompiledFuncs)
+set_target_properties(tooie_expanded_memory_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 add_executable(tooie_analog_camera_test
     tests/tooie_analog_camera_test.cpp

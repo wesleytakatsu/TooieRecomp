@@ -1,3 +1,4 @@
+#include "tooie_expanded_memory.h"
 #include "banjo_config.h"
 #include "tooie_analog_camera.h"
 #include "recompui/recompui.h"
@@ -147,6 +148,9 @@ static void add_general_options(recomp::config::Config &config) {
         config.update_option_disabled(id, true);
     }
     tooie_analog_camera::install_config(config);
+    tooie_memory::add_config(config, []() -> recomp::config::Config& {
+        return recompui::config::get_general_config();
+    });
 }
 
 template <typename T = uint32_t>
@@ -250,6 +254,9 @@ int banjo::get_bgm_volume() {
 static void add_graphics_options(recomp::config::Config &config) {
     tooie_startup::add_graphics_option(config);
     tooie_object_distance::add_config(config);
+    tooie_memory::install_distance_notice([]() -> recomp::config::Config& {
+        return recompui::config::get_graphics_config();
+    });
     using EnumOptionVector = const std::vector<recomp::config::ConfigOptionEnumOption>;
     static EnumOptionVector cutscene_aspect_ratio_mode_options = {
         {banjo::CutsceneAspectRatioMode::Original, "Original", "Original"},
@@ -422,5 +429,6 @@ void banjo::init_config() {
     tooie_dev_mode_ui::create_tab();
 
     recompui::config::finalize();
+    tooie_memory::finish_config();
 
 }

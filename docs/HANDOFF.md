@@ -31,8 +31,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Portáteis (aarch64, PortMaster) | build atrás de `TK64_MOBILE` com TK64 em OpenGL ES, na `main` desde a PR #2 (`05f04f8`); validado no XU10 com `libmali`; Panfrost relatado bom pelo usuário | [[specs/Tooie/handheld-portmaster]] |
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
-| Memória expandida | `feat/expanded-heap` (sem commit); heap em `0x8080C000..0x81000000` (~7.95 MiB), trava no boot, guarda 768/256 KiB para distância de objetos; testes Windows 35/35 PASS; Witchyworld validado pelo usuário no Windows (2026-11-09), co-op no jogo `PENDING_USER`; Linux/PortMaster `NOT_RUN` | [[specs/Tooie/runtime-and-overlays]], [[specs/Tooie/window-ui-and-config]], [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/guest-heap]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 35 obrigatórios (inclui memória expandida, câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 19/19 PASS em `313e287` (2026-11-06); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+| Memória expandida | General > Expanded Memory (experimental), padrão Off, vale após reiniciar; heap do jogo em `0x8080C000..0x81000000` (~7.95 MiB). Distância 2x/4x/Ilimitada exige a opção ativa; guarda de memória livre 768/256 KiB; co-op de história força distância Original. Witchyworld com Ilimitado e co-op validados pelo usuário no Windows (2026-11-09); Linux/PortMaster `NOT_RUN` | [[specs/Tooie/runtime-and-overlays#3.4 Guest heap layout and expansion]], [[specs/Tooie/window-ui-and-config]], [[specs/Tooie/graphics-and-presentation#3.1.1 Object distance]], [[reverse-engineering/systems/guest-heap]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 35 obrigatórios (inclui memória expandida, câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Idiomas em arquivos (2026-11-08)
 
@@ -178,11 +178,11 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
-- Versão `0.1.6`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.6)
+- Versão `0.1.6`; [pré-release Windows x64, Linux x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.6)
   em 2026-11-07. Tag anotada `v0.1.6` em `0f7230a2ee9a33c622eb17cbca1d808deecc2d05` (`main`, após as PRs #9 e #10).
   Notas em inglês e português brasileiro: [[releases/v0.1.6]]. Windows: 34/34 testes, build Release, auditoria dos 111
   arquivos aprovada. PortMaster: build cruzado (114 arquivos, glibc 2.35), não executado num aparelho nesta versão.
-  Assets baixados do GitHub conferidos byte a byte com os locais. Linux x64 fica para o PC Linux do usuário.
+  Assets Windows/PortMaster baixados do GitHub conferidos byte a byte com os locais. Linux x64 adicionado da mesma tag, com os seis hashes remotos verificados e aprovação do usuário após teste.
 - `BanjoTooieRecompiled-v0.1.6-Windows-x64.zip`: 23182600 bytes, SHA-256
   `48087dfff0aaa4b6a7e295df91796505c6472a6ac52472740a5199341aee7c39`.
 - `BanjoTooieRecompiled-v0.1.6-Linux-arm64-PortMaster.zip`: 12223339 bytes, SHA-256
@@ -257,13 +257,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Pendências conhecidas
 
-- Memória expandida implementada em `feat/expanded-heap` (sem commit), build/testes Windows 35/35,
-  Witchyworld validado no jogo, teste de co-op `PENDING_USER`, Linux/handheld `NOT_RUN`, MANIFEST pendente. Realoca o heap do guest para
-  `0x8080C000..0x81000000` (~7.95 MiB) para evitar o esgotamento visto em Witchyworld com `Unlimited`.
-  Witchyworld com Memória expandida + Ilimitado validado pelo usuário (`USER_REPORTED`, 2026-11-09); co-op de história força distância Original (fechamento com distância estendida, causa `UNKNOWN`); teste do co-op `PENDING_USER`.
-  Opção General > "Expanded Memory (experimental)" com trava no boot; distância 2x/4x/Unlimited exige memória expandida
-  ativa no processo (ativa no config com aviso de reiniciar e roda Original até o reinício). Guarda de baixo heap
-  (768 KiB livres e bloco contíguo de 256 KiB) recua retenção e agendamento para valores nativos sob pressão.
+- Memória expandida: com `Unlimited` no heap nativo (~2.78 MiB), Witchyworld esgotava o heap (crash, carga lenta,
+  jiggy da transição e modelo de inimigo ausentes). Co-op de história com distância estendida fechava o jogo; causa
+  `UNKNOWN`, contornada forçando Original. Linux/PortMaster com heap expandido `NOT_RUN`.
+  RE: [[reverse-engineering/systems/guest-heap]].
 - Minigames e cooperativo: implementada suspensão por sala para as 15 famílias/23 etapas, segmentos Saucer,
   aliases Mayan conservadores e salas MP relacionadas. Subtipo nativo `0x1B` e pedidos diferentes de um jogador
   permanecem nativos. Witchyworld `0xD6` só recusa promoção no retorno Saucer com seletor nativo 6.
@@ -389,8 +386,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
   Política coordena limite do modelo, atualização/retenção do ator, seleção de células e corte radial anterior
   à fila, além do limite próprio de sprites. Distância física, FOV/projeção, AABB/setores/flags e callbacks
   permanecem nativos. Fades de 700 unidades (modelos) e 500 (sprites); sem cache/fade temporal por omissão de desenho.
-  Jogador/UI global/modos excluídos mantêm limites nativos. No split de história, a distância efetiva é sempre Original.
-  Cobertura/performance universal e Linux permanecem `UNKNOWN` / `NOT_RUN`.
+  Jogador/UI global/modos excluídos mantêm limites nativos. 2x/4x/Ilimitado exigem Memória expandida ativa; no co-op
+  de história a distância efetiva é Original. Cobertura/performance universal e Linux permanecem `UNKNOWN` / `NOT_RUN`.
   Logger, captura CSV, observadores de ator/conversão, script temporário e suas chamadas foram removidos;
   regressão isolada permanece fora do executável. Limpeza validada: Windows 25/25 testes, regressão 382
   verificações, três helpers de integração e build passaram; executável atualizado sem diagnósticos da opção.
@@ -492,18 +489,17 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 ## Empacotamento Linux x64
 
 - Entrada `./build-linux.sh`: seleção tar/deb/AppImage/todos, análise de dependências e build pelo preset `linux-x64`.
-  Scripts, licença do runtime AppImage e instruções de instalação/provisionamento versionados; launcher usa `build-linux`.
-- `PROVEN` em `313e2871c71b8a496a7806dbb0c7bf80cffab663` (tag `v0.1.5`, 2026-11-06): build Release com
-  `TOOIE_RELEASE_VERSION=0.1.5 ./build-linux.sh all`, exit `0`, geração de 420 arquivos conferida e 19/19 suítes PASS.
-  Tar/deb/AppImage têm `BUILD-INFO.txt` da tag, versão `0.1.5` e zero arquivos sujos; manifests, licença e checksums
-  aprovados. Binário comum: `8d02707238e5af6486e8431e5dfebeddc8125cf411dc9c8019c025e6149bda51` (SHA-256).
-- Três pacotes `BanjoTooieRecompiled-v0.1.5-Linux-x64.*` e três `.sha256` publicados na release `v0.1.5`.
-  Os seis hashes SHA-256 remotos coincidem com os locais; anexos Windows/PortMaster, título e estado de pré-release
-  preservados. Notas em inglês/português sincronizadas em [[releases/v0.1.5]]. Artefatos: `dist/release-v0.1.5-linux/`.
-- Execução isolada pelas entradas dos três pacotes: launcher 15 s e ROM 25 s em cada um, com 2.236 assets pt-BR e
-  quadro interpolado registrados. `.deb` apenas extraído; AppImage testado com `--appimage-extract-and-run`.
-  HOME/configs/caches/ROMs temporários removidos; estado do dpkg e dados reais do usuário permaneceram iguais.
-  Não substitui gameplay completo por API, instalação Debian real nem montagem FUSE padrão.
+  Scripts e licença do runtime AppImage versionados; launcher usa `build-linux`.
+- `PROVEN` em `0f7230a2ee9a33c622eb17cbca1d808deecc2d05` (tag `v0.1.6`, 2026-11-07):
+  `TOOIE_RELEASE_VERSION=0.1.6 ./build-linux.sh all`, exit `0`, 420 arquivos gerados conferidos e 22/22 suítes PASS.
+  Teste de mod de áudio executou manifesto/passthrough; reprodução de MP3 real ficou `SKIPPED` sem a faixa de teste.
+- Tar/deb/AppImage contêm o binário `6f6ac470f506d31daf31eeb3487dc6901a9f465a51fc2b571a04ac7e321d2859`
+  (SHA-256), commit da tag, versão `0.1.6` e zero arquivos sujos. Licença, manifests e checksums conferidos.
+  Artefatos: `dist/release-v0.1.6-linux/`; três pacotes e três `.sha256` publicados na release, com hashes remotos iguais.
+  Os anexos Windows/PortMaster, título e estado de pré-release foram preservados; notas em [[releases/v0.1.6]].
+- `.deb` extraído e AppImage com `--appimage-extract-and-run`: launcher aberto por 15 s em perfil isolado.
+  Temporários removidos, sem instalação Debian. Depois o jogo iniciou no perfil real com backup prévio; o usuário
+  confirmou que funcionou e autorizou a publicação. Não implica validação exaustiva de APIs, gameplay ou pacote HD.
 
 ## Análise de mods de personagens
 

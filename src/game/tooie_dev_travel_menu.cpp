@@ -1,3 +1,4 @@
+#include "tooie_guest_memory.h"
 #include "tooie_dev_travel_menu.h"
 #include "tooie_dev_cheats.h"
 #include "tooie_story_coop.h"
@@ -17,7 +18,7 @@ thread_local std::vector<Menu> pending;
 
 gpr guest(uint32_t p) { return static_cast<int32_t>(p); }
 bool readable(uint32_t p, uint32_t size) {
-    return (p & 3u) == 0 && p >= 0x80000000u && p <= 0x80800000u - size;
+    return tooie_memory::aligned(p, size);
 }
 bool enabled(uint8_t* rdram) {
     if (!tooie_story_coop::running(rdram) || MEM_H(0, guest(0x80127632)) != 3 ||
