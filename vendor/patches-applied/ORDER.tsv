@@ -56,4 +56,4 @@ rt64	lib/rt64	patches-local/rt64-host-gpu-selection.patch	4b69cdf9e4acaa2fd61789
 N64ModernRuntime	lib/N64ModernRuntime	patches-local/n64modernruntime-audio-content-roots.patch	deaa6d67fc5e0b26786bcf39469ef191e5c1bf1ab4352c3a363bd5e529399af9	b1b723a integrated tree (audio from f42fdae)
 RecompFrontend	lib/RecompFrontend	patches-local/recompfrontend-audio-zip-installer.patch	51825a628b78b7bfb3256af4488f6c8623a6014c3bb65983d189f0e1900a3da8	b1b723a integrated tree (audio from f42fdae)
 rt64	lib/rt64	patches-local/rt64-expanded-guest-rdram.patch	51c92007f84e428c71b3b16a6497dd6595dcc94c4d4c2d1effa4063ca49b9a05	e4396fd integrated tree
-rt64	lib/rt64	patches-local/rt64-tk64-texture-streaming.patch	ee9f2aebfec1393692099a47d1169e4e390f3de46f293079e5174cd113f740f7	TK64@1fd8ca8 integrated tree
+rt64	lib/rt64	patches-local/rt64-tk64-texture-streaming.patch	9fbfc47f681d99b2cb22c037fdd63bdd771fb260ee22b4a1c9c622a2e6393a7b	TK64@102a8a8 integrated tree

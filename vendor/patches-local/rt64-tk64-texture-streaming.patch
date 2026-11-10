@@ -385,7 +385,7 @@ index 95618bc..c0f8029 100644
          bool decodeTMEM = false;
      };
 diff --git a/src/render/rt64_texture_cache.cpp b/src/render/rt64_texture_cache.cpp
-index 0848f3e..42ac747 100644
+index 0848f3e..36235f8 100644
 --- a/src/render/rt64_texture_cache.cpp
 +++ b/src/render/rt64_texture_cache.cpp
 @@ -20,6 +20,11 @@
@@ -690,7 +690,7 @@ index 0848f3e..42ac747 100644
          std::vector<RenderTextureBarrier> beforeCopyBarriers;
          std::vector<RenderTextureBarrier> beforeDecodeBarriers;
          std::vector<RenderTextureBarrier> afterDecodeBarriers;
-@@ -1011,11 +1137,31 @@ namespace RT64 {
+@@ -1011,11 +1137,35 @@ namespace RT64 {
              }
              
              if (!streamResultQueueCopy.empty()) {
@@ -719,10 +719,14 @@ index 0848f3e..42ac747 100644
                          textureMap.replacementMap.addLoadedTexture(result.texture, result.fileSystemIndex, result.relativePath, !result.fromPreload);
 +                        firstLoads.push_back(result);
 +                        tk64::countTextureStreamEvent(tk64::TextureStreamEvent::FirstLoad);
++
++                        // A residency request can arrive after RT64 evicted the file: it becomes a first load, and the
++                        // file's request is no longer in flight.
++                        residencyLoadFinished(textureMap.replacementMap.hashFromRelativePath(result.fileSystemIndex, result.relativePath), result.texture);
  
                          // Increment texture pool memory used permanently if the texture was preloaded.
                          if (result.fromPreload) {
-@@ -1026,7 +1172,7 @@ namespace RT64 {
+@@ -1026,7 +1176,7 @@ namespace RT64 {
                  }
  
                  // Add all the pending transition barriers and replacement checks.
@@ -731,7 +735,7 @@ index 0848f3e..42ac747 100644
                      afterDecodeBarriers.emplace_back(result.texture->texture.get(), RenderTextureLayout::SHADER_READ);
  
                      auto &streamResolvedPaths = textureMap.replacementMap.fileSystemStreamResolvedPaths[result.fileSystemIndex];
-@@ -1161,11 +1307,16 @@ namespace RT64 {
+@@ -1161,11 +1311,16 @@ namespace RT64 {
                          // Load the texture directly on this thread (operation was defined as Stall).
                          else if (textureMap.replacementMap.fileSystems[resolvedPath.fileSystemIndex]->load(resolvedPath.relativePath, replacementBytes)) {
                              replacementUploadResources.emplace_back();
@@ -753,7 +757,7 @@ index 0848f3e..42ac747 100644
                          }
                      }
  
-@@ -1242,6 +1393,20 @@ namespace RT64 {
+@@ -1242,6 +1397,20 @@ namespace RT64 {
                          textureMap.replace(addition.hash, addition.texture, addition.shift == ReplacementShift::Half, addition.referenceCounted);
                      }
  
@@ -774,7 +778,7 @@ index 0848f3e..42ac747 100644
                      textureMap.replacementMap.evict(textureMap.evictedTextures);
                  }
  
-@@ -1326,6 +1491,183 @@ namespace RT64 {
+@@ -1326,6 +1495,183 @@ namespace RT64 {
          return useTexture(hash, submissionFrame, textureIndex, textureScale, textureDimensions, textureReplaced, hasMipmaps, shiftedByHalf);
      }
      

@@ -1163,6 +1163,10 @@ namespace RT64 {
                         firstLoads.push_back(result);
                         tk64::countTextureStreamEvent(tk64::TextureStreamEvent::FirstLoad);
 
+                        // A residency request can arrive after RT64 evicted the file: it becomes a first load, and the
+                        // file's request is no longer in flight.
+                        residencyLoadFinished(textureMap.replacementMap.hashFromRelativePath(result.fileSystemIndex, result.relativePath), result.texture);
+
                         // Increment texture pool memory used permanently if the texture was preloaded.
                         if (result.fromPreload) {
                             textureMap.replacementMap.usedTexturePoolSize += result.texture->memorySize;
