@@ -265,12 +265,14 @@ static void add_graphics_options(recomp::config::Config &config) {
     tooie_texture_streaming::add_config(config, [](uint32_t level) { RT64::requestTextureStreamingQuality(level); });
 #ifdef TOOIE_HAS_TK64_MATERIALS
     // TK64 materials (renderer with hle/rt64_host_materials.h only).
-    tooie_materials::add_config(config, [](uint32_t mode, bool reload_packs) {
-        RT64::requestMaterials(mode);
-        if (reload_packs) {
-            recompui::renderer::trigger_texture_pack_update();
-        }
-    });
+    tooie_materials::add_config(config,
+        [](uint32_t mode, bool reload_packs) {
+            RT64::requestMaterials(mode);
+            if (reload_packs) {
+                recompui::renderer::trigger_texture_pack_update();
+            }
+        },
+        [](float scale) { RT64::requestMaterialStrength(scale); });
 #endif
     tooie_memory::install_distance_notice([]() -> recomp::config::Config& {
         return recompui::config::get_graphics_config();
