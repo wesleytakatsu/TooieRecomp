@@ -432,6 +432,8 @@ set (SOURCES
     "${PROJECT_SOURCE_DIR}/src/rhi/rt64_render_hooks.cpp"
 
     "${PROJECT_SOURCE_DIR}/src/tk64/tk64_profile.cpp"
+    "${PROJECT_SOURCE_DIR}/src/tk64/tk64_texture_lod.cpp"
+    "${PROJECT_SOURCE_DIR}/src/tk64/tk64_texture_residency.cpp"
 
     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui.cpp"
     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui_demo.cpp"

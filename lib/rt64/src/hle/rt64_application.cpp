@@ -43,6 +43,8 @@ namespace plume {
 #endif
 }
 
+#include "tk64/tk64_texture_residency.h"
+
 namespace RT64 {
     // Constants
 
@@ -488,6 +490,10 @@ namespace RT64 {
         const uint64_t MinimumTexturePoolSize = 512 * 1024 * 1024;
         uint64_t texturePoolSize = std::max((deviceDescription.dedicatedVideoMemory * 2) / 3, MinimumTexturePoolSize);
         textureCache->setReplacementPoolMaxSize(texturePoolSize);
+
+        // TK64: texture streaming only on D3D12 and Vulkan (TK64's own backends report Automatic), budget from the pool.
+        tk64::setTextureStreamingSupported((chosenGraphicsAPI == UserConfiguration::GraphicsAPI::D3D12) || (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::Vulkan));
+        tk64::setTextureStreamingAutomaticBudget(texturePoolSize);
 
 #   if RT_ENABLED
         // Create the blue noise texture, upload it and wait for it to finish.

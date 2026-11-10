@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-09
+updated: 2026-11-10
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -19,12 +19,13 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (54 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (56 patches, 2026-11-10) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável; protótipo nativo de ZIP `audio.json`; usuário testou por cópia na pasta mods e logs confirmam os três MP3s; camadas superfície/água sincronizadas host-testadas e com relato positivo do usuário no Windows; instalação pela UI exige tela inicial | [[specs/Tooie/audio-system]], [[specs/Tooie/modding-and-extensions]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
 | Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
+| Streaming de texturas (TK64) | opção Graphics > Texture Streaming (Off padrão, Minimum..Maximum), patch `rt64-tk64-texture-streaming` (TK64 `1fd8ca8`): mip por arquivo conforme a distância, orçamento de 2/3 da VRAM, só D3D12/Vulkan. Demo com o pacote Jinjo Village HD (Windows, D3D12): de 519–664 MiB para 128–247 MiB no Maximum; 36/36 testes. Visual do usuário pendente; Linux `NOT_RUN`. RivaTuner (RTSS) derruba qualquer D3D12 neste PC. Em OpenGL e D3D11 as texturas de pacotes já ficavam pretas antes (falha anterior, aviso nos READMEs, correção futura) | [[specs/Tooie/graphics-and-presentation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN; pt-BR/FR/DE/ES, italiano em rascunho e japonês em `assets/languages/*.tlpb`; só ROM USA. Japonês distribuído por decisão do usuário (2026-11-09) só com texto, fontes originais e logo do título (`0x8A8`); demais gráficos regionais ficam USA. Bundle 480.746 bytes, SHA-256 `551451b5…6cad`, 2.255 assets; layout na tela pendente. Italiano: 2.434 assets, título HD aprovado pelo usuário; revisão editorial pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
