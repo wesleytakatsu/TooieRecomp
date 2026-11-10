@@ -17,6 +17,8 @@
 #include "tooie_startup.h"
 #include "tooie_object_distance.h"
 #include "hle/rt64_host_endpoint_current.h"
+#include "hle/rt64_host_texture_streaming.h"
+#include "tooie_texture_streaming.h"
 #include "util/file.h"
 #include <filesystem>
 #include <fstream>
@@ -254,6 +256,7 @@ int banjo::get_bgm_volume() {
 static void add_graphics_options(recomp::config::Config &config) {
     tooie_startup::add_graphics_option(config);
     tooie_object_distance::add_config(config);
+    tooie_texture_streaming::add_config(config, [](uint32_t level) { RT64::requestTextureStreamingQuality(level); });
     tooie_memory::install_distance_notice([]() -> recomp::config::Config& {
         return recompui::config::get_graphics_config();
     });

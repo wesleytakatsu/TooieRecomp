@@ -59,6 +59,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_story_coop_test` (production policy, native creation/allocator/descriptor/layout/teardown/activity, input epochs, form handoff and Mini-Sub dispatch; synthetic world/assets)
   - `tooie_menu_policy_test`
   - `tooie_menu_config_test`
+  - `tooie_texture_streaming_test`
   - `tintro_projection_policy_test` (production context gate and dynamic window-aspect policy)
   - `tooie_object_distance_test` (native model cutoff/reset and actor gates with production distance/config policy)
   - `tooie_analog_camera_test` (production config/input policy and scoped native orbit/controller regression)
@@ -76,7 +77,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
   - `tooie_graphics_api_test` (platform-aware graphics API selection policy)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 35 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 36 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test`, `tooie_expanded_memory_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test, the cheats
@@ -111,6 +112,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
 | `rt64_present_decimator_test` | `tests/rt64_present_decimator_test.cpp` | Tests integer accumulator presentation rate decimation. |
 | `tooie_fps_meter_test` | `tests/tooie_fps_meter_test.cpp` | Tests sliding-window presentation rate metering. |
 | `tooie_menu_policy_test` | `tests/tooie_menu_policy_test.cpp` | Tests menu config coercion and framerate option interactions. |
+| `tooie_texture_streaming_test` | `tests/tooie_texture_streaming_test.cpp` | Graphics > Texture Streaming with the real librecomp Config: fresh and legacy configs load Off, invalid values load Off, a saved level loads and reaches the renderer sink, UI changes reach it only on Apply and save the level name, Cancel reverts. Renderer stand-in; no game/window. |
 | `tooie_menu_config_test` | `tests/tooie_menu_config_test.cpp`, `tests/graphics_window_mode_test.cpp` | Tests serialization and config sink callbacks. Links the real frontend graphics tab and shortcut with librecomp JSON storage; verifies Fullscreen/Windowed persistence across fresh config loads, a single renderer update per shortcut, pending-edit isolation and menu Apply. Uses a private config registry, temporary files and a renderer stand-in; no game/window is started. |
 | `rom_cart_import_test` | `tests/rom_cart_import_test.cpp` | Tests retail cartridge ROM loading and in-memory decompression. |
 | `stick_angle_thunk_test` | `tests/stick_angle_thunk_test.cpp` | Tests `func_80013B70` normalization across cardinals and diagonals. |

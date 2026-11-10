@@ -49,6 +49,7 @@ RT64 Viewport & Swapchain Presentation
 | **REQ-CFG-01** | Menu Policy Enforcement | Interpolation OFF enforces Manual 30; ON unlocks user framerate controls. | `IMPLEMENTED` |
 | **REQ-CFG-02** | Resolution Scaling | Exposes `Original3x` and `Original4x` in UI and config serialization. | `IMPLEMENTED` |
 | **REQ-CFG-03** | Object Distance | Graphics enum Original/2x/4x/Unlimited; applied on Load/Apply, persisted in `graphics.json`, default Original. Experimental behavior and limits: [[graphics-and-presentation#3.1.1 Object distance]]. | `EXPERIMENTAL` |
+| **REQ-CFG-05** | Texture Streaming | Graphics enum Off/Minimum/Low/Medium/High/Maximum, key `texture_streaming` in `graphics.json`, default Off (missing or invalid values load Off). Applied on Load and Apply (not on unapplied UI changes), live, no restart (`src/game/tooie_texture_streaming_config.cpp`, `include/tooie_texture_streaming.h`). Behavior: [[graphics-and-presentation]] REQ-GFX-13. | `EXPERIMENTAL` |
 | **REQ-CFG-04** | Expanded Memory | General option Off/On (default Off), key `expanded_memory` in `general.json`. Latched once per process at config finish; live changes notify "Restart the game to apply". Kill switch: `TOOIE_TEST_EXPANDED_HEAP=0`. | `EXPERIMENTAL` |
 | **REQ-DEV-01** | Dev Mode tab | ESC menu tab locked behind an accepted warning; Warp saves, renames, deletes and teleports to player positions; Cheats are triggered by the Debug Button plus a D-pad direction. | `IMPLEMENTED` |
 

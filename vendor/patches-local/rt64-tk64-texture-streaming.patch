@@ -1,0 +1,1837 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2e1e4b8..a7cd0fb 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -432,6 +432,8 @@ set (SOURCES
+     "${PROJECT_SOURCE_DIR}/src/rhi/rt64_render_hooks.cpp"
+ 
+     "${PROJECT_SOURCE_DIR}/src/tk64/tk64_profile.cpp"
++    "${PROJECT_SOURCE_DIR}/src/tk64/tk64_texture_lod.cpp"
++    "${PROJECT_SOURCE_DIR}/src/tk64/tk64_texture_residency.cpp"
+ 
+     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui.cpp"
+     "${PROJECT_SOURCE_DIR}/src/contrib/imgui/imgui_demo.cpp"
+diff --git a/src/contrib/plume/plume_d3d12.h b/src/contrib/plume/plume_d3d12.h
+index 4827452..2b01f32 100644
+--- a/src/contrib/plume/plume_d3d12.h
++++ b/src/contrib/plume/plume_d3d12.h
+@@ -270,6 +270,9 @@ namespace plume {
+ 
+     struct D3D12Buffer : RenderBuffer {
+         ID3D12Resource *d3d = nullptr;
++
++        bool isValid() const override { return d3d != nullptr; }
++
+         D3D12_RESOURCE_STATES resourceStates = D3D12_RESOURCE_STATE_COMMON;
+         D3D12Device *device = nullptr;
+         D3D12MA::Allocation *allocation = nullptr;
+@@ -296,6 +299,9 @@ namespace plume {
+ 
+     struct D3D12Texture : RenderTexture {
+         ID3D12Resource *d3d = nullptr;
++
++        bool isValid() const override { return d3d != nullptr; }
++
+         D3D12_RESOURCE_STATES resourceStates = D3D12_RESOURCE_STATE_COMMON;
+         RenderTextureLayout layout = RenderTextureLayout::UNKNOWN;
+         D3D12Device *device = nullptr;
+diff --git a/src/contrib/plume/plume_render_interface.h b/src/contrib/plume/plume_render_interface.h
+index 2048557..46130be 100644
+--- a/src/contrib/plume/plume_render_interface.h
++++ b/src/contrib/plume/plume_render_interface.h
+@@ -26,6 +26,10 @@ namespace plume {
+         virtual void setName(const std::string &name) = 0;
+         virtual uint64_t getDeviceAddress() const = 0;
+ 
++        // TK64: false when the backend could not create the resource (for example out of video memory). Backends that do
++        // not report it are always valid.
++        virtual bool isValid() const { return true; }
++
+         // Concrete implementation shortcuts.
+         inline RenderBufferReference at(uint64_t offset) const {
+             return RenderBufferReference(this, offset);
+@@ -40,6 +44,10 @@ namespace plume {
+         virtual ~RenderTexture() { }
+         virtual std::unique_ptr<RenderTextureView> createTextureView(const RenderTextureViewDesc &desc) const = 0;
+         virtual void setName(const std::string &name) = 0;
++
++        // TK64: false when the backend could not create the resource (for example out of video memory). Backends that do
++        // not report it are always valid.
++        virtual bool isValid() const { return true; }
+     };
+ 
+     struct RenderAccelerationStructure {
+diff --git a/src/contrib/plume/plume_vulkan.h b/src/contrib/plume/plume_vulkan.h
+index 0a1edbe..55d0c00 100644
+--- a/src/contrib/plume/plume_vulkan.h
++++ b/src/contrib/plume/plume_vulkan.h
+@@ -50,6 +50,9 @@ namespace plume {
+ 
+     struct VulkanBuffer : RenderBuffer {
+         VkBuffer vk = VK_NULL_HANDLE;
++
++        bool isValid() const override { return vk != VK_NULL_HANDLE; }
++
+         VulkanDevice *device = nullptr;
+         VulkanPool *pool = nullptr;
+         VmaAllocation allocation = VK_NULL_HANDLE;
+@@ -77,6 +80,9 @@ namespace plume {
+ 
+     struct VulkanTexture : RenderTexture {
+         VkImage vk = VK_NULL_HANDLE;
++
++        bool isValid() const override { return vk != VK_NULL_HANDLE; }
++
+         VkImageView imageView = VK_NULL_HANDLE;
+         VkFormat imageFormat = VK_FORMAT_UNDEFINED;
+         VkImageSubresourceRange imageSubresourceRange = {};
+diff --git a/src/hle/rt64_application.cpp b/src/hle/rt64_application.cpp
+index 7647bf5..4a94698 100644
+--- a/src/hle/rt64_application.cpp
++++ b/src/hle/rt64_application.cpp
+@@ -43,6 +43,8 @@ namespace plume {
+ #endif
+ }
+ 
++#include "tk64/tk64_texture_residency.h"
++
+ namespace RT64 {
+     // Constants
+ 
+@@ -489,6 +491,10 @@ namespace RT64 {
+         uint64_t texturePoolSize = std::max((deviceDescription.dedicatedVideoMemory * 2) / 3, MinimumTexturePoolSize);
+         textureCache->setReplacementPoolMaxSize(texturePoolSize);
+ 
++        // TK64: texture streaming only on D3D12 and Vulkan (TK64's own backends report Automatic), budget from the pool.
++        tk64::setTextureStreamingSupported((chosenGraphicsAPI == UserConfiguration::GraphicsAPI::D3D12) || (chosenGraphicsAPI == UserConfiguration::GraphicsAPI::Vulkan));
++        tk64::setTextureStreamingAutomaticBudget(texturePoolSize);
++
+ #   if RT_ENABLED
+         // Create the blue noise texture, upload it and wait for it to finish.
+         std::unique_ptr<RenderBuffer> blueNoiseUploadBuffer;
+diff --git a/src/hle/rt64_draw_call.h b/src/hle/rt64_draw_call.h
+index 68744ba..53ef42d 100644
+--- a/src/hle/rt64_draw_call.h
++++ b/src/hle/rt64_draw_call.h
+@@ -74,6 +74,10 @@ namespace RT64 {
+         uint16_t minWorldMatrix;
+         uint16_t maxWorldMatrix;
+         uint32_t triangleCount;
++
++        // TK64: lowest texture level of detail of the call's triangles (tk64_texture_lod.h); TextureLodNone when not measured.
++        float minTexelLod;
++
+         FixedRect rect;
+         int16_t rectDsdx;
+         int16_t rectDtdy;
+@@ -157,6 +161,9 @@ namespace RT64 {
+         // TK64: position of this tile inside its draw call, used as the texture slot when descriptor indexing is unavailable.
+         uint8_t drawSlot;
+ 
++        // TK64: lowest level of detail of the draws that used this tile, in texels of the tile after its shift (tk64_texture_lod.h).
++        float texelLod;
++
+         bool validTexcoords() const {
+             return (minTexcoord.x <= maxTexcoord.x) && (minTexcoord.y <= maxTexcoord.y);
+         }
+diff --git a/src/hle/rt64_host_texture_streaming.h b/src/hle/rt64_host_texture_streaming.h
+new file mode 100644
+index 0000000..d6e3916
+--- /dev/null
++++ b/src/hle/rt64_host_texture_streaming.h
+@@ -0,0 +1,31 @@
++//
++// RT64 (TK64)
++//
++// Host-controlled texture streaming (docs/specs/texture-streaming.md). Off unless the host asks: a host that never calls
++// these functions loads replacement textures exactly as RT64 did. Any thread; takes effect at the next residency decision.
++// Only D3D12 and Vulkan stream; on other backends the request is kept but does nothing. TK64_TEXTURE_STREAMING=0 forces it
++// off and TK64_TEST_TEXTURE_STREAMING overrides the level, for testing.
++//
++
++#pragma once
++
++#include <cstdint>
++
++#include "tk64/tk64_texture_residency.h"
++
++namespace RT64 {
++    // 0: off (whole files). 1 (Minimum) to 5 (Maximum): quality level.
++    inline void requestTextureStreamingQuality(uint32_t level) {
++        tk64::requestTextureStreamingLevel(level);
++    }
++
++    // Memory budget for replacement textures in use, in bytes. 0: automatic (2/3 of dedicated video memory).
++    inline void requestTextureStreamingBudget(uint64_t bytes) {
++        tk64::requestTextureStreamingBudget(bytes);
++    }
++
++    // Level in effect, memory in use, budget, pressure and allocation failures, as of the last decision.
++    inline tk64::TextureStreamingStats getTextureStreamingStats() {
++        return tk64::textureStreamingStats();
++    }
++};
+diff --git a/src/hle/rt64_rsp.cpp b/src/hle/rt64_rsp.cpp
+index f0c35d9..4553ecc 100644
+--- a/src/hle/rt64_rsp.cpp
++++ b/src/hle/rt64_rsp.cpp
+@@ -16,6 +16,9 @@
+ #include "rt64_interpreter.h"
+ #include "rt64_state.h"
+ 
++#include "tk64/tk64_texture_lod.h"
++#include "tk64/tk64_texture_residency.h"
++
+ //#define LOG_SPECIAL_MATRIX_OPERATIONS
+ 
+ namespace RT64 {
+@@ -1129,6 +1132,29 @@ namespace RT64 {
+             maxMatrix = std::max(maxMatrix, worldIndices[globalIndex]);
+         }
+ 
++        // TK64: texture level of detail of the triangle, only while the measurement is on (tk64_texture_lod.h).
++        if (textureState.on && tk64::textureLodMeasuring()) {
++            float triangleLod = tk64::TextureLodFull;
++            if ((geometryMode & G_TEXTURE_GEN) == 0) {
++                const auto &posTransformed = workload.drawData.posTransformed;
++                float clipPos[3][4], texU[3], texV[3];
++                for (int i = 0; i < 3; i++) {
++                    const uint32_t globalIndex = globalIndices[i];
++                    for (int c = 0; c < 4; c++) {
++                        clipPos[i][c] = float(posTransformed[globalIndex][c]);
++                    }
++
++                    texU[i] = tcFloats[globalIndex * 2 + 0];
++                    texV[i] = tcFloats[globalIndex * 2 + 1];
++                }
++
++                const interop::RSPViewport &lodViewport = viewportStack[viewportStackSize - 1];
++                triangleLod = tk64::triangleTexelLod(clipPos, texU, texV, float(lodViewport.scale.x), float(lodViewport.scale.y));
++            }
++
++            drawCall.minTexelLod = std::min(drawCall.minTexelLod, triangleLod);
++        }
++
+         bool visibleTri = true;
+         const bool usesCulling = geometryMode & cullBothMask;
+         if (usesCulling) {
+diff --git a/src/hle/rt64_state.cpp b/src/hle/rt64_state.cpp
+index 7b395d7..ea36cf4 100644
+--- a/src/hle/rt64_state.cpp
++++ b/src/hle/rt64_state.cpp
+@@ -13,6 +13,9 @@
+ #include "tk64/tk64_depth_ram.h"
+ #endif
+ 
++#include "tk64/tk64_texture_lod.h"
++#include "tk64/tk64_texture_residency.h"
++
+ #include "im3d/im3d.h"
+ #include "im3d/im3d_math.h"
+ #include "imgui/imgui.h"
+@@ -105,6 +108,7 @@ namespace RT64 {
+         drawStatus.reset();
+         drawCall.uid = 0;
+         drawCall.triangleCount = 0;
++        drawCall.minTexelLod = tk64::TextureLodNone;
+         drawCall.minWorldMatrix = USHRT_MAX;
+         drawCall.maxWorldMatrix = 0;
+         drawCall.rect.reset();
+@@ -264,6 +268,7 @@ namespace RT64 {
+                     const uint32_t callTileIndex = drawCall.tileIndex + t;
+                     auto &dstCallTile = drawData.callTiles[callTileIndex];
+                     dstCallTile.drawSlot = uint8_t(t);
++                    dstCallTile.texelLod = tk64::TextureLodNone;
+ 
+                     // Failsafe cases.
+                     if (tile.line == 0) {
+@@ -480,6 +485,29 @@ namespace RT64 {
+         drawCall.drawStatusChanges = drawStatus.changed;
+         drawCall.callIndex = workload.gameCallCount++;
+ 
++        // TK64: hand the call's texture level of detail to its tiles, in texels of each tile after its shift.
++        if (tk64::textureLodMeasuring() && (drawCall.tileCount > 0)) {
++            float callLod = drawCall.minTexelLod;
++            if ((drawCall.rectDsdx != 0) || (drawCall.rectDtdy != 0)) {
++                callLod = std::min(callLod, tk64::rectangleTexelLod(drawCall.rectDsdx, drawCall.rectDtdy));
++            }
++
++            if (callLod != tk64::TextureLodNone) {
++                DrawData &drawData = workload.drawData;
++                for (uint32_t t = 0; t < drawCall.tileCount; t++) {
++                    const size_t tileIndex = size_t(drawCall.tileIndex) + t;
++                    if ((tileIndex >= drawData.callTiles.size()) || (tileIndex >= drawData.rdpTiles.size())) {
++                        break;
++                    }
++
++                    const interop::RDPTile &rdpTile = drawData.rdpTiles[tileIndex];
++                    const float shift = std::max(std::max(rdpTile.shifts, rdpTile.shiftt), 1e-6f);
++                    float &tileLod = drawData.callTiles[tileIndex].texelLod;
++                    tileLod = std::min(tileLod, callLod + std::log2(shift));
++                }
++            }
++        }
++
+         // Add the draw call to the FB pair.
+         GameCall gameCall;
+         gameCall.callDesc = drawCall;
+@@ -532,6 +560,7 @@ namespace RT64 {
+         drawCall.minWorldMatrix = USHRT_MAX;
+         drawCall.maxWorldMatrix = 0;
+         drawCall.triangleCount = 0;
++        drawCall.minTexelLod = tk64::TextureLodNone;
+     }
+     
+     void State::submitFramebufferPair(FramebufferPair::FlushReason flushReason) {
+diff --git a/src/hle/rt64_workload_queue.cpp b/src/hle/rt64_workload_queue.cpp
+index 8ea2e99..d28350f 100644
+--- a/src/hle/rt64_workload_queue.cpp
++++ b/src/hle/rt64_workload_queue.cpp
+@@ -654,7 +654,8 @@ namespace RT64 {
+                 gpuTileRange.first = 0;
+                 gpuTileRange.second = workload.drawData.gpuTiles.size();
+                 framebufferRenderer->createGPUTiles(workload.drawData.callTiles.data(), 0, uint32_t(workload.drawData.gpuTiles.size()),
+-                    workload.drawData.gpuTiles.data(), &fbManager, ext.textureCache, workload.submissionFrame);
++                    workload.drawData.gpuTiles.data(), &fbManager, ext.textureCache, workload.submissionFrame, true,
++                    std::log2(std::max(float(workloadConfig.resolutionScale.y), 1e-3f)));
+ 
+                 // Upload the GPU tiles.
+                 ext.workloadTilesUploader->submit(ext.workloadGraphicsWorker, {
+diff --git a/src/render/rt64_framebuffer_renderer.cpp b/src/render/rt64_framebuffer_renderer.cpp
+index be859d6..4ca050b 100644
+--- a/src/render/rt64_framebuffer_renderer.cpp
++++ b/src/render/rt64_framebuffer_renderer.cpp
+@@ -17,6 +17,9 @@
+ #include "rt64_render_worker.h"
+ #include "rt64_texture_slots.h"
+ 
++#include "tk64/tk64_texture_lod.h"
++#include "tk64/tk64_texture_residency.h"
++
+ // TODO: Move to shared.
+ 
+ namespace interop {
+@@ -233,8 +236,10 @@ namespace RT64 {
+     }
+ 
+     void FramebufferRenderer::createGPUTiles(const DrawCallTile *callTiles, uint32_t firstTileIndex, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager,
+-        TextureCache *textureCache, uint64_t submissionFrame)
++        TextureCache *textureCache, uint64_t submissionFrame, bool recordLod, float lodOutputScaleLog2)
+     {
++        // TK64: only callers that know the output resolution record levels of detail (tk64_texture_lod.h).
++        const bool recordTextureLod = recordLod && tk64::textureLodMeasuring();
+         if (textureSlotsEnabled && (tileTextureIndices.size() < (firstTileIndex + callTileCount))) {
+             tileTextureIndices.resize(firstTileIndex + callTileCount, UINT32_MAX);
+         }
+@@ -295,6 +300,17 @@ namespace RT64 {
+                 gpuTile.flags.rawTMEM = !textureReplaced && callTile.rawTMEM;
+                 gpuTile.flags.hasMipmaps = hasMipmaps;
+                 gpuTile.flags.shiftedByHalf = shiftedByHalf;
++
++                // TK64: level of detail in texels of the replacement at the output resolution (tk64_texture_lod.h).
++                if (recordTextureLod && textureReplaced) {
++                    float replacementLod = callTile.texelLod;
++                    if (replacementLod != tk64::TextureLodNone) {
++                        const float replacementScale = std::max(std::max(gpuTile.tcScale.x, gpuTile.tcScale.y), 1e-6f);
++                        replacementLod += std::log2(replacementScale) - lodOutputScaleLog2 + tk64::TextureLodSamplerBias;
++                    }
++
++                    textureCache->recordReplacementLod(textureIndex, replacementLod);
++                }
+             }
+ 
+             // TK64: the shader indexes the draw's own texture set, so the GPU tile holds the slot and the cache index is kept here.
+@@ -303,6 +319,11 @@ namespace RT64 {
+                 gpuTile.textureIndex = callTile.drawSlot;
+             }
+         }
++
++        // TK64: one residency decision per workload, from the levels recorded above (tk64_texture_residency.h).
++        if (recordTextureLod && tk64::textureStreamingEnabled()) {
++            textureCache->updateResidency();
++        }
+     }
+ 
+     uint32_t FramebufferRenderer::getDestinationIndex() {
+diff --git a/src/render/rt64_framebuffer_renderer.h b/src/render/rt64_framebuffer_renderer.h
+index 98ee41f..d86b5a8 100644
+--- a/src/render/rt64_framebuffer_renderer.h
++++ b/src/render/rt64_framebuffer_renderer.h
+@@ -177,7 +177,7 @@ namespace RT64 {
+         ~FramebufferRenderer();
+         void resetFramebuffers(RenderWorker *worker, bool ubershadersVisible, float ditherNoiseStrength, const RenderMultisampling &multisampling);
+         void updateTextureCache(TextureCache *textureCache);
+-        void createGPUTiles(const DrawCallTile *callTiles, uint32_t firstTileIndex, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager, TextureCache *textureCache, uint64_t submissionFrame);
++        void createGPUTiles(const DrawCallTile *callTiles, uint32_t firstTileIndex, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager, TextureCache *textureCache, uint64_t submissionFrame, bool recordLod = false, float lodOutputScaleLog2 = 0.0f);
+         uint32_t getDestinationIndex();
+         uint32_t getTextureIndex(RenderTarget *renderTarget);
+         uint32_t getTextureIndex(const FramebufferManager::TileCopy &tileCopy);
+diff --git a/src/render/rt64_texture.h b/src/render/rt64_texture.h
+index 95618bc..c0f8029 100644
+--- a/src/render/rt64_texture.h
++++ b/src/render/rt64_texture.h
+@@ -19,6 +19,13 @@ namespace RT64 {
+         LoadTile loadTile;
+         uint32_t mipmaps = 0;
+         uint64_t memorySize = 0;
++
++        // TK64: a replacement loaded from mip topMip down (texture-lod.md). width, height, mipmaps and memorySize
++        // describe what was uploaded; the full* fields describe the file. Equal when the whole file was loaded.
++        uint32_t topMip = 0;
++        uint32_t fullWidth = 0;
++        uint32_t fullHeight = 0;
++        uint32_t fullMipmaps = 0;
+         std::vector<uint8_t> bytesTMEM;
+         bool decodeTMEM = false;
+     };
+diff --git a/src/render/rt64_texture_cache.cpp b/src/render/rt64_texture_cache.cpp
+index 0848f3e..42ac747 100644
+--- a/src/render/rt64_texture_cache.cpp
++++ b/src/render/rt64_texture_cache.cpp
+@@ -20,6 +20,11 @@
+ 
+ #include "rt64_texture_cache.h"
+ 
++#include "tk64/tk64_texture_lod.h"
++#include "tk64/tk64_texture_residency.h"
++
++#include <chrono>
++
+ #define ONLY_USE_LOW_MIP_CACHE 0
+ 
+ namespace RT64 {
+@@ -170,6 +175,29 @@ namespace RT64 {
+         entry.references++;
+     }
+ 
++    bool ReplacementMap::swapLoadedTexture(Texture *oldTexture, Texture *newTexture) {
++        auto it = loadedTextureReverseMap.find(oldTexture);
++        if (it == loadedTextureReverseMap.end()) {
++            return false;
++        }
++
++        LoadedTextureMap::iterator entryIt = it->second;
++        MapEntry &entry = entryIt->second;
++        loadedTextureReverseMap.erase(it);
++        loadedTextureReverseMap[newTexture] = entryIt;
++        entry.texture = newTexture;
++        if (entry.references == 0) {
++            // Still in the unused list: the same node now holds the new texture.
++            *entry.unusedTextureListIterator = newTexture;
++        }
++        else {
++            usedTexturePoolSize = usedTexturePoolSize - oldTexture->memorySize + newTexture->memorySize;
++        }
++
++        cachedTexturePoolSize = cachedTexturePoolSize - oldTexture->memorySize + newTexture->memorySize;
++        return true;
++    }
++
+     void ReplacementMap::decrementReference(Texture *texture) {
+         auto it = loadedTextureReverseMap.find(texture);
+         MapEntry &entry = it->second->second;
+@@ -288,6 +316,30 @@ namespace RT64 {
+         }
+     }
+ 
++    bool TextureMap::swapReplacement(Texture *oldTexture, Texture *newTexture) {
++        if (!replacementMap.swapLoadedTexture(oldTexture, newTexture)) {
++            return false;
++        }
++
++        for (size_t i = 0; i < textureReplacements.size(); i++) {
++            if (textureReplacements[i] != oldTexture) {
++                continue;
++            }
++
++            textureReplacements[i] = newTexture;
++            const Texture *replacedTexture = textures[i];
++            if (replacedTexture != nullptr) {
++                textureScales[i] = { float(newTexture->width) / float(replacedTexture->width), float(newTexture->height) / float(replacedTexture->height) };
++            }
++
++            cachedTextureReplacementDimensions[i] = interop::float3(float(newTexture->width), float(newTexture->height), float(newTexture->mipmaps));
++            versions[i]++;
++        }
++
++        globalVersion++;
++        return true;
++    }
++
+     bool TextureMap::use(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex, interop::float2 &textureScale, interop::float3 &textureDimensions, bool &textureReplaced, bool &hasMipmaps, bool &shiftedByHalf) {
+         textureScale = IdentityScale;
+         hasMipmaps = false;
+@@ -435,10 +487,28 @@ namespace RT64 {
+                 textureCache->addStreamLoadTime(elapsedTimer.elapsedMicroseconds());
+ 
+                 if (fileLoaded) {
++                    // TK64: top mip from the request, from residency for a file's first load, or from the test switch.
++                    uint32_t firstMip = tk64::textureTestFirstMip();
++                    if (streamDesc.firstMip != UINT32_MAX) {
++                        firstMip = streamDesc.firstMip;
++                    }
++                    else if (tk64::textureStreamingEnabled() && !streamDesc.fromPreload) {
++                        firstMip = textureCache->residencyInitialTopMip(streamDesc.fileSystemIndex, streamDesc.relativePath);
++                    }
++
+                     worker->commandList->begin();
+-                    Texture *texture = TextureCache::loadTextureFromBytes(worker->device, worker->commandList.get(), replacementBytes, uploadResource);
++                    Texture *texture = TextureCache::loadTextureFromBytes(worker->device, worker->commandList.get(), replacementBytes, uploadResource, nullptr, nullptr, firstMip);
+                     worker->commandList->end();
+ 
++                    if (texture == nullptr) {
++                        fprintf(stderr, "TK64: replacement %s was not loaded (GPU allocation failed or unsupported file); the original texture stays.\n", streamDesc.relativePath.c_str());
++                        if (streamDesc.firstMip != UINT32_MAX) {
++                            // A residency change that failed: keep the loaded top mip and allow later requests.
++                            const uint64_t pathHash = textureCache->textureMap.replacementMap.hashFromRelativePath(streamDesc.fileSystemIndex, streamDesc.relativePath);
++                            textureCache->residencyLoadFinished(pathHash, nullptr);
++                        }
++                    }
++
+                     // Only execute the command list and wait if the texture was loaded successfully.
+                     if (texture != nullptr) {
+                         worker->execute();
+@@ -528,7 +598,9 @@ namespace RT64 {
+         }
+     }
+     
+-    void TextureCache::setRGBA32(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, uint32_t width, uint32_t height, uint32_t rowPitch, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool, std::mutex *uploadResourcePoolMutex) {
++    static bool replacementResourcesValid(Texture *dstTexture, std::unique_ptr<RenderBuffer> &uploadResource);
++
++    bool TextureCache::setRGBA32(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, uint32_t width, uint32_t height, uint32_t rowPitch, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool, std::mutex *uploadResourcePoolMutex) {
+         assert(dstTexture != nullptr);
+         assert(device != nullptr);
+         assert(commandList != nullptr);
+@@ -553,6 +625,9 @@ namespace RT64 {
+         }
+ 
+         dstTexture->memorySize = alignedRowPitch * height;
++        if (!replacementResourcesValid(dstTexture, dstUploadResource)) {
++            return false;
++        }
+ 
+         uint8_t *dstData = reinterpret_cast<uint8_t *>(dstUploadResource->map());
+         const uint8_t *srcData = reinterpret_cast<const uint8_t *>(bytes);
+@@ -562,6 +637,22 @@ namespace RT64 {
+         uint32_t alignedRowWidth = alignedRowPitch / RenderFormatSize(dstTexture->format);
+         commandList->barriers(RenderBarrierStage::COPY, RenderTextureBarrier(dstTexture->texture.get(), RenderTextureLayout::COPY_DEST));
+         commandList->copyTextureRegion(RenderTextureCopyLocation::Subresource(dstTexture->texture.get()), RenderTextureCopyLocation::PlacedFootprint(dstUploadResource.get(), dstTexture->format, width, height, 1, alignedRowWidth));
++        return true;
++    }
++
++    // TK64: a replacement whose texture or upload buffer could not be created (out of video memory, or simulated with
++    // TK64_TEST_FAIL_TEXTURE_ALLOC) is dropped: the caller keeps the original or low mip cache texture instead of
++    // writing through a null resource.
++    static bool replacementResourcesValid(Texture *dstTexture, std::unique_ptr<RenderBuffer> &uploadResource) {
++        const bool valid = (dstTexture->texture != nullptr) && dstTexture->texture->isValid() && (uploadResource != nullptr) && uploadResource->isValid() &&
++            !tk64::textureAllocationTestFailure();
++        if (!valid) {
++            dstTexture->texture.reset();
++            uploadResource.reset();
++            tk64::countTextureAllocationFailure();
++        }
++
++        return valid;
+     }
+ 
+     static RenderTextureDimension toRenderDimension(ddspp::TextureType type) {
+@@ -732,7 +823,7 @@ namespace RT64 {
+         }
+     }
+ 
+-    bool TextureCache::setDDS(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool, std::mutex *uploadResourcePoolMutex) {
++    bool TextureCache::setDDS(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool, std::mutex *uploadResourcePoolMutex, uint32_t firstMip) {
+         assert(dstTexture != nullptr);
+         assert(device != nullptr);
+         assert(commandList != nullptr);
+@@ -750,14 +841,21 @@ namespace RT64 {
+         uint32_t blockWidth, blockHeight;
+         ddspp::get_block_size(ddsDescriptor.format, blockWidth, blockHeight);
+ 
++        // TK64: optionally start at a smaller mip of the file (texture-lod.md); 0 loads the whole file as before.
++        firstMip = tk64::textureFirstMip(firstMip, ddsDescriptor.numMips);
++
+         RenderTextureDesc desc;
+         desc.dimension = toRenderDimension(ddsDescriptor.type);
+-        desc.width = nextSizeAlignedTo(ddsDescriptor.width, blockWidth);
+-        desc.height = nextSizeAlignedTo(ddsDescriptor.height, blockHeight);
++        desc.width = nextSizeAlignedTo(std::max(ddsDescriptor.width >> firstMip, 1U), blockWidth);
++        desc.height = nextSizeAlignedTo(std::max(ddsDescriptor.height >> firstMip, 1U), blockHeight);
+         desc.depth = 1;
+         desc.arraySize = 1;
+-        desc.mipLevels = ddsDescriptor.numMips;
++        desc.mipLevels = ddsDescriptor.numMips - firstMip;
+         desc.format = toRenderFormat(ddsDescriptor.format);
++        dstTexture->topMip = firstMip;
++        dstTexture->fullWidth = nextSizeAlignedTo(ddsDescriptor.width, blockWidth);
++        dstTexture->fullHeight = nextSizeAlignedTo(ddsDescriptor.height, blockHeight);
++        dstTexture->fullMipmaps = ddsDescriptor.numMips;
+ 
+         dstTexture->texture = device->createTexture(desc);
+         dstTexture->width = desc.width;
+@@ -777,7 +875,7 @@ namespace RT64 {
+             mipmapOffsets.emplace_back(totalSize);
+ 
+             uint32_t mipHeight = std::max(desc.height >> mip, 1U);
+-            uint32_t ddsRowPitch = ddspp::get_row_pitch(ddsDescriptor, mip);
++            uint32_t ddsRowPitch = ddspp::get_row_pitch(ddsDescriptor, firstMip + mip);
+             uint32_t alignedRowPitch = nextSizeAlignedTo(ddsRowPitch, TextureDataPitchAlignment);
+             uint32_t rowCount = (mipHeight + blockWidth - 1) / blockWidth;
+             totalSize += alignedRowPitch * rowCount;
+@@ -793,6 +891,9 @@ namespace RT64 {
+         }
+ 
+         dstTexture->memorySize = totalSize;
++        if (!replacementResourcesValid(dstTexture, dstUploadResource)) {
++            return false;
++        }
+ 
+         // Copy each mipmap into the buffer with the correct padding applied.
+         uint8_t *dstData = reinterpret_cast<uint8_t *>(dstUploadResource->map());
+@@ -800,8 +901,8 @@ namespace RT64 {
+         for (uint32_t mip = 0; mip < desc.mipLevels; mip++) {
+             uint32_t mipOffset = mipmapOffsets[mip];
+             uint32_t mipHeight = std::max(desc.height >> mip, 1U);
+-            uint32_t ddsOffset = ddspp::get_offset(ddsDescriptor, mip, 0);
+-            uint32_t ddsRowPitch = ddspp::get_row_pitch(ddsDescriptor, mip);
++            uint32_t ddsOffset = ddspp::get_offset(ddsDescriptor, firstMip + mip, 0);
++            uint32_t ddsRowPitch = ddspp::get_row_pitch(ddsDescriptor, firstMip + mip);
+             uint32_t alignedRowPitch = nextSizeAlignedTo(ddsRowPitch, TextureDataPitchAlignment);
+             uint32_t rowCount = (mipHeight + blockWidth - 1) / blockWidth;
+             memcpyRows(&dstData[mipOffset], alignedRowPitch, &imageData[ddsOffset], ddsRowPitch, rowCount);
+@@ -815,7 +916,7 @@ namespace RT64 {
+             uint32_t offset = mipmapOffsets[mip];
+             uint32_t mipWidth = std::max(desc.width >> mip, 1U);
+             uint32_t mipHeight = std::max(desc.height >> mip, 1U);
+-            uint32_t ddsRowPitch = ddspp::get_row_pitch(ddsDescriptor, mip);
++            uint32_t ddsRowPitch = ddspp::get_row_pitch(ddsDescriptor, firstMip + mip);
+             uint32_t alignedRowWidth = ((nextSizeAlignedTo(ddsRowPitch, TextureDataPitchAlignment) + formatSize - 1) / formatSize) * blockWidth;
+             commandList->copyTextureRegion(RenderTextureCopyLocation::Subresource(dstTexture->texture.get(), mip), RenderTextureCopyLocation::PlacedFootprint(dstUploadResource.get(), desc.format, mipWidth, mipHeight, 1, alignedRowWidth, offset));
+         }
+@@ -825,6 +926,12 @@ namespace RT64 {
+ 
+     bool TextureCache::setLowMipCache(RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, std::unordered_map<std::string, LowMipCacheTexture> &dstTextureMap, uint64_t &totalMemory) {
+         dstUploadResource = device->createBuffer(RenderBufferDesc::UploadBuffer(byteCount));
++        if ((dstUploadResource == nullptr) || !dstUploadResource->isValid()) {
++            fprintf(stderr, "TK64: the low mip cache could not be uploaded (no memory for %zu bytes); textures stream without it.\n", byteCount);
++            dstUploadResource.reset();
++            tk64::countTextureAllocationFailure();
++            return false;
++        }
+ 
+         // Upload the entire file to the GPU to copy data from it directly.
+         void *uploadData = dstUploadResource->map();
+@@ -879,6 +986,18 @@ namespace RT64 {
+                 RenderTextureDesc textureDesc = RenderTextureDesc::Texture2D(cacheHeader->width, cacheHeader->height, cacheHeader->mipCount, renderFormat);
+                 Texture *newTexture = new Texture();
+                 newTexture->texture = device->createTexture(textureDesc);
++                if ((newTexture->texture == nullptr) || !newTexture->texture->isValid() || tk64::textureAllocationTestFailure()) {
++                    // TK64: skip this entry (its file streams without a stand-in) but keep reading the cache after it.
++                    tk64::countTextureAllocationFailure();
++                    for (uint32_t i = 0; i < cacheHeader->mipCount; i++) {
++                        alignToTexturePlacement(byteCursor);
++                        byteCursor += mipmapSizes[i];
++                    }
++
++                    delete newTexture;
++                    continue;
++                }
++
+                 newTexture->format = renderFormat;
+                 newTexture->width = cacheHeader->width;
+                 newTexture->height = cacheHeader->height;
+@@ -929,14 +1048,14 @@ namespace RT64 {
+         return true;
+     }
+ 
+-    Texture *TextureCache::loadTextureFromBytes(RenderDevice *device, RenderCommandList *commandList, const std::vector<uint8_t> &fileBytes, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *resourcePool, std::mutex *uploadResourcePoolMutex) {
++    Texture *TextureCache::loadTextureFromBytes(RenderDevice *device, RenderCommandList *commandList, const std::vector<uint8_t> &fileBytes, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *resourcePool, std::mutex *uploadResourcePoolMutex, uint32_t firstMip) {
+         const uint32_t PNG_MAGIC = 0x474E5089;
+         Texture *replacementTexture = new Texture();
+         uint32_t magicNumber = *reinterpret_cast<const uint32_t *>(fileBytes.data());
+         bool loadedTexture = false;
+         switch (magicNumber) {
+         case ddspp::DDS_MAGIC:
+-            loadedTexture = TextureCache::setDDS(replacementTexture, device, commandList, fileBytes.data(), fileBytes.size(), dstUploadResource, resourcePool, uploadResourcePoolMutex);
++            loadedTexture = TextureCache::setDDS(replacementTexture, device, commandList, fileBytes.data(), fileBytes.size(), dstUploadResource, resourcePool, uploadResourcePoolMutex, firstMip);
+             break;
+         case PNG_MAGIC: {
+             int width, height;
+@@ -944,9 +1063,8 @@ namespace RT64 {
+             if (data != nullptr) {
+                 uint32_t rowPitch = uint32_t(width) * 4;
+                 size_t byteCount = uint32_t(height) * rowPitch;
+-                TextureCache::setRGBA32(replacementTexture, device, commandList, data, byteCount, uint32_t(width), uint32_t(height), rowPitch, dstUploadResource, resourcePool);
++                loadedTexture = TextureCache::setRGBA32(replacementTexture, device, commandList, data, byteCount, uint32_t(width), uint32_t(height), rowPitch, dstUploadResource, resourcePool);
+                 stbi_image_free(data);
+-                loadedTexture = true;
+             }
+ 
+             break;
+@@ -957,6 +1075,13 @@ namespace RT64 {
+         }
+ 
+         if (loadedTexture) {
++            // TK64: files without mips (PNG) are always loaded whole.
++            if (replacementTexture->fullWidth == 0) {
++                replacementTexture->fullWidth = replacementTexture->width;
++                replacementTexture->fullHeight = replacementTexture->height;
++                replacementTexture->fullMipmaps = replacementTexture->mipmaps;
++            }
++
+             return replacementTexture;
+         }
+         else {
+@@ -976,6 +1101,7 @@ namespace RT64 {
+         std::vector<StreamResult> streamResultQueueCopy;
+         std::vector<TextureMapAddition> textureMapAdditions;
+         std::vector<ReplacementMapAddition> replacementMapAdditions;
++        std::vector<ResidencySwap> residencySwaps;
+         std::vector<RenderTextureBarrier> beforeCopyBarriers;
+         std::vector<RenderTextureBarrier> beforeDecodeBarriers;
+         std::vector<RenderTextureBarrier> afterDecodeBarriers;
+@@ -1011,11 +1137,31 @@ namespace RT64 {
+             }
+             
+             if (!streamResultQueueCopy.empty()) {
++                std::vector<StreamResult> firstLoads;
+                 {
+                     // Add the textures to the replacement pool as a loaded texture.
+                     std::unique_lock lock(textureMapMutex);
+                     for (const StreamResult &result : streamResultQueueCopy) {
++                        // TK64: a file that is already loaded got another top mip (residency); swap it once the GPU
++                        // has made it readable, below. A duplicate of the loaded top mip is dropped.
++                        Texture *loadedTexture = textureMap.replacementMap.getFromRelativePath(result.fileSystemIndex, result.relativePath);
++                        if (loadedTexture != nullptr) {
++                            const uint64_t pathHash = textureMap.replacementMap.hashFromRelativePath(result.fileSystemIndex, result.relativePath);
++                            if ((loadedTexture->topMip != result.texture->topMip) && (textureMap.replacementMap.loadedTextureReverseMap.find(loadedTexture) != textureMap.replacementMap.loadedTextureReverseMap.end())) {
++                                residencySwaps.push_back({ loadedTexture, result.texture, pathHash });
++                                afterDecodeBarriers.emplace_back(result.texture->texture.get(), RenderTextureLayout::SHADER_READ);
++                            }
++                            else {
++                                textureMap.evictedTextures.emplace_back(result.texture);
++                                residencyLoadFinished(pathHash, loadedTexture);
++                            }
++
++                            continue;
++                        }
++
+                         textureMap.replacementMap.addLoadedTexture(result.texture, result.fileSystemIndex, result.relativePath, !result.fromPreload);
++                        firstLoads.push_back(result);
++                        tk64::countTextureStreamEvent(tk64::TextureStreamEvent::FirstLoad);
+ 
+                         // Increment texture pool memory used permanently if the texture was preloaded.
+                         if (result.fromPreload) {
+@@ -1026,7 +1172,7 @@ namespace RT64 {
+                 }
+ 
+                 // Add all the pending transition barriers and replacement checks.
+-                for (const StreamResult &result : streamResultQueueCopy) {
++                for (const StreamResult &result : firstLoads) {
+                     afterDecodeBarriers.emplace_back(result.texture->texture.get(), RenderTextureLayout::SHADER_READ);
+ 
+                     auto &streamResolvedPaths = textureMap.replacementMap.fileSystemStreamResolvedPaths[result.fileSystemIndex];
+@@ -1161,11 +1307,16 @@ namespace RT64 {
+                         // Load the texture directly on this thread (operation was defined as Stall).
+                         else if (textureMap.replacementMap.fileSystems[resolvedPath.fileSystemIndex]->load(resolvedPath.relativePath, replacementBytes)) {
+                             replacementUploadResources.emplace_back();
+-                            replacementTexture = TextureCache::loadTextureFromBytes(copyWorker->device, copyWorker->commandList.get(), replacementBytes, replacementUploadResources.back());
+-                            textureMapMutex.lock();
+-                            textureMap.replacementMap.addLoadedTexture(replacementTexture, resolvedPath.fileSystemIndex, resolvedPath.relativePath, true);
+-                            textureMapMutex.unlock();
+-                            afterDecodeBarriers.emplace_back(replacementTexture->texture.get(), RenderTextureLayout::SHADER_READ);
++                            replacementTexture = TextureCache::loadTextureFromBytes(copyWorker->device, copyWorker->commandList.get(), replacementBytes, replacementUploadResources.back(), nullptr, nullptr, tk64::textureTestFirstMip());
++                            if (replacementTexture != nullptr) {
++                                textureMapMutex.lock();
++                                textureMap.replacementMap.addLoadedTexture(replacementTexture, resolvedPath.fileSystemIndex, resolvedPath.relativePath, true);
++                                textureMapMutex.unlock();
++                                afterDecodeBarriers.emplace_back(replacementTexture->texture.get(), RenderTextureLayout::SHADER_READ);
++                            }
++                            else {
++                                fprintf(stderr, "TK64: replacement %s was not loaded (GPU allocation failed or unsupported file); the original texture stays.\n", resolvedPath.relativePath.c_str());
++                            }
+                         }
+                     }
+ 
+@@ -1242,6 +1393,20 @@ namespace RT64 {
+                         textureMap.replace(addition.hash, addition.texture, addition.shift == ReplacementShift::Half, addition.referenceCounted);
+                     }
+ 
++                    // TK64: other top mips of loaded files, now readable by the GPU.
++                    for (const ResidencySwap &swap : residencySwaps) {
++                        if (textureMap.swapReplacement(swap.oldTexture, swap.newTexture)) {
++                            tk64::countTextureStreamEvent(tk64::TextureStreamEvent::Swap);
++                            textureMap.evictedTextures.emplace_back(swap.oldTexture);
++                            residencyLoadFinished(swap.pathHash, swap.newTexture);
++                        }
++                        else {
++                            textureMap.evictedTextures.emplace_back(swap.newTexture);
++                            residencyLoadFinished(swap.pathHash, swap.oldTexture);
++                        }
++                    }
++
++                    residencySwaps.clear();
+                     textureMap.replacementMap.evict(textureMap.evictedTextures);
+                 }
+ 
+@@ -1326,6 +1491,183 @@ namespace RT64 {
+         return useTexture(hash, submissionFrame, textureIndex, textureScale, textureDimensions, textureReplaced, hasMipmaps, shiftedByHalf);
+     }
+     
++    void TextureCache::recordReplacementLod(uint32_t textureIndex, float lod) {
++        tk64::TextureLodSample sample;
++        {
++            std::unique_lock lock(textureMapMutex);
++            if (textureIndex >= textureMap.textureReplacements.size()) {
++                return;
++            }
++
++            const Texture *replacement = textureMap.textureReplacements[textureIndex];
++            if (replacement == nullptr) {
++                return;
++            }
++
++            const ReplacementMap &replacementMap = textureMap.replacementMap;
++            auto it = replacementMap.loadedTextureReverseMap.find(const_cast<Texture *>(replacement));
++            if (it != replacementMap.loadedTextureReverseMap.end()) {
++                sample.relativePath = it->second->second.relativePath;
++                if (tk64::textureStreamingEnabled()) {
++                    // Residency works with the file's own levels: + topMip, like the report below.
++                    float fileLod = lod;
++                    if (std::isfinite(fileLod)) {
++                        fileLod += float(std::min(replacement->topMip, 31U));
++                    }
++
++                    std::unique_lock residencyLock(residencyMutex);
++                    ResidencyEntry &entry = residencyEntries[it->second->first];
++                    entry.fileSystemIndex = it->second->second.fileSystemIndex;
++                    entry.relativePath = it->second->second.relativePath;
++                    entry.state.currentTopMip = replacement->topMip;
++                    entry.loadedBytes = replacement->memorySize;
++                    entry.state.mipCount = (replacement->fullMipmaps != 0) ? replacement->fullMipmaps : replacement->mipmaps;
++                    entry.updateLod = std::min(entry.updateLod, fileLod);
++                    entry.drawn = true;
++                }
++            }
++            else {
++                // Low mip cache stand-in while the real file streams in, or a preloaded file.
++                for (const auto &lowMip : replacementMap.lowMipCacheTextures) {
++                    if (lowMip.second.texture == replacement) {
++                        sample.relativePath = "(low mip cache) " + lowMip.first;
++                        break;
++                    }
++                }
++
++                if (sample.relativePath.empty()) {
++                    sample.relativePath = "(preloaded or unknown)";
++                }
++            }
++
++            // Levels and sizes in terms of the whole file, also when it was loaded from a smaller mip.
++            const uint32_t topMip = std::min(replacement->topMip, 31U);
++            sample.width = (replacement->fullWidth != 0) ? replacement->fullWidth : replacement->width;
++            sample.height = (replacement->fullHeight != 0) ? replacement->fullHeight : replacement->height;
++            sample.mipmaps = (replacement->fullMipmaps != 0) ? replacement->fullMipmaps : replacement->mipmaps;
++            sample.memorySize = replacement->memorySize << (2 * topMip);
++            sample.residentSize = replacement->memorySize;
++            if (std::isfinite(lod)) {
++                lod += float(topMip);
++            }
++        }
++
++        sample.lod = lod;
++        tk64::recordTextureLod(sample);
++    }
++
++    void TextureCache::updateResidency() {
++        if (!tk64::textureStreamingEnabled()) {
++            return;
++        }
++
++        const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
++        const float bias = tk64::textureStreamingBias();
++
++        // Memory in use against the budget, with hysteresis.
++        uint64_t usedBytes = 0, cachedBytes = 0, poolBytes = 0;
++        getReplacementPoolStats(usedBytes, cachedBytes, poolBytes);
++        const uint64_t budget = tk64::textureStreamingBudget();
++        if (budget > 0) {
++            if (usedBytes > budget) {
++                residencyUnderPressure = true;
++            }
++            else if (double(usedBytes) < double(budget) * tk64::TextureResidencyPressureRelease) {
++                residencyUnderPressure = false;
++            }
++        }
++        else {
++            residencyUnderPressure = false;
++        }
++
++        std::vector<StreamDescription> requests;
++        {
++            std::unique_lock residencyLock(residencyMutex);
++            std::vector<tk64::TextureResidencyCandidate> candidates;
++            std::vector<ResidencyEntry *> candidateEntries;
++            for (auto &it : residencyEntries) {
++                ResidencyEntry &entry = it.second;
++                if (!entry.drawn) {
++                    continue;
++                }
++
++                const uint32_t topMip = tk64::textureResidencyDecision(entry.state, entry.updateLod, bias, now, tk64::TextureResidencyDowngradeSeconds, !residencyUnderPressure);
++                if (topMip != tk64::TextureResidencyNoRequest) {
++                    StreamDescription request(entry.fileSystemIndex, entry.relativePath, false);
++                    request.firstMip = topMip;
++                    requests.push_back(request);
++                    tk64::countTextureStreamEvent(tk64::TextureStreamEvent::Request);
++                }
++                else if (residencyUnderPressure && !entry.state.pending) {
++                    tk64::TextureResidencyCandidate candidate;
++                    candidate.id = uint32_t(candidateEntries.size());
++                    candidate.lod = entry.updateLod;
++                    candidate.currentTopMip = entry.state.currentTopMip;
++                    candidate.mipCount = entry.state.mipCount;
++                    candidate.bytes = entry.loadedBytes;
++                    candidates.push_back(candidate);
++                    candidateEntries.push_back(&entry);
++                }
++
++                entry.updateLod = tk64::TextureLodNone;
++                entry.drawn = false;
++            }
++
++            // Under pressure, move the farthest files down without waiting for the delay.
++            if (residencyUnderPressure && (usedBytes > budget)) {
++                for (const auto &step : tk64::textureResidencyPressureSteps(candidates, usedBytes - budget)) {
++                    ResidencyEntry &entry = *candidateEntries[step.first];
++                    entry.state.pending = true;
++                    entry.state.rememberedTopMip = step.second;
++                    entry.state.lastNeedSeconds = now;
++                    StreamDescription request(entry.fileSystemIndex, entry.relativePath, false);
++                    request.firstMip = step.second;
++                    requests.push_back(request);
++                    tk64::countTextureStreamEvent(tk64::TextureStreamEvent::Request);
++                }
++            }
++        }
++
++        tk64::TextureStreamingStats stats;
++        stats.level = tk64::textureStreamingLevel();
++        stats.usedBytes = usedBytes;
++        stats.budgetBytes = budget;
++        stats.underPressure = residencyUnderPressure;
++        stats.allocationFailures = tk64::textureAllocationFailures();
++        tk64::setTextureStreamingStats(stats);
++
++        if (!requests.empty()) {
++            {
++                std::unique_lock queueLock(streamDescStackMutex);
++                for (const StreamDescription &request : requests) {
++                    streamDescStack.push(request);
++                }
++            }
++
++            streamDescStackChanged.notify_all();
++        }
++    }
++
++    uint32_t TextureCache::residencyInitialTopMip(uint32_t fileSystemIndex, const std::string &relativePath) {
++        const uint64_t pathHash = textureMap.replacementMap.hashFromRelativePath(fileSystemIndex, relativePath);
++        std::unique_lock residencyLock(residencyMutex);
++        auto it = residencyEntries.find(pathHash);
++        return tk64::textureResidencyInitialTopMip((it != residencyEntries.end()) ? &it->second.state : nullptr);
++    }
++
++    void TextureCache::residencyLoadFinished(uint64_t pathHash, const Texture *loadedTexture) {
++        std::unique_lock residencyLock(residencyMutex);
++        auto it = residencyEntries.find(pathHash);
++        if (it == residencyEntries.end()) {
++            return;
++        }
++
++        it->second.state.pending = false;
++        if (loadedTexture != nullptr) {
++            it->second.state.currentTopMip = loadedTexture->topMip;
++        }
++    }
++
+     bool TextureCache::addReplacement(uint64_t hash, const std::string &relativePath, ReplacementShift shift) {
+         waitForAllStreamThreads(false);
+         waitForGPUUploads();
+diff --git a/src/render/rt64_texture_cache.h b/src/render/rt64_texture_cache.h
+index 9131697..bca4b7d 100644
+--- a/src/render/rt64_texture_cache.h
++++ b/src/render/rt64_texture_cache.h
+@@ -22,6 +22,9 @@
+ #include "rt64_shader_library.h"
+ #include "rt64_texture.h"
+ 
++#include "tk64/tk64_texture_lod.h"
++#include "tk64/tk64_texture_residency.h"
++
+ namespace interop {
+     struct alignas(16) TextureDecodeCB {
+         uint2 Resolution;
+@@ -104,6 +107,10 @@ namespace RT64 {
+         uint64_t hashFromRelativePath(uint32_t fileSystemIndex, const std::string &relativePath) const;
+         void incrementReference(Texture *texture);
+         void decrementReference(Texture *texture);
++
++        // TK64: the file of oldTexture is now served by newTexture (another top mip of the same file). Keeps the entry,
++        // its references and its place in the unused list. Returns false if oldTexture is not reference counted.
++        bool swapLoadedTexture(Texture *oldTexture, Texture *newTexture);
+     };
+ 
+     struct TextureMapAddition {
+@@ -143,6 +150,11 @@ namespace RT64 {
+         void clearReplacements();
+         void add(uint64_t hash, uint64_t creationFrame, Texture *texture);
+         void replace(uint64_t hash, Texture *texture, bool shiftedByHalf, bool referenceCounted);
++
++        // TK64: every cache entry replaced by oldTexture is replaced by newTexture instead, with its scale and dimensions.
++        // The caller retires oldTexture through evictedTextures. Returns false and changes nothing if the file is not
++        // reference counted.
++        bool swapReplacement(Texture *oldTexture, Texture *newTexture);
+         bool use(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex, interop::float2 &textureScale, interop::float3 &textureDimensions, bool &textureReplaced, bool &hasMipmaps, bool &shiftedByHalf);
+         bool evict(uint64_t submissionFrame, std::vector<uint64_t> &evictedHashes);
+         void incrementLock();
+@@ -157,6 +169,9 @@ namespace RT64 {
+             std::string relativePath;
+             bool fromPreload = false;
+ 
++            // TK64: top mip to load; UINT32_MAX lets the stream thread choose (residency or test switch).
++            uint32_t firstMip = UINT32_MAX;
++
+             StreamDescription() {
+                 // Default constructor.
+             }
+@@ -230,6 +245,27 @@ namespace RT64 {
+         uint32_t lockCounter;
+         bool developerMode;
+ 
++        // TK64: per-file residency of streamed replacements (tk64_texture_residency.h), keyed like the loaded texture map.
++        struct ResidencyEntry {
++            uint32_t fileSystemIndex = 0;
++            std::string relativePath;
++            tk64::TextureResidencyState state;
++            float updateLod = tk64::TextureLodNone;
++            bool drawn = false;
++            uint64_t loadedBytes = 0;
++        };
++
++        bool residencyUnderPressure = false;
++
++        std::mutex residencyMutex;
++        std::unordered_map<uint64_t, ResidencyEntry> residencyEntries;
++
++        struct ResidencySwap {
++            Texture *oldTexture = nullptr;
++            Texture *newTexture = nullptr;
++            uint64_t pathHash = 0;
++        };
++
+         TextureCache(RenderWorker *directWorker, RenderWorker *copyWorker, uint32_t threadCount, const ShaderLibrary *shaderLibrary);
+         ~TextureCache();
+         void uploadThreadLoop();
+@@ -238,6 +274,15 @@ namespace RT64 {
+         void addResolvedPaths(uint64_t hash, uint32_t width, uint32_t height, uint32_t tlut, const LoadTile &loadTile, const std::vector<uint8_t> &bytesTMEM, bool decodeTMEM, std::vector<ReplacementResolvedPath> &resolvedPaths, uint64_t exclusiveDbHash = 0);
+         bool useTexture(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex, interop::float2 &textureScale, interop::float3 &textureDimensions, bool &textureReplaced, bool &hasMipmaps, bool &shiftedByHalf);
+         bool useTexture(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex);
++
++        // TK64: records the level of detail a replacement texture was drawn at (tk64_texture_lod.h). Diagnostic only.
++        void recordReplacementLod(uint32_t textureIndex, float lod);
++
++        // TK64: decides top mip changes from the levels recorded since the last call and queues the loads. Called once per
++        // workload while streaming is on.
++        void updateResidency();
++        uint32_t residencyInitialTopMip(uint32_t fileSystemIndex, const std::string &relativePath);
++        void residencyLoadFinished(uint64_t pathHash, const Texture *loadedTexture);
+         bool addReplacement(uint64_t hash, const std::string &relativePath, ReplacementShift shift);
+         bool hasReplacement(uint64_t hash);
+         void clearReplacementDirectories();
+@@ -260,9 +305,9 @@ namespace RT64 {
+         void setReplacementPoolMaxSize(uint64_t maxSize);
+         void getReplacementPoolStats(uint64_t &usedSize, uint64_t &cachedSize, uint64_t &maxSize);
+         Texture *getTexture(uint32_t textureIndex);
+-        static void setRGBA32(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, uint32_t width, uint32_t height, uint32_t rowPitch, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
+-        static bool setDDS(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
++        static bool setRGBA32(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, uint32_t width, uint32_t height, uint32_t rowPitch, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
++        static bool setDDS(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr, uint32_t firstMip = 0);
+         static bool setLowMipCache(RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, std::unordered_map<std::string, LowMipCacheTexture> &dstTextureMap, uint64_t &totalMemory);
+-        static Texture *loadTextureFromBytes(RenderDevice *device, RenderCommandList *commandList, const std::vector<uint8_t> &fileBytes, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *resourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
++        static Texture *loadTextureFromBytes(RenderDevice *device, RenderCommandList *commandList, const std::vector<uint8_t> &fileBytes, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *resourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr, uint32_t firstMip = 0);
+     };
+ };
+\ No newline at end of file
+diff --git a/src/tk64/tk64_texture_lod.cpp b/src/tk64/tk64_texture_lod.cpp
+new file mode 100644
+index 0000000..d2100b8
+--- /dev/null
++++ b/src/tk64/tk64_texture_lod.cpp
+@@ -0,0 +1,391 @@
++//
++// TK64
++//
++// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
++//
++
++#include "tk64_texture_lod.h"
++#include "tk64_texture_residency.h"
++
++#include <algorithm>
++#include <atomic>
++#include <chrono>
++#include <cmath>
++#include <cstdio>
++#include <cstdlib>
++#include <ctime>
++#include <mutex>
++#include <unordered_map>
++#include <vector>
++
++namespace tk64 {
++    static const char *textureLodReportPath() {
++        static const char *path = []() -> const char * {
++            const char *value = std::getenv("TK64_DIAG_TEXTURE_LOD");
++            return ((value != nullptr) && (value[0] != '\0')) ? value : nullptr;
++        }();
++
++        return path;
++    }
++
++    static std::atomic<uint64_t> textureStreamEvents[3] = {};
++
++    void countTextureStreamEvent(TextureStreamEvent event) {
++        textureStreamEvents[int(event)].fetch_add(1);
++    }
++
++    bool textureLodEnabled() {
++        return textureLodReportPath() != nullptr;
++    }
++
++    uint32_t textureTestFirstMip() {
++        static const uint32_t firstMip = []() -> uint32_t {
++            const char *value = std::getenv("TK64_TEST_TEXTURE_FIRST_MIP");
++            if ((value == nullptr) || (value[0] == '\0')) {
++                return 0;
++            }
++
++            const long parsed = std::strtol(value, nullptr, 10);
++            return uint32_t(std::clamp(parsed, 0L, 15L));
++        }();
++
++        return firstMip;
++    }
++
++    static std::atomic<uint64_t> textureAllocationCounter{ 0 };
++    static std::atomic<uint64_t> textureAllocationFailureCount{ 0 };
++
++    bool textureAllocationTestFailure() {
++        static const uint64_t every = []() -> uint64_t {
++            const char *value = std::getenv("TK64_TEST_FAIL_TEXTURE_ALLOC");
++            if ((value == nullptr) || (value[0] == '\0')) {
++                return 0;
++            }
++
++            const long long parsed = std::strtoll(value, nullptr, 10);
++            return (parsed > 0) ? uint64_t(parsed) : 0;
++        }();
++
++        if (every == 0) {
++            return false;
++        }
++
++        return ((textureAllocationCounter.fetch_add(1) + 1) % every) == 0;
++    }
++
++    void countTextureAllocationFailure() {
++        textureAllocationFailureCount.fetch_add(1);
++    }
++
++    uint64_t textureAllocationFailures() {
++        return textureAllocationFailureCount.load();
++    }
++
++    uint32_t textureFirstMip(uint32_t requested, uint32_t mipCount) {
++        if (mipCount <= 1) {
++            return 0;
++        }
++
++        return std::min(requested, mipCount - 1);
++    }
++
++    // Level of detail of a pixel footprint given as the four derivatives of the texture coordinates per pixel.
++    static float footprintLod(float dudx, float dudy, float dvdx, float dvdy, float maxAnisotropy) {
++        // Singular values of the 2x2 Jacobian: the longest and shortest axis of the footprint in texels.
++        const float e = 0.5f * (dudx + dvdy);
++        const float f = 0.5f * (dudx - dvdy);
++        const float g = 0.5f * (dvdx + dudy);
++        const float h = 0.5f * (dvdx - dudy);
++        const float q = std::sqrt(e * e + h * h);
++        const float r = std::sqrt(f * f + g * g);
++        const float sigmaMax = q + r;
++        const float sigmaMin = std::fabs(q - r);
++        if (!(sigmaMax > 1e-12f) || !std::isfinite(sigmaMax)) {
++            return TextureLodFull;
++        }
++
++        // Anisotropic filtering samples along the long axis and picks the mip from the long axis divided by the number
++        // of samples, never finer than the short axis.
++        const float ratio = sigmaMax / std::max(sigmaMin, 1e-12f);
++        const float sigma = sigmaMax / std::min(std::max(maxAnisotropy, 1.0f), ratio);
++        return std::log2(sigma);
++    }
++
++    struct ClipVertex {
++        float x, y, z, w;
++    };
++
++    // Sutherland-Hodgman against one plane, given as the signed distance d(vertex) >= 0 inside.
++    template<typename Distance>
++    static int clipPolygon(const ClipVertex *in, int inCount, ClipVertex *out, Distance distance) {
++        int outCount = 0;
++        for (int i = 0; i < inCount; i++) {
++            const ClipVertex &a = in[i];
++            const ClipVertex &b = in[(i + 1) % inCount];
++            const float da = distance(a);
++            const float db = distance(b);
++            if (da >= 0.0f) {
++                out[outCount++] = a;
++            }
++
++            if ((da >= 0.0f) != (db >= 0.0f)) {
++                const float s = da / (da - db);
++                out[outCount++] = { a.x + (b.x - a.x) * s, a.y + (b.y - a.y) * s, a.z + (b.z - a.z) * s, a.w + (b.w - a.w) * s };
++            }
++        }
++
++        return outCount;
++    }
++
++    // Solves M * k = rhs for the 3x3 matrix whose rows are (x_i, y_i, w_i). Returns false when M is singular.
++    static bool solvePlane(const double m[3][3], const double rhs[3], double k[3]) {
++        const double det =
++            m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
++            m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
++            m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
++        if (!(std::fabs(det) > 1e-12)) {
++            return false;
++        }
++
++        const double invDet = 1.0 / det;
++        for (int c = 0; c < 3; c++) {
++            double a[3][3];
++            for (int r = 0; r < 3; r++) {
++                for (int j = 0; j < 3; j++) {
++                    a[r][j] = (j == c) ? rhs[r] : m[r][j];
++                }
++            }
++
++            k[c] = (a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) -
++                    a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
++                    a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])) * invDet;
++        }
++
++        return true;
++    }
++
++    float triangleTexelLod(const float clip[3][4], const float u[3], const float v[3], float viewportScaleX, float viewportScaleY, float maxAnisotropy) {
++        // Texture coordinates that do not vary are what texture generation leaves on the CPU: unknown, so full.
++        if ((u[0] == u[1]) && (u[1] == u[2]) && (v[0] == v[1]) && (v[1] == v[2])) {
++            return TextureLodFull;
++        }
++
++        // 1/w, u/w and v/w are affine in normalized device coordinates (X, Y) = (x/w, y/w): a/w = kx X + ky Y + kw. With
++        // homogeneous vertices that is kx x_i + ky y_i + kw w_i = a_i, which holds for vertices behind the camera too.
++        const double m[3][3] = {
++            { clip[0][0], clip[0][1], clip[0][3] },
++            { clip[1][0], clip[1][1], clip[1][3] },
++            { clip[2][0], clip[2][1], clip[2][3] },
++        };
++
++        const double one[3] = { 1.0, 1.0, 1.0 };
++        const double us[3] = { u[0], u[1], u[2] };
++        const double vs[3] = { v[0], v[1], v[2] };
++        double kq[3], ku[3], kv[3];
++        if (!solvePlane(m, one, kq) || !solvePlane(m, us, ku) || !solvePlane(m, vs, kv)) {
++            // The plane of the triangle goes through the eye: seen edge-on, no area.
++            return TextureLodNone;
++        }
++
++        // Visible part: near plane (z >= -w), in front of the eye (w > 0) and the image with a guard band.
++        ClipVertex polygonA[16], polygonB[16];
++        int count = 3;
++        for (int i = 0; i < 3; i++) {
++            polygonA[i] = { clip[i][0], clip[i][1], clip[i][2], clip[i][3] };
++        }
++
++        const float GuardX = TextureLodGuardX;
++        count = clipPolygon(polygonA, count, polygonB, [](const ClipVertex &c) { return c.z + c.w; });
++        count = clipPolygon(polygonB, count, polygonA, [](const ClipVertex &c) { return c.w - 1e-5f; });
++        count = clipPolygon(polygonA, count, polygonB, [GuardX](const ClipVertex &c) { return GuardX * c.w - c.x; });
++        count = clipPolygon(polygonB, count, polygonA, [GuardX](const ClipVertex &c) { return GuardX * c.w + c.x; });
++        count = clipPolygon(polygonA, count, polygonB, [](const ClipVertex &c) { return c.w - c.y; });
++        count = clipPolygon(polygonB, count, polygonA, [](const ClipVertex &c) { return c.w + c.y; });
++        if (count < 3) {
++            return TextureLodNone;
++        }
++
++        // At each corner of the visible polygon: u = (u/w) / (1/w), du/dX = (ku_x - u kq_x) / (1/w), then per pixel.
++        const double pixelX = 1.0 / std::max(std::fabs(double(viewportScaleX)), 1e-6);
++        const double pixelY = 1.0 / std::max(std::fabs(double(viewportScaleY)), 1e-6);
++        float finest = TextureLodNone;
++        for (int i = 0; i < count; i++) {
++            const ClipVertex &c = polygonA[i];
++            const double X = double(c.x) / c.w;
++            const double Y = double(c.y) / c.w;
++            const double q = kq[0] * X + kq[1] * Y + kq[2];
++            if (!(q > 1e-12)) {
++                continue;
++            }
++
++            const double uc = (ku[0] * X + ku[1] * Y + ku[2]) / q;
++            const double vc = (kv[0] * X + kv[1] * Y + kv[2]) / q;
++            const double dudx = (ku[0] - uc * kq[0]) / q * pixelX;
++            const double dudy = (ku[1] - uc * kq[1]) / q * pixelY;
++            const double dvdx = (kv[0] - vc * kq[0]) / q * pixelX;
++            const double dvdy = (kv[1] - vc * kq[1]) / q * pixelY;
++            finest = std::min(finest, footprintLod(float(dudx), float(dudy), float(dvdx), float(dvdy), maxAnisotropy));
++        }
++
++        return finest;
++    }
++
++    float rectangleTexelLod(int32_t dsdx, int32_t dtdy) {
++        const float s = std::fabs(float(dsdx)) / 1024.0f;
++        const float t = std::fabs(float(dtdy)) / 1024.0f;
++        const float sigma = std::max(s, t);
++        if (!(sigma > 0.0f)) {
++            return TextureLodNone;
++        }
++
++        return std::log2(sigma);
++    }
++
++    uint32_t textureLodTopMip(float lod, float bias, uint32_t mipmaps) {
++        if ((mipmaps <= 1) || !std::isfinite(lod)) {
++            return 0;
++        }
++
++        const float level = std::floor(lod + bias);
++        if (level <= 0.0f) {
++            return 0;
++        }
++
++        return std::min(uint32_t(level), mipmaps - 1);
++    }
++
++    uint64_t textureLodBytes(uint64_t memorySize, uint32_t topMip) {
++        // Each mip has a quarter of the texels of the one above it, so dropping the top r mips keeps about 4^-r of the
++        // chain. Block alignment of the smallest mips makes this slightly low; the report says it is an estimate.
++        return memorySize >> (2 * std::min(topMip, 31U));
++    }
++
++    struct TextureLodEntry {
++        uint32_t width = 0;
++        uint32_t height = 0;
++        uint32_t mipmaps = 0;
++        uint64_t memorySize = 0;
++        uint64_t residentSize = 0;
++        float lod = TextureLodNone;
++        uint64_t samples = 0;
++    };
++
++    struct TextureLodReport {
++        std::mutex mutex;
++        std::unordered_map<std::string, TextureLodEntry> window;
++        std::chrono::steady_clock::time_point windowStart = std::chrono::steady_clock::now();
++        FILE *file = nullptr;
++        bool openFailed = false;
++    };
++
++    static TextureLodReport &textureLodReport() {
++        static TextureLodReport report;
++        return report;
++    }
++
++    static void writeTextureLodWindow(TextureLodReport &report) {
++        if ((report.file == nullptr) && !report.openFailed) {
++#       ifdef _WIN32
++            if (fopen_s(&report.file, textureLodReportPath(), "w") != 0) {
++                report.file = nullptr;
++            }
++#       else
++            report.file = std::fopen(textureLodReportPath(), "w");
++#       endif
++            if (report.file == nullptr) {
++                report.openFailed = true;
++                fprintf(stderr, "TK64: cannot open the texture LOD report %s\n", textureLodReportPath());
++                return;
++            }
++
++            fprintf(report.file, "# TK64 texture LOD report (estimate). lod = log2(texels per pixel), full = needs mip 0.\n");
++            fprintf(report.file, "# window <time> files <n> resident <MiB> max <MiB> high <MiB> medium <MiB> low <MiB> minimum <MiB>\n");
++            fprintf(report.file, "#   <path> <width>x<height> mips <n> <MiB> lod <value|full|none> top <maximum> <high> <medium> <low> <minimum>\n");
++        }
++
++        if (report.file == nullptr) {
++            return;
++        }
++
++        std::vector<std::pair<std::string, TextureLodEntry>> entries(report.window.begin(), report.window.end());
++        std::sort(entries.begin(), entries.end(), [](const auto &x, const auto &y) {
++            return x.second.memorySize > y.second.memorySize;
++        });
++
++        uint64_t resident = 0;
++        uint64_t projected[5] = {};
++        for (const auto &it : entries) {
++            const TextureLodEntry &e = it.second;
++            resident += e.residentSize;
++            for (int l = 0; l < 5; l++) {
++                projected[l] += textureLodBytes(e.memorySize, textureLodTopMip(e.lod, TextureLodLevelBias[l], e.mipmaps));
++            }
++        }
++
++        const double MiB = 1024.0 * 1024.0;
++        const TextureStreamingStats streamStats = textureStreamingStats();
++        const std::time_t wall = std::time(nullptr);
++        std::tm local = {};
++#   ifdef _WIN32
++        localtime_s(&local, &wall);
++#   else
++        localtime_r(&wall, &local);
++#   endif
++        char clock[16];
++        std::strftime(clock, sizeof(clock), "%H:%M:%S", &local);
++        fprintf(report.file, "window %s files %zu resident %.1f max %.1f high %.1f medium %.1f low %.1f minimum %.1f loads %llu requests %llu swaps %llu failures %llu level %u used %.1f budget %.1f pressure %d\n", clock, entries.size(),
++            resident / MiB, projected[0] / MiB, projected[1] / MiB, projected[2] / MiB, projected[3] / MiB, projected[4] / MiB,
++            (unsigned long long)textureStreamEvents[0].exchange(0), (unsigned long long)textureStreamEvents[1].exchange(0),
++            (unsigned long long)textureStreamEvents[2].exchange(0), (unsigned long long)textureAllocationFailures(),
++            streamStats.level, streamStats.usedBytes / MiB, streamStats.budgetBytes / MiB, streamStats.underPressure ? 1 : 0);
++
++        for (const auto &it : entries) {
++            const TextureLodEntry &e = it.second;
++            char lodText[32];
++            if (e.lod == TextureLodFull) {
++                snprintf(lodText, sizeof(lodText), "full");
++            }
++            else if (e.lod == TextureLodNone) {
++                snprintf(lodText, sizeof(lodText), "none");
++            }
++            else {
++                snprintf(lodText, sizeof(lodText), "%.2f", e.lod);
++            }
++
++            fprintf(report.file, "  %s %ux%u mips %u %.2f lod %s top %u %u %u %u %u\n", it.first.c_str(), e.width, e.height, e.mipmaps, e.memorySize / MiB, lodText,
++                textureLodTopMip(e.lod, TextureLodLevelBias[0], e.mipmaps), textureLodTopMip(e.lod, TextureLodLevelBias[1], e.mipmaps),
++                textureLodTopMip(e.lod, TextureLodLevelBias[2], e.mipmaps), textureLodTopMip(e.lod, TextureLodLevelBias[3], e.mipmaps),
++                textureLodTopMip(e.lod, TextureLodLevelBias[4], e.mipmaps));
++        }
++
++        fflush(report.file);
++    }
++
++    void recordTextureLod(const TextureLodSample &sample) {
++        if (!textureLodEnabled()) {
++            return;
++        }
++
++        TextureLodReport &report = textureLodReport();
++        std::unique_lock lock(report.mutex);
++        TextureLodEntry &entry = report.window[sample.relativePath];
++        entry.width = sample.width;
++        entry.height = sample.height;
++        entry.mipmaps = sample.mipmaps;
++        entry.memorySize = sample.memorySize;
++        entry.residentSize = sample.residentSize;
++        entry.samples++;
++
++        // A sample without a measurement still marks the file as used; it only lowers the level when one was measured.
++        if ((entry.lod == TextureLodNone) || (sample.lod < entry.lod)) {
++            entry.lod = sample.lod;
++        }
++
++        const auto now = std::chrono::steady_clock::now();
++        if ((now - report.windowStart) >= std::chrono::seconds(5)) {
++            writeTextureLodWindow(report);
++            report.window.clear();
++            report.windowStart = now;
++        }
++    }
++};
+diff --git a/src/tk64/tk64_texture_lod.h b/src/tk64/tk64_texture_lod.h
+new file mode 100644
+index 0000000..f96729f
+--- /dev/null
++++ b/src/tk64/tk64_texture_lod.h
+@@ -0,0 +1,90 @@
++//
++// TK64
++//
++// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
++//
++// Texture level of detail measured on the CPU, per triangle, for replacement textures. Phase 3 of the per-distance mip
++// streaming plan: it only measures and reports; nothing in the rendered image changes. See docs/specs/texture-lod.md.
++//
++
++#pragma once
++
++#include <cstdint>
++#include <limits>
++#include <string>
++
++namespace tk64 {
++    // A level of detail is log2 of the texels covered by one pixel along the axis the sampler uses (0 means one texel per
++    // pixel, 1 means two texels per pixel and mip 1 is enough, negative means magnified).
++    constexpr float TextureLodNone = std::numeric_limits<float>::infinity();   // nothing measured
++    constexpr float TextureLodFull = -std::numeric_limits<float>::infinity();  // needs the full-resolution mip
++
++    // Anisotropy assumed for the sampler that reads replacement textures.
++    constexpr float TextureLodMaxAnisotropy = 16.0f;
++
++    // Added to a measured level before choosing mips: RT64's replacement samplers use a mip bias of -0.25
++    // (rt64_shader_library.cpp, TextureSampler.hlsli), and 0.25 more is a margin for the per-triangle estimate against the
++    // GPU's per-quad derivatives. With it, the Maximum quality level keeps every mip the GPU would sample.
++    constexpr float TextureLodSamplerBias = -0.5f;
++
++    // True when TK64_DIAG_TEXTURE_LOD names a report file. Read once.
++    bool textureLodEnabled();
++
++    // TK64_TEST_TEXTURE_FIRST_MIP=<n>: load every replacement DDS from mip n down, for testing partial loads. 0 (the
++    // default) loads whole files. Read once; clamped to 0..15.
++    uint32_t textureTestFirstMip();
++
++    // First mip actually loaded for a file with mipCount mips: the request, kept within the file's mips.
++    uint32_t textureFirstMip(uint32_t requested, uint32_t mipCount);
++
++    // TK64_TEST_FAIL_TEXTURE_ALLOC=<n>: every n-th replacement texture allocation is treated as failed, to test the
++    // fallback. 0 or unset: never. Thread-safe.
++    bool textureAllocationTestFailure();
++
++    // Streaming events shown in the report's window line. Thread-safe.
++    enum class TextureStreamEvent { FirstLoad, Request, Swap };
++    void countTextureStreamEvent(TextureStreamEvent event);
++
++    // Replacement allocations that failed, real or simulated. Thread-safe.
++    void countTextureAllocationFailure();
++    uint64_t textureAllocationFailures();
++
++    // Horizontal clip bound used for the measurement, as a multiple of w. Wider than the native 4:3 volume so geometry in
++    // the widescreen strips is measured too; measuring a little outside the image only makes the result finer.
++    constexpr float TextureLodGuardX = 2.0f;
++
++    // Level of detail of one triangle. clip holds the clip-space x, y, z, w of each vertex (OpenGL depth range, visible
++    // when -w <= z), u/v are texture coordinates in texels of the tile and viewportScale converts normalized device
++    // coordinates to native framebuffer pixels. The triangle is clipped to the near plane and to the image (x within
++    // TextureLodGuardX * w, y within w); with perspective-correct texture coordinates the level is evaluated exactly at
++    // each corner of the visible polygon and the finest one is returned. TextureLodNone when nothing is visible or the
++    // triangle is seen edge-on; TextureLodFull when the texture coordinates do not vary (texture generation).
++    float triangleTexelLod(const float clip[3][4], const float u[3], const float v[3], float viewportScaleX, float viewportScaleY, float maxAnisotropy = TextureLodMaxAnisotropy);
++
++    // Level of detail of a texture rectangle from its per-pixel steps (s5.10 fixed point, 1 << 10 is one texel per pixel).
++    float rectangleTexelLod(int32_t dsdx, int32_t dtdy);
++
++    // Report of the levels the replacement textures needed, written to the TK64_DIAG_TEXTURE_LOD file every few seconds:
++    // per file, the lowest level seen and the top mip each of the five quality levels would keep resident.
++    struct TextureLodSample {
++        std::string relativePath;
++        uint32_t width = 0;
++        uint32_t height = 0;
++        uint32_t mipmaps = 0;
++        uint64_t memorySize = 0;     // whole mip chain of the file
++        uint64_t residentSize = 0;   // what is loaded now
++        float lod = TextureLodNone;
++    };
++
++    // Bias of the five quality levels, from Maximum (index 0) to Minimum (index 4).
++    constexpr float TextureLodLevelBias[5] = { 0.0f, 1.0f, 1.5f, 2.0f, 3.0f };
++
++    // Top mip a quality bias would keep for a texture with the given mip count. TextureLodNone and TextureLodFull keep 0.
++    uint32_t textureLodTopMip(float lod, float bias, uint32_t mipmaps);
++
++    // Approximate bytes of a texture whose top mip is topMip, from the bytes of the whole mip chain.
++    uint64_t textureLodBytes(uint64_t memorySize, uint32_t topMip);
++
++    // Adds a sample from the render thread. Thread-safe.
++    void recordTextureLod(const TextureLodSample &sample);
++};
+diff --git a/src/tk64/tk64_texture_residency.cpp b/src/tk64/tk64_texture_residency.cpp
+new file mode 100644
+index 0000000..4effff0
+--- /dev/null
++++ b/src/tk64/tk64_texture_residency.cpp
+@@ -0,0 +1,171 @@
++//
++// TK64
++//
++// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
++//
++
++#include "tk64_texture_residency.h"
++
++#include <algorithm>
++#include <atomic>
++#include <cmath>
++#include <cstdlib>
++#include <mutex>
++
++#include "tk64_texture_lod.h"
++
++namespace tk64 {
++    static std::atomic<int> hostStreamingLevel{ -1 };
++    static std::atomic<bool> streamingSupported{ false };
++    static std::atomic<uint64_t> hostStreamingBudget{ 0 };
++    static std::atomic<uint64_t> automaticStreamingBudget{ 0 };
++
++    // -1 when the variable is absent or empty.
++    static long environmentNumber(const char *name) {
++        const char *value = std::getenv(name);
++        if ((value == nullptr) || (value[0] == '\0')) {
++            return -1;
++        }
++
++        return std::strtol(value, nullptr, 10);
++    }
++
++    uint32_t textureStreamingLevel() {
++        static const long killSwitch = environmentNumber("TK64_TEXTURE_STREAMING");
++        static const long testLevel = environmentNumber("TK64_TEST_TEXTURE_STREAMING");
++        if (!streamingSupported.load(std::memory_order_acquire) || (killSwitch == 0)) {
++            return 0;
++        }
++
++        if (testLevel >= 0) {
++            return uint32_t(std::clamp(testLevel, 0L, 5L));
++        }
++
++        const int host = hostStreamingLevel.load(std::memory_order_acquire);
++        return (host > 0) ? uint32_t(std::min(host, 5)) : 0;
++    }
++
++    void requestTextureStreamingLevel(uint32_t level) {
++        hostStreamingLevel.store(int(std::min(level, 5U)), std::memory_order_release);
++    }
++
++    void setTextureStreamingSupported(bool supported) {
++        streamingSupported.store(supported, std::memory_order_release);
++    }
++
++    uint64_t textureStreamingBudget() {
++        static const long testMegabytes = environmentNumber("TK64_TEST_TEXTURE_STREAMING_BUDGET_MB");
++        if (testMegabytes > 0) {
++            return uint64_t(testMegabytes) * 1024ULL * 1024ULL;
++        }
++
++        const uint64_t host = hostStreamingBudget.load(std::memory_order_acquire);
++        return (host > 0) ? host : automaticStreamingBudget.load(std::memory_order_acquire);
++    }
++
++    void requestTextureStreamingBudget(uint64_t bytes) {
++        hostStreamingBudget.store(bytes, std::memory_order_release);
++    }
++
++    void setTextureStreamingAutomaticBudget(uint64_t bytes) {
++        automaticStreamingBudget.store(bytes, std::memory_order_release);
++    }
++
++    static std::mutex statsMutex;
++    static TextureStreamingStats lastStats;
++
++    TextureStreamingStats textureStreamingStats() {
++        std::unique_lock lock(statsMutex);
++        return lastStats;
++    }
++
++    void setTextureStreamingStats(const TextureStreamingStats &stats) {
++        std::unique_lock lock(statsMutex);
++        lastStats = stats;
++    }
++
++    bool textureStreamingEnabled() {
++        return textureStreamingLevel() > 0;
++    }
++
++    float textureStreamingBias() {
++        // Level 5 (Maximum) uses TextureLodLevelBias[0], level 1 (Minimum) uses TextureLodLevelBias[4].
++        const uint32_t level = std::max(textureStreamingLevel(), 1U);
++        return TextureLodLevelBias[5 - level];
++    }
++
++    bool textureLodMeasuring() {
++        return textureLodEnabled() || textureStreamingEnabled();
++    }
++
++    uint32_t textureResidencyDecision(TextureResidencyState &state, float lod, float bias, double nowSeconds, double downgradeSeconds, bool allowUpgrade) {
++        if (lod == TextureLodNone) {
++            // Not drawn in this update: keep what is loaded; a later update decides.
++            return TextureResidencyNoRequest;
++        }
++
++        const uint32_t desired = textureLodTopMip(lod, bias, state.mipCount);
++        if (desired <= state.currentTopMip) {
++            state.lastNeedSeconds = nowSeconds;
++        }
++
++        if (state.pending) {
++            return TextureResidencyNoRequest;
++        }
++
++        if ((desired < state.currentTopMip) && (allowUpgrade || (lod == TextureLodFull))) {
++            state.pending = true;
++            state.rememberedTopMip = desired;
++            return desired;
++        }
++
++        if ((desired > state.currentTopMip) && ((nowSeconds - state.lastNeedSeconds) >= downgradeSeconds)) {
++            const uint32_t lastMip = (state.mipCount > 0) ? (state.mipCount - 1) : 0;
++            const uint32_t next = std::min(state.currentTopMip + 1, lastMip);
++            if (next != state.currentTopMip) {
++                state.pending = true;
++                state.rememberedTopMip = next;
++                state.lastNeedSeconds = nowSeconds;
++                return next;
++            }
++        }
++
++        return TextureResidencyNoRequest;
++    }
++
++    std::vector<std::pair<uint32_t, uint32_t>> textureResidencyPressureSteps(std::vector<TextureResidencyCandidate> candidates, uint64_t excessBytes, uint32_t maxSteps) {
++        // Farthest first; on the camera last; larger textures first among equal levels.
++        std::stable_sort(candidates.begin(), candidates.end(), [](const TextureResidencyCandidate &a, const TextureResidencyCandidate &b) {
++            if (a.lod != b.lod) {
++                return a.lod > b.lod;
++            }
++
++            return a.bytes > b.bytes;
++        });
++
++        std::vector<std::pair<uint32_t, uint32_t>> steps;
++        uint64_t freed = 0;
++        for (const TextureResidencyCandidate &c : candidates) {
++            if ((freed >= excessBytes) || (steps.size() >= maxSteps)) {
++                break;
++            }
++
++            if ((c.mipCount == 0) || (c.currentTopMip + 1 >= c.mipCount)) {
++                continue;
++            }
++
++            steps.emplace_back(c.id, c.currentTopMip + 1);
++            freed += c.bytes - c.bytes / 4;
++        }
++
++        return steps;
++    }
++
++    uint32_t textureResidencyInitialTopMip(const TextureResidencyState *state) {
++        if ((state != nullptr) && (state->rememberedTopMip != TextureResidencyNoRequest)) {
++            return state->rememberedTopMip;
++        }
++
++        return TextureResidencyInitialTopMip;
++    }
++};
+diff --git a/src/tk64/tk64_texture_residency.h b/src/tk64/tk64_texture_residency.h
+new file mode 100644
+index 0000000..7fcc465
+--- /dev/null
++++ b/src/tk64/tk64_texture_residency.h
+@@ -0,0 +1,96 @@
++//
++// TK64
++//
++// Copyright (c) 2026 The TK64 contributors. Licensed under the MIT license. See LICENSE file for details.
++//
++// Per-file residency of replacement textures: which mip a file is kept from, chosen from the measured level of detail.
++// Phase 4 of per-distance mip streaming. See docs/specs/texture-streaming.md.
++//
++
++#pragma once
++
++#include <cstdint>
++#include <utility>
++#include <vector>
++
++namespace tk64 {
++    // Active quality level: 0 is off (whole files, as RT64), 1 (Minimum) to 5 (Maximum). Precedence:
++    // TK64_TEXTURE_STREAMING=0 (kill switch) > TK64_TEST_TEXTURE_STREAMING=<0..5> (test) > the host's request
++    // (rt64_host_texture_streaming.h) > off. Always 0 unless the backend supports it (D3D12 or Vulkan). Thread-safe.
++    uint32_t textureStreamingLevel();
++    bool textureStreamingEnabled();
++
++    // Host request: 0 off, 1..5 a level. Takes effect at the next residency decision. Thread-safe.
++    void requestTextureStreamingLevel(uint32_t level);
++
++    // Set by RT64 once the device exists: streaming is only allowed on D3D12 and Vulkan.
++    void setTextureStreamingSupported(bool supported);
++
++    // Memory budget for replacement textures in use. Precedence: TK64_TEST_TEXTURE_STREAMING_BUDGET_MB=<n> > the host's
++    // request (bytes, 0 = automatic) > automatic (RT64's replacement pool size, 2/3 of dedicated video memory).
++    uint64_t textureStreamingBudget();
++    void requestTextureStreamingBudget(uint64_t bytes);
++    void setTextureStreamingAutomaticBudget(uint64_t bytes);
++
++    // What the last residency decision saw, for hosts and the report.
++    struct TextureStreamingStats {
++        uint32_t level = 0;
++        uint64_t usedBytes = 0;     // replacement textures referenced by the game's textures
++        uint64_t budgetBytes = 0;
++        bool underPressure = false;
++        uint64_t allocationFailures = 0;
++    };
++
++    TextureStreamingStats textureStreamingStats();
++    void setTextureStreamingStats(const TextureStreamingStats &stats);
++
++    // Bias added to a measured level before choosing the top mip, for the active level (texture-lod.md).
++    float textureStreamingBias();
++
++    // Measurement is needed for the diagnostic report or for streaming.
++    bool textureLodMeasuring();
++
++    // First load of a file not measured yet: start from this mip and move up once it is drawn.
++    constexpr uint32_t TextureResidencyInitialTopMip = 2;
++
++    // A file is moved one mip down only after its current top mip went unneeded for this long.
++    constexpr double TextureResidencyDowngradeSeconds = 3.0;
++
++    constexpr uint32_t TextureResidencyNoRequest = UINT32_MAX;
++
++    struct TextureResidencyState {
++        uint32_t currentTopMip = 0;     // top mip of the texture loaded now
++        uint32_t mipCount = 0;          // mips of the whole file
++        bool pending = false;           // a load of another top mip is in flight
++        double lastNeedSeconds = 0.0;   // last time the current top mip (or a finer one) was needed
++        uint32_t rememberedTopMip = TextureResidencyNoRequest; // last top mip asked for, kept across evictions
++    };
++
++    // Decides from one update's finest level (TextureLodNone when the file was not drawn) whether to load another top
++    // mip. Moves up at once; moves down one mip at a time after TextureResidencyDowngradeSeconds without need. Returns the
++    // top mip to load, or TextureResidencyNoRequest.
++    // allowUpgrade false (memory pressure) keeps a file from moving up unless it is on the camera (TextureLodFull).
++    uint32_t textureResidencyDecision(TextureResidencyState &state, float lod, float bias, double nowSeconds, double downgradeSeconds = TextureResidencyDowngradeSeconds, bool allowUpgrade = true);
++
++    // Top mip for the first load of a file: the remembered one, else TextureResidencyInitialTopMip.
++    uint32_t textureResidencyInitialTopMip(const TextureResidencyState *state);
++
++    // Pressure starts when used memory is above the budget and ends below this fraction of it.
++    constexpr double TextureResidencyPressureRelease = 0.9;
++
++    // At most this many files are moved down per decision under pressure, so a spike does not reload everything at once.
++    constexpr uint32_t TextureResidencyPressureStepsPerUpdate = 4;
++
++    struct TextureResidencyCandidate {
++        uint32_t id = 0;            // caller's identifier
++        float lod = 0.0f;           // finest level the file was drawn at (TextureLodFull: on the camera)
++        uint32_t currentTopMip = 0;
++        uint32_t mipCount = 0;
++        uint64_t bytes = 0;         // memory of the loaded texture
++    };
++
++    // Under pressure: which drawn files to move one mip down to free excessBytes, farthest first (largest level), the
++    // ones on the camera (TextureLodFull) last, at most maxSteps. Returns (id, new top mip) pairs. Moving one mip down
++    // frees about 3/4 of a texture.
++    std::vector<std::pair<uint32_t, uint32_t>> textureResidencyPressureSteps(std::vector<TextureResidencyCandidate> candidates, uint64_t excessBytes, uint32_t maxSteps = TextureResidencyPressureStepsPerUpdate);
++};

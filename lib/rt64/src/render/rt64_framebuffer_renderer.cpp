@@ -17,6 +17,9 @@
 #include "rt64_render_worker.h"
 #include "rt64_texture_slots.h"
 
+#include "tk64/tk64_texture_lod.h"
+#include "tk64/tk64_texture_residency.h"
+
 // TODO: Move to shared.
 
 namespace interop {
@@ -233,8 +236,10 @@ namespace RT64 {
     }
 
     void FramebufferRenderer::createGPUTiles(const DrawCallTile *callTiles, uint32_t firstTileIndex, uint32_t callTileCount, interop::GPUTile *dstGPUTiles, const FramebufferManager *fbManager,
-        TextureCache *textureCache, uint64_t submissionFrame)
+        TextureCache *textureCache, uint64_t submissionFrame, bool recordLod, float lodOutputScaleLog2)
     {
+        // TK64: only callers that know the output resolution record levels of detail (tk64_texture_lod.h).
+        const bool recordTextureLod = recordLod && tk64::textureLodMeasuring();
         if (textureSlotsEnabled && (tileTextureIndices.size() < (firstTileIndex + callTileCount))) {
             tileTextureIndices.resize(firstTileIndex + callTileCount, UINT32_MAX);
         }
@@ -295,6 +300,17 @@ namespace RT64 {
                 gpuTile.flags.rawTMEM = !textureReplaced && callTile.rawTMEM;
                 gpuTile.flags.hasMipmaps = hasMipmaps;
                 gpuTile.flags.shiftedByHalf = shiftedByHalf;
+
+                // TK64: level of detail in texels of the replacement at the output resolution (tk64_texture_lod.h).
+                if (recordTextureLod && textureReplaced) {
+                    float replacementLod = callTile.texelLod;
+                    if (replacementLod != tk64::TextureLodNone) {
+                        const float replacementScale = std::max(std::max(gpuTile.tcScale.x, gpuTile.tcScale.y), 1e-6f);
+                        replacementLod += std::log2(replacementScale) - lodOutputScaleLog2 + tk64::TextureLodSamplerBias;
+                    }
+
+                    textureCache->recordReplacementLod(textureIndex, replacementLod);
+                }
             }
 
             // TK64: the shader indexes the draw's own texture set, so the GPU tile holds the slot and the cache index is kept here.
@@ -302,6 +318,11 @@ namespace RT64 {
                 tileTextureIndices[firstTileIndex + i] = gpuTile.textureIndex;
                 gpuTile.textureIndex = callTile.drawSlot;
             }
+        }
+
+        // TK64: one residency decision per workload, from the levels recorded above (tk64_texture_residency.h).
+        if (recordTextureLod && tk64::textureStreamingEnabled()) {
+            textureCache->updateResidency();
         }
     }
 

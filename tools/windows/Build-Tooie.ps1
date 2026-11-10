@@ -453,6 +453,7 @@ $script:RequiredTests = @(
     'tooie_language_bundle_test',
     'tooie_menu_policy_test',
     'tooie_menu_config_test',
+    'tooie_texture_streaming_test',
     'tintro_projection_policy_test',
     'tooie_projection_reload_test',
     'rt64_widescreen_bounds_test',

@@ -218,6 +218,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_texture_streaming_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_config.cpp
@@ -951,6 +952,18 @@ target_include_directories(tooie_menu_config_test PRIVATE
 )
 set_target_properties(tooie_menu_config_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 target_compile_definitions(tooie_menu_config_test PRIVATE NOMINMAX)
+
+# Graphics > Texture Streaming with the real librecomp Config: default Off, persistence, Apply/Cancel, renderer sink.
+add_executable(tooie_texture_streaming_test
+    ${CMAKE_SOURCE_DIR}/tests/tooie_texture_streaming_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_texture_streaming_config.cpp
+    ${N64MR}/librecomp/src/config.cpp
+    ${N64MR}/librecomp/src/config_option.cpp
+)
+target_include_directories(tooie_texture_streaming_test PRIVATE
+    $<TARGET_PROPERTY:tooie_menu_config_test,INCLUDE_DIRECTORIES>)
+set_target_properties(tooie_texture_streaming_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+target_compile_definitions(tooie_texture_streaming_test PRIVATE NOMINMAX)
 
 # Exercise the production projection policy and dynamic window-aspect calculation;
 # only window/config services are simulated, without opening SDL or the game.
