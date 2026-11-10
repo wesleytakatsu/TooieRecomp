@@ -219,6 +219,7 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_texture_streaming_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_materials_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_config.cpp
