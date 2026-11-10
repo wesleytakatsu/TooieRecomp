@@ -104,7 +104,9 @@ def run_texconv(texconv, src, out_dir, fmt, mips):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--pbr', required=True, help='folder with manifesto.json, Normal/ and ORM/')
-    ap.add_argument('--color-pack', required=True, help='color pack (.rtz/.zip or folder) with the same hashes')
+    ap.add_argument('--color-pack', required=True, action='append',
+                    help='color pack (.rtz/.zip or folder) with the same hashes; repeat for several packs (the first '
+                         'one listed that replaces a hash gives its color)')
     ap.add_argument('--texconv', required=True)
     ap.add_argument('--texture-packer', help='RT64/TK64 texture_packer; without it, no low mip cache and no .rtz')
     ap.add_argument('--out', required=True, help='output folder (the pack is <out>/<folder name>.rtz)')
@@ -125,9 +127,13 @@ def main():
     with open(manifest_path, encoding='utf-8') as f:
         manifest = json.load(f)
     textures = manifest['texturas']
-    color = ColorPack(args.color_pack)
-    if color.hash_version != 5:
-        print(f'warning: color pack hashVersion {color.hash_version}; the material pack uses the same', file=sys.stderr)
+    colors = [ColorPack(p) for p in args.color_pack]
+    hash_versions = {c.hash_version for c in colors}
+    if len(hash_versions) != 1:
+        raise SystemExit(f'color packs use different hashVersion values: {sorted(hash_versions)}')
+    hash_version = colors[0].hash_version
+    if hash_version != 5:
+        print(f'warning: color pack hashVersion {hash_version}; the material pack uses the same', file=sys.stderr)
 
     # Plan every texture: color path, size and mips from the color DDS.
     jobs = []
@@ -136,9 +142,9 @@ def main():
     for name in sorted(textures):
         entry = textures[name]
         hashes = [h.lower() for h in entry.get('hashes_rt64', [])]
-        color_path = next((color.paths[h] for h in hashes if h in color.paths), None)
+        color, color_path = next(((c, c.paths[h]) for c in colors for h in hashes if h in c.paths), (None, None))
         if color_path is None:
-            # Nothing to attach the maps to: the color pack does not replace this texture.
+            # Nothing to attach the maps to: no color pack replaces this texture.
             skipped.append(f'{name}: no color entry for hashes {hashes}')
             continue
         header = color.header(color_path)
@@ -166,7 +172,7 @@ def main():
         })
 
     if skipped:
-        print(f'Skipped {len(skipped)} textures the color pack does not replace:', file=sys.stderr)
+        print(f'Skipped {len(skipped)} textures no color pack replaces:', file=sys.stderr)
         for p in skipped:
             print('  ' + p, file=sys.stderr)
 
@@ -241,7 +247,7 @@ def main():
             'autoPath': 'rt64',
             'defaultOperation': 'stream',
             'defaultShift': 'half',
-            'hashVersion': color.hash_version,
+            'hashVersion': hash_version,
             'materialVersion': 1,
         },
         'textures': entries,
