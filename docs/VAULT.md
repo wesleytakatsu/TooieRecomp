@@ -73,6 +73,7 @@ Histórico de implementação e medições permanece no Git.
 - [[reverse-engineering/systems/transform-interpolation]] — Interpolação de transforms (RT64)
 - [[reverse-engineering/systems/model-renderer]] — Renderizador de modelos
 - [[reverse-engineering/systems/player-lighting]] — Iluminação por jogador e vértices de saída independentes
+- [[reverse-engineering/systems/lighting]] — Luz de vértice na CPU: fontes, conjuntos de luz e fórmula
 - [[reverse-engineering/systems/player-transformations]] — Transformações individuais e transição entre cenários
 - [[reverse-engineering/systems/geocmd]] — GeoCmd
 - [[reverse-engineering/systems/animation]] — Animação

@@ -4,7 +4,7 @@ description: "Per-player light state, CPU vertex-color lighting and private outp
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-11-02
+updated: 2026-11-10
 tags: [reverse-engineering, player, lighting, models, split-screen]
 ---
 
@@ -70,4 +70,4 @@ The user subsequently confirmed the visual lighting fix in story mode on Windows
 completed with exit 0 and recorded primary, LOD and secondary model-allocation paths. This does not establish a complete
 transformation/secondary-model playtest or Linux coverage; those remain `NOT_RUN`.
 
-See [model renderer](model-renderer.md) and [warp/player state](warp-and-player-position.md).
+See [model renderer](model-renderer.md), [warp/player state](warp-and-player-position.md) and [CPU vertex lighting](lighting.md) (light sources, light sets, the formula; `PlayerState+0x108` is a tint on the map ambient and directional light).
