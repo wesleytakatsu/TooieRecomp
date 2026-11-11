@@ -94,6 +94,21 @@ class ColorPack:
             return f.read(148)
 
 
+def write_orm_with_height(orm_src, height_src, dst):
+    """ORM RGB with the 16-bit height (white = top) in alpha, as an 8-bit RGBA PNG for texconv."""
+    import numpy as np
+    from PIL import Image
+    with Image.open(orm_src) as im:
+        orm = np.asarray(im.convert('RGB'))
+    with Image.open(height_src) as im:
+        height = np.asarray(im)
+    if height.shape[:2] != orm.shape[:2]:
+        raise RuntimeError(f'{height_src}: {height.shape[1]}x{height.shape[0]}, ORM is {orm.shape[1]}x{orm.shape[0]}')
+    if height.dtype != np.uint8:
+        height = np.clip(np.rint(height.astype(np.float64) / 257.0), 0, 255).astype(np.uint8)
+    Image.fromarray(np.dstack([orm, height]), 'RGBA').save(dst)
+
+
 def run_texconv(texconv, src, out_dir, fmt, mips):
     cmd = [texconv, '-nologo', '-y', '-f', fmt, '-m', str(mips), '--ignore-srgb', '-o', out_dir, src]
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -103,7 +118,9 @@ def run_texconv(texconv, src, out_dir, fmt, mips):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--pbr', required=True, help='folder with manifesto.json, Normal/ and ORM/')
+    ap.add_argument('--pbr', required=True, action='append',
+                    help='folder with manifesto.json, Normal/, ORM/ and optionally Height/; repeat for several folders '
+                         '(the first one listed that has a hash gives its maps)')
     ap.add_argument('--color-pack', required=True, action='append',
                     help='color pack (.rtz/.zip or folder) with the same hashes; repeat for several packs (the first '
                          'one listed that replaces a hash gives its color)')
@@ -121,12 +138,29 @@ def main():
     ap.add_argument('--jobs', type=int, default=4, help='parallel texconv processes')
     ap.add_argument('--limit', type=int, default=0, help='convert only the first N textures (testing)')
     ap.add_argument('--skip-existing', action='store_true', help='keep converted DDS files that already pass the check')
+    ap.add_argument('--only', action='append', default=[], help='convert only these texture names (testing)')
+    ap.add_argument('--no-parallax', action='store_true', help='ignore Height/ maps and "profundidade" (no depth)')
+    ap.add_argument('--parallax-water', action='store_true',
+                    help='also give a depth to "ondas_estaticas" (water) textures; off by default')
     args = ap.parse_args()
 
-    manifest_path = os.path.join(args.pbr, 'manifesto.json')
-    with open(manifest_path, encoding='utf-8') as f:
-        manifest = json.load(f)
-    textures = manifest['texturas']
+    # Every PBR folder's textures; a hash already claimed by an earlier folder is not taken again.
+    textures = []
+    claimed = set()
+    duplicates = 0
+    for pbr in args.pbr:
+        with open(os.path.join(pbr, 'manifesto.json'), encoding='utf-8') as f:
+            manifest = json.load(f)
+        for name in sorted(manifest['texturas']):
+            entry = manifest['texturas'][name]
+            hashes = [h.lower() for h in entry.get('hashes_rt64', [])]
+            if hashes and all(h in claimed for h in hashes):
+                duplicates += 1
+                continue
+            claimed.update(hashes)
+            textures.append((pbr, name, entry))
+    if duplicates:
+        print(f'{duplicates} textures already given by an earlier --pbr folder were not taken again', file=sys.stderr)
     colors = [ColorPack(p) for p in args.color_pack]
     hash_versions = {c.hash_version for c in colors}
     if len(hash_versions) != 1:
@@ -139,8 +173,7 @@ def main():
     jobs = []
     problems = []
     skipped = []
-    for name in sorted(textures):
-        entry = textures[name]
+    for pbr, name, entry in textures:
         hashes = [h.lower() for h in entry.get('hashes_rt64', [])]
         color, color_path = next(((c, c.paths[h]) for c in colors for h in hashes if h in c.paths), (None, None))
         if color_path is None:
@@ -158,6 +191,12 @@ def main():
             continue
         color_dir = os.path.dirname(color_path)
         prefix = (color_dir + '/') if color_dir else ''
+        depth = 0.0
+        height_src = None
+        if not args.no_parallax and entry.get('altura') and float(entry.get('profundidade', 0) or 0) > 0:
+            if entry.get('tratamento') != 'ondas_estaticas' or args.parallax_water:
+                depth = round(float(entry['profundidade']), 5)
+                height_src = os.path.join(pbr, entry['altura'])
         jobs.append({
             'name': name,
             'hashes': hashes,
@@ -165,8 +204,10 @@ def main():
             'width': width,
             'height': height,
             'mips': mips,
-            'normal_src': os.path.join(args.pbr, entry['normal']),
-            'orm_src': os.path.join(args.pbr, entry['orm']),
+            'normal_src': os.path.join(pbr, entry['normal']),
+            'orm_src': os.path.join(pbr, entry['orm']),
+            'height_src': height_src,
+            'depth': depth,
             'normal_rel': f'{prefix}Normal/{name}.dds',
             'orm_rel': f'{prefix}ORM/{name}.dds',
         })
@@ -182,6 +223,20 @@ def main():
             print('  ' + p, file=sys.stderr)
         return 1
 
+    rels = {}
+    for job in jobs:
+        for key in ('normal_rel', 'orm_rel'):
+            if job[key] in rels:
+                problems.append(f'{job["name"]}: {job[key]} also used by {rels[job[key]]}')
+            rels[job[key]] = job['name']
+    if problems:
+        print('Problems:', file=sys.stderr)
+        for p in problems:
+            print('  ' + p, file=sys.stderr)
+        return 1
+
+    if args.only:
+        jobs = [j for j in jobs if j['name'] in args.only]
     if args.limit > 0:
         jobs = jobs[:args.limit]
 
@@ -203,7 +258,15 @@ def main():
             out_dir = os.path.dirname(dst)
             os.makedirs(out_dir, exist_ok=True)
             src = job[kind + '_src']
+            if kind == 'orm' and job['height_src']:
+                # The height goes into the ORM map's alpha (TK64 materials, "depth").
+                tmp_dir = os.path.join(args.out, '_height_tmp')
+                os.makedirs(tmp_dir, exist_ok=True)
+                src = os.path.join(tmp_dir, f'{job["name"]}-{abs(hash(job["orm_rel"])) & 0xffffff:06x}.png')
+                write_orm_with_height(job['orm_src'], job['height_src'], src)
             run_texconv(args.texconv, src, out_dir, fmt_name, job['mips'])
+            if kind == 'orm' and job['height_src']:
+                os.remove(src)
             produced = os.path.join(out_dir, os.path.splitext(os.path.basename(src))[0] + '.dds')
             if os.path.normcase(produced) != os.path.normcase(dst):
                 os.replace(produced, dst)
@@ -238,6 +301,7 @@ def main():
                     'orm': job['orm_rel'],
                     **({'strength': args.strength} if args.strength != 1.0 else {}),
                     **({'specular': args.specular} if args.specular != 0.5 else {}),
+                    **({'depth': job['depth']} if job['depth'] > 0 else {}),
                     **({'kind': job['kind']} if job['kind'] else {}),
                 },
             })
@@ -270,7 +334,8 @@ def main():
     }
     with open(os.path.join(args.out, 'mod.json'), 'w', encoding='utf-8') as f:
         json.dump(mod, f, indent=2)
-    print(f'rt64.json: {len(entries)} material entries for {len(jobs)} textures')
+    print(f'rt64.json: {len(entries)} material entries for {len(jobs)} textures, '
+          f'{sum(1 for j in jobs if j["depth"] > 0)} with parallax depth')
 
     if args.texture_packer:
         for mode in ('--create-low-mip-cache', '--create-pack'):
