@@ -9,8 +9,8 @@ Input: a PBR folder with manifesto.json (keys: "texturas" -> name -> {"hashes_rt
 "dimensoes"}), Normal/ and ORM/ PNG maps (normal in tangent space, +Y up; ORM = R occlusion, G roughness, B metal),
 and the color pack (.rtz or folder) whose rt64.json maps the same hashes.
 
-For each texture the maps are converted with Microsoft texconv to the size and mip count of the color texture of the
-same hash: normal -> BC5_UNORM, ORM -> BC7_UNORM, linear (sRGB metadata ignored). They are placed next to the color
+For each texture the maps are converted with Microsoft texconv with the mip count of the color texture of the same
+hash (maps keep their size; a power-of-two size ratio to the color shifts the mip count): normal -> BC5_UNORM, ORM -> BC7_UNORM, linear (sRGB metadata ignored). They are placed next to the color
 path (<color dir>/Normal/<name>.dds, <color dir>/ORM/<name>.dds). Then RT64's texture_packer builds the low mip cache
 and the .rtz (zstd). Every DDS written is checked (format, size, mip count).
 
@@ -187,8 +187,21 @@ def main():
         width, height, mips, _ = dds_info(header)
         dims = entry.get('dimensoes')
         if dims and (dims[0] != width or dims[1] != height):
-            problems.append(f'{name}: maps are {dims[0]}x{dims[1]}, color is {width}x{height}')
-            continue
+            # Maps may be smaller or larger than the color by a power of two (same aspect): they keep their own size,
+            # and the mip chain loses or gains the same number of levels (TK64 samples maps at normalized UVs and
+            # streams them shifted by the size ratio).
+            shift = 0
+            mw, mh = dims
+            while mw * 2 <= width and mh * 2 <= height and shift > -8:
+                mw, mh, shift = mw * 2, mh * 2, shift - 1
+            while mw > width and mh > height and shift < 8 and mw % 2 == 0 and mh % 2 == 0:
+                mw, mh, shift = mw // 2, mh // 2, shift + 1
+            if (mw, mh) != (width, height):
+                problems.append(f'{name}: maps are {dims[0]}x{dims[1]}, color is {width}x{height} '
+                                '(only a power-of-two ratio with the same aspect is supported)')
+                continue
+            width, height = dims
+            mips = max(1, mips + shift)
         color_dir = os.path.dirname(color_path)
         prefix = (color_dir + '/') if color_dir else ''
         depth = 0.0

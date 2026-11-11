@@ -25,8 +25,9 @@ not have that support yet, so the packs only serve testing with a TK64 build.
 ## What it does
 
 1. Reads the size and mip count of each color DDS.
-2. Converts each map with `texconv` to that size and mip count: normal -> `BC5_UNORM`, ORM -> `BC7_UNORM`, linear
-   (`--ignore-srgb`). Maps go next to the color: `<color dir>/Normal/<name>.dds`, `<color dir>/ORM/<name>.dds`.
+2. Converts each map with `texconv` with that mip count: normal -> `BC5_UNORM`, ORM -> `BC7_UNORM`, linear
+   (`--ignore-srgb`). Maps are not resized: a map smaller or larger than its color by a power of two (same aspect,
+   `dimensoes` in the manifest) keeps its size and gets as many mips fewer or more; other sizes are refused. Maps go next to the color: `<color dir>/Normal/<name>.dds`, `<color dir>/ORM/<name>.dds`.
 3. Checks every DDS written (format, size, mips).
    With a height and a `profundidade` above 0, the height goes into the ORM map's alpha (8 bits) and the material
    gets `depth` (parallax); water (`ondas_estaticas`) gets none unless `--parallax-water`, and `--no-parallax` skips all.
