@@ -180,7 +180,8 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
     `0x80117DD0` stays installed. See [[reverse-engineering/systems/player-transformations]].
 - Limit: a LOD group with no `min = 0` child would draw nothing with the option on; none is known, and the
   attract demo showed no missing model (not an exhaustive map check). More geometry far away costs performance;
-  the 90 s attract demo kept ~59 FPS (D3D12, 2026-11-11).
+  the 90 s attract demo kept ~59 FPS (D3D12, 2026-11-11). The user confirmed Banjo stays detailed far from the
+  camera (Windows, 2026-11-11); other maps and objects and Linux are not yet checked.
 - `TOOIE_DIAG_DISTANT_DETAIL=1` (default off) prints every 5 s how many LOD node and player-level distances were
   seen and changed.
 - Implementation: `src/game/tooie_distant_detail.cpp`, `tooie_distant_detail_config.cpp`, registrations in
