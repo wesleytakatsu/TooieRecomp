@@ -65,6 +65,7 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 | **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode. | `IMPLEMENTED` |
 | **REQ-GFX-11** | Intro Cinematic Walls | 16:9 projection compensation implemented; edge geometry and ultrawide remain open. | `PARTIAL` |
 | **REQ-GFX-13** | Texture Streaming | Graphics option Off (default) / Minimum / Low / Medium / High / Maximum, sent to the renderer through `RT64::requestTextureStreamingQuality` (`lib/rt64/src/hle/rt64_host_texture_streaming.h`, TK64 patch `rt64-tk64-texture-streaming`). Off loads texture pack images whole, as before. On D3D12 and Vulkan only, for `stream` DDS replacements: each file is kept in video memory from the mip its on-screen detail needs (measured per triangle on the CPU), moved up at once and down after 3 s, with a budget of 2/3 of dedicated video memory. `TK64_TEXTURE_STREAMING=0` forces it off. On D3D11 and OpenGL (TK64's own backends) the option does nothing; there, texture pack images already showed black before this work (`main` with the same packs, 2026-11-10), noted in the READMEs and left for a later fix. Windows demo measurements only; visual review by the user pending. | `EXPERIMENTAL` |
+| **REQ-GFX-14** | Distant Detail | With the option on, models far from the camera keep their near level of detail: GeoCmd LOD nodes draw their near child and the player keeps its nearest model. Draw distance, culling, fade and actor updates are unchanged (Object Distance owns them). Details: [Distant detail](#distant-detail). | `EXPERIMENTAL` |
 | **REQ-GFX-12** | Object Distance | Persisted Original/2x/4x/Unlimited policy coordinating cell selection, models, sprites and actor gates; requires Expanded Memory active in process for 2x/4x/Unlimited with runtime low-memory guard; forces Original during story co-op; Windows user-validated cases, broader map/performance coverage unverified. | `EXPERIMENTAL` |
 
 ---
@@ -166,6 +167,25 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
   [[reverse-engineering/systems/model-renderer#Spatial collection and sprite paths (`PROVEN` static code)]].
 - Implementation: `src/game/tooie_object_distance.cpp` and `tooie_object_distance_config.cpp`; no generated C
   or vendored dependency edits. Regression: `tooie_object_distance_test`, using native functions and real Config.
+
+### Distant detail
+
+- Graphics registers `distant_detail` (Off/On, default Off). Off is the native behavior.
+- On changes exactly two native distance results, each only for the call its own function makes (matched by the
+  stack pointer of that frame, so nested calls in the child walk keep native values):
+  - GeoCmd LOD nodes (`0x800DD214`, `0x800DD2E8`, `0x800DD37C`): `func_800EEB40` returns at most `1e-4`, so a
+    child with `min = 0` is drawn and the far children are not. The native forced-index mode of `0x800DD214` is
+    untouched. See [[reverse-engineering/systems/geocmd#GeoCmd LOD node (`PROVEN` generated C)]].
+  - Player model level (`0x80094070`): `func_800EEAD4` returns 0, so the nearest level of the table at
+    `0x80117DD0` stays installed. See [[reverse-engineering/systems/player-transformations]].
+- Limit: a LOD group with no `min = 0` child would draw nothing with the option on; none is known, and the
+  attract demo showed no missing model (not an exhaustive map check). More geometry far away costs performance;
+  the 90 s attract demo kept ~59 FPS (D3D12, 2026-11-11).
+- `TOOIE_DIAG_DISTANT_DETAIL=1` (default off) prints every 5 s how many LOD node and player-level distances were
+  seen and changed.
+- Implementation: `src/game/tooie_distant_detail.cpp`, `tooie_distant_detail_config.cpp`, registrations in
+  `src/game/boot_hw_stubs.cpp` (the `func_800EEB40` hook composes with Object Distance's). Regression:
+  `tooie_distant_detail_test`.
 
 ### Widescreen framebuffer bounds
 

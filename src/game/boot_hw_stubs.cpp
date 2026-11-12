@@ -37,6 +37,7 @@
 #include "tooie_dev_enemy_ai.h"
 #include "tooie_dev_travel_menu.h"
 #include "tooie_object_distance.h"
+#include "tooie_distant_detail.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -6175,7 +6176,19 @@ void register_boot_lookup_stubs() {
         [](uint8_t* r, recomp_context* c) { tooie_object_distance::residency(r, c, func_80100230); });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E42C0), tooie_distance_view_scale);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFFB4), tooie_distance_radius);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40), tooie_distance_squared);
+    // Graphics > Distant Detail: the GeoCmd LOD nodes and the player model level each take one distance call.
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_distance_squared(r, c, tooie_distance_squared); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DD214),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_node(r, c, func_800DD214); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DD2E8),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_node(r, c, func_800DD2E8); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DD37C),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_node(r, c, func_800DD37C); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80094070),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::player_model_level(r, c, func_80094070); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEAD4),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::player_distance(r, c, func_800EEAD4); });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D3104), tooie_distance_collect);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D2F44), tooie_distance_cell);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E1C00), tooie_distance_sprite);

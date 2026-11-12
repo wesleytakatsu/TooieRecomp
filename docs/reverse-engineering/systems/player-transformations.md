@@ -18,6 +18,12 @@ Related: [player position](warp-and-player-position.md), [player lighting](playe
 `PROVEN` by static inspection of the generated MIPS instructions (not by a new runtime reproduction):
 
 - `PlayerState+0xA0 -> +0x29` is the form; `func_800A3410(self, form)` changes it.
+- `func_80094070(self, position)` (called from the player draw `func_80092444` at `0x80092524`) picks the
+  player's model level by camera distance: `func_800EEAD4(position, camera)` against the two thresholds of the
+  table at `0x80117DD0` (stride `0x10`) gives level -1, 0 or 1; `func_80093F30(self, level)` returns that level's
+  model and a different one is loaded asynchronously (`+0x110`, then `func_800941C8` installs it in `+0x10C`)
+  (`PROVEN` generated C). Distant Detail returns distance 0 to that call, keeping level -1 (`PROVEN_RUNTIME`
+  count: 30 calls per second, all changed).
 - `func_80092778(self)` reloads primary/LOD model assets for that form. Removing the secondary model uses
   `func_8009359C(self, 0)`. A form change also needs the new behavior state; replacing the model alone is insufficient.
 - `_badata_entrypoint_34`, syscall address `0x80084750`, returns the default state from the current form/context.

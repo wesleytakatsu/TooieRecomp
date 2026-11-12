@@ -16,6 +16,7 @@
 #include "tooie_dev_mode_ui.h"
 #include "tooie_startup.h"
 #include "tooie_object_distance.h"
+#include "tooie_distant_detail.h"
 #include "hle/rt64_host_endpoint_current.h"
 #include "hle/rt64_host_texture_streaming.h"
 #include "tooie_texture_streaming.h"
@@ -262,6 +263,7 @@ int banjo::get_bgm_volume() {
 static void add_graphics_options(recomp::config::Config &config) {
     tooie_startup::add_graphics_option(config);
     tooie_object_distance::add_config(config);
+    tooie_distant_detail::add_config(config);
     tooie_texture_streaming::add_config(config, [](uint32_t level) { RT64::requestTextureStreamingQuality(level); });
 #ifdef TOOIE_HAS_TK64_MATERIALS
     // TK64 materials (renderer with hle/rt64_host_materials.h only).

@@ -77,7 +77,7 @@ Host tests are marked `EXCLUDE_FROM_ALL`. Tests that exercise guest wrappers use
   - `tooie_dev_travel_menu_test` (native draw queue and Warp Pad/Silo callback regression, real Dev Mode guards)
   - `tooie_graphics_api_test` (platform-aware graphics API selection policy)
 - **Windows (`tools\windows\Build-Tooie.ps1 -Stage Test [-AllTests]`)**:
-  - Default runs 36 required verification tests (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
+  - Default runs 37 required verification tests (with `tooie_distant_detail_test`) (including Windows-only `rt64_hidden_window_test` and `tooie_startup_test`): the 19 above, `tooie_projection_reload_test`, `rt64_widescreen_bounds_test`, `rom_cart_import_test`, `tooie_texture_zip_mod_test`,
     `tooie_dev_cheats_test`, `tooie_expanded_memory_test` and the 5 language tests
     (`tooie_language_pack_test`, `tooie_text_font_map_test`, `tooie_language_import_test`, `tooie_font_sprite_test`,
     `tooie_language_bundle_test`). The Linux list does not include the language tests, the ZIP mod test, the cheats

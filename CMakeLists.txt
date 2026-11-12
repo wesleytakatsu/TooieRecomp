@@ -218,6 +218,8 @@ add_executable(TooieRecompiled
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_distant_detail.cpp
+    ${CMAKE_SOURCE_DIR}/src/game/tooie_distant_detail_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_texture_streaming_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_materials_config.cpp
     ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory_config.cpp
@@ -906,6 +908,9 @@ add_executable(tooie_story_coop_test
 target_include_directories(tooie_story_coop_test PRIVATE include ${N64MR}/N64Recomp/include ${N64MR}/thirdparty)
 target_link_libraries(tooie_story_coop_test PRIVATE RecompiledFuncs)
 set_target_properties(tooie_story_coop_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
+add_executable(tooie_distant_detail_test tests/tooie_distant_detail_test.cpp src/game/tooie_distant_detail.cpp)
+target_include_directories(tooie_distant_detail_test PRIVATE include ${N64MR}/N64Recomp/include ${N64MR}/thirdparty)
+set_target_properties(tooie_distant_detail_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 foreach(_t tooie_analog_camera_test tooie_dev_forms_test tooie_dev_cheats_test tooie_glowbo_collection_test
     tooie_dev_enemy_ai_test tooie_dev_travel_menu_test tooie_object_distance_test)
     target_sources(${_t} PRIVATE src/game/tooie_story_coop.cpp)
