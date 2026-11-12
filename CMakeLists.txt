@@ -626,6 +626,7 @@ foreach(_t bcf28_helpers_test core1_ra_wrappers_test stick_angle_thunk_test)
     target_sources(${_t} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/game/backpack_lookup_diag.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_object_distance.cpp
+        ${CMAKE_SOURCE_DIR}/src/game/tooie_distant_detail.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_expanded_memory.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera.cpp
         ${CMAKE_SOURCE_DIR}/src/game/tooie_analog_camera_hook.cpp
