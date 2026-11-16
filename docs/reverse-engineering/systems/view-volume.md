@@ -90,6 +90,22 @@ No TooieRecomp, para evitar os defeitos visuais do modo anamórfico e permitir q
 5. **Proteção de replay de demos**:
    Quando a engine está reproduzindo um demo gravado do attract mode (`0x80127632 == 5`), a substituição de aspecto é ignorada, mantendo os planos estritamente em 4:3 para evitar dessincronização dos movimentos gravados do jogador.
 
+## Letterboxed volumes and the lateral factor basis
+
+`PROVEN` (2026-11-16, temporary diagnostic on the three builders and the projection hook, Windows/D3D12, Expand,
+16:9 window): the title screen alternates two volumes. One is 4:3 (`+0xE8 = 1.3333`, FOV `40`); the 3D scene uses a
+letterboxed volume with `+0xE8 = 1.7674` and `+0xE4 = 30.707`, projection `P00 = 1.0303`, `P11 = 1.8210`
+(`P11/P00 = 1.7674`), scissor `0,0,304,228`. The T_INTRO compensation did not fire there (it read map `0`), so RT64
+alone widened the projection by `target / (4/3)`: visible aspect `1.7674 × 1.3333 = 2.357`.
+
+The former factor `k = target / +0xE8 = 1.0058` built planes for `2.044` (with margin 1.15), narrower than the
+picture, so geometry in the lateral bands was culled (missing side walls, always on the title screen). Discriminators:
+margin `TOOIE_TEST_WS_DRAW_MARGIN=2` (planes `3.56`) removed the defect; the corrected basis `k = target / (4/3)`
+(planes `2.71`) removed it; `TOOIE_TEST_WS_VI_BASIS=0` brought it back (user, Windows). Ordinary story gameplay
+volumes measured `1.3333`, where both bases agree, which is why the defect is rare in play.
+`UNKNOWN`: the map identity of the title screen and whether T_INTRO (map 395, with compensation) had the same
+symptom; there the VI basis is conservative. Ultrawide is covered by the same formula but was not shown in game.
+
 ## Lower-corner pickup visibility in widescreen
 
 `PROVEN` by Windows user acceptance (2026-11-01): preserving lateral framebuffer bounds resolves the

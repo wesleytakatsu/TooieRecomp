@@ -380,7 +380,14 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
 - `tools/build_linux.sh test` ainda não roda os 5 testes de idioma, o teste ZIP nem o de cheats (só o Windows os executa).
-- Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
+- Paredes laterais faltando na tela de título (Expand 16:9): corrigido, usuário confirmou no Windows (2026-11-16).
+  `PROVEN`: o volume em letterbox do título (aspecto `1,7674`, FOV `30,7`) recebia `k = alvo/aspecto = 1,0058`, mas o
+  RT64 alarga toda projeção por `alvo/(4/3)`; planos `2,044` contra imagem `2,357`. Agora `k = alvo/(4/3)`
+  (planos `2,71`); volumes 4:3 do jogo não mudam. Chave `TOOIE_TEST_WS_VI_BASIS=0` (bug volta, confirmado).
+  `p08_ws_frustum_test` 76/76. T_INTRO (mapa 395, com compensação) e ultrawide não vistos no jogo.
+  RE: [[reverse-engineering/systems/view-volume#Letterboxed volumes and the lateral factor basis]].
+- Água da mina (Glitter Gulch Mine) cortada por borda horizontal reta, partes perto da câmera somem: aberto, raro,
+  causa `UNKNOWN`. Volume do jogo normal mede 4:3, então a correção acima não o afeta. Falta ponto reproduzível.
 - Cortes laterais no widescreen: usuário aprovou a correção no Windows (2026-11-01), nos casos de coletáveis,
   inimigos e sombras em Jinjo Village, inclusive cortes perto/acima do meio. `PROVEN`: RSP enviava triângulos
   das faixas extras, mas descartava sua extensão Y ao calcular regiões/dimensões do framebuffer.

@@ -4490,6 +4490,14 @@ static bool tooie_ws_native_planes_enabled() {
     return enabled;
 }
 
+// Lateral factor basis (production default ON, TOOIE_TEST_WS_VI_BASIS=0 restores target / volume aspect).
+// RT64 Expand widens by target / 4:3 regardless of the guest viewport, so a letterboxed volume (title screen,
+// aspect ~1.767, vertical FOV ~30.7) must be widened by the same factor or its lateral geometry is culled.
+static bool tooie_ws_vi_basis_enabled() {
+    static const bool enabled = !tooie_ws_env_explicit_off("TOOIE_TEST_WS_VI_BASIS");
+    return enabled;
+}
+
 static bool tooie_ws_native_planes_active(const uint8_t* rdram) {
     if (!tooie_ws_native_planes_enabled()) {
         return false;
@@ -4509,7 +4517,7 @@ static float tooie_map_vis_k_for_volume(const uint8_t* rdram, uint32_t volume_pt
         source = 4.0f / 3.0f;
     }
     const float target = tooie_map_vis_target_aspect();
-    const float k = tooie_ws_frustum::k_for(source, target);
+    const float k = tooie_ws_frustum::k_for_volume(source, target, tooie_ws_vi_basis_enabled());
     return k > 1.0f ? k * tooie_ws_draw_lateral_margin() : k;
 }
 
@@ -4522,7 +4530,7 @@ static void tooie_ws_call_with_native_aspect(uint8_t* rdram, recomp_context* ctx
     const uint32_t aspect_addr = volume_ptr + 0xE8u;
     const float source = tooie_ws_read_f32(rdram, aspect_addr);
     const float k = (source > 0.0f && std::isfinite(source))
-        ? tooie_ws_frustum::k_for(source, tooie_map_vis_target_aspect()) : 1.0f;
+        ? tooie_ws_frustum::k_for_volume(source, tooie_map_vis_target_aspect(), tooie_ws_vi_basis_enabled()) : 1.0f;
     if (!(k > 1.0f)) {
         original(rdram, ctx);
         return;

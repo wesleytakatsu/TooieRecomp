@@ -77,6 +77,14 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
    - Production mechanism (default `1` / ON): The volume aspect ratio field at `0x8012D500+0xE8` is temporarily widened while horizontal boundary vector generators (`0x800CA1B0`, `0x800CA218`, `0x800CA2A8`, registered via `add_loaded_function` in `boot_hw_stubs.cpp`) execute:
      $$\text{aspect}_{\text{temp}} = \text{aspect} \times \left(\frac{\text{target\_aspect}}{\text{source\_aspect}}\right) \times \text{lateral\_margin}$$
      and restored immediately afterwards.
+   - Lateral factor basis (`TOOIE_TEST_WS_VI_BASIS`, default `1` / ON): the source aspect of the ratio above is the
+     4:3 VI aspect, $k = \text{target} / (4/3)$, because RT64 Expand widens every perspective draw
+     by that factor whatever the guest viewport. A letterboxed volume (title screen: aspect `1.7674`, vertical FOV
+     `30.707`) is therefore widened to `1.7674 × 4/3 × 1.15 = 2.71` and covers its visible `2.357` on a 16:9 window.
+     Volumes at 4:3 get the same factor as before; Original and targets at/below 4:3 still return $k = 1$. The same
+     basis feeds the per-test factor of `tooie_map_vis_k_for_volume` (attract demos, native planes off).
+     `TOOIE_TEST_WS_VI_BASIS=0` restores $k = \text{target} / \text{volume aspect}$. Where the T_INTRO compensation
+     (§3.2) narrows the projection, this basis is conservative (planes wider than the picture).
    - Projection matrix generation at `0x800CB124` remains at base 4:3 so RT64 handles widescreen projection cleanly.
    - Native game culling tests evaluate against the widened 16:9 planes.
    - When native planes are active, the per-test expansion factor $k$ in `func_800CAA24` and `func_800CACEC` collapses to $1.0$ in `tooie_map_vis_k_for_volume` (`src/game/tooie_ws_frustum.h`) to prevent double-widening.
