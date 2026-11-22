@@ -270,6 +270,9 @@ namespace plume {
 
     struct D3D12Buffer : RenderBuffer {
         ID3D12Resource *d3d = nullptr;
+
+        bool isValid() const override { return d3d != nullptr; }
+
         D3D12_RESOURCE_STATES resourceStates = D3D12_RESOURCE_STATE_COMMON;
         D3D12Device *device = nullptr;
         D3D12MA::Allocation *allocation = nullptr;
@@ -296,6 +299,9 @@ namespace plume {
 
     struct D3D12Texture : RenderTexture {
         ID3D12Resource *d3d = nullptr;
+
+        bool isValid() const override { return d3d != nullptr; }
+
         D3D12_RESOURCE_STATES resourceStates = D3D12_RESOURCE_STATE_COMMON;
         RenderTextureLayout layout = RenderTextureLayout::UNKNOWN;
         D3D12Device *device = nullptr;

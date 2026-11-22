@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-09
+updated: 2026-11-22
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -19,12 +19,13 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 | Área | Estado | Referência |
 | --- | --- | --- |
-| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (54 patches) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
+| Build standalone (vendorizado, kit-free) | Linux e Windows 11 x64 nativo; `VENDOR VERIFY OK` (59 patches, 2026-11-22) | [[specs/Tooie/build-and-generator]], [[specs/Tooie/packaging-and-dependencies]] |
 | ROM / extração | ROM canônica `Banjo-Tooie (USA).z64` (privada, git-ignored) → imagem descomprimida exigida pelo launcher | [[specs/Tooie/asset-and-licensing-manifest]] |
-| Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
+| Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; faixa de descarga limitada a `0x80800000` e sem `exit` em descarga parcial (crash nas trocas de mapa, corrigido 2026-11-17, testado pelo usuário no Windows); callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável; protótipo nativo de ZIP `audio.json`; usuário testou por cópia na pasta mods e logs confirmam os três MP3s; camadas superfície/água sincronizadas host-testadas e com relato positivo do usuário no Windows; instalação pela UI exige tela inicial | [[specs/Tooie/audio-system]], [[specs/Tooie/modding-and-extensions]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
-| Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
+| Interpolação (60/120 FPS) | pareamento ordenado + repareamento de calls trocados (fogo das tochas de Mayahem: glitch reduzido, resíduo `UNKNOWN`, 2026-11-17) + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
+| Streaming de texturas (TK64) | opção Graphics > Texture Streaming (Off padrão, Minimum..Maximum), patch `rt64-tk64-texture-streaming` (TK64 `1fd8ca8`): mip por arquivo conforme a distância, orçamento de 2/3 da VRAM, só D3D12/Vulkan. Demo com o pacote Jinjo Village HD (Windows, D3D12): de 519–664 MiB para 128–247 MiB no Maximum; 36/36 testes. Visual do usuário pendente; Linux `NOT_RUN`. RivaTuner (RTSS) derruba qualquer D3D12 neste PC. Em OpenGL e D3D11 as texturas de pacotes já ficavam pretas antes (falha anterior, aviso nos READMEs, correção futura); mips parciais só em tamanhos múltiplos do bloco (TK64 `4841197`, patch `rt64-tk64-stream-whole-block-mips`): linhas escuras com arquivos 1252 sumiram no teste do usuário (Windows, 2026-11-22) | [[specs/Tooie/graphics-and-presentation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
 | Idiomas do jogo | EN; pt-BR/FR/DE/ES, italiano em rascunho e japonês em `assets/languages/*.tlpb`; só ROM USA. Japonês distribuído por decisão do usuário (2026-11-09) só com texto, fontes originais e logo do título (`0x8A8`); demais gráficos regionais ficam USA. Bundle 480.746 bytes, SHA-256 `551451b5…6cad`, 2.255 assets; layout na tela pendente. Italiano: 2.434 assets, título HD aprovado pelo usuário; revisão editorial pendente | [[specs/Tooie/language-packs]], [[reverse-engineering/systems/text-and-fonts]] |
@@ -32,7 +33,8 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Modding | `.rtz` e ZIP original com raiz interna RT64; cópia manual, instalação pela interface e ativação/desativação de BT Reloaded 0.1.1 validadas pelo usuário no Windows (2026-10-30); Linux e reordenação `NOT_RUN`; resto da API herdado e não validado | [[specs/Tooie/modding-and-extensions]] |
 | Dev Mode (menu ESC) | aba com aviso a aceitar; `Warp` salva, renomeia, exclui e teleporta para posições (`dev_warps.json`), inclusive entre mapas pelo `gcgoto` do jogo (posiciona 2 s depois de a fase nova carregar); validado nos demos e com save real no Windows pelo usuário; salvar com o jogo pausado (Start) `NOT_RUN`. `Cheats`: Debug Button (entrada nova dos controles, padrão R3/T) + direção do D-pad escolhida por cheat (`dev_cheats.json`); cheats `Fly` (estado de decolagem `0x23` do pad de voo) e `Breegull Blaster` (liga com `0xC8`, desliga com `0xC9` e recarrega o modelo), validados pelo usuário no Windows (2026-10-30); o Warp não anda com o Blaster ligado. Navegação do modal Warp presa ao modal (cima/baixo: posições; lados: Teleport/Rename/Delete; rolagem segue o foco; alavanca direita rola; Back/B fecha o modal; patch `recompfrontend-ui-scroll-top`): build e testes Windows, teste no jogo `PENDING_USER` | [[specs/Tooie/window-ui-and-config]], [[reverse-engineering/systems/warp-and-player-position]] |
 | Memória expandida | General > Expanded Memory (experimental), padrão Off, vale após reiniciar; heap do jogo em `0x8080C000..0x81000000` (~7.95 MiB). Distância 2x/4x/Ilimitada exige a opção ativa; guarda de memória livre 768/256 KiB; co-op de história força distância Original. Witchyworld com Ilimitado e co-op validados pelo usuário no Windows (2026-11-09); Linux/PortMaster `NOT_RUN` | [[specs/Tooie/runtime-and-overlays#3.4 Guest heap layout and expansion]], [[specs/Tooie/window-ui-and-config]], [[specs/Tooie/graphics-and-presentation#3.1.1 Object distance]], [[reverse-engineering/systems/guest-heap]] |
-| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 35 obrigatórios (inclui memória expandida, câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
+| Detalhe distante | Graphics > Distant Detail (experimental), padrão Off: modelos longe da câmera mantêm o nível de detalhe próximo (nós de LOD do GeoCmd e modelo do jogador). Não muda distância de desenho. Ganchos conferidos no demo; usuário confirmou o Banjo detalhado de longe (Windows, 2026-11-11); outros mapas/objetos e Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation#Distant detail]] |
+| Testes | Windows `Build-Tooie.ps1 -Stage Test`: 37 obrigatórios (inclui memória expandida, câmera analógica/entrada SDL real, bounds do RSP, bancos de recarga P/V, distância de objetos, 5 de idioma, regressões de projeção/Glowbo/IA/menu de viagem e Win32 `rt64_hidden_window_test`); Linux `build_linux.sh test`: 22/22 PASS em `0f7230a` (2026-11-07); remoto registra relato geral de funcionamento pelo usuário, sem matriz por API | [[specs/Tooie/testing-and-oracle]] |
 
 ## Idiomas em arquivos (2026-11-08)
 
@@ -178,6 +180,20 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
+- Versão `0.1.8`; pré-release Windows x64 e PortMaster
+  (https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.8) em 2026-11-22, a partir da PR #23, que integrou
+  todas as branches abertas (streaming de texturas da PR #22, ferramentas de materiais, Distant Detail, correção dos
+  planos laterais do widescreen, crash nas trocas de mapa, repareamento das tochas) e a correção das linhas do streaming
+  (`51f7ec6`). Notas em inglês e português: [[releases/v0.1.8]]. Tag `v0.1.8` em
+  `b2dd796c38ced79c620966fb3eac4cc6cdb64bec`, commit empacotado. Windows: 37/37 + 15/15 testes, `VENDOR VERIFY OK`
+  (59 patches), auditoria dos 118 arquivos; PortMaster: build cruzado (121 arquivos, glibc 2.35), não executado num
+  aparelho. Sem pacotes Linux x64. Depois da release não ficou nenhuma PR aberta nem branch além da `main`.
+- `BanjoTooieRecompiled-v0.1.8-Windows-x64.zip`: 24229778 bytes, SHA-256
+  `ae989a8c4fc48c5c42ee8c63bc8ec46f74e8cfbc06bbc5c8e319d31b6b992579`; executável
+  `478d8ee0bcde926948c0981542efd734124bb79c6efc7773ba156526fa919384`.
+- `BanjoTooieRecompiled-v0.1.8-Linux-arm64-PortMaster.zip`: 13261468 bytes, SHA-256
+  `f8fc233a43a1a15628021328f598b3ffe272fe9c1a2ab20ffa6838a034708df7`. `BUILD-INFO.txt` dos dois pacotes: commit da tag,
+  versão `0.1.8`, zero arquivos sujos.
 - Versão `0.1.7`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.7)
   em 2026-11-09, com o japonês incluído (texto, fontes e logo do título). Uma v0.1.8 publicada por engano no mesmo dia
   foi removida e unida à v0.1.7 a pedido do usuário. Notas em inglês e português: [[releases/v0.1.7]].
@@ -270,6 +286,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Pendências conhecidas
 
+- Interpolação: fogo das tochas de Mayahem Temple (`1D15`/`1D16`) ainda sai de posição em quadros isolados em
+  algumas posições de câmera, menos que antes do repareamento de calls trocados (`rt64-p09-reorder-swapped-calls`).
+  Causa do resíduo `UNKNOWN`; o usuário pediu para deixar assim por enquanto (2026-11-17). Próximo discriminador:
+  rodar com `TOOIE_DIAG_P09_REORDER=1` no ponto do glitch e ver se o quadro errado tem repareamento.
 - Memória expandida: com `Unlimited` no heap nativo (~2.78 MiB), Witchyworld esgotava o heap (crash, carga lenta,
   jiggy da transição e modelo de inimigo ausentes). Co-op de história com distância estendida fechava o jogo; causa
   `UNKNOWN`, contornada forçando Original. Linux/PortMaster com heap expandido `NOT_RUN`.
@@ -378,7 +398,14 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 - Validação no Linux (feita pelo usuário no PC Linux; nunca WSL) de widescreen, interpolação, desempenho, multijogador e
   idiomas: `NOT_RUN`. Depois dela, gerar e publicar pacotes Linux novos na release.
 - `tools/build_linux.sh test` ainda não roda os 5 testes de idioma, o teste ZIP nem o de cheats (só o Windows os executa).
-- Paredes do intro em 16:9 (`T_INTRO`) e ultrawide (> 16:9): resíduo separado, não tratado.
+- Paredes laterais faltando na tela de título (Expand 16:9): corrigido, usuário confirmou no Windows (2026-11-16).
+  `PROVEN`: o volume em letterbox do título (aspecto `1,7674`, FOV `30,7`) recebia `k = alvo/aspecto = 1,0058`, mas o
+  RT64 alarga toda projeção por `alvo/(4/3)`; planos `2,044` contra imagem `2,357`. Agora `k = alvo/(4/3)`
+  (planos `2,71`); volumes 4:3 do jogo não mudam. Chave `TOOIE_TEST_WS_VI_BASIS=0` (bug volta, confirmado).
+  `p08_ws_frustum_test` 76/76. T_INTRO (mapa 395, com compensação) e ultrawide não vistos no jogo.
+  RE: [[reverse-engineering/systems/view-volume#Letterboxed volumes and the lateral factor basis]].
+- Água da mina (Glitter Gulch Mine) cortada por borda horizontal reta, partes perto da câmera somem: aberto, raro,
+  causa `UNKNOWN`. Volume do jogo normal mede 4:3, então a correção acima não o afeta. Falta ponto reproduzível.
 - Cortes laterais no widescreen: usuário aprovou a correção no Windows (2026-11-01), nos casos de coletáveis,
   inimigos e sombras em Jinjo Village, inclusive cortes perto/acima do meio. `PROVEN`: RSP enviava triângulos
   das faixas extras, mas descartava sua extensão Y ao calcular regiões/dimensões do framebuffer.
@@ -529,13 +556,20 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 ## Planejamento visual e atmosfera
 
 - Guia em [[future/visual-atmosphere/README]], com um documento por melhoria, arquitetura, perfis por cenário e matriz de aceite.
-  Escopo atual: documentação; novas texturas e efeitos não implementados. Ray tracing explicitamente excluído.
+  Efeitos de iluminação e atmosfera continuam como propostas; ray tracing explicitamente excluído.
+  Pacotes de textura HD são produzidos fora do repositório e não entram nas releases por enquanto (decisão do usuário,
+  2026-11-22).
 - Inclui restauração com IA de chão/paredes, luz, água, chuva, dia/noite cosmético, vento na vegetação,
   terra/poeira do teto da mina, folhas e outros efeitos locais. Compatibilidade precisa de aceite por sala e plataforma.
 - Revisão: [[future/visual-atmosphere/implementation-roadmap]] separa texturas, atmosfera e integração raster;
   qualidade/orçamento e critérios de simplificar/adiar explícitos. Reações de contato e feixes de luz são propostas posteriores.
-- Próxima ação do plano: catalogar 3–5 texturas de chão/paredes de Mayahem Temple, com originais, hashes e usos conferidos;
-  provar substituição sem IA antes de ampliar e crescer para 20–30. Prioridade de release abaixo preservada.
+- `PROVEN` (`STATIC_ROM` / `STATIC_MIPS`, 2026-11-11): descritores de animação em `model +0x2C` alimentam
+  os segmentos `15 - i`; a extração limitada ao segmento 2 omitia quadros. O passo inclui paletas por quadro.
+  Ver a seção "Animated texture segments" em [[reverse-engineering/assets/models]].
+- Fora da `main` (2026-11-22): o suporte a modelos de personagem por mod (`tooie_models.btcp`) e as correções de
+  textura que existem só no TK64 (linhas pretas no streaming, falha de alocação, primeiro mip, margens) não foram
+  integrados; voltam com a release das texturas. Materiais TK64 (normal map/POM) não estão em `lib/rt64`, então a opção
+  Graphics > Materials não aparece na build padrão.
 
 ## Notas operacionais
 

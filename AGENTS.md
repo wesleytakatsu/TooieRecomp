@@ -35,7 +35,9 @@ Do not reopen conclusions explicitly marked `REFUTED` or `CORRECTED/SUPERSEDED` 
 - Interpolation: RT64 pairs untagged WORLD transforms by draw order and applies the P09 guards (align, camera cut, segment
   and joint coherence, spike guard); the elementwise closure guard is default OFF. See
   `docs/specs/Tooie/graphics-and-presentation.md`.
-- Intro walls in 16:9 (`T_INTRO`) and ultrawide (> 16:9) are a separate open residual.
+- Lateral plane factor uses the 4:3 VI basis (`k = target / (4/3)`, as RT64 Expand widens), not the volume aspect:
+  letterboxed volumes (title screen, aspect ~1.767) were under-widened and lost side walls. Kill switch
+  `TOOIE_TEST_WS_VI_BASIS=0`. Mine water cut by a horizontal edge is a separate open residual.
 
 ## Source-of-truth hierarchy
 

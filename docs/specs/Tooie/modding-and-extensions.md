@@ -82,7 +82,11 @@ struct ExtensionContext {
 
 ### 3.3 Texture Pack Container Format (`.rtz`)
 - **Container**: ZIP archive formatted with `.rtz` extension.
-- **Manifest**: Contains `rt64.json` defining texture hashes, mipmap specifications, and PBR material definitions.
+- **Manifest**: Contains `rt64.json` mapping texture hashes to image paths, with per-texture operation (`stream`,
+  `preload`, `stall`) and shift. `CORRECTED` (2026-11-10): RT64 has no material (PBR) definitions in `rt64.json`.
+- **For texture streaming** (Graphics > Texture Streaming, REQ-GFX-13): ship DDS (BC7) with a complete mip chain and the
+  `stream` operation; generate the low mip cache with RT64's `texture_packer`. PNG files and files without mips always
+  load whole.
 - **Layout**: `rt64.json` (`configuration.hashVersion` = 5, the current RT64 TMEM hash) plus `.png`/`.dds` files; each
   `textures[]` entry maps `hashes.rt64` (16 hex digits) to a `path`. `mod.json` is optional for `.rtz`: without it the
   mod id is the file stem. With it, `game_id` must be `bt`.

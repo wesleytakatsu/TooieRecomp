@@ -28,6 +28,17 @@ inline float k_for(float source_aspect, float target_aspect) {
     return k;
 }
 
+// RT64 Expand widens every perspective draw horizontally by target / (4:3 VI aspect), whatever the guest
+// viewport aspect: a letterboxed scene (e.g. the title screen's ~16:9 viewport inside the 4:3 frame) keeps its
+// wider guest aspect and is widened by the same factor again. The plane expansion must match that factor;
+// target / volume_aspect under-widens such scenes and culls their lateral geometry.
+constexpr float kViAspect = 4.0f / 3.0f;
+
+// Lateral factor for the planes of a volume: target / VI aspect (vi_basis) or the former target / volume aspect.
+inline float k_for_volume(float volume_aspect, float target_aspect, bool vi_basis) {
+    return k_for(vi_basis ? kViAspect : volume_aspect, target_aspect);
+}
+
 // Normalises v in place; false (v untouched) when the length is non-finite or <= 1e-6.
 inline bool normalize(float v[3]) {
     const float len = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);

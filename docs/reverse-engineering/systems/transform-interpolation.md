@@ -4,7 +4,7 @@ description: "Como o RT64 interpola as transforms AUTO do Banjo-Tooie a 60/120 F
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-10-23
+updated: 2026-11-17
 tags: [reverse-engineering, interpolation, rt64]
 ---
 
@@ -28,9 +28,17 @@ Modelo atual (2026-10-23). Contrato das variáveis de ambiente: [[../../specs/To
 2. **Pareamento ordenado.** Para cada hash de draw call com a mesma quantidade de calls nos dois quadros, a k-ésima call atual
    pareia com a k-ésima anterior (o display list desenha um objeto sempre na mesma ordem). Esses pares têm prioridade.
    Candidatos cujo |det| muda 8× ou mais são rejeitados (`rt64_p09_ordered_match.h`).
-3. **Alinhamento com lacunas.** Grupos com contagem diferente (objeto ou parte apareceu/sumiu, troca de LOD) são alinhados
+3. **Troca de ordem em grupos iguais.** Calls de mesmo hash podem trocar de posição entre quadros: o hash ignora textura e
+   posição, então os fogos das tochas de Mayahem Temple (`1D15`/`1D16`) caem num grupo só e, em certas posições de câmera,
+   o k-ésimo fogo pareava com outra tocha e era desenhado no meio do caminho por um quadro (`STRONG_INFERENCE`: sintoma e
+   redução após o fix, sem log de quadro; ordem de desenho por distância à câmera `HYPOTHESIS`). Um call cujo par por ordem andou > 16
+   unidades enquanto outro call anterior do grupo está ≥ 4× mais perto é suspeito; os suspeitos são repareados entre si
+   pela posição desenhada mais próxima (centroide dos vértices do primeiro WORLD no mundo). Ossos com pivô comum e um
+   objeto rápido isolado mantêm o par por ordem. O usuário relatou que o glitch diminuiu mas não sumiu (2026-11-17);
+   causa do resíduo `UNKNOWN`.
+4. **Alinhamento com lacunas.** Grupos com contagem diferente (objeto ou parte apareceu/sumiu, troca de LOD) são alinhados
    em ordem por programação dinâmica, maximizando pares com origem a ≤ 96 unidades.
-4. **Fallback.** O que sobra usa o custo guloso original do RT64 (origem com predição de velocidade, orientação, tela).
+5. **Fallback.** O que sobra usa o custo guloso original do RT64 (origem com predição de velocidade, orientação, tela).
 
 ## Interpolação e guardas (`TransformProcessor`, ordem de aplicação)
 
@@ -73,6 +81,7 @@ matching de quadros nesse modo.
 
 ## Ferramentas (default OFF)
 
+- `TOOIE_DIAG_P09_REORDER=1`: cada repareamento de call trocado (hash, ranks, distâncias) no stderr.
 - `TOOIE_DIAG_P09_ROD_CLASSIFY=<arquivo>`: triângulos esticados (linhas `TRI`/`WL`), aberturas de junta (`JG`/`JGW`) e
   objetos conectados (linhas `OBJ`, objetos ≥ 20 WORLDs: movimento do centroide `mot`, fração na corda `along`, desvio
   `perp`, erro `rms`, contagens R/C/E/O/H, e movimento/fração de origem do primeiro WORLD `rmot`/`rlerp`).

@@ -64,6 +64,8 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 | **REQ-GFX-09** | Resolution 3x & 4x Scaling | Adds `Original3x` (720p) and `Original4x` (960p) base options with multiplicative downsampling. | `IMPLEMENTED` |
 | **REQ-GFX-10** | Aspect Ratio Window Auto-Resize | Original 4:3 and Expand 16:9 auto-resize host window dimensions in windowed mode. | `IMPLEMENTED` |
 | **REQ-GFX-11** | Intro Cinematic Walls | 16:9 projection compensation implemented; edge geometry and ultrawide remain open. | `PARTIAL` |
+| **REQ-GFX-13** | Texture Streaming | Graphics option Off (default) / Minimum / Low / Medium / High / Maximum, sent to the renderer through `RT64::requestTextureStreamingQuality` (`lib/rt64/src/hle/rt64_host_texture_streaming.h`, TK64 patch `rt64-tk64-texture-streaming`). Off loads texture pack images whole, as before. On D3D12 and Vulkan only, for `stream` DDS replacements: each file is kept in video memory from the mip its on-screen detail needs (measured per triangle on the CPU), moved up at once and down after 3 s, with a budget of 2/3 of dedicated video memory. `TK64_TEXTURE_STREAMING=0` forces it off. On D3D11 and OpenGL (TK64's own backends) the option does nothing; there, texture pack images already showed black before this work (`main` with the same packs, 2026-11-10), noted in the READMEs and left for a later fix. Windows demo measurements only; visual review by the user pending. | `EXPERIMENTAL` |
+| **REQ-GFX-14** | Distant Detail | With the option on, models far from the camera keep their near level of detail: GeoCmd LOD nodes draw their near child and the player keeps its nearest model. Draw distance, culling, fade and actor updates are unchanged (Object Distance owns them). Details: [Distant detail](#distant-detail). | `EXPERIMENTAL` |
 | **REQ-GFX-12** | Object Distance | Persisted Original/2x/4x/Unlimited policy coordinating cell selection, models, sprites and actor gates; requires Expanded Memory active in process for 2x/4x/Unlimited with runtime low-memory guard; forces Original during story co-op; Windows user-validated cases, broader map/performance coverage unverified. | `EXPERIMENTAL` |
 
 ---
@@ -75,6 +77,14 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
    - Production mechanism (default `1` / ON): The volume aspect ratio field at `0x8012D500+0xE8` is temporarily widened while horizontal boundary vector generators (`0x800CA1B0`, `0x800CA218`, `0x800CA2A8`, registered via `add_loaded_function` in `boot_hw_stubs.cpp`) execute:
      $$\text{aspect}_{\text{temp}} = \text{aspect} \times \left(\frac{\text{target\_aspect}}{\text{source\_aspect}}\right) \times \text{lateral\_margin}$$
      and restored immediately afterwards.
+   - Lateral factor basis (`TOOIE_TEST_WS_VI_BASIS`, default `1` / ON): the source aspect of the ratio above is the
+     4:3 VI aspect, $k = \text{target} / (4/3)$, because RT64 Expand widens every perspective draw
+     by that factor whatever the guest viewport. A letterboxed volume (title screen: aspect `1.7674`, vertical FOV
+     `30.707`) is therefore widened to `1.7674 × 4/3 × 1.15 = 2.71` and covers its visible `2.357` on a 16:9 window.
+     Volumes at 4:3 get the same factor as before; Original and targets at/below 4:3 still return $k = 1$. The same
+     basis feeds the per-test factor of `tooie_map_vis_k_for_volume` (attract demos, native planes off).
+     `TOOIE_TEST_WS_VI_BASIS=0` restores $k = \text{target} / \text{volume aspect}$. Where the T_INTRO compensation
+     (§3.2) narrows the projection, this basis is conservative (planes wider than the picture).
    - Projection matrix generation at `0x800CB124` remains at base 4:3 so RT64 handles widescreen projection cleanly.
    - Native game culling tests evaluate against the widened 16:9 planes.
    - When native planes are active, the per-test expansion factor $k$ in `func_800CAA24` and `func_800CACEC` collapses to $1.0$ in `tooie_map_vis_k_for_volume` (`src/game/tooie_ws_frustum.h`) to prevent double-widening.
@@ -166,6 +176,26 @@ TooieRecomp renders original Nintendo 64 display lists through `RT64`, translati
 - Implementation: `src/game/tooie_object_distance.cpp` and `tooie_object_distance_config.cpp`; no generated C
   or vendored dependency edits. Regression: `tooie_object_distance_test`, using native functions and real Config.
 
+### Distant detail
+
+- Graphics registers `distant_detail` (Off/On, default Off). Off is the native behavior.
+- On changes exactly two native distance results, each only for the call its own function makes (matched by the
+  stack pointer of that frame, so nested calls in the child walk keep native values):
+  - GeoCmd LOD nodes (`0x800DD214`, `0x800DD2E8`, `0x800DD37C`): `func_800EEB40` returns at most `1e-4`, so a
+    child with `min = 0` is drawn and the far children are not. The native forced-index mode of `0x800DD214` is
+    untouched. See [[reverse-engineering/systems/geocmd#GeoCmd LOD node (`PROVEN` generated C)]].
+  - Player model level (`0x80094070`): `func_800EEAD4` returns 0, so the nearest level of the table at
+    `0x80117DD0` stays installed. See [[reverse-engineering/systems/player-transformations]].
+- Limit: a LOD group with no `min = 0` child would draw nothing with the option on; none is known, and the
+  attract demo showed no missing model (not an exhaustive map check). More geometry far away costs performance;
+  the 90 s attract demo kept ~59 FPS (D3D12, 2026-11-11). The user confirmed Banjo stays detailed far from the
+  camera (Windows, 2026-11-11); other maps and objects and Linux are not yet checked.
+- `TOOIE_DIAG_DISTANT_DETAIL=1` (default off) prints every 5 s how many LOD node and player-level distances were
+  seen and changed.
+- Implementation: `src/game/tooie_distant_detail.cpp`, `tooie_distant_detail_config.cpp`, registrations in
+  `src/game/boot_hw_stubs.cpp` (the `func_800EEB40` hook composes with Object Distance's). Regression:
+  `tooie_distant_detail_test`.
+
 ### Widescreen framebuffer bounds
 
 RT64 retains the vertical extent of submitted perspective triangles wholly outside the native horizontal
@@ -240,6 +270,10 @@ namespace RT64 {
 - **Interpolation Matching & Guard Controls (P09)**:
   - `TOOIE_TEST_P09_ORDERED_MATCH`: Hash-ordered transform pairing for untagged (`G_EX_ID_AUTO`) WORLD transforms. Default ON; `"0"` reverts to greedy matching.
   - `TOOIE_TEST_P09_ALIGN_MATCH`: Sequence alignment with gaps via dynamic programming for asymmetric hash groups. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_REORDER_MATCH`: Re-pairs swapped calls in equal-count hash groups. A call whose ranked partner moved
+    > 16 units while another previous call of the group is >= 4x closer is a swap suspect; suspects are re-paired among
+    themselves by nearest drawn position (world-space centroid of the first WORLD's vertices). Groups above 256 calls
+    keep rank pairing. Default ON; `"0"` disables. Diagnostic: `TOOIE_DIAG_P09_REORDER=1` logs each re-pairing to stderr.
   - `TOOIE_TEST_P09_CAMERA_CUT`: Geometric camera cut detection for AUTO view matrices. Large angular/linear steps suppress camera interpolation for the frame. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_SEGMENT_COHERENCE`: Conditional release of translation interpolation for segmented model parts. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_JOINT_COHERENCE`: Skeletal joint hierarchy inference based on relative pivot invariance. Binds child origin to parent coordinate space. Default ON; `"0"` disables.

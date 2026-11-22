@@ -16,6 +16,9 @@
 #include "rt64_interpreter.h"
 #include "rt64_state.h"
 
+#include "tk64/tk64_texture_lod.h"
+#include "tk64/tk64_texture_residency.h"
+
 //#define LOG_SPECIAL_MATRIX_OPERATIONS
 
 namespace RT64 {
@@ -1127,6 +1130,29 @@ namespace RT64 {
             faceIndices.push_back(globalIndices[i]);
             minMatrix = std::min(minMatrix, worldIndices[globalIndex]);
             maxMatrix = std::max(maxMatrix, worldIndices[globalIndex]);
+        }
+
+        // TK64: texture level of detail of the triangle, only while the measurement is on (tk64_texture_lod.h).
+        if (textureState.on && tk64::textureLodMeasuring()) {
+            float triangleLod = tk64::TextureLodFull;
+            if ((geometryMode & G_TEXTURE_GEN) == 0) {
+                const auto &posTransformed = workload.drawData.posTransformed;
+                float clipPos[3][4], texU[3], texV[3];
+                for (int i = 0; i < 3; i++) {
+                    const uint32_t globalIndex = globalIndices[i];
+                    for (int c = 0; c < 4; c++) {
+                        clipPos[i][c] = float(posTransformed[globalIndex][c]);
+                    }
+
+                    texU[i] = tcFloats[globalIndex * 2 + 0];
+                    texV[i] = tcFloats[globalIndex * 2 + 1];
+                }
+
+                const interop::RSPViewport &lodViewport = viewportStack[viewportStackSize - 1];
+                triangleLod = tk64::triangleTexelLod(clipPos, texU, texV, float(lodViewport.scale.x), float(lodViewport.scale.y));
+            }
+
+            drawCall.minTexelLod = std::min(drawCall.minTexelLod, triangleLod);
         }
 
         bool visibleTri = true;

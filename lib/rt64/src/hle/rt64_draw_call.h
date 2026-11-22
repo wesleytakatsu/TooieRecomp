@@ -74,6 +74,10 @@ namespace RT64 {
         uint16_t minWorldMatrix;
         uint16_t maxWorldMatrix;
         uint32_t triangleCount;
+
+        // TK64: lowest texture level of detail of the call's triangles (tk64_texture_lod.h); TextureLodNone when not measured.
+        float minTexelLod;
+
         FixedRect rect;
         int16_t rectDsdx;
         int16_t rectDtdy;
@@ -156,6 +160,9 @@ namespace RT64 {
 
         // TK64: position of this tile inside its draw call, used as the texture slot when descriptor indexing is unavailable.
         uint8_t drawSlot;
+
+        // TK64: lowest level of detail of the draws that used this tile, in texels of the tile after its shift (tk64_texture_lod.h).
+        float texelLod;
 
         bool validTexcoords() const {
             return (minTexcoord.x <= maxTexcoord.x) && (minTexcoord.y <= maxTexcoord.y);

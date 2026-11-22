@@ -1,0 +1,35 @@
+diff --git a/librecomp/src/overlays.cpp b/librecomp/src/overlays.cpp
+index 53d0b8b..010d107 100644
+--- a/librecomp/src/overlays.cpp
++++ b/librecomp/src/overlays.cpp
+@@ -251,17 +251,24 @@ extern "C" void unload_overlays(int32_t ram_addr, uint32_t size) {
+     for (auto it = loaded_sections.begin(); it != loaded_sections.end();) {
+         const auto& section = sections_info.code_sections[it->section_table_index];
+ 
+-        // Check if the unloaded region overlaps with the loaded section
+-        if (ram_addr < (it->loaded_ram_addr + section.size) && (ram_addr + size) >= it->loaded_ram_addr) {
+-            // Check if the section isn't entirely in the loaded region
++        // Check if the unloaded region overlaps with the loaded section. Both ranges are half-open: a section that
++        // starts exactly where the unloaded region ends (the next block on the game's heap) does not overlap it.
++        if (ram_addr < (it->loaded_ram_addr + section.size) && (ram_addr + size) > it->loaded_ram_addr) {
++            // A section only partly inside the region does not belong to it (the host passed a range wider than the
++            // block): keep it registered instead of exiting the game, and record it.
+             if (ram_addr > it->loaded_ram_addr || (ram_addr + size) < (it->loaded_ram_addr + section.size)) {
+                 fprintf(stderr,
+-                    "Cannot partially unload section\n"
++                    "Partially unloaded section, kept\n"
+                     "  rom: 0x%08X size: 0x%08X loaded_addr: 0x%08X\n"
+                     "  unloaded_ram: 0x%08X unloaded_size : 0x%08X\n",
+                         section.rom_addr, section.size, it->loaded_ram_addr, ram_addr, size);
+-                assert(false);
+-                std::exit(EXIT_FAILURE);
++                if (FILE* log = fopen("overlay-unload.log", "a")) {
++                    fprintf(log, "partial unload: rom 0x%08X size 0x%08X loaded 0x%08X unloaded 0x%08X size 0x%08X\n",
++                        section.rom_addr, section.size, it->loaded_ram_addr, ram_addr, size);
++                    fclose(log);
++                }
++                ++it;
++                continue;
+             }
+             // Determine where each function was loaded to and remove that entry from the function map
+             for (size_t func_index = 0; func_index < section.num_funcs; func_index++) {

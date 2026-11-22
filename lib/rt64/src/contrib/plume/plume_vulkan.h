@@ -50,6 +50,9 @@ namespace plume {
 
     struct VulkanBuffer : RenderBuffer {
         VkBuffer vk = VK_NULL_HANDLE;
+
+        bool isValid() const override { return vk != VK_NULL_HANDLE; }
+
         VulkanDevice *device = nullptr;
         VulkanPool *pool = nullptr;
         VmaAllocation allocation = VK_NULL_HANDLE;
@@ -77,6 +80,9 @@ namespace plume {
 
     struct VulkanTexture : RenderTexture {
         VkImage vk = VK_NULL_HANDLE;
+
+        bool isValid() const override { return vk != VK_NULL_HANDLE; }
+
         VkImageView imageView = VK_NULL_HANDLE;
         VkFormat imageFormat = VK_FORMAT_UNDEFINED;
         VkImageSubresourceRange imageSubresourceRange = {};

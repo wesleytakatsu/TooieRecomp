@@ -119,6 +119,21 @@ copies index 0. Other DE448 sites pass 1 or 2. Player `80092444` does not
 jal DF4B0 immediately before DE448; the live mode during player draw is
 `UNKNOWN` even though type-2 slot 2 is DCF48.
 
+## GeoCmd LOD node (`PROVEN` generated C)
+
+Three handlers with the same body differ only in how they place the test point: `func_800DD214` (matrix transform
+`0x800193C4`), `func_800DD2E8` (scale `0x800DC580`) and `func_800DD37C` (`0x800DC5BC`). Node layout:
+
+- `+0x08` f32 max distance, `+0x0C` f32 min distance, `+0x10` vec3 test point, `+0x1C` u32 child offset (0: no
+  child, the node does nothing).
+- The test point goes to `0x8012CF70` (`0x8012CF60` for DD214); `func_800EEB40(point, 0x8012CE98)` gives the
+  squared camera distance `d^2`; the child list `node + child offset` is walked with `func_800DE2A4` when
+  `min^2 < d^2 && d^2 <= max^2`.
+- `func_800DD214` also has a forced-index mode: while `D_8012CA38` (`h`) is non-zero it counts LOD nodes in
+  `D_8012CA3A` and walks only the one whose count matches, without a distance test.
+- Distant Detail (Graphics option) keeps the near child by returning a tiny `d^2` to these calls only; runtime
+  count in the attract demo: up to 600 LOD node tests per 5 s, all changed (`PROVEN_RUNTIME`, 2026-11-11).
+
 ## GeoCmd `0x03` / `0x0A` / `0x11` / `0x0C`
 
 `0x03`: display lists (shared on ExtraSegments models). `0x0A`: attach /

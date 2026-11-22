@@ -13,6 +13,9 @@
 #include "tk64/tk64_depth_ram.h"
 #endif
 
+#include "tk64/tk64_texture_lod.h"
+#include "tk64/tk64_texture_residency.h"
+
 #include "im3d/im3d.h"
 #include "im3d/im3d_math.h"
 #include "imgui/imgui.h"
@@ -105,6 +108,7 @@ namespace RT64 {
         drawStatus.reset();
         drawCall.uid = 0;
         drawCall.triangleCount = 0;
+        drawCall.minTexelLod = tk64::TextureLodNone;
         drawCall.minWorldMatrix = USHRT_MAX;
         drawCall.maxWorldMatrix = 0;
         drawCall.rect.reset();
@@ -264,6 +268,7 @@ namespace RT64 {
                     const uint32_t callTileIndex = drawCall.tileIndex + t;
                     auto &dstCallTile = drawData.callTiles[callTileIndex];
                     dstCallTile.drawSlot = uint8_t(t);
+                    dstCallTile.texelLod = tk64::TextureLodNone;
 
                     // Failsafe cases.
                     if (tile.line == 0) {
@@ -480,6 +485,29 @@ namespace RT64 {
         drawCall.drawStatusChanges = drawStatus.changed;
         drawCall.callIndex = workload.gameCallCount++;
 
+        // TK64: hand the call's texture level of detail to its tiles, in texels of each tile after its shift.
+        if (tk64::textureLodMeasuring() && (drawCall.tileCount > 0)) {
+            float callLod = drawCall.minTexelLod;
+            if ((drawCall.rectDsdx != 0) || (drawCall.rectDtdy != 0)) {
+                callLod = std::min(callLod, tk64::rectangleTexelLod(drawCall.rectDsdx, drawCall.rectDtdy));
+            }
+
+            if (callLod != tk64::TextureLodNone) {
+                DrawData &drawData = workload.drawData;
+                for (uint32_t t = 0; t < drawCall.tileCount; t++) {
+                    const size_t tileIndex = size_t(drawCall.tileIndex) + t;
+                    if ((tileIndex >= drawData.callTiles.size()) || (tileIndex >= drawData.rdpTiles.size())) {
+                        break;
+                    }
+
+                    const interop::RDPTile &rdpTile = drawData.rdpTiles[tileIndex];
+                    const float shift = std::max(std::max(rdpTile.shifts, rdpTile.shiftt), 1e-6f);
+                    float &tileLod = drawData.callTiles[tileIndex].texelLod;
+                    tileLod = std::min(tileLod, callLod + std::log2(shift));
+                }
+            }
+        }
+
         // Add the draw call to the FB pair.
         GameCall gameCall;
         gameCall.callDesc = drawCall;
@@ -532,6 +560,7 @@ namespace RT64 {
         drawCall.minWorldMatrix = USHRT_MAX;
         drawCall.maxWorldMatrix = 0;
         drawCall.triangleCount = 0;
+        drawCall.minTexelLod = tk64::TextureLodNone;
     }
     
     void State::submitFramebufferPair(FramebufferPair::FlushReason flushReason) {

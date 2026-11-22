@@ -453,6 +453,7 @@ $script:RequiredTests = @(
     'tooie_language_bundle_test',
     'tooie_menu_policy_test',
     'tooie_menu_config_test',
+    'tooie_texture_streaming_test',
     'tintro_projection_policy_test',
     'tooie_projection_reload_test',
     'rt64_widescreen_bounds_test',
@@ -481,6 +482,7 @@ $script:RequiredTests = @(
     'tooie_audio_mod_test'
     'tooie_bgm_hooks_test'
     'tooie_bgm_volume_test'
+    'tooie_distant_detail_test'
 )
 # Bare invocation prints a usage line and exits non-zero. Built under -AllTests; not run.
 # tools/build_linux.sh does not run this set either.

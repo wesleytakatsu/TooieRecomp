@@ -22,6 +22,9 @@
 #include "rt64_shader_library.h"
 #include "rt64_texture.h"
 
+#include "tk64/tk64_texture_lod.h"
+#include "tk64/tk64_texture_residency.h"
+
 namespace interop {
     struct alignas(16) TextureDecodeCB {
         uint2 Resolution;
@@ -104,6 +107,10 @@ namespace RT64 {
         uint64_t hashFromRelativePath(uint32_t fileSystemIndex, const std::string &relativePath) const;
         void incrementReference(Texture *texture);
         void decrementReference(Texture *texture);
+
+        // TK64: the file of oldTexture is now served by newTexture (another top mip of the same file). Keeps the entry,
+        // its references and its place in the unused list. Returns false if oldTexture is not reference counted.
+        bool swapLoadedTexture(Texture *oldTexture, Texture *newTexture);
     };
 
     struct TextureMapAddition {
@@ -143,6 +150,11 @@ namespace RT64 {
         void clearReplacements();
         void add(uint64_t hash, uint64_t creationFrame, Texture *texture);
         void replace(uint64_t hash, Texture *texture, bool shiftedByHalf, bool referenceCounted);
+
+        // TK64: every cache entry replaced by oldTexture is replaced by newTexture instead, with its scale and dimensions.
+        // The caller retires oldTexture through evictedTextures. Returns false and changes nothing if the file is not
+        // reference counted.
+        bool swapReplacement(Texture *oldTexture, Texture *newTexture);
         bool use(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex, interop::float2 &textureScale, interop::float3 &textureDimensions, bool &textureReplaced, bool &hasMipmaps, bool &shiftedByHalf);
         bool evict(uint64_t submissionFrame, std::vector<uint64_t> &evictedHashes);
         void incrementLock();
@@ -156,6 +168,9 @@ namespace RT64 {
             uint32_t fileSystemIndex = 0;
             std::string relativePath;
             bool fromPreload = false;
+
+            // TK64: top mip to load; UINT32_MAX lets the stream thread choose (residency or test switch).
+            uint32_t firstMip = UINT32_MAX;
 
             StreamDescription() {
                 // Default constructor.
@@ -230,6 +245,27 @@ namespace RT64 {
         uint32_t lockCounter;
         bool developerMode;
 
+        // TK64: per-file residency of streamed replacements (tk64_texture_residency.h), keyed like the loaded texture map.
+        struct ResidencyEntry {
+            uint32_t fileSystemIndex = 0;
+            std::string relativePath;
+            tk64::TextureResidencyState state;
+            float updateLod = tk64::TextureLodNone;
+            bool drawn = false;
+            uint64_t loadedBytes = 0;
+        };
+
+        bool residencyUnderPressure = false;
+
+        std::mutex residencyMutex;
+        std::unordered_map<uint64_t, ResidencyEntry> residencyEntries;
+
+        struct ResidencySwap {
+            Texture *oldTexture = nullptr;
+            Texture *newTexture = nullptr;
+            uint64_t pathHash = 0;
+        };
+
         TextureCache(RenderWorker *directWorker, RenderWorker *copyWorker, uint32_t threadCount, const ShaderLibrary *shaderLibrary);
         ~TextureCache();
         void uploadThreadLoop();
@@ -238,6 +274,15 @@ namespace RT64 {
         void addResolvedPaths(uint64_t hash, uint32_t width, uint32_t height, uint32_t tlut, const LoadTile &loadTile, const std::vector<uint8_t> &bytesTMEM, bool decodeTMEM, std::vector<ReplacementResolvedPath> &resolvedPaths, uint64_t exclusiveDbHash = 0);
         bool useTexture(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex, interop::float2 &textureScale, interop::float3 &textureDimensions, bool &textureReplaced, bool &hasMipmaps, bool &shiftedByHalf);
         bool useTexture(uint64_t hash, uint64_t submissionFrame, uint32_t &textureIndex);
+
+        // TK64: records the level of detail a replacement texture was drawn at (tk64_texture_lod.h). Diagnostic only.
+        void recordReplacementLod(uint32_t textureIndex, float lod);
+
+        // TK64: decides top mip changes from the levels recorded since the last call and queues the loads. Called once per
+        // workload while streaming is on.
+        void updateResidency();
+        uint32_t residencyInitialTopMip(uint32_t fileSystemIndex, const std::string &relativePath);
+        void residencyLoadFinished(uint64_t pathHash, const Texture *loadedTexture);
         bool addReplacement(uint64_t hash, const std::string &relativePath, ReplacementShift shift);
         bool hasReplacement(uint64_t hash);
         void clearReplacementDirectories();
@@ -260,9 +305,9 @@ namespace RT64 {
         void setReplacementPoolMaxSize(uint64_t maxSize);
         void getReplacementPoolStats(uint64_t &usedSize, uint64_t &cachedSize, uint64_t &maxSize);
         Texture *getTexture(uint32_t textureIndex);
-        static void setRGBA32(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, uint32_t width, uint32_t height, uint32_t rowPitch, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
-        static bool setDDS(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
+        static bool setRGBA32(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, uint32_t width, uint32_t height, uint32_t rowPitch, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
+        static bool setDDS(Texture *dstTexture, RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *uploadResourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr, uint32_t firstMip = 0);
         static bool setLowMipCache(RenderDevice *device, RenderCommandList *commandList, const uint8_t *bytes, size_t byteCount, std::unique_ptr<RenderBuffer> &dstUploadResource, std::unordered_map<std::string, LowMipCacheTexture> &dstTextureMap, uint64_t &totalMemory);
-        static Texture *loadTextureFromBytes(RenderDevice *device, RenderCommandList *commandList, const std::vector<uint8_t> &fileBytes, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *resourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr);
+        static Texture *loadTextureFromBytes(RenderDevice *device, RenderCommandList *commandList, const std::vector<uint8_t> &fileBytes, std::unique_ptr<RenderBuffer> &dstUploadResource, RenderPool *resourcePool = nullptr, std::mutex *uploadResourcePoolMutex = nullptr, uint32_t firstMip = 0);
     };
 };

@@ -105,6 +105,7 @@ State transitions are managed through `park_canonical_mapping()`, `activate_cano
 - `ovl_unload(uint8_t* rdram, recomp_context* ctx)`:
   - If overlay is resident (`flags & 0x04`), returns immediately without unmapping.
   - Otherwise resets syscalls (`0x80082428`, `ovl_reset_syscalls`), unregisters native functions via `unload_overlays`, frees heap memory (`0x8001B084`, `heap_free`), and clears the residency cache entry.
+  - The unloaded range is `text_start` plus the registered section size (`dispatch.size`, which can exceed the package text). For a block in base RDRAM it is clamped to `0x80800000`: a block at the top of the native heap would otherwise reach into the canonical overlay window and hit its sections.
 - `func_80082088(uint8_t* rdram, recomp_context* ctx)`:
   - Host-safe replacement for the guest overlay relocator. Validates overlay header, entry points, and relocations at `text_start`.
 - `defragment_overlays`:
@@ -116,6 +117,9 @@ State transitions are managed through `park_canonical_mapping()`, `activate_cano
   - First 128 dispatches unconditionally log `[tooie] syscall dispatch`. Additional logging is gated by `TOOIE_DIAG_OVERLAY_LOG`.
 - Section Deduplication:
   - A local runtime patch (`vendor/patches-local/n64modernruntime-overlay-section-dedupe.patch`) modifies `librecomp/src/overlays.cpp` so that `load_overlay` skips duplicate `loaded_sections` entries for identical `(ram, section_index)`, eliminating multi-second stalls during map changes.
+- Unload Range (`vendor/patches-local/n64modernruntime-overlay-unload-range.patch`):
+  - `unload_overlays` treats both ranges as half-open (a section starting where the unloaded range ends does not overlap it).
+  - A section only partly inside the range is kept registered and recorded in `overlay-unload.log` (working directory) instead of `std::exit`, whose static destructors used to end in `abort()` (crash `0xC0000409` in `ucrtbase.dll`) on map changes.
 - Return Address Overrides:
   - Strong symbol definitions in `boot_hw_stubs.cpp` (`func_800137D4`, `func_800137F4`, `func_80013A5C`, `func_80013A7C`) interpose over weak compiler-generated stubs, correctly reproducing `$ra` preservation across `jr a1`/`jr a3` transitions.
 

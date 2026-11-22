@@ -119,6 +119,27 @@ void testKFor() {
     CHECK(approx(k_for(4.0f / 3.0f, HUGE_VALF), 1.0f, 1e-6f));
 }
 
+// Title-screen volume measured in game: letterboxed aspect 1.7674 inside the 4:3 frame. RT64 Expand widens it by
+// target / 4:3 like any perspective draw, so the visible aspect is 1.7674 * 4/3 = 2.357 on a 16:9 window.
+void testKForVolumeViBasis() {
+    using tooie_ws_frustum::k_for_volume;
+    const float target = 16.0f / 9.0f;
+    const float title = 1.7674f;
+    const float margin = 1.15f;
+    const float visible = title * (target / (4.0f / 3.0f));
+    CHECK(approx(k_for_volume(title, target, true), 4.0f / 3.0f, 1e-6f));
+    CHECK(title * k_for_volume(title, target, true) * margin > visible);
+    // Former basis (target / volume aspect) left the planes narrower than the picture: the reported defect.
+    CHECK(title * k_for_volume(title, target, false) * margin < visible);
+    // Ordinary 4:3 gameplay volumes keep the same factor under both bases.
+    CHECK(approx(k_for_volume(4.0f / 3.0f, target, true), k_for_volume(4.0f / 3.0f, target, false), 1e-6f));
+    // Original / at or below 4:3 targets never widen.
+    CHECK(approx(k_for_volume(title, 4.0f / 3.0f, true), 1.0f, 1e-6f));
+    CHECK(approx(k_for_volume(title, 5.0f / 4.0f, true), 1.0f, 1e-6f));
+    CHECK(approx(k_for_volume(title, std::nanf(""), true), 1.0f, 1e-6f));
+    CHECK(approx(k_for_volume(title, 21.0f / 9.0f, true), 1.75f, 1e-5f));
+}
+
 void testNormalize() {
     float v[3] = { 3.0f, 0.0f, 4.0f };
     CHECK(tooie_ws_frustum::normalize(v));
@@ -269,6 +290,7 @@ void testClassify() {
 
 int main() {
     testKFor();
+    testKForVolumeViBasis();
     testNormalize();
     testExpandHPlaneNoOp();
     testExpandHPlaneWidens();
