@@ -180,6 +180,20 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Release
 
+- Versão `0.1.8`; pré-release Windows x64 e PortMaster
+  (https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.8) em 2026-11-22, a partir da PR #23, que integrou
+  todas as branches abertas (streaming de texturas da PR #22, ferramentas de materiais, Distant Detail, correção dos
+  planos laterais do widescreen, crash nas trocas de mapa, repareamento das tochas) e a correção das linhas do streaming
+  (`51f7ec6`). Notas em inglês e português: [[releases/v0.1.8]]. Tag `v0.1.8` em
+  `b2dd796c38ced79c620966fb3eac4cc6cdb64bec`, commit empacotado. Windows: 37/37 + 15/15 testes, `VENDOR VERIFY OK`
+  (59 patches), auditoria dos 118 arquivos; PortMaster: build cruzado (121 arquivos, glibc 2.35), não executado num
+  aparelho. Sem pacotes Linux x64. Depois da release não ficou nenhuma PR aberta nem branch além da `main`.
+- `BanjoTooieRecompiled-v0.1.8-Windows-x64.zip`: 24229778 bytes, SHA-256
+  `ae989a8c4fc48c5c42ee8c63bc8ec46f74e8cfbc06bbc5c8e319d31b6b992579`; executável
+  `478d8ee0bcde926948c0981542efd734124bb79c6efc7773ba156526fa919384`.
+- `BanjoTooieRecompiled-v0.1.8-Linux-arm64-PortMaster.zip`: 13261468 bytes, SHA-256
+  `f8fc233a43a1a15628021328f598b3ffe272fe9c1a2ab20ffa6838a034708df7`. `BUILD-INFO.txt` dos dois pacotes: commit da tag,
+  versão `0.1.8`, zero arquivos sujos.
 - Versão `0.1.7`; [pré-release Windows x64 e PortMaster publicada](https://github.com/wesleytakatsu/TooieRecomp/releases/tag/v0.1.7)
   em 2026-11-09, com o japonês incluído (texto, fontes e logo do título). Uma v0.1.8 publicada por engano no mesmo dia
   foi removida e unida à v0.1.7 a pedido do usuário. Notas em inglês e português: [[releases/v0.1.7]].
