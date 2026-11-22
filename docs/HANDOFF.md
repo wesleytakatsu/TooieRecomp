@@ -542,13 +542,20 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 ## Planejamento visual e atmosfera
 
 - Guia em [[future/visual-atmosphere/README]], com um documento por melhoria, arquitetura, perfis por cenário e matriz de aceite.
-  Escopo atual: documentação; novas texturas e efeitos não implementados. Ray tracing explicitamente excluído.
+  Efeitos de iluminação e atmosfera continuam como propostas; ray tracing explicitamente excluído.
+  Pacotes de textura HD são produzidos fora do repositório e não entram nas releases por enquanto (decisão do usuário,
+  2026-11-22).
 - Inclui restauração com IA de chão/paredes, luz, água, chuva, dia/noite cosmético, vento na vegetação,
   terra/poeira do teto da mina, folhas e outros efeitos locais. Compatibilidade precisa de aceite por sala e plataforma.
 - Revisão: [[future/visual-atmosphere/implementation-roadmap]] separa texturas, atmosfera e integração raster;
   qualidade/orçamento e critérios de simplificar/adiar explícitos. Reações de contato e feixes de luz são propostas posteriores.
-- Próxima ação do plano: catalogar 3–5 texturas de chão/paredes de Mayahem Temple, com originais, hashes e usos conferidos;
-  provar substituição sem IA antes de ampliar e crescer para 20–30. Prioridade de release abaixo preservada.
+- `PROVEN` (`STATIC_ROM` / `STATIC_MIPS`, 2026-11-11): descritores de animação em `model +0x2C` alimentam
+  os segmentos `15 - i`; a extração limitada ao segmento 2 omitia quadros. O passo inclui paletas por quadro.
+  Ver a seção "Animated texture segments" em [[reverse-engineering/assets/models]].
+- Fora da `main` (2026-11-22): o suporte a modelos de personagem por mod (`tooie_models.btcp`) e as correções de
+  textura que existem só no TK64 (linhas pretas no streaming, falha de alocação, primeiro mip, margens) não foram
+  integrados; voltam com a release das texturas. Materiais TK64 (normal map/POM) não estão em `lib/rt64`, então a opção
+  Graphics > Materials não aparece na build padrão.
 
 ## Notas operacionais
 

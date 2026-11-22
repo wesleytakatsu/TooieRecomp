@@ -4,7 +4,7 @@ description: "Current knowledge of Mumbo geometry vs animation; feather nodes re
 status: current
 type: reverse-engineering
 project: TooieRecomp
-updated: 2026-09-02
+updated: 2026-11-12
 tags: [reverse-engineering, mumbo, characters]
 ---
 
@@ -41,6 +41,21 @@ from magic/gtype/bones if a Mumbo DE448 hits the player RA filter (it
 may not; filter is overlay-118 player draw).
 
 ## Modding relevance
+
+### Texture coverage and TMEM (`PROVEN`, `STATIC_ROM`)
+
+A census of the stored USA display lists finds 663 triangles in each resource:
+`0x665` has 551 texture-enabled and 112 vertex-colored triangles; `0x854`
+has 663 vertex-colored triangles and no native texture loads. These are full
+stored-list counts, not a capture of a selected live frame.
+
+The texture-enabled `0x665` path includes 64×64 CI4 images occupying all
+2,048 bytes of lower TMEM. The 1792..2047 pixel reservation used by the
+Banjo body extension is therefore not safe to assume for this resource.
+Texture replacement by native RT64 hashes does not require changing its mesh.
+The textureless `0x854` resource has no native pixel region to overwrite,
+but adding UVs there is a separate model replacement. This static coverage
+does not establish which resource a live NPC/player draw selects.
 
 **PROVEN ROLE:** two geometry resources (GeoCmd vs ExtraSegments) plus
 a locomotion animation `0xEC`.
