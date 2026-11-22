@@ -576,6 +576,12 @@ namespace RT64 {
         uploadResourcePool.reset(nullptr);
     }
 
+    // TK64: how many of a file's mips residency may pick as its top: only the ones setDDS uploads without padding.
+    static uint32_t tk64StreamableMipCount(const Texture *texture) {
+        const uint32_t mipCount = (texture->fullMipmaps != 0) ? texture->fullMipmaps : texture->mipmaps;
+        return (texture->streamableMips != 0) ? std::min(mipCount, texture->streamableMips) : mipCount;
+    }
+
     static uint32_t nextSizeAlignedTo(uint32_t size, uint32_t alignment) {
         if (size % alignment) {
             return size + (alignment - (size % alignment));
@@ -843,6 +849,20 @@ namespace RT64 {
 
         // TK64: optionally start at a smaller mip of the file (texture-lod.md); 0 loads the whole file as before.
         firstMip = tk64::textureFirstMip(firstMip, ddsDescriptor.numMips);
+
+        // TK64: a smaller top mip is only usable when its size is a whole number of blocks. Otherwise the texture would be
+        // created a few texels wider than the mip (313 -> 316 for a 1252 file) and every lower mip one or two columns off:
+        // repeating textures then show dark lines where they wrap, along polygon edges. Such files load from the top mip.
+        uint32_t streamableMips = 1;
+        while ((streamableMips < ddsDescriptor.numMips) &&
+            (((ddsDescriptor.width >> streamableMips) % blockWidth) == 0) && ((ddsDescriptor.width >> streamableMips) > 0) &&
+            (((ddsDescriptor.height >> streamableMips) % blockHeight) == 0) && ((ddsDescriptor.height >> streamableMips) > 0))
+        {
+            streamableMips++;
+        }
+
+        firstMip = std::min(firstMip, streamableMips - 1);
+        dstTexture->streamableMips = streamableMips;
 
         RenderTextureDesc desc;
         desc.dimension = toRenderDimension(ddsDescriptor.type);
@@ -1525,7 +1545,7 @@ namespace RT64 {
                     entry.relativePath = it->second->second.relativePath;
                     entry.state.currentTopMip = replacement->topMip;
                     entry.loadedBytes = replacement->memorySize;
-                    entry.state.mipCount = (replacement->fullMipmaps != 0) ? replacement->fullMipmaps : replacement->mipmaps;
+                    entry.state.mipCount = tk64StreamableMipCount(replacement);
                     entry.updateLod = std::min(entry.updateLod, fileLod);
                     entry.drawn = true;
                 }

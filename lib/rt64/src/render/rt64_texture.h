@@ -26,6 +26,8 @@ namespace RT64 {
         uint32_t fullWidth = 0;
         uint32_t fullHeight = 0;
         uint32_t fullMipmaps = 0;
+        // TK64: how many of the file's mips can be the top of an upload (sizes in whole blocks); 0 when unknown.
+        uint32_t streamableMips = 0;
         std::vector<uint8_t> bytesTMEM;
         bool decodeTMEM = false;
     };

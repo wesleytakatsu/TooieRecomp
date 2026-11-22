@@ -59,3 +59,4 @@ rt64	lib/rt64	patches-local/rt64-expanded-guest-rdram.patch	51c92007f84e428c71b3
 rt64	lib/rt64	patches-local/rt64-tk64-texture-streaming.patch	9fbfc47f681d99b2cb22c037fdd63bdd771fb260ee22b4a1c9c622a2e6393a7b	TK64@102a8a8 integrated tree
 N64ModernRuntime	lib/N64ModernRuntime	patches-local/n64modernruntime-overlay-unload-range.patch	60dc2e6f990ccb5014de36c4c28f337f8fdc87ea050d817a486efec038e91e84	integrated tree
 rt64	lib/rt64	patches-local/rt64-p09-reorder-swapped-calls.patch	d44f4e9fe5a0922e079bfb9ed322889bedf14089457aa70ecb499f882c8dbf36	a0b3523 integrated tree
+rt64	lib/rt64	patches-local/rt64-tk64-stream-whole-block-mips.patch	966622762f9e1160850a86bed4d5fe3f0a94e7ca672f2c9813aab0c3ca67c1e8	TK64@4841197 integrated tree
