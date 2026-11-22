@@ -1165,6 +1165,14 @@ extern "C" void ovl_unload(uint8_t* rdram, recomp_context* ctx) {
             mapping_size = dispatch.size;
         }
     }
+    // The registered section size can exceed the package text (trailing data), so for a block at the top of the
+    // native heap the range would run past the end of base RDRAM into the canonical overlay window at 0x80800000,
+    // whose sections are not part of this block. No block in base RDRAM extends past its end.
+    constexpr uint32_t kBaseRdramEnd = 0x80800000u;
+    const uint32_t text_start_u = static_cast<uint32_t>(text_start);
+    if (text_start_u < kBaseRdramEnd && text_start_u + mapping_size > kBaseRdramEnd) {
+        mapping_size = kBaseRdramEnd - text_start_u;
+    }
     if (text_start != 0 && mapping_size != 0) {
         unload_overlays(text_start, mapping_size);
     }
