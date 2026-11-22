@@ -46,6 +46,8 @@ Los gráficos, el audio y los datos del juego se leen y descomprimen directament
 - **Soporte para mandos modernos y teclado:** Compatibilidad con mandos mediante SDL2 y control configurable por teclado.
 - **Lanzador nativo:** Interfaz gráfica integrada con selector de ROM.
 - **Paquetes de texturas:** paquetes de texturas de RT64 (`.rtz`) desde el menú `Mods`.
+- **Paquetes de texturas en OpenGL o DirectX 11:** las texturas de los mods aún necesitan una corrección en esos modos
+  (algunas se ven negras). Usa Direct3D 12 o Vulkan con paquetes de texturas.
 - **Modo desarrollador (Dev Mode):** pestaña del menú ESC que se desbloquea tras un aviso. `Warp` guarda dónde está
   Banjo y lo teletransporta de vuelta más tarde, también desde otro nivel. Cambia el estado del juego directamente:
   guarda la partida antes de usarlo.

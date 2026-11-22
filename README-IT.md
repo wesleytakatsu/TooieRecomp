@@ -45,6 +45,8 @@ Grafica, audio e dati di gioco vengono letti e decompressi direttamente dalla RO
 - **Supporto per controller moderni e tastiera:** Supporto gamepad basato su SDL2 insieme a comandi da tastiera personalizzabili.
 - **Launcher nativo:** Launcher grafico integrato con selezione della ROM.
 - **Pacchetti di texture:** Pacchetti di texture RT64 (`.rtz`) tramite il menu di gioco `Mods`.
+- **Pacchetti di texture con OpenGL o DirectX 11:** le texture dei mod devono ancora essere corrette in queste modalità
+  (alcune appaiono nere). Usa Direct3D 12 o Vulkan con i pacchetti di texture.
 - **Dev Mode:** scheda del menu ESC sbloccata dopo un avviso. `Warp` salva la posizione attuale di Banjo ed esegue il
   teletrasporto in quel punto in seguito, anche a partire da un altro livello. Modifica direttamente lo stato del gioco:
   salva la partita prima di usarlo.

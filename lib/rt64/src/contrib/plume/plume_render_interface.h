@@ -26,6 +26,10 @@ namespace plume {
         virtual void setName(const std::string &name) = 0;
         virtual uint64_t getDeviceAddress() const = 0;
 
+        // TK64: false when the backend could not create the resource (for example out of video memory). Backends that do
+        // not report it are always valid.
+        virtual bool isValid() const { return true; }
+
         // Concrete implementation shortcuts.
         inline RenderBufferReference at(uint64_t offset) const {
             return RenderBufferReference(this, offset);
@@ -40,6 +44,10 @@ namespace plume {
         virtual ~RenderTexture() { }
         virtual std::unique_ptr<RenderTextureView> createTextureView(const RenderTextureViewDesc &desc) const = 0;
         virtual void setName(const std::string &name) = 0;
+
+        // TK64: false when the backend could not create the resource (for example out of video memory). Backends that do
+        // not report it are always valid.
+        virtual bool isValid() const { return true; }
     };
 
     struct RenderAccelerationStructure {

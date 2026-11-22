@@ -37,6 +37,7 @@
 #include "tooie_dev_enemy_ai.h"
 #include "tooie_dev_travel_menu.h"
 #include "tooie_object_distance.h"
+#include "tooie_distant_detail.h"
 
 namespace banjo {
 void register_boot_lookup_stubs();
@@ -4489,6 +4490,14 @@ static bool tooie_ws_native_planes_enabled() {
     return enabled;
 }
 
+// Lateral factor basis (production default ON, TOOIE_TEST_WS_VI_BASIS=0 restores target / volume aspect).
+// RT64 Expand widens by target / 4:3 regardless of the guest viewport, so a letterboxed volume (title screen,
+// aspect ~1.767, vertical FOV ~30.7) must be widened by the same factor or its lateral geometry is culled.
+static bool tooie_ws_vi_basis_enabled() {
+    static const bool enabled = !tooie_ws_env_explicit_off("TOOIE_TEST_WS_VI_BASIS");
+    return enabled;
+}
+
 static bool tooie_ws_native_planes_active(const uint8_t* rdram) {
     if (!tooie_ws_native_planes_enabled()) {
         return false;
@@ -4508,7 +4517,7 @@ static float tooie_map_vis_k_for_volume(const uint8_t* rdram, uint32_t volume_pt
         source = 4.0f / 3.0f;
     }
     const float target = tooie_map_vis_target_aspect();
-    const float k = tooie_ws_frustum::k_for(source, target);
+    const float k = tooie_ws_frustum::k_for_volume(source, target, tooie_ws_vi_basis_enabled());
     return k > 1.0f ? k * tooie_ws_draw_lateral_margin() : k;
 }
 
@@ -4521,7 +4530,7 @@ static void tooie_ws_call_with_native_aspect(uint8_t* rdram, recomp_context* ctx
     const uint32_t aspect_addr = volume_ptr + 0xE8u;
     const float source = tooie_ws_read_f32(rdram, aspect_addr);
     const float k = (source > 0.0f && std::isfinite(source))
-        ? tooie_ws_frustum::k_for(source, tooie_map_vis_target_aspect()) : 1.0f;
+        ? tooie_ws_frustum::k_for_volume(source, tooie_map_vis_target_aspect(), tooie_ws_vi_basis_enabled()) : 1.0f;
     if (!(k > 1.0f)) {
         original(rdram, ctx);
         return;
@@ -6175,7 +6184,19 @@ void register_boot_lookup_stubs() {
         [](uint8_t* r, recomp_context* c) { tooie_object_distance::residency(r, c, func_80100230); });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E42C0), tooie_distance_view_scale);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EFFB4), tooie_distance_radius);
-    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40), tooie_distance_squared);
+    // Graphics > Distant Detail: the GeoCmd LOD nodes and the player model level each take one distance call.
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEB40),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_distance_squared(r, c, tooie_distance_squared); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DD214),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_node(r, c, func_800DD214); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DD2E8),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_node(r, c, func_800DD2E8); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800DD37C),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::lod_node(r, c, func_800DD37C); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x80094070),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::player_model_level(r, c, func_80094070); });
+    recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800EEAD4),
+        [](uint8_t* r, recomp_context* c) { tooie_distant_detail::player_distance(r, c, func_800EEAD4); });
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D3104), tooie_distance_collect);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800D2F44), tooie_distance_cell);
     recomp::overlays::add_loaded_function(static_cast<int32_t>(0x800E1C00), tooie_distance_sprite);
