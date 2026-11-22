@@ -4,7 +4,7 @@ description: "Estado atual do TooieRecomp por área: build Linux/Windows, runtim
 status: current
 type: handoff
 project: TooieRecomp
-updated: 2026-11-10
+updated: 2026-11-22
 tags: [tooie-recomp, handoff, status]
 ---
 # Handoff — TooieRecomp
@@ -24,7 +24,7 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 | Runtime e overlays | dispatch de syscalls de overlay, `ovl_load`/`ovl_unload` host-aware; dedupe de `loaded_sections`; faixa de descarga limitada a `0x80800000` e sem `exit` em descarga parcial (crash nas trocas de mapa, corrigido 2026-11-17, testado pelo usuário no Windows); callback `on_rom_loaded` no librecomp | [[specs/Tooie/runtime-and-overlays]] |
 | Áudio | `n_aspMain` + fila de saída corrigida; BGM controlável; protótipo nativo de ZIP `audio.json`; usuário testou por cópia na pasta mods e logs confirmam os três MP3s; camadas superfície/água sincronizadas host-testadas e com relato positivo do usuário no Windows; instalação pela UI exige tela inicial | [[specs/Tooie/audio-system]], [[specs/Tooie/modding-and-extensions]] |
 | Render 4:3 / widescreen | 16:9 por planos de culling nativos (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/view-volume]] |
-| Interpolação (60/120 FPS) | pareamento ordenado + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
+| Interpolação (60/120 FPS) | pareamento ordenado + repareamento de calls trocados (fogo das tochas de Mayahem: glitch reduzido, resíduo `UNKNOWN`, 2026-11-17) + guardas P09 + spike guard elementwise (produção) | [[specs/Tooie/graphics-and-presentation]], [[reverse-engineering/systems/transform-interpolation]] |
 | Streaming de texturas (TK64) | opção Graphics > Texture Streaming (Off padrão, Minimum..Maximum), patch `rt64-tk64-texture-streaming` (TK64 `1fd8ca8`): mip por arquivo conforme a distância, orçamento de 2/3 da VRAM, só D3D12/Vulkan. Demo com o pacote Jinjo Village HD (Windows, D3D12): de 519–664 MiB para 128–247 MiB no Maximum; 36/36 testes. Visual do usuário pendente; Linux `NOT_RUN`. RivaTuner (RTSS) derruba qualquer D3D12 neste PC. Em OpenGL e D3D11 as texturas de pacotes já ficavam pretas antes (falha anterior, aviso nos READMEs, correção futura) | [[specs/Tooie/graphics-and-presentation]] |
 | Desempenho RT64 (cenas com ~1000 desenhos) | check sets do pareamento por chaves distintas e cache do hash de TMEM (patches `rt64-perf-*`, resultado idêntico); ponto da Glitter Gulch Mine de 9-12 para 60 FPS no Windows D3D12; o usuário jogou e validou no Windows (2026-10-30); Linux `NOT_RUN` | [[specs/Tooie/graphics-and-presentation]] |
 | Entrada / UI / config | SDL2, multijogador local até 4 (opção default Off), menu ESC, FPS overlay, botão GitHub | [[specs/Tooie/input-and-controllers]], [[specs/Tooie/window-ui-and-config]] |
@@ -272,6 +272,10 @@ validação pendente na spec de testes. Não há plano de execução ativo na ra
 
 ## Pendências conhecidas
 
+- Interpolação: fogo das tochas de Mayahem Temple (`1D15`/`1D16`) ainda sai de posição em quadros isolados em
+  algumas posições de câmera, menos que antes do repareamento de calls trocados (`rt64-p09-reorder-swapped-calls`).
+  Causa do resíduo `UNKNOWN`; o usuário pediu para deixar assim por enquanto (2026-11-17). Próximo discriminador:
+  rodar com `TOOIE_DIAG_P09_REORDER=1` no ponto do glitch e ver se o quadro errado tem repareamento.
 - Memória expandida: com `Unlimited` no heap nativo (~2.78 MiB), Witchyworld esgotava o heap (crash, carga lenta,
   jiggy da transição e modelo de inimigo ausentes). Co-op de história com distância estendida fechava o jogo; causa
   `UNKNOWN`, contornada forçando Original. Linux/PortMaster com heap expandido `NOT_RUN`.

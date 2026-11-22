@@ -173,7 +173,7 @@ void testVanishedCallInMiddleAligns() {
     const std::vector<Call> cur = { call(1, 20), call(1, 21), call(1, 22) };
     const std::vector<Call> prev = { call(1, 10), call(1, 11), call(1, 12), call(1, 13) };
     Pairs pairs;
-    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin));
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
     const Pairs expected = { { 20, 10 }, { 21, 12 }, { 22, 13 } };
     CHECK(pairs == expected);
     CHECK(pairs.size() == 3);
@@ -184,7 +184,7 @@ void testAppearedCallAtStartKeepsOldPairs() {
     const std::vector<Call> cur = { call(1, 40), call(1, 41), call(1, 42) };
     const std::vector<Call> prev = { call(1, 30), call(1, 31) };
     Pairs pairs;
-    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin));
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
     const Pairs expected = { { 41, 30 }, { 42, 31 } };
     CHECK(pairs == expected);
 }
@@ -239,7 +239,7 @@ void testOverloadMixesRankAndAlignedGroups() {
     const std::vector<Call> cur = { call(1, 90), call(1, 91), call(2, 94), call(2, 95), call(3, 97) };
     const std::vector<Call> prev = { call(1, 92), call(1, 93), call(2, 96) };
     Pairs pairs;
-    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin));
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
     const Pairs expected = { { 90, 92 }, { 91, 93 }, { 95, 96 } };
     CHECK(pairs == expected);
 }
@@ -257,14 +257,70 @@ void testCellCapSkipsLargeGroups() {
     }
 
     Pairs pairs;
-    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, zero);
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, zero, zero);
     CHECK(pairs.empty());
 
     cur.resize(100);
     prev.resize(101);
     pairs.clear();
-    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, zero);
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, zero, zero);
     CHECK(pairs.size() == 100);
+}
+
+// Two torch fires share one hash; the second frame draws them in the opposite order (camera-distance order flipped).
+void testSwappedTorchesRepairByPosition() {
+    const Origin origin = { { 10, 0.0f }, { 11, 400.0f }, { 20, 400.0f }, { 21, 0.0f } };
+    const std::vector<Call> cur = { call(9, 10), call(9, 11) };
+    const std::vector<Call> prev = { call(9, 20), call(9, 21) };
+    Pairs pairs;
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
+    const Pairs expected = { { 10, 21 }, { 11, 20 } };
+    CHECK(pairs == expected);
+}
+
+// Only the swapped pair is re-paired; the third torch keeps its rank.
+void testPartialSwapKeepsUnswappedRanks() {
+    const Origin origin = { { 10, 0.0f }, { 11, 400.0f }, { 12, 800.0f }, { 20, 400.0f }, { 21, 0.0f }, { 22, 801.0f } };
+    const std::vector<Call> cur = { call(9, 10), call(9, 11), call(9, 12) };
+    const std::vector<Call> prev = { call(9, 20), call(9, 21), call(9, 22) };
+    Pairs pairs;
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
+    const Pairs expected = { { 10, 21 }, { 11, 20 }, { 12, 22 } };
+    CHECK(pairs == expected);
+}
+
+// Bones sharing a pivot (all distances small) keep rank pairing even if another order would be closer.
+void testSharedPivotKeepsRanks() {
+    const Origin origin = { { 10, 0.0f }, { 11, 1.0f }, { 20, 1.0f }, { 21, 0.0f } };
+    const std::vector<Call> cur = { call(9, 10), call(9, 11) };
+    const std::vector<Call> prev = { call(9, 20), call(9, 21) };
+    Pairs pairs;
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
+    const Pairs expected = { { 10, 20 }, { 11, 21 } };
+    CHECK(pairs == expected);
+}
+
+// A lone fast object near a static one keeps its rank partner: it is the only suspect.
+void testLoneFastObjectKeepsRank() {
+    const Origin origin = { { 10, 0.0f }, { 11, 200.0f }, { 20, 120.0f }, { 21, 200.0f } };
+    const std::vector<Call> cur = { call(9, 10), call(9, 11) };
+    const std::vector<Call> prev = { call(9, 20), call(9, 21) };
+    Pairs pairs;
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(origin));
+    const Pairs expected = { { 10, 20 }, { 11, 21 } };
+    CHECK(pairs == expected);
+}
+
+// The reorder pass uses its own distance (drawn position), not the alignment origin distance.
+void testReorderUsesDrawnDistance() {
+    const Origin origin = { { 10, 0.0f }, { 11, 0.0f }, { 20, 0.0f }, { 21, 0.0f } };
+    const Origin drawn = { { 10, 0.0f }, { 11, 400.0f }, { 20, 400.0f }, { 21, 0.0f } };
+    const std::vector<Call> cur = { call(9, 10), call(9, 11) };
+    const std::vector<Call> prev = { call(9, 20), call(9, 21) };
+    Pairs pairs;
+    RT64::p09OrderedMatch::buildOrderedPairs(cur, prev, pairs, AlignMaxDistance, originDistance(origin), originDistance(drawn));
+    const Pairs expected = { { 10, 21 }, { 11, 20 } };
+    CHECK(pairs == expected);
 }
 
 } // namespace
@@ -291,6 +347,13 @@ int main() {
     testAlignPreservesOrder();
     testOverloadMixesRankAndAlignedGroups();
     testCellCapSkipsLargeGroups();
+    if (RT64::p09OrderedMatch::reorderEnabled()) {
+        testSwappedTorchesRepairByPosition();
+        testPartialSwapKeepsUnswappedRanks();
+        testReorderUsesDrawnDistance();
+    }
+    testSharedPivotKeepsRanks();
+    testLoneFastObjectKeepsRank();
     std::printf("%d/%d passed p09_ordered_match_test\n", g_pass_count, g_test_count);
     return g_pass_count == g_test_count ? 0 : 1;
 }

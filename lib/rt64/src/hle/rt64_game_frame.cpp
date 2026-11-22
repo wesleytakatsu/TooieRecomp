@@ -781,7 +781,7 @@ namespace RT64 {
 
             collectOrderedCalls(curCallHashMap, curScene, curOrderedCalls);
             collectOrderedCalls(prevCallHashMap, prevScene, prevOrderedCalls);
-            if (p09OrderedMatch::alignEnabled()) {
+            if (p09OrderedMatch::alignEnabled() || p09OrderedMatch::reorderEnabled()) {
                 // Distance between the first WORLD origins of two calls (same matrices the candidates below use).
                 auto originDistance = [&](const p09OrderedMatch::Call &c, const p09OrderedMatch::Call &p) {
                     const hlslpp::float4x4 &curTransform = firstCurWorkload.drawData.worldTransforms[c.minWorld];
@@ -789,7 +789,43 @@ namespace RT64 {
                     return float(hlslpp::length(curTransform[3].xyz - prevTransform[3].xyz));
                 };
 
-                p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs, p09OrderedMatch::AlignMaxDistance, originDistance);
+                // Where a call draws: world-space centroid of its first WORLD's vertices (a billboard's position may sit in
+                // the vertices rather than in the matrix origin). Cached per WORLD for the n^2 comparisons of a group.
+                thread_local std::unordered_map<uint32_t, hlslpp::float3> curDrawnPositions;
+                thread_local std::unordered_map<uint32_t, hlslpp::float3> prevDrawnPositions;
+                curDrawnPositions.clear();
+                prevDrawnPositions.clear();
+                auto drawnPosition = [](const Workload &workload, uint32_t world, std::unordered_map<uint32_t, hlslpp::float3> &cache) {
+                    auto it = cache.find(world);
+                    if (it != cache.end()) {
+                        return it->second;
+                    }
+
+                    const hlslpp::float4x4 &m = workload.drawData.worldTransforms[world];
+                    hlslpp::float3 local(0.0f, 0.0f, 0.0f);
+                    const uint32_t first = workload.drawData.worldTransformVertexIndices[world];
+                    const uint32_t count = std::min(workload.drawData.worldTransformVertexCount(world), 64U);
+                    const std::vector<float> &pos = workload.drawData.posFloats;
+                    if ((count > 0) && (size_t(first + count) * 3 <= pos.size())) {
+                        for (uint32_t v = 0; v < count; v++) {
+                            local += hlslpp::float3(pos[(first + v) * 3 + 0], pos[(first + v) * 3 + 1], pos[(first + v) * 3 + 2]);
+                        }
+
+                        local = local * hlslpp::float1(1.0f / float(count));
+                    }
+
+                    const hlslpp::float3 drawn = m[0].xyz * local.x + m[1].xyz * local.y + m[2].xyz * local.z + m[3].xyz;
+                    cache.emplace(world, drawn);
+                    return drawn;
+                };
+
+                auto drawnDistance = [&](const p09OrderedMatch::Call &c, const p09OrderedMatch::Call &p) {
+                    const hlslpp::float3 a = drawnPosition(firstCurWorkload, c.minWorld, curDrawnPositions);
+                    const hlslpp::float3 b = drawnPosition(firstPrevWorkload, p.minWorld, prevDrawnPositions);
+                    return float(hlslpp::length(a - b));
+                };
+
+                p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs, p09OrderedMatch::AlignMaxDistance, originDistance, drawnDistance);
             }
             else {
                 p09OrderedMatch::buildOrderedPairs(curOrderedCalls, prevOrderedCalls, orderedPairs);

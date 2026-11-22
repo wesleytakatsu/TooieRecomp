@@ -270,6 +270,10 @@ namespace RT64 {
 - **Interpolation Matching & Guard Controls (P09)**:
   - `TOOIE_TEST_P09_ORDERED_MATCH`: Hash-ordered transform pairing for untagged (`G_EX_ID_AUTO`) WORLD transforms. Default ON; `"0"` reverts to greedy matching.
   - `TOOIE_TEST_P09_ALIGN_MATCH`: Sequence alignment with gaps via dynamic programming for asymmetric hash groups. Default ON; `"0"` disables.
+  - `TOOIE_TEST_P09_REORDER_MATCH`: Re-pairs swapped calls in equal-count hash groups. A call whose ranked partner moved
+    > 16 units while another previous call of the group is >= 4x closer is a swap suspect; suspects are re-paired among
+    themselves by nearest drawn position (world-space centroid of the first WORLD's vertices). Groups above 256 calls
+    keep rank pairing. Default ON; `"0"` disables. Diagnostic: `TOOIE_DIAG_P09_REORDER=1` logs each re-pairing to stderr.
   - `TOOIE_TEST_P09_CAMERA_CUT`: Geometric camera cut detection for AUTO view matrices. Large angular/linear steps suppress camera interpolation for the frame. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_SEGMENT_COHERENCE`: Conditional release of translation interpolation for segmented model parts. Default ON; `"0"` disables.
   - `TOOIE_TEST_P09_JOINT_COHERENCE`: Skeletal joint hierarchy inference based on relative pivot invariance. Binds child origin to parent coordinate space. Default ON; `"0"` disables.
